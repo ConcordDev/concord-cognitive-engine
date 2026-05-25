@@ -303,10 +303,10 @@ function RegistryPanel({
         </div>
       </div>
 
-      {loading && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading registry…</div>}
+      {loading && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading registry…</div>}
       {err && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>}
       {!loading && !err && registry.length === 0 && (
-        <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
           No schemas registered. Click <span className="text-cyan-400">New Schema</span> to define your first one in the visual editor.
         </div>
       )}
@@ -321,7 +321,7 @@ function RegistryPanel({
                   <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">v{s.latestVersion}</span>
                 </div>
                 {s.description && <p className="mt-0.5 text-[11px] text-zinc-400">{s.description}</p>}
-                <div className="mt-1 flex gap-3 text-[10px] text-zinc-500">
+                <div className="mt-1 flex gap-3 text-[10px] text-zinc-400">
                   <span>{s.fieldCount} fields</span>
                   <span>{s.versionCount} version{s.versionCount !== 1 ? 's' : ''}</span>
                   <span>updated {new Date(s.updatedAt).toLocaleDateString()}</span>
@@ -340,21 +340,21 @@ function RegistryPanel({
       </div>
 
       {history && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)}>
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setHistory(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg border border-cyan-500/20 bg-zinc-950 p-4" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="mb-3 flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{history.name} — version history</h4>
-              <button onClick={() => setHistory(null)} className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>
+              <button onClick={() => setHistory(null)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
             </div>
             <div className="space-y-2">
               {[...history.versions].reverse().map((v) => (
                 <div key={v.version} className="rounded border border-zinc-800 bg-zinc-900/60 p-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs text-cyan-300">v{v.version}</span>
-                    <span className="text-[10px] text-zinc-500">{new Date(v.createdAt).toLocaleString()}</span>
+                    <span className="text-[10px] text-zinc-400">{new Date(v.createdAt).toLocaleString()}</span>
                   </div>
                   {v.note && <p className="mt-0.5 text-[11px] text-zinc-400">{v.note}</p>}
-                  <p className="mt-1 text-[10px] text-zinc-500">{Object.keys(v.schema?.fields || {}).length} fields: {Object.keys(v.schema?.fields || {}).join(', ') || '—'}</p>
+                  <p className="mt-1 text-[10px] text-zinc-400">{Object.keys(v.schema?.fields || {}).length} fields: {Object.keys(v.schema?.fields || {}).join(', ') || '—'}</p>
                 </div>
               ))}
             </div>
@@ -524,7 +524,7 @@ function VisualEditor({
 
       <div className="space-y-2">
         <h3 className="text-sm font-semibold text-white">Schema Tree</h3>
-        <p className="text-[11px] text-zinc-500">{namedCount} field{namedCount !== 1 ? 's' : ''} defined</p>
+        <p className="text-[11px] text-zinc-400">{namedCount} field{namedCount !== 1 ? 's' : ''} defined</p>
         <TreeDiagram root={tree} />
       </div>
     </div>
@@ -609,7 +609,7 @@ function SamplePanel({
       {err && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>}
       {records && (
         <div>
-          <p className="mb-1 text-[11px] text-zinc-500">{records.length} valid records generated</p>
+          <p className="mb-1 text-[11px] text-zinc-400">{records.length} valid records generated</p>
           <pre className="max-h-80 overflow-auto rounded border border-zinc-800 bg-zinc-950 p-3 text-[11px] text-emerald-200">
             {JSON.stringify(records, null, 2)}
           </pre>
@@ -845,7 +845,7 @@ function ERPanel({ registry }: { registry: RegistryEntry[] }) {
           Build from Registry
         </button>
       </div>
-      {registry.length === 0 && <p className="text-xs text-zinc-500">Register schemas first — the ER diagram is built from your catalog.</p>}
+      {registry.length === 0 && <p className="text-xs text-zinc-400">Register schemas first — the ER diagram is built from your catalog.</p>}
       {err && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{err}</div>}
       {result && (
         <div className="space-y-2">

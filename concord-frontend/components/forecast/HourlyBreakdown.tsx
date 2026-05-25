@@ -63,10 +63,10 @@ export function HourlyBreakdown({ worldId }: { worldId: string }) {
         </select>
       </div>
 
-      {loading && <p className="text-xs text-zinc-500">Composing hourly curve…</p>}
+      {loading && <p className="text-xs text-zinc-400">Composing hourly curve…</p>}
 
       {!loading && (!breakdown || breakdown.length === 0) && (
-        <p className="py-8 text-center text-xs italic text-zinc-500">No data yet.</p>
+        <p className="py-8 text-center text-xs italic text-zinc-400">No data yet.</p>
       )}
 
       {!loading && breakdown && breakdown.length > 0 && (
@@ -83,7 +83,7 @@ export function HourlyBreakdown({ worldId }: { worldId: string }) {
               height={220}
             />
           ) : (
-            <p className="py-6 text-center text-xs italic text-zinc-500">
+            <p className="py-6 text-center text-xs italic text-zinc-400">
               No embodied temperature baseline for this world yet.
             </p>
           )}
@@ -99,7 +99,7 @@ export function HourlyBreakdown({ worldId }: { worldId: string }) {
                 <div className="mt-0.5 font-mono text-sm text-amber-300">
                   {h.temperature_c !== null ? `${h.temperature_c}°C` : '—'}
                 </div>
-                <div className="font-mono text-[10px] text-zinc-500">
+                <div className="font-mono text-[10px] text-zinc-400">
                   {h.humidity_pct !== null ? `${h.humidity_pct}% rh · ` : ''}
                   {(h.confidence * 100).toFixed(0)}% conf
                 </div>

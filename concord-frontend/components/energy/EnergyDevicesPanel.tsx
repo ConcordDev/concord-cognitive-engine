@@ -57,7 +57,7 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -107,7 +107,7 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {devices.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
             No devices. Add appliances to track their consumption.
           </div>
         ) : (
@@ -117,7 +117,7 @@ export function EnergyDevicesPanel({ onChange }: { onChange: () => void }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{d.name}</p>
-                    <p className="text-[11px] text-zinc-500 capitalize">
+                    <p className="text-[11px] text-zinc-400 capitalize">
                       {d.category.replace(/_/g, ' ')}{d.wattage > 0 ? ` · ${d.wattage}W` : ''} · {d.totalKwh} kWh logged
                     </p>
                   </div>

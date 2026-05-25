@@ -42,7 +42,7 @@ export function MarketHeatmap() {
         </span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="grid grid-cols-3 md:grid-cols-4 gap-1 p-3">
           {sectors.map(s => {

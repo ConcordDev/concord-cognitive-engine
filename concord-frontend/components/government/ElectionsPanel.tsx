@@ -87,15 +87,15 @@ export function ElectionsPanel() {
 
       {/* Voter registration */}
       <div className="p-3 border-b border-white/10">
-        <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><UserCheck className="w-3 h-3" />Voter registration</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><UserCheck className="w-3 h-3" />Voter registration</div>
         {loading ? (
-          <div className="text-xs text-gray-500"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading…</div>
+          <div className="text-xs text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading…</div>
         ) : registration ? (
           <div className="text-xs text-gray-300 space-y-0.5 bg-white/[0.03] rounded p-2">
-            <div><span className="text-gray-500">Name:</span> {registration.fullName}</div>
-            <div><span className="text-gray-500">State:</span> {registration.stateCode} · <span className="text-gray-500">Party:</span> {registration.partyPreference}</div>
-            <div><span className="text-gray-500">Mail-in ballot:</span> {registration.mailInRequested ? 'requested' : 'no'}</div>
-            <div><span className="text-gray-500">Status:</span> <span className="text-emerald-300">{registration.status}</span> · filed {new Date(registration.submittedAt).toLocaleDateString()}</div>
+            <div><span className="text-gray-400">Name:</span> {registration.fullName}</div>
+            <div><span className="text-gray-400">State:</span> {registration.stateCode} · <span className="text-gray-400">Party:</span> {registration.partyPreference}</div>
+            <div><span className="text-gray-400">Mail-in ballot:</span> {registration.mailInRequested ? 'requested' : 'no'}</div>
+            <div><span className="text-gray-400">Status:</span> <span className="text-emerald-300">{registration.status}</span> · filed {new Date(registration.submittedAt).toLocaleDateString()}</div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -127,7 +127,7 @@ export function ElectionsPanel() {
 
       {/* Upcoming elections */}
       <div className="p-3 border-b border-white/10">
-        <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><CalendarClock className="w-3 h-3" />Upcoming elections</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><CalendarClock className="w-3 h-3" />Upcoming elections</div>
         <div className="flex items-center gap-2">
           <input value={stateFilter} onChange={e => setStateFilter(e.target.value.toUpperCase().slice(0, 2))} placeholder="ST (optional)" maxLength={2} className="w-24 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
           <button onClick={lookupElections} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
@@ -150,7 +150,7 @@ export function ElectionsPanel() {
 
       {/* Polling place lookup */}
       <div className="p-3">
-        <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><MapPin className="w-3 h-3" />Polling place lookup</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><MapPin className="w-3 h-3" />Polling place lookup</div>
         <div className="flex items-center gap-2">
           <input value={pollAddress} onChange={e => setPollAddress(e.target.value)} placeholder="Your registered address" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <button onClick={lookupPolling} className="px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400 inline-flex items-center gap-1">
@@ -160,12 +160,12 @@ export function ElectionsPanel() {
         {pollError && <div className="mt-1.5 text-[10px] text-amber-400">{pollError}</div>}
         {polling.length > 0 && (
           <div className="mt-2">
-            <div className="text-[10px] text-gray-500 mb-1">Election-day polling locations</div>
+            <div className="text-[10px] text-gray-400 mb-1">Election-day polling locations</div>
             <ul className="space-y-1">
               {polling.map((p, i) => (
                 <li key={i} className="text-xs text-gray-300 bg-white/[0.03] rounded px-2 py-1.5">
                   <div className="text-white">{p.name || p.line1}</div>
-                  <div className="text-[10px] text-gray-500">{[p.line1, p.city, p.state, p.zip].filter(Boolean).join(', ')}</div>
+                  <div className="text-[10px] text-gray-400">{[p.line1, p.city, p.state, p.zip].filter(Boolean).join(', ')}</div>
                   {p.pollingHours && <div className="text-[10px] text-cyan-300">Hours: {p.pollingHours}</div>}
                 </li>
               ))}
@@ -174,7 +174,7 @@ export function ElectionsPanel() {
         )}
         {earlySites.length > 0 && (
           <div className="mt-2">
-            <div className="text-[10px] text-gray-500 mb-1">Early-voting sites</div>
+            <div className="text-[10px] text-gray-400 mb-1">Early-voting sites</div>
             <ul className="space-y-1">
               {earlySites.map((p, i) => (
                 <li key={i} className="text-xs text-gray-300 bg-white/[0.03] rounded px-2 py-1">

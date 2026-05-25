@@ -80,7 +80,7 @@ export function TidePredictions() {
               {p.type === 'high' ? <ArrowUp className="h-3.5 w-3.5 text-cyan-300" /> : <ArrowDown className="h-3.5 w-3.5 text-amber-300" />}
               <span className="font-mono text-xs text-zinc-200">{p.time}</span>
               <span className={`ml-auto font-mono text-sm ${p.type === 'high' ? 'text-cyan-200' : 'text-amber-200'}`}>{p.height.toFixed(2)}m</span>
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">{p.type}</span>
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400">{p.type}</span>
             </div>
           ))}
         </motion.div>

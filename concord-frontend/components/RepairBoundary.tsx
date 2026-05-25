@@ -134,14 +134,14 @@ export class RepairBoundary extends Component<Props, State> {
               </button>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500">Auto-repair failed after 3 attempts.</p>
+                <p className="text-xs text-gray-400">Auto-repair failed after 3 attempts.</p>
                 <button
                   onClick={() => typeof window !== 'undefined' && window.location.reload()}
                   className="px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm"
                 >
                   Reload Page
                 </button>
-                <p className="text-xs text-gray-600">This error has been reported to the repair cortex.</p>
+                <p className="text-xs text-gray-400">This error has been reported to the repair cortex.</p>
               </div>
             )}
           </div>

@@ -110,7 +110,7 @@ export function TriviaPanel({ className }: TriviaPanelProps) {
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="New questions"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -131,8 +131,8 @@ export function TriviaPanel({ className }: TriviaPanelProps) {
             return (
               <li key={q.index} className="px-3 py-3 text-xs">
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="text-[10px] font-mono text-zinc-500">{q.category}</span>
-                  <span className={cn('text-[10px] font-mono', DIFFICULTY_COLOR[q.difficulty] || 'text-zinc-500')}>
+                  <span className="text-[10px] font-mono text-zinc-400">{q.category}</span>
+                  <span className={cn('text-[10px] font-mono', DIFFICULTY_COLOR[q.difficulty] || 'text-zinc-400')}>
                     {q.difficulty}
                   </span>
                 </div>
@@ -162,7 +162,7 @@ export function TriviaPanel({ className }: TriviaPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Open Trivia DB · opentdb.com (cc-by-sa-4.0)
       </footer>
     </section>

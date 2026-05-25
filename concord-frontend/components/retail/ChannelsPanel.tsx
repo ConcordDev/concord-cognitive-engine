@@ -117,21 +117,21 @@ export function ChannelsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : channels.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Network className="w-6 h-6 mx-auto mb-2 opacity-30" />No channels connected.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Network className="w-6 h-6 mx-auto mb-2 opacity-30" />No channels connected.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {channels.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white font-medium capitalize">{c.channel.replace(/_/g, ' ')}</span>
-                  <span className="text-[10px] text-gray-500 flex-1 truncate">{c.storeName || '—'}</span>
+                  <span className="text-[10px] text-gray-400 flex-1 truncate">{c.storeName || '—'}</span>
                   <span className="text-[10px] text-gray-400">{c.listedSkus.length} listed</span>
                   <span className={cn('px-1.5 py-0.5 text-[9px] uppercase rounded', 'bg-emerald-500/15 text-emerald-300')}>{c.status}</span>
-                  <button onClick={() => disconnect(c.id)} disabled={busy} className="p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => disconnect(c.id)} disabled={busy} className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
-                {c.lastSyncedAt && <p className="text-[10px] text-gray-600 mt-0.5">Last sync {new Date(c.lastSyncedAt).toLocaleString()}</p>}
+                {c.lastSyncedAt && <p className="text-[10px] text-gray-400 mt-0.5">Last sync {new Date(c.lastSyncedAt).toLocaleString()}</p>}
                 <div className="mt-1 flex flex-wrap items-center gap-1">
                   {c.listedSkus.map(sku => (
                     <span key={sku} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-cyan-500/15 text-cyan-300">{sku}</span>

@@ -200,7 +200,7 @@ export default function GuidedCreator({
       {step === 'foundation' && (
         <div>
           <h3 className="text-sm font-semibold text-white mb-1">Foundation</h3>
-          <p className="text-[10px] text-gray-500 mb-3">
+          <p className="text-[10px] text-gray-400 mb-3">
             Terrain: {district.terrain.grid[10]?.[10]?.soilType || 'unknown'} soil,
             bedrock at {district.terrain.grid[10]?.[10]?.bedrockDepth?.toFixed(1) || '?'}m,
             seismic zone {district.weather.seismicRisk}
@@ -246,7 +246,7 @@ export default function GuidedCreator({
       {step === 'structure' && (
         <div>
           <h3 className="text-sm font-semibold text-white mb-1">Structure Builder</h3>
-          <p className="text-[10px] text-gray-500 mb-3">
+          <p className="text-[10px] text-gray-400 mb-3">
             Add structural members. Green = safe, Yellow = approaching limits, Red = exceeds capacity.
           </p>
 
@@ -293,7 +293,7 @@ export default function GuidedCreator({
                       <button onClick={() => removeMember(m.id)} className="text-red-400 hover:text-red-300">x</button>
                     </div>
                   </div>
-                  <p className="text-gray-500">
+                  <p className="text-gray-400">
                     {m.dimensions.length}m x {m.dimensions.width}m x {m.dimensions.height}m
                     — {materials.find(mat => mat.id === m.materialId)?.name || 'Unknown'}
                   </p>
@@ -317,7 +317,7 @@ export default function GuidedCreator({
       {step === 'systems' && (
         <div>
           <h3 className="text-sm font-semibold text-white mb-1">Utility Connections</h3>
-          <p className="text-[10px] text-gray-500 mb-3">Your building needs utilities. Connect to district infrastructure.</p>
+          <p className="text-[10px] text-gray-400 mb-3">Your building needs utilities. Connect to district infrastructure.</p>
           <div className="space-y-2">
             {[
               { type: 'Water', items: district.infrastructure.waterMains, color: 'blue' },
@@ -339,7 +339,7 @@ export default function GuidedCreator({
                   )}
                 </div>
                 {items.length > 0 && (
-                  <p className="text-[10px] text-gray-500 mt-0.5">
+                  <p className="text-[10px] text-gray-400 mt-0.5">
                     Nearest: {items[0].creator} ({items[0].capacity.toLocaleString()} capacity)
                   </p>
                 )}

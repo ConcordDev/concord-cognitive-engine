@@ -55,7 +55,7 @@ export default function EFBSuite() {
                 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs whitespace-nowrap transition ' +
                 (active
                   ? 'bg-sky-500/15 text-sky-200 border border-sky-500/30'
-                  : 'text-gray-500 hover:text-sky-200 border border-transparent')
+                  : 'text-gray-400 hover:text-sky-200 border border-transparent')
               }
             >
               <Icon className="w-3.5 h-3.5" />

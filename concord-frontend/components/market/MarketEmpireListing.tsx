@@ -46,7 +46,7 @@ function MarketEmpireListingInner({ listing, onPurchase }: MarketEmpireListingPr
 
       {listing.tags && listing.tags.length > 0 && (
         <div className="flex items-center gap-1 mb-3 flex-wrap">
-          <Tag className="w-3 h-3 text-gray-500" />
+          <Tag className="w-3 h-3 text-gray-400" />
           {listing.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
@@ -58,7 +58,7 @@ function MarketEmpireListingInner({ listing, onPurchase }: MarketEmpireListingPr
         </div>
       )}
 
-      <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-lattice-border">
+      <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-lattice-border">
         <div className="flex items-center gap-1">
           <User className="w-3 h-3" />
           <span>{listing.seller || 'Anonymous'}</span>

@@ -67,7 +67,7 @@ export function TechniciansPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Technicians</span>
-        <span className="ml-auto text-[10px] text-gray-500">{techs.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{techs.length}</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -83,9 +83,9 @@ export function TechniciansPanel() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : techs.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No technicians yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No technicians yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {techs.map(t => (
@@ -94,7 +94,7 @@ export function TechniciansPanel() {
                   <div className="w-9 h-9 rounded-full bg-cyan-500/15 text-cyan-300 flex items-center justify-center text-xs font-bold">{t.name.slice(0, 2).toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate">{t.name}</div>
-                    <div className="text-[10px] text-gray-500 inline-flex items-center gap-2 truncate">
+                    <div className="text-[10px] text-gray-400 inline-flex items-center gap-2 truncate">
                       {t.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{t.phone}</span>}
                       {t.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{t.email}</span>}
                     </div>
@@ -102,7 +102,7 @@ export function TechniciansPanel() {
                   <select value={t.status} onChange={e => setStatus(t.id, e.target.value as Tech['status'])} className="text-[10px] bg-lattice-deep border border-lattice-border rounded px-1.5 py-0.5 text-white">
                     {STATUS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
-                  <button onClick={() => remove(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(t.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {t.skills.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1 ml-11">

@@ -436,14 +436,14 @@ export function MoodTracker() {
           <Flame className={`w-7 h-7 ${streak > 0 ? 'text-orange-400' : 'text-gray-600'}`} />
           <div>
             <p className="text-2xl font-bold font-mono">{streak}</p>
-            <p className="text-xs text-gray-500">day streak</p>
+            <p className="text-xs text-gray-400">day streak</p>
           </div>
         </div>
         <div className="panel p-4 flex items-center gap-3">
           <CalendarDays className="w-7 h-7 text-cyan-400" />
           <div>
             <p className="text-2xl font-bold font-mono">{history?.totalCheckins ?? 0}</p>
-            <p className="text-xs text-gray-500">total check-ins</p>
+            <p className="text-xs text-gray-400">total check-ins</p>
           </div>
         </div>
         <div className="panel p-4 flex items-center gap-3">
@@ -456,7 +456,7 @@ export function MoodTracker() {
             <p className="text-sm font-bold">
               {checkedToday ? 'Logged today' : 'Not logged yet'}
             </p>
-            <p className="text-xs text-gray-500">today&apos;s ritual</p>
+            <p className="text-xs text-gray-400">today&apos;s ritual</p>
           </div>
         </div>
       </div>
@@ -643,7 +643,7 @@ export function MoodTracker() {
                         <span className={`font-medium ${moodColor(e.mood, maxMood)}`}>
                           {e.moodLabel}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {new Date(e.createdAt).toLocaleString(undefined, {
                             month: 'short',
                             day: 'numeric',
@@ -675,7 +675,7 @@ export function MoodTracker() {
                 ))}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 No check-ins yet. Log your first mood above.
               </p>
             )}
@@ -723,7 +723,7 @@ export function MoodTracker() {
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">
+                    <p className="text-xs text-gray-400 mb-1">
                       {granularity === 'month' ? 'Monthly' : 'Weekly'} averages
                     </p>
                     <ChartKit
@@ -739,7 +739,7 @@ export function MoodTracker() {
                     />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Day-of-week pattern</p>
+                    <p className="text-xs text-gray-400 mb-1">Day-of-week pattern</p>
                     <ChartKit
                       kind="bar"
                       data={trends.dayOfWeek
@@ -763,7 +763,7 @@ export function MoodTracker() {
                 </div>
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 No mood data yet. Log a few check-ins to see trends.
               </p>
             )}
@@ -775,7 +775,7 @@ export function MoodTracker() {
               <Download className="w-4 h-4 text-neon-cyan" />
               Emotional Report Export
             </h3>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-gray-400 mb-3">
               Download your check-in history for personal records or to share with a clinician.
             </p>
             <div className="flex gap-2">
@@ -844,7 +844,7 @@ export function MoodTracker() {
                     className="lens-card flex items-center gap-3 text-sm"
                   >
                     <span className="flex-1 capitalize font-medium">{c.activity}</span>
-                    <span className="text-xs text-gray-500">{c.samples} logs</span>
+                    <span className="text-xs text-gray-400">{c.samples} logs</span>
                     <div className="w-28 h-2 bg-lattice-deep rounded-full overflow-hidden relative">
                       <div
                         className={`h-full absolute top-0 ${
@@ -874,7 +874,7 @@ export function MoodTracker() {
               </div>
             </div>
           ) : (
-            <p className="text-center py-8 text-gray-500 text-sm">
+            <p className="text-center py-8 text-gray-400 text-sm">
               No correlations yet. Tag activities on your check-ins (at least 2 logs per
               activity) to see what lifts your mood.
             </p>
@@ -954,7 +954,7 @@ export function MoodTracker() {
                     <span className="font-mono text-gray-300">{r.time}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-gray-300">{r.label}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-gray-400">
                         {CONDITION_LABEL[r.condition] || r.condition}
                       </p>
                     </div>
@@ -972,7 +972,7 @@ export function MoodTracker() {
                 ))}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 No reminders configured. Add one above to get nudged to check in.
               </p>
             )}
@@ -994,7 +994,7 @@ export function MoodTracker() {
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Adjust the labels and emoji for each mood level (2&ndash;10 points). Values must
             be unique.
           </p>
@@ -1040,7 +1040,7 @@ export function MoodTracker() {
                   <button
                     onClick={() => setScaleDraft(scaleDraft.filter((_, j) => j !== i))}
                     aria-label={`Remove level ${i + 1}`}
-                    className="text-gray-500 hover:text-rose-400"
+                    className="text-gray-400 hover:text-rose-400"
                   >
                     <X className="w-4 h-4" />
                   </button>

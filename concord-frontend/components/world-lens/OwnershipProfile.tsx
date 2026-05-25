@@ -165,12 +165,12 @@ export default function OwnershipProfile({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-white">Ownership Profile</h2>
-          {userId && <p className="text-[10px] text-gray-500">@{userId}</p>}
+          {userId && <p className="text-[10px] text-gray-400">@{userId}</p>}
         </div>
         <div className="flex items-center gap-2">
           {emotionalOwnership > 0 && (
             <div className="text-right">
-              <span className="text-[9px] text-gray-500 block">Ownership Score</span>
+              <span className="text-[9px] text-gray-400 block">Ownership Score</span>
               <span className="text-sm font-bold text-cyan-400">{emotionalOwnership}</span>
             </div>
           )}
@@ -192,7 +192,7 @@ export default function OwnershipProfile({
             className={`text-[10px] px-3 py-1.5 rounded-t transition-colors ${
               activeTab === tab.id
                 ? 'text-white bg-white/10 border-b-2 border-cyan-500'
-                : 'text-gray-500 hover:text-gray-300'
+                : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             {tab.label}
@@ -205,7 +205,7 @@ export default function OwnershipProfile({
         <div>
           {/* Sort controls */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] text-gray-500">Sort by:</span>
+            <span className="text-[10px] text-gray-400">Sort by:</span>
             {(['citations', 'royalties', 'views', 'date'] as const).map((s) => (
               <button
                 key={s}
@@ -213,7 +213,7 @@ export default function OwnershipProfile({
                 className={`text-[9px] px-2 py-0.5 rounded transition-colors ${
                   sortBy === s
                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-                    : 'text-gray-500 hover:text-white'
+                    : 'text-gray-400 hover:text-white'
                 }`}
               >
                 {s}
@@ -238,7 +238,7 @@ export default function OwnershipProfile({
                   </span>
                 </div>
                 <p className="text-[10px] font-medium text-white truncate">{dtu.name}</p>
-                <p className="text-[8px] text-gray-600 truncate">{dtu.district} · {dtu.type}</p>
+                <p className="text-[8px] text-gray-400 truncate">{dtu.district} · {dtu.type}</p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className="text-[8px] text-cyan-400">{dtu.citationCount} cited</span>
                   <span className="text-[8px] text-yellow-400">{dtu.royaltyTotal.toLocaleString()} earned</span>
@@ -246,7 +246,7 @@ export default function OwnershipProfile({
                 {editingTour && (
                   <button
                     onClick={(e) => { e.stopPropagation(); addTourStop(dtu); }}
-                    className="mt-1 text-[8px] text-gray-500 hover:text-cyan-400 transition-colors"
+                    className="mt-1 text-[8px] text-gray-400 hover:text-cyan-400 transition-colors"
                   >
                     + Add to tour
                   </button>
@@ -256,7 +256,7 @@ export default function OwnershipProfile({
           </div>
 
           {portfolio.length === 0 && (
-            <p className="text-xs text-gray-600 text-center py-6">No creations yet. Start building!</p>
+            <p className="text-xs text-gray-400 text-center py-6">No creations yet. Start building!</p>
           )}
 
           {/* Portfolio highlights */}
@@ -265,19 +265,19 @@ export default function OwnershipProfile({
               <h4 className="text-[10px] font-semibold text-gray-400 mb-2">Highlights</h4>
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2 rounded bg-white/[0.03]">
-                  <p className="text-[8px] text-gray-500 mb-1">Most Cited</p>
+                  <p className="text-[8px] text-gray-400 mb-1">Most Cited</p>
                   {topCited.slice(0, 2).map((d) => (
                     <p key={d.id} className="text-[9px] text-cyan-400 truncate">{d.name} ({d.citationCount})</p>
                   ))}
                 </div>
                 <div className="p-2 rounded bg-white/[0.03]">
-                  <p className="text-[8px] text-gray-500 mb-1">Most Profitable</p>
+                  <p className="text-[8px] text-gray-400 mb-1">Most Profitable</p>
                   {topProfitable.slice(0, 2).map((d) => (
                     <p key={d.id} className="text-[9px] text-yellow-400 truncate">{d.name} ({d.royaltyTotal})</p>
                   ))}
                 </div>
                 <div className="p-2 rounded bg-white/[0.03]">
-                  <p className="text-[8px] text-gray-500 mb-1">Most Viewed</p>
+                  <p className="text-[8px] text-gray-400 mb-1">Most Viewed</p>
                   {topViewed.slice(0, 2).map((d) => (
                     <p key={d.id} className="text-[9px] text-purple-400 truncate">{d.name} ({d.viewCount})</p>
                   ))}
@@ -306,14 +306,14 @@ export default function OwnershipProfile({
                       style={{ width: `${c.contributionPercent}%`, backgroundColor: c.color }}
                     />
                   </div>
-                  <span className="text-[8px] text-gray-600">{c.buildingCount} buildings</span>
+                  <span className="text-[8px] text-gray-400">{c.buildingCount} buildings</span>
                 </div>
               </div>
             ))}
           </div>
 
           {contributions.length === 0 && (
-            <p className="text-xs text-gray-600 text-center py-6">No territory contributions yet.</p>
+            <p className="text-xs text-gray-400 text-center py-6">No territory contributions yet.</p>
           )}
 
           {/* Firm territory */}
@@ -325,8 +325,8 @@ export default function OwnershipProfile({
               <div className="space-y-1">
                 {firmTerritory.districts.map((d) => (
                   <div key={d.districtId} className="flex items-center justify-between text-[9px]">
-                    <span className="text-gray-500 capitalize">{d.districtId}</span>
-                    <span className={d.dominancePercent > 50 ? 'text-cyan-400 font-medium' : 'text-gray-500'}>
+                    <span className="text-gray-400 capitalize">{d.districtId}</span>
+                    <span className={d.dominancePercent > 50 ? 'text-cyan-400 font-medium' : 'text-gray-400'}>
                       {d.dominancePercent.toFixed(1)}% dominance
                     </span>
                   </div>
@@ -352,21 +352,21 @@ export default function OwnershipProfile({
                 ].map((stat) => (
                   <div key={stat.label} className="p-2 rounded bg-white/[0.03] text-center">
                     <p className={`text-sm font-bold ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[8px] text-gray-500">{stat.label}</p>
+                    <p className="text-[8px] text-gray-400">{stat.label}</p>
                   </div>
                 ))}
               </div>
 
               {/* Founded date */}
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] text-gray-500">Founded</span>
+                <span className="text-[10px] text-gray-400">Founded</span>
                 <span className="text-[10px] text-white">{legacy.foundedAt}</span>
               </div>
 
               {/* Impact score */}
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-gray-500">Total Impact</span>
+                  <span className="text-[10px] text-gray-400">Total Impact</span>
                   <span className="text-xs font-bold text-cyan-300">{legacy.totalImpact.toLocaleString()}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
@@ -390,7 +390,7 @@ export default function OwnershipProfile({
                     </div>
                     <div>
                       <p className="text-[10px] font-medium text-white">{work.title}</p>
-                      <p className="text-[8px] text-gray-500">{work.date}</p>
+                      <p className="text-[8px] text-gray-400">{work.date}</p>
                       <p className="text-[9px] text-gray-400 mt-0.5">{work.description}</p>
                     </div>
                   </div>
@@ -398,7 +398,7 @@ export default function OwnershipProfile({
               </div>
             </>
           ) : (
-            <p className="text-xs text-gray-600 text-center py-6">No legacy data available.</p>
+            <p className="text-xs text-gray-400 text-center py-6">No legacy data available.</p>
           )}
         </div>
       )}
@@ -407,7 +407,7 @@ export default function OwnershipProfile({
       {activeTab === 'tour' && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               Select stops from your creations to build a guided walkthrough.
             </p>
             <button
@@ -415,7 +415,7 @@ export default function OwnershipProfile({
               className={`text-[9px] px-2 py-1 rounded border transition-colors ${
                 editingTour
                   ? 'border-cyan-500/40 text-cyan-400 bg-cyan-500/10'
-                  : 'border-white/10 text-gray-500 hover:text-white'
+                  : 'border-white/10 text-gray-400 hover:text-white'
               }`}
             >
               {editingTour ? 'Done Editing' : 'Edit Tour'}
@@ -441,7 +441,7 @@ export default function OwnershipProfile({
                       />
                     ) : (
                       stop.description && (
-                        <p className="text-[9px] text-gray-500 mt-0.5">{stop.description}</p>
+                        <p className="text-[9px] text-gray-400 mt-0.5">{stop.description}</p>
                       )
                     )}
                   </div>
@@ -457,7 +457,7 @@ export default function OwnershipProfile({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-600 text-center py-6">
+            <p className="text-xs text-gray-400 text-center py-6">
               No tour stops yet. Switch to &quot;My Creations&quot; tab and click &quot;Edit Tour&quot; to add stops.
             </p>
           )}
@@ -476,12 +476,12 @@ export default function OwnershipProfile({
       {/* Shareable profile card (compact preview) */}
       <div className="mt-4 pt-3 border-t border-white/5">
         <div className="flex items-center justify-between">
-          <span className="text-[9px] text-gray-600">
+          <span className="text-[9px] text-gray-400">
             {portfolio.length} creations · {contributions.reduce((a, c) => a + c.buildingCount, 0)} placements
           </span>
           <button
             onClick={() => { window.dispatchEvent(new CustomEvent('ownership:generate-share-card')); }}
-            className="text-[9px] text-gray-500 hover:text-cyan-400 transition-colors"
+            className="text-[9px] text-gray-400 hover:text-cyan-400 transition-colors"
           >
             Generate Share Card
           </button>

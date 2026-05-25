@@ -77,7 +77,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -95,7 +95,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
         >
           {SAMPLE_CITIES.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
         </select>
-        <div className="text-[10px] text-zinc-500 font-mono mt-1 flex items-center gap-1">
+        <div className="text-[10px] text-zinc-400 font-mono mt-1 flex items-center gap-1">
           <MapPin className="w-2.5 h-2.5" />
           {city.latitude.toFixed(4)}, {city.longitude.toFixed(4)}
         </div>
@@ -108,7 +108,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
       )}
 
       {!error && passes.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No passes calculated.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No passes calculated.</div>
       )}
 
       {passes.length > 0 && (
@@ -119,7 +119,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
                 <div className="text-zinc-200 font-mono">
                   {p.riseTimeIso ? new Date(p.riseTimeIso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'}
                 </div>
-                <div className="text-[10px] text-zinc-500">Pass #{i + 1}</div>
+                <div className="text-[10px] text-zinc-400">Pass #{i + 1}</div>
               </div>
               <div className="text-[10px] text-zinc-400 flex items-center gap-1 font-mono">
                 <Clock className="w-3 h-3" />
@@ -130,7 +130,7 @@ export function IssPassPanel({ domain, className }: IssPassPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Open Notify · open-notify.org
       </footer>
     </section>

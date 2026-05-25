@@ -181,7 +181,7 @@ export function HouseholdActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -191,7 +191,7 @@ export function HouseholdActionPanel() {
         {groceryResult?.items && (
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Grocery ({groceryResult.items.length})</div>
-            {groceryResult.items.slice(0, 10).map((i, idx) => <div key={idx} className="text-[11px] text-zinc-300">{i.name} <span className="text-zinc-500 font-mono">{i.quantity}</span>{i.aisle && <span className="text-zinc-500"> · {i.aisle}</span>}</div>)}
+            {groceryResult.items.slice(0, 10).map((i, idx) => <div key={idx} className="text-[11px] text-zinc-300">{i.name} <span className="text-zinc-400 font-mono">{i.quantity}</span>{i.aisle && <span className="text-zinc-400"> · {i.aisle}</span>}</div>)}
           </div>
         )}
         {choreResult?.rotation && (
@@ -210,7 +210,7 @@ export function HouseholdActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Weekly summary</div>
             <div className="text-2xl font-bold text-cyan-300">{summaryResult.choresDone}/{summaryResult.choresTotal}</div>
-            <div className="text-[10px] text-zinc-500">chores · {summaryResult.maintCompleted} maint done · sentiment: {summaryResult.sentiment}</div>
+            <div className="text-[10px] text-zinc-400">chores · {summaryResult.maintCompleted} maint done · sentiment: {summaryResult.sentiment}</div>
           </div>
         )}
       </div>

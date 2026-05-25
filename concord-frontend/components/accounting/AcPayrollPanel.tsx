@@ -69,8 +69,8 @@ export function AcPayrollPanel() {
           <ul className="space-y-1">
             {employees.map((e) => (
               <li key={e.id} className="flex items-center gap-2 text-xs text-gray-300 bg-black/20 rounded px-2 py-1">
-                <span className="flex-1">{e.name}{e.title && <span className="text-gray-500"> · {e.title}</span>}</span>
-                <span className="text-gray-500">{e.payType === 'hourly' ? `$${e.rate}/hr` : `$${e.rate.toLocaleString()}/yr`}</span>
+                <span className="flex-1">{e.name}{e.title && <span className="text-gray-400"> · {e.title}</span>}</span>
+                <span className="text-gray-400">{e.payType === 'hourly' ? `$${e.rate}/hr` : `$${e.rate.toLocaleString()}/yr`}</span>
                 {e.payType === 'hourly' && (
                   <input placeholder="hrs" value={run.hours[e.id] || ''}
                     onChange={(ev) => setRun({ ...run, hours: { ...run.hours, [e.id]: ev.target.value } })}
@@ -119,7 +119,7 @@ export function AcPayrollPanel() {
                 <button type="button" onClick={() => openRun(r.id)} className="flex-1 text-left hover:text-emerald-300">
                   {r.periodStart} → {r.periodEnd}
                 </button>
-                <span className="text-gray-500">{r.employeeCount} emp</span>
+                <span className="text-gray-400">{r.employeeCount} emp</span>
                 <span>gross ${r.totalGross.toLocaleString()}</span>
                 <span className="text-emerald-300">net ${r.totalNet.toLocaleString()}</span>
               </li>
@@ -133,5 +133,5 @@ export function AcPayrollPanel() {
 
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
-function Spin() { return <div className="flex items-center justify-center py-10 text-gray-500"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-500 italic">{text}</p>; }
+function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }

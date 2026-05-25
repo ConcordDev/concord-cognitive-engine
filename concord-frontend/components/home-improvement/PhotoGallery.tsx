@@ -68,7 +68,7 @@ export function PhotoGallery() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Camera className="w-4 h-4 text-amber-400" /> Before / After Gallery
-          <span className="text-xs text-gray-500">({entries.length})</span>
+          <span className="text-xs text-gray-400">({entries.length})</span>
         </h3>
         <button onClick={() => setShowForm((v) => !v)} className="text-xs flex items-center gap-1 text-amber-400 hover:text-amber-300">
           <Plus className="w-3.5 h-3.5" /> Add photos
@@ -99,9 +99,9 @@ export function PhotoGallery() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading gallery...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading gallery...</div>
       ) : entries.length === 0 ? (
-        <p className="text-xs text-gray-500">No before/after photos yet. Document your renovations.</p>
+        <p className="text-xs text-gray-400">No before/after photos yet. Document your renovations.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {entries.map((e) => {
@@ -113,14 +113,14 @@ export function PhotoGallery() {
                   {src ? (
                     <img src={src} alt={`${e.room} ${mode}`} className="w-full h-44 object-cover rounded-lg" />
                   ) : (
-                    <div className="w-full h-44 rounded-lg bg-lattice-deep flex items-center justify-center text-xs text-gray-600">No image</div>
+                    <div className="w-full h-44 rounded-lg bg-lattice-deep flex items-center justify-center text-xs text-gray-400">No image</div>
                   )}
                   <span className="absolute top-2 left-2 text-xs px-2 py-0.5 rounded bg-black/70 text-white uppercase">{mode}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{e.title}</p>
-                    <p className="text-xs text-gray-500">{e.room}{e.caption ? ` · ${e.caption}` : ''}</p>
+                    <p className="text-xs text-gray-400">{e.room}{e.caption ? ` · ${e.caption}` : ''}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     {e.beforeImage && e.afterImage && (
@@ -128,7 +128,7 @@ export function PhotoGallery() {
                         {mode === 'before' ? 'See after' : 'See before'}
                       </button>
                     )}
-                    <button onClick={() => remove(e.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => remove(e.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
               </div>

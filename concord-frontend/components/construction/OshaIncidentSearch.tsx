@@ -70,7 +70,7 @@ export function OshaIncidentSearch() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search OSHA / construction safety datasets…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -86,17 +86,17 @@ export function OshaIncidentSearch() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="line-clamp-1 text-sm text-white">{h.title}</span>
-                  <span className="font-mono text-[10px] text-zinc-500">{h.type}</span>
+                  <span className="font-mono text-[10px] text-zinc-400">{h.type}</span>
                 </div>
                 {h.body && <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{h.body}</p>}
-                {h.date && <div className="mt-0.5 text-[10px] text-zinc-500">updated {new Date(h.date).toLocaleDateString()}</div>}
+                {h.date && <div className="mt-0.5 text-[10px] text-zinc-400">updated {new Date(h.date).toLocaleDateString()}</div>}
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}
         {hits.length === 0 && !search.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search real federal construction safety datasets.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search real federal construction safety datasets.</div>
         )}
       </div>
     </div>

@@ -127,7 +127,7 @@ export default function EFBFiling() {
           </span>
         </div>
         {plans.length === 0 ? (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             No saved plans yet. Compose a flight plan first, then file it here.
           </p>
         ) : (
@@ -189,22 +189,22 @@ export default function EFBFiling() {
           </div>
         )}
         {error && <p className="text-xs text-rose-300 mt-2">{error}</p>}
-        <p className="text-[10px] text-gray-600 mt-2">
+        <p className="text-[10px] text-gray-400 mt-2">
           Simulated DUATS-style filing — assigns a confirmation and tracks status.
         </p>
       </div>
 
       {/* Filings list */}
       <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">
           Filed flight plans
         </p>
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : filings.length === 0 ? (
-          <p className="text-center text-xs text-gray-500 py-4">No filings yet.</p>
+          <p className="text-center text-xs text-gray-400 py-4">No filings yet.</p>
         ) : (
           <div className="space-y-2">
             {filings.map((f) => (
@@ -215,7 +215,7 @@ export default function EFBFiling() {
                       {f.from} → {f.to}
                       <span className="text-cyan-300 ml-2">{f.flightRules}</span>
                     </p>
-                    <p className="text-[10px] text-gray-500 font-mono">
+                    <p className="text-[10px] text-gray-400 font-mono">
                       {f.confirmation} · dep {f.departureTime} · {f.soulsOnBoard} SOB · {f.pilotName}
                     </p>
                   </div>
@@ -228,7 +228,7 @@ export default function EFBFiling() {
                   </span>
                 </div>
                 {f.route.length > 0 && (
-                  <p className="text-[10px] text-gray-500 font-mono mt-1">
+                  <p className="text-[10px] text-gray-400 font-mono mt-1">
                     Route: {f.route.join(' ')}
                   </p>
                 )}

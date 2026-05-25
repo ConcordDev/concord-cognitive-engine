@@ -202,7 +202,7 @@ export function EducationActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -213,7 +213,7 @@ export function EducationActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-48 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{gradeResult.studentName}</div>
             <div className={cn('text-3xl font-bold', LETTER_COLOR[gradeResult.letterGrade?.[0] ?? 'F'])}>{gradeResult.letterGrade}<span className="text-sm text-zinc-400"> {gradeResult.finalPercent}%</span></div>
-            {gradeResult.gpa != null && <div className="text-[10px] text-zinc-500">GPA {gradeResult.gpa}</div>}
+            {gradeResult.gpa != null && <div className="text-[10px] text-zinc-400">GPA {gradeResult.gpa}</div>}
             {gradeResult.breakdown.map((b, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-20 truncate">{b.category}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${b.percent}%` }} /></div><span className="font-mono text-blue-200">{b.percent}%</span></div>)}
           </div>
         )}
@@ -221,7 +221,7 @@ export function EducationActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Progress · {progResult.trend}</div>
             <div className="text-2xl font-bold text-green-300">avg {progResult.average}</div>
-            <div className="text-[10px] text-zinc-500">{progResult.scores.length} data points · improvement {progResult.improvement >= 0 ? '+' : ''}{progResult.improvement}</div>
+            <div className="text-[10px] text-zinc-400">{progResult.scores.length} data points · improvement {progResult.improvement >= 0 ? '+' : ''}{progResult.improvement}</div>
             <div className="text-[11px] text-zinc-200 font-semibold capitalize">{progResult.mastery}</div>
             <div className="text-[10px] text-green-200 italic mt-0.5">{progResult.recommendation}</div>
             <div className="flex gap-0.5 mt-1 h-6 items-end">{progResult.scores.map((s, i) => <div key={i} className="flex-1 rounded-t-sm bg-green-400" style={{ height: `${s.score}%` }} title={`${s.date}: ${s.score}`} />)}</div>

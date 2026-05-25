@@ -74,7 +74,7 @@ export function MentorshipRequestsPanel() {
   };
 
   if (loading) {
-    return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>;
+    return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>;
   }
 
   return (
@@ -90,7 +90,7 @@ export function MentorshipRequestsPanel() {
           )}
         </h3>
         {incoming.length === 0 ? (
-          <p className="text-xs text-zinc-500">No incoming requests. List yourself as a mentor to receive them.</p>
+          <p className="text-xs text-zinc-400">No incoming requests. List yourself as a mentor to receive them.</p>
         ) : incoming.map((req) => (
           <div key={req.id} className="lens-card space-y-1.5">
             <div className="flex items-center justify-between">
@@ -124,17 +124,17 @@ export function MentorshipRequestsPanel() {
           <Send className="w-4 h-4 text-neon-cyan" /> Outgoing requests
         </h3>
         {outgoing.length === 0 ? (
-          <p className="text-xs text-zinc-500">No outgoing requests. Find a mentor in the Directory tab.</p>
+          <p className="text-xs text-zinc-400">No outgoing requests. Find a mentor in the Directory tab.</p>
         ) : outgoing.map((req) => (
           <div key={req.id} className="lens-card space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-medium text-sm flex items-center gap-1.5">
-                <ArrowRight className="w-3.5 h-3.5 text-zinc-500" /> {req.mentorName}
+                <ArrowRight className="w-3.5 h-3.5 text-zinc-400" /> {req.mentorName}
               </span>
               <span className={cn('text-[10px] px-2 py-0.5 rounded', STATUS_STYLE[req.status])}>{req.status}</span>
             </div>
             <p className="text-xs text-zinc-400">Topic: <span className="text-white">{req.topic}</span></p>
-            <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+            <p className="text-[10px] text-zinc-400 flex items-center gap-1">
               <Clock className="w-3 h-3" /> {new Date(req.createdAt).toLocaleDateString()}
             </p>
             {req.status === 'pending' && (

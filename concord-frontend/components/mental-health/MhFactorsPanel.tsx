@@ -65,7 +65,7 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -87,13 +87,13 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
               className="px-3 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg"><Plus className="w-3.5 h-3.5" /></button>
           </div>
           {factors.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No factors yet. Add the activities you want to track against mood.</p>
+            <p className="text-[11px] text-zinc-400 italic">No factors yet. Add the activities you want to track against mood.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {factors.map((f) => (
                 <span key={f.id} className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-full pl-2.5 pr-1 py-0.5 text-[11px] text-zinc-200">
-                  {f.name}<span className="text-zinc-500">·{f.group}</span>
-                  <button type="button" onClick={() => deleteFactor(f.id)} className="text-zinc-500 hover:text-rose-400" aria-label="Delete factor">
+                  {f.name}<span className="text-zinc-400">·{f.group}</span>
+                  <button type="button" onClick={() => deleteFactor(f.id)} className="text-zinc-400 hover:text-rose-400" aria-label="Delete factor">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </span>
@@ -143,16 +143,16 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Correlation insights</h3>
         {!corr || !corr.hasData ? (
-          <p className="text-[11px] text-zinc-500 italic">
+          <p className="text-[11px] text-zinc-400 italic">
             Log a few factor-tagged check-ins to see which activities lift or lower your mood.
           </p>
         ) : (
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               Baseline mood {corr.baseline} across {corr.entriesAnalyzed} tagged check-ins.
             </p>
             {corr.correlations.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">Not enough samples per factor yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">Not enough samples per factor yet.</p>
             ) : (
               <ul className="space-y-1.5">
                 {corr.correlations.map((c) => {
@@ -162,7 +162,7 @@ export function MhFactorsPanel({ onChange }: { onChange: () => void }) {
                     <li key={c.factorId} className="flex items-center gap-2 text-xs">
                       <Icon className={cn('w-3.5 h-3.5 shrink-0', color)} />
                       <span className="text-zinc-200 flex-1">{c.name}</span>
-                      <span className="text-zinc-500">{c.samples}×</span>
+                      <span className="text-zinc-400">{c.samples}×</span>
                       <span className={cn('font-mono font-semibold w-12 text-right', color)}>
                         {c.delta > 0 ? '+' : ''}{c.delta}
                       </span>

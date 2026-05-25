@@ -98,10 +98,10 @@ function TrendingDomains({ className }: { className?: string }) {
                   key={post.id}
                   className="flex items-start gap-2 p-2 rounded-lg bg-lattice-surface/50 border border-lattice-border/30"
                 >
-                  <span className="text-[10px] font-bold text-gray-500 mt-0.5">{postIdx + 1}</span>
+                  <span className="text-[10px] font-bold text-gray-400 mt-0.5">{postIdx + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-300 truncate">{post.title || 'Untitled'}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
                       {post.engagement && (
                         <>
                           <span className="flex items-center gap-0.5">
@@ -119,7 +119,7 @@ function TrendingDomains({ className }: { className?: string }) {
                 </div>
               ))}
               {domain.topPosts.length === 0 && (
-                <p className="text-[10px] text-gray-600 text-center py-2">No posts yet</p>
+                <p className="text-[10px] text-gray-400 text-center py-2">No posts yet</p>
               )}
             </div>
           </motion.div>

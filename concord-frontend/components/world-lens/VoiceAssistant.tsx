@@ -342,8 +342,7 @@ export default function VoiceAssistant() {
                     onClick={() => setSettings({ ...settings, wakeWord: !settings.wakeWord })}
                     className={`w-9 h-5 rounded-full transition-colors relative ${
                       settings.wakeWord ? 'bg-violet-500' : 'bg-white/10'
-                    }`}
-                  >
+                    }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div
                       className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
                         settings.wakeWord ? 'translate-x-4' : 'translate-x-0.5'
@@ -360,8 +359,7 @@ export default function VoiceAssistant() {
                     }
                     className={`w-9 h-5 rounded-full transition-colors relative ${
                       settings.pushToTalk ? 'bg-violet-500' : 'bg-white/10'
-                    }`}
-                  >
+                    }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div
                       className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
                         settings.pushToTalk ? 'translate-x-4' : 'translate-x-0.5'

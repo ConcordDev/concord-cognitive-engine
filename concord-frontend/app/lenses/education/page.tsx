@@ -426,7 +426,7 @@ function LearningStreak({ streak = 5, best = 21 }: { streak?: number; best?: num
       <Flame className="w-4 h-4 text-amber-400 shrink-0" />
       <div>
         <span className="text-sm font-bold text-amber-400">{streak}-day streak</span>
-        <span className="text-xs text-gray-500 ml-2">Best: {best}</span>
+        <span className="text-xs text-gray-400 ml-2">Best: {best}</span>
       </div>
     </div>
   );
@@ -497,7 +497,7 @@ function StudySessionTimer() {
         <h3 className="font-semibold text-sm flex items-center gap-2">
           <Timer className="w-4 h-4 text-neon-cyan" /> Study Timer
         </h3>
-        <span className="text-xs text-gray-500">{sessions} session{sessions !== 1 ? 's' : ''} today</span>
+        <span className="text-xs text-gray-400">{sessions} session{sessions !== 1 ? 's' : ''} today</span>
       </div>
       <div className="flex items-center gap-4">
         <div className="relative w-16 h-16 shrink-0">
@@ -1166,7 +1166,7 @@ export default function EducationLensPage() {
             <div className="flex items-end gap-1 h-32">
               {studentProgress.scores.map((score, idx) => (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs text-gray-500">{score}%</span>
+                  <span className="text-xs text-gray-400">{score}%</span>
                   <div
                     className={cn(
                       'w-full rounded-t transition-all',
@@ -1196,7 +1196,7 @@ export default function EducationLensPage() {
                   <div key={a.id} className="flex items-center justify-between py-2 border-b border-lattice-border last:border-0">
                     <span className="text-sm text-white">{a.title}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">{ad.subject}</span>
+                      <span className="text-xs text-gray-400">{ad.subject}</span>
                       <span className="text-xs text-red-400">Due: {ad.dueDate}</span>
                     </div>
                   </div>
@@ -1462,7 +1462,7 @@ export default function EducationLensPage() {
                     <div key={item.subject} className="flex items-center justify-between">
                       <span className="text-sm text-gray-300">{item.subject}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{item.score}%</span>
+                        <span className="text-xs text-gray-400">{item.score}%</span>
                         <MasteryBadge score={item.score} />
                       </div>
                     </div>
@@ -1595,21 +1595,21 @@ export default function EducationLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.studentsGraded)}</p>
-                    <p className="text-[10px] text-gray-500">Students Graded</p>
+                    <p className="text-[10px] text-gray-400">Students Graded</p>
                   </div>
                   {typeof actionResult.classStats === 'object' && actionResult.classStats !== null && (
                     <>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">{String((actionResult.classStats as {average:number}).average)}%</p>
-                        <p className="text-[10px] text-gray-500">Class Average</p>
+                        <p className="text-[10px] text-gray-400">Class Average</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-green-400">{String((actionResult.classStats as {high:number}).high)}%</p>
-                        <p className="text-[10px] text-gray-500">Highest</p>
+                        <p className="text-[10px] text-gray-400">Highest</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-amber-400">{String((actionResult.classStats as {low:number}).low)}%</p>
-                        <p className="text-[10px] text-gray-500">Lowest</p>
+                        <p className="text-[10px] text-gray-400">Lowest</p>
                       </div>
                     </>
                   )}
@@ -1620,15 +1620,15 @@ export default function EducationLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.overallAttendanceRate)}%</p>
-                    <p className="text-[10px] text-gray-500">Attendance Rate</p>
+                    <p className="text-[10px] text-gray-400">Attendance Rate</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalStudents)}</p>
-                    <p className="text-[10px] text-gray-500">Total Students</p>
+                    <p className="text-[10px] text-gray-400">Total Students</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.atRiskCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.atRiskCount)}</p>
-                    <p className="text-[10px] text-gray-500">At Risk</p>
+                    <p className="text-[10px] text-gray-400">At Risk</p>
                   </div>
                 </div>
               )}
@@ -1645,11 +1645,11 @@ export default function EducationLensPage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-green-400">{String(actionResult.completedRequirements)}</p>
-                      <p className="text-[10px] text-gray-500">Completed</p>
+                      <p className="text-[10px] text-gray-400">Completed</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-amber-400">{String(actionResult.remainingRequirements)}</p>
-                      <p className="text-[10px] text-gray-500">Remaining</p>
+                      <p className="text-[10px] text-gray-400">Remaining</p>
                     </div>
                   </div>
                 </div>
@@ -1659,15 +1659,15 @@ export default function EducationLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.conflictsFound) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.conflictsFound)}</p>
-                    <p className="text-[10px] text-gray-500">Conflicts</p>
+                    <p className="text-[10px] text-gray-400">Conflicts</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalEntries)}</p>
-                    <p className="text-[10px] text-gray-500">Total Entries</p>
+                    <p className="text-[10px] text-gray-400">Total Entries</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${actionResult.conflictFree ? 'text-green-400' : 'text-red-400'}`}>{actionResult.conflictFree ? 'Clear' : 'Conflicts'}</p>
-                    <p className="text-[10px] text-gray-500">Status</p>
+                    <p className="text-[10px] text-gray-400">Status</p>
                   </div>
                 </div>
               )}
@@ -1838,13 +1838,13 @@ export default function EducationLensPage() {
                 const summary = attendanceSummary[item.id];
                 const attendanceRate = summary ? Math.round(((summary.present + summary.tardy) / summary.total) * 100) : null;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedStudent(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       {d.email && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.email}</span>}
                       {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                       {d.gpa != null && <span className="flex items-center gap-1"><Star className="w-3 h-3" /> GPA: {d.gpa}</span>}
@@ -1902,13 +1902,13 @@ export default function EducationLensPage() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => setSelectedCourse(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       {d.instructor && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.instructor}</span>}
                       {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                       {d.semester && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {d.semester}</span>}
@@ -2099,13 +2099,13 @@ export default function EducationLensPage() {
               {filtered.map(item => {
                 const d = item.data as unknown as EducationArtifact;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                       {d.dueDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {d.dueDate}</span>}
                       {d.maxScore != null && <span className="flex items-center gap-1"><Hash className="w-3 h-3" /> {d.maxScore} pts</span>}
@@ -2123,7 +2123,7 @@ export default function EducationLensPage() {
                       </div>
                     )}
                     {d.rubric && d.rubric.length > 0 && (
-                      <div className="mt-2 text-xs text-gray-500">
+                      <div className="mt-2 text-xs text-gray-400">
                         <FileCheck className="w-3 h-3 inline mr-1" /> {d.rubric.length} rubric criteria
                       </div>
                     )}
@@ -2326,13 +2326,13 @@ export default function EducationLensPage() {
                     const d = item.data as unknown as EducationArtifact;
                     const gradeKey = d.score != null ? getGradeColorKey(d.score) : '';
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                         </div>
                         <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                           {d.instructor && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.instructor}</span>}
                           {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                           {d.grade && (
@@ -2419,7 +2419,7 @@ export default function EducationLensPage() {
                           {isExpanded ? <ChevronDown className="w-4 h-4 text-amber-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                           <span className="text-sm font-semibold text-white">Week {week.weekNumber}</span>
                           <span className={cn(ds.textMuted, 'flex-1 text-left truncate')}>{week.topic || 'No topic set'}</span>
-                          <span className="text-xs text-gray-500">{week.duration}</span>
+                          <span className="text-xs text-gray-400">{week.duration}</span>
                         </button>
 
                         {/* Week Details */}
@@ -2576,13 +2576,13 @@ export default function EducationLensPage() {
                   {filtered.map(item => {
                     const d = item.data as unknown as EducationArtifact;
                     return (
-                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                      <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                           <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                         </div>
                         <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                        <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                           {d.instructor && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.instructor}</span>}
                           {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                           {d.dueDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {d.dueDate}</span>}
@@ -2630,13 +2630,13 @@ export default function EducationLensPage() {
                 const isExpiring = d.expirationDate && new Date(d.expirationDate) > new Date() &&
                   (new Date(d.expirationDate).getTime() - new Date().getTime()) < 30 * 24 * 60 * 60 * 1000;
                 return (
-                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={cn(ds.panelHover, isExpiring && 'border-amber-400/30')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       {d.issuedBy && <span className="flex items-center gap-1"><Award className="w-3 h-3" /> {d.issuedBy}</span>}
                       {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                       {d.expirationDate && (
@@ -2712,7 +2712,7 @@ export default function EducationLensPage() {
                 };
                 const ResIcon = typeIcons[d.resourceType || 'other'] || Library;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <ResIcon className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -2721,7 +2721,7 @@ export default function EducationLensPage() {
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                       {d.resourceType && <span className={ds.badge('neon-cyan')}>{d.resourceType}</span>}
                       {d.resourceCourse && <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {d.resourceCourse}</span>}
                       {d.resourceTopic && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.resourceTopic}</span>}
@@ -2867,13 +2867,13 @@ export default function EducationLensPage() {
                 const tfCount = d.quizQuestions?.filter(q => q.type === 'true_false').length || 0;
                 const saCount = d.quizQuestions?.filter(q => q.type === 'short_answer').length || 0;
                 return (
-                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+                  <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-start justify-between mb-2">
                       <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                       <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
                     </div>
                     <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap mb-2">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap mb-2">
                       {d.subject && <span className="flex items-center gap-1"><Layers className="w-3 h-3" /> {d.subject}</span>}
                       {d.dueDate && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {d.dueDate}</span>}
                       <span className="flex items-center gap-1"><FileQuestion className="w-3 h-3" /> {qCount} questions</span>
@@ -2885,7 +2885,7 @@ export default function EducationLensPage() {
                       {tfCount > 0 && <span className={ds.badge('neon-green')}>{tfCount} T/F</span>}
                       {saCount > 0 && <span className={ds.badge('amber-400')}>{saCount} SA</span>}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
                       {d.quizTimeLimit && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {d.quizTimeLimit} min</span>}
                       {d.quizPassingScore && <span className="flex items-center gap-1"><Target className="w-3 h-3" /> {d.quizPassingScore}% to pass</span>}
                       {d.quizShuffleQuestions && <span className="flex items-center gap-1 text-neon-cyan"><Shuffle className="w-3 h-3" /> Shuffled</span>}
@@ -2911,7 +2911,7 @@ export default function EducationLensPage() {
       {/* ============================================================ */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -3130,7 +3130,7 @@ export default function EducationLensPage() {
                                     className={cn(ds.input, 'w-16 text-center text-xs py-1')}
                                     min={0}
                                   />
-                                  <span className="text-xs text-gray-500">pts</span>
+                                  <span className="text-xs text-gray-400">pts</span>
                                   <button onClick={() => removeQuizQuestion(q.id)} className="text-red-400 hover:text-red-300 p-1" aria-label="Minus circle">
                                     <MinusCircle className="w-4 h-4" />
                                   </button>
@@ -3412,7 +3412,7 @@ function StudyModePanel() {
             {(currentCard.dtu?.tags || []).slice(0, 4).map((tag: string) => (
               <span key={tag} className="inline-block px-2 py-0.5 text-xs bg-lattice-bg rounded text-gray-400 mr-1">#{tag}</span>
             ))}
-            <p className="text-xs text-gray-500 mt-3">
+            <p className="text-xs text-gray-400 mt-3">
               Interval: {currentCard.card?.interval || currentCard.interval || 1}d
               {' '} | Ease: {(currentCard.card?.easeFactor || currentCard.easiness || 2.5).toFixed(2)}
               {' '} | Reps: {currentCard.card?.repetitions || currentCard.repetitions || 0}
@@ -3440,7 +3440,7 @@ function StudyModePanel() {
                   <button key={opt.q} onClick={() => handleReview(opt.q)}
                     className="p-3 bg-lattice-surface border border-lattice-border rounded-lg hover:border-gray-500 transition-colors">
                     <span className={`text-sm font-medium ${opt.color}`}>{opt.label}</span>
-                    <span className="block text-xs text-gray-500 mt-1">({opt.q})</span>
+                    <span className="block text-xs text-gray-400 mt-1">({opt.q})</span>
                   </button>
                 ))}
               </div>
@@ -3466,7 +3466,7 @@ function PanelShell({ title, subtitle, icon: Icon, accent = 'neon-cyan', childre
         <Icon className={`w-5 h-5 text-${accent}`} />
         <div>
           <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -3564,7 +3564,7 @@ function GenomePanel() {
         <StatCard label="Velocity" value={summary.velocity != null ? `${summary.velocity}/wk` : '—'} />
       </div>
 
-      {isLoading && <p className="text-sm text-gray-500">Loading genome…</p>}
+      {isLoading && <p className="text-sm text-gray-400">Loading genome…</p>}
 
       <GenomeGraph
         nodes={nodes}
@@ -3578,7 +3578,7 @@ function GenomePanel() {
         <div className="mt-3 p-3 bg-lattice-bg border border-neon-cyan/30 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="min-w-0">
-              <p className="text-xs text-gray-500 uppercase">Selected DTU</p>
+              <p className="text-xs text-gray-400 uppercase">Selected DTU</p>
               <p className="text-sm text-white font-medium truncate">{selectedNode.title}</p>
               <p className="text-xs text-gray-400">
                 {selectedNode.domain ?? 'unknown domain'}
@@ -3590,7 +3590,7 @@ function GenomePanel() {
             <button
               type="button"
               onClick={() => setSelectedNode(null)}
-              className="text-xs text-gray-500 hover:text-white"
+              className="text-xs text-gray-400 hover:text-white"
             >
               Clear
             </button>
@@ -3598,7 +3598,7 @@ function GenomePanel() {
         </div>
       )}
 
-      <p className="text-xs text-gray-500 mt-4">
+      <p className="text-xs text-gray-400 mt-4">
         Mastery updates every time you read, cite, create, test, or teach a DTU. Gaps (red) are inferred by the feasibility manifold as pre-requisites for unreachable frontier nodes.
       </p>
     </PanelShell>
@@ -3746,9 +3746,9 @@ function LearningPathPanel() {
 
       <div>
         <h4 className="text-xs uppercase tracking-wider text-neon-cyan mb-2">Reachable Frontier</h4>
-        {frontierQuery.isLoading && <p className="text-sm text-gray-500">Computing frontier…</p>}
+        {frontierQuery.isLoading && <p className="text-sm text-gray-400">Computing frontier…</p>}
         {!frontierQuery.isLoading && frontierSteps.length === 0 && (
-          <p className="text-sm text-gray-500">No reachable frontier yet. Start with a core DTU from the Path Planner above.</p>
+          <p className="text-sm text-gray-400">No reachable frontier yet. Start with a core DTU from the Path Planner above.</p>
         )}
         <div className="space-y-2">
           {frontierSteps.map(step => (
@@ -3867,7 +3867,7 @@ function ProofByCitationPanel() {
     <PanelShell title="Proof by Citation" subtitle="Prove understanding by citing DTU evidence — passing submissions become new DTUs" icon={FileCheck} accent="neon-pink">
       <div className="space-y-4">
         <div>
-          <label className="text-xs uppercase text-gray-500 mb-1 block">Your Claim</label>
+          <label className="text-xs uppercase text-gray-400 mb-1 block">Your Claim</label>
           <textarea
             value={claim}
             onChange={e => setClaim(e.target.value)}
@@ -3878,7 +3878,7 @@ function ProofByCitationPanel() {
         </div>
 
         <div>
-          <label className="text-xs uppercase text-gray-500 mb-1 block">Citations</label>
+          <label className="text-xs uppercase text-gray-400 mb-1 block">Citations</label>
           <div className="flex flex-wrap gap-1 mb-2">
             {selectedCitations.map(c => (
               <span
@@ -3892,7 +3892,7 @@ function ProofByCitationPanel() {
               </span>
             ))}
             {selectedCitations.length === 0 && (
-              <span className="text-xs text-gray-500">No citations yet. Search to add DTUs.</span>
+              <span className="text-xs text-gray-400">No citations yet. Search to add DTUs.</span>
             )}
           </div>
           <div className="relative">
@@ -3902,8 +3902,8 @@ function ProofByCitationPanel() {
               placeholder="Search DTUs to cite…"
               className="w-full p-2 pl-8 bg-lattice-deep border border-lattice-border rounded-lg text-sm text-white"
             />
-            <Search className="w-4 h-4 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
-            {searching && <Loader2 className="w-4 h-4 text-gray-500 absolute right-2 top-1/2 -translate-y-1/2 animate-spin" />}
+            <Search className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
+            {searching && <Loader2 className="w-4 h-4 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 animate-spin" />}
             {searchResults.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-lattice-deep border border-lattice-border rounded-lg max-h-48 overflow-auto">
                 {searchResults.map(r => (
@@ -3914,7 +3914,7 @@ function ProofByCitationPanel() {
                     className="w-full text-left px-3 py-2 hover:bg-lattice-surface text-sm text-white border-b border-lattice-border last:border-0"
                   >
                     <div className="truncate">{r.title}</div>
-                    <div className="text-xs text-gray-500">{r.domain ?? 'unknown'}{r.tier ? ` · ${r.tier}` : ''}</div>
+                    <div className="text-xs text-gray-400">{r.domain ?? 'unknown'}{r.tier ? ` · ${r.tier}` : ''}</div>
                   </button>
                 ))}
               </div>
@@ -3935,7 +3935,7 @@ function ProofByCitationPanel() {
         {evaluation && (
           <div className="p-4 bg-lattice-deep border border-lattice-border rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs uppercase text-gray-500">Evaluation</span>
+              <span className="text-xs uppercase text-gray-400">Evaluation</span>
               <span className={cn(
                 'text-xs font-semibold px-2 py-0.5 rounded',
                 evaluation.c2Pass ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400',
@@ -3963,7 +3963,7 @@ function ProofByCitationPanel() {
 
         <div>
           <h4 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Past Submissions</h4>
-          {pastQuery.isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+          {pastQuery.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
           {pastQuery.data?.submissions && pastQuery.data.submissions.length > 0 ? (
             <div className="space-y-2">
               {pastQuery.data.submissions.slice(0, 8).map((s, i) => (
@@ -3978,7 +3978,7 @@ function ProofByCitationPanel() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-500">No submissions yet.</p>
+            <p className="text-xs text-gray-400">No submissions yet.</p>
           )}
         </div>
       </div>
@@ -3991,7 +3991,7 @@ function MetricBar({ label, value, color }: { label: string; value: number; colo
   return (
     <div>
       <div className="flex items-center justify-between mb-0.5">
-        <span className="text-gray-500 uppercase text-[10px]">{label}</span>
+        <span className="text-gray-400 uppercase text-[10px]">{label}</span>
         <span className={cn('text-[10px]', color)}>{pct}%</span>
       </div>
       <div className="h-1.5 bg-lattice-bg rounded-full overflow-hidden">
@@ -4100,7 +4100,7 @@ function TutorPanel() {
         className="h-72 overflow-y-auto bg-lattice-deep border border-lattice-border rounded-lg p-3 space-y-3 mb-3"
       >
         {messages.length === 0 && (
-          <p className="text-sm text-gray-500">Ask your domain tutor anything. In Socratic mode, the tutor asks back instead of telling.</p>
+          <p className="text-sm text-gray-400">Ask your domain tutor anything. In Socratic mode, the tutor asks back instead of telling.</p>
         )}
         {messages.map((m, i) => (
           <div
@@ -4112,7 +4112,7 @@ function TutorPanel() {
                 : 'bg-lattice-surface border border-lattice-border text-gray-200 mr-8',
             )}
           >
-            <div className="flex items-center gap-1 mb-1 text-[10px] uppercase tracking-wider text-gray-500">
+            <div className="flex items-center gap-1 mb-1 text-[10px] uppercase tracking-wider text-gray-400">
               {m.role === 'user' ? <User className="w-3 h-3" /> : <GraduationCap className="w-3 h-3" />}
               {m.role}
               {m.socratic && <span className="text-neon-purple">· socratic</span>}
@@ -4120,7 +4120,7 @@ function TutorPanel() {
             <p className="whitespace-pre-wrap">{m.text}</p>
             {m.citations && m.citations.length > 0 && (
               <div className="mt-2 pt-2 border-t border-lattice-border">
-                <p className="text-[10px] uppercase text-gray-500 mb-1">Cited DTUs</p>
+                <p className="text-[10px] uppercase text-gray-400 mb-1">Cited DTUs</p>
                 <div className="flex flex-wrap gap-1">
                   {m.citations.map(c => (
                     <span key={c.id} className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan rounded">
@@ -4133,7 +4133,7 @@ function TutorPanel() {
           </div>
         ))}
         {ask.isPending && (
-          <div className="text-xs text-gray-500 flex items-center gap-2">
+          <div className="text-xs text-gray-400 flex items-center gap-2">
             <Loader2 className="w-3 h-3 animate-spin" /> tutor thinking…
           </div>
         )}
@@ -4268,9 +4268,9 @@ function CohortPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <h4 className="text-xs uppercase text-neon-cyan mb-2">My Cohorts</h4>
-          {mineQuery.isLoading && <p className="text-sm text-gray-500">Loading…</p>}
+          {mineQuery.isLoading && <p className="text-sm text-gray-400">Loading…</p>}
           {!mineQuery.isLoading && myCohorts.length === 0 && (
-            <p className="text-sm text-gray-500">No cohorts yet. Form one above.</p>
+            <p className="text-sm text-gray-400">No cohorts yet. Form one above.</p>
           )}
           <div className="space-y-2">
             {myCohorts.map(c => (
@@ -4278,7 +4278,7 @@ function CohortPanel() {
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <p className="text-sm text-white">{c.name ?? `Cohort ${c.id}`}</p>
-                    <p className="text-xs text-gray-500">{c.domain ?? 'mixed'} · {(c.members ?? []).length} members</p>
+                    <p className="text-xs text-gray-400">{c.domain ?? 'mixed'} · {(c.members ?? []).length} members</p>
                   </div>
                 </div>
                 {(c.members ?? []).slice(0, 5).map(m => (
@@ -4301,15 +4301,15 @@ function CohortPanel() {
 
         <div>
           <h4 className="text-xs uppercase text-neon-pink mb-2">Matching Your Genome</h4>
-          {matchQuery.isLoading && <p className="text-sm text-gray-500">Finding matches…</p>}
+          {matchQuery.isLoading && <p className="text-sm text-gray-400">Finding matches…</p>}
           {!matchQuery.isLoading && matches.length === 0 && (
-            <p className="text-sm text-gray-500">No match suggestions yet.</p>
+            <p className="text-sm text-gray-400">No match suggestions yet.</p>
           )}
           <div className="space-y-2">
             {matches.map(c => (
               <div key={c.id} className="p-3 bg-lattice-deep border border-lattice-border rounded-lg">
                 <p className="text-sm text-white">{c.name ?? `Cohort ${c.id}`}</p>
-                <p className="text-xs text-gray-500">{c.domain ?? 'mixed'} · {(c.members ?? []).length} members</p>
+                <p className="text-xs text-gray-400">{c.domain ?? 'mixed'} · {(c.members ?? []).length} members</p>
               </div>
             ))}
           </div>
@@ -4397,7 +4397,7 @@ function AssessmentPanel() {
             return (
               <div key={q.id ?? i} className="p-4 bg-lattice-deep border border-lattice-border rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] uppercase text-gray-500">Q{i + 1}</span>
+                  <span className="text-[10px] uppercase text-gray-400">Q{i + 1}</span>
                   <span className={cn('text-[10px] uppercase font-semibold', meta.color)}>{meta.label}</span>
                 </div>
                 <p className="text-sm text-white mb-3">{q.prompt}</p>
@@ -4440,7 +4440,7 @@ function AssessmentPanel() {
       )}
 
       {!gen.data && (
-        <p className="text-xs text-gray-500">Generate an assessment to see 4 question types — synthesis, application, contradiction, and gap.</p>
+        <p className="text-xs text-gray-400">Generate an assessment to see 4 question types — synthesis, application, contradiction, and gap.</p>
       )}
     </PanelShell>
   );
@@ -4529,7 +4529,7 @@ function CredentialsPanel() {
               const display = raw == null ? '—' : key === 'averageMastery' ? `${Math.round((raw as number) * 100)}%` : String(raw);
               return (
                 <div key={key} className="p-2 bg-lattice-deep border border-lattice-border rounded-lg">
-                  <p className="text-[10px] uppercase text-gray-500">{METRIC_LABELS[key]}</p>
+                  <p className="text-[10px] uppercase text-gray-400">{METRIC_LABELS[key]}</p>
                   <p className="text-sm text-white font-semibold">{display}</p>
                 </div>
               );
@@ -4537,7 +4537,7 @@ function CredentialsPanel() {
           </div>
           {credential.hash && (
             <div className="pt-2 border-t border-lattice-border text-xs">
-              <p className="text-gray-500 uppercase text-[10px]">Hash</p>
+              <p className="text-gray-400 uppercase text-[10px]">Hash</p>
               <p className="text-neon-purple font-mono truncate">{credential.hash}</p>
             </div>
           )}
@@ -4638,7 +4638,7 @@ function EarningsPanel() {
 
       {Object.keys(byAction).length > 0 && (
         <div className="p-3 bg-lattice-deep border border-lattice-border rounded-lg mb-4">
-          <p className="text-xs text-gray-500 uppercase mb-2">Earnings by Action</p>
+          <p className="text-xs text-gray-400 uppercase mb-2">Earnings by Action</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-1 text-xs">
             {Object.entries(byAction).map(([action, value]) => (
               <div key={action} className="flex justify-between bg-lattice-surface rounded px-2 py-1">
@@ -4654,11 +4654,11 @@ function EarningsPanel() {
         <div className="p-3 bg-lattice-deep border border-lattice-border rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="w-4 h-4 text-amber-400" />
-            <p className="text-xs text-gray-500 uppercase">Leaderboard</p>
+            <p className="text-xs text-gray-400 uppercase">Leaderboard</p>
           </div>
-          {leaderboardQuery.isLoading && <p className="text-xs text-gray-500">Loading…</p>}
+          {leaderboardQuery.isLoading && <p className="text-xs text-gray-400">Loading…</p>}
           {!leaderboardQuery.isLoading && (leaderboardQuery.data?.leaderboard ?? []).length === 0 && (
-            <p className="text-xs text-gray-500">No leaderboard data yet.</p>
+            <p className="text-xs text-gray-400">No leaderboard data yet.</p>
           )}
           <div className="space-y-1">
             {(leaderboardQuery.data?.leaderboard ?? []).slice(0, 10).map((entry, i) => (
@@ -4674,7 +4674,7 @@ function EarningsPanel() {
         <div className="p-3 bg-lattice-deep border border-lattice-border rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <Coins className="w-4 h-4 text-neon-cyan" />
-            <p className="text-xs text-gray-500 uppercase">Rate Card</p>
+            <p className="text-xs text-gray-400 uppercase">Rate Card</p>
           </div>
           {ratesQuery.data?.rates?.earning ? (
             <div className="grid grid-cols-1 gap-1 text-xs">
@@ -4686,7 +4686,7 @@ function EarningsPanel() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-500">Rates unavailable.</p>
+            <p className="text-xs text-gray-400">Rates unavailable.</p>
           )}
         </div>
       </div>
@@ -4697,7 +4697,7 @@ function EarningsPanel() {
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="p-3 bg-lattice-deep border border-lattice-border rounded-lg">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-gray-400">{label}</p>
       <p className="text-lg font-semibold text-white mt-1">{value}</p>
     </div>
   );
@@ -4733,7 +4733,7 @@ function KhanCourseraWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-amber-500/15 text-amber-300 border border-amber-500/20'
-                : 'text-gray-500 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-amber-300 hover:bg-amber-900/10 border border-transparent')
             }
           >
             {t.label}

@@ -46,16 +46,16 @@ export function SpendingInsights() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Spending insights</span>
-        <span className="ml-auto text-[10px] text-gray-500">your real transactions</span>
+        <span className="ml-auto text-[10px] text-gray-400">your real transactions</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Crunching…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Crunching…</div>
       ) : !insights || insights.trends.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-30" />No spending data yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-30" />No spending data yet.</div>
       ) : (
         <>
-          <div className="px-4 py-3 border-b border-white/10 text-[11px] text-gray-500 flex items-center gap-3">
+          <div className="px-4 py-3 border-b border-white/10 text-[11px] text-gray-400 flex items-center gap-3">
             <span>Comparing <span className="text-cyan-300 font-mono">{insights.latestMonth}</span> vs <span className="text-gray-300 font-mono">{insights.priorMonth}</span></span>
             {insights.anomalies.length > 0 && (
               <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 text-amber-300">
@@ -78,7 +78,7 @@ export function SpendingInsights() {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
                     <div>
-                      <div className="text-gray-500">Prior · ${t.prior.toFixed(0)}</div>
+                      <div className="text-gray-400">Prior · ${t.prior.toFixed(0)}</div>
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-gray-500" style={{ width: `${(t.prior / max) * 100}%` }} /></div>
                     </div>
                     <div>

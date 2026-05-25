@@ -32,7 +32,7 @@ export function MessageAskBar({ onOpenChannel }: { onOpenChannel: (channelId: st
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search across channels + DMs…"
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-500 outline-none"
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none"
           />
           {q && (
             <button type="submit" disabled={loading} className="text-violet-300 hover:text-violet-200 p-0.5">

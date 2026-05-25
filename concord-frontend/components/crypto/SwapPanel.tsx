@@ -137,7 +137,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
 
       {showSettings && (
         <div className="p-3 border border-white/10 rounded-lg bg-white/[0.02] space-y-2">
-          <p className="text-[10px] uppercase text-gray-500 tracking-wider">Slippage tolerance</p>
+          <p className="text-[10px] uppercase text-gray-400 tracking-wider">Slippage tolerance</p>
           <div className="flex items-center gap-2">
             {SLIPPAGE_PRESETS.map(s => (
               <button
@@ -157,7 +157,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
               onChange={(e) => setSlippage(Math.max(0.01, Math.min(50, Number(e.target.value) || 0.5)))}
               className="w-20 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
             />
-            <span className="text-[10px] text-gray-500">%</span>
+            <span className="text-[10px] text-gray-400">%</span>
           </div>
         </div>
       )}
@@ -235,7 +235,7 @@ export function SwapPanel({ tokens, defaultFromSymbol = 'CC', defaultToSymbol = 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-400">{label}</span>
       <span className="text-gray-200 tabular-nums">{children}</span>
     </div>
   );
@@ -256,7 +256,7 @@ function SwapBox({
   const token = tokens.find(t => t.id === tokenId);
   return (
     <div className="p-3 rounded-lg border border-white/10 bg-[#0a0e17] space-y-1.5">
-      <div className="flex items-center justify-between text-[10px] text-gray-500 uppercase tracking-wider">
+      <div className="flex items-center justify-between text-[10px] text-gray-400 uppercase tracking-wider">
         <span>{label}</span>
         {token?.balance != null && (
           <span>
@@ -293,7 +293,7 @@ function SwapBox({
         </select>
       </div>
       {amount && token && (
-        <div className="text-[10px] text-gray-500 text-right">
+        <div className="text-[10px] text-gray-400 text-right">
           ≈ ${(Number(amount) * (token.priceUsd || 0)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </div>
       )}

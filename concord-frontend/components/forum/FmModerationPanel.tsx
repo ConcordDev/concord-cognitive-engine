@@ -40,7 +40,7 @@ export function FmModerationPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading || !queue) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -48,11 +48,11 @@ export function FmModerationPanel({ onChange }: { onChange: () => void }) {
       <div className="grid grid-cols-2 gap-2">
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-orange-300">{queue.pendingCount}</p>
-          <p className="text-[10px] text-zinc-500 uppercase">Pending</p>
+          <p className="text-[10px] text-zinc-400 uppercase">Pending</p>
         </div>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
           <p className="text-2xl font-bold text-zinc-100">{queue.resolvedCount}</p>
-          <p className="text-[10px] text-zinc-500 uppercase">Resolved</p>
+          <p className="text-[10px] text-zinc-400 uppercase">Resolved</p>
         </div>
       </div>
 
@@ -61,7 +61,7 @@ export function FmModerationPanel({ onChange }: { onChange: () => void }) {
           <ShieldAlert className="w-3.5 h-3.5 text-orange-400" /> Flag queue
         </h3>
         {queue.pending.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No pending flags — the community is clear.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No pending flags — the community is clear.</p>
         ) : (
           <ul className="space-y-2">
             {queue.pending.map((f) => (
@@ -74,7 +74,7 @@ export function FmModerationPanel({ onChange }: { onChange: () => void }) {
                     {f.reason.replace(/_/g, ' ')}
                   </span>
                   <span className="text-[11px] text-zinc-400">{f.targetType}</span>
-                  <span className="text-[10px] text-zinc-600 font-mono truncate flex-1">{f.targetId}</span>
+                  <span className="text-[10px] text-zinc-400 font-mono truncate flex-1">{f.targetId}</span>
                 </div>
                 {f.note && <p className="text-[11px] text-zinc-400 mb-2">{f.note}</p>}
                 <div className="flex flex-wrap gap-1.5">

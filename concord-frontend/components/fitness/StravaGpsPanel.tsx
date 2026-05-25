@@ -203,19 +203,19 @@ export function StravaGpsPanel() {
         {recording && (
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-              <p className="text-[10px] uppercase text-zinc-500">Time</p>
+              <p className="text-[10px] uppercase text-zinc-400">Time</p>
               <p className="text-sm font-bold text-zinc-100 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-orange-400" />{durLabel(elapsed)}
               </p>
             </div>
             <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-              <p className="text-[10px] uppercase text-zinc-500">Distance</p>
+              <p className="text-[10px] uppercase text-zinc-400">Distance</p>
               <p className="text-sm font-bold text-zinc-100 flex items-center gap-1">
                 <Ruler className="w-3 h-3 text-orange-400" />{liveDistanceKm} km
               </p>
             </div>
             <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-              <p className="text-[10px] uppercase text-zinc-500">GPS fixes</p>
+              <p className="text-[10px] uppercase text-zinc-400">GPS fixes</p>
               <p className="text-sm font-bold text-zinc-100 flex items-center gap-1">
                 <MapPin className="w-3 h-3 text-orange-400" />{points.length}
               </p>
@@ -234,22 +234,22 @@ export function StravaGpsPanel() {
             <Flame className="w-4 h-4 text-orange-400" />
             <h3 className="text-sm font-semibold text-zinc-100">Activity heatmap</h3>
           </div>
-          <span className="text-[11px] text-zinc-500 flex items-center gap-1">
+          <span className="text-[11px] text-zinc-400 flex items-center gap-1">
             <Route className="w-3 h-3" /> {tracks} GPS track{tracks === 1 ? '' : 's'}
           </span>
         </div>
         {loadingHeat ? (
-          <div className="flex items-center justify-center py-10 text-zinc-500">
+          <div className="flex items-center justify-center py-10 text-zinc-400">
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : cells.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-lg">
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-lg">
             No GPS data yet. Record an activity or import a GPX file to build your heatmap.
           </div>
         ) : (
           <>
             <MapView markers={markers} height={280} />
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               {cells.length} hot cells · brighter cells are routes you cover most often.
             </p>
           </>

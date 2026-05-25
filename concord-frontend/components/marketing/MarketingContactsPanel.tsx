@@ -72,7 +72,7 @@ export function MarketingContactsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -117,20 +117,20 @@ export function MarketingContactsPanel() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
         <input value={query} onChange={(e) => { setQuery(e.target.value); void refresh(e.target.value); }}
           placeholder="Search contacts…" className="w-full bg-zinc-950 border border-zinc-700 rounded-lg pl-9 pr-3 py-1.5 text-xs text-zinc-100" />
       </div>
 
       {contacts.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No contacts. Add one above or sync from the leads pipeline.</p>
+        <p className="text-[11px] text-zinc-400 italic">No contacts. Add one above or sync from the leads pipeline.</p>
       ) : (
         <ul className="space-y-1.5">
           {contacts.map((c) => (
             <li key={c.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
               <div className="min-w-0">
                 <p className="text-xs text-zinc-100 truncate">{c.name || c.email}</p>
-                <p className="text-[10px] text-zinc-500 truncate">
+                <p className="text-[10px] text-zinc-400 truncate">
                   {c.email}{c.company ? ` · ${c.company}` : ''}{c.phone ? ` · ${c.phone}` : ''}
                 </p>
               </div>

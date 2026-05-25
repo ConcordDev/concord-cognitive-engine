@@ -187,7 +187,7 @@ function ArchivePane() {
       <div className={ds.sectionHeader}>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -248,13 +248,13 @@ function ArchivePane() {
                     <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', style.bg, style.color)}>
                       {style.label}
                     </span>
-                    <span className="text-xs text-gray-500">{fmtDate(d.decidedAt)}</span>
+                    <span className="text-xs text-gray-400">{fmtDate(d.decidedAt)}</span>
                   </div>
                   <h3 className={cn(ds.heading3, 'truncate')}>{d.title}</h3>
                   {d.summary && (
                     <p className={cn(ds.textMuted, 'text-sm mt-1 line-clamp-2')}>{d.summary}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 flex-wrap">
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-400 flex-wrap">
                     {totalVotes > 0 && (
                       <span>
                         <span className="text-green-400">{d.votesFor} for</span>
@@ -284,9 +284,9 @@ function ArchivePane() {
       </div>
 
       {showCreate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Archive Decision</h2>
                 <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close">
@@ -540,7 +540,7 @@ function TabulatorPane() {
             <h3 className={cn(ds.heading3, 'flex items-center gap-2')}>
               <Trophy className="w-4 h-4 text-yellow-400" /> Tabulation Result
             </h3>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {result.totalBallots} ballot{result.totalBallots !== 1 ? 's' : ''} · majority {result.majority}
             </span>
           </div>
@@ -561,7 +561,7 @@ function TabulatorPane() {
                     ? `Winner: ${result.winner.label}`
                     : `Plurality leader: ${result.winner.label} (no majority)`}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {result.winner.votes} final-round vote{result.winner.votes !== 1 ? 's' : ''}
                 </p>
               </div>
@@ -580,7 +580,7 @@ function TabulatorPane() {
                       Round {round.round}
                     </span>
                     {round.exhausted > 0 && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         {round.exhausted} exhausted ballot{round.exhausted !== 1 ? 's' : ''}
                       </span>
                     )}
@@ -613,7 +613,7 @@ function TabulatorPane() {
 
           {result.eliminated.length > 0 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap text-xs">
-              <span className="text-gray-500">Eliminated in order:</span>
+              <span className="text-gray-400">Eliminated in order:</span>
               {result.eliminated.map((e, i) => (
                 <span key={e} className="flex items-center gap-1">
                   {i > 0 && <ChevronRight className="w-3 h-3 text-gray-700" />}

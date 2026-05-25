@@ -110,12 +110,12 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
               <span className={`text-[10px] px-1.5 py-0.5 rounded ring-1 ${STATUS_STYLE[bounty.status] || STATUS_STYLE.open}`}>
                 {bounty.status}
               </span>
-              <span className="text-[10px] text-zinc-500 px-1.5 py-0.5 rounded bg-zinc-800">{bounty.category}</span>
+              <span className="text-[10px] text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-800">{bounty.category}</span>
               <span className={`text-[10px] font-medium ${DIFFICULTY_STYLE[bounty.difficulty] || 'text-zinc-400'}`}>
                 {bounty.difficulty}
               </span>
               {bounty.deadline && (
-                <span className="text-[10px] text-zinc-500 flex items-center gap-0.5">
+                <span className="text-[10px] text-zinc-400 flex items-center gap-0.5">
                   <Clock className="w-2.5 h-2.5" /> {bounty.deadline}
                 </span>
               )}
@@ -142,7 +142,7 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
         )}
 
         {bounty.milestones.length > 0 && (
-          <div className="mt-2 text-[10px] text-zinc-500 flex items-center gap-1">
+          <div className="mt-2 text-[10px] text-zinc-400 flex items-center gap-1">
             <MilestoneIcon className="w-3 h-3 text-amber-400" />
             {milestonesPaid}/{bounty.milestones.length} milestones paid
           </div>
@@ -194,7 +194,7 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                       {sub.status}
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">by {sub.claimantId}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">by {sub.claimantId}</p>
                   {sub.link && (
                     <a href={sub.link} target="_blank" rel="noreferrer"
                       className="text-[10px] text-cyan-400 hover:underline flex items-center gap-0.5 mt-0.5">
@@ -233,7 +233,7 @@ export function BountyCard({ bounty, currentUserId, onChanged }: Props) {
                 <Gavel className="w-3 h-3" /> Dispute — {bounty.dispute.status}
               </h4>
               <p className="text-[10px] text-red-200/80 mt-0.5">{bounty.dispute.reason}</p>
-              <p className="text-[10px] text-zinc-500">opened by {bounty.dispute.openedBy}</p>
+              <p className="text-[10px] text-zinc-400">opened by {bounty.dispute.openedBy}</p>
               {bounty.dispute.ruling && (
                 <p className="text-[10px] text-amber-300 mt-0.5">Ruling: {bounty.dispute.ruling}{bounty.dispute.rulingNote ? ` — ${bounty.dispute.rulingNote}` : ''}</p>
               )}

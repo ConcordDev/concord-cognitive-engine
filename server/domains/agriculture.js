@@ -11,6 +11,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * artifact.data.rotationRules: [{ previousCrop, recommendedNext: [...], avoid: [...] }]
    */
   registerLensAction("agriculture", "rotationPlan", (ctx, artifact, params) => {
+  try {
     const fields = artifact.data.fields || [];
     const rules = artifact.data.rotationRules || params.rotationRules || [];
 
@@ -79,7 +80,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
 
     return { ok: true, result: { fields: suggestions } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * yieldAnalysis
@@ -88,6 +90,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * params.season, params.year — filter to a specific growing season
    */
   registerLensAction("agriculture", "yieldAnalysis", (ctx, artifact, params) => {
+  try {
     const fields = artifact.data.fields || [];
     const targetYear = params.year || new Date().getFullYear();
     const targetSeason = params.season || null;
@@ -159,7 +162,8 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.yieldAnalysis = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * equipmentDue
@@ -167,6 +171,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * artifact.data.equipment: [{ equipmentId, name, type, lastServiceDate, serviceIntervalHours, currentHours }]
    */
   registerLensAction("agriculture", "equipmentDue", (ctx, artifact, _params) => {
+  try {
     const equipment = artifact.data.equipment || [];
     const now = new Date();
 
@@ -234,7 +239,8 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.equipmentServiceReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * waterSchedule
@@ -244,6 +250,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * params.daysAhead (default 7)
    */
   registerLensAction("agriculture", "waterSchedule", (ctx, artifact, params) => {
+  try {
     const fields = artifact.data.fields || [];
     const forecast = artifact.data.weatherForecast || [];
     const daysAhead = params.daysAhead || 7;
@@ -331,7 +338,8 @@ export default function registerAgricultureActions(registerLensAction) {
     artifact.data.waterSchedule = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * plan-crop
@@ -342,6 +350,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * was a dead click.
    */
   registerLensAction("agriculture", "plan-crop", (ctx, artifact, params) => {
+  try {
     const field = artifact.data || {};
     const history = field.history || [];
     const soilType = (field.soilType || params?.soilType || "loam").toLowerCase();
@@ -404,7 +413,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastCropPlan = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * track-season
@@ -413,6 +423,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * mature), GDD-to-date, % through cycle, and flags for stress.
    */
   registerLensAction("agriculture", "track-season", (ctx, artifact, params) => {
+  try {
     const crop = artifact.data || {};
     const plantDate = crop.plantDate || crop.plantedAt || params?.plantDate;
     if (!plantDate) {
@@ -464,7 +475,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastSeasonTrack = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * analyze-soil
@@ -474,6 +486,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * Midwest row-crop ranges.
    */
   registerLensAction("agriculture", "analyze-soil", (ctx, artifact, _params) => {
+  try {
     const tests = (artifact.data?.soilTests || []).slice().sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     if (tests.length === 0) {
       return { ok: false, error: "no_soil_tests", message: "Add at least one soil test reading to analyze." };
@@ -525,7 +538,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastSoilAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * identify-pest
@@ -534,6 +548,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * Returns ranked candidates + treatment hints.
    */
   registerLensAction("agriculture", "identify-pest", (ctx, artifact, params) => {
+  try {
     const observation = String(artifact.data?.observation || params?.observation || "").toLowerCase();
     const crop = String(artifact.data?.crop || artifact.data?.variety || params?.crop || "corn").toLowerCase();
     if (!observation) {
@@ -580,7 +595,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastPestId = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * predict-yield
@@ -588,6 +604,7 @@ export default function registerAgricultureActions(registerLensAction) {
    * Uses YIELD_BANDS lookup + soil multiplier + history avg.
    */
   registerLensAction("agriculture", "predict-yield", (ctx, artifact, params) => {
+  try {
     const crop = String(artifact.data?.crop || artifact.data?.variety || params?.crop || "corn").toLowerCase();
     const acreage = Number(artifact.data?.acreage || params?.acreage) || 1;
     const soilType = (artifact.data?.soilType || params?.soilType || "loam").toLowerCase();
@@ -629,7 +646,8 @@ export default function registerAgricultureActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastYieldPrediction = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * analyze
@@ -704,6 +722,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "field-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAgriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
@@ -729,7 +748,8 @@ export default function registerAgricultureActions(registerLensAction) {
     s.fields.get(userId).set(field.id, field);
     saveAgriState();
     return { ok: true, result: { field } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "field-update", (ctx, _artifact, params = {}) => {
     const s = getAgriState();
@@ -819,6 +839,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "scout-add", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAgriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
@@ -843,7 +864,8 @@ export default function registerAgricultureActions(registerLensAction) {
     if (arr.length > 500) arr.length = 500;
     saveAgriState();
     return { ok: true, result: { pin } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "scout-delete", (ctx, _artifact, params = {}) => {
     const s = getAgriState();
@@ -988,6 +1010,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "prescriptions-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const fieldId = String(params.fieldId || "");
@@ -1009,7 +1032,8 @@ export default function registerAgricultureActions(registerLensAction) {
     ensureAgBucket(s, "prescriptions", userId).push(rx);
     saveAgriState();
     return { ok: true, result: { prescription: rx } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "prescriptions-approve", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1328,6 +1352,7 @@ export default function registerAgricultureActions(registerLensAction) {
   // ── Dashboard summary (AgFarmShell data source) ───────────────
 
   registerLensAction("agriculture", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const fields = s.fields?.get(userId) ? Array.from(s.fields.get(userId).values()) : [];
@@ -1356,7 +1381,8 @@ export default function registerAgricultureActions(registerLensAction) {
         grainUtilizationPct: grainCapacity > 0 ? Math.round((grainStored / grainCapacity) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 backlog parity — Climate FieldView feature gaps ──────────
   //
@@ -1467,6 +1493,7 @@ export default function registerAgricultureActions(registerLensAction) {
   // equipment, recording each import as an auditable sync record.
 
   registerLensAction("agriculture", "telemetry-import", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const equipmentId = String(params.equipmentId || "");
@@ -1517,7 +1544,8 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 300) bucket.splice(0, bucket.length - 300);
     saveAgriState();
     return { ok: true, result: { sync, equipment: eq } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "telemetry-syncs-list", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1577,6 +1605,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "profit-analysis", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const fieldId = String(params.fieldId || "");
@@ -1631,7 +1660,8 @@ export default function registerAgricultureActions(registerLensAction) {
       status: netProfit > 0 ? "profitable" : netProfit === 0 ? "breakeven" : "loss",
     };
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── (4) Weather-driven spray-window advisor ────────────────────
   // Reads the 7-day hourly Open-Meteo forecast and rates each hour for
@@ -1731,6 +1761,7 @@ export default function registerAgricultureActions(registerLensAction) {
   // into a grid and computes per-cell average yield for map overlay.
 
   registerLensAction("agriculture", "yield-map-build", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const fieldId = String(params.fieldId || "");
@@ -1799,7 +1830,8 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
     saveAgriState();
     return { ok: true, result: { map } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "yield-maps-list", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1862,6 +1894,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "trial-compare", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const trialName = String(params.trialName || "").trim();
@@ -1917,13 +1950,15 @@ export default function registerAgricultureActions(registerLensAction) {
           : "No comparable hybrids.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── (7) Soil-sampling grid generator + lab-result import ───────
   // Generates a regular sampling grid over a field's bounding box and
   // imports lab results back against each grid point.
 
   registerLensAction("agriculture", "soil-grid-generate", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const fieldId = String(params.fieldId || "");
@@ -1979,7 +2014,8 @@ export default function registerAgricultureActions(registerLensAction) {
     if (bucket.length > 100) bucket.splice(0, bucket.length - 100);
     saveAgriState();
     return { ok: true, result: { grid } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("agriculture", "soil-grids-list", (ctx, _a, params = {}) => {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1992,6 +2028,7 @@ export default function registerAgricultureActions(registerLensAction) {
   });
 
   registerLensAction("agriculture", "soil-grid-import-results", (ctx, _a, params = {}) => {
+  try {
     const s = getAgriState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = agriActor(ctx);
     const gridId = String(params.gridId || "");
@@ -2026,7 +2063,8 @@ export default function registerAgricultureActions(registerLensAction) {
     grid.pointsWithResults = withLab.length;
     saveAgriState();
     return { ok: true, result: { grid, applied, unmatched } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real World Bank crop-yield indicators as visible DTUs.
   // Free public API, no key.

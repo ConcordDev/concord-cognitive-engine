@@ -49,7 +49,7 @@ export function MarketingChannelsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const maxRoas = Math.max(1, ...channels.map((c) => c.kpis.roas));
@@ -64,7 +64,7 @@ export function MarketingChannelsPanel() {
           <Radio className="w-3.5 h-3.5 text-orange-400" /> Channel performance
         </h3>
         {channels.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No channel data. Log campaign metrics to compare channels.</p>
+          <p className="text-[11px] text-zinc-400 italic">No channel data. Log campaign metrics to compare channels.</p>
         ) : (
           <ul className="space-y-2">
             {channels.map((c) => (
@@ -78,7 +78,7 @@ export function MarketingChannelsPanel() {
                 <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div className="h-full bg-orange-500 rounded-full" style={{ width: `${(c.kpis.roas / maxRoas) * 100}%` }} />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {c.campaigns} campaigns · {c.kpis.ctr}% CTR · {c.kpis.conversions} conversions
                 </p>
               </li>
@@ -91,7 +91,7 @@ export function MarketingChannelsPanel() {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Users className="w-3.5 h-3.5 text-orange-400" /> Audience segments
-          {totalReach > 0 && <span className="text-[10px] text-zinc-500">· {totalReach.toLocaleString()} total reach</span>}
+          {totalReach > 0 && <span className="text-[10px] text-zinc-400">· {totalReach.toLocaleString()} total reach</span>}
         </h3>
         <div className="grid grid-cols-4 gap-2 mb-2">
           <input placeholder="Segment name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -106,14 +106,14 @@ export function MarketingChannelsPanel() {
           </button>
         </div>
         {segments.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No audience segments defined.</p>
+          <p className="text-[11px] text-zinc-400 italic">No audience segments defined.</p>
         ) : (
           <ul className="space-y-1">
             {segments.map((s) => (
               <li key={s.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{s.name}</p>
-                  {s.criteria && <p className="text-[10px] text-zinc-500">{s.criteria}</p>}
+                  {s.criteria && <p className="text-[10px] text-zinc-400">{s.criteria}</p>}
                 </div>
                 <span className="text-[11px] text-zinc-400 font-mono">{s.size.toLocaleString()}</span>
               </li>

@@ -220,12 +220,12 @@ export function MentionAutocomplete({
           className="absolute left-0 right-0 mt-1 z-50 max-h-72 overflow-auto rounded border border-zinc-700 bg-zinc-950 shadow-xl"
         >
           {isFetching && results.length === 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-2 px-3 py-2 text-xs text-zinc-400">
               <Loader2 className="w-3 h-3 animate-spin" /> Searching…
             </div>
           )}
           {!isFetching && results.length === 0 && (
-            <div className="px-3 py-2 text-xs text-zinc-500">No users match "{debounced || active.prefix}"</div>
+            <div className="px-3 py-2 text-xs text-zinc-400">No users match "{debounced || active.prefix}"</div>
           )}
           {results.map((r, i) => (
             <button
@@ -245,7 +245,7 @@ export function MentionAutocomplete({
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={r.avatar} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-500">
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-400">
                     {(r.displayName || r.username || '?').slice(0, 1).toUpperCase()}
                   </div>
                 )}
@@ -254,7 +254,7 @@ export function MentionAutocomplete({
                 <div className="flex items-baseline gap-1.5">
                   <span className="font-medium truncate">@{r.username}</span>
                   {r.displayName && r.displayName !== r.username && (
-                    <span className="text-xs text-zinc-500 truncate">{r.displayName}</span>
+                    <span className="text-xs text-zinc-400 truncate">{r.displayName}</span>
                   )}
                 </div>
               </div>

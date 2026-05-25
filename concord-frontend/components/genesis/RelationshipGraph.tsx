@@ -52,7 +52,7 @@ export function RelationshipGraph({ onSelect }: { onSelect?: (id: string) => voi
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Building relationship graph…
       </div>
     );
@@ -75,14 +75,14 @@ export function RelationshipGraph({ onSelect }: { onSelect?: (id: string) => voi
       <header className="flex items-center gap-2">
         <Network className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-white">Communication graph</h3>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           {nodes.length} connected · {edges.length} link{edges.length === 1 ? '' : 's'} ·{' '}
           {data.isolated ?? 0} isolated
         </span>
       </header>
 
       {nodes.length === 0 ? (
-        <p className="text-xs text-zinc-600">
+        <p className="text-xs text-zinc-400">
           No inter-emergent communications recorded yet — the graph is empty.
         </p>
       ) : (

@@ -287,6 +287,7 @@ export default function registerPharmacyActions(registerLensAction) {
   }
 
   registerLensAction("pharmacy", "med-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const med = findMed(s, raid(ctx), params.id);
     if (!med) return { ok: false, error: "medication not found" };
@@ -300,10 +301,12 @@ export default function registerPharmacyActions(registerLensAction) {
         daysOfSupply: perDay > 0 ? Math.floor(med.quantity / perDay) : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dose schedules + logging ────────────────────────────────────────
   registerLensAction("pharmacy", "schedule-set", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const med = findMed(s, raid(ctx), params.medId);
     if (!med) return { ok: false, error: "medication not found" };
@@ -322,7 +325,8 @@ export default function registerPharmacyActions(registerLensAction) {
     s.schedules.set(med.id, schedule);
     saveRxState();
     return { ok: true, result: { schedule } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "dose-log", (ctx, _a, params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -343,6 +347,7 @@ export default function registerPharmacyActions(registerLensAction) {
   });
 
   registerLensAction("pharmacy", "dose-history", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const meds = s.medications.get(userId) || [];
@@ -356,9 +361,11 @@ export default function registerPharmacyActions(registerLensAction) {
     }
     doses.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { doses: doses.slice(0, 100), count: doses.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "adherence-report", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const days = Math.max(1, Math.min(365, Math.round(rnum(params.days, 30))));
@@ -369,9 +376,11 @@ export default function registerPharmacyActions(registerLensAction) {
       ? Math.round(scored.reduce((a, x) => a + x.pct, 0) / scored.length)
       : null;
     return { ok: true, result: { windowDays: days, overall, perMed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "today-doses", (ctx, _a, _params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const today = rday(rnow());
@@ -400,7 +409,8 @@ export default function registerPharmacyActions(registerLensAction) {
         pending: doses.filter((d) => d.status === "pending").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Refills ─────────────────────────────────────────────────────────
   registerLensAction("pharmacy", "refill-request", (ctx, _a, params = {}) => {
@@ -485,6 +495,7 @@ export default function registerPharmacyActions(registerLensAction) {
   });
 
   registerLensAction("pharmacy", "price-record", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const drugName = rclean(params.drugName, 120);
     if (!drugName) return { ok: false, error: "drugName required" };
@@ -504,7 +515,8 @@ export default function registerPharmacyActions(registerLensAction) {
     rlistB(s.prices, userId).push(rec);
     saveRxState();
     return { ok: true, result: { price: rec } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "price-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -513,6 +525,7 @@ export default function registerPharmacyActions(registerLensAction) {
   });
 
   registerLensAction("pharmacy", "price-compare", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const drugName = rclean(params.drugName, 120).toLowerCase();
     if (!drugName) return { ok: false, error: "drugName required" };
@@ -535,7 +548,8 @@ export default function registerPharmacyActions(registerLensAction) {
         savingsPct: highest > 0 ? Math.round(((highest - lowest) / highest) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Coupons ─────────────────────────────────────────────────────────
   registerLensAction("pharmacy", "coupon-save", (ctx, _a, params = {}) => {
@@ -562,6 +576,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // ── Health measurements ─────────────────────────────────────────────
   const MEASUREMENT_KINDS = ["blood_pressure", "weight", "glucose", "heart_rate", "temperature", "oxygen"];
   registerLensAction("pharmacy", "measurement-log", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const kind = String(params.kind || "").toLowerCase();
     if (!MEASUREMENT_KINDS.includes(kind)) return { ok: false, error: `kind must be one of ${MEASUREMENT_KINDS.join("/")}` };
@@ -577,7 +592,8 @@ export default function registerPharmacyActions(registerLensAction) {
     rlistB(s.measurements, raid(ctx)).push(entry);
     saveRxState();
     return { ok: true, result: { measurement: entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "measurement-history", (ctx, _a, params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -602,6 +618,7 @@ export default function registerPharmacyActions(registerLensAction) {
 
   // ── Symptom / health journal ────────────────────────────────────────
   registerLensAction("pharmacy", "journal-add", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const note = rclean(params.note, 1000);
     if (!note) return { ok: false, error: "note required" };
@@ -616,7 +633,8 @@ export default function registerPharmacyActions(registerLensAction) {
     rlistB(s.journal, raid(ctx)).push(entry);
     saveRxState();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "journal-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -627,6 +645,7 @@ export default function registerPharmacyActions(registerLensAction) {
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("pharmacy", "pharmacy-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
@@ -657,7 +676,8 @@ export default function registerPharmacyActions(registerLensAction) {
         openRefillRequests: (s.refills.get(userId) || []).filter((r) => ["requested", "processing", "ready"].includes(r.status)).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // Feature-parity backlog vs Medisafe + GoodRx (2026):
@@ -681,6 +701,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // "due" macro computes which reminders fire in a window (frontend
   // polls it and raises a browser notification) — no fake push backend.
   registerLensAction("pharmacy", "reminder-set", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const med = findMed(s, raid(ctx), params.medId);
@@ -709,7 +730,8 @@ export default function registerPharmacyActions(registerLensAction) {
     else list.push(reminder);
     saveRxState();
     return { ok: true, result: { reminder } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "reminder-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -744,6 +766,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // reminder-due — which reminders fire within the next `windowMinutes`.
   // Cross-references today's dose log so already-taken doses are excluded.
   registerLensAction("pharmacy", "reminder-due", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const userId = raid(ctx);
@@ -781,10 +804,12 @@ export default function registerPharmacyActions(registerLensAction) {
         windowMinutes: windowMin,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Caregiver / Medfriend alerts ────────────────────────────────────
   registerLensAction("pharmacy", "caregiver-add", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const name = rclean(params.name, 120);
@@ -801,7 +826,8 @@ export default function registerPharmacyActions(registerLensAction) {
     rlistB(s.caregivers, raid(ctx)).push(cg);
     saveRxState();
     return { ok: true, result: { caregiver: cg } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "caregiver-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -824,6 +850,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // Scans today's missed/pending doses past their scheduled time and
   // refills running low, then matches each caregiver's preferences.
   registerLensAction("pharmacy", "caregiver-alerts", (ctx, _a, _params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const userId = raid(ctx);
@@ -877,7 +904,8 @@ export default function registerPharmacyActions(registerLensAction) {
         missedToday: missed.length, refillsLow: refillsLow.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Live drug price lookup (GoodRx-shape) ───────────────────────────
   // Pulls the NADAC (National Average Drug Acquisition Cost) feed from
@@ -1030,6 +1058,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // dropped at or below the threshold (idempotent — won't double-file
   // while a request is already open).
   registerLensAction("pharmacy", "autoreorder-set", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const med = findMed(s, raid(ctx), params.medId);
@@ -1046,7 +1075,8 @@ export default function registerPharmacyActions(registerLensAction) {
     if (idx >= 0) list[idx] = cfg; else list.push(cfg);
     saveRxState();
     return { ok: true, result: { config: cfg } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pharmacy", "autoreorder-list", (ctx, _a, _params = {}) => {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1066,6 +1096,7 @@ export default function registerPharmacyActions(registerLensAction) {
   });
 
   registerLensAction("pharmacy", "autoreorder-run", (ctx, _a, _params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     rxExtra(s);
     const userId = raid(ctx);
@@ -1098,7 +1129,8 @@ export default function registerPharmacyActions(registerLensAction) {
       ok: true,
       result: { triggered, count: triggered.length, configsScanned: configs.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Graded drug interaction with clinical sources ───────────────────
   // Uses the NLM RxNav interaction API which returns graded severities
@@ -1179,6 +1211,7 @@ export default function registerPharmacyActions(registerLensAction) {
   // ── Adherence gamification ──────────────────────────────────────────
   // adherence-calendar — per-day taken/scheduled grid for a heatmap.
   registerLensAction("pharmacy", "adherence-calendar", (ctx, _a, params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const days = Math.max(7, Math.min(180, Math.round(rnum(params.days, 30))));
@@ -1221,11 +1254,13 @@ export default function registerPharmacyActions(registerLensAction) {
         overallPct: scored.length ? Math.round(scored.reduce((a, c) => a + c.pct, 0) / scored.length) : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // adherence-streak — current + best consecutive perfect-adherence
   // run, plus earned badges. All computed from real dose logs.
   registerLensAction("pharmacy", "adherence-streak", (ctx, _a, _params = {}) => {
+  try {
     const s = getRxState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = raid(ctx);
     const meds = (s.medications.get(userId) || []).filter((m) => !m.archived);
@@ -1285,7 +1320,8 @@ export default function registerPharmacyActions(registerLensAction) {
         nextMilestone: currentStreak < 3 ? 3 : currentStreak < 7 ? 7 : currentStreak < 30 ? 30 : currentStreak < 100 ? 100 : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real FDA drug recall / enforcement reports from
   // openFDA as visible DTUs. Free public API, no key.

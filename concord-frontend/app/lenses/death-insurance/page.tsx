@@ -131,9 +131,9 @@ export default function DeathInsurancePage() {
           Pacts You Wrote
         </h2>
         {loading ? (
-          <p className="mb-6 text-sm italic text-zinc-500">Loading…</p>
+          <p className="mb-6 text-sm italic text-zinc-400">Loading…</p>
         ) : written.length === 0 ? (
-          <p className="mb-6 text-sm italic text-zinc-500">No pacts yet — write one above.</p>
+          <p className="mb-6 text-sm italic text-zinc-400">No pacts yet — write one above.</p>
         ) : (
           <ul className="mb-6 space-y-2">
             {written.map((p) => (
@@ -146,9 +146,9 @@ export default function DeathInsurancePage() {
           You Are a Beneficiary Of
         </h2>
         {loading ? (
-          <p className="mb-6 text-sm italic text-zinc-500">Loading…</p>
+          <p className="mb-6 text-sm italic text-zinc-400">Loading…</p>
         ) : beneficiaryOf.length === 0 ? (
-          <p className="mb-6 text-sm italic text-zinc-500">No data yet.</p>
+          <p className="mb-6 text-sm italic text-zinc-400">No data yet.</p>
         ) : (
           <ul className="mb-6 space-y-2">
             {beneficiaryOf.map((p) => (

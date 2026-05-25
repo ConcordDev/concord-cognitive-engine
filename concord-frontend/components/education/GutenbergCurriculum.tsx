@@ -72,15 +72,15 @@ export function GutenbergCurriculum() {
       {books.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Gutendex unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Books</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Books</div>
           <div className="mt-0.5 font-mono text-lg text-sky-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Total downloads</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Total downloads</div>
           <div className="mt-0.5 font-mono text-lg text-sky-300">{totalDl.toLocaleString()}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Authors</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Authors</div>
           <div className="mt-0.5 font-mono text-lg text-sky-300">{authors}</div>
         </div>
       </div>
@@ -100,21 +100,21 @@ export function GutenbergCurriculum() {
                       {b.authors.map((a) => `${a.name}${a.birth_year || a.death_year ? ` (${a.birth_year || '?'}–${a.death_year || '?'})` : ''}`).join(', ')}
                     </p>
                   )}
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                     <span className="flex items-center gap-0.5"><Download className="h-3 w-3" />{b.download_count.toLocaleString()}</span>
                     {(b.languages || []).slice(0, 3).map((l) => <span key={l} className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{l}</span>)}
                   </div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );
         })}
         {list.length === 0 && !books.isPending && !books.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No books returned.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No books returned.</div>
         )}
       </div>
-      {books.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling Gutenberg…</div>}
+      {books.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling Gutenberg…</div>}
     </div>
   );
 }

@@ -172,14 +172,14 @@ export function ProfitAnalysisPanel({
 
   if (fieldsLoading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fields…
       </div>
     );
   }
   if (fields.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <DollarSign className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No fields yet. Add a field to track its input costs and profitability.
       </div>
@@ -245,15 +245,15 @@ export function ProfitAnalysisPanel({
           </button>
         </div>
         {loading ? (
-          <div className="text-xs text-gray-500 py-2">Loading…</div>
+          <div className="text-xs text-gray-400 py-2">Loading…</div>
         ) : entries.length === 0 ? (
-          <div className="text-xs text-gray-500 py-2">No cost entries for this field yet.</div>
+          <div className="text-xs text-gray-400 py-2">No cost entries for this field yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {entries.map((e) => (
               <li key={e.id} className="py-1.5 flex items-center gap-2 text-xs">
                 <span className="text-gray-200 flex-1">{e.label}</span>
-                <span className="text-gray-500 uppercase text-[10px]">{e.category}</span>
+                <span className="text-gray-400 uppercase text-[10px]">{e.category}</span>
                 <span className="text-emerald-300 font-mono">
                   ${e.amount.toLocaleString()}
                   {e.perAcre ? '/ac' : ''}
@@ -359,7 +359,7 @@ export function ProfitAnalysisPanel({
             ].map((m) => (
               <div key={m.k} className="rounded bg-lattice-deep px-2 py-1.5 text-center">
                 <div className={cn('text-sm font-bold', m.accent || 'text-amber-200')}>{m.v}</div>
-                <div className="text-[10px] text-gray-500">{m.k}</div>
+                <div className="text-[10px] text-gray-400">{m.k}</div>
               </div>
             ))}
           </div>

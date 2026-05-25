@@ -65,6 +65,7 @@ export default function registerMetaActions(registerLensAction) {
    * artifact.data.metrics = [{ timestamp, responseMs, success, cpuPercent?, memPercent?, endpoint? }]
    */
   registerLensAction("meta", "systemReflection", (ctx, artifact, params) => {
+  try {
     const metrics = artifact.data?.metrics || [];
     if (metrics.length === 0) {
       return { ok: true, result: { message: "No system metrics to analyze." } };
@@ -184,7 +185,8 @@ export default function registerMetaActions(registerLensAction) {
           : errorWindows,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * actionAnalytics
@@ -193,6 +195,7 @@ export default function registerMetaActions(registerLensAction) {
    * artifact.data.actionLog = [{ userId, action, timestamp, durationMs?, metadata? }]
    */
   registerLensAction("meta", "actionAnalytics", (ctx, artifact, params) => {
+  try {
     const actionLog = artifact.data?.actionLog || [];
     if (actionLog.length === 0) {
       return { ok: true, result: { message: "No action log data." } };
@@ -307,7 +310,8 @@ export default function registerMetaActions(registerLensAction) {
         peakHour,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * qualityMetrics
@@ -317,6 +321,7 @@ export default function registerMetaActions(registerLensAction) {
    * params.freshnessHalfLifeDays — half-life for freshness decay (default 30)
    */
   registerLensAction("meta", "qualityMetrics", (ctx, artifact, params) => {
+  try {
     const fields = artifact.data?.fields || [];
     if (fields.length === 0) {
       return { ok: true, result: { message: "No fields to evaluate." } };
@@ -459,7 +464,8 @@ export default function registerMetaActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════════════
   //  2026 developer-portal / observability parity

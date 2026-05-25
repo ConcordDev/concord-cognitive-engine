@@ -38,13 +38,13 @@ export function EnrollmentsPanel({ onSelectCourse }: { onSelectCourse?: (courseI
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <GraduationCap className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">My enrollments</span>
-        <span className="ml-auto text-[10px] text-gray-500">{enrollments.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{enrollments.length}</span>
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : enrollments.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><GraduationCap className="w-6 h-6 mx-auto mb-2 opacity-30" />Not enrolled in any courses yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><GraduationCap className="w-6 h-6 mx-auto mb-2 opacity-30" />Not enrolled in any courses yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {enrollments.map(e => (
@@ -52,13 +52,13 @@ export function EnrollmentsPanel({ onSelectCourse }: { onSelectCourse?: (courseI
                 <div className="w-12 h-10 bg-gradient-to-br from-cyan-900/40 to-violet-900/30 rounded flex items-center justify-center flex-shrink-0">
                   <BookOpen className="w-4 h-4 text-cyan-500/60" />
                 </div>
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCourse?.(e.courseId)}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelectCourse?.(e.courseId)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="text-sm text-white truncate">{e.course?.title || 'Course'}</div>
-                  <div className="text-[10px] text-gray-500 truncate">{e.course?.instructor || e.course?.institution}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{e.course?.instructor || e.course?.institution}</div>
                   <div className="mt-1 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div className={cn('h-full transition-all', e.progressPct >= 100 ? 'bg-emerald-400' : 'bg-cyan-400')} style={{ width: `${e.progressPct}%` }} />
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-500">
+                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-400">
                     <span>{e.completedLessons} / {e.totalLessons} lessons</span>
                     <span className="text-cyan-300 font-mono">{e.progressPct}%</span>
                   </div>

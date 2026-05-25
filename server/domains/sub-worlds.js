@@ -124,16 +124,19 @@ export default function registerSubWorldsActions(registerLensAction) {
 
   // ── List own worlds ─────────────────────────────────────────────────
   registerLensAction("sub_worlds", "list", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     let list = [...userWorlds(s, me)];
     if (params.status && STATUS.has(params.status)) list = list.filter((w) => w.status === params.status);
     list.sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
     return { ok: true, result: { worlds: list.map((w) => publicView(w, me)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Discovery gallery — browse public sub-worlds across all users ────
   registerLensAction("sub_worlds", "discover", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const query = clean(params.query, 120).toLowerCase();
@@ -161,7 +164,8 @@ export default function registerSubWorldsActions(registerLensAction) {
         total: all.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Per-world settings — rename, privacy, capacity, kind ────────────
   registerLensAction("sub_worlds", "update_settings", (ctx, _a, params = {}) => {
@@ -231,6 +235,7 @@ export default function registerSubWorldsActions(registerLensAction) {
 
   // ── Visit — inline "enter" handoff to world-travel + visitor count ──
   registerLensAction("sub_worlds", "visit", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const hit = findWorld(s, clean(params.worldId, 80));
@@ -254,7 +259,8 @@ export default function registerSubWorldsActions(registerLensAction) {
         unique_visitors: w.visitorIds.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Favorite / unfavorite ───────────────────────────────────────────
   registerLensAction("sub_worlds", "favorite", (ctx, _a, params = {}) => {
@@ -275,6 +281,7 @@ export default function registerSubWorldsActions(registerLensAction) {
 
   // ── List my favorites ───────────────────────────────────────────────
   registerLensAction("sub_worlds", "my_favorites", (ctx, _a, _params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const favs = s.favorites.get(me) || new Set();
@@ -285,10 +292,12 @@ export default function registerSubWorldsActions(registerLensAction) {
     }
     out.sort((a, b) => b.popularity - a.popularity);
     return { ok: true, result: { worlds: out } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Analytics — visit timeline, popularity breakdown ────────────────
   registerLensAction("sub_worlds", "analytics", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const hit = findWorld(s, clean(params.worldId, 80));
@@ -322,7 +331,8 @@ export default function registerSubWorldsActions(registerLensAction) {
         timeline,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Permissions — invite / remove co-editors ────────────────────────
   registerLensAction("sub_worlds", "invite_editor", (ctx, _a, params = {}) => {
@@ -382,6 +392,7 @@ export default function registerSubWorldsActions(registerLensAction) {
   const BLOCK_TYPES = new Set(["terrain", "spawn_point", "prop", "script", "zone", "light"]);
 
   registerLensAction("sub_worlds", "editor_add_block", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const me = actor(ctx);
     const hit = findWorld(s, clean(params.worldId, 80));
@@ -409,7 +420,8 @@ export default function registerSubWorldsActions(registerLensAction) {
     w.updated_at = now();
     save();
     return { ok: true, result: { block, blocks: w.blocks } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sub_worlds", "editor_remove_block", (ctx, _a, params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };

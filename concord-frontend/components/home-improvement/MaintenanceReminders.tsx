@@ -99,7 +99,7 @@ export function MaintenanceReminders() {
     <div className="space-y-3">
       <h3 className="font-semibold flex items-center gap-2 text-sm">
         <CalendarClock className="w-4 h-4 text-amber-400" /> Maintenance Reminders
-        <span className="text-xs text-gray-500">({list?.count || 0})</span>
+        <span className="text-xs text-gray-400">({list?.count || 0})</span>
       </h3>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
@@ -173,9 +173,9 @@ export function MaintenanceReminders() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading reminders...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading reminders...</div>
       ) : reminders.length === 0 ? (
-        <p className="text-xs text-gray-500">No reminders tracked yet. Add seasonal upkeep tasks above.</p>
+        <p className="text-xs text-gray-400">No reminders tracked yet. Add seasonal upkeep tasks above.</p>
       ) : (
         <div className="space-y-2">
           {reminders.map((r) => {
@@ -199,7 +199,7 @@ export function MaintenanceReminders() {
                 <button onClick={() => complete(r.id)} disabled={busy} className="text-neon-green hover:text-green-300 p-1" title="Mark done & reschedule">
                   <CheckCircle2 className="w-4 h-4" />
                 </button>
-                <button onClick={() => remove(r.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1">
+                <button onClick={() => remove(r.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

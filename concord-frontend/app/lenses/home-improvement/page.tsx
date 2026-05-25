@@ -346,7 +346,7 @@ export default function HomeImprovementLensPage() {
           >
             <div className="flex gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search projects..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
               </div>
               <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-lattice w-40">
@@ -363,7 +363,7 @@ export default function HomeImprovementLensPage() {
                   <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
                     <Home className="w-3.5 h-3.5 text-amber-400" />
                     {room}
-                    <span className="text-xs text-gray-500">({roomProjects.length})</span>
+                    <span className="text-xs text-gray-400">({roomProjects.length})</span>
                   </h3>
                   {roomProjects.map((p, i) => (
                     <motion.div
@@ -398,7 +398,7 @@ export default function HomeImprovementLensPage() {
                           </div>
                         )}
                       </div>
-                      <button onClick={() => remove(p.id)} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400 p-1 ml-3">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <button onClick={() => remove(p.id)} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400 p-1 ml-3">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
                     </motion.div>
                   ))}
                 </div>
@@ -457,15 +457,15 @@ export default function HomeImprovementLensPage() {
               <h2 className="font-semibold mb-4 flex items-center gap-2"><DollarSign className="w-4 h-4 text-neon-green" />Budget Overview</h2>
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase">Budget</p>
+                  <p className="text-xs text-gray-400 uppercase">Budget</p>
                   <p className="text-xl font-bold text-neon-green">${stats.totalBudget.toLocaleString()}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase">Spent</p>
+                  <p className="text-xs text-gray-400 uppercase">Spent</p>
                   <p className="text-xl font-bold text-red-400">${stats.totalSpent.toLocaleString()}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase">Remaining</p>
+                  <p className="text-xs text-gray-400 uppercase">Remaining</p>
                   <p className={cn('text-xl font-bold', budgetRemaining >= 0 ? 'text-neon-cyan' : 'text-red-400')}>
                     ${Math.abs(budgetRemaining).toLocaleString()}{budgetRemaining < 0 ? ' over' : ''}
                   </p>
@@ -479,7 +479,7 @@ export default function HomeImprovementLensPage() {
                   className={cn('h-full rounded-full', budgetPercent > 100 ? 'bg-red-400' : budgetPercent > 80 ? 'bg-yellow-400' : 'bg-neon-green')}
                 />
               </div>
-              <p className="text-xs text-gray-500 text-right">{budgetPercent.toFixed(1)}% spent</p>
+              <p className="text-xs text-gray-400 text-right">{budgetPercent.toFixed(1)}% spent</p>
             </div>
 
             {/* Budget vs Actual per project */}
@@ -513,7 +513,7 @@ export default function HomeImprovementLensPage() {
                   );
                 })}
                 {projects.filter(p => p.budget > 0).length === 0 && (
-                  <p className="text-gray-500 text-sm text-center py-4">No projects with budgets yet.</p>
+                  <p className="text-gray-400 text-sm text-center py-4">No projects with budgets yet.</p>
                 )}
               </div>
             </div>
@@ -543,7 +543,7 @@ export default function HomeImprovementLensPage() {
             <ContractorDirectory />
             {contractors.length > 0 && (
               <div className="mt-4 border-t border-lattice-border pt-3">
-                <p className="text-xs text-gray-500 mb-2">Contractors referenced on project cards</p>
+                <p className="text-xs text-gray-400 mb-2">Contractors referenced on project cards</p>
                 <div className="flex flex-wrap gap-2">
                   {contractors.map((c) => (
                     <span key={c.name} className="text-xs px-2 py-1 bg-lattice-surface rounded text-gray-300">
@@ -584,7 +584,7 @@ export default function HomeImprovementLensPage() {
           AI Home Improvement Actions
         </h2>
         {!items[0]?.id && (
-          <p className="text-xs text-gray-500">Create a project to run AI actions.</p>
+          <p className="text-xs text-gray-400">Create a project to run AI actions.</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
@@ -637,7 +637,7 @@ export default function HomeImprovementLensPage() {
                   <div className="lens-card">
                     <p className="text-xs text-gray-400 mb-1">Contractor Estimate</p>
                     <p className="text-lg font-bold text-neon-purple">${(d.contractorEstimate || 0).toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 mt-1">Timeline: {d.timeline}</p>
+                    <p className="text-xs text-gray-400 mt-1">Timeline: {d.timeline}</p>
                   </div>
                 </div>
               </div>
@@ -675,7 +675,7 @@ export default function HomeImprovementLensPage() {
                     <div className="h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className={`h-full rounded-full ${p.roi >= 0 ? 'bg-neon-green' : 'bg-red-400'}`} style={{ width: `${Math.min(100, Math.abs(p.roi))}%` }} />
                     </div>
-                    <p className="text-xs text-gray-500">Net Gain: ${p.netGain.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">Net Gain: ${p.netGain.toLocaleString()}</p>
                   </div>
                 ))}
               </div>
@@ -738,7 +738,7 @@ export default function HomeImprovementLensPage() {
                   ))}
                 </div>
                 {d.coverage && <p className="text-xs text-gray-400">Coverage: {d.coverage}</p>}
-                <p className="text-xs text-gray-500">Palette: {d.palette}</p>
+                <p className="text-xs text-gray-400">Palette: {d.palette}</p>
               </div>
             );
           }

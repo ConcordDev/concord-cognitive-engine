@@ -163,7 +163,7 @@ export function LensShell({
         <div className="flex items-center gap-3 flex-wrap">
           {searchable && (
             <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery || ''}
@@ -174,7 +174,7 @@ export function LensShell({
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange?.('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                 aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
@@ -273,7 +273,7 @@ export function ItemList<T>({
     return (
       <div className="text-center py-12">
         <p className="text-gray-400 mb-2">{emptyTitle}</p>
-        {emptyDescription && <p className="text-sm text-gray-500">{emptyDescription}</p>}
+        {emptyDescription && <p className="text-sm text-gray-400">{emptyDescription}</p>}
         {onCreateNew && (
           <button onClick={onCreateNew} className={cn(ds.btnPrimary, 'mt-4')}>
             Create New

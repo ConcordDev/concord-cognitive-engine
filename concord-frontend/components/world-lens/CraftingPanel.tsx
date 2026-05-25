@@ -60,7 +60,7 @@ const STATION_META: Record<StationType, { label: string; icon: React.ComponentTy
 };
 
 const QUALITY_COLORS: Record<MaterialQuality, string> = {
-  poor:       'text-gray-500',
+  poor:       'text-gray-400',
   standard:   'text-gray-300',
   fine:       'text-green-400',
   superior:   'text-blue-400',
@@ -182,7 +182,7 @@ export default function CraftingPanel({
           <h2 className="text-sm font-semibold">Crafting</h2>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -200,7 +200,7 @@ export default function CraftingPanel({
               className={`flex items-center gap-1 px-2 py-1 text-[10px] rounded whitespace-nowrap transition-colors ${
                 activeStation === st
                   ? `bg-white/10 ${meta.color} border border-white/20`
-                  : 'text-gray-500 hover:text-gray-300'
+                  : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               <Icon className="w-3 h-3" />
@@ -213,11 +213,11 @@ export default function CraftingPanel({
       <div className="flex flex-1 overflow-hidden">
         {/* Recipe list */}
         <div className="w-44 border-r border-white/5 overflow-y-auto">
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider px-3 pt-2 pb-1">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">
             Recipes ({stationRecipes.length})
           </p>
           {stationRecipes.length === 0 ? (
-            <p className="text-[10px] text-gray-600 px-3 py-4">No recipes for this station.</p>
+            <p className="text-[10px] text-gray-400 px-3 py-4">No recipes for this station.</p>
           ) : (
             stationRecipes.map((recipe) => {
               const craftable = canCraft(recipe);
@@ -245,7 +245,7 @@ export default function CraftingPanel({
           {!selectedRecipe ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Wrench className="w-8 h-8 text-gray-700 mb-2" />
-              <p className="text-xs text-gray-500">Select a recipe to view details.</p>
+              <p className="text-xs text-gray-400">Select a recipe to view details.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -257,11 +257,11 @@ export default function CraftingPanel({
                 </div>
                 <p className="text-[10px] text-gray-400">{selectedRecipe.outputDescription}</p>
                 <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
                     <Star className="w-3 h-3 text-yellow-400" />
                     Quality: <span className="text-yellow-400">{qualityBonus(selectedRecipe)}%</span>
                   </span>
-                  <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                  <span className="text-[10px] text-gray-400 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {selectedRecipe.craftTimeSeconds}s
                   </span>
@@ -270,7 +270,7 @@ export default function CraftingPanel({
 
               {/* Ingredients */}
               <div>
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Ingredients</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Ingredients</p>
                 <div className="space-y-1">
                   {selectedRecipe.ingredients.map((ing, i) => {
                     const have = ing.available >= ing.required;
@@ -298,7 +298,7 @@ export default function CraftingPanel({
 
               {/* Skill requirement */}
               {selectedRecipe.skillRequirement && (
-                <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                <div className="flex items-center gap-2 text-[10px] text-gray-400">
                   <BarChart3 className="w-3 h-3" />
                   Requires: {selectedRecipe.skillRequirement.domain} {selectedRecipe.skillRequirement.tier} (Lv{selectedRecipe.skillRequirement.level})
                 </div>
@@ -347,7 +347,7 @@ export default function CraftingPanel({
 
       {/* Recent crafts */}
       <div className="border-t border-white/5 px-3 py-2">
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Recent Crafts</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Recent Crafts</p>
         <div className="space-y-0.5">
           {recentCrafts.map((rc) => (
             <div key={rc.id} className="flex items-center justify-between text-[10px]">

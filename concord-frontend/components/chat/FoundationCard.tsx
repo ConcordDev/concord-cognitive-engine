@@ -120,7 +120,7 @@ function FoundationStatusView({ status }: { status: FoundationStatus }) {
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+        className="text-xs text-zinc-400 hover:text-zinc-300 flex items-center gap-1"
       >
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         {expanded ? 'Hide details' : 'Show details'}
@@ -133,7 +133,7 @@ function FoundationStatusView({ status }: { status: FoundationStatus }) {
               <div className="text-zinc-400 font-semibold mb-1">{mod.name}</div>
               {Object.entries(mod.metrics).map(([k, v]) => (
                 <div key={k} className="flex justify-between">
-                  <span className="text-zinc-500">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-zinc-400">{k.replace(/_/g, ' ')}</span>
                   <span className="text-zinc-300">{String(v)}</span>
                 </div>
               ))}
@@ -151,11 +151,11 @@ function SenseView({ readings }: { readings: SensorReading[] }) {
       <div className="flex items-center gap-2">
         <Waves size={18} className="text-violet-400" />
         <span className="text-sm font-semibold text-zinc-200">Sensor Readings</span>
-        <span className="ml-auto text-xs text-zinc-500">{readings.length} readings</span>
+        <span className="ml-auto text-xs text-zinc-400">{readings.length} readings</span>
       </div>
 
       {readings.length === 0 ? (
-        <div className="text-xs text-zinc-500 text-center py-3">No sensor readings yet</div>
+        <div className="text-xs text-zinc-400 text-center py-3">No sensor readings yet</div>
       ) : (
         <div className="space-y-1">
           {readings.slice(0, 10).map(r => (
@@ -165,7 +165,7 @@ function SenseView({ readings }: { readings: SensorReading[] }) {
                 (r.measurements.anomaly_score || 0) > 1.5 ? 'text-amber-400' : 'text-emerald-400'
               } />
               <span className="text-zinc-300">{r.subtype}</span>
-              <span className="text-zinc-500 flex-1">{r.channel}</span>
+              <span className="text-zinc-400 flex-1">{r.channel}</span>
               {r.measurements.signal_strength != null && (
                 <span className="text-zinc-400">{r.measurements.signal_strength} dBm</span>
               )}
@@ -234,7 +234,7 @@ function NeuralView({ readiness }: { readiness: NeuralReadiness }) {
             style={{ width: `${progressPct}%` }}
           />
         </div>
-        <div className="text-xs text-zinc-500 text-right">{progressPct}% ready</div>
+        <div className="text-xs text-zinc-400 text-right">{progressPct}% ready</div>
       </div>
 
       <div className="space-y-1">
@@ -280,11 +280,11 @@ function EnergyView({ readings }: { readings: EnergyReading[] }) {
       <div className="flex items-center gap-2">
         <Zap size={18} className="text-violet-400" />
         <span className="text-sm font-semibold text-zinc-200">Energy Readings</span>
-        <span className="ml-auto text-xs text-zinc-500">{readings.length} readings</span>
+        <span className="ml-auto text-xs text-zinc-400">{readings.length} readings</span>
       </div>
 
       {readings.length === 0 ? (
-        <div className="text-xs text-zinc-500 text-center py-3">No energy readings yet</div>
+        <div className="text-xs text-zinc-400 text-center py-3">No energy readings yet</div>
       ) : (
         <div className="space-y-1">
           {readings.slice(0, 10).map(r => (
@@ -293,7 +293,7 @@ function EnergyView({ readings }: { readings: EnergyReading[] }) {
                 r.grid_health.anomaly_detected ? 'text-red-400' : 'text-emerald-400'
               } />
               <span className="text-zinc-300">{r.subtype}</span>
-              <span className="text-zinc-500 flex-1">{r.grid_health.load_estimate}</span>
+              <span className="text-zinc-400 flex-1">{r.grid_health.load_estimate}</span>
               {r.grid_health.anomaly_detected && (
                 <span className="text-red-400">anomaly</span>
               )}
@@ -318,7 +318,7 @@ function ProtocolView({ metrics }: { metrics: Record<string, unknown> }) {
       </div>
 
       {entries.length === 0 ? (
-        <div className="text-xs text-zinc-500 text-center py-3">No protocol data</div>
+        <div className="text-xs text-zinc-400 text-center py-3">No protocol data</div>
       ) : (
         <div className="space-y-1">
           {entries.map(([key, value]) => (

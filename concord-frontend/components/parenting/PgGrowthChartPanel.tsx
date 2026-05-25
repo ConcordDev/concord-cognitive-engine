@@ -51,10 +51,10 @@ export function PgGrowthChartPanel({ childId }: { childId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (error || !data) {
-    return <p className="text-[11px] text-zinc-500 italic py-6 text-center">{error || 'No chart data.'}</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-6 text-center">{error || 'No chart data.'}</p>;
   }
 
   // Merge curve + measurements into one keyed dataset for the composed chart.
@@ -87,7 +87,7 @@ export function PgGrowthChartPanel({ childId }: { childId: string }) {
       </div>
 
       {data.measurements.length === 0 && (
-        <p className="text-[11px] text-zinc-500 italic">No measurements logged yet — the bands below are the WHO reference curves.</p>
+        <p className="text-[11px] text-zinc-400 italic">No measurements logged yet — the bands below are the WHO reference curves.</p>
       )}
 
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
@@ -120,7 +120,7 @@ export function PgGrowthChartPanel({ childId }: { childId: string }) {
           ))}
         </ul>
       )}
-      <p className="text-[10px] text-zinc-500">{data.note}</p>
+      <p className="text-[10px] text-zinc-400">{data.note}</p>
     </div>
   );
 }

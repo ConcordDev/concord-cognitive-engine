@@ -48,7 +48,7 @@ export function WorkspaceRoster() {
         )}
       </header>
       {ws.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Collab runtime unreachable.</div>}
-      {ws.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+      {ws.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Cell label="Workspaces" value={list.length.toString()} />
         <Cell label="Members" value={totalMembers.toString()} />
@@ -65,7 +65,7 @@ export function WorkspaceRoster() {
                   <span className="text-sm text-white">{w.name || `Workspace ${w.id.slice(0, 6)}`}</span>
                 </div>
                 {w.description && <p className="mt-0.5 line-clamp-1 text-[11px] text-zinc-400">{w.description}</p>}
-                <div className="mt-1 flex items-center gap-x-3 text-[10px] text-zinc-500">
+                <div className="mt-1 flex items-center gap-x-3 text-[10px] text-zinc-400">
                   <span>{w.members?.length || 0} members</span>
                   <span>{w.dtuCount || 0} dtus</span>
                   <span>{w.commentCount || 0} comments</span>
@@ -76,7 +76,7 @@ export function WorkspaceRoster() {
           </div>
         ))}
         {list.length === 0 && !ws.isPending && !ws.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No collab workspaces yet.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No collab workspaces yet.</div>
         )}
       </div>
     </div>
@@ -86,7 +86,7 @@ export function WorkspaceRoster() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

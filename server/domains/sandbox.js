@@ -159,6 +159,7 @@ export default function registerSandboxActions(registerLensAction) {
   // [S] Record + replay a combat sequence
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "saveReplay", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const frames = Array.isArray(params.frames) ? params.frames : [];
     if (frames.length === 0) return { ok: false, error: "replay has no frames" };
@@ -190,7 +191,8 @@ export default function registerSandboxActions(registerLensAction) {
     if (list.length > 50) list.splice(0, list.length - 50);
     save();
     return { ok: true, result: { replay: { ...entry, frames: undefined }, frameCount: entry.frameCount } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sandbox", "listReplays", (ctx, _a, _params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -227,6 +229,7 @@ export default function registerSandboxActions(registerLensAction) {
   // [S] Frame-time / hitstop telemetry overlay
   // ─────────────────────────────────────────────────────────────────────
   registerLensAction("sandbox", "recordTelemetry", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const frameTimes = Array.isArray(params.frameTimes)
       ? params.frameTimes.map(Number).filter((n) => Number.isFinite(n) && n > 0).slice(0, 5000)
@@ -259,7 +262,8 @@ export default function registerSandboxActions(registerLensAction) {
     if (list.length > 50) list.splice(0, list.length - 50);
     save();
     return { ok: true, result: { sample } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("sandbox", "telemetryStats", (ctx, _a, _params = {}) => {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };

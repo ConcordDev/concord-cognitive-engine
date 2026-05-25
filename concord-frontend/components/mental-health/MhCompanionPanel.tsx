@@ -49,7 +49,7 @@ export function MhCompanionPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const riskActive = turns.some((t) => t.riskFlag);
@@ -62,7 +62,7 @@ export function MhCompanionPanel() {
         </h3>
         {turns.length > 0 && (
           <button type="button" onClick={reset}
-            className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300">
+            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-300">
             <RotateCcw className="w-3 h-3" /> Clear
           </button>
         )}
@@ -81,7 +81,7 @@ export function MhCompanionPanel() {
 
       <div ref={scrollRef} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2 max-h-72 overflow-y-auto">
         {turns.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">
             This is a quiet space to put feelings into words. Say what is on your mind.
           </p>
         ) : (
@@ -108,7 +108,7 @@ export function MhCompanionPanel() {
           {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
         </button>
       </div>
-      <p className="text-[10px] text-zinc-600 italic">For reflection only — not a therapist and not medical advice.</p>
+      <p className="text-[10px] text-zinc-400 italic">For reflection only — not a therapist and not medical advice.</p>
     </div>
   );
 }

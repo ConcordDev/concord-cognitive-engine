@@ -995,7 +995,7 @@ export default function LegalLensPage() {
       <Icon className={cn('w-5 h-5 mb-2', color)} />
       <p className="text-2xl font-bold">{value}</p>
       <p className={ds.textMuted}>{label}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 
@@ -1139,13 +1139,12 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {d.caseName && `${d.caseName} - `}
                             {formatLabel(d.eventType || 'event')}
                           </p>
@@ -1178,13 +1177,12 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-red-500/5 border border-red-500/20 cursor-pointer hover:bg-red-500/10 transition-colors"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <XCircle className="w-4 h-4 text-red-400 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-gray-500">{d.eventDate}</p>
+                          <p className="text-xs text-gray-400">{d.eventDate}</p>
                         </div>
                       </div>
                       <DeadlineTag date={d.eventDate} />
@@ -1217,13 +1215,12 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <Briefcase className="w-4 h-4 text-neon-blue shrink-0" />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {d.caseNumber && `#${d.caseNumber} - `}
                             {formatLabel(d.matterType || 'case')}
                           </p>
@@ -1256,8 +1253,7 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated transition-colors cursor-pointer"
-                      onClick={() => openDetail(item)}
-                    >
+                      onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex items-center gap-2 min-w-0">
                         <AlertCircle
                           className={cn(
@@ -1267,7 +1263,7 @@ export default function LegalLensPage() {
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{item.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {formatLabel(d.complianceType || 'compliance')}
                           </p>
                         </div>
@@ -1305,7 +1301,7 @@ export default function LegalLensPage() {
               <StatusBadge status={d.status} />
             </div>
             {d.caseNumber && (
-              <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+              <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                 <Hash className="w-3 h-3" /> {d.caseNumber}
               </div>
             )}
@@ -1329,10 +1325,10 @@ export default function LegalLensPage() {
                   </div>
                 );
               })}
-              <span className="text-xs text-gray-500 ml-1">{formatLabel(d.status)}</span>
+              <span className="text-xs text-gray-400 ml-1">{formatLabel(d.status)}</span>
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+            <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
               {d.matterType && (
                 <span className={ds.badge('gray-400')}>{formatLabel(d.matterType)}</span>
               )}
@@ -1380,7 +1376,7 @@ export default function LegalLensPage() {
       {filtered.map((item) => {
         const d = item.data as unknown as DocumentData;
         return (
-          <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+          <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2 min-w-0">
                 <FileText className="w-5 h-5 text-neon-cyan shrink-0" />
@@ -1389,7 +1385,7 @@ export default function LegalLensPage() {
               <StatusBadge status={d.status} />
             </div>
             <p className={cn(ds.textMuted, 'line-clamp-2 mb-3')}>{d.description}</p>
-            <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+            <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
               {d.documentType && (
                 <span className={ds.badge('neon-cyan')}>{formatLabel(d.documentType)}</span>
               )}
@@ -1411,7 +1407,7 @@ export default function LegalLensPage() {
             </div>
             {d.filingDeadline && (
               <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs text-gray-500">Filing deadline:</span>
+                <span className="text-xs text-gray-400">Filing deadline:</span>
                 <DeadlineTag date={d.filingDeadline} />
               </div>
             )}
@@ -1510,7 +1506,7 @@ export default function LegalLensPage() {
               <tbody>
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-gray-500">
+                    <td colSpan={8} className="py-8 text-center text-gray-400">
                       No time entries recorded. Click &quot;New Item&quot; to log time.
                     </td>
                   </tr>
@@ -1536,7 +1532,7 @@ export default function LegalLensPage() {
                           {d.billable !== false ? (
                             <CheckCircle2 className="w-4 h-4 text-neon-green" />
                           ) : (
-                            <XCircle className="w-4 h-4 text-gray-500" />
+                            <XCircle className="w-4 h-4 text-gray-400" />
                           )}
                         </td>
                         <td className="py-2 px-3">
@@ -1558,7 +1554,7 @@ export default function LegalLensPage() {
               <p className={ds.textMuted}>
                 Invoice generation is available via the &quot;Generate Invoice&quot; domain action.
               </p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Select a matter and run the action to create an invoice from unbilled time entries.
               </p>
               <button
@@ -1602,7 +1598,7 @@ export default function LegalLensPage() {
                 <p className="text-lg font-medium text-gray-300">Run audit via action</p>
               </div>
             </div>
-            <p className="text-xs text-gray-600 mt-3">
+            <p className="text-xs text-gray-400 mt-3">
               Trust account balances are tracked via Compliance items with type
               &quot;trust_account&quot;. Use the Compliance Audit action for a full report.
             </p>
@@ -1648,7 +1644,7 @@ export default function LegalLensPage() {
               <Calculator className="w-5 h-5 text-amber-400" />
               <div>
                 <h3 className="text-sm font-semibold">Statute of Limitations Calculator</h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Calculate SOL deadlines with rule-based adjustments (Federal, State, Local rules)
                 </p>
               </div>
@@ -1682,15 +1678,14 @@ export default function LegalLensPage() {
                     <div
                       key={item.id}
                       className={cn(ds.panelHover, 'flex items-center gap-3')}
-                      onClick={() => openEditEditor(item)}
-                    >
+                      onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <EvtIcon className="w-5 h-5 text-neon-blue shrink-0" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">{item.title}</p>
                           <StatusBadge status={d.status} />
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                        <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
                           {d.eventTime && (
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" /> {d.eventTime}
@@ -1750,7 +1745,7 @@ export default function LegalLensPage() {
             const d = item.data as unknown as ContactData;
             const ContactIcon = contactTypeIcons[d.contactType || 'client'] || Users;
             return (
-              <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)}>
+              <div key={item.id} className={ds.panelHover} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-neon-blue/20 flex items-center justify-center shrink-0">
                     <ContactIcon className="w-5 h-5 text-neon-blue" />
@@ -1766,27 +1761,27 @@ export default function LegalLensPage() {
                   )}
                 </div>
                 {d.organization && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <Building className="w-3 h-3" /> {d.organization}
                   </div>
                 )}
                 {d.email && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <Mail className="w-3 h-3" /> {d.email}
                   </div>
                 )}
                 {d.phone && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <Phone className="w-3 h-3" /> {d.phone}
                   </div>
                 )}
                 {d.caseName && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
                     <Briefcase className="w-3 h-3" /> {d.caseName}
                   </div>
                 )}
                 {d.relationship && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <div className="flex items-center gap-1 text-xs text-gray-400">
                     <Link2 className="w-3 h-3" /> {d.relationship}
                   </div>
                 )}
@@ -1813,7 +1808,7 @@ export default function LegalLensPage() {
         filtered.map((item) => {
           const d = item.data as unknown as ContractData;
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-2">
                 <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                 <StatusBadge status={d.status} />
@@ -1844,7 +1839,7 @@ export default function LegalLensPage() {
                 })}
               </div>
 
-              <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+              <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                 {d.parties && d.parties.length > 0 && (
                   <span className="flex items-center gap-1">
                     <Users className="w-3 h-3" /> {d.parties.length} parties
@@ -1874,7 +1869,7 @@ export default function LegalLensPage() {
                     </span>
                   ))}
                   {d.keyTerms.length > 3 && (
-                    <span className="text-xs text-gray-500">+{d.keyTerms.length - 3} more</span>
+                    <span className="text-xs text-gray-400">+{d.keyTerms.length - 3} more</span>
                   )}
                 </div>
               )}
@@ -1923,8 +1918,7 @@ export default function LegalLensPage() {
                   d.status === 'overdue' && 'border-red-500/30',
                   d.status === 'due_soon' && 'border-amber-400/30'
                 )}
-                onClick={() => openEditEditor(item)}
-              >
+                onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <CIcon
@@ -1967,7 +1961,7 @@ export default function LegalLensPage() {
                     </div>
                   )}
 
-                <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                   <span className={ds.badge('gray-400')}>
                     {formatLabel(d.complianceType || 'other')}
                   </span>
@@ -2008,7 +2002,7 @@ export default function LegalLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowDetailPanel(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowDetailPanel(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-3xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -2110,7 +2104,7 @@ export default function LegalLensPage() {
                             {c.timeline.map((ev, i) => (
                               <div key={i} className="relative">
                                 <div className="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-neon-blue" />
-                                <p className="text-xs text-gray-500">{ev.date}</p>
+                                <p className="text-xs text-gray-400">{ev.date}</p>
                                 <p className="text-sm">{ev.event}</p>
                               </div>
                             ))}
@@ -2250,7 +2244,7 @@ export default function LegalLensPage() {
               )}
             </div>
             <div className="flex items-center justify-between p-4 border-t border-lattice-border">
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
                 <span>Type: {d.artifactType}</span>
                 <span>ID: {detailItem.id.slice(0, 8)}</span>
               </div>
@@ -2280,7 +2274,7 @@ export default function LegalLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-2xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -3222,7 +3216,7 @@ export default function LegalLensPage() {
                   >
                     {String(actionResult.count)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Upcoming Deadlines</p>
+                  <p className="text-[10px] text-gray-400">Upcoming Deadlines</p>
                 </div>
                 {(
                   actionResult.upcoming as {
@@ -3258,7 +3252,7 @@ export default function LegalLensPage() {
                     >
                       {String(actionResult.daysUntilExpiry)}d
                     </p>
-                    <p className="text-[10px] text-gray-500">Until Expiry</p>
+                    <p className="text-[10px] text-gray-400">Until Expiry</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -3266,7 +3260,7 @@ export default function LegalLensPage() {
                     >
                       {String(actionResult.urgency)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Urgency</p>
+                    <p className="text-[10px] text-gray-400">Urgency</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3292,7 +3286,7 @@ export default function LegalLensPage() {
                   >
                     {actionResult.hasConflict ? 'Conflict Found' : 'No Conflicts'}
                   </p>
-                  <p className="text-[10px] text-gray-500">Conflict Check</p>
+                  <p className="text-[10px] text-gray-400">Conflict Check</p>
                 </div>
                 {Array.isArray(actionResult.conflicts) &&
                   (actionResult.conflicts as { name: string; conflictType: string }[]).map(
@@ -3317,13 +3311,13 @@ export default function LegalLensPage() {
                     >
                       {String(actionResult.score)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Score</p>
+                    <p className="text-[10px] text-gray-400">Score</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-green-400">
                       {String(actionResult.compliant)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Compliant</p>
+                    <p className="text-[10px] text-gray-400">Compliant</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -3331,7 +3325,7 @@ export default function LegalLensPage() {
                     >
                       {String(actionResult.overdue)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Overdue</p>
+                    <p className="text-[10px] text-gray-400">Overdue</p>
                   </div>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">

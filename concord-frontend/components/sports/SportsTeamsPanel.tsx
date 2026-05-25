@@ -66,7 +66,7 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -89,13 +89,13 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {teams.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Not following any teams.</p>
+          <p className="text-[11px] text-zinc-400 italic">Not following any teams.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {teams.map((t) => (
               <button key={t.id} type="button" onClick={() => unfollow(t)}
                 className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-red-700/50 bg-red-950/40 text-red-300">
-                {t.name} <span className="text-zinc-500 uppercase">{t.league}</span> ✕
+                {t.name} <span className="text-zinc-400 uppercase">{t.league}</span> ✕
               </button>
             ))}
           </div>
@@ -118,12 +118,12 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
             className="bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg">Set</button>
         </div>
         {standings.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No standings recorded.</p>
+          <p className="text-[11px] text-zinc-400 italic">No standings recorded.</p>
         ) : (
           <ul className="space-y-1">
             {standings.map((r) => (
               <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-xs text-zinc-200"><span className="text-zinc-500">{r.rank}.</span> {r.team}</span>
+                <span className="text-xs text-zinc-200"><span className="text-zinc-400">{r.rank}.</span> {r.team}</span>
                 <span className="text-[11px] text-zinc-400 font-mono">{r.wins}-{r.losses} · {(r.winPct * 100).toFixed(0)}%</span>
               </li>
             ))}
@@ -149,7 +149,7 @@ export function SportsTeamsPanel({ onChange }: { onChange: () => void }) {
             {news.slice(0, 8).map((n) => (
               <li key={n.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <p className="text-xs text-zinc-200">{n.headline}</p>
-                <p className="text-[10px] text-zinc-500">{n.team} · {n.date}</p>
+                <p className="text-[10px] text-zinc-400">{n.team} · {n.date}</p>
               </li>
             ))}
           </ul>

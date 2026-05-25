@@ -353,7 +353,7 @@ export function KnowledgeSpace3D({
       </div>
 
       {/* Stats */}
-      <div className="absolute bottom-4 right-4 text-xs text-gray-500 z-10">
+      <div className="absolute bottom-4 right-4 text-xs text-gray-400 z-10">
         {nodes.length} nodes in 3D space
       </div>
 

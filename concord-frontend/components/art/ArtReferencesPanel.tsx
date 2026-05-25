@@ -56,7 +56,7 @@ export function ArtReferencesPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -73,7 +73,7 @@ export function ArtReferencesPanel() {
       </div>
 
       {boards.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No reference boards yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No reference boards yet.</p>
       ) : (
         boards.map((b) => {
           const f = refForm[b.id] || { url: '', note: '' };
@@ -98,7 +98,7 @@ export function ArtReferencesPanel() {
                   className="px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Add</button>
               </div>
               {b.refs.length === 0 ? (
-                <p className="text-[10px] text-zinc-600 italic">No references on this board.</p>
+                <p className="text-[10px] text-zinc-400 italic">No references on this board.</p>
               ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {b.refs.map((r) => (
@@ -110,7 +110,7 @@ export function ArtReferencesPanel() {
                         className="absolute top-1 right-1 bg-black/60 text-zinc-200 hover:text-rose-300 rounded p-0.5 opacity-0 group-hover:opacity-100">
                         <Trash2 className="w-3 h-3" />
                       </button>
-                      {r.note && <p className="text-[9px] text-zinc-500 mt-0.5 truncate">{r.note}</p>}
+                      {r.note && <p className="text-[9px] text-zinc-400 mt-0.5 truncate">{r.note}</p>}
                     </div>
                   ))}
                 </div>

@@ -13,6 +13,7 @@ export default function registerVoteActions(registerLensAction) {
    * For approval voting: artifact.data.approvals = [{ voter?, approved: string[] }]
    */
   registerLensAction("vote", "tallyVotes", (ctx, artifact, _params) => {
+  try {
     const ballots = artifact.data?.ballots || [];
     const approvals = artifact.data?.approvals || [];
     if (ballots.length === 0 && approvals.length === 0) {
@@ -153,7 +154,8 @@ export default function registerVoteActions(registerLensAction) {
         overallWinner: condorcetWinner || (methodAgreement === "unanimous" ? uniqueWinners[0] : pluralityWinner),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * fairnessCheck
@@ -163,6 +165,7 @@ export default function registerVoteActions(registerLensAction) {
    * artifact.data.results = { [candidate]: seatShare } (for Gallagher index)
    */
   registerLensAction("vote", "fairnessCheck", (ctx, artifact, _params) => {
+  try {
     const ballots = artifact.data?.ballots || [];
     const results = artifact.data?.results || {};
     if (ballots.length === 0) return { ok: false, error: "No ballot data provided." };
@@ -292,7 +295,8 @@ export default function registerVoteActions(registerLensAction) {
         pairwiseLosses,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * consensusMeasure
@@ -302,6 +306,7 @@ export default function registerVoteActions(registerLensAction) {
    * OR artifact.data.ballots = [{ voter?, rankings: string[] }]
    */
   registerLensAction("vote", "consensusMeasure", (ctx, artifact, _params) => {
+  try {
     const ratings = artifact.data?.ratings || [];
     const ballots = artifact.data?.ballots || [];
 
@@ -476,7 +481,8 @@ export default function registerVoteActions(registerLensAction) {
         overallConsensus: fleissKappa > 0.6 && polarizationIndex < 0.3 ? "strong" : fleissKappa > 0.3 ? "moderate" : "weak",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────────────────
   // Polis / Decidim / Snapshot parity — persistent governance substrate.
@@ -663,6 +669,7 @@ export default function registerVoteActions(registerLensAction) {
    * quorum/threshold rules, eligibility, and a voting-period lifecycle.
    */
   registerLensAction("vote", "poll-create", (ctx, _a, params = {}) => {
+  try {
     const s = getVoteState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const title = vtclean(params.title, 160);
@@ -708,7 +715,8 @@ export default function registerVoteActions(registerLensAction) {
     if (!s.ballots.has(poll.id)) s.ballots.set(poll.id, []);
     saveVoteState();
     return { ok: true, result: { poll: { ...poll, status: pollStatus(poll) } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * poll-list — list all governance polls with live status + ballot counts.
@@ -757,6 +765,7 @@ export default function registerVoteActions(registerLensAction) {
    * a voter re-casting overwrites their prior ballot (one ballot per voter).
    */
   registerLensAction("vote", "cast-ballot", (ctx, _a, params = {}) => {
+  try {
     const s = getVoteState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const poll = findPoll(s, vtclean(params.pollId, 80));
@@ -842,7 +851,8 @@ export default function registerVoteActions(registerLensAction) {
 
     saveVoteState();
     return { ok: true, result: { ballot, receipt, replaced: prevIdx >= 0 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * delegate-vote — liquid democracy. A voter delegates their voting power
@@ -925,6 +935,7 @@ export default function registerVoteActions(registerLensAction) {
    * results payload plus a consensus-over-time series.
    */
   registerLensAction("vote", "poll-results", (_ctx, _a, params = {}) => {
+  try {
     const s = getVoteState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const poll = findPoll(s, vtclean(params.pollId, 80));
@@ -983,7 +994,8 @@ export default function registerVoteActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * opinion-cluster — Polis-style. Group voters into agreement clusters from
@@ -994,6 +1006,7 @@ export default function registerVoteActions(registerLensAction) {
    * params.votes = [{ voter, opinions: { commentId: -1|0|1 } }]
    */
   registerLensAction("vote", "opinion-cluster", (_ctx, _a, params = {}) => {
+  try {
     const comments = (Array.isArray(params.comments) ? params.comments : [])
       .map((c) => vtclean(c, 120)).filter(Boolean);
     const votes = Array.isArray(params.votes) ? params.votes : [];
@@ -1081,7 +1094,8 @@ export default function registerVoteActions(registerLensAction) {
         polarization: vtround(divisiveComments.length / Math.max(comments.length, 1)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * audit-trail — return the verifiable receipt log for a poll. Each receipt
@@ -1113,6 +1127,7 @@ export default function registerVoteActions(registerLensAction) {
    * verify-receipt — verify a single vote receipt against the recorded ballot.
    */
   registerLensAction("vote", "verify-receipt", (_ctx, _a, params = {}) => {
+  try {
     const s = getVoteState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const pollId = vtclean(params.pollId, 80);
@@ -1137,5 +1152,6 @@ export default function registerVoteActions(registerLensAction) {
         receipt,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

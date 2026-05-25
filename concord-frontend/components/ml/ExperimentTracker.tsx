@@ -101,7 +101,7 @@ export function ExperimentTracker() {
         {loading ? (
           <div className="py-8 text-center text-gray-400"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
         ) : experiments.length === 0 ? (
-          <div className="panel p-8 text-center text-gray-500 text-sm">
+          <div className="panel p-8 text-center text-gray-400 text-sm">
             <Beaker className="w-8 h-8 mx-auto mb-2 opacity-40" />
             No experiments yet. Start one to track training runs.
           </div>
@@ -118,7 +118,7 @@ export function ExperimentTracker() {
                   <S.Icon className="w-3 h-3" />{exp.status}
                 </span>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-400">
                 Epoch {exp.metrics.length}/{exp.hyperparams.epochs}
               </div>
               <div className="mt-1.5 h-1 bg-lattice-surface rounded-full overflow-hidden">
@@ -196,7 +196,7 @@ export function ExperimentTracker() {
             </div>
           </>
         ) : (
-          <div className="panel p-12 text-center text-gray-500">
+          <div className="panel p-12 text-center text-gray-400">
             <Beaker className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p>Select an experiment to view metrics</p>
           </div>
@@ -227,9 +227,9 @@ function NewExperimentModal({ onClose, onCreated }: { onClose: () => void; onCre
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-lg p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">New Experiment</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>

@@ -182,8 +182,8 @@ function JobsTab() {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        jobs.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No jobs.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        jobs.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No jobs.</p> :
         jobs.map((j) => (
           <div key={j.id} className="rounded border border-white/10 bg-black/20 p-3">
             <div className="flex items-start justify-between gap-2 mb-2">
@@ -194,14 +194,14 @@ function JobsTab() {
                   <span className={cn('text-[10px] px-1.5 py-0.5 rounded uppercase font-mono', STATUS_COLOR[j.status])}>{j.status}</span>
                 </div>
                 <p className="text-sm text-gray-100 mt-1">{j.customerName}</p>
-                <p className="text-[11px] text-gray-500 line-clamp-2">{j.description}</p>
-                {j.assignedTech && <p className="text-[10px] text-gray-500 mt-1">→ {j.assignedTech}</p>}
+                <p className="text-[11px] text-gray-400 line-clamp-2">{j.description}</p>
+                {j.assignedTech && <p className="text-[10px] text-gray-400 mt-1">→ {j.assignedTech}</p>}
               </div>
             </div>
             <div className="flex gap-1 flex-wrap">
               {(['dispatched', 'en-route', 'on-site', 'completed'] as const).map((s) => (
                 <button key={s} type="button" onClick={() => updateStatus(j.id, s)}
-                  className="px-2 py-0.5 text-[10px] rounded border border-white/10 hover:border-amber-500/30 text-gray-500 hover:text-amber-300">
+                  className="px-2 py-0.5 text-[10px] rounded border border-white/10 hover:border-amber-500/30 text-gray-400 hover:text-amber-300">
                   {s}
                 </button>
               ))}
@@ -257,9 +257,9 @@ function CustomersTab() {
       {customers.map((c) => (
         <div key={c.id} className="rounded border border-white/10 bg-black/20 p-3">
           <p className="text-sm font-medium text-gray-100">{c.name}</p>
-          {c.phone && <p className="text-[11px] text-gray-500">{c.phone}</p>}
-          {c.email && <p className="text-[11px] text-gray-500">{c.email}</p>}
-          {c.address && <p className="text-[11px] text-gray-500">{c.address}</p>}
+          {c.phone && <p className="text-[11px] text-gray-400">{c.phone}</p>}
+          {c.email && <p className="text-[11px] text-gray-400">{c.email}</p>}
+          {c.address && <p className="text-[11px] text-gray-400">{c.address}</p>}
         </div>
       ))}
     </div>
@@ -339,7 +339,7 @@ function ContractsTab() {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-100">{c.customerName}</p>
-              <p className="text-[11px] text-gray-500">${c.monthlyRate}/mo · {c.cadence}</p>
+              <p className="text-[11px] text-gray-400">${c.monthlyRate}/mo · {c.cadence}</p>
               {c.description && <p className="text-[11px] text-gray-400 mt-1">{c.description}</p>}
             </div>
             {c.active && (

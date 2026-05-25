@@ -258,9 +258,9 @@ export function DTUEmbed({ dtu, mode = 'card', onOpen, recordSurfaceFromLens, cl
               size="sm"
             />
             {dtu.domain && (
-              <span className="text-[10px] text-gray-500 capitalize">{dtu.domain}</span>
+              <span className="text-[10px] text-gray-400 capitalize">{dtu.domain}</span>
             )}
-            {relTime && <span className="text-[10px] text-gray-500">{relTime}</span>}
+            {relTime && <span className="text-[10px] text-gray-400">{relTime}</span>}
           </div>
         </div>
       </header>

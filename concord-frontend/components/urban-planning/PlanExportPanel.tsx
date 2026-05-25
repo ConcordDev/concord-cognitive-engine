@@ -149,7 +149,7 @@ export function PlanExportPanel() {
                   key={label as string}
                   className="rounded border border-emerald-500/20 bg-zinc-950 px-2 py-1.5"
                 >
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">
                     {label}
                   </div>
                   <div className="font-mono text-sm text-emerald-300">
@@ -183,7 +183,7 @@ export function PlanExportPanel() {
                   key={label as string}
                   className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5"
                 >
-                  <div className="text-[9px] uppercase tracking-wider text-zinc-500">
+                  <div className="text-[9px] uppercase tracking-wider text-zinc-400">
                     {label}
                   </div>
                   <div className="font-mono text-xs text-zinc-200">{val}</div>
@@ -242,7 +242,7 @@ export function PlanExportPanel() {
         )}
         {report && (
           <div className="mt-3">
-            <p className="mb-2 text-[11px] text-zinc-500">
+            <p className="mb-2 text-[11px] text-zinc-400">
               Generated {new Date(report.generatedAt).toLocaleString()} ·{' '}
               {report.counts.parcels} parcels · {report.counts.scenarios} scenarios ·{' '}
               {report.counts.comments} comments

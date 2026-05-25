@@ -93,11 +93,11 @@ export function Recommendations() {
       )}
 
       {loading && (
-        <div className="py-6 text-center text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+        <div className="py-6 text-center text-zinc-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
       )}
 
       {!loading && !error && recs?.reason === 'no_history' && (
-        <div className="py-6 text-center text-[12px] text-zinc-500 italic">
+        <div className="py-6 text-center text-[12px] text-zinc-400 italic">
           No viewing history yet. Browse and save artworks to get personalized recommendations.
         </div>
       )}
@@ -133,7 +133,7 @@ export function Recommendations() {
                 <div className="w-full h-28 bg-zinc-950 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
               )}
               <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
-              <div className="text-[9px] text-zinc-500">{w.artist}</div>
+              <div className="text-[9px] text-zinc-400">{w.artist}</div>
               <div className="text-[9px] text-fuchsia-400/80 italic mt-0.5 line-clamp-1">{w.reason}</div>
             </button>
           ))}
@@ -141,14 +141,14 @@ export function Recommendations() {
       )}
 
       {!loading && recs && recs.profile && recs.recommendations.length === 0 && recs.reason !== 'no_history' && (
-        <div className="py-4 text-center text-[12px] text-zinc-500 italic">
+        <div className="py-4 text-center text-[12px] text-zinc-400 italic">
           Profile built, but no new picks available right now. Try again later.
         </div>
       )}
 
       {history.length > 0 && (
         <div>
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mt-1">
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mt-1">
             <History className="w-3 h-3" /> Recently viewed
           </div>
           <div className="mt-1.5 flex gap-2 overflow-x-auto pb-1">

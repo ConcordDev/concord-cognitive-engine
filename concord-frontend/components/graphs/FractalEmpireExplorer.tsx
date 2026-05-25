@@ -226,7 +226,7 @@ export function FractalEmpireExplorer({
       />
 
       {/* Instructions */}
-      <div className="absolute top-4 left-4 text-xs text-gray-500">
+      <div className="absolute top-4 left-4 text-xs text-gray-400">
         Drag to pan • Use controls to zoom
       </div>
     </div>

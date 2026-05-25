@@ -46,7 +46,7 @@ export function PgMilestonesPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -65,7 +65,7 @@ export function PgMilestonesPanel({ childId }: { childId: string }) {
                   <div className="h-full bg-rose-500 rounded-full"
                     style={{ width: `${v.total ? (v.achieved / v.total) * 100 : 0}%` }} />
                 </div>
-                <span className="text-[10px] text-zinc-500 w-10 text-right">{v.achieved}/{v.total}</span>
+                <span className="text-[10px] text-zinc-400 w-10 text-right">{v.achieved}/{v.total}</span>
               </div>
             ))}
           </div>
@@ -78,7 +78,7 @@ export function PgMilestonesPanel({ childId }: { childId: string }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
             <Sparkles className="w-3.5 h-3.5 text-rose-400" /> CDC checklist · {checklist.checkpoint}-month milestones
           </h3>
-          <p className="text-[10px] text-zinc-500 mb-2">
+          <p className="text-[10px] text-zinc-400 mb-2">
             Tap to mark milestones your child has reached. Share concerns with your pediatrician — every child grows differently.
           </p>
           <ul className="space-y-1.5">

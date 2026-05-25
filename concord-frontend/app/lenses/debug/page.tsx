@@ -379,7 +379,7 @@ export default function DebugLensPage() {
         transition={{ delay: 0.35 }}
         className="flex items-center gap-2 flex-wrap"
       >
-        <Terminal className="w-3.5 h-3.5 text-gray-500" />
+        <Terminal className="w-3.5 h-3.5 text-gray-400" />
         {[
           {
             level: 'INFO',
@@ -453,7 +453,7 @@ export default function DebugLensPage() {
                   <p className="text-lg font-bold text-neon-cyan">
                     {String(actionResult.totalLogs)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Total Logs</p>
+                  <p className="text-[10px] text-gray-400">Total Logs</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
@@ -461,13 +461,13 @@ export default function DebugLensPage() {
                   >
                     {String(actionResult.errorRate)}%
                   </p>
-                  <p className="text-[10px] text-gray-500">Error Rate</p>
+                  <p className="text-[10px] text-gray-400">Error Rate</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-purple">
                     {String(actionResult.logsPerSecond)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Logs/sec</p>
+                  <p className="text-[10px] text-gray-400">Logs/sec</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-yellow-400">
@@ -475,12 +475,12 @@ export default function DebugLensPage() {
                       ? (actionResult.topPatterns as unknown[]).length
                       : 0}
                   </p>
-                  <p className="text-[10px] text-gray-500">Patterns</p>
+                  <p className="text-[10px] text-gray-400">Patterns</p>
                 </div>
               </div>
               {!!actionResult.levelDistribution && (
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                     Level Distribution
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -512,7 +512,7 @@ export default function DebugLensPage() {
                   }>
                 ).length > 0 && (
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                       Error Hotspots
                     </p>
                     <div className="space-y-1">
@@ -530,7 +530,7 @@ export default function DebugLensPage() {
                               {s.source}
                             </span>
                             <span className="text-red-400">{s.errors} errors</span>
-                            <span className="text-gray-500">{s.errorRate}%</span>
+                            <span className="text-gray-400">{s.errorRate}%</span>
                           </div>
                         ))}
                     </div>
@@ -556,19 +556,19 @@ export default function DebugLensPage() {
                   <p className="text-lg font-bold text-neon-cyan">
                     {String(actionResult.totalErrors)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Total Errors</p>
+                  <p className="text-[10px] text-gray-400">Total Errors</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-purple">
                     {String(actionResult.uniqueClusters)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Clusters</p>
+                  <p className="text-[10px] text-gray-400">Clusters</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-green">
                     {String(actionResult.deduplicationRatio)}%
                   </p>
-                  <p className="text-[10px] text-gray-500">Dedup Ratio</p>
+                  <p className="text-[10px] text-gray-400">Dedup Ratio</p>
                 </div>
               </div>
               {Array.isArray(actionResult.clusters) && (
@@ -601,13 +601,13 @@ export default function DebugLensPage() {
                           >
                             {cluster.severity}
                           </span>
-                          <span className="text-gray-500">
+                          <span className="text-gray-400">
                             {cluster.totalOccurrences} occurrences
                           </span>
                         </div>
                         <p className="text-gray-300 font-mono truncate">{cluster.representative}</p>
                         {cluster.commonFrame && (
-                          <p className="text-gray-500 font-mono text-[10px] mt-0.5 truncate">
+                          <p className="text-gray-400 font-mono text-[10px] mt-0.5 truncate">
                             {cluster.commonFrame}
                           </p>
                         )}
@@ -628,25 +628,25 @@ export default function DebugLensPage() {
                   <p className="text-lg font-bold text-neon-cyan">
                     {String(actionResult.totalTraces)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Traces</p>
+                  <p className="text-[10px] text-gray-400">Traces</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-yellow-400">
                     {String(actionResult.totalDurationMs)}ms
                   </p>
-                  <p className="text-[10px] text-gray-500">Total Time</p>
+                  <p className="text-[10px] text-gray-400">Total Time</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-purple">
                     {String(actionResult.uniqueOperations)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Operations</p>
+                  <p className="text-[10px] text-gray-400">Operations</p>
                 </div>
               </div>
               {Array.isArray(actionResult.hotPath) &&
                 (actionResult.hotPath as string[]).length > 0 && (
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                       Hot Path
                     </p>
                     <div className="flex flex-wrap gap-1">
@@ -663,7 +663,7 @@ export default function DebugLensPage() {
                 )}
               {Array.isArray(actionResult.bottlenecks) && (
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                     Bottlenecks
                   </p>
                   {(
@@ -678,7 +678,7 @@ export default function DebugLensPage() {
                       <div key={i} className="flex items-center gap-2 text-xs mb-1">
                         <span className="text-gray-300 font-mono flex-1 truncate">{b.name}</span>
                         <span className="text-red-400">{b.selfTimeMs}ms</span>
-                        <span className="text-gray-500">{b.percentSelfTime}%</span>
+                        <span className="text-gray-400">{b.percentSelfTime}%</span>
                       </div>
                     ))}
                 </div>
@@ -694,7 +694,7 @@ export default function DebugLensPage() {
                 <p className="text-lg font-bold text-neon-cyan">
                   {String(actionResult.totalTraces)}
                 </p>
-                <p className="text-[10px] text-gray-500">Traces</p>
+                <p className="text-[10px] text-gray-400">Traces</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-yellow-400">
@@ -702,7 +702,7 @@ export default function DebugLensPage() {
                     (actionResult.userVsLibrary as Record<string, number>)?.avgUserFrames ?? 0
                   )}
                 </p>
-                <p className="text-[10px] text-gray-500">Avg User Frames</p>
+                <p className="text-[10px] text-gray-400">Avg User Frames</p>
               </div>
               <div className="p-2 bg-lattice-surface rounded text-center">
                 <p className="text-lg font-bold text-neon-purple">
@@ -710,12 +710,12 @@ export default function DebugLensPage() {
                     (actionResult.userVsLibrary as Record<string, number>)?.avgLibraryFrames ?? 0
                   )}
                 </p>
-                <p className="text-[10px] text-gray-500">Avg Lib Frames</p>
+                <p className="text-[10px] text-gray-400">Avg Lib Frames</p>
               </div>
             </div>
             {!!actionResult.errorTypeDistribution && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                   Error Types
                 </p>
                 <div className="flex flex-wrap gap-1">
@@ -741,7 +741,7 @@ export default function DebugLensPage() {
                 }>
               ).length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                     Root Cause Candidates
                   </p>
                   {(
@@ -756,7 +756,7 @@ export default function DebugLensPage() {
                       className="p-2 bg-red-400/5 border border-red-400/20 rounded text-xs mb-1"
                     >
                       <p className="text-red-300 font-mono text-[10px] truncate">{rc.location}</p>
-                      <p className="text-gray-500">{rc.count} occurrences</p>
+                      <p className="text-gray-400">{rc.count} occurrences</p>
                     </div>
                   ))}
                 </div>
@@ -770,7 +770,7 @@ export default function DebugLensPage() {
                 }>
               ).length > 0 && (
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
                     Common Frames
                   </p>
                   {(
@@ -785,7 +785,7 @@ export default function DebugLensPage() {
                       <div key={i} className="flex items-center gap-2 text-xs mb-1">
                         <span className="text-gray-300 font-mono flex-1 truncate">{f.frame}</span>
                         <span className="text-neon-cyan">{f.occurrences}x</span>
-                        <span className="text-gray-500">{f.percentage}%</span>
+                        <span className="text-gray-400">{f.percentage}%</span>
                       </div>
                     ))}
                 </div>
@@ -854,7 +854,7 @@ export default function DebugLensPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                 {perfMetrics.uptime && (
                   <div className="bg-lattice-deep p-3 rounded-lg">
-                    <p className="text-xs text-gray-500">Uptime</p>
+                    <p className="text-xs text-gray-400">Uptime</p>
                     <p className="text-lg font-mono text-neon-green">
                       {formatUptime(perfMetrics.uptime)}
                     </p>
@@ -862,7 +862,7 @@ export default function DebugLensPage() {
                 )}
                 {perfMetrics.memory?.heapUsed && (
                   <div className="bg-lattice-deep p-3 rounded-lg">
-                    <p className="text-xs text-gray-500">Heap Used</p>
+                    <p className="text-xs text-gray-400">Heap Used</p>
                     <p className="text-lg font-mono text-neon-blue">
                       {Math.round(perfMetrics.memory.heapUsed / 1024 / 1024)}MB
                     </p>
@@ -870,7 +870,7 @@ export default function DebugLensPage() {
                 )}
                 {perfMetrics.memory?.heapTotal && (
                   <div className="bg-lattice-deep p-3 rounded-lg">
-                    <p className="text-xs text-gray-500">Heap Total</p>
+                    <p className="text-xs text-gray-400">Heap Total</p>
                     <p className="text-lg font-mono text-gray-300">
                       {Math.round(perfMetrics.memory.heapTotal / 1024 / 1024)}MB
                     </p>
@@ -928,7 +928,7 @@ export default function DebugLensPage() {
           </h2>
           <div className="space-y-2 max-h-[600px] overflow-auto">
             {(events?.events || []).length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-400">
                 <Eye className="w-8 h-8 mx-auto mb-3 opacity-40" />
                 <p className="text-sm">No events recorded yet</p>
               </div>
@@ -949,9 +949,9 @@ export default function DebugLensPage() {
                       >
                         <div className="flex items-center gap-3">
                           {isExpanded ? (
-                            <ChevronDown className="w-3 h-3 text-gray-500" />
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
                           ) : (
-                            <ChevronRight className="w-3 h-3 text-gray-500" />
+                            <ChevronRight className="w-3 h-3 text-gray-400" />
                           )}
                           <span
                             className={`font-mono text-sm ${
@@ -964,7 +964,7 @@ export default function DebugLensPage() {
                           >
                             {String(event.type)}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             {String(event.at || event.timestamp || '')}
                           </span>
                         </div>
@@ -1004,7 +1004,7 @@ export default function DebugLensPage() {
             </div>
           </div>
           <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               className="w-full pl-10 pr-8 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
               placeholder="Filter logs..."
@@ -1014,7 +1014,7 @@ export default function DebugLensPage() {
             {logSearch && (
               <button
                 onClick={() => setLogSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
@@ -1022,7 +1022,7 @@ export default function DebugLensPage() {
           </div>
           <div className="bg-lattice-void rounded-lg overflow-auto max-h-[500px] font-mono text-xs">
             {filteredLogs.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-400">
                 <Terminal className="w-8 h-8 mx-auto mb-3 opacity-40" />
                 <p>No matching log entries</p>
               </div>
@@ -1048,7 +1048,7 @@ export default function DebugLensPage() {
                         : log.level === 'warn'
                           ? 'text-yellow-400'
                           : log.level === 'debug'
-                            ? 'text-gray-500'
+                            ? 'text-gray-400'
                             : 'text-neon-blue'
                     }`}
                   >
@@ -1232,14 +1232,14 @@ export default function DebugLensPage() {
               <div className="absolute top-2 right-2 flex gap-1 z-10">
                 <button
                   onClick={copyConsole}
-                  className="p-1 text-gray-500 hover:text-white"
+                  className="p-1 text-gray-400 hover:text-white"
                   title="Copy"
                 >
                   <Copy className="w-3 h-3" />
                 </button>
                 <button
                   onClick={clearConsole}
-                  className="p-1 text-gray-500 hover:text-white"
+                  className="p-1 text-gray-400 hover:text-white"
                   title="Clear"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -1293,7 +1293,7 @@ function ContextInspectorPanel() {
 
   if (isLoading) {
     return (
-      <div className="panel p-4 text-center text-gray-500 text-sm">
+      <div className="panel p-4 text-center text-gray-400 text-sm">
         Loading context engine state...
       </div>
     );
@@ -1321,19 +1321,19 @@ function ContextInspectorPanel() {
       {/* Working Set Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-lattice-deep p-3 rounded-lg">
-          <p className="text-xs text-gray-500">Working Set Size</p>
+          <p className="text-xs text-gray-400">Working Set Size</p>
           <p className="text-lg font-mono text-neon-blue">{ws?.totalSize ?? 0}</p>
         </div>
         <div className="bg-lattice-deep p-3 rounded-lg">
-          <p className="text-xs text-gray-500">Active Sessions</p>
+          <p className="text-xs text-gray-400">Active Sessions</p>
           <p className="text-lg font-mono text-neon-green">{engine.activeSessions ?? 0}</p>
         </div>
         <div className="bg-lattice-deep p-3 rounded-lg">
-          <p className="text-xs text-gray-500">User Profiles</p>
+          <p className="text-xs text-gray-400">User Profiles</p>
           <p className="text-lg font-mono text-neon-purple">{engine.userProfileCount ?? 0}</p>
         </div>
         <div className="bg-lattice-deep p-3 rounded-lg">
-          <p className="text-xs text-gray-500">Queries Processed</p>
+          <p className="text-xs text-gray-400">Queries Processed</p>
           <p className="text-lg font-mono text-gray-300">{metrics.queriesProcessed ?? 0}</p>
         </div>
       </div>
@@ -1344,7 +1344,7 @@ function ContextInspectorPanel() {
           Pinned DTUs ({pinned.length})
         </p>
         {pinned.length === 0 ? (
-          <p className="text-xs text-gray-600">No pinned DTUs in active sessions</p>
+          <p className="text-xs text-gray-400">No pinned DTUs in active sessions</p>
         ) : (
           <div className="max-h-32 overflow-y-auto space-y-1">
             {pinned.map(
@@ -1355,7 +1355,7 @@ function ContextInspectorPanel() {
                 >
                   <Database className="w-3 h-3 text-neon-cyan shrink-0" />
                   <span className="text-white truncate flex-1">{p.title}</span>
-                  <span className="text-gray-500 font-mono shrink-0">{p.score}</span>
+                  <span className="text-gray-400 font-mono shrink-0">{p.score}</span>
                 </div>
               )
             )}
@@ -1369,7 +1369,7 @@ function ContextInspectorPanel() {
           Co-Activation Patterns ({coPatterns.length})
         </p>
         {coPatterns.length === 0 ? (
-          <p className="text-xs text-gray-600">No active co-activation tracking</p>
+          <p className="text-xs text-gray-400">No active co-activation tracking</p>
         ) : (
           <div className="max-h-32 overflow-y-auto space-y-1">
             {coPatterns.map(
@@ -1381,7 +1381,7 @@ function ContextInspectorPanel() {
                   <span className="text-gray-300 font-mono truncate">
                     {cp.sessionId.slice(0, 20)}
                   </span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     {cp.trackedDtus} DTUs / {cp.queryCount} queries
                   </span>
                 </div>
@@ -1397,7 +1397,7 @@ function ContextInspectorPanel() {
           User Profile Weights ({userProfiles.length})
         </p>
         {userProfiles.length === 0 ? (
-          <p className="text-xs text-gray-600">No user profiles tracked yet</p>
+          <p className="text-xs text-gray-400">No user profiles tracked yet</p>
         ) : (
           <div className="max-h-48 overflow-y-auto space-y-2">
             {userProfiles.map(
@@ -1417,7 +1417,7 @@ function ContextInspectorPanel() {
                 >
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-gray-300 font-mono">{up.userId.slice(0, 20)}</span>
-                    <span className="text-gray-500">{up.sessionCount} sessions</span>
+                    <span className="text-gray-400">{up.sessionCount} sessions</span>
                   </div>
                   {up.topDtus.length > 0 && (
                     <div className="space-y-0.5">
@@ -1441,19 +1441,19 @@ function ContextInspectorPanel() {
         <p className="text-xs font-semibold text-gray-400 uppercase">Engine Metrics</p>
         <div className="bg-lattice-deep rounded-lg p-3 border border-lattice-border grid grid-cols-2 gap-2 text-xs">
           <div>
-            <span className="text-gray-500">Co-activation edges proposed: </span>
+            <span className="text-gray-400">Co-activation edges proposed: </span>
             <span className="text-white font-mono">{metrics.coActivationEdgesProposed ?? 0}</span>
           </div>
           <div>
-            <span className="text-gray-500">Profile seeds: </span>
+            <span className="text-gray-400">Profile seeds: </span>
             <span className="text-white font-mono">{metrics.profileSeeds ?? 0}</span>
           </div>
           <div>
-            <span className="text-gray-500">Panel queries: </span>
+            <span className="text-gray-400">Panel queries: </span>
             <span className="text-white font-mono">{metrics.contextPanelQueries ?? 0}</span>
           </div>
           <div>
-            <span className="text-gray-500">Shadow DTUs: </span>
+            <span className="text-gray-400">Shadow DTUs: </span>
             <span className="text-white font-mono">{engine.shadowDtuCount ?? 0}</span>
           </div>
         </div>
@@ -1487,7 +1487,7 @@ function HealthCard({
         <span className="text-sm font-medium text-gray-300">{label}</span>
         <span className={colors[status]}>{icons[status]}</span>
       </div>
-      <p className="text-xs text-gray-500 font-mono">{detail}</p>
+      <p className="text-xs text-gray-400 font-mono">{detail}</p>
     </div>
   );
 }

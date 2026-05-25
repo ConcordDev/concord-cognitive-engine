@@ -150,22 +150,22 @@ export function GeologyWorkbench() {
         {/* hole list */}
         <div className="space-y-1.5">
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Drill-holes ({holes.length})</div>
-          {holes.length === 0 && <div className="text-[11px] text-zinc-600 py-3">No holes logged. Add one above.</div>}
+          {holes.length === 0 && <div className="text-[11px] text-zinc-400 py-3">No holes logged. Add one above.</div>}
           {holes.map((h) => (
             <div key={h.id}
               onClick={() => setSelected(h.id)}
               className={cn('flex items-center justify-between gap-2 rounded border p-2 cursor-pointer transition-colors',
-                selected === h.id ? 'border-cyan-600 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700')}>
+                selected === h.id ? 'border-cyan-600 bg-cyan-500/10' : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-[12px] font-semibold text-white">
                   <Drill className="w-3 h-3 text-cyan-400" /> {h.name}
                 </div>
-                <div className="text-[10px] text-zinc-500">
+                <div className="text-[10px] text-zinc-400">
                   {h.totalDepth}m · az {h.azimuth}° dip {h.dip}° · {h.intervalCount} intervals · logged {h.loggedDepth}m
                 </div>
               </div>
               <button type="button" onClick={(e) => { e.stopPropagation(); delHole(h.id); }}
-                className="p-1 text-zinc-500 hover:text-red-400" aria-label="Delete hole">
+                className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete hole">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -177,7 +177,7 @@ export function GeologyWorkbench() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">
             Interval log {sel ? `— ${sel.name}` : ''}
           </div>
-          {!sel && <div className="text-[11px] text-zinc-600 py-3">Select a drill-hole to log assay intervals.</div>}
+          {!sel && <div className="text-[11px] text-zinc-400 py-3">Select a drill-hole to log assay intervals.</div>}
           {sel && (
             <>
               <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
@@ -202,12 +202,12 @@ export function GeologyWorkbench() {
                 {sel.intervals.map((iv) => (
                   <div key={iv.id} className="flex items-center justify-between text-[11px] bg-zinc-900/60 rounded px-2 py-1">
                     <span className="font-mono text-zinc-300">{iv.from}–{iv.to}m</span>
-                    <span className="text-zinc-500">{iv.lithology}</span>
+                    <span className="text-zinc-400">{iv.lithology}</span>
                     <span className="font-mono text-amber-300">{iv.assayGrade}%</span>
-                    <span className="font-mono text-zinc-500">rec {iv.recovery}%</span>
+                    <span className="font-mono text-zinc-400">rec {iv.recovery}%</span>
                   </div>
                 ))}
-                {sel.intervals.length === 0 && <div className="text-[11px] text-zinc-600">No intervals logged.</div>}
+                {sel.intervals.length === 0 && <div className="text-[11px] text-zinc-400">No intervals logged.</div>}
               </div>
             </>
           )}
@@ -235,7 +235,7 @@ export function GeologyWorkbench() {
               { key: 'tonnagePercent', label: 'Tonnage %', color: '#06b6d4' },
               { key: 'avgGrade', label: 'Avg grade %', color: '#f59e0b' },
             ]} height={220} />
-          <div className="text-[10px] text-zinc-500 mt-1">X = cutoff grade %. Higher cutoff → less tonnage, higher average grade.</div>
+          <div className="text-[10px] text-zinc-400 mt-1">X = cutoff grade %. Higher cutoff → less tonnage, higher average grade.</div>
         </div>
       )}
     </div>
@@ -244,7 +244,7 @@ export function GeologyWorkbench() {
 
 function BlockModelView({ model }: { model: BlockModel }) {
   if (model.note && model.blocks.length === 0) {
-    return <div className="text-[11px] text-zinc-500 bg-zinc-900/40 rounded p-3">{model.note}</div>;
+    return <div className="text-[11px] text-zinc-400 bg-zinc-900/40 rounded p-3">{model.note}</div>;
   }
   // render each Z level as a grid of grade-coloured cells.
   const { nx, ny, nz } = model.dimensions;
@@ -261,14 +261,14 @@ function BlockModelView({ model }: { model: BlockModel }) {
     <div className="rounded-lg border border-indigo-500/20 bg-zinc-900/40 p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="text-[11px] font-semibold text-indigo-300">3D Block Model (IDW interpolated)</div>
-        <div className="text-[10px] text-zinc-500">
+        <div className="text-[10px] text-zinc-400">
           {model.totalBlocks} blocks · {model.oreBlocks} ore · avg ore {model.avgOreGrade}% · {model.composites} composites
         </div>
       </div>
       <div className="flex flex-wrap gap-3">
         {levels.map((lvl, iz) => (
           <div key={iz}>
-            <div className="text-[9px] text-zinc-500 mb-1">Level Z{iz}</div>
+            <div className="text-[9px] text-zinc-400 mb-1">Level Z{iz}</div>
             <div className="grid gap-[2px]" style={{ gridTemplateColumns: `repeat(${nx}, 14px)` }}>
               {Array.from({ length: nx * ny }).map((_, idx) => {
                 const ix = idx % nx, iy = Math.floor(idx / nx);
@@ -286,7 +286,7 @@ function BlockModelView({ model }: { model: BlockModel }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-3 mt-2 text-[9px] text-zinc-500">
+      <div className="flex items-center gap-3 mt-2 text-[9px] text-zinc-400">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(255,60,30)' }} /> high grade</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ background: 'rgb(40,140,180)' }} /> low grade</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm" style={{ outline: '1px solid #fbbf24', background: 'transparent' }} /> above cutoff</span>

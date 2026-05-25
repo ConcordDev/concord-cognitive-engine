@@ -9,6 +9,7 @@ export default function registerLockActions(registerLensAction) {
    * detect cycles using DFS, and return deadlock sets.
    */
   registerLensAction("lock", "deadlockDetect", (ctx, artifact, params) => {
+  try {
     const locks = artifact.data?.locks || [];
     if (locks.length === 0) {
       return { ok: true, result: { deadlocked: false, cycles: [], message: "No lock data provided." } };
@@ -119,7 +120,8 @@ export default function registerLockActions(registerLensAction) {
         ),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * contentionAnalysis
@@ -128,6 +130,7 @@ export default function registerLockActions(registerLensAction) {
    * artifact.data.lockEvents = [{ resource, type: "acquire"|"release"|"wait", processId, durationMs? }]
    */
   registerLensAction("lock", "contentionAnalysis", (ctx, artifact, params) => {
+  try {
     const events = artifact.data?.lockEvents || [];
     if (events.length === 0) {
       return { ok: true, result: { message: "No lock events to analyze." } };
@@ -244,7 +247,8 @@ export default function registerLockActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * fairnessScore
@@ -253,6 +257,7 @@ export default function registerLockActions(registerLensAction) {
    * artifact.data.processWaits = [{ processId, resource, waitMs, attempts? }]
    */
   registerLensAction("lock", "fairnessScore", (ctx, artifact, params) => {
+  try {
     const waits = artifact.data?.processWaits || [];
     if (waits.length === 0) {
       return { ok: true, result: { message: "No wait data to analyze." } };
@@ -371,7 +376,8 @@ export default function registerLockActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Concurrency lock-profiler features (JFR / lock-profiler parity)

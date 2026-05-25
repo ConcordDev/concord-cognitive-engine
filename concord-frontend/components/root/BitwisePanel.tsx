@@ -55,7 +55,7 @@ export function BitwisePanel() {
         <Binary className="w-4 h-4 text-gray-400" />
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Bitwise &amp; Modular</h2>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Bit-level and modular operators over the base-6 algebra. Operands accept decimals or glyphs.
       </p>
       <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center mb-3">
@@ -93,15 +93,15 @@ export function BitwisePanel() {
           </div>
           <div className="grid grid-cols-3 gap-2 text-xs font-mono">
             <div className="bg-gray-800 rounded p-2">
-              <div className="text-[10px] uppercase text-gray-500">binary</div>
+              <div className="text-[10px] uppercase text-gray-400">binary</div>
               <div className="text-gray-200 truncate">{result.binary}</div>
             </div>
             <div className="bg-gray-800 rounded p-2">
-              <div className="text-[10px] uppercase text-gray-500">base-6</div>
+              <div className="text-[10px] uppercase text-gray-400">base-6</div>
               <div className="text-gray-200 truncate">{result.base6}</div>
             </div>
             <div className="bg-gray-800 rounded p-2">
-              <div className="text-[10px] uppercase text-gray-500">operator</div>
+              <div className="text-[10px] uppercase text-gray-400">operator</div>
               <div className="text-gray-200">{result.symbol}</div>
             </div>
           </div>

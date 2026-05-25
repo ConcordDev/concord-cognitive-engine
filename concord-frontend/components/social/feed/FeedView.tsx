@@ -127,7 +127,7 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
 
           {trending.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
-              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500 font-mono">
+              <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400 font-mono">
                 <TrendingUp className="w-3 h-3 text-indigo-300" /> Trending hashtags
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -146,14 +146,14 @@ export function FeedView({ currentUserId, username }: FeedViewProps) {
           )}
 
           {loading ? (
-            <div className="flex items-center gap-2 p-8 text-sm text-zinc-500">
+            <div className="flex items-center gap-2 p-8 text-sm text-zinc-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading feed…
             </div>
           ) : posts.length === 0 ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-12 text-center">
               <Sparkles className="mx-auto mb-3 h-8 w-8 text-zinc-700" />
               <h3 className="text-sm font-medium text-zinc-300">No posts yet</h3>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-400">
                 Write the first post — add media, a poll, or quote an existing post.
               </p>
             </div>

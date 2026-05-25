@@ -79,6 +79,7 @@ export default function registerDtusActions(registerLensAction) {
    * artifact.data.parentId, artifact.data.children, artifact.data.lineage
    */
   registerLensAction("dtus", "lineageAnalysis", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const lineage = data.lineage || [];
     const children = data.children || [];
@@ -126,7 +127,8 @@ export default function registerDtusActions(registerLensAction) {
         oldestAncestor: lineage.length > 0 ? lineage[lineage.length - 1]?.title || lineage[lineage.length - 1]?.id : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * qualityScore
@@ -134,6 +136,7 @@ export default function registerDtusActions(registerLensAction) {
    * content richness, metadata quality, and age.
    */
   registerLensAction("dtus", "qualityScore", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const meta = artifact.meta || {};
 
@@ -205,7 +208,8 @@ export default function registerDtusActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * citationNetwork
@@ -213,6 +217,7 @@ export default function registerDtusActions(registerLensAction) {
    * and compute influence metrics.
    */
   registerLensAction("dtus", "citationNetwork", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const citedBy = data.citedBy || [];
     const cites = data.cites || data.references || [];
@@ -266,7 +271,8 @@ export default function registerDtusActions(registerLensAction) {
           : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * tierRecommendation
@@ -274,6 +280,7 @@ export default function registerDtusActions(registerLensAction) {
    * at its current tier based on usage metrics.
    */
   registerLensAction("dtus", "tierRecommendation", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const meta = artifact.meta || {};
     const currentTier = data.tier || meta.tier || "regular";
@@ -332,7 +339,8 @@ export default function registerDtusActions(registerLensAction) {
           : `DTU is correctly classified at ${currentTier} tier.`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * duplicateDetection
@@ -340,6 +348,7 @@ export default function registerDtusActions(registerLensAction) {
    * and content fingerprints against sibling DTUs.
    */
   registerLensAction("dtus", "duplicateDetection", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const siblings = data.siblings || data.relatedDTUs || [];
     const title = (artifact.title || "").toLowerCase().trim();
@@ -408,7 +417,8 @@ export default function registerDtusActions(registerLensAction) {
         isUnique: duplicates.length === 0 && possibleDuplicates.length === 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * citationGraph

@@ -46,7 +46,7 @@ export function DeliveryProofPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <CheckCircle className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Proof of delivery</span>
-        <span className="ml-auto text-[10px] text-gray-500">{pods.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{pods.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-3 gap-2">
@@ -64,9 +64,9 @@ export function DeliveryProofPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : pods.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-30" />No POD records yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><CheckCircle className="w-6 h-6 mx-auto mb-2 opacity-30" />No POD records yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {pods.map(p => (
@@ -74,13 +74,13 @@ export function DeliveryProofPanel() {
                 <CheckCircle className="w-4 h-4 text-emerald-300 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white">{p.receivedBy || p.signatureName}</div>
-                  <div className="text-[10px] text-gray-500 inline-flex items-center gap-2 mt-0.5">
+                  <div className="text-[10px] text-gray-400 inline-flex items-center gap-2 mt-0.5">
                     {p.signatureName && <span className="inline-flex items-center gap-0.5"><FileSignature className="w-2.5 h-2.5" />Sig</span>}
                     {p.photoUrl && <span className="inline-flex items-center gap-0.5"><Camera className="w-2.5 h-2.5" />Photo</span>}
                     {p.gpsLat != null && <span className="inline-flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />GPS</span>}
                     <span className="ml-1">{new Date(p.deliveredAt).toLocaleString()}</span>
                   </div>
-                  {p.gpsLat != null && <div className="text-[10px] text-gray-500 font-mono">{p.gpsLat.toFixed(4)},{p.gpsLng?.toFixed(4)}</div>}
+                  {p.gpsLat != null && <div className="text-[10px] text-gray-400 font-mono">{p.gpsLat.toFixed(4)},{p.gpsLng?.toFixed(4)}</div>}
                 </div>
               </li>
             ))}

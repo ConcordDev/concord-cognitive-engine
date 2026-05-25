@@ -315,7 +315,7 @@ high,db,2026-05-16T10:05Z" />
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -347,13 +347,13 @@ high,db,2026-05-16T10:05Z" />
               <Target className="w-3 h-3" /> SLO {sloResult.status}
             </div>
             <div className="text-[11px] text-zinc-300">target <span className="font-mono">{sloResult.targetPct}%</span> · actual <span className="font-mono">{sloResult.actualPct}%</span> · burn <span className="font-mono">{sloResult.burnRate}×</span></div>
-            {sloResult.remainingBudgetMinutes != null && <div className="text-[10px] text-zinc-500">budget remaining: ~{sloResult.remainingBudgetMinutes} min</div>}
+            {sloResult.remainingBudgetMinutes != null && <div className="text-[10px] text-zinc-400">budget remaining: ~{sloResult.remainingBudgetMinutes} min</div>}
           </div>
         )}
         {incidentResult?.incident && (
           <div className="rounded-md border border-red-500/40 bg-red-500/5 p-2.5 space-y-0.5">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold flex items-center gap-1.5"><AlertOctagon className="w-3 h-3" /> Incident {incidentResult.incident.id}</div>
-            <div className="text-[11px] text-zinc-300">{incidentResult.incident.title} <span className="text-[10px] text-zinc-500">({incidentResult.incident.severity} · {incidentResult.incident.affectedService})</span></div>
+            <div className="text-[11px] text-zinc-300">{incidentResult.incident.title} <span className="text-[10px] text-zinc-400">({incidentResult.incident.severity} · {incidentResult.incident.affectedService})</span></div>
           </div>
         )}
       </div>

@@ -160,7 +160,7 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
               {micOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4 text-rose-400" />}
             </button>
             <button onClick={toggleCam} className="p-2 rounded bg-white/5 hover:bg-white/10 text-gray-200" title={camOn ? 'Stop video' : 'Start video'}>
-              {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-gray-500" />}
+              {camOn ? <Video className="w-4 h-4" /> : <VideoOff className="w-4 h-4 text-gray-400" />}
             </button>
             <button onClick={leaveHuddle} disabled={busy} className="ml-auto px-3 py-1.5 text-xs rounded bg-rose-600 hover:bg-rose-500 text-white inline-flex items-center gap-1 disabled:opacity-50">
               <PhoneOff className="w-3 h-3" /> Leave
@@ -193,17 +193,17 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
       )}
 
       <div>
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Live</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Live</div>
         {loading ? (
-          <p className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+          <p className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
         ) : live.length === 0 ? (
-          <p className="text-xs text-gray-600">No live huddles yet.</p>
+          <p className="text-xs text-gray-400">No live huddles yet.</p>
         ) : live.map((h) => (
           <div key={h.id} className="flex items-center gap-2 rounded border border-emerald-500/20 bg-emerald-500/[0.04] px-2 py-1.5 mb-1">
             <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
             <div className="flex-1 min-w-0">
               <div className="text-xs text-gray-200 truncate">{h.topic || `${h.mode} huddle`}</div>
-              <div className="text-[10px] text-gray-500">{h.participants.length} in call · host {h.host}</div>
+              <div className="text-[10px] text-gray-400">{h.participants.length} in call · host {h.host}</div>
             </div>
             {activeId !== h.id && (
               <button onClick={() => joinHuddle(h)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">Join</button>
@@ -215,9 +215,9 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
 
       {ended.length > 0 && (
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Recent</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Recent</div>
           {ended.map((h) => (
-            <div key={h.id} className="flex items-center gap-2 px-2 py-1 text-[11px] text-gray-500">
+            <div key={h.id} className="flex items-center gap-2 px-2 py-1 text-[11px] text-gray-400">
               <span className="flex-1 truncate">{h.topic || `${h.mode} huddle`}</span>
               {typeof h.durationMs === 'number' && <span>{Math.round(h.durationMs / 60000)}m</span>}
             </div>

@@ -67,7 +67,7 @@ export function MhSafetyPlanPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -95,7 +95,7 @@ export function MhSafetyPlanPanel() {
         </div>
       )}
 
-      {note && !editing && <p className="text-[11px] text-zinc-500 italic">{note}</p>}
+      {note && !editing && <p className="text-[11px] text-zinc-400 italic">{note}</p>}
 
       {editing ? (
         <div className="space-y-3">
@@ -109,11 +109,11 @@ export function MhSafetyPlanPanel() {
                       placeholder="Add an item…"
                       className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                     <button type="button" onClick={() => removeItem(s.key, i)}
-                      className="text-zinc-500 hover:text-rose-400" aria-label="Remove item"><Trash2 className="w-3.5 h-3.5" /></button>
+                      className="text-zinc-400 hover:text-rose-400" aria-label="Remove item"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => addItem(s.key)}
-                  className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-zinc-300">
+                  className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-300">
                   <Plus className="w-3 h-3" /> Add line
                 </button>
               </div>
@@ -127,12 +127,12 @@ export function MhSafetyPlanPanel() {
           </div>
         </div>
       ) : !plan ? (
-        <p className="text-[11px] text-zinc-500 italic py-4 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-4 text-center">
           No safety plan yet. Build one while you feel calm, so it is ready if you ever need it.
         </p>
       ) : (
         <div className="space-y-2">
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             {plan.sectionsFilled}/{plan.totalSections} sections · updated {plan.updatedAt.slice(0, 10)}
           </p>
           {sections.map((s) => {

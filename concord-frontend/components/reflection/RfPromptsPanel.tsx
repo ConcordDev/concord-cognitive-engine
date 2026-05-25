@@ -51,7 +51,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const shown = activeCat ? prompts.filter((p) => p.category === activeCat) : prompts;
@@ -73,7 +73,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
             </button>
           </div>
           <p className="text-sm text-zinc-100">{today.text}</p>
-          <p className="text-[10px] text-zinc-500 mt-1 capitalize">{today.category}</p>
+          <p className="text-[10px] text-zinc-400 mt-1 capitalize">{today.category}</p>
         </div>
       )}
 
@@ -114,7 +114,7 @@ export function RfPromptsPanel({ onChange }: { onChange: () => void }) {
             <li key={t.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
               <div>
                 <p className="text-xs text-zinc-200">{t.name}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{t.category}</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{t.category}</p>
               </div>
               <button type="button" onClick={() => applyTemplate(t.id)}
                 className="text-[11px] px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">

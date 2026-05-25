@@ -330,7 +330,7 @@ export default function QueueLensPage() {
           </div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {queues.length === 0 && (
-              <p className="col-span-full py-4 text-center text-sm text-gray-500">
+              <p className="col-span-full py-4 text-center text-sm text-gray-400">
                 No queues yet. Enqueue a job to create one.
               </p>
             )}
@@ -374,7 +374,7 @@ export default function QueueLensPage() {
                   )}
                 </div>
                 <div className="mt-2 flex items-center gap-2">
-                  <label className="text-[10px] text-gray-500">Concurrency</label>
+                  <label className="text-[10px] text-gray-400">Concurrency</label>
                   <input
                     type="number"
                     min={1}
@@ -434,7 +434,7 @@ export default function QueueLensPage() {
                 {queueFilter && (
                   <button
                     onClick={() => setQueueFilter('')}
-                    className="text-xs text-gray-500 hover:text-gray-300"
+                    className="text-xs text-gray-400 hover:text-gray-300"
                   >
                     Clear filter
                   </button>
@@ -513,7 +513,7 @@ export default function QueueLensPage() {
                 </button>
               </div>
               {workers.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+                <p className="rounded-lg border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
                   No workers registered. Register one to track who is processing what.
                 </p>
               ) : (
@@ -537,7 +537,7 @@ export default function QueueLensPage() {
                         />
                         <div>
                           <p className="text-sm font-medium text-white">{w.name}</p>
-                          <p className="text-[11px] text-zinc-500">
+                          <p className="text-[11px] text-zinc-400">
                             {w.status} · queue {w.queue} · {w.processed} processed
                             {w.currentJob && ` · job ${w.currentJob.slice(0, 12)}`}
                           </p>
@@ -565,7 +565,7 @@ export default function QueueLensPage() {
             <RefreshCw className="h-4 w-4 text-neon-cyan" /> Recent Activity
           </h2>
           {events.length === 0 ? (
-            <p className="py-4 text-center text-xs text-gray-500">No activity yet.</p>
+            <p className="py-4 text-center text-xs text-gray-400">No activity yet.</p>
           ) : (
             <div className="space-y-1.5">
               {events.map((e) => (
@@ -577,7 +577,7 @@ export default function QueueLensPage() {
                     {e.kind}
                   </span>
                   <span className="flex-1 text-xs text-gray-300">{e.message}</span>
-                  <span className="text-xs text-gray-600">
+                  <span className="text-xs text-gray-400">
                     {new Date(e.at).toLocaleTimeString()}
                   </span>
                 </div>

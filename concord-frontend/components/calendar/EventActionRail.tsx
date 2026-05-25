@@ -318,7 +318,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500 line-clamp-2">{a.desc}</div>
+                <div className="text-xs text-gray-400 line-clamp-2">{a.desc}</div>
               </div>
             </button>
           );
@@ -349,7 +349,7 @@ export function EventActionRail({ event }: { event: EventLite }) {
 
       {Object.keys(inviteStatus).length > 0 && (
         <div className="mt-3 space-y-1">
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 px-1">
+          <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 px-1">
             Invite status
           </div>
           {Object.entries(inviteStatus).map(([recipient, status]) => (

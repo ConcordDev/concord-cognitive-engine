@@ -65,7 +65,7 @@ export function DogPanel({ className }: DogPanelProps) {
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -93,7 +93,7 @@ export function DogPanel({ className }: DogPanelProps) {
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Dog CEO API · dog.ceo
       </footer>
     </section>

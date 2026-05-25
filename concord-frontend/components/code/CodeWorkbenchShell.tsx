@@ -62,7 +62,7 @@ export function CodeWorkbenchShell({
                 title={n.label}
                 className={cn(
                   'relative w-12 h-12 flex items-center justify-center transition-colors',
-                  active ? 'text-white border-l-2 border-blue-400 bg-white/[0.04]' : 'text-gray-500 hover:text-white border-l-2 border-transparent',
+                  active ? 'text-white border-l-2 border-blue-400 bg-white/[0.04]' : 'text-gray-400 hover:text-white border-l-2 border-transparent',
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -120,7 +120,7 @@ export function EditorTabs({ tabs, activePath, onSelect, onClose }: EditorTabsPr
   return (
     <div className="flex items-center border-b border-white/10 bg-[#0a0c10] overflow-x-auto flex-shrink-0">
       {tabs.length === 0 ? (
-        <div className="px-3 py-2 text-xs text-gray-500">No file open</div>
+        <div className="px-3 py-2 text-xs text-gray-400">No file open</div>
       ) : tabs.map(t => {
         const active = activePath === t.path;
         return (
@@ -130,14 +130,13 @@ export function EditorTabs({ tabs, activePath, onSelect, onClose }: EditorTabsPr
             className={cn(
               'group flex items-center gap-1.5 px-3 py-1.5 cursor-pointer text-xs border-r border-white/5 max-w-[200px]',
               active ? 'bg-[#0d1117] text-white border-t-2 border-t-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',
-            )}
-          >
+            )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <span className="truncate">{t.path.split('/').pop()}</span>
             {t.modified && <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onClose(t.path); }}
-              className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-300 ml-auto"
+              className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300 ml-auto"
             >
               <X className="w-3 h-3" />
             </button>

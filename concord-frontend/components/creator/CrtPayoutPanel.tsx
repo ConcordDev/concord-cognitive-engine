@@ -80,7 +80,7 @@ export function CrtPayoutPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const payouts = result?.payouts ?? [];
@@ -160,7 +160,7 @@ export function CrtPayoutPanel() {
       </div>
 
       {payouts.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No payouts recorded yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No payouts recorded yet.</p>
       ) : (
         <ul className="space-y-1">
           {payouts.map((p) => (
@@ -169,10 +169,10 @@ export function CrtPayoutPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-100">
                   ${p.amount.toLocaleString()}
-                  <span className="text-zinc-500 capitalize"> · {p.method}</span>
-                  {p.reference && <span className="text-zinc-500"> · {p.reference}</span>}
+                  <span className="text-zinc-400 capitalize"> · {p.method}</span>
+                  {p.reference && <span className="text-zinc-400"> · {p.reference}</span>}
                 </p>
-                <p className="text-[10px] text-zinc-600">
+                <p className="text-[10px] text-zinc-400">
                   {new Date(p.at).toLocaleDateString()}
                   {p.completedAt && ` · completed ${new Date(p.completedAt).toLocaleDateString()}`}
                 </p>
@@ -207,7 +207,7 @@ function Stat({ label, value, accent }: { label: string; value: string | number;
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className={cn('text-lg font-bold', accent)}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

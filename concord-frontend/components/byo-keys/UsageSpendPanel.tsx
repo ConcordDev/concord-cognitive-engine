@@ -55,10 +55,10 @@ export function UsageSpendPanel() {
         </button>
       </div>
 
-      {loading && <div className="text-xs text-zinc-500">Loading usage…</div>}
+      {loading && <div className="text-xs text-zinc-400">Loading usage…</div>}
 
       {!loading && !hasUsage && (
-        <div className="text-xs text-zinc-500 rounded-md border border-dashed border-zinc-800 p-6 text-center">
+        <div className="text-xs text-zinc-400 rounded-md border border-dashed border-zinc-800 p-6 text-center">
           No usage recorded yet. Token usage and a list-price cost estimate appear here
           once inference runs through one of your BYO keys.
         </div>
@@ -68,22 +68,22 @@ export function UsageSpendPanel() {
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3">
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500">Est. spend (all time)</div>
+              <div className="text-[10px] uppercase tracking-wide text-zinc-400">Est. spend (all time)</div>
               <div className="text-lg font-semibold text-emerald-400">{fmtUsd(data.totals.costUsd)}</div>
             </div>
             <div className="rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3">
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500">Tokens</div>
+              <div className="text-[10px] uppercase tracking-wide text-zinc-400">Tokens</div>
               <div className="text-lg font-semibold text-zinc-200">{fmtTok(data.totals.tokens)}</div>
             </div>
             <div className="rounded-lg bg-zinc-950 ring-1 ring-zinc-800 p-3">
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500">Inference calls</div>
+              <div className="text-[10px] uppercase tracking-wide text-zinc-400">Inference calls</div>
               <div className="text-lg font-semibold text-zinc-200">{fmtTok(data.totals.calls)}</div>
             </div>
           </div>
 
           {data.dailySeries.length > 0 && (
             <div className="mb-4">
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">
+              <div className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
                 Daily cost — {data.month}
               </div>
               <ChartKit
@@ -99,7 +99,7 @@ export function UsageSpendPanel() {
 
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-zinc-500 text-left">
+              <tr className="text-zinc-400 text-left">
                 <th className="font-medium py-1">Slot</th>
                 <th className="font-medium py-1 text-right">Tokens (in / out)</th>
                 <th className="font-medium py-1 text-right">Calls</th>
@@ -121,7 +121,7 @@ export function UsageSpendPanel() {
               ))}
             </tbody>
           </table>
-          <p className="mt-2 text-[10px] text-zinc-600">
+          <p className="mt-2 text-[10px] text-zinc-400">
             Costs are list-price estimates. The authoritative bill is your provider&apos;s dashboard.
           </p>
         </>

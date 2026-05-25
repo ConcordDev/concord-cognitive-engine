@@ -106,7 +106,7 @@ export function SpacedRepetitionPanel() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <RotateCcw className="w-4 h-4 text-neon-cyan" /> Spaced Repetition
-          <span className="text-xs text-gray-500 font-normal">
+          <span className="text-xs text-gray-400 font-normal">
             {totalCards} card{totalCards !== 1 ? 's' : ''} · {due.length} due
           </span>
         </h3>
@@ -139,7 +139,7 @@ export function SpacedRepetitionPanel() {
 
       {/* Due now */}
       {due.length === 0 ? (
-        <p className="text-center py-6 text-gray-500 text-sm flex items-center justify-center gap-2">
+        <p className="text-center py-6 text-gray-400 text-sm flex items-center justify-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-neon-green" />
           {totalCards === 0 ? 'No cards yet — add one above.' : 'All caught up — nothing due.'}
         </p>
@@ -150,7 +150,7 @@ export function SpacedRepetitionPanel() {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{c.front}</p>
-                  <p className="text-[10px] text-gray-500 mt-0.5">
+                  <p className="text-[10px] text-gray-400 mt-0.5">
                     {c.topic} · ease {c.ease.toFixed(2)} · rep {c.repetitions}
                     {(c.overdueDays ?? 0) > 0 && ` · ${c.overdueDays}d overdue`}
                   </p>
@@ -186,7 +186,7 @@ export function SpacedRepetitionPanel() {
       {/* Upcoming */}
       {upcoming.length > 0 && (
         <div className="border-t border-white/5 pt-2">
-          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Layers className="w-3 h-3" /> Upcoming
           </p>
           <div className="space-y-1 max-h-32 overflow-y-auto">

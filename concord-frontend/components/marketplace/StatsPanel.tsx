@@ -44,14 +44,14 @@ export function StatsPanel() {
         </select>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : data.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No data yet. Add listings + traffic to see stats.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No data yet. Add listings + traffic to see stats.</div>
       ) : (
         <div className="p-4 space-y-3">
           {chartData.length > 0 && (
             <div className="rounded border border-white/10 bg-black/30 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Top revenue by listing</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Top revenue by listing</div>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
@@ -66,7 +66,7 @@ export function StatsPanel() {
             </div>
           )}
           <table className="w-full text-xs">
-            <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+            <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
               <tr><th className="text-left py-1.5">Listing</th><th className="text-right">Views</th><th className="text-right">Orders</th><th className="text-right">CVR</th><th className="text-right">Revenue</th></tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -103,12 +103,12 @@ export function SearchVisibilityPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Search visibility</span>
-        <span className="text-[10px] text-gray-500">{data.length} listings tracked</span>
+        <span className="text-[10px] text-gray-400">{data.length} listings tracked</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : data.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">
+        <div className="px-3 py-10 text-center text-xs text-gray-400">
           No impression data yet. Call <span className="font-mono text-orange-300">marketplace.search-impression</span> with a listingId + keyword when listings appear in search results.
         </div>
       ) : (
@@ -118,7 +118,7 @@ export function SearchVisibilityPanel() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{l.title}</div>
-                  <div className="text-[10px] text-gray-500">{l.totalImpressions.toLocaleString()} impressions · {l.totalClicks.toLocaleString()} clicks · {l.overallCtrPct}% CTR</div>
+                  <div className="text-[10px] text-gray-400">{l.totalImpressions.toLocaleString()} impressions · {l.totalClicks.toLocaleString()} clicks · {l.overallCtrPct}% CTR</div>
                 </div>
               </div>
               {l.keywords.length > 0 && (
@@ -126,8 +126,8 @@ export function SearchVisibilityPanel() {
                   {l.keywords.slice(0, 6).map(k => (
                     <div key={k.keyword} className="flex items-center gap-2 text-[11px] text-gray-300">
                       <span className="font-mono text-orange-300 w-24 truncate" title={k.keyword}>{k.keyword}</span>
-                      <span className="text-gray-500">{k.impressions} imp</span>
-                      <span className="text-gray-500">{k.clicks} clk</span>
+                      <span className="text-gray-400">{k.impressions} imp</span>
+                      <span className="text-gray-400">{k.clicks} clk</span>
                       <span className={cn('font-mono ml-auto', k.ctrPct > 5 ? 'text-emerald-300' : 'text-gray-400')}>{k.ctrPct}%</span>
                     </div>
                   ))}

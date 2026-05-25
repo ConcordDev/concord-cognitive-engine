@@ -57,7 +57,7 @@ export function EtsyShell({ activeNav, onNavChange, badges = {}, shopName, curre
             <span className="text-xs font-semibold text-gray-200">Shop Manager</span>
           </div>
           {shopName && (
-            <div className="mt-1 text-[10px] text-gray-500 truncate">{shopName} · {currency || 'USD'}</div>
+            <div className="mt-1 text-[10px] text-gray-400 truncate">{shopName} · {currency || 'USD'}</div>
           )}
         </header>
         <nav className="flex-1 overflow-y-auto py-2">

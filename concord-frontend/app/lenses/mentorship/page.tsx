@@ -267,7 +267,7 @@ export default function MentorshipLensPage() {
                 {p.displayName || p.name || String(p)}
               </span>
             ))}
-            {profiles.length > 6 && <span className="px-3 py-1 text-xs text-gray-500">+{profiles.length - 6} more</span>}
+            {profiles.length > 6 && <span className="px-3 py-1 text-xs text-gray-400">+{profiles.length - 6} more</span>}
           </div>
         </div>
       )}
@@ -360,7 +360,7 @@ export default function MentorshipLensPage() {
       </div>
 
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search mentorships..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
       </div>
 
@@ -402,13 +402,13 @@ export default function MentorshipLensPage() {
                       {r.mentorName && r.menteeName && <span> | </span>}
                       {r.menteeName && <span>Mentee: {r.menteeName}</span>}
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
+                    <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
                       <span>{r.sessionsCompleted || 0} sessions | {r.meetingFrequency}</span>
                       <div className="flex items-center gap-2">
                         <span className="flex items-center gap-1 text-neon-cyan">
                           <Star className="w-3 h-3" /> {getMatchScore(r.id)}%
                         </span>
-                        <button onClick={(e) => { e.stopPropagation(); remove(r.id); }} disabled={deleteMut.isPending} className="text-gray-500 hover:text-red-400">
+                        <button onClick={(e) => { e.stopPropagation(); remove(r.id); }} disabled={deleteMut.isPending} className="text-gray-400 hover:text-red-400">
                           {deleteMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                         </button>
                       </div>
@@ -481,7 +481,7 @@ export default function MentorshipLensPage() {
                 </>
               ) : (
                 <div className="panel p-4 h-full flex items-center justify-center">
-                  <div className="text-center text-gray-500">
+                  <div className="text-center text-gray-400">
                     <BadgeCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>Select a mentorship to view details</p>
                   </div>
@@ -502,7 +502,7 @@ export default function MentorshipLensPage() {
           >
             <h2 className="font-semibold mb-4 flex items-center gap-2"><Clock className="w-4 h-4 text-neon-cyan" />Session History Timeline</h2>
             {sessionTimeline.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No sessions recorded yet. Complete some mentorship sessions to see the timeline.</p>
+              <p className="text-gray-400 text-center py-8">No sessions recorded yet. Complete some mentorship sessions to see the timeline.</p>
             ) : (
               <div className="relative">
                 <div className="absolute left-4 top-0 bottom-0 w-px bg-lattice-border" />
@@ -548,7 +548,7 @@ export default function MentorshipLensPage() {
           >
             <h2 className="font-semibold mb-4 flex items-center gap-2"><Target className="w-4 h-4 text-neon-green" />Goal Progress</h2>
             {goalProgress.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No goals set yet. Add goals to your mentorship relationships to track progress.</p>
+              <p className="text-gray-400 text-center py-8">No goals set yet. Add goals to your mentorship relationships to track progress.</p>
             ) : (
               <div className="space-y-4">
                 {goalProgress.map((g, i) => (
@@ -654,7 +654,7 @@ export default function MentorshipLensPage() {
                 </div>
                 {actionResult.gaps.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Skill Gaps</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Skill Gaps</p>
                     <div className="flex flex-wrap gap-1">
                       {(actionResult.gaps as string[]).map((g, i) => (
                         <span key={i} className="text-xs bg-red-400/10 border border-red-400/20 rounded px-2 py-0.5 text-red-400">{g}</span>

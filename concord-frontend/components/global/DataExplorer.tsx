@@ -286,7 +286,7 @@ export function DataExplorer() {
           );
         })}
       </div>
-      <p className="text-xs text-zinc-500">{MODES.find((m) => m.key === mode)?.desc}</p>
+      <p className="text-xs text-zinc-400">{MODES.find((m) => m.key === mode)?.desc}</p>
 
       {/* per-mode controls */}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-3">
@@ -311,7 +311,7 @@ export function DataExplorer() {
         )}
         {mode === 'catalog' && (
           <label className="block space-y-1">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500">Search the World Bank catalog</span>
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400">Search the World Bank catalog</span>
             <input
               value={catalogQuery}
               onChange={(e) => setCatalogQuery(e.target.value)}
@@ -367,10 +367,10 @@ export function DataExplorer() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-white">{choropleth.indicatorName}</h3>
-            <span className="text-xs text-zinc-500">{choropleth.countryCount} countries · {choropleth.source}</span>
+            <span className="text-xs text-zinc-400">{choropleth.countryCount} countries · {choropleth.source}</span>
           </div>
           <MapView markers={choroMarkers} height={340} />
-          <div className="flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
             <span>low · {fmt(choropleth.min, choropleth.indicator)}</span>
             <div className="mx-3 h-2 flex-1 rounded-full bg-gradient-to-r from-[rgb(30,200,220)] to-[rgb(255,80,60)]" />
             <span>high · {fmt(choropleth.max, choropleth.indicator)}</span>
@@ -379,7 +379,7 @@ export function DataExplorer() {
             {choropleth.countries.slice(0, 60).map((c, i) => (
               <div key={c.code} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
                 <span className="w-6 text-right font-mono text-zinc-600">{i + 1}</span>
-                <span className="w-12 font-mono text-zinc-500">{c.code}</span>
+                <span className="w-12 font-mono text-zinc-400">{c.code}</span>
                 <span className="flex-1 truncate text-zinc-200">{c.name}</span>
                 <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${c.intensity * 100}%` }} />
@@ -399,19 +399,19 @@ export function DataExplorer() {
             <h3 className="text-sm font-semibold text-white">
               {timeseries.indicatorName} — {timeseries.countryName}
             </h3>
-            <span className="text-xs text-zinc-500">{timeseries.source}</span>
+            <span className="text-xs text-zinc-400">{timeseries.source}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Latest ({timeseries.latest.year})</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Latest ({timeseries.latest.year})</div>
               <div className="mt-0.5 font-mono text-lg text-neon-cyan">{fmt(timeseries.latest.value, timeseries.indicator)}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Earliest ({timeseries.earliest.year})</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Earliest ({timeseries.earliest.year})</div>
               <div className="mt-0.5 font-mono text-lg text-zinc-300">{fmt(timeseries.earliest.value, timeseries.indicator)}</div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Change</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Change</div>
               <div className={cn('mt-0.5 font-mono text-lg', (timeseries.pctChange ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                 {timeseries.pctChange == null ? '—' : `${timeseries.pctChange > 0 ? '+' : ''}${timeseries.pctChange}%`}
               </div>
@@ -426,7 +426,7 @@ export function DataExplorer() {
           />
           {tsYear != null && (
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-zinc-500">
+              <div className="flex justify-between text-[10px] text-zinc-400">
                 <span>Year cutoff</span>
                 <span className="font-mono text-neon-cyan">{tsYear}</span>
               </div>
@@ -448,7 +448,7 @@ export function DataExplorer() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-white">{compare.indicatorName}</h3>
-            <span className="text-xs text-zinc-500">{compare.minYear}–{compare.maxYear} · {compare.source}</span>
+            <span className="text-xs text-zinc-400">{compare.minYear}–{compare.maxYear} · {compare.source}</span>
           </div>
           <ChartKit
             kind="line"
@@ -487,9 +487,9 @@ export function DataExplorer() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-white">
-              {scatter.indicatorXName} <span className="text-zinc-500">vs</span> {scatter.indicatorYName}
+              {scatter.indicatorXName} <span className="text-zinc-400">vs</span> {scatter.indicatorYName}
             </h3>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-400">
               {scatter.frames[scatterFrame].points.length} countries · {scatter.source}
             </span>
           </div>
@@ -502,7 +502,7 @@ export function DataExplorer() {
             showLegend={false}
           />
           <div className="space-y-1">
-            <div className="flex justify-between text-[10px] text-zinc-500">
+            <div className="flex justify-between text-[10px] text-zinc-400">
               <span>Year</span>
               <span className="font-mono text-neon-purple">{scatter.years[scatterFrame]}</span>
             </div>
@@ -514,7 +514,7 @@ export function DataExplorer() {
               onChange={(e) => setScatterFrame(Number(e.target.value))}
               className="w-full accent-purple-400"
             />
-            <div className="flex justify-between text-[10px] font-mono text-zinc-600">
+            <div className="flex justify-between text-[10px] font-mono text-zinc-400">
               <span>{scatter.years[0]}</span>
               <span>{scatter.years[scatter.years.length - 1]}</span>
             </div>
@@ -525,11 +525,11 @@ export function DataExplorer() {
               .slice(0, 40)
               .map((p) => (
                 <div key={p.code} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1 text-[11px]">
-                  <span className="w-12 font-mono text-zinc-500">{p.code}</span>
+                  <span className="w-12 font-mono text-zinc-400">{p.code}</span>
                   <span className="flex-1 truncate text-zinc-200">{p.name}</span>
                   <span className="font-mono text-cyan-300">x {fmt(p.x, scatter.indicatorX)}</span>
                   <span className="font-mono text-purple-300">y {fmt(p.y, scatter.indicatorY)}</span>
-                  {p.size != null && <span className="font-mono text-zinc-500">{fmt(p.size, scatter.indicatorSize || '')}</span>}
+                  {p.size != null && <span className="font-mono text-zinc-400">{fmt(p.size, scatter.indicatorSize || '')}</span>}
                 </div>
               ))}
           </div>
@@ -539,7 +539,7 @@ export function DataExplorer() {
       {/* ---- CATALOG ---- */}
       {mode === 'catalog' && catalog && (
         <div className="space-y-2">
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             {catalog.totalMatches} indicators match &quot;{catalog.query}&quot; · {catalog.source}
           </p>
           {catalog.indicators.map((ind) => (
@@ -557,7 +557,7 @@ export function DataExplorer() {
                   Map it
                 </button>
               </div>
-              {ind.sourceNote && <p className="mt-1 line-clamp-2 text-[11px] text-zinc-500">{ind.sourceNote}</p>}
+              {ind.sourceNote && <p className="mt-1 line-clamp-2 text-[11px] text-zinc-400">{ind.sourceNote}</p>}
               {ind.topics.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {ind.topics.map((t) => (
@@ -575,7 +575,7 @@ export function DataExplorer() {
         <div className="space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold text-white">{profile.countryName} — country profile</h3>
-            <span className="text-xs text-zinc-500">{profile.indicatorCount} indicators · {profile.source}</span>
+            <span className="text-xs text-zinc-400">{profile.indicatorCount} indicators · {profile.source}</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {profile.indicators.map((ind) => {
@@ -605,7 +605,7 @@ export function DataExplorer() {
                       />
                     </svg>
                   )}
-                  <p className="mt-0.5 font-mono text-[10px] text-zinc-600">{ind.latestYear ?? '—'}</p>
+                  <p className="mt-0.5 font-mono text-[10px] text-zinc-400">{ind.latestYear ?? '—'}</p>
                 </div>
               );
             })}
@@ -629,7 +629,7 @@ export function DataExplorer() {
                 >
                   {v.label}
                 </button>
-                <span className="font-mono text-[10px] text-zinc-600">
+                <span className="font-mono text-[10px] text-zinc-400">
                   {new Date(v.createdAt).toLocaleDateString()}
                 </span>
                 <button

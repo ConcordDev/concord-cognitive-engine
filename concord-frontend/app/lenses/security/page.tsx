@@ -614,7 +614,7 @@ export default function SecurityLensPage() {
   const renderCard = (item: LensItem<ArtifactDataUnion>) => {
     const d = item.data as unknown as Record<string, unknown>;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'line-clamp-1')}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -657,7 +657,7 @@ export default function SecurityLensPage() {
                 <span className={cn(ds.textMuted)}>Vulns: {d.vulnerabilityCount as number}</span>
               </div>
               {Boolean(d.os) && <p className={cn(ds.textMuted, 'text-xs')}>OS: {d.os as string}</p>}
-              {Boolean(d.lastScanDate) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>Last scan: {d.lastScanDate as string}</p>}
+              {Boolean(d.lastScanDate) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>Last scan: {d.lastScanDate as string}</p>}
             </>
           )}
 
@@ -711,7 +711,7 @@ export default function SecurityLensPage() {
                   {(d.zones as string[]).map(z => <span key={z} className={ds.badge('blue-400')}><MapPin className="w-2.5 h-2.5" />{z}</span>)}
                 </div>
               )}
-              <p className={cn(ds.textMono, 'text-xs text-gray-500')}>{d.validFrom as string} to {d.validUntil as string}</p>
+              <p className={cn(ds.textMono, 'text-xs text-gray-400')}>{d.validFrom as string} to {d.validUntil as string}</p>
               {Boolean(d.escortRequired) && <span className={ds.badge('orange-400')}>Escort Required</span>}
               {Boolean(d.visitorName) && <p className={cn(ds.textMuted, 'text-xs')}>Visitor: {d.visitorName as string} ({d.visitorCompany as string})</p>}
             </>
@@ -846,7 +846,7 @@ export default function SecurityLensPage() {
                   <p className="text-lg font-bold text-white">{count}</p>
                   <p className={cn(ds.textMuted, 'text-xs capitalize')}>{s}</p>
                 </div>
-                {idx < INCIDENT_STATUSES.length - 1 && <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                {idx < INCIDENT_STATUSES.length - 1 && <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
               </div>
             );
           })}
@@ -1133,7 +1133,7 @@ export default function SecurityLensPage() {
               <div className="space-y-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalIncidents)}</p>
-                  <p className="text-[10px] text-gray-500">Total Incidents</p>
+                  <p className="text-[10px] text-gray-400">Total Incidents</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(actionResult.byType as Record<string, number>).map(([type, count]) => (
@@ -1155,11 +1155,11 @@ export default function SecurityLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-green-400">{String(actionResult.completed)}</p>
-                    <p className="text-[10px] text-gray-500">Completed</p>
+                    <p className="text-[10px] text-gray-400">Completed</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Array.isArray(actionResult.missed) && (actionResult.missed as unknown[]).length > 0 ? 'text-red-400' : 'text-green-400'}`}>{Array.isArray(actionResult.missed) ? (actionResult.missed as unknown[]).length : 0}</p>
-                    <p className="text-[10px] text-gray-500">Missed</p>
+                    <p className="text-[10px] text-gray-400">Missed</p>
                   </div>
                 </div>
               </div>
@@ -1170,11 +1170,11 @@ export default function SecurityLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalThreats)}</p>
-                    <p className="text-[10px] text-gray-500">Total Threats</p>
+                    <p className="text-[10px] text-gray-400">Total Threats</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.criticalCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.criticalCount)}</p>
-                    <p className="text-[10px] text-gray-500">Critical</p>
+                    <p className="text-[10px] text-gray-400">Critical</p>
                   </div>
                 </div>
                 {(actionResult.matrix as {name:string;riskLevel:string;riskScore:number}[]).slice(0,4).map((t, i) => (
@@ -1191,15 +1191,15 @@ export default function SecurityLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${actionResult.intact ? 'text-green-400' : 'text-red-400'}`}>{actionResult.intact ? 'Intact' : 'Issues'}</p>
-                    <p className="text-[10px] text-gray-500">Chain Status</p>
+                    <p className="text-[10px] text-gray-400">Chain Status</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.transfers)}</p>
-                    <p className="text-[10px] text-gray-500">Entries</p>
+                    <p className="text-[10px] text-gray-400">Entries</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Array.isArray(actionResult.issues) && (actionResult.issues as unknown[]).length > 0 ? 'text-red-400' : 'text-green-400'}`}>{Array.isArray(actionResult.issues) ? (actionResult.issues as unknown[]).length : 0}</p>
-                    <p className="text-[10px] text-gray-500">Issues</p>
+                    <p className="text-[10px] text-gray-400">Issues</p>
                   </div>
                 </div>
               </div>
@@ -1210,9 +1210,9 @@ export default function SecurityLensPage() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

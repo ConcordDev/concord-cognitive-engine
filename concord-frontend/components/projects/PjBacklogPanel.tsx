@@ -114,7 +114,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
   };
 
   if (loading && !tasks.length) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -148,7 +148,7 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
             <span key={v.id} className="flex items-center gap-1 text-[10px] bg-zinc-800 rounded-lg pl-2 pr-1 py-0.5">
               <button type="button" onClick={() => runView(v)} className="text-zinc-300 hover:text-indigo-300">{v.name}</button>
               <button type="button" onClick={() => lensRun('projects', 'view-delete', { id: v.id }).then(loadMeta)}
-                className="text-zinc-500 hover:text-rose-300">×</button>
+                className="text-zinc-400 hover:text-rose-300">×</button>
             </span>
           ))}
           <input placeholder="Save current as view…" value={viewName} onChange={(e) => setViewName(e.target.value)}
@@ -183,20 +183,20 @@ export function PjBacklogPanel({ projectId, onChange }: { projectId: string; onC
 
       {/* List */}
       {tasks.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No issues match these filters.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No issues match these filters.</p>
       ) : (
         <ul className="space-y-1">
           {tasks.map((t, i) => (
             <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-2.5 py-1.5">
               <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSel(t.id)}
                 className="accent-indigo-500" />
-              <span className="text-[10px] font-mono text-zinc-500 w-14">{t.ref}</span>
+              <span className="text-[10px] font-mono text-zinc-400 w-14">{t.ref}</span>
               <button type="button" onClick={() => setOpenTask(t.id)} className="flex-1 text-left text-xs text-zinc-100 truncate">
                 {t.title}
               </button>
-              <span className="text-[10px] text-zinc-500 capitalize">{t.type}</span>
-              <span className="text-[10px] text-zinc-500 capitalize">{t.status.replace(/_/g, ' ')}</span>
-              {t.points > 0 && <span className="text-[10px] text-zinc-500">{t.points}pt</span>}
+              <span className="text-[10px] text-zinc-400 capitalize">{t.type}</span>
+              <span className="text-[10px] text-zinc-400 capitalize">{t.status.replace(/_/g, ' ')}</span>
+              {t.points > 0 && <span className="text-[10px] text-zinc-400">{t.points}pt</span>}
               {filters.sort === 'rank' && (
                 <span className="flex">
                   <button type="button" onClick={() => rank(t.id, -1)} disabled={i === 0}

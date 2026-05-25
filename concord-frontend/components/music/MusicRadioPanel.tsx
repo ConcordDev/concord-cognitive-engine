@@ -128,7 +128,7 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -154,8 +154,8 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
               <li key={t.id} className="flex items-center gap-2 text-xs text-zinc-300">
                 <span className="text-zinc-600 w-5 text-right">{i + 1}</span>
                 <Disc3 className="w-3 h-3 text-violet-400 shrink-0" />
-                <span className="truncate flex-1">{t.title} <span className="text-zinc-500">— {t.artist}</span></span>
-                <span className="text-[10px] text-zinc-600">{dur(t.durationSec)}</span>
+                <span className="truncate flex-1">{t.title} <span className="text-zinc-400">— {t.artist}</span></span>
+                <span className="text-[10px] text-zinc-400">{dur(t.durationSec)}</span>
               </li>
             ))}
           </ul>
@@ -231,14 +231,14 @@ export function MusicRadioPanel({ onChange }: { onChange: () => void }) {
           <h3 className="text-xs font-semibold text-zinc-300">Browse by genre</h3>
         </div>
         {genres.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Add tracks to your library to populate genres.</p>
+          <p className="text-[11px] text-zinc-400 italic">Add tracks to your library to populate genres.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {genres.map((g) => (
               <button key={g.genre} type="button" onClick={() => startGenreRadio(g.genre)}
                 className="text-left bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 hover:border-emerald-700 transition-colors">
                 <p className="text-xs font-semibold text-zinc-100 capitalize truncate">{g.genre}</p>
-                <p className="text-[10px] text-zinc-500">{g.trackCount} tracks · {g.totalPlays} plays</p>
+                <p className="text-[10px] text-zinc-400">{g.trackCount} tracks · {g.totalPlays} plays</p>
               </button>
             ))}
           </div>

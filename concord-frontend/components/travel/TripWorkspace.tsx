@@ -346,7 +346,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           className="flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200">
           <ChevronLeft className="w-3.5 h-3.5" /> All trips
         </button>
-        <span className="text-xs text-zinc-500">
+        <span className="text-xs text-zinc-400">
           <MapPin className="w-3 h-3 inline mr-1" />{trip.destination}
           {trip.startDate ? ` · ${trip.startDate}${trip.endDate ? ` → ${trip.endDate}` : ''}` : ''}
         </span>
@@ -386,14 +386,14 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           {markers.length > 0 ? (
             <MapView markers={markers} className="h-[380px]" />
           ) : (
-            <div className="text-center text-zinc-500 text-xs italic py-8 border border-zinc-800 rounded-xl">
+            <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
               No pinned itinerary items yet. Geocode an item below to plot it.
             </div>
           )}
           <div>
             <h4 className="text-xs font-semibold text-zinc-300 mb-2">Itinerary items</h4>
             {itinerary.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No itinerary items on this trip yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">No itinerary items on this trip yet.</p>
             ) : (
               <ul className="space-y-1">
                 {itinerary.map((it) => {
@@ -402,7 +402,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                     <li key={it.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                       <div className="min-w-0">
                         <p className="text-xs text-zinc-200 truncate">{it.title}</p>
-                        <p className="text-[10px] text-zinc-500 truncate">
+                        <p className="text-[10px] text-zinc-400 truncate">
                           {it.resolvedAddress || it.location || 'No location set'}
                         </p>
                       </div>
@@ -430,7 +430,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
       {tab === 'agenda' && (
         <div className="space-y-3">
           {agenda.length === 0 && unscheduled.length === 0 ? (
-            <div className="text-center text-zinc-500 text-xs italic py-8 border border-zinc-800 rounded-xl">
+            <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
               No itinerary items yet. Add items to build a day-by-day agenda.
             </div>
           ) : (
@@ -440,17 +440,17 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                   <div className="flex items-baseline gap-2 mb-2">
                     <span className="text-xs font-bold text-sky-300">Day {d.dayNumber}</span>
                     <span className="text-[11px] text-zinc-400">{d.weekday}, {d.day}</span>
-                    <span className="text-[10px] text-zinc-600 ml-auto">{d.itemCount} items</span>
+                    <span className="text-[10px] text-zinc-400 ml-auto">{d.itemCount} items</span>
                   </div>
                   {d.items.length === 0 ? (
-                    <p className="text-[11px] text-zinc-600 italic">Nothing scheduled.</p>
+                    <p className="text-[11px] text-zinc-400 italic">Nothing scheduled.</p>
                   ) : (
                     <ul className="space-y-1.5">
                       {d.items.map((it) => (
                         <li key={it.id} className="flex items-center gap-3">
-                          <span className="text-[11px] font-mono text-zinc-500 w-12 shrink-0">{it.time || '--:--'}</span>
+                          <span className="text-[11px] font-mono text-zinc-400 w-12 shrink-0">{it.time || '--:--'}</span>
                           <span className="text-xs text-zinc-200 flex-1">{it.title}</span>
-                          <span className={cn('text-[10px] capitalize', CATEGORY_COLOR[it.category] || 'text-zinc-500')}>
+                          <span className={cn('text-[10px] capitalize', CATEGORY_COLOR[it.category] || 'text-zinc-400')}>
                             {it.category}
                           </span>
                         </li>
@@ -489,20 +489,20 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudSun className="w-3.5 h-3.5" />} Forecast
             </button>
           </div>
-          <p className="text-[10px] text-zinc-600">
+          <p className="text-[10px] text-zinc-400">
             Tip: geocode an itinerary item on the Map tab, then copy its coordinates here.
           </p>
           {weather && (
             weather.days.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No forecast data returned.</p>
+              <p className="text-[11px] text-zinc-400 italic">No forecast data returned.</p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                 {weather.days.map((d) => (
                   <div key={d.date} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
-                    <p className="text-[10px] text-zinc-500">{d.date}</p>
+                    <p className="text-[10px] text-zinc-400">{d.date}</p>
                     <p className="text-xs text-zinc-200 mt-0.5">{d.condition}</p>
                     <p className="text-sm font-bold text-zinc-100 mt-1">
-                      {d.tempMax}{weather.tempUnit} <span className="text-zinc-500 text-xs font-normal">/ {d.tempMin}{weather.tempUnit}</span>
+                      {d.tempMax}{weather.tempUnit} <span className="text-zinc-400 text-xs font-normal">/ {d.tempMin}{weather.tempUnit}</span>
                     </p>
                     {d.precipChance != null && (
                       <p className="text-[10px] text-sky-400 mt-0.5">{d.precipChance}% precip</p>
@@ -536,7 +536,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                 {liveFlights.map((f) => (
                   <li key={f.icao24} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                     <span className="text-xs font-mono text-zinc-200">{f.callsign}</span>
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-[10px] text-zinc-400">
                       {f.originCountry} · {f.baroAltitudeM != null ? `${Math.round(f.baroAltitudeM)}m` : '—'}
                       {f.velocityMs != null ? ` · ${Math.round(f.velocityMs * 3.6)} km/h` : ''}
                     </span>
@@ -544,7 +544,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                 ))}
               </ul>
             )}
-            <p className="text-[10px] text-zinc-600 mt-1.5">
+            <p className="text-[10px] text-zinc-400 mt-1.5">
               Live airborne traffic for inspiration — real ticket prices need a licensed GDS API.
             </p>
           </div>
@@ -570,7 +570,7 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                   <li key={l.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                     <span className="text-xs text-zinc-200 truncate">
                       {l.name}
-                      <span className="text-[10px] text-zinc-500 ml-1.5 capitalize">{l.kind}</span>
+                      <span className="text-[10px] text-zinc-400 ml-1.5 capitalize">{l.kind}</span>
                     </span>
                     {l.website ? (
                       <a href={l.website} target="_blank" rel="noopener noreferrer"
@@ -654,11 +654,11 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
                   )}
                 </div>
               ) : (
-                <p className="text-[11px] text-zinc-500 italic">{String(flightStatus.note || 'No live state.')}</p>
+                <p className="text-[11px] text-zinc-400 italic">{String(flightStatus.note || 'No live state.')}</p>
               )}
             </div>
           )}
-          <p className="text-[10px] text-zinc-600">Live state vectors via OpenSky Network — free, keyless.</p>
+          <p className="text-[10px] text-zinc-400">Live state vectors via OpenSky Network — free, keyless.</p>
         </div>
       )}
 
@@ -683,14 +683,14 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
             </button>
           </div>
           {collaborators.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">Not shared with anyone yet.</p>
+            <p className="text-[11px] text-zinc-400 italic">Not shared with anyone yet.</p>
           ) : (
             <ul className="space-y-1">
               {collaborators.map((c) => (
                 <li key={c.userId} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <div>
                     <p className="text-xs text-zinc-200">{c.userId}</p>
-                    <p className="text-[10px] text-zinc-500 capitalize">{c.role}</p>
+                    <p className="text-[10px] text-zinc-400 capitalize">{c.role}</p>
                   </div>
                   <button type="button" onClick={() => unshareTrip(c.userId)} className="text-zinc-600 hover:text-rose-400" aria-label="Remove">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -718,33 +718,33 @@ export function TripWorkspace({ trip, onBack }: { trip: WorkspaceTrip; onBack: (
           </div>
           {breakdown && (
             breakdown.lines.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">
+              <p className="text-[11px] text-zinc-400 italic">
                 No budget categories or bookings yet. Set a budget and add bookings to see the breakdown.
               </p>
             ) : (
               <>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
-                    <p className="text-[10px] text-zinc-500">Planned</p>
+                    <p className="text-[10px] text-zinc-400">Planned</p>
                     <p className="text-sm font-bold text-zinc-100">
                       {breakdown.converted ? breakdown.converted.totalPlanned : breakdown.totalPlanned} {breakdown.displayCurrency || breakdown.currency}
                     </p>
                   </div>
                   <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
-                    <p className="text-[10px] text-zinc-500">Booked</p>
+                    <p className="text-[10px] text-zinc-400">Booked</p>
                     <p className="text-sm font-bold text-sky-300">
                       {breakdown.converted ? breakdown.converted.totalBooked : breakdown.totalBooked} {breakdown.displayCurrency || breakdown.currency}
                     </p>
                   </div>
                   <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2.5">
-                    <p className="text-[10px] text-zinc-500">Remaining</p>
+                    <p className="text-[10px] text-zinc-400">Remaining</p>
                     <p className={cn('text-sm font-bold', breakdown.totalRemaining < 0 ? 'text-rose-400' : 'text-emerald-300')}>
                       {breakdown.converted ? breakdown.converted.totalRemaining : breakdown.totalRemaining} {breakdown.displayCurrency || breakdown.currency}
                     </p>
                   </div>
                 </div>
                 {breakdown.fxRate && breakdown.displayCurrency !== 'USD' && (
-                  <p className="text-[10px] text-zinc-600">
+                  <p className="text-[10px] text-zinc-400">
                     Live ECB rate: 1 USD = {breakdown.fxRate} {breakdown.displayCurrency}. Base figures in USD.
                   </p>
                 )}

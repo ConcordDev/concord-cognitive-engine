@@ -45,7 +45,7 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const maxSource = summary ? Math.max(1, ...Object.values(summary.bySource)) : 1;
@@ -58,11 +58,11 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold text-emerald-300">${summary.thisMonth.toLocaleString()}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">This month</p>
+            <p className="text-[10px] text-zinc-400 uppercase">This month</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold text-zinc-100">${summary.total.toLocaleString()}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">All time</p>
+            <p className="text-[10px] text-zinc-400 uppercase">All time</p>
           </div>
         </div>
       )}
@@ -100,7 +100,7 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
             ))}
           </ul>
           {Object.values(summary.bySource).every((v) => v === 0) && (
-            <p className="text-[11px] text-zinc-500 italic">No revenue logged yet.</p>
+            <p className="text-[11px] text-zinc-400 italic">No revenue logged yet.</p>
           )}
         </div>
       )}
@@ -114,9 +114,9 @@ export function CrtRevenuePanel({ onChange }: { onChange: () => void }) {
               <li key={e.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <DollarSign className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="text-xs text-zinc-200 capitalize flex-1">
-                  {e.source.replace(/_/g, ' ')}{e.note && <span className="text-zinc-500"> · {e.note}</span>}
+                  {e.source.replace(/_/g, ' ')}{e.note && <span className="text-zinc-400"> · {e.note}</span>}
                 </span>
-                <span className="text-[10px] text-zinc-500">{e.date}</span>
+                <span className="text-[10px] text-zinc-400">{e.date}</span>
                 <span className="text-xs text-emerald-300 font-medium">${e.amount.toLocaleString()}</span>
               </li>
             ))}

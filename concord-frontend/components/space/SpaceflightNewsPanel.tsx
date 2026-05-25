@@ -80,7 +80,7 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
           type="button"
           onClick={() => void fetchData(query.trim() || undefined)}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -88,7 +88,7 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -105,7 +105,7 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
       )}
 
       {!error && !loading && articles.length === 0 && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No articles match.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No articles match.</div>
       )}
 
       {articles.length > 0 && (
@@ -124,9 +124,9 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
                     className="text-zinc-200 font-medium hover:text-orange-300 leading-snug flex items-center gap-1"
                   >
                     {a.title}
-                    <ExternalLink className="w-3 h-3 text-zinc-500 shrink-0" />
+                    <ExternalLink className="w-3 h-3 text-zinc-400 shrink-0" />
                   </a>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {a.newsSite && `${a.newsSite} · `}
                     {timeAgo(a.publishedAt)} ago
                   </div>
@@ -140,7 +140,7 @@ export function SpaceflightNewsPanel({ domain, className }: SpaceflightNewsPanel
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Spaceflight News API v4 · spaceflightnewsapi.net
       </footer>
     </section>

@@ -91,7 +91,7 @@ export function FOIATracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">FOIA tracker</span>
-        <span className="ml-auto text-[10px] text-gray-500">{requests.length} requests</span>
+        <span className="ml-auto text-[10px] text-gray-400">{requests.length} requests</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white" title="New request">
           <Plus className="w-4 h-4" />
         </button>
@@ -100,7 +100,7 @@ export function FOIATracker() {
       {creating && (
         <div className="p-3 border-b border-white/10 space-y-2">
           <div className="flex items-center gap-2 flex-wrap text-[10px]">
-            <span className="text-gray-500 uppercase tracking-wider">Templates:</span>
+            <span className="text-gray-400 uppercase tracking-wider">Templates:</span>
             {TEMPLATES.map(t => (
               <button key={t.title} onClick={() => applyTemplate(t)} className="px-2 py-0.5 rounded border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10">
                 {t.title}
@@ -119,9 +119,9 @@ export function FOIATracker() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : requests.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No FOIA requests yet. Use a template above to start.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No FOIA requests yet. Use a template above to start.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {requests.map(r => (
@@ -136,7 +136,7 @@ export function FOIATracker() {
                     'bg-gray-500/20 text-gray-300'
                   )}>{r.status.replace(/_/g, ' ')}</span>
                 </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">
+                <div className="text-[10px] text-gray-400 mt-0.5">
                   {r.agency} · {new Date(r.submittedAt).toLocaleDateString()}
                   {r.trackingNumber && ` · #${r.trackingNumber}`}
                 </div>

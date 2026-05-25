@@ -95,7 +95,7 @@ export function EventPlanner() {
     await reload();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -109,7 +109,7 @@ export function EventPlanner() {
           {([['Events', dash.totalEvents], ['Upcoming', dash.upcoming], ['Budget', `$${dash.totalBudget.toLocaleString()}`], ['Open tasks', dash.openTasks]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -137,7 +137,7 @@ export function EventPlanner() {
               <button onClick={() => open(e.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === e.id ? 'bg-pink-600/15 border-pink-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.name}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{e.type}{e.date ? ` · ${e.date}` : ''} · {e.doneTaskCount}/{e.taskCount} tasks</p>
               </button>
               <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -149,7 +149,7 @@ export function EventPlanner() {
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-bold text-zinc-100 truncate">{active.name}</h4>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   {active.venue || 'No venue'} · ${active.budget.toLocaleString()} budget · ${budgetRemaining.toLocaleString()} left
                 </p>
               </div>
@@ -161,14 +161,14 @@ export function EventPlanner() {
 
             {/* Tasks */}
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Planning checklist</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Planning checklist</p>
               {active.tasks.map(t => (
                 <div key={t.id} className="group flex items-center gap-2 text-xs py-0.5">
                   <button onClick={() => toggleTask(t.id)}
                     className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0', t.done ? 'bg-emerald-600 text-white' : 'border border-zinc-600')}>
                     {t.done && <Check className="w-3 h-3" />}
                   </button>
-                  <span className={cn('flex-1', t.done ? 'text-zinc-500 line-through' : 'text-zinc-200')}>{t.title}</span>
+                  <span className={cn('flex-1', t.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{t.title}</span>
                   <button onClick={() => delTask(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
               ))}
@@ -181,11 +181,11 @@ export function EventPlanner() {
 
             {/* Vendors */}
             <div>
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1 inline-flex items-center gap-1"><Users className="w-3 h-3" />Vendors</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1 inline-flex items-center gap-1"><Users className="w-3 h-3" />Vendors</p>
               {active.vendors.map(v => (
                 <div key={v.id} className="group flex items-center gap-2 text-xs py-0.5">
                   <span className="text-zinc-200">{v.name}</span>
-                  <span className="text-[10px] text-zinc-500">{v.role}</span>
+                  <span className="text-[10px] text-zinc-400">{v.role}</span>
                   <span className="ml-auto text-zinc-400">${v.cost.toLocaleString()}</span>
                   <button onClick={() => delVendor(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
@@ -202,7 +202,7 @@ export function EventPlanner() {
             </div>
           </div>
         ) : (
-          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[140px]">
+          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[140px]">
             Select or create an event.
           </div>
         )}

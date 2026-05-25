@@ -85,7 +85,7 @@ export function LearningPlanPanel() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <MapIcon className="w-4 h-4 text-neon-purple" /> Learning Plans
-          <span className="text-xs text-gray-500 font-normal">{plans.length}</span>
+          <span className="text-xs text-gray-400 font-normal">{plans.length}</span>
         </h3>
         <button onClick={() => setShowForm((s) => !s)}
           className="text-xs text-neon-purple hover:underline flex items-center gap-1">
@@ -94,7 +94,7 @@ export function LearningPlanPanel() {
       </div>
 
       {err && <p className="text-xs text-red-400">{err}</p>}
-      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
 
       {showForm && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-2 border border-white/5">
@@ -113,7 +113,7 @@ export function LearningPlanPanel() {
       )}
 
       {plans.length === 0 && !loading && (
-        <p className="text-center py-6 text-gray-500 text-sm">No learning plans yet.</p>
+        <p className="text-center py-6 text-gray-400 text-sm">No learning plans yet.</p>
       )}
 
       <div className="space-y-3">
@@ -121,11 +121,11 @@ export function LearningPlanPanel() {
           <div key={p.id} className="bg-lattice-surface rounded-lg p-3 border border-white/5">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold">{p.title}</p>
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-gray-400">
                 {p.stepsDone}/{p.stepsTotal} · {p.remainingHours}h left
               </span>
             </div>
-            {p.goal && <p className="text-xs text-gray-500 mt-0.5">{p.goal}</p>}
+            {p.goal && <p className="text-xs text-gray-400 mt-0.5">{p.goal}</p>}
             <div className="h-1.5 bg-lattice-void rounded-full overflow-hidden mt-2">
               <div className="h-full bg-neon-purple rounded-full transition-all"
                 style={{ width: `${p.progress * 100}%` }} />
@@ -145,7 +145,7 @@ export function LearningPlanPanel() {
                       <span className="block text-[10px] text-neon-cyan">🏁 {t.milestone}</span>
                     )}
                   </span>
-                  <span className="text-[10px] text-gray-600 flex items-center gap-0.5 flex-shrink-0">
+                  <span className="text-[10px] text-gray-400 flex items-center gap-0.5 flex-shrink-0">
                     <Clock className="w-2.5 h-2.5" />{t.estimatedHours}h
                   </span>
                 </button>

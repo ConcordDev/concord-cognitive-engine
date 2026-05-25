@@ -70,11 +70,11 @@ export function HrPerformancePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (employees.length === 0) {
-    return <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">Add employees in the People tab first.</div>;
+    return <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">Add employees in the People tab first.</div>;
   }
 
   return (
@@ -90,7 +90,7 @@ export function HrPerformancePanel() {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Star className="w-3.5 h-3.5 text-emerald-400" /> Performance reviews
-          {reviews.length > 0 && <span className="text-[10px] text-zinc-500">· avg {avgRating}</span>}
+          {reviews.length > 0 && <span className="text-[10px] text-zinc-400">· avg {avgRating}</span>}
         </h3>
         <div className="grid grid-cols-3 gap-2 mb-2">
           <input placeholder="Period" value={reviewForm.period} onChange={(e) => setReviewForm({ ...reviewForm, period: e.target.value })}
@@ -107,7 +107,7 @@ export function HrPerformancePanel() {
             className="col-span-3 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         {reviews.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No reviews.</p>
+          <p className="text-[11px] text-zinc-400 italic">No reviews.</p>
         ) : (
           <ul className="space-y-1">
             {reviews.map((rv) => (
@@ -118,7 +118,7 @@ export function HrPerformancePanel() {
                       <Star key={n} className={cn('w-3 h-3', n <= rv.rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-700')} />
                     ))}
                   </span>
-                  <span className="text-[11px] text-zinc-500">{rv.period}</span>
+                  <span className="text-[11px] text-zinc-400">{rv.period}</span>
                 </div>
                 {rv.summary && <p className="text-[11px] text-zinc-400 mt-0.5">{rv.summary}</p>}
               </li>
@@ -139,7 +139,7 @@ export function HrPerformancePanel() {
             className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add</button>
         </div>
         {goals.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No goals.</p>
+          <p className="text-[11px] text-zinc-400 italic">No goals.</p>
         ) : (
           <ul className="space-y-2">
             {goals.map((g) => (
@@ -153,7 +153,7 @@ export function HrPerformancePanel() {
                   {[0, 25, 50, 75, 100].map((p) => (
                     <button key={p} type="button" onClick={() => setProgress(g.id, p)}
                       className={cn('text-[10px] px-1.5 py-0.5 rounded border',
-                        g.progress === p ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-500')}>
+                        g.progress === p ? 'border-emerald-700/50 bg-emerald-950/40 text-emerald-300' : 'border-zinc-700 text-zinc-400')}>
                       {p}%
                     </button>
                   ))}

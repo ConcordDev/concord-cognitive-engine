@@ -76,10 +76,10 @@ function MaterialEstimator() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Square footage</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Square footage</span>
             <input type="number" min={0} value={sqft || ''} onChange={(e) => setSqft(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 200" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Material</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Material</span>
             <select value={material} onChange={(e) => setMaterial(e.target.value as Material)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="brick">Brick (7/sf)</option>
               <option value="block">CMU block (1.125/sf)</option>
@@ -92,7 +92,7 @@ function MaterialEstimator() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter wall area.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter wall area.</div>}
           {result && (
             <>
               {/* Brick-wall visualizer */}
@@ -113,7 +113,7 @@ function MaterialEstimator() {
                 </svg>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-red-300">Units</div><div className="font-mono text-2xl text-red-100">{result.units?.toLocaleString()}</div><div className="text-[9px] text-zinc-500">incl. 5% waste</div></div>
+                <div className="rounded-lg border-2 border-red-500/40 bg-red-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-red-300">Units</div><div className="font-mono text-2xl text-red-100">{result.units?.toLocaleString()}</div><div className="text-[9px] text-zinc-400">incl. 5% waste</div></div>
                 <div className="rounded-lg border-2 border-amber-500/40 bg-amber-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-amber-300">Mortar bags</div><div className="font-mono text-2xl text-amber-100">{result.mortarBags}</div></div>
                 <div className="rounded-lg border-2 border-emerald-500/40 bg-emerald-500/10 p-3"><div className="text-[10px] uppercase tracking-wider text-emerald-300">Cost</div><div className="font-mono text-2xl text-emerald-100">${result.materialCost?.toLocaleString()}</div></div>
               </div>
@@ -176,10 +176,10 @@ function MortarMixReference() {
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950/60 px-3 py-2 font-mono text-sm text-stone-100">{result.ratio}</div>
             <div className="grid gap-1 text-[11px]">
-              <div className="text-zinc-300"><span className="text-zinc-500">Use: </span>{result.use}</div>
-              <div className="text-zinc-300"><span className="text-zinc-500">Water: </span>{result.waterRatio}</div>
-              <div className="text-zinc-300"><span className="text-zinc-500">Cure: </span>{result.cureTime}</div>
-              <div className="text-zinc-300"><span className="text-zinc-500">Temp: </span>{result.temperature}</div>
+              <div className="text-zinc-300"><span className="text-zinc-400">Use: </span>{result.use}</div>
+              <div className="text-zinc-300"><span className="text-zinc-400">Water: </span>{result.waterRatio}</div>
+              <div className="text-zinc-300"><span className="text-zinc-400">Cure: </span>{result.cureTime}</div>
+              <div className="text-zinc-300"><span className="text-zinc-400">Temp: </span>{result.temperature}</div>
             </div>
           </div>
         )}
@@ -221,10 +221,10 @@ function WallStrengthCheck() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Height (ft)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Height (ft)</span>
             <input type="number" min={0} step="0.5" value={height || ''} onChange={(e) => setHeight(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 8" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Thickness (inches)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Thickness (inches)</span>
             <input type="number" min={0} step="0.5" value={thickness || ''} onChange={(e) => setThickness(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 8" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
@@ -239,7 +239,7 @@ function WallStrengthCheck() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter wall dimensions.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter wall dimensions.</div>}
           {result && (
             <>
               <div className={`rounded-lg border-2 p-3 ${result.passesSlenderness ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-rose-500/40 bg-rose-500/10'}`}>
@@ -247,11 +247,11 @@ function WallStrengthCheck() {
                   <span className="text-[11px] uppercase tracking-wider text-zinc-300">Slenderness ratio</span>
                   {result.passesSlenderness ? <ShieldCheck className="h-4 w-4 text-emerald-300" /> : <AlertTriangle className="h-4 w-4 text-rose-300" />}
                 </div>
-                <div className="mt-1 font-mono text-3xl text-white">{result.slendernessRatio} <span className="text-sm text-zinc-500">/ max {result.maxAllowedRatio}</span></div>
+                <div className="mt-1 font-mono text-3xl text-white">{result.slendernessRatio} <span className="text-sm text-zinc-400">/ max {result.maxAllowedRatio}</span></div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
                   <div className={`h-full ${(result.slendernessRatio || 0) > (result.maxAllowedRatio || 1) ? 'bg-rose-500' : (result.slendernessRatio || 0) > (result.maxAllowedRatio || 1) * 0.8 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, ((result.slendernessRatio || 0) / (result.maxAllowedRatio || 1)) * 100)}%` }} />
                 </div>
-                <div className="mt-1 text-[10px] text-zinc-500">Max allowed = {result.reinforced ? 25 : 20} for {result.reinforced ? 'reinforced' : 'unreinforced'} walls</div>
+                <div className="mt-1 text-[10px] text-zinc-400">Max allowed = {result.reinforced ? 25 : 20} for {result.reinforced ? 'reinforced' : 'unreinforced'} walls</div>
               </div>
               {result.recommendation && <div className={`rounded border px-2 py-1.5 text-[11px] ${result.passesSlenderness ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-rose-500/30 bg-rose-500/10 text-rose-200'}`}>{result.recommendation}</div>}
             </>
@@ -294,7 +294,7 @@ function JobCosting() {
       </header>
 
       <div className="p-4 space-y-2">
-        <div className="grid grid-cols-[1fr_70px_70px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_70px_70px_90px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Item</span><span>Hours</span><span>Rate $/h</span><span>Materials $</span><span></span>
         </div>
         {items.map((it, i) => (
@@ -303,7 +303,7 @@ function JobCosting() {
             <input type="number" step="0.5" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.hours} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, hours: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.rate} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, rate: e.target.value } : x))} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={it.materialCost} onChange={(e) => setItems((is) => is.map((x, idx) => idx === i ? { ...x, materialCost: e.target.value } : x))} />
-            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setItems((is) => is.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -323,10 +323,10 @@ function JobCosting() {
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <div className="rounded border border-green-500/15 bg-zinc-950/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-500">Labor: </span><span className="font-mono text-green-200">${result.subtotalLabor}</span></div>
-              <div className="rounded border border-green-500/15 bg-zinc-950/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-500">Materials: </span><span className="font-mono text-green-200">${result.subtotalMaterials}</span></div>
-              <div className="rounded border border-zinc-700 bg-zinc-900/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-500">Overhead (15%): </span><span className="font-mono text-zinc-200">${result.overhead}</span></div>
-              <div className="rounded border border-zinc-700 bg-zinc-900/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-500">Profit (10%): </span><span className="font-mono text-zinc-200">${result.profit}</span></div>
+              <div className="rounded border border-green-500/15 bg-zinc-950/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-400">Labor: </span><span className="font-mono text-green-200">${result.subtotalLabor}</span></div>
+              <div className="rounded border border-green-500/15 bg-zinc-950/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-400">Materials: </span><span className="font-mono text-green-200">${result.subtotalMaterials}</span></div>
+              <div className="rounded border border-zinc-700 bg-zinc-900/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-400">Overhead (15%): </span><span className="font-mono text-zinc-200">${result.overhead}</span></div>
+              <div className="rounded border border-zinc-700 bg-zinc-900/40 px-2 py-1.5 text-[11px]"><span className="text-zinc-400">Profit (10%): </span><span className="font-mono text-zinc-200">${result.profit}</span></div>
             </div>
             <div className="rounded-lg border-2 border-green-500/40 bg-green-500/10 p-3 text-center">
               <div className="text-[10px] uppercase tracking-wider text-green-300">Grand total</div>

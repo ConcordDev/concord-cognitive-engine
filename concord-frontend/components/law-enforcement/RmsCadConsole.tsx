@@ -52,7 +52,7 @@ const TABS: { key: ConsoleTab; label: string; icon: typeof Siren }[] = [
 function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{label}</span>
       <input
         {...rest}
         className="w-full mt-0.5 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
@@ -64,7 +64,7 @@ function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes
 function Select({ label, options, ...rest }: { label: string; options: string[] } & React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">{label}</span>
       <select
         {...rest}
         className="w-full mt-0.5 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white focus:border-blue-500 focus:outline-none"
@@ -217,7 +217,7 @@ function CadTab() {
         {(['P1', 'P2', 'P3', 'P4'] as const).map((p) => (
           <div key={p} className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
             <p className={cn('text-xl font-bold', PRIORITY_TONE[p].split(' ')[0])}>{byPriority[p] || 0}</p>
-            <p className="text-[10px] text-zinc-500">{p} active calls</p>
+            <p className="text-[10px] text-zinc-400">{p} active calls</p>
           </div>
         ))}
       </div>
@@ -268,14 +268,14 @@ function CadTab() {
                     <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-bold', PRIORITY_TONE[c.priority])}>{c.priority}</span>
                     <span className="text-xs font-semibold text-white truncate">{c.callType}</span>
                   </div>
-                  <p className="text-[10px] text-zinc-500 truncate">{c.location} · {c.status}{c.assignedUnit ? ' · assigned' : ''}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">{c.location} · {c.status}{c.assignedUnit ? ' · assigned' : ''}</p>
                 </div>
                 {c.status === 'pending' && (
                   <Btn busy={busy === c.id} onClick={() => dispatch(c.id)}><Radio className="w-3 h-3" /> Dispatch</Btn>
                 )}
               </div>
             ))}
-            {queue.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No active calls.</p>}
+            {queue.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No active calls.</p>}
           </div>
         </div>
 
@@ -289,7 +289,7 @@ function CadTab() {
                     <span className="text-xs font-mono font-semibold text-white">{u.callSign}</span>
                     <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-semibold', UNIT_TONE[u.status])}>{u.status}</span>
                   </div>
-                  <span className="text-[10px] text-zinc-500">{u.officerName || u.beat || u.unitType}</span>
+                  <span className="text-[10px] text-zinc-400">{u.officerName || u.beat || u.unitType}</span>
                 </div>
                 <div className="flex gap-1 mt-1.5 flex-wrap">
                   {(['enroute', 'onscene', 'cleared', 'available', 'unavailable'] as const).map((s) => (
@@ -302,7 +302,7 @@ function CadTab() {
                 </div>
               </div>
             ))}
-            {units.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No units registered.</p>}
+            {units.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No units registered.</p>}
           </div>
         </div>
       </div>
@@ -425,13 +425,13 @@ function EvidenceTab() {
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300">{e.barcode}</span>
                   <span className="text-xs font-semibold text-white truncate">{e.description}</span>
                 </div>
-                <p className="text-[10px] text-zinc-500 truncate">{e.caseNumber || 'no case'} · {e.locker} · holder {e.currentHolder} · {e.status}</p>
-                <p className="text-[9px] text-zinc-600 font-mono">{e.id}</p>
+                <p className="text-[10px] text-zinc-400 truncate">{e.caseNumber || 'no case'} · {e.locker} · holder {e.currentHolder} · {e.status}</p>
+                <p className="text-[9px] text-zinc-400 font-mono">{e.id}</p>
               </div>
               <Btn busy={busy === e.id} onClick={() => viewChain(e.id)}><Scale className="w-3 h-3" /> Chain</Btn>
             </div>
           ))}
-          {items.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No evidence booked.</p>}
+          {items.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No evidence booked.</p>}
         </div>
       </div>
 
@@ -519,11 +519,11 @@ function RosterTab() {
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-amber-400">{summary.officersOnOvertime}</p>
-          <p className="text-[10px] text-zinc-500">officers on overtime</p>
+          <p className="text-[10px] text-zinc-400">officers on overtime</p>
         </div>
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-red-400">{summary.totalOvertimeHours}h</p>
-          <p className="text-[10px] text-zinc-500">total overtime hours</p>
+          <p className="text-[10px] text-zinc-400">total overtime hours</p>
         </div>
       </div>
 
@@ -571,17 +571,17 @@ function RosterTab() {
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-semibold text-white">{r.name}</span>
-                  <span className="text-[10px] text-zinc-500 ml-2">{r.rank} · {r.badgeNumber} · {r.beat || 'no beat'}</span>
+                  <span className="text-[10px] text-zinc-400 ml-2">{r.rank} · {r.badgeNumber} · {r.beat || 'no beat'}</span>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-semibold text-white">{r.weeklyHours}h / wk</span>
                   {r.overtimeHours > 0 && <span className="text-[10px] text-red-400 ml-2">+{r.overtimeHours}h OT</span>}
                 </div>
               </div>
-              <p className="text-[9px] text-zinc-600 font-mono">{r.officerId} · {r.shiftCount} shift(s)</p>
+              <p className="text-[9px] text-zinc-400 font-mono">{r.officerId} · {r.shiftCount} shift(s)</p>
             </div>
           ))}
-          {roster.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No officers on roster.</p>}
+          {roster.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No officers on roster.</p>}
         </div>
       </div>
     </div>
@@ -687,10 +687,10 @@ function CrimeMapTab() {
             {hotspots.map((h, i) => (
               <div key={i} className="p-2.5 bg-red-500/5 rounded-lg border border-red-500/30">
                 <span className="text-xs font-semibold text-red-300">×{h.incidentCount} incidents</span>
-                <span className="text-[10px] text-zinc-500 ml-2 font-mono">{h.centerLat}, {h.centerLon}</span>
+                <span className="text-[10px] text-zinc-400 ml-2 font-mono">{h.centerLat}, {h.centerLon}</span>
               </div>
             ))}
-            {hotspots.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No hotspots above threshold.</p>}
+            {hotspots.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No hotspots above threshold.</p>}
           </div>
         </div>
       </div>
@@ -766,11 +766,11 @@ function WarrantsTab() {
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-blue-400">{summary.active}</p>
-          <p className="text-[10px] text-zinc-500">active warrants</p>
+          <p className="text-[10px] text-zinc-400">active warrants</p>
         </div>
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-amber-400">{summary.expiringSoon}</p>
-          <p className="text-[10px] text-zinc-500">expiring within 7 days</p>
+          <p className="text-[10px] text-zinc-400">expiring within 7 days</p>
         </div>
       </div>
 
@@ -799,8 +799,8 @@ function WarrantsTab() {
                     <span className="text-xs font-semibold text-white truncate">{w.subject}</span>
                     <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-semibold', statusTone[w.status] || 'text-zinc-400 bg-zinc-500/15')}>{w.status}</span>
                   </div>
-                  <p className="text-[10px] text-zinc-500 truncate">{w.warrantType} · {w.charges || 'no charges'} · {w.attempts.length} attempt(s) · expires {new Date(w.expiresAt).toLocaleDateString()}</p>
-                  <p className="text-[9px] text-zinc-600 font-mono">{w.id}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">{w.warrantType} · {w.charges || 'no charges'} · {w.attempts.length} attempt(s) · expires {new Date(w.expiresAt).toLocaleDateString()}</p>
+                  <p className="text-[9px] text-zinc-400 font-mono">{w.id}</p>
                 </div>
               </div>
               {w.status === 'active' && (
@@ -821,7 +821,7 @@ function WarrantsTab() {
               )}
             </div>
           ))}
-          {warrants.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No warrants on file.</p>}
+          {warrants.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No warrants on file.</p>}
         </div>
       </div>
     </div>
@@ -896,7 +896,7 @@ function ReportsTab() {
       <Banner feedback={feedback} />
       <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800 inline-block">
         <p className="text-xl font-bold text-yellow-400">{pending}</p>
-        <p className="text-[10px] text-zinc-500">reports awaiting supervisor approval</p>
+        <p className="text-[10px] text-zinc-400">reports awaiting supervisor approval</p>
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 space-y-2">
@@ -908,7 +908,7 @@ function ReportsTab() {
           <Field label="Supervisor (for review)" value={supervisor} onChange={(e) => setSupervisor(e.target.value)} placeholder="Sgt. Cole" />
         </div>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Narrative</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Narrative</span>
           <textarea value={narrative} onChange={(e) => setNarrative(e.target.value)} rows={4}
             className="w-full mt-0.5 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-blue-500 focus:outline-none"
             placeholder="On the above date and time, officer responded to..." />
@@ -931,8 +931,8 @@ function ReportsTab() {
                   </span>
                 )}
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1 line-clamp-2">{r.narrative}</p>
-              <p className="text-[9px] text-zinc-600 font-mono">{r.id}{r.approvedBy ? ` · reviewed by ${r.approvedBy}` : ''}{r.supervisorNote ? ` · ${r.supervisorNote}` : ''}</p>
+              <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{r.narrative}</p>
+              <p className="text-[9px] text-zinc-400 font-mono">{r.id}{r.approvedBy ? ` · reviewed by ${r.approvedBy}` : ''}{r.supervisorNote ? ` · ${r.supervisorNote}` : ''}</p>
               <div className="flex gap-1 mt-1.5">
                 {(r.status === 'draft' || r.status === 'rejected') && (
                   <button disabled={busy === r.id} onClick={() => submit(r.id)}
@@ -955,7 +955,7 @@ function ReportsTab() {
               </div>
             </div>
           ))}
-          {reports.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No reports written.</p>}
+          {reports.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No reports written.</p>}
         </div>
       </div>
     </div>
@@ -1021,11 +1021,11 @@ function BookingTab() {
       <div className="grid grid-cols-2 gap-2">
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-red-400">{summary.arrests}</p>
-          <p className="text-[10px] text-zinc-500">arrest bookings</p>
+          <p className="text-[10px] text-zinc-400">arrest bookings</p>
         </div>
         <div className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
           <p className="text-xl font-bold text-blue-400">{summary.fieldInterviews}</p>
-          <p className="text-[10px] text-zinc-500">field interviews</p>
+          <p className="text-[10px] text-zinc-400">field interviews</p>
         </div>
       </div>
 
@@ -1064,7 +1064,7 @@ function BookingTab() {
                 <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-semibold', b.kind === 'arrest' ? 'text-red-400 bg-red-500/15' : 'text-blue-400 bg-blue-500/15')}>
                   {b.kind.replace('_', ' ')}
                 </span>
-                <span className="text-[10px] text-zinc-500">{b.mugshotCaptured ? '📷' : '○'} mugshot · {b.printsCaptured ? '☑' : '○'} prints</span>
+                <span className="text-[10px] text-zinc-400">{b.mugshotCaptured ? '📷' : '○'} mugshot · {b.printsCaptured ? '☑' : '○'} prints</span>
               </div>
               {b.charges.length > 0 && (
                 <p className="text-[10px] text-zinc-400 mt-1">Charges: {b.charges.join(', ')}</p>
@@ -1076,10 +1076,10 @@ function BookingTab() {
                   ))}
                 </div>
               )}
-              <p className="text-[9px] text-zinc-600 font-mono mt-0.5">{b.id} · {b.status}</p>
+              <p className="text-[9px] text-zinc-400 font-mono mt-0.5">{b.id} · {b.status}</p>
             </div>
           ))}
-          {bookings.length === 0 && <p className="text-[11px] text-zinc-600 py-4 text-center">No bookings logged.</p>}
+          {bookings.length === 0 && <p className="text-[11px] text-zinc-400 py-4 text-center">No bookings logged.</p>}
         </div>
       </div>
     </div>
@@ -1108,7 +1108,7 @@ export function RmsCadConsole() {
           <button key={key} onClick={() => setTab(key)}
             className={cn(
               'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300',
+              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
             )}>
             <Icon className="w-3.5 h-3.5" /> {label}
           </button>

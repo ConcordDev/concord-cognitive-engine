@@ -91,11 +91,11 @@ function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-          <p className="text-xs text-gray-500 mb-1">Total earned</p>
+          <p className="text-xs text-gray-400 mb-1">Total earned</p>
           <p className="text-xl font-bold text-neon-green">${earned.toFixed(2)}</p>
         </div>
         <div className="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-          <p className="text-xs text-gray-500 mb-1">This month</p>
+          <p className="text-xs text-gray-400 mb-1">This month</p>
           <p className="text-xl font-bold text-neon-cyan">${monthly.toFixed(2)}</p>
         </div>
       </div>
@@ -115,11 +115,11 @@ function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <GitBranch className="w-3 h-3 text-gray-500 shrink-0" />
+                    <GitBranch className="w-3 h-3 text-gray-400 shrink-0" />
                     <span className="text-sm text-white truncate">{stream.originalTitle}</span>
                     <CitationBadge type={stream.citationType} />
                   </div>
-                  <p className="text-xs text-gray-500 ml-5">{stream.totalSales} sales</p>
+                  <p className="text-xs text-gray-400 ml-5">{stream.totalSales} sales</p>
                 </div>
                 <span className="text-sm font-medium text-neon-green shrink-0 ml-2">
                   ${stream.totalRoyalties.toFixed(2)}
@@ -144,7 +144,7 @@ function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
                 className="flex items-center justify-between text-xs py-1.5 border-b border-gray-800 last:border-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-gray-500 shrink-0">
+                  <span className="text-gray-400 shrink-0">
                     {payment.date ? new Date(payment.date).toLocaleDateString() : '—'}
                   </span>
                   <span className="text-gray-300 truncate">
@@ -162,7 +162,7 @@ function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
       )}
 
       {!royalties?.streams?.length && !royalties?.recentPayments?.length && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           No royalty earnings yet. Create content that others remix to start earning.
         </p>
       )}

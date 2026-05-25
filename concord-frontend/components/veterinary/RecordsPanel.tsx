@@ -134,11 +134,11 @@ export function RecordsPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading records…
         </div>
       ) : notes.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <ClipboardList className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No medical notes charted yet.
         </div>
@@ -148,7 +148,7 @@ export function RecordsPanel() {
             <div key={n.id} className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-white">{n.patientName}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-zinc-400">
                   {n.date} {n.vet && `· ${n.vet}`}
                 </p>
               </div>

@@ -219,7 +219,7 @@ function ScanResultCard({
           </div>
         </div>
         {!isClean && (
-          <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-500">
+          <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         )}
@@ -227,7 +227,7 @@ function ScanResultCard({
 
       {/* Hash info */}
       {result.hash?.sha256 && (
-        <div className="px-4 py-2 text-xs text-zinc-500 border-b border-zinc-800/30 font-mono">
+        <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800/30 font-mono">
           SHA256: {result.hash.sha256.slice(0, 32)}...
         </div>
       )}
@@ -238,7 +238,7 @@ function ScanResultCard({
           {/* Signatures */}
           {(threat.signatures?.clamav || (threat.signatures?.yara?.length ?? 0) > 0) && (
             <div>
-              <span className="text-zinc-500 font-medium">Signatures:</span>
+              <span className="text-zinc-400 font-medium">Signatures:</span>
               <div className="mt-1 space-y-1">
                 {threat.signatures?.clamav && (
                   <div className="text-zinc-400">ClamAV: <span className="text-zinc-300">{threat.signatures.clamav}</span></div>
@@ -253,7 +253,7 @@ function ScanResultCard({
           {/* Vector */}
           {threat.vector && (
             <div>
-              <span className="text-zinc-500 font-medium">Attack Vector:</span>
+              <span className="text-zinc-400 font-medium">Attack Vector:</span>
               <span className="ml-2 text-zinc-300">{threat.vector}</span>
             </div>
           )}
@@ -261,7 +261,7 @@ function ScanResultCard({
           {/* Behavior */}
           {threat.behavior && threat.behavior.length > 0 && (
             <div>
-              <span className="text-zinc-500 font-medium">Behavior:</span>
+              <span className="text-zinc-400 font-medium">Behavior:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {threat.behavior.map((b, i) => (
                   <span key={i} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50">
@@ -275,13 +275,13 @@ function ScanResultCard({
           {/* Neutralization */}
           {threat.neutralization && (
             <div className="p-2 rounded bg-zinc-800/50 border border-zinc-700/30">
-              <span className="text-zinc-500 font-medium">Neutralization:</span>
+              <span className="text-zinc-400 font-medium">Neutralization:</span>
               <p className="mt-1 text-zinc-300 leading-relaxed">{threat.neutralization}</p>
             </div>
           )}
 
           {/* Detection stats */}
-          <div className="flex items-center gap-4 text-zinc-500 pt-1 border-t border-zinc-800/30">
+          <div className="flex items-center gap-4 text-zinc-400 pt-1 border-t border-zinc-800/30">
             {threat.times_detected && (
               <span>Detected {threat.times_detected} time{threat.times_detected !== 1 ? 's' : ''}</span>
             )}
@@ -333,7 +333,7 @@ function SecurityScoreCard({
             </span>
           </div>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-500">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -350,7 +350,7 @@ function SecurityScoreCard({
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-zinc-500 pt-2 border-t border-zinc-800/30">
+          <div className="flex items-center gap-4 text-zinc-400 pt-2 border-t border-zinc-800/30">
             <span>{score.stats.totalScanned} scanned</span>
             <span>{score.stats.threatsDetected} threats</span>
             <span>{score.stats.firewallRules} rules</span>
@@ -380,7 +380,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   const color = value >= 75 ? 'bg-green-500' : value >= 50 ? 'bg-amber-500' : 'bg-red-500';
   return (
     <div>
-      <div className="flex justify-between text-zinc-500 mb-0.5">
+      <div className="flex justify-between text-zinc-400 mb-0.5">
         <span>{label}</span>
         <span>{value}%</span>
       </div>
@@ -431,7 +431,7 @@ function SweepResultCard({
             )}
           </div>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-500">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -439,12 +439,12 @@ function SweepResultCard({
       {expanded && (
         <div className="px-4 py-3 space-y-2 text-xs">
           {sweep.toolsUsed.length > 0 && (
-            <div className="text-zinc-500">
+            <div className="text-zinc-400">
               Tools used: {sweep.toolsUsed.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
             </div>
           )}
           {sweep.durationMs && (
-            <div className="text-zinc-500">
+            <div className="text-zinc-400">
               Duration: {(sweep.durationMs / 1000).toFixed(1)}s
             </div>
           )}
@@ -490,9 +490,9 @@ function ThreatFeedCard({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-medium text-zinc-100">Threat Intelligence Feed</h3>
-          <span className="text-xs text-zinc-500">{threats.length} recent threats</span>
+          <span className="text-xs text-zinc-400">{threats.length} recent threats</span>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-500">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -537,7 +537,7 @@ function PredictionsCard({
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm font-medium text-zinc-100">Prophet Predictions</h3>
-          <span className="text-xs text-zinc-500">{predictions.length} predicted variants</span>
+          <span className="text-xs text-zinc-400">{predictions.length} predicted variants</span>
         </div>
       </div>
 

@@ -10,6 +10,7 @@ export default function registerCriActions(registerLensAction) {
    * artifact.data.crisis = { description?, scope: 1-5, impact: 1-5, urgency: 1-5, controllability: 1-5, affectedSystems?: [], casualties?: number, financialExposure?: number }
    */
   registerLensAction("cri", "severityAssessment", (ctx, artifact, params) => {
+  try {
     const crisis = artifact.data?.crisis || {};
 
     // Factor scores (1-5 scale, default to 3 if missing)
@@ -97,7 +98,8 @@ export default function registerCriActions(registerLensAction) {
         rawWeightedScore: Math.round(weightedScore * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * responseTimeline
@@ -107,6 +109,7 @@ export default function registerCriActions(registerLensAction) {
    * artifact.data.startTime = ISO timestamp (default now)
    */
   registerLensAction("cri", "responseTimeline", (ctx, artifact, params) => {
+  try {
     const steps = artifact.data?.responseSteps || [];
     if (steps.length === 0) return { ok: true, result: { message: "No response steps defined." } };
 
@@ -246,7 +249,8 @@ export default function registerCriActions(registerLensAction) {
         criticalPathLength: criticalPath.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * stakeholderImpact
@@ -256,6 +260,7 @@ export default function registerCriActions(registerLensAction) {
    * artifact.data.crisisType = string (optional context)
    */
   registerLensAction("cri", "stakeholderImpact", (ctx, artifact, params) => {
+  try {
     const stakeholders = artifact.data?.stakeholders || [];
     if (stakeholders.length === 0) return { ok: true, result: { message: "No stakeholders defined." } };
 
@@ -355,7 +360,8 @@ export default function registerCriActions(registerLensAction) {
         crisisType,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────────────────
   // 2026 parity — data-quality scorecard tooling (Monte Carlo / Great
@@ -523,6 +529,7 @@ export default function registerCriActions(registerLensAction) {
    * artifact.data.dtus or params.dtus = [{ id, title?, creti }]
    */
   registerLensAction("cri", "trend-snapshot", (ctx, artifact, params = {}) => {
+  try {
     const s = getCriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = criActor(ctx);
@@ -583,13 +590,15 @@ export default function registerCriActions(registerLensAction) {
     saveCriState();
 
     return { ok: true, result: { snapshot: snap, snapshotCount: history.length, regressionsDetected: newAlerts.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * trend-history
    * Return recorded corpus snapshots + deltas for charting trend over time.
    */
   registerLensAction("cri", "trend-history", (ctx, _artifact, params = {}) => {
+  try {
     const s = getCriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = criActor(ctx);
@@ -618,7 +627,8 @@ export default function registerCriActions(registerLensAction) {
         latest: history[history.length - 1] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rootCause
@@ -627,6 +637,7 @@ export default function registerCriActions(registerLensAction) {
    * params.dtu = { id, title?, creti }
    */
   registerLensAction("cri", "rootCause", (ctx, artifact, params = {}) => {
+  try {
     const s = getCriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = criActor(ctx);
@@ -677,7 +688,8 @@ export default function registerCriActions(registerLensAction) {
         recommendedFixes: contributors.slice(0, 3).flatMap(c => c.fixes.slice(0, 1).map(f => ({ dimension: c.dimension, fix: f }))),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * compare
@@ -685,6 +697,7 @@ export default function registerCriActions(registerLensAction) {
    * params.dtuA / params.dtuB = { id, title?, creti }
    */
   registerLensAction("cri", "compare", (ctx, _artifact, params = {}) => {
+  try {
     const s = getCriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = criActor(ctx);
@@ -725,7 +738,8 @@ export default function registerCriActions(registerLensAction) {
         biggestGap: [...dimensions].sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta))[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * bulkRemediate
@@ -736,6 +750,7 @@ export default function registerCriActions(registerLensAction) {
    * params.note, params.status ("flagged"|"queued"|"resolved")
    */
   registerLensAction("cri", "bulkRemediate", (ctx, _artifact, params = {}) => {
+  try {
     const s = getCriState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = criActor(ctx);
@@ -799,7 +814,8 @@ export default function registerCriActions(registerLensAction) {
     }
 
     return { ok: false, error: `unknown op '${op}' (expected flag|list|clear)` };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * alerts

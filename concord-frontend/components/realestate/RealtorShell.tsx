@@ -97,7 +97,7 @@ export function RealtorShell({
       {/* Filter chips */}
       {filterChips.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
+          <Filter className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
           {filterChips.map((c) => (
             <span key={c} className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-cyan-500/15 text-cyan-300 border border-cyan-500/20">{c}</span>
           ))}
@@ -121,7 +121,7 @@ export function RealtorShell({
         {/* Listings rail (Redfin-shape cards) */}
         <section className="lg:col-span-3 space-y-2 max-h-[480px] overflow-y-auto">
           {listings.length === 0 ? (
-            <div className="text-center text-xs text-gray-500 py-12 border border-dashed border-white/10 rounded-lg">
+            <div className="text-center text-xs text-gray-400 py-12 border border-dashed border-white/10 rounded-lg">
               No listings match your filters.
             </div>
           ) : (
@@ -154,7 +154,7 @@ export function RealtorShell({
                       )}
                     </div>
                     <div className="text-xs text-gray-300 truncate">{l.address}</div>
-                    <div className="text-[11px] text-gray-500 truncate">{l.city}{l.state ? `, ${l.state}` : ''} {l.zip}</div>
+                    <div className="text-[11px] text-gray-400 truncate">{l.city}{l.state ? `, ${l.state}` : ''} {l.zip}</div>
                     <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
                       <span className="inline-flex items-center gap-1"><BedDouble className="w-3 h-3" />{l.beds}</span>
                       <span className="inline-flex items-center gap-1"><Bath className="w-3 h-3" />{l.baths}</span>
@@ -165,7 +165,7 @@ export function RealtorShell({
                   <div className="flex flex-col gap-1 p-2 flex-shrink-0">
                     <button
                       onClick={(e) => { e.stopPropagation(); onToggleFavourite?.(l); }}
-                      className={cn('p-1.5 rounded hover:bg-white/10', l.favourited ? 'text-rose-400' : 'text-gray-500')}
+                      className={cn('p-1.5 rounded hover:bg-white/10', l.favourited ? 'text-rose-400' : 'text-gray-400')}
                       aria-label={l.favourited ? 'Unfavourite' : 'Favourite'}
                     >
                       <Heart className={cn('w-4 h-4', l.favourited && 'fill-rose-400')} />
@@ -182,7 +182,7 @@ export function RealtorShell({
       {/* Recent activity */}
       {activity.length > 0 && (
         <section>
-          <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-1.5">Recent activity</h2>
+          <h2 className="text-xs uppercase tracking-wider text-gray-400 mb-1.5">Recent activity</h2>
           <ul className="space-y-0.5">
             {activity.slice(0, 6).map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-white/[0.03] text-[11px]">
@@ -201,7 +201,7 @@ export function RealtorShell({
                     : <Star className="w-3.5 h-3.5" />}
                 </span>
                 <span className="flex-1 text-gray-200 truncate">{a.label}</span>
-                <span className="text-gray-500 font-mono">{new Date(a.timestamp).toLocaleString()}</span>
+                <span className="text-gray-400 font-mono">{new Date(a.timestamp).toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -217,7 +217,7 @@ function Tile({ icon: Icon, label, value }: TileProps) {
     <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3 text-cyan-300" aria-hidden="true" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-base font-mono tabular-nums text-white">{value}</div>
     </div>

@@ -225,18 +225,18 @@ function StepCard({
     <div className="rounded-lg border border-lattice-border bg-lattice-surface p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className={`flex items-center gap-2 text-xs font-semibold ${meta.tone}`}>
-          {meta.icon} {meta.label} <span className="text-gray-500">· step {index + 1}</span>
+          {meta.icon} {meta.label} <span className="text-gray-400">· step {index + 1}</span>
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => onMove(-1)} disabled={index === 0} aria-label="Move up"
-            className="text-gray-500 hover:text-white disabled:opacity-30">
+            className="text-gray-400 hover:text-white disabled:opacity-30">
             <ChevronUp className="w-4 h-4" />
           </button>
           <button onClick={() => onMove(1)} disabled={index === total - 1} aria-label="Move down"
-            className="text-gray-500 hover:text-white disabled:opacity-30">
+            className="text-gray-400 hover:text-white disabled:opacity-30">
             <ChevronDown className="w-4 h-4" />
           </button>
-          <button onClick={onRemove} aria-label="Remove step" className="text-gray-500 hover:text-red-400">
+          <button onClick={onRemove} aria-label="Remove step" className="text-gray-400 hover:text-red-400">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -270,7 +270,7 @@ function StepCard({
           <input type="text" value={step.expression ?? ''} onChange={(e) => onChange({ expression: e.target.value })}
             placeholder='concat($.data.first, " ", $.data.last)'
             className="w-full px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs font-mono" />
-          <p className="text-[10px] text-gray-500">Intrinsics: concat / sum / len / upper / lower · paths with $.</p>
+          <p className="text-[10px] text-gray-400">Intrinsics: concat / sum / len / upper / lower · paths with $.</p>
         </div>
       )}
       {step.kind === 'delay' && (
@@ -302,7 +302,7 @@ function ActionEditor({ step, onChange }: { step: ZapStep; onChange: (p: Partial
         <input type="text" value={step.actionId ?? ''} onChange={(e) => onChange({ actionId: e.target.value })}
           placeholder="action id (e.g. post_message)" className="px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-xs" />
       </div>
-      <div className="text-[10px] uppercase tracking-wide text-gray-500">Field mapping</div>
+      <div className="text-[10px] uppercase tracking-wide text-gray-400">Field mapping</div>
       {entries.map(([k, v], idx) => (
         <div key={idx} className="grid grid-cols-2 gap-2">
           <input type="text" defaultValue={k} onBlur={(e) => setEntry(k, e.target.value, v)}
@@ -334,7 +334,7 @@ function PathEditor({ step, onChange }: { step: ZapStep; onChange: (p: Partial<Z
               className="flex-1 px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-xs" />
             {branches.length > 1 && (
               <button aria-label="Remove path" onClick={() => onChange({ branches: branches.filter((_, j) => j !== i) })}
-                className="text-gray-500 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                className="text-gray-400 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
             )}
           </div>
           <input type="text" value={b.condition} onChange={(e) => {

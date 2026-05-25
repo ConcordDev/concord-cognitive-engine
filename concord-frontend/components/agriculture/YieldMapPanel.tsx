@@ -146,14 +146,14 @@ export function YieldMapPanel({
 
   if (fieldsLoading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fields…
       </div>
     );
   }
   if (fields.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <Grid3x3 className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No fields yet. Add a field to build a yield map.
       </div>
@@ -219,11 +219,11 @@ export function YieldMapPanel({
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading maps…
         </div>
       ) : !latest ? (
-        <div className="py-8 text-center text-xs text-gray-500">
+        <div className="py-8 text-center text-xs text-gray-400">
           No yield map for this field yet. Log geo-tagged harvest passes or paste points, then
           build.
         </div>
@@ -238,7 +238,7 @@ export function YieldMapPanel({
             ].map((m) => (
               <div key={m.k} className="rounded bg-lattice-deep px-2 py-1.5">
                 <div className="text-sm font-bold text-violet-300">{m.v}</div>
-                <div className="text-[10px] text-gray-500">{m.k}</div>
+                <div className="text-[10px] text-gray-400">{m.k}</div>
               </div>
             ))}
           </div>
@@ -278,7 +278,7 @@ export function YieldMapPanel({
                   }),
                 )}
               </div>
-              <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+              <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2.5 h-2.5 bg-emerald-500 inline-block rounded-sm" /> high
                 </span>
@@ -301,7 +301,7 @@ export function YieldMapPanel({
             }))}
             className="h-72 rounded"
           />
-          <div className="text-[10px] text-gray-600">
+          <div className="text-[10px] text-gray-400">
             Built {new Date(latest.builtAt).toLocaleString()}
           </div>
         </div>

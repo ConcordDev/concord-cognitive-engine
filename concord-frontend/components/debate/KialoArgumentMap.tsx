@@ -276,7 +276,7 @@ export function KialoArgumentMap() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-gray-500">
+      <div className="flex items-center justify-center py-8 text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
@@ -287,7 +287,7 @@ export function KialoArgumentMap() {
       <div className="flex items-center gap-2 mb-3">
         <Scale className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-white">Argument Map</h3>
-        <span className="text-[11px] text-gray-500">Kialo-shape · impact-weighted</span>
+        <span className="text-[11px] text-gray-400">Kialo-shape · impact-weighted</span>
         {busy && <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />}
       </div>
 
@@ -313,7 +313,7 @@ export function KialoArgumentMap() {
         {/* ── debate list ─────────────────────────────────────────── */}
         <ul className="space-y-1">
           {debates.length === 0 && (
-            <li className="text-[11px] text-gray-600 italic">No debates yet. Create one above.</li>
+            <li className="text-[11px] text-gray-400 italic">No debates yet. Create one above.</li>
           )}
           {debates.map((d) => (
             <li key={d.id} className="group flex items-center gap-1">
@@ -327,7 +327,7 @@ export function KialoArgumentMap() {
                 )}
               >
                 <p className="text-xs font-semibold text-white line-clamp-2">{d.thesis}</p>
-                <p className="text-[10px] text-gray-500 flex items-center gap-1.5 mt-0.5">
+                <p className="text-[10px] text-gray-400 flex items-center gap-1.5 mt-0.5">
                   <span>{d.claimCount} claims</span>
                   {d.positionCount > 0 && <span>· {d.positionCount} positions</span>}
                   <span className={cn('font-semibold', VERDICT_COLOR[d.score.verdict] || 'text-gray-400')}>
@@ -359,7 +359,7 @@ export function KialoArgumentMap() {
                   <p className={cn('text-lg font-bold leading-none', VERDICT_COLOR[score.verdict] || 'text-gray-400')}>
                     {score.supportPct}%
                   </p>
-                  <p className="text-[9px] text-gray-500 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
+                  <p className="text-[9px] text-gray-400 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
                 </div>
               )}
             </div>
@@ -373,7 +373,7 @@ export function KialoArgumentMap() {
             {/* toolbar: perspective filter · positions · share */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center gap-1 bg-black/40 border border-white/10 rounded p-0.5">
-                <Eye className="w-3 h-3 text-gray-500 ml-1" />
+                <Eye className="w-3 h-3 text-gray-400 ml-1" />
                 {(['all', 'pro', 'con'] as const).map((p) => (
                   <button
                     key={p}
@@ -386,7 +386,7 @@ export function KialoArgumentMap() {
                           : p === 'con'
                             ? 'bg-rose-600/30 text-rose-300'
                             : 'bg-cyan-600/30 text-cyan-300'
-                        : 'text-gray-500 hover:text-gray-300',
+                        : 'text-gray-400 hover:text-gray-300',
                     )}
                   >
                     {p === 'all' ? 'All sides' : p}
@@ -460,7 +460,7 @@ export function KialoArgumentMap() {
 
             {/* claim tree */}
             {visibleRoots.length === 0 ? (
-              <p className="text-[11px] text-gray-600 italic py-2">
+              <p className="text-[11px] text-gray-400 italic py-2">
                 {positionFilter
                   ? 'No claims attached to this position yet.'
                   : 'No claims yet. Add the first pro or con claim below.'}
@@ -493,7 +493,7 @@ export function KialoArgumentMap() {
             />
           </div>
         ) : (
-          <div className="bg-black/20 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-xs text-gray-500 min-h-[180px]">
+          <div className="bg-black/20 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-xs text-gray-400 min-h-[180px]">
             Select or create a debate to map its arguments.
           </div>
         )}
@@ -525,7 +525,7 @@ function PositionsPanel({
         Multi-thesis positions
       </p>
       {positions.length === 0 ? (
-        <p className="text-[10px] text-gray-600 italic">
+        <p className="text-[10px] text-gray-400 italic">
           No positions yet. Add competing positions for a non-binary debate.
         </p>
       ) : (
@@ -549,12 +549,12 @@ function PositionsPanel({
                     className="flex-1 text-left"
                   >
                     <p className="text-xs font-semibold text-white">{p.label}</p>
-                    {p.summary && <p className="text-[10px] text-gray-500">{p.summary}</p>}
+                    {p.summary && <p className="text-[10px] text-gray-400">{p.summary}</p>}
                   </button>
                   <span
                     className={cn(
                       'text-[10px] font-mono',
-                      support > 0 ? 'text-emerald-400' : support < 0 ? 'text-rose-400' : 'text-gray-500',
+                      support > 0 ? 'text-emerald-400' : support < 0 ? 'text-rose-400' : 'text-gray-400',
                     )}
                   >
                     {support > 0 ? '+' : ''}{support.toFixed(1)}
@@ -713,7 +713,7 @@ function ClaimCard({
           <button
             onClick={onToggleCollapse}
             aria-label={isCollapsed ? 'Expand sub-claims' : 'Collapse sub-claims'}
-            className="text-gray-500 hover:text-gray-200 mt-0.5"
+            className="text-gray-400 hover:text-gray-200 mt-0.5"
           >
             {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
@@ -725,7 +725,7 @@ function ClaimCard({
         </span>
         <p className="text-xs text-gray-200 flex-1">{claim.text}</p>
         {childCount > 0 && isCollapsed && (
-          <span className="text-[9px] text-gray-500 shrink-0 mt-0.5">{childCount} sub</span>
+          <span className="text-[9px] text-gray-400 shrink-0 mt-0.5">{childCount} sub</span>
         )}
         <span
           className="text-[10px] text-gray-400 shrink-0 mt-0.5 font-mono"
@@ -767,7 +767,7 @@ function ClaimCard({
       {/* impact rating row */}
       <div className="flex items-center gap-1.5 mt-1 pl-[18px]">
         <Gauge className="w-2.5 h-2.5 text-gray-600" />
-        <span className="text-[9px] text-gray-500">Impact</span>
+        <span className="text-[9px] text-gray-400">Impact</span>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
@@ -781,9 +781,9 @@ function ClaimCard({
             )}
           />
         ))}
-        <span className="text-[9px] text-gray-600">{claim.impact ? `${claim.impact}/5` : 'default 3'}</span>
+        <span className="text-[9px] text-gray-400">{claim.impact ? `${claim.impact}/5` : 'default 3'}</span>
         {claim.voteCount > 0 && (
-          <span className="text-[9px] text-gray-600 ml-auto">{claim.voteCount} votes</span>
+          <span className="text-[9px] text-gray-400 ml-auto">{claim.voteCount} votes</span>
         )}
       </div>
 

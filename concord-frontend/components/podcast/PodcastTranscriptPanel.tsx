@@ -68,7 +68,7 @@ export function PodcastTranscriptPanel({
   }, [episodeId, query]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
@@ -76,9 +76,9 @@ export function PodcastTranscriptPanel({
       <header className="flex items-center gap-2">
         <FileText className="w-4 h-4 text-sky-400" />
         <h3 className="text-sm font-semibold text-zinc-100">Transcript</h3>
-        <span className="text-[11px] text-zinc-500 truncate">{episodeTitle}</span>
+        <span className="text-[11px] text-zinc-400 truncate">{episodeTitle}</span>
         {transcript?.hasTranscript && (
-          <span className="ml-auto text-[10px] text-zinc-500">{transcript.wordCount} words</span>
+          <span className="ml-auto text-[10px] text-zinc-400">{transcript.wordCount} words</span>
         )}
       </header>
 
@@ -86,7 +86,7 @@ export function PodcastTranscriptPanel({
 
       {!transcript?.hasTranscript ? (
         <div className="space-y-2">
-          <p className="text-[11px] text-zinc-500">No transcript yet. Paste the episode transcript to make it searchable.</p>
+          <p className="text-[11px] text-zinc-400">No transcript yet. Paste the episode transcript to make it searchable.</p>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -107,7 +107,7 @@ export function PodcastTranscriptPanel({
           {/* Search-in-transcript */}
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -126,7 +126,7 @@ export function PodcastTranscriptPanel({
 
           {matches !== null ? (
             matches.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No matches for &quot;{query}&quot;.</p>
+              <p className="text-[11px] text-zinc-400 italic">No matches for &quot;{query}&quot;.</p>
             ) : (
               <ul className="space-y-1 max-h-64 overflow-y-auto">
                 {matches.map((seg, i) => (

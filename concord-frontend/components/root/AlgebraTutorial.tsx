@@ -45,13 +45,13 @@ export function AlgebraTutorial() {
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Algebra Tutorial</h2>
       </div>
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading worked examples…
         </div>
       )}
       {error && <div className="text-xs text-red-400">{error}</div>}
       {!loading && !error && (!data || data.lessons.length === 0) && (
-        <div className="text-xs text-gray-500">No lessons yet.</div>
+        <div className="text-xs text-gray-400">No lessons yet.</div>
       )}
       {data && data.lessons.length > 0 && (
         <div className="space-y-2">
@@ -62,7 +62,7 @@ export function AlgebraTutorial() {
                 <button
                   onClick={() => toggle(lesson.id)}
                   className="w-full flex items-center gap-2 px-3 py-2 text-left">
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+                  {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                   <span className="text-sm text-gray-200">{lesson.title}</span>
                 </button>
                 {isOpen && (
@@ -72,7 +72,7 @@ export function AlgebraTutorial() {
                       {lesson.examples.map((ex, i) => (
                         <div key={i} className="bg-gray-900 rounded-lg p-2.5 border border-gray-800">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500 font-mono">{ex.input}</span>
+                            <span className="text-xs text-gray-400 font-mono">{ex.input}</span>
                             <span className="text-gray-600">→</span>
                             <span className="text-lg text-violet-300">{ex.glyph}</span>
                             {ex.decimal !== null && (

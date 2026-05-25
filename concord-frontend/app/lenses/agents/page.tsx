@@ -374,7 +374,7 @@ export default function AgentsLensPage() {
             {/* Filters & search */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -402,7 +402,7 @@ export default function AgentsLensPage() {
             {/* Agent Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {isLoading ? (
-                <div className="col-span-full text-center py-12 text-gray-500">Loading agents...</div>
+                <div className="col-span-full text-center py-12 text-gray-400">Loading agents...</div>
               ) : filteredAgents.length === 0 ? (
                 <div className="col-span-full panel p-12 text-center">
                   <Bot className="w-16 h-16 mx-auto mb-4 text-gray-600" />
@@ -434,7 +434,7 @@ export default function AgentsLensPage() {
                             </div>
                             <div>
                               <h3 className="font-bold text-white group-hover:text-neon-cyan transition-colors">{agent.name}</h3>
-                              <span className="text-[10px] text-gray-500 uppercase tracking-wider">{agent.type}</span>
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wider">{agent.type}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -449,15 +449,15 @@ export default function AgentsLensPage() {
                         <div className="grid grid-cols-3 gap-2 mb-3">
                           <div className="text-center p-1.5 bg-lattice-bg rounded">
                             <p className="text-xs font-bold text-white">{(agent.tickCount || 0).toLocaleString()}</p>
-                            <p className="text-[9px] text-gray-500">Ticks</p>
+                            <p className="text-[9px] text-gray-400">Ticks</p>
                           </div>
                           <div className="text-center p-1.5 bg-lattice-bg rounded">
                             <p className="text-xs font-bold text-white">{agent.successRate || 0}%</p>
-                            <p className="text-[9px] text-gray-500">Success</p>
+                            <p className="text-[9px] text-gray-400">Success</p>
                           </div>
                           <div className="text-center p-1.5 bg-lattice-bg rounded">
                             <p className="text-xs font-bold text-white">{agent.avgLatency || 0}s</p>
-                            <p className="text-[9px] text-gray-500">Latency</p>
+                            <p className="text-[9px] text-gray-400">Latency</p>
                           </div>
                         </div>
 
@@ -468,7 +468,7 @@ export default function AgentsLensPage() {
                               <span key={t} className="text-[10px] px-1.5 py-0.5 bg-neon-cyan/10 text-neon-cyan/70 rounded">{t}</span>
                             ))}
                             {agent.tools.length > 4 && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-lattice-bg text-gray-500 rounded">+{agent.tools.length - 4}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-lattice-bg text-gray-400 rounded">+{agent.tools.length - 4}</span>
                             )}
                           </div>
                         )}
@@ -535,7 +535,7 @@ export default function AgentsLensPage() {
                   .slice(0, 10)
                   .map((log, i) => (
                     <div key={i} className="flex items-start gap-3 py-2 border-b border-lattice-border/30 last:border-0">
-                      <span className="text-[10px] text-gray-600 font-mono w-16 flex-shrink-0 pt-0.5">
+                      <span className="text-[10px] text-gray-400 font-mono w-16 flex-shrink-0 pt-0.5">
                         {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <span className={`text-[10px] font-mono uppercase w-10 flex-shrink-0 pt-0.5 ${getLogColor(log.level)}`}>
@@ -568,8 +568,8 @@ export default function AgentsLensPage() {
                         <span className={`w-2 h-2 rounded-full ${getStatusColor(selectedAgent.enabled ? selectedAgent.status : 'dormant')}`} />
                         {getStatusLabel(selectedAgent)}
                       </span>
-                      <span className="text-xs text-gray-500">Type: {selectedAgent.type}</span>
-                      <span className="text-xs text-gray-500">Created: {selectedAgent.createdAt ? new Date(selectedAgent.createdAt).toLocaleDateString() : 'Unknown'}</span>
+                      <span className="text-xs text-gray-400">Type: {selectedAgent.type}</span>
+                      <span className="text-xs text-gray-400">Created: {selectedAgent.createdAt ? new Date(selectedAgent.createdAt).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                   </div>
                 </div>
@@ -757,15 +757,15 @@ export default function AgentsLensPage() {
                         <div className="grid grid-cols-3 gap-2">
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-green">{actionResult.successRate as number}%</p>
-                            <p className="text-[10px] text-gray-500">Success Rate</p>
+                            <p className="text-[10px] text-gray-400">Success Rate</p>
                           </div>
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-blue">{actionResult.avgLatencyMs as number}ms</p>
-                            <p className="text-[10px] text-gray-500">Avg Latency</p>
+                            <p className="text-[10px] text-gray-400">Avg Latency</p>
                           </div>
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-purple">{actionResult.tasksCompleted as number}/{actionResult.totalTasks as number}</p>
-                            <p className="text-[10px] text-gray-500">Tasks Done</p>
+                            <p className="text-[10px] text-gray-400">Tasks Done</p>
                           </div>
                         </div>
                         {(actionResult.recommendations as string[])?.length > 0 && (
@@ -794,7 +794,7 @@ export default function AgentsLensPage() {
                         {(actionResult.rankings as Array<{ name: string; score: number; skillMatch: number }>)?.map((r, i) => (
                           <div key={i} className="flex items-center justify-between p-2 bg-lattice-bg rounded">
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-neon-cyan' : 'text-gray-500'}`}>{i + 1}</span>
+                              <span className={`text-xs font-bold w-5 text-center ${i === 0 ? 'text-neon-cyan' : 'text-gray-400'}`}>{i + 1}</span>
                               <span className="text-sm text-white">{r.name}</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -816,19 +816,19 @@ export default function AgentsLensPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-white">{actionResult.totalAgents as number}</p>
-                            <p className="text-[10px] text-gray-500">Total</p>
+                            <p className="text-[10px] text-gray-400">Total</p>
                           </div>
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-neon-green">{actionResult.active as number}</p>
-                            <p className="text-[10px] text-gray-500">Active</p>
+                            <p className="text-[10px] text-gray-400">Active</p>
                           </div>
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-yellow-400">{actionResult.idle as number}</p>
-                            <p className="text-[10px] text-gray-500">Idle</p>
+                            <p className="text-[10px] text-gray-400">Idle</p>
                           </div>
                           <div className="p-2 bg-lattice-bg rounded text-center">
                             <p className="text-sm font-bold text-red-400">{actionResult.errored as number}</p>
-                            <p className="text-[10px] text-gray-500">Errored</p>
+                            <p className="text-[10px] text-gray-400">Errored</p>
                           </div>
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-lattice-border">
@@ -868,19 +868,19 @@ export default function AgentsLensPage() {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <div className="p-2 bg-lattice-bg rounded text-center">
                               <p className="text-sm font-bold text-neon-cyan">{(actionResult.metrics as Record<string, number>).throughput}</p>
-                              <p className="text-[10px] text-gray-500">Tasks/min</p>
+                              <p className="text-[10px] text-gray-400">Tasks/min</p>
                             </div>
                             <div className="p-2 bg-lattice-bg rounded text-center">
                               <p className="text-sm font-bold text-neon-green">{(actionResult.metrics as Record<string, number>).accuracy}%</p>
-                              <p className="text-[10px] text-gray-500">Accuracy</p>
+                              <p className="text-[10px] text-gray-400">Accuracy</p>
                             </div>
                             <div className="p-2 bg-lattice-bg rounded text-center">
                               <p className="text-sm font-bold text-neon-blue">{(actionResult.metrics as Record<string, number>).uptimePercent}%</p>
-                              <p className="text-[10px] text-gray-500">Uptime</p>
+                              <p className="text-[10px] text-gray-400">Uptime</p>
                             </div>
                             <div className="p-2 bg-lattice-bg rounded text-center">
                               <p className="text-sm font-bold text-neon-purple">{(actionResult.metrics as Record<string, number>).memoryMB}MB</p>
-                              <p className="text-[10px] text-gray-500">Memory</p>
+                              <p className="text-[10px] text-gray-400">Memory</p>
                             </div>
                           </div>
                         )}
@@ -928,10 +928,10 @@ export default function AgentsLensPage() {
               <div className="panel overflow-hidden">
                 <div className="bg-lattice-bg/80 p-3 border-b border-lattice-border flex items-center justify-between">
                   <span className="text-xs text-gray-400">Agent Memory Store</span>
-                  <span className="text-xs text-gray-500">{selectedAgent.memory?.length || 0} entries</span>
+                  <span className="text-xs text-gray-400">{selectedAgent.memory?.length || 0} entries</span>
                 </div>
                 {(selectedAgent.memory || []).length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="p-8 text-center text-gray-400">
                     <Database className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No memory entries yet</p>
                   </div>
@@ -941,7 +941,7 @@ export default function AgentsLensPage() {
                       <div key={i} className="p-3 hover:bg-lattice-surface/30 transition-colors">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-mono text-neon-cyan">{mem.key}</span>
-                          <span className="text-[10px] text-gray-600">
+                          <span className="text-[10px] text-gray-400">
                             {new Date(mem.timestamp).toLocaleString()}
                           </span>
                         </div>
@@ -962,15 +962,15 @@ export default function AgentsLensPage() {
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Model</p>
+                      <p className="text-xs text-gray-400 mb-1">Model</p>
                       <p className="text-sm font-mono text-white">{selectedAgent.model || 'default'}</p>
                     </div>
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Max Tokens</p>
+                      <p className="text-xs text-gray-400 mb-1">Max Tokens</p>
                       <p className="text-sm font-mono text-white">{selectedAgent.maxTokens || 4096}</p>
                     </div>
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Temperature</p>
+                      <p className="text-xs text-gray-400 mb-1">Temperature</p>
                       <p className="text-sm font-mono text-white">{selectedAgent.temperature ?? 0.3}</p>
                     </div>
                   </div>
@@ -982,21 +982,21 @@ export default function AgentsLensPage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Agent ID</p>
+                      <p className="text-xs text-gray-400 mb-1">Agent ID</p>
                       <p className="text-sm font-mono text-white">{selectedAgent.id}</p>
                     </div>
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Type</p>
+                      <p className="text-xs text-gray-400 mb-1">Type</p>
                       <p className="text-sm font-mono text-white capitalize">{selectedAgent.type}</p>
                     </div>
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Created</p>
+                      <p className="text-xs text-gray-400 mb-1">Created</p>
                       <p className="text-sm font-mono text-white">
                         {selectedAgent.createdAt ? new Date(selectedAgent.createdAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
                     <div className="p-3 bg-lattice-bg rounded-lg">
-                      <p className="text-xs text-gray-500 mb-1">Last Active</p>
+                      <p className="text-xs text-gray-400 mb-1">Last Active</p>
                       <p className="text-sm font-mono text-white">
                         {selectedAgent.lastTick ? new Date(selectedAgent.lastTick).toLocaleString() : 'Never'}
                       </p>
@@ -1088,7 +1088,7 @@ export default function AgentsLensPage() {
                       className={`text-[11px] px-2 py-1 rounded-lg border transition-colors font-mono ${
                         newTools.includes(tool)
                           ? 'bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30'
-                          : 'bg-lattice-bg text-gray-500 border-lattice-border hover:text-gray-300'
+                          : 'bg-lattice-bg text-gray-400 border-lattice-border hover:text-gray-300'
                       }`}
                     >
                       {tool}

@@ -157,6 +157,7 @@ export default function registerAllActions(registerLensAction) {
    * params: { limit?, mode? ('recent'|'frequent') }
    */
   registerLensAction("all", "usage-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAllState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const usage = allUsage(s, allActor(ctx));
     const limit = Math.min(100, Math.max(1, Number(params.limit) || 12));
@@ -189,7 +190,8 @@ export default function registerAllActions(registerLensAction) {
         totalTracked: rows.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * pin-toggle
@@ -257,6 +259,7 @@ export default function registerAllActions(registerLensAction) {
    * params: { lensIds: string[] }
    */
   registerLensAction("all", "lens-badges", (ctx, _a, params = {}) => {
+  try {
     const s = getAllState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const STATE = globalThis._concordSTATE;
     const lensIds = Array.isArray(params.lensIds)
@@ -287,7 +290,8 @@ export default function registerAllActions(registerLensAction) {
       }
     }
     return { ok: true, result: { badges } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * command-index
@@ -297,6 +301,7 @@ export default function registerAllActions(registerLensAction) {
    * params: { query? } — optional fuzzy filter applied server-side.
    */
   registerLensAction("all", "command-index", (_ctx, _a, params = {}) => {
+  try {
     const STATE = globalThis._concordSTATE;
     const entries = [];
 
@@ -373,5 +378,6 @@ export default function registerAllActions(registerLensAction) {
         indexed: entries.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

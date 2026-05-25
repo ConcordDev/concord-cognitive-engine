@@ -42,7 +42,7 @@ function SectionHeader({ icon: Icon, title, hint }: { icon: typeof Play; title: 
       <Icon className="w-4 h-4 text-neon-cyan mt-0.5 shrink-0" />
       <div>
         <h3 className="text-sm font-semibold text-white">{title}</h3>
-        {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+        {hint && <p className="text-[11px] text-gray-400">{hint}</p>}
       </div>
     </div>
   );
@@ -165,7 +165,7 @@ function TestsPanel() {
         </button>
       </div>
 
-      {tests.length === 0 && <p className="text-xs text-gray-500">No tests yet. Create one above to start recording runs.</p>}
+      {tests.length === 0 && <p className="text-xs text-gray-400">No tests yet. Create one above to start recording runs.</p>}
 
       <div className="space-y-2">
         {tests.map(t => (
@@ -173,7 +173,7 @@ function TestsPanel() {
             <div className="flex items-center justify-between gap-2">
               <button onClick={() => setSelected(selected === t.id ? null : t.id)} className="text-left flex-1">
                 <p className="text-sm font-medium text-white">{t.name}</p>
-                <p className="text-[11px] text-gray-500">{t.tasks.length} tasks · {t.runCount} runs · {t.successRate}% task success</p>
+                <p className="text-[11px] text-gray-400">{t.tasks.length} tasks · {t.runCount} runs · {t.successRate}% task success</p>
               </button>
               <span className={`text-sm font-bold ${t.successRate >= 70 ? 'text-neon-green' : t.successRate >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>{t.successRate}%</span>
             </div>
@@ -202,7 +202,7 @@ function TestsPanel() {
               <div key={r.id} className="bg-zinc-900 border border-zinc-800 rounded p-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-white">{r.participant} · {r.testName}</span>
-                  <span className="text-[11px] text-gray-500">{(r.totalDurationMs / 1000).toFixed(1)}s · {r.successCount}/{r.tasks.length}</span>
+                  <span className="text-[11px] text-gray-400">{(r.totalDurationMs / 1000).toFixed(1)}s · {r.successCount}/{r.tasks.length}</span>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {r.tasks.map(tr => (
@@ -279,9 +279,8 @@ function HeatmapPanel() {
           <p className="text-xs text-gray-300">{study.question}</p>
           <div
             onClick={onCanvasClick}
-            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center"
-          >
-            <span className="text-[11px] text-gray-500">Click anywhere — green box = success target</span>
+            className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair select-none flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <span className="text-[11px] text-gray-400">Click anywhere — green box = success target</span>
             {study.target && (
               <div
                 className="absolute border-2 border-neon-green/50 bg-neon-green/5 rounded"
@@ -301,7 +300,7 @@ function HeatmapPanel() {
                 <Stat label="Avg decision" value={`${results.avgDecisionMs}ms`} />
               </div>
               <div>
-                <p className="text-[11px] text-gray-500 mb-1">Click density heatmap</p>
+                <p className="text-[11px] text-gray-400 mb-1">Click density heatmap</p>
                 <HeatGrid grid={results.grid} max={results.gridMax} />
               </div>
             </div>
@@ -316,7 +315,7 @@ function Stat({ label, value, color }: { label: string; value: React.ReactNode; 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded p-2 text-center">
       <p className={`text-base font-bold ${color || 'text-white'}`}>{value}</p>
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
 }
@@ -398,12 +397,12 @@ function CardSortPanel() {
             <button onClick={addCategory} className="btn-neon text-xs flex items-center gap-1"><Plus className="w-3 h-3" /> Category</button>
           </div>
           <div>
-            <p className="text-[11px] text-gray-500 mb-1">Unassigned cards</p>
+            <p className="text-[11px] text-gray-400 mb-1">Unassigned cards</p>
             <div className="flex flex-wrap gap-1">
               {cardsForStudy.filter(c => !assignedCards.has(c)).map(c => (
                 <span key={c} className="text-[11px] px-2 py-1 rounded bg-zinc-800 text-gray-300 border border-zinc-700">{c}</span>
               ))}
-              {cardsForStudy.every(c => assignedCards.has(c)) && <span className="text-[11px] text-gray-600">All cards assigned</span>}
+              {cardsForStudy.every(c => assignedCards.has(c)) && <span className="text-[11px] text-gray-400">All cards assigned</span>}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -438,7 +437,7 @@ function CardSortPanel() {
             {results.cardAgreement.map(c => (
               <div key={c.card} className="flex items-center gap-2 text-[11px]">
                 <span className="text-gray-300 w-28 truncate">{c.card}</span>
-                <span className="text-gray-500 flex-1 truncate">→ {c.topCategory || 'unsorted'}</span>
+                <span className="text-gray-400 flex-1 truncate">→ {c.topCategory || 'unsorted'}</span>
                 <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                   <div className={`h-full ${c.agreement >= 60 ? 'bg-neon-green' : 'bg-yellow-400'}`} style={{ width: `${c.agreement}%` }} />
                 </div>
@@ -533,11 +532,11 @@ function SurveyPanel() {
       <div className="space-y-2">
         {surveys.map(s => (
           <button key={s.id} onClick={() => openSurvey(s)} className={`w-full text-left bg-zinc-900 border rounded-lg p-2.5 flex items-center justify-between ${active?.id === s.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
-            <span className="text-sm text-white">{s.name} <span className="text-[11px] text-gray-500">· {s.template?.toUpperCase() || 'custom'}</span></span>
-            <span className="text-[11px] text-gray-500 flex items-center gap-1">{s.responseCount} responses <ChevronRight className="w-3 h-3" /></span>
+            <span className="text-sm text-white">{s.name} <span className="text-[11px] text-gray-400">· {s.template?.toUpperCase() || 'custom'}</span></span>
+            <span className="text-[11px] text-gray-400 flex items-center gap-1">{s.responseCount} responses <ChevronRight className="w-3 h-3" /></span>
           </button>
         ))}
-        {surveys.length === 0 && <p className="text-xs text-gray-500">No surveys yet.</p>}
+        {surveys.length === 0 && <p className="text-xs text-gray-400">No surveys yet.</p>}
       </div>
 
       {active && (
@@ -599,13 +598,13 @@ function SurveyPanel() {
               {q.kind === 'nps' && (
                 <div className="flex items-center gap-3">
                   <span className={`text-xl font-bold ${(q.nps ?? 0) >= 0 ? 'text-neon-green' : 'text-red-400'}`}>NPS {q.nps}</span>
-                  <span className="text-[11px] text-gray-500">{q.promoters} promoters · {q.passives} passives · {q.detractors} detractors</span>
+                  <span className="text-[11px] text-gray-400">{q.promoters} promoters · {q.passives} passives · {q.detractors} detractors</span>
                 </div>
               )}
               {(q.kind === 'csat' || q.kind === 'rating') && (
                 <div className="flex items-center gap-3">
                   <span className="text-lg font-bold text-neon-cyan">{q.avgScore}</span>
-                  <span className="text-[11px] text-gray-500">{q.satisfactionPct}% satisfied · {q.answered} answered</span>
+                  <span className="text-[11px] text-gray-400">{q.satisfactionPct}% satisfied · {q.answered} answered</span>
                 </div>
               )}
               {q.distribution && (
@@ -616,7 +615,7 @@ function SurveyPanel() {
                       <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                         <div className="h-full bg-neon-purple" style={{ width: `${(d.count / results.responseCount) * 100}%` }} />
                       </div>
-                      <span className="text-gray-500 w-6 text-right">{d.count}</span>
+                      <span className="text-gray-400 w-6 text-right">{d.count}</span>
                     </div>
                   ))}
                 </div>
@@ -742,14 +741,14 @@ function PanelTab() {
           <div key={p.id} className="bg-zinc-900 border border-zinc-800 rounded p-2 flex items-center justify-between">
             <div>
               <p className="text-xs text-white">{p.name} {p.email && <span className="text-gray-600">· {p.email}</span>}</p>
-              <p className="text-[10px] text-gray-500">{Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'no attributes'}</p>
+              <p className="text-[10px] text-gray-400">{Object.entries(p.attributes).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'no attributes'}</p>
             </div>
             <span className={`text-[10px] px-1.5 py-0.5 rounded ${p.status === 'invited' ? 'bg-neon-cyan/15 text-neon-cyan' : 'bg-zinc-800 text-gray-400'}`}>
               {p.status}{p.invitedCount > 0 ? ` ×${p.invitedCount}` : ''}
             </span>
           </div>
         ))}
-        {panel.length === 0 && <p className="text-xs text-gray-500">No participants in panel yet.</p>}
+        {panel.length === 0 && <p className="text-xs text-gray-400">No participants in panel yet.</p>}
       </div>
     </div>
   );
@@ -834,12 +833,12 @@ function ClipsPanel() {
             <input type="checkbox" checked={selected.includes(c.id)} onChange={e => setSelected(e.target.checked ? [...selected, c.id] : selected.filter(id => id !== c.id))} />
             <div className="flex-1">
               <p className="text-xs text-white">{c.label} <span className={`text-[10px] ${sentimentColor(c.sentiment)}`}>· {c.sentiment}</span></p>
-              <p className="text-[10px] text-gray-500">{c.runId} · {(c.durationMs / 1000).toFixed(1)}s clip</p>
+              <p className="text-[10px] text-gray-400">{c.runId} · {(c.durationMs / 1000).toFixed(1)}s clip</p>
             </div>
             <a href={`/share/clip/${c.shareToken}`} className="text-[10px] text-neon-cyan flex items-center gap-0.5"><Share2 className="w-2.5 h-2.5" /> share</a>
           </label>
         ))}
-        {clips.length === 0 && <p className="text-xs text-gray-500">No clips yet.</p>}
+        {clips.length === 0 && <p className="text-xs text-gray-400">No clips yet.</p>}
       </div>
 
       {clips.length > 0 && (
@@ -936,11 +935,11 @@ function PrototypePanel() {
       <div className="space-y-1">
         {protos.map(p => (
           <button key={p.id} onClick={() => openProto(p)} className={`w-full text-left bg-zinc-900 border rounded-lg p-2.5 flex items-center justify-between ${active?.id === p.id ? 'border-neon-cyan/50' : 'border-zinc-800'}`}>
-            <span className="text-sm text-white">{p.name} <span className="text-[11px] text-gray-500">· {p.frames.length} frames</span></span>
-            <span className="text-[11px] text-gray-500">{p.interactionCount} interactions</span>
+            <span className="text-sm text-white">{p.name} <span className="text-[11px] text-gray-400">· {p.frames.length} frames</span></span>
+            <span className="text-[11px] text-gray-400">{p.interactionCount} interactions</span>
           </button>
         ))}
-        {protos.length === 0 && <p className="text-xs text-gray-500">No prototypes registered yet.</p>}
+        {protos.length === 0 && <p className="text-xs text-gray-400">No prototypes registered yet.</p>}
       </div>
 
       {active && (
@@ -951,8 +950,8 @@ function PrototypePanel() {
                 className={`text-[11px] px-2 py-1 rounded ${activeFrame === f.id ? 'bg-neon-cyan text-black font-medium' : 'bg-zinc-800 text-gray-400'}`}>{f.name}</button>
             ))}
           </div>
-          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center">
-            <span className="text-[11px] text-gray-500 text-center px-4">Click the frame to record an interaction — outer edge counts as a misclick</span>
+          <div onClick={onFrameClick} className="relative w-full aspect-video bg-zinc-800/50 border border-dashed border-zinc-600 rounded cursor-crosshair flex items-center justify-center" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+            <span className="text-[11px] text-gray-400 text-center px-4">Click the frame to record an interaction — outer edge counts as a misclick</span>
             {frameHot && (
               <div className="absolute inset-0 grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)', gridTemplateRows: 'repeat(6, 1fr)' }}>
                 {frameHot.grid.flat().map((v, i) => {
@@ -969,7 +968,7 @@ function PrototypePanel() {
                 <Stat label="Misclick rate" value={`${analytics.misclickRate}%`} color={analytics.misclickRate > 25 ? 'text-red-400' : 'text-neon-green'} />
               </div>
               <div>
-                <p className="text-[11px] text-gray-500 mb-1">Frame funnel</p>
+                <p className="text-[11px] text-gray-400 mb-1">Frame funnel</p>
                 <div className="space-y-1">
                   {analytics.funnel.map(f => (
                     <div key={f.frameId} className="flex items-center gap-2 text-[11px]">
@@ -1012,7 +1011,7 @@ export function UXResearchSuite() {
           const Icon = t.icon;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`text-xs px-3 py-1.5 rounded-t flex items-center gap-1.5 transition-colors ${tab === t.id ? 'bg-zinc-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+              className={`text-xs px-3 py-1.5 rounded-t flex items-center gap-1.5 transition-colors ${tab === t.id ? 'bg-zinc-800 text-white' : 'text-gray-400 hover:text-gray-300'}`}>
               <Icon className="w-3.5 h-3.5" /> {t.label}
             </button>
           );

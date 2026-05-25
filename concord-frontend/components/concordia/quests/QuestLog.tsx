@@ -27,7 +27,7 @@ function ObjectiveRow({ progress, target, description }: { progress: number; tar
     <div className="space-y-0.5">
       <div className="flex items-center justify-between text-[10px]">
         <span className={done ? 'text-green-400 line-through' : 'text-gray-300'}>{description}</span>
-        <span className={done ? 'text-green-400' : 'text-gray-500'}>{progress}/{target}</span>
+        <span className={done ? 'text-green-400' : 'text-gray-400'}>{progress}/{target}</span>
       </div>
       <div className="h-0.5 bg-white/10 rounded-full overflow-hidden">
         <div
@@ -70,7 +70,7 @@ function QuestCard({ quest, onAccept, onAbandon }: {
             }`} />
             <span className="text-xs font-medium text-gray-200 truncate">{quest.title}</span>
           </div>
-          <p className="text-[10px] text-gray-500 mt-0.5 ml-3.5">{quest.giverName} · {quest.domain}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">{quest.giverName} · {quest.domain}</p>
         </div>
         <span className="text-gray-600 text-xs flex-shrink-0">{expanded ? '▲' : '▼'}</span>
       </button>
@@ -105,7 +105,7 @@ function QuestCard({ quest, onAccept, onAbandon }: {
             {quest.status === 'active' && onAbandon && (
               <button
                 onClick={onAbandon}
-                className="px-3 py-1.5 rounded text-[11px] text-gray-500 hover:text-red-400 border border-white/10 hover:border-red-500/30 transition-colors"
+                className="px-3 py-1.5 rounded text-[11px] text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 transition-colors"
               >
                 Abandon
               </button>
@@ -245,7 +245,7 @@ export function QuestLog({ quests: propQuests, worldId, onClose }: QuestLogProps
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 py-2 text-[11px] transition-colors capitalize ${
-              tab === t ? 'text-cyan-300 border-b border-cyan-500' : 'text-gray-500 hover:text-gray-300'
+              tab === t ? 'text-cyan-300 border-b border-cyan-500' : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             {t} {counts[t] > 0 && <span className="ml-0.5 text-gray-600">({counts[t]})</span>}
@@ -256,9 +256,9 @@ export function QuestLog({ quests: propQuests, worldId, onClose }: QuestLogProps
       {/* Quest list */}
       <div className="max-h-96 overflow-y-auto p-2 space-y-1.5">
         {loading ? (
-          <p className="text-[11px] text-gray-600 text-center py-6">Loading quests…</p>
+          <p className="text-[11px] text-gray-400 text-center py-6">Loading quests…</p>
         ) : filtered.length === 0 ? (
-          <p className="text-[11px] text-gray-600 text-center py-6">
+          <p className="text-[11px] text-gray-400 text-center py-6">
             {tab === 'available' ? 'No quests available — explore more of the district.' :
              tab === 'active' ? 'No active quests. Accept one from Available.' :
              'No completed quests yet.'}

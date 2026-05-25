@@ -41,7 +41,7 @@ const WARRANTY_STYLE: Record<string, { cls: string; icon: typeof ShieldCheck; la
   active: { cls: 'text-neon-green', icon: ShieldCheck, label: 'Active' },
   expiring: { cls: 'text-yellow-400', icon: ShieldAlert, label: 'Expiring' },
   expired: { cls: 'text-red-400', icon: ShieldX, label: 'Expired' },
-  none: { cls: 'text-gray-500', icon: Package, label: 'No warranty' },
+  none: { cls: 'text-gray-400', icon: Package, label: 'No warranty' },
 };
 
 export function HomeInventory() {
@@ -94,7 +94,7 @@ export function HomeInventory() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Boxes className="w-4 h-4 text-neon-purple" /> Home Inventory
-          <span className="text-xs text-gray-500">({result?.count || 0})</span>
+          <span className="text-xs text-gray-400">({result?.count || 0})</span>
         </h3>
         <button onClick={() => setShowForm((v) => !v)} className="text-xs flex items-center gap-1 text-neon-purple hover:text-purple-300">
           <Plus className="w-3.5 h-3.5" /> Add asset
@@ -154,9 +154,9 @@ export function HomeInventory() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading inventory...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading inventory...</div>
       ) : assets.length === 0 ? (
-        <p className="text-xs text-gray-500">No assets registered. Track appliances, warranties and manuals.</p>
+        <p className="text-xs text-gray-400">No assets registered. Track appliances, warranties and manuals.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {assets.map((a) => {
@@ -167,9 +167,9 @@ export function HomeInventory() {
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-white truncate">{a.name}</p>
-                    <p className="text-xs text-gray-500">{a.category} · {a.room.replace(/_/g, ' ')}{a.brand ? ` · ${a.brand}` : ''}{a.model ? ` ${a.model}` : ''}</p>
+                    <p className="text-xs text-gray-400">{a.category} · {a.room.replace(/_/g, ' ')}{a.brand ? ` · ${a.brand}` : ''}{a.model ? ` ${a.model}` : ''}</p>
                   </div>
-                  <button onClick={() => remove(a.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => remove(a.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`flex items-center gap-1 ${w.cls}`}><WIcon className="w-3.5 h-3.5" />{w.label}</span>
@@ -179,7 +179,7 @@ export function HomeInventory() {
                   {a.purchasePrice > 0 && <span className="text-neon-purple">${a.purchasePrice.toLocaleString()}</span>}
                 </div>
                 {(a.serial || a.manualUrl) && (
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
                     {a.serial && <span>SN: {a.serial}</span>}
                     {a.manualUrl && <a href={a.manualUrl} target="_blank" rel="noopener noreferrer" className="text-neon-cyan flex items-center gap-0.5"><FileText className="w-3 h-3" /> manual</a>}
                   </div>

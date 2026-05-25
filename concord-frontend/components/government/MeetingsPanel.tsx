@@ -100,9 +100,9 @@ export function MeetingsPanel() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : meetings.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><CalendarDays className="w-6 h-6 mx-auto mb-2 opacity-30" />No meetings scheduled yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><CalendarDays className="w-6 h-6 mx-auto mb-2 opacity-30" />No meetings scheduled yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {meetings.map(m => {
@@ -112,7 +112,7 @@ export function MeetingsPanel() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => { setExpanded(isOpen ? null : m.id); setMinutesDraft(m.minutes || ''); }} className="flex-1 min-w-0 text-left">
                       <div className="text-sm text-white truncate">{m.title}</div>
-                      <div className="text-[10px] text-gray-500 inline-flex items-center gap-2">
+                      <div className="text-[10px] text-gray-400 inline-flex items-center gap-2">
                         <span>{BODIES.find(b => b[0] === m.body)?.[1] || m.body}</span>
                         <span>· {fmtDate(m.scheduledAt)}</span>
                         {m.location && <span className="inline-flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{m.location}</span>}
@@ -131,9 +131,9 @@ export function MeetingsPanel() {
                         </a>
                       )}
                       <div>
-                        <div className="text-[10px] uppercase text-gray-500 mb-1 inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" />Agenda</div>
+                        <div className="text-[10px] uppercase text-gray-400 mb-1 inline-flex items-center gap-1"><ClipboardList className="w-3 h-3" />Agenda</div>
                         {m.agenda.length === 0 ? (
-                          <div className="text-[10px] text-gray-500">No agenda items.</div>
+                          <div className="text-[10px] text-gray-400">No agenda items.</div>
                         ) : (
                           <ol className="list-decimal list-inside text-xs text-gray-300 space-y-0.5">
                             {m.agenda.map((a, i) => <li key={i}>{a}</li>)}
@@ -141,7 +141,7 @@ export function MeetingsPanel() {
                         )}
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase text-gray-500 mb-1 inline-flex items-center gap-1"><FileCheck className="w-3 h-3" />Minutes</div>
+                        <div className="text-[10px] uppercase text-gray-400 mb-1 inline-flex items-center gap-1"><FileCheck className="w-3 h-3" />Minutes</div>
                         {m.status === 'minutes_published' ? (
                           <p className="text-xs text-gray-300 whitespace-pre-wrap">{m.minutes}</p>
                         ) : (

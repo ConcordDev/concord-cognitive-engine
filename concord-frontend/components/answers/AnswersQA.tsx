@@ -313,26 +313,26 @@ export function AnswersQA() {
                     {detail.tags.map((t) => (
                       <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300">{t}</span>
                     ))}
-                    <span className="ml-auto text-[10px] text-zinc-500 inline-flex items-center gap-1">
+                    <span className="ml-auto text-[10px] text-zinc-400 inline-flex items-center gap-1">
                       <Eye className="w-3 h-3" />{detail.views}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2.5 mt-2">
                     {isAuthor && (
-                      <button onClick={beginEditQuestion} className="text-[10px] text-zinc-500 hover:text-orange-300 inline-flex items-center gap-0.5">
+                      <button onClick={beginEditQuestion} className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5">
                         <Pencil className="w-2.5 h-2.5" />Edit
                       </button>
                     )}
                     <button
                       onClick={() => setRevisionTarget(revisionTarget && !revisionTarget.answerId ? null : {})}
-                      className="text-[10px] text-zinc-500 hover:text-orange-300 inline-flex items-center gap-0.5"
+                      className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5"
                     >
                       <History className="w-2.5 h-2.5" />
                       History{detail.revisions?.length ? ` (${detail.revisions.length})` : ''}
                     </button>
                     <button
                       onClick={() => setShowDuplicates((s) => !s)}
-                      className="text-[10px] text-zinc-500 hover:text-orange-300 inline-flex items-center gap-0.5"
+                      className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5"
                     >
                       <Copy className="w-2.5 h-2.5" />Duplicates
                     </button>
@@ -368,8 +368,8 @@ export function AnswersQA() {
           {/* Close-vote panel */}
           {!detail.closed && (
             <div className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-3 py-2">
-              <ShieldAlert className="w-3.5 h-3.5 text-zinc-500" />
-              <span className="text-[11px] text-zinc-500">Close vote:</span>
+              <ShieldAlert className="w-3.5 h-3.5 text-zinc-400" />
+              <span className="text-[11px] text-zinc-400">Close vote:</span>
               <select
                 value={closeReason}
                 onChange={(e) => setCloseReason(e.target.value)}
@@ -434,7 +434,7 @@ export function AnswersQA() {
                     <div className="flex flex-wrap items-center gap-2.5 mt-1.5">
                       <button
                         onClick={() => { setEditAnswerId(a.id); setEditAnswerBody(a.body); }}
-                        className="text-[10px] text-zinc-500 hover:text-orange-300 inline-flex items-center gap-0.5"
+                        className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5"
                       >
                         <Pencil className="w-2.5 h-2.5" />Edit
                       </button>
@@ -442,7 +442,7 @@ export function AnswersQA() {
                         onClick={() => setRevisionTarget(
                           revisionTarget?.answerId === a.id ? null : { answerId: a.id }
                         )}
-                        className="text-[10px] text-zinc-500 hover:text-orange-300 inline-flex items-center gap-0.5"
+                        className="text-[10px] text-zinc-400 hover:text-orange-300 inline-flex items-center gap-0.5"
                       >
                         <History className="w-2.5 h-2.5" />
                         History{a.revisions?.length ? ` (${a.revisions.length})` : ''}
@@ -499,7 +499,7 @@ export function AnswersQA() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-orange-600/15 to-transparent">
         <MessageSquarePlus className="w-5 h-5 text-orange-400" />
         <h2 className="text-sm font-bold text-zinc-100">Q&amp;A Workspace</h2>
-        <span className="text-[11px] text-zinc-500">Stack Overflow shape</span>
+        <span className="text-[11px] text-zinc-400">Stack Overflow shape</span>
         <div className="ml-auto flex items-center gap-1.5">
           <NotificationsBell onOpenQuestion={openDetail} refreshKey={notifKey} />
           <PanelToggle active={sidePanel === 'privileges'} onClick={() => setSidePanel((p) => (p === 'privileges' ? 'none' : 'privileges'))} label="Privileges" />
@@ -525,7 +525,7 @@ export function AnswersQA() {
              ['Answers', dash.totalAnswers], ['Views', dash.totalViews], ['Reputation', dash.reputation]]) as const).map(([l, v]) => (
             <div key={l} className="text-center">
               <p className="text-lg font-bold text-zinc-100">{v}</p>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -533,7 +533,7 @@ export function AnswersQA() {
 
       <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b border-zinc-800">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2 top-1/2 -translate-y-1/2" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -559,24 +559,24 @@ export function AnswersQA() {
 
       <div className="divide-y divide-zinc-800">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
         ) : questions.length === 0 ? (
-          <p className="text-xs text-zinc-500 italic text-center py-10">No questions yet. Ask the first one.</p>
+          <p className="text-xs text-zinc-400 italic text-center py-10">No questions yet. Ask the first one.</p>
         ) : (
           questions.map((q) => (
             <div key={q.id} className="w-full px-4 py-3 hover:bg-zinc-900/60 flex gap-3">
               <button onClick={() => openDetail(q.id)} className="flex flex-col items-center gap-1 text-center w-14 shrink-0">
                 <span className="text-sm font-bold text-zinc-200">{q.votes}</span>
-                <span className="text-[9px] text-zinc-500">votes</span>
+                <span className="text-[9px] text-zinc-400">votes</span>
                 <span className={cn('text-xs font-semibold px-1.5 rounded',
                   q.hasAccepted ? 'bg-emerald-900/50 text-emerald-300' : q.answerCount > 0 ? 'border border-zinc-700 text-zinc-300' : 'text-zinc-600')}>
                   {q.answerCount}
                 </span>
-                <span className="text-[9px] text-zinc-500">answers</span>
+                <span className="text-[9px] text-zinc-400">answers</span>
               </button>
               <button onClick={() => openDetail(q.id)} className="min-w-0 flex-1 text-left">
                 <p className="text-sm font-semibold text-orange-300 truncate">{q.title}</p>
-                <p className="text-xs text-zinc-500 truncate">{q.excerpt}</p>
+                <p className="text-xs text-zinc-400 truncate">{q.excerpt}</p>
                 <div className="flex flex-wrap items-center gap-1 mt-1">
                   {q.tags.map((t) => (
                     <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-900/40 text-orange-300 inline-flex items-center gap-0.5">
@@ -639,9 +639,9 @@ function SubscribeButton({ questionId, onChanged }: { questionId: string; onChan
 function VoteRail({ votes, onUp, onDown }: { votes: number; onUp: () => void; onDown: () => void }) {
   return (
     <div className="flex flex-col items-center">
-      <button onClick={onUp} aria-label="Upvote" className="text-zinc-500 hover:text-orange-400"><ChevronUp className="w-5 h-5" /></button>
+      <button onClick={onUp} aria-label="Upvote" className="text-zinc-400 hover:text-orange-400"><ChevronUp className="w-5 h-5" /></button>
       <span className="text-sm font-bold text-zinc-200">{votes}</span>
-      <button onClick={onDown} aria-label="Downvote" className="text-zinc-500 hover:text-blue-400"><ChevronDown className="w-5 h-5" /></button>
+      <button onClick={onDown} aria-label="Downvote" className="text-zinc-400 hover:text-blue-400"><ChevronDown className="w-5 h-5" /></button>
     </div>
   );
 }
@@ -652,7 +652,7 @@ function CommentThread({ comments, onAdd }: { comments: Comment[]; onAdd: (body:
   return (
     <div className="mt-2">
       {comments.map((c) => (
-        <p key={c.id} className="text-[11px] text-zinc-500 border-t border-zinc-900 py-1">{c.body}</p>
+        <p key={c.id} className="text-[11px] text-zinc-400 border-t border-zinc-900 py-1">{c.body}</p>
       ))}
       {open ? (
         <div className="flex items-center gap-1 mt-1">
@@ -672,7 +672,7 @@ function CommentThread({ comments, onAdd }: { comments: Comment[]; onAdd: (body:
           </button>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className="text-[10px] text-zinc-600 hover:text-zinc-400 mt-1">Add a comment</button>
+        <button onClick={() => setOpen(true)} className="text-[10px] text-zinc-400 hover:text-zinc-400 mt-1">Add a comment</button>
       )}
     </div>
   );

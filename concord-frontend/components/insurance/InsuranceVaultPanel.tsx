@@ -14,7 +14,7 @@ interface Asset { id: string; name: string; kind: string; value: number }
 interface Reminder { id: string; title: string; kind: string; dueDate: string | null; done: boolean; status: string }
 
 const STATUS_COLOR: Record<string, string> = {
-  overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400', done: 'text-zinc-500', none: 'text-zinc-500',
+  overdue: 'text-rose-400', due_soon: 'text-amber-400', scheduled: 'text-emerald-400', done: 'text-zinc-400', none: 'text-zinc-400',
 };
 
 export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
@@ -78,7 +78,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -105,7 +105,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {reminders.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No reminders.</p>
+          <p className="text-[11px] text-zinc-400 italic">No reminders.</p>
         ) : (
           <ul className="space-y-1">
             {reminders.map((r) => (
@@ -115,8 +115,8 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
                     r.done ? 'bg-blue-600 border-blue-600' : 'border-zinc-600')}>
                   {r.done && <Check className="w-3 h-3 text-white" />}
                 </button>
-                <span className={cn('flex-1 text-xs', r.done ? 'text-zinc-500 line-through' : 'text-zinc-200')}>{r.title}</span>
-                <span className={cn('text-[10px]', STATUS_COLOR[r.status] || 'text-zinc-500')}>{r.dueDate || 'no date'}</span>
+                <span className={cn('flex-1 text-xs', r.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{r.title}</span>
+                <span className={cn('text-[10px]', STATUS_COLOR[r.status] || 'text-zinc-400')}>{r.dueDate || 'no date'}</span>
               </li>
             ))}
           </ul>
@@ -127,7 +127,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Package className="w-3.5 h-3.5 text-blue-400" /> Covered assets
-          {assetValue > 0 && <span className="text-[10px] text-zinc-500">· ${assetValue} total</span>}
+          {assetValue > 0 && <span className="text-[10px] text-zinc-400">· ${assetValue} total</span>}
         </h3>
         <div className="grid grid-cols-4 gap-2 mb-2">
           <input placeholder="Asset name" value={assetForm.name} onChange={(e) => setAssetForm({ ...assetForm, name: e.target.value })}
@@ -147,7 +147,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {assets.map((a) => (
               <li key={a.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-zinc-200">{a.name} <span className="text-zinc-500 capitalize">· {a.kind}</span></span>
+                <span className="text-zinc-200">{a.name} <span className="text-zinc-400 capitalize">· {a.kind}</span></span>
                 <span className="text-zinc-400 font-mono">${a.value}</span>
               </li>
             ))}
@@ -176,7 +176,7 @@ export function InsuranceVaultPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {agents.map((a) => (
               <li key={a.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-zinc-200">{a.name} <span className="text-zinc-500">{a.agency}</span></span>
+                <span className="text-zinc-200">{a.name} <span className="text-zinc-400">{a.agency}</span></span>
                 <span className="text-zinc-400">{a.phone}</span>
               </li>
             ))}

@@ -303,7 +303,7 @@ function NotificationItem({
                     </div>
                   ))}
                   {notification.groupCount > 4 && (
-                    <span className="text-xs text-gray-500 ml-1">
+                    <span className="text-xs text-gray-400 ml-1">
                       +{notification.groupCount - 4}
                     </span>
                   )}
@@ -312,7 +312,7 @@ function NotificationItem({
 
             {/* Target */}
             {notification.targetTitle && (
-              <p className="text-xs text-gray-500 mt-0.5 truncate">{notification.targetTitle}</p>
+              <p className="text-xs text-gray-400 mt-0.5 truncate">{notification.targetTitle}</p>
             )}
 
             {/* Tip amount */}
@@ -338,7 +338,7 @@ function NotificationItem({
                   e.stopPropagation();
                   onDelete(notification.id);
                 }}
-                className="p-1 text-gray-500 hover:text-red-400 rounded transition-colors"
+                className="p-1 text-gray-400 hover:text-red-400 rounded transition-colors"
                 title="Delete notification"
               >
                 <Trash2 className="w-3 h-3" />
@@ -349,7 +349,7 @@ function NotificationItem({
         </div>
 
         {/* Timestamp */}
-        <p className="text-xs text-gray-600 mt-1">{formatRelativeTime(notification.createdAt)}</p>
+        <p className="text-xs text-gray-400 mt-1">{formatRelativeTime(notification.createdAt)}</p>
       </div>
     </motion.div>
   );
@@ -622,7 +622,7 @@ function NotificationCenter({
             <p className="text-gray-400 text-sm font-medium">
               {filter === 'unread' ? 'All caught up!' : 'No notifications'}
             </p>
-            <p className="text-gray-500 text-xs mt-1 text-center">
+            <p className="text-gray-400 text-xs mt-1 text-center">
               {filter === 'unread'
                 ? 'You have no unread notifications.'
                 : filter === 'all'

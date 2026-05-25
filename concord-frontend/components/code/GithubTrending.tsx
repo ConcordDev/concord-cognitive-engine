@@ -70,12 +70,12 @@ export function GithubTrending() {
         </select>
         <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
           {WINDOWS.map((w) => (
-            <button key={w.id} onClick={() => setWindow(w.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${window === w.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{w.label}</button>
+            <button key={w.id} onClick={() => setWindow(w.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${window === w.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{w.label}</button>
           ))}
         </div>
       </div>
       {trending.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub unreachable / rate-limited.</div>}
-      {trending.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Searching trending repos…</div>}
+      {trending.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Searching trending repos…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {(trending.data || []).map((r) => (
           <a key={r.id} href={r.html_url} target="_blank" rel="noopener noreferrer" className="block rounded border border-zinc-800 bg-zinc-950 p-2.5 hover:border-cyan-500/30">
@@ -96,7 +96,7 @@ export function GithubTrending() {
                 <span className="flex items-center gap-0.5"><Star className="h-3 w-3" />{r.stargazers_count.toLocaleString()}</span>
                 <span className="flex items-center gap-0.5"><GitFork className="h-3 w-3" />{r.forks_count.toLocaleString()}</span>
                 <span className="flex items-center gap-0.5"><Eye className="h-3 w-3" />{r.watchers_count.toLocaleString()}</span>
-                <ExternalLink className="h-3 w-3 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 text-zinc-400" />
               </div>
             </div>
           </a>

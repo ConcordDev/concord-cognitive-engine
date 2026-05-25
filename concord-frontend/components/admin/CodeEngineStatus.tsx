@@ -174,7 +174,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
       >
         <div className="flex items-center gap-3 animate-pulse">
           <Code2 className="w-5 h-5 text-gray-600" />
-          <span className="text-gray-500">Loading Code Engine status...</span>
+          <span className="text-gray-400">Loading Code Engine status...</span>
         </div>
       </div>
     );
@@ -318,7 +318,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
         </div>
 
         {/* Timestamps */}
-        <div className="flex items-center gap-6 mt-4 text-xs text-gray-500">
+        <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
           <span>
             Last ingestion:{' '}
             <span className="text-gray-400">
@@ -354,12 +354,12 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
                     <IngestionStatusBadge status={entry.status} />
                     <div className="min-w-0">
                       <div className="text-sm text-white truncate">{entry.repository}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-400">
                         {entry.filesProcessed} files, {entry.patternsFound} patterns
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                  <div className="text-xs text-gray-400 flex-shrink-0 ml-2">
                     {formatRelativeTime(entry.startedAt)}
                   </div>
                 </div>
@@ -368,7 +368,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
           ) : (
             <div className="text-center py-6">
               <GitBranch className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No recent ingestions</p>
+              <p className="text-sm text-gray-400">No recent ingestions</p>
             </div>
           )}
         </div>
@@ -390,7 +390,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="min-w-0">
                       <div className="text-sm text-white truncate">{pattern.name}</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-2">
+                      <div className="text-xs text-gray-400 flex items-center gap-2">
                         <span className="px-1.5 py-0.5 rounded bg-lattice-surface text-gray-400">
                           {pattern.language}
                         </span>
@@ -423,7 +423,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
           ) : (
             <div className="text-center py-6">
               <Layers className="w-8 h-8 text-gray-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No patterns discovered yet</p>
+              <p className="text-sm text-gray-400">No patterns discovered yet</p>
             </div>
           )}
         </div>
@@ -455,7 +455,7 @@ function StatCard({
   return (
     <div className="bg-lattice-bg rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs text-gray-400">{label}</span>
         <div className={cn('p-1.5 rounded', colors[color])}>
           <Icon className="w-3.5 h-3.5" />
         </div>

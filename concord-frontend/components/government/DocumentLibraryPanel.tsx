@@ -73,7 +73,7 @@ export function DocumentLibraryPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FileSignature className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Document &amp; form library</span>
-        <span className="ml-auto text-[10px] text-gray-500">{documents.length} documents</span>
+        <span className="ml-auto text-[10px] text-gray-400">{documents.length} documents</span>
       </header>
 
       {/* Publish a document */}
@@ -96,9 +96,9 @@ export function DocumentLibraryPanel() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : documents.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No documents published yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No documents published yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {documents.map(d => {
@@ -108,7 +108,7 @@ export function DocumentLibraryPanel() {
                   <div className="flex items-center gap-2">
                     <button onClick={() => { setExpanded(isOpen ? null : d.id); setSignError(null); setSignForm({ signerName: '', signerEmail: '', typedSignature: '' }); }} className="flex-1 min-w-0 text-left">
                       <div className="text-sm text-white truncate">{d.title}</div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {CATEGORIES.find(c => c[0] === d.category)?.[1] || d.category}
                         {d.requiresSignature && ` · ${d.signatures.length} signature${d.signatures.length === 1 ? '' : 's'}`}
                       </div>
@@ -130,14 +130,14 @@ export function DocumentLibraryPanel() {
                       )}
                       {d.signatures.length > 0 && (
                         <div>
-                          <div className="text-[10px] uppercase text-gray-500 mb-1">Signatures</div>
+                          <div className="text-[10px] uppercase text-gray-400 mb-1">Signatures</div>
                           <ul className="space-y-1">
                             {d.signatures.map(s => (
                               <li key={s.id} className="text-[11px] text-gray-300 bg-white/[0.03] rounded px-2 py-1 inline-flex items-center gap-2 w-full">
                                 <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
                                 <span className="flex-1">{s.signerName} ({s.signerEmail})</span>
-                                <span className="font-mono text-[10px] text-gray-500">{s.fingerprint}</span>
-                                <span className="text-[10px] text-gray-500">{new Date(s.signedAt).toLocaleDateString()}</span>
+                                <span className="font-mono text-[10px] text-gray-400">{s.fingerprint}</span>
+                                <span className="text-[10px] text-gray-400">{new Date(s.signedAt).toLocaleDateString()}</span>
                               </li>
                             ))}
                           </ul>
@@ -145,7 +145,7 @@ export function DocumentLibraryPanel() {
                       )}
                       {d.requiresSignature && (
                         <div className="space-y-1.5">
-                          <div className="text-[10px] uppercase text-gray-500 inline-flex items-center gap-1"><PenLine className="w-3 h-3" />E-sign this document</div>
+                          <div className="text-[10px] uppercase text-gray-400 inline-flex items-center gap-1"><PenLine className="w-3 h-3" />E-sign this document</div>
                           <div className="grid grid-cols-2 gap-2">
                             <input value={signForm.signerName} onChange={e => setSignForm({ ...signForm, signerName: e.target.value })} placeholder="Full legal name" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                             <input value={signForm.signerEmail} onChange={e => setSignForm({ ...signForm, signerEmail: e.target.value })} placeholder="Email" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />

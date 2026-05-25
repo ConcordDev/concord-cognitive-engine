@@ -14,6 +14,7 @@ export default function registerGoalsActions(registerLensAction) {
    * params.periodEndDate (optional), params.periodStartDate (optional)
    */
   registerLensAction("goals", "okrScoring", (ctx, artifact, params) => {
+  try {
     const objectives = artifact.data?.objectives || [];
     if (objectives.length === 0) {
       return { ok: true, result: { message: "No objectives provided." } };
@@ -147,7 +148,8 @@ export default function registerGoalsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * goalDecomposition
@@ -159,6 +161,7 @@ export default function registerGoalsActions(registerLensAction) {
    * }]
    */
   registerLensAction("goals", "goalDecomposition", (ctx, artifact, _params) => {
+  try {
     const goals = artifact.data?.goals || [];
     if (goals.length === 0) {
       return { ok: true, result: { message: "No goals provided." } };
@@ -366,7 +369,8 @@ export default function registerGoalsActions(registerLensAction) {
         resourceConflicts,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * progressForecast
@@ -377,6 +381,7 @@ export default function registerGoalsActions(registerLensAction) {
    * params.confidenceLevel (default 0.95)
    */
   registerLensAction("goals", "progressForecast", (ctx, artifact, params) => {
+  try {
     const history = artifact.data?.history || [];
     const target = artifact.data?.target ?? 100;
     const confidenceLevel = params.confidenceLevel || 0.95;
@@ -536,7 +541,8 @@ export default function registerGoalsActions(registerLensAction) {
         dataPoints: sorted.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ====================================================================
   // Feature-parity backlog — OKR alignment tree, cadence check-ins,
@@ -793,6 +799,7 @@ export default function registerGoalsActions(registerLensAction) {
    *   remove  -> { id }
    */
   registerLensAction("goals", "teamGoal", (ctx, _artifact, params = {}) => {
+  try {
     const s = getGoalsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -859,7 +866,8 @@ export default function registerGoalsActions(registerLensAction) {
     }
 
     return { ok: true, result: { teamGoal: g || null, teamGoals: list } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * templates
@@ -949,6 +957,7 @@ export default function registerGoalsActions(registerLensAction) {
    * ideal line for comparison — ready to feed ChartKit.
    */
   registerLensAction("goals", "progressChart", (ctx, artifact, params = {}) => {
+  try {
     const history = (Array.isArray(params.history) && params.history.length
       ? params.history
       : artifact?.data?.history) || [];
@@ -1008,7 +1017,8 @@ export default function registerGoalsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * reminder
@@ -1098,6 +1108,7 @@ export default function registerGoalsActions(registerLensAction) {
    * Detects cycles and computes a blocked/ready partition.
    */
   registerLensAction("goals", "dependencies", (ctx, _artifact, params = {}) => {
+  try {
     const s = getGoalsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -1168,5 +1179,6 @@ export default function registerGoalsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

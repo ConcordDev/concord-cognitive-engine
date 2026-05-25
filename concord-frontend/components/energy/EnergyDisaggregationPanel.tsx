@@ -54,7 +54,7 @@ export function EnergyDisaggregationPanel({ onChange }: { onChange: () => void }
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const rows = data?.devices || [];
@@ -77,7 +77,7 @@ export function EnergyDisaggregationPanel({ onChange }: { onChange: () => void }
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-8 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-8 text-center">
           No data yet. Add devices and log readings to attribute your consumption.
         </p>
       ) : (
@@ -94,7 +94,7 @@ export function EnergyDisaggregationPanel({ onChange }: { onChange: () => void }
                   <span className="flex items-center gap-1.5 text-zinc-200">
                     <Plug className="w-3 h-3 text-lime-400" />
                     {d.name}
-                    <span className="text-[9px] text-zinc-500 capitalize">{d.category.replace(/_/g, ' ')}</span>
+                    <span className="text-[9px] text-zinc-400 capitalize">{d.category.replace(/_/g, ' ')}</span>
                   </span>
                   <span className="text-zinc-400">{d.attributedKwh} kWh · {d.pct}%</span>
                 </div>
@@ -102,14 +102,14 @@ export function EnergyDisaggregationPanel({ onChange }: { onChange: () => void }
                   <div className="h-full bg-lime-500" style={{ width: `${total > 0 ? (d.directKwh / total) * 100 : 0}%` }} title="metered" />
                   <div className="h-full bg-lime-500/40" style={{ width: `${total > 0 ? (d.estimatedKwh / total) * 100 : 0}%` }} title="estimated" />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {d.directKwh} kWh metered · {d.estimatedKwh} kWh estimated · {METHOD_LABEL[d.method] || d.method}
                 </p>
               </li>
             ))}
           </ul>
           {(data?.unattributedKwh ?? 0) > 0 && (
-            <p className="text-[10px] text-zinc-500 px-1">
+            <p className="text-[10px] text-zinc-400 px-1">
               {data?.unattributedKwh} kWh unattributed — log device-tagged readings to shrink this.
             </p>
           )}
@@ -123,7 +123,7 @@ function Stat({ label, value, accent = 'text-zinc-100' }: { label: string; value
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
       <p className={`text-lg font-bold ${accent}`}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

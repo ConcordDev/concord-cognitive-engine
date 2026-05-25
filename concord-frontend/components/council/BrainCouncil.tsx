@@ -31,7 +31,7 @@ const VOTE_CONFIG: Record<string, { icon: React.ComponentType<{ className?: stri
   approve: { icon: CheckCircle, color: 'text-green-400' },
   reject: { icon: XCircle, color: 'text-red-400' },
   modify: { icon: MinusCircle, color: 'text-yellow-400' },
-  abstain: { icon: MinusCircle, color: 'text-gray-500' },
+  abstain: { icon: MinusCircle, color: 'text-gray-400' },
 };
 
 const CONSENSUS_COLORS: Record<string, string> = {
@@ -90,7 +90,7 @@ function BrainCouncil({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Brain Council</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {sessions.length > 0
                 ? `${sessions.length} deliberations held`
                 : '4-brain deliberation system'}
@@ -159,7 +159,7 @@ function BrainCouncil({ className }: { className?: string }) {
                 <CouncilSessionCard key={session.id} session={session} compact />
               ))}
               {sessions.length <= 1 && (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-400 text-center py-4">
                   No previous sessions. Ask the council a question above.
                 </p>
               )}
@@ -199,7 +199,7 @@ function CouncilSessionCard({ session, compact }: { session: CouncilSession; com
           </span>
         </div>
         {compact && (
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             {session.completedAt ? new Date(session.completedAt).toLocaleString() : 'In progress'}
             {' · '}
             {Math.round(session.confidence * 100)}% confidence
@@ -227,7 +227,7 @@ function CouncilSessionCard({ session, compact }: { session: CouncilSession; com
                   <p className="text-[11px] text-gray-400 line-clamp-2">{op.opinion}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn('text-[10px] capitalize', voteConf.color)}>{op.vote}</span>
-                    <span className="text-[10px] text-gray-600">
+                    <span className="text-[10px] text-gray-400">
                       {Math.round(op.confidence * 100)}%
                     </span>
                   </div>

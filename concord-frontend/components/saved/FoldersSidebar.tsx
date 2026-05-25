@@ -50,14 +50,14 @@ export function FoldersSidebar({
   return (
     <aside className="space-y-1">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[11px] uppercase tracking-wide text-zinc-500 flex items-center gap-1">
+        <h2 className="text-[11px] uppercase tracking-wide text-zinc-400 flex items-center gap-1">
           <Layers className="w-3.5 h-3.5" /> Collections
         </h2>
         <button
           type="button"
           onClick={() => setCreating((v) => !v)}
           aria-label="New folder"
-          className="text-zinc-500 hover:text-amber-300"
+          className="text-zinc-400 hover:text-amber-300"
         >
           <FolderPlus className="w-4 h-4" />
         </button>
@@ -73,7 +73,7 @@ export function FoldersSidebar({
         }`}
       >
         <span className="flex items-center gap-2"><Inbox className="w-4 h-4" /> All saved</span>
-        <span className="text-[10px] text-zinc-500">{totalCount}</span>
+        <span className="text-[10px] text-zinc-400">{totalCount}</span>
       </button>
 
       <button
@@ -85,8 +85,8 @@ export function FoldersSidebar({
             : 'text-zinc-300 hover:bg-zinc-900 border border-transparent'
         }`}
       >
-        <span className="flex items-center gap-2"><Folder className="w-4 h-4 text-zinc-500" /> Unfiled</span>
-        <span className="text-[10px] text-zinc-500">{unfiledCount}</span>
+        <span className="flex items-center gap-2"><Folder className="w-4 h-4 text-zinc-400" /> Unfiled</span>
+        <span className="text-[10px] text-zinc-400">{unfiledCount}</span>
       </button>
 
       {folders.map((f) => (
@@ -103,7 +103,7 @@ export function FoldersSidebar({
               <button type="button" onClick={() => submitRename(f.id)} aria-label="Save name" className="text-emerald-400">
                 <Check className="w-3.5 h-3.5" />
               </button>
-              <button type="button" onClick={() => setEditId(null)} aria-label="Cancel" className="text-zinc-500">
+              <button type="button" onClick={() => setEditId(null)} aria-label="Cancel" className="text-zinc-400">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -123,13 +123,13 @@ export function FoldersSidebar({
                 <Folder className="w-4 h-4 text-amber-300 shrink-0" />
                 <span className="truncate">{f.name}</span>
               </button>
-              <span className="text-[10px] text-zinc-500 mr-1">{f.itemCount ?? 0}</span>
+              <span className="text-[10px] text-zinc-400 mr-1">{f.itemCount ?? 0}</span>
               <span className="hidden group-hover:flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => { setEditId(f.id); setEditName(f.name); }}
                   aria-label="Rename folder"
-                  className="text-zinc-500 hover:text-amber-300"
+                  className="text-zinc-400 hover:text-amber-300"
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
@@ -137,7 +137,7 @@ export function FoldersSidebar({
                   type="button"
                   onClick={() => onDelete(f.id)}
                   aria-label="Delete folder"
-                  className="text-zinc-500 hover:text-rose-300"
+                  className="text-zinc-400 hover:text-rose-300"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>

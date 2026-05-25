@@ -86,7 +86,7 @@ export function RecipeImportBar({ onImported }: RecipeImportBarProps) {
       <div className="flex items-center gap-2">
         <Link2 className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Import a recipe</span>
-        <span className="text-[10px] text-gray-500">from any cooking site or a cookbook photo</span>
+        <span className="text-[10px] text-gray-400">from any cooking site or a cookbook photo</span>
       </div>
 
       <div className="flex flex-col gap-2 sm:flex-row">

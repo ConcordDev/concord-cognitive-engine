@@ -57,7 +57,7 @@ export function RulerOverlay() {
     >
       <header className="mb-2">
         <h3 className="text-sm font-bold text-amber-200 truncate">{myRealm.name}</h3>
-        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">You rule</p>
+        <p className="text-[10px] text-zinc-400 uppercase tracking-wider">You rule</p>
       </header>
 
       <div className="space-y-2 text-xs">
@@ -106,21 +106,21 @@ export function RulerOverlay() {
 
         {threats.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Threats</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Threats</p>
             <ul className="space-y-0.5">
               {threats.slice(0, 3).map((t, i) => (
                 <li key={`${t.source}-${i}`} className="text-[10px] text-red-300/90 truncate" data-threat-source={t.source}>
-                  <span className="text-zinc-500">{t.kind}:</span> {t.source}
+                  <span className="text-zinc-400">{t.kind}:</span> {t.source}
                 </li>
               ))}
-              {threats.length > 3 && <li className="text-[10px] text-zinc-500">+{threats.length - 3} more</li>}
+              {threats.length > 3 && <li className="text-[10px] text-zinc-400">+{threats.length - 3} more</li>}
             </ul>
           </div>
         )}
 
         {decrees.length > 0 && (
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Active decrees</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Active decrees</p>
             <ul className="space-y-0.5">
               {decrees.slice(0, 3).map((d) => (
                 <li key={d.id} className="text-[10px] text-zinc-400 truncate">

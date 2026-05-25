@@ -209,14 +209,14 @@ export function SRSReview({ cards, onReview, onClose, className }: SRSReviewProp
                         <div className="flex flex-col items-center gap-1">
                           <Icon className={cn('w-5 h-5', opt.color)} />
                           <span className="text-sm text-white">{opt.label}</span>
-                          <span className="text-xs text-gray-500">{opt.value}</span>
+                          <span className="text-xs text-gray-400">{opt.value}</span>
                         </div>
                       </button>
                     );
                   })}
                 </div>
 
-                <p className="text-center text-xs text-gray-600">
+                <p className="text-center text-xs text-gray-400">
                   Press 0-5 to rate your recall
                 </p>
               </motion.div>
@@ -226,7 +226,7 @@ export function SRSReview({ cards, onReview, onClose, className }: SRSReviewProp
       </div>
 
       {/* Footer with card info */}
-      <div className="px-4 py-3 border-t border-lattice-border text-xs text-gray-500 flex items-center justify-between">
+      <div className="px-4 py-3 border-t border-lattice-border text-xs text-gray-400 flex items-center justify-between">
         <span>
           Interval: {currentCard.card.interval} days
         </span>

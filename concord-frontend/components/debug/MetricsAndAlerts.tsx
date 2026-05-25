@@ -233,11 +233,11 @@ export function MetricsAndAlerts() {
         )}
 
         {loading ? (
-          <div className="text-center py-8 text-gray-500 text-sm flex items-center justify-center gap-2">
+          <div className="text-center py-8 text-gray-400 text-sm flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading...
           </div>
         ) : points.length === 0 ? (
-          <div className="text-center py-8 text-gray-500 text-sm border border-dashed border-lattice-border rounded-lg">
+          <div className="text-center py-8 text-gray-400 text-sm border border-dashed border-lattice-border rounded-lg">
             <Gauge className="w-7 h-7 mx-auto mb-2 opacity-40" />
             No samples yet — click &ldquo;Sample Runtime&rdquo;
           </div>
@@ -254,7 +254,7 @@ export function MetricsAndAlerts() {
                 ].map(([label, v]) => (
                   <div key={label} className="p-2 bg-lattice-deep rounded text-center">
                     <p className="text-sm font-bold text-neon-blue">{String(v)}</p>
-                    <p className="text-[10px] text-gray-500">{label}</p>
+                    <p className="text-[10px] text-gray-400">{label}</p>
                   </div>
                 ))}
               </div>
@@ -349,7 +349,7 @@ export function MetricsAndAlerts() {
 
         {/* Rule list */}
         {rules.length === 0 ? (
-          <p className="text-xs text-gray-600 text-center py-4">No alert rules configured</p>
+          <p className="text-xs text-gray-400 text-center py-4">No alert rules configured</p>
         ) : (
           <div className="space-y-2">
             {rules.map((rule) => (
@@ -376,7 +376,7 @@ export function MetricsAndAlerts() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{rule.name}</p>
-                  <p className="text-[10px] text-gray-500 font-mono">
+                  <p className="text-[10px] text-gray-400 font-mono">
                     {rule.metric} {rule.op} {rule.threshold}
                   </p>
                 </div>
@@ -401,7 +401,7 @@ export function MetricsAndAlerts() {
                   >
                     {rule.enabled ? rule.state : 'disabled'}
                   </p>
-                  <p className="text-[10px] text-gray-600">
+                  <p className="text-[10px] text-gray-400">
                     {rule.triggerCount}× fired
                     {rule.lastValue != null && ` · last ${rule.lastValue}`}
                   </p>

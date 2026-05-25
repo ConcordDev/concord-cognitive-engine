@@ -29,12 +29,12 @@ export function YelpTopPanel() {
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (rows.length === 0) {
     return (
-      <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+      <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
         No ranked restaurants yet. Reviews drive the ranking — add reviews in Discover.
       </div>
     );
@@ -42,7 +42,7 @@ export function YelpTopPanel() {
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Ranked by a Bayesian score that weights rating against review volume — high marks on a single
         review do not outrank a consistently strong restaurant.
       </p>
@@ -59,7 +59,7 @@ export function YelpTopPanel() {
                 {b.rank === 1 && <Trophy className="inline w-3.5 h-3.5 text-amber-400 mr-1" />}
                 {b.name}
               </p>
-              <p className="text-[11px] text-zinc-500 capitalize">
+              <p className="text-[11px] text-zinc-400 capitalize">
                 {b.cuisine} · {priceLabel(b.priceTier)}{b.neighborhood ? ` · ${b.neighborhood}` : ''}
               </p>
             </div>
@@ -67,7 +67,7 @@ export function YelpTopPanel() {
               <span className="flex items-center gap-1 text-xs text-zinc-200">
                 <Star className="w-3 h-3 text-amber-400 fill-amber-400" />{b.rating}
               </span>
-              <span className="text-[10px] text-zinc-600">{b.reviewCount} reviews</span>
+              <span className="text-[10px] text-zinc-400">{b.reviewCount} reviews</span>
             </div>
           </li>
         ))}

@@ -421,7 +421,7 @@ export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDt
 
   if (citations.length === 0) {
     return (
-      <div className={cn('flex items-center justify-center h-64 text-gray-500 text-sm bg-lattice-surface border border-lattice-border rounded-xl', className)}>
+      <div className={cn('flex items-center justify-center h-64 text-gray-400 text-sm bg-lattice-surface border border-lattice-border rounded-xl', className)}>
         No citation flow data available yet
       </div>
     );
@@ -438,7 +438,7 @@ export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDt
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse" />
           <h3 className="text-sm font-semibold text-white">Royalty Cascade Flow</h3>
-          <span className="text-xs text-gray-500">{nodes.length} DTUs &middot; {edges.length} flows</span>
+          <span className="text-xs text-gray-400">{nodes.length} DTUs &middot; {edges.length} flows</span>
         </div>
         <div className="flex items-center gap-3 text-[10px]">
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ background: NEON_CYAN }} /> Earned</span>
@@ -468,7 +468,7 @@ export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDt
               <span className="text-cyan-400">Earned: {hoveredNode.earned} CC</span>
               <span className="text-purple-400">Paid: {hoveredNode.paid} CC</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">Depth: {hoveredNode.depth}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Depth: {hoveredNode.depth}</p>
           </div>
         )}
       </div>
@@ -487,21 +487,21 @@ export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDt
           </div>
           <div className="grid grid-cols-3 gap-4 text-xs">
             <div>
-              <p className="text-gray-500 mb-0.5">Earned (incoming)</p>
+              <p className="text-gray-400 mb-0.5">Earned (incoming)</p>
               <p className="text-lg font-bold text-cyan-400">{selectedNode.earned} CC</p>
             </div>
             <div>
-              <p className="text-gray-500 mb-0.5">Paid out (outgoing)</p>
+              <p className="text-gray-400 mb-0.5">Paid out (outgoing)</p>
               <p className="text-lg font-bold text-purple-400">{selectedNode.paid} CC</p>
             </div>
             <div>
-              <p className="text-gray-500 mb-0.5">Net royalty</p>
+              <p className="text-gray-400 mb-0.5">Net royalty</p>
               <p className={cn('text-lg font-bold', selectedNode.earned - selectedNode.paid >= 0 ? 'text-neon-green' : 'text-red-400')}>
                 {selectedNode.earned - selectedNode.paid >= 0 ? '+' : ''}{selectedNode.earned - selectedNode.paid} CC
               </p>
             </div>
           </div>
-          <div className="mt-2 text-[10px] text-gray-500">
+          <div className="mt-2 text-[10px] text-gray-400">
             Citation chain depth: {selectedNode.depth} &middot;
             Connections: {edges.filter(e => e.from.id === selectedNode.id || e.to.id === selectedNode.id).length}
           </div>

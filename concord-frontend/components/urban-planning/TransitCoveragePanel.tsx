@@ -179,10 +179,10 @@ export function TransitCoveragePanel() {
                 key={s.id}
                 className="inline-flex items-center gap-1 rounded bg-zinc-800 px-2 py-1 text-[11px] text-zinc-300"
               >
-                {s.name} <span className="text-zinc-500">({s.mode})</span>
+                {s.name} <span className="text-zinc-400">({s.mode})</span>
                 <button
                   onClick={() => removeStop(s.id)}
-                  className="text-zinc-500 hover:text-red-400"
+                  className="text-zinc-400 hover:text-red-400"
                   aria-label={`Remove ${s.name}`}
                 >
                   <Trash2 className="h-3 w-3" />
@@ -209,7 +209,7 @@ export function TransitCoveragePanel() {
                 key={label as string}
                 className="rounded-lg border border-emerald-500/20 bg-zinc-900/60 p-3"
               >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">
                   {label}
                 </div>
                 <div className="mt-0.5 font-mono text-lg text-emerald-300">{val}</div>
@@ -225,7 +225,7 @@ export function TransitCoveragePanel() {
           <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-left text-zinc-500">
+                <tr className="text-left text-zinc-400">
                   <th className="py-1 pr-3">Stop</th>
                   <th className="py-1 pr-3">Mode</th>
                   <th className="py-1 pr-3 text-right">Walk radius (m)</th>

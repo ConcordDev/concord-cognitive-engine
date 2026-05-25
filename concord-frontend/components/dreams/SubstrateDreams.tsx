@@ -102,7 +102,7 @@ function SubstrateDreams({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Substrate Dreams</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {isActive
                 ? `Phase: ${currentPhase?.name || 'Unknown'}`
                 : stats.totalDreams > 0
@@ -149,7 +149,7 @@ function SubstrateDreams({ className }: { className?: string }) {
             })()}
             <div>
               <p className="text-sm font-medium text-white">{currentPhase.name}</p>
-              <p className="text-xs text-gray-500">{currentPhase.description}</p>
+              <p className="text-xs text-gray-400">{currentPhase.description}</p>
             </div>
           </div>
           <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
@@ -160,7 +160,7 @@ function SubstrateDreams({ className }: { className?: string }) {
               transition={{ duration: 0.5 }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1 text-right">{Math.round(progress * 100)}%</p>
+          <p className="text-xs text-gray-400 mt-1 text-right">{Math.round(progress * 100)}%</p>
         </div>
       )}
 
@@ -174,7 +174,7 @@ function SubstrateDreams({ className }: { className?: string }) {
         ].map((stat) => (
           <div key={stat.label} className="p-3 bg-lattice-surface text-center">
             <p className={cn('text-lg font-bold', stat.color)}>{stat.value}</p>
-            <p className="text-xs text-gray-500">{stat.label}</p>
+            <p className="text-xs text-gray-400">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -210,7 +210,7 @@ function SubstrateDreams({ className }: { className?: string }) {
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs text-neon-cyan">{insight.type}</span>
                           {insight.domains?.map((d) => (
-                            <span key={d} className="text-xs text-gray-500">
+                            <span key={d} className="text-xs text-gray-400">
                               {d}
                             </span>
                           ))}
@@ -238,7 +238,7 @@ function SubstrateDreams({ className }: { className?: string }) {
                       ) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between text-xs text-gray-500"
+                          className="flex items-center justify-between text-xs text-gray-400"
                         >
                           <span>{new Date(h.startedAt).toLocaleDateString()}</span>
                           <span>{h.insightsGenerated} insights</span>

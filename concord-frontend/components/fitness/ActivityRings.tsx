@@ -31,10 +31,10 @@ export function ActivityRings() {
   }
 
   if (loading) {
-    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>;
+    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>;
   }
   if (!today) {
-    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 text-xs text-gray-500">No activity data yet.</div>;
+    return <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-6 text-xs text-gray-400">No activity data yet.</div>;
   }
 
   return (
@@ -42,7 +42,7 @@ export function ActivityRings() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Activity className="w-4 h-4 text-red-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Activity rings</span>
-        <span className="ml-auto text-[10px] text-gray-500">Apple Fitness+ style</span>
+        <span className="ml-auto text-[10px] text-gray-400">Apple Fitness+ style</span>
       </header>
       <div className="p-4 flex items-center gap-6">
         <Rings today={today} />
@@ -54,13 +54,13 @@ export function ActivityRings() {
         </div>
       </div>
       <div className="px-4 pb-4">
-        <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Last 7 days</h3>
+        <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Last 7 days</h3>
         <div className="grid grid-cols-7 gap-1">
           {week.map(d => {
             const closed = [d.moveCalories >= d.moveGoal, d.exerciseMinutes >= d.exerciseGoal, d.standHours >= d.standGoal].filter(Boolean).length;
             return (
               <div key={d.date} className="text-center">
-                <div className="text-[9px] text-gray-500">{new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</div>
+                <div className="text-[9px] text-gray-400">{new Date(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</div>
                 <MiniRings day={d} />
                 <div className="text-[10px] text-gray-400">{closed}/3</div>
               </div>

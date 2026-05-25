@@ -44,7 +44,7 @@ function Node({
         {kids.length > 0 ? (
           <button
             onClick={() => setOpen((o) => !o)}
-            className="mt-1 text-zinc-500 hover:text-zinc-200 shrink-0"
+            className="mt-1 text-zinc-400 hover:text-zinc-200 shrink-0"
             aria-label={open ? 'Collapse' : 'Expand'}
           >
             {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -75,7 +75,7 @@ export function TreeDiagram({
   const roots = !root ? [] : Array.isArray(root) ? root : [root];
   if (roots.length === 0) {
     return (
-      <div className="flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 py-8 text-xs text-zinc-600">
+      <div className="flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 py-8 text-xs text-zinc-400">
         No tree to display yet.
       </div>
     );

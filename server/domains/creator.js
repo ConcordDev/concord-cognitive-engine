@@ -332,6 +332,7 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   registerLensAction("creator", "creator-goal-status", (ctx, _a, _params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = crtAid(ctx);
     const goal = s.goal.get(userId);
@@ -361,10 +362,12 @@ export default function registerCreatorActions(registerLensAction) {
         met: current >= goal.target,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Studio dashboard ────────────────────────────────────────────────
   registerLensAction("creator", "creator-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = crtAid(ctx);
     const content = s.content.get(userId) || [];
@@ -388,7 +391,8 @@ export default function registerCreatorActions(registerLensAction) {
           .filter((e) => e.date.startsWith(month)).reduce((a, e) => a + e.amount, 0) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // Parity backlog — YouTube Studio + Patreon feature gaps.
@@ -399,6 +403,7 @@ export default function registerCreatorActions(registerLensAction) {
   // can chart earnings over time. Computed entirely from real revenue
   // entries — nothing seeded.
   registerLensAction("creator", "revenue-timeseries", (ctx, _a, params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const bucket = crtPick(params.bucket, ["day", "week", "month"], "month");
     const days = Math.max(7, Math.min(1095, Math.round(crtNum(params.days, 365))));
@@ -430,7 +435,8 @@ export default function registerCreatorActions(registerLensAction) {
         grandTotal: Math.round(series.reduce((a, r) => a + r.total, 0) * 100) / 100,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Per-artifact content performance ────────────────────────────
   // content-track moves real performance counters on a content item;
@@ -453,6 +459,7 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   registerLensAction("creator", "content-performance", (ctx, _a, params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let items = [...(s.content.get(crtAid(ctx)) || [])];
     if (params.format) items = items.filter((x) => x.format === String(params.format));
@@ -485,7 +492,8 @@ export default function registerCreatorActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Audience demographics ───────────────────────────────────────
   // The creator logs real audience segment counts (geographic / age /
@@ -508,6 +516,7 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   registerLensAction("creator", "audience-demographics", (ctx, _a, params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const all = s.demographics.get(crtAid(ctx)) || [];
     // Latest entry per (segment,label) pair wins — re-logging a label updates it.
@@ -534,7 +543,8 @@ export default function registerCreatorActions(registerLensAction) {
       };
     }
     return { ok: true, result: { segments, segmentNames: wanted.filter(Boolean) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Membership tiers / recurring subscriptions ──────────────────
   registerLensAction("creator", "membership-tier-add", (ctx, _a, params = {}) => {
@@ -676,6 +686,7 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   registerLensAction("creator", "payout-history", (ctx, _a, params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let payouts = [...(s.payouts.get(crtAid(ctx)) || [])];
     const status = crtPick(params.status, ["pending", "completed", "failed", "all"], "all");
@@ -696,7 +707,8 @@ export default function registerCreatorActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Scheduled publishing ────────────────────────────────────────
   registerLensAction("creator", "publish-queue-add", (ctx, _a, params = {}) => {
@@ -798,6 +810,7 @@ export default function registerCreatorActions(registerLensAction) {
   });
 
   registerLensAction("creator", "comment-list", (ctx, _a, params = {}) => {
+  try {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let arr = [...(s.comments.get(crtAid(ctx)) || [])];
     const status = crtPick(params.status, ["open", "replied", "hidden", "resolved", "all"], "all");
@@ -821,7 +834,8 @@ export default function registerCreatorActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("creator", "comment-update", (ctx, _a, params = {}) => {
     const s = getCrtState(); if (!s) return { ok: false, error: "STATE unavailable" };

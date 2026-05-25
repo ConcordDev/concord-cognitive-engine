@@ -125,11 +125,11 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (levels.length === 0) {
-    return <p className="text-[11px] text-zinc-500 italic py-6 text-center">Create a level in the Levels tab to share it.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-6 text-center">Create a level in the Levels tab to share it.</p>;
   }
 
   return (
@@ -165,7 +165,7 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
               <div className="flex-1" />
               {open && (
                 <button type="button" onClick={closeSession}
-                  className="flex items-center gap-1 text-[11px] text-zinc-500 hover:text-rose-400">
+                  className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-rose-400">
                   <DoorClosed className="w-3.5 h-3.5" /> close
                 </button>
               )}
@@ -187,7 +187,7 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
                 const isActive = Date.now() - new Date(p.lastSeen).getTime() < 60_000;
                 return (
                   <span key={p.id} className={cn('text-[10px] px-2 py-0.5 rounded',
-                    isActive ? 'bg-lime-950/50 text-lime-300' : 'bg-zinc-800 text-zinc-500')}>
+                    isActive ? 'bg-lime-950/50 text-lime-300' : 'bg-zinc-800 text-zinc-400')}>
                     {p.id}
                   </span>
                 );
@@ -215,9 +215,9 @@ export function GdCollabPanel({ gameId, onChange }: { gameId: string; onChange: 
           )}
 
           <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
-            <p className="text-[10px] text-zinc-500 uppercase">Op log</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Op log</p>
             {ops.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic py-3 text-center">No edit ops yet.</p>
+              <p className="text-[11px] text-zinc-400 italic py-3 text-center">No edit ops yet.</p>
             ) : (
               <ul className="space-y-1 max-h-64 overflow-y-auto">
                 {ops.slice().reverse().map((o) => (

@@ -558,6 +558,7 @@ export default function registerEnergyActions(registerLensAction) {
   // (from a smart meter / clamp / plug). The macro keeps a rolling
   // window per user so the UI can render a Sense-style live graph.
   registerLensAction("energy", "live-sample", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureLiveState(s);
     const watts = enNum(params.watts);
@@ -585,7 +586,8 @@ export default function registerEnergyActions(registerLensAction) {
     s.livePower.set(userId, trimmed);
     saveEnergyState();
     return { ok: true, result: { sample } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("energy", "live-stream", (ctx, _a, params = {}) => {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -617,6 +619,7 @@ export default function registerEnergyActions(registerLensAction) {
   // is split by each device's nameplate wattage weight (real input),
   // mirroring Sense's "always-on / unknown" attribution.
   registerLensAction("energy", "disaggregate", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
@@ -664,12 +667,14 @@ export default function registerEnergyActions(registerLensAction) {
         days,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Cost projection ─────────────────────────────────────────────────
   // Projects the full-month bill from readings logged so far this month,
   // extrapolating the run-rate across the remaining days.
   registerLensAction("energy", "cost-projection", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const now = new Date();
@@ -710,7 +715,8 @@ export default function registerEnergyActions(registerLensAction) {
         confidence: distinctDays >= 7 ? "high" : distinctDays >= 3 ? "medium" : "low",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Time-of-use rate modeling ───────────────────────────────────────
   // Stores a user-defined TOU plan (peak / off-peak / shoulder rates +
@@ -756,6 +762,7 @@ export default function registerEnergyActions(registerLensAction) {
   });
 
   registerLensAction("energy", "tou-breakdown", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureLiveState(s);
     const userId = enAid(ctx);
@@ -802,13 +809,15 @@ export default function registerEnergyActions(registerLensAction) {
         peakSharePct: totalKwh > 0 ? Math.round((peakKwh / totalKwh) * 1000) / 10 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Solar self-consumption vs export ────────────────────────────────
   // Splits solar production into the share consumed on-site versus
   // exported to the grid, and values the resulting savings vs export
   // credit. Per-day matched against that day's consumption.
   registerLensAction("energy", "solar-self-consumption", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const days = Math.max(1, Math.min(365, Math.round(enNum(params.days, 30))));
@@ -858,13 +867,15 @@ export default function registerEnergyActions(registerLensAction) {
         series,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Usage alerts ────────────────────────────────────────────────────
   // Detects anomalies entirely from real logged data: a usage spike vs
   // the recent baseline, an always-on device with no recent reading,
   // and goals over budget. No synthetic triggers.
   registerLensAction("energy", "usage-alerts", (ctx, _a, _params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const alerts = [];
@@ -929,10 +940,12 @@ export default function registerEnergyActions(registerLensAction) {
         highCount: alerts.filter((a) => a.severity === "high").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Historical comparison (this month vs last) ──────────────────────
   registerLensAction("energy", "month-comparison", (ctx, _a, params = {}) => {
+  try {
     const s = getEnergyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = enAid(ctx);
     const baseMonth = enClean(params.month, 7) || enDay(enNow()).slice(0, 7);
@@ -980,7 +993,8 @@ export default function registerEnergyActions(registerLensAction) {
         hasData: current.readingDays > 0 || previous.readingDays > 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real GB electricity carbon-intensity + generation mix
   // from the National Grid ESO Carbon Intensity API. Free, no key.

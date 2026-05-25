@@ -66,7 +66,7 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
   }, [streaming, robot, poll]);
 
   if (!robot) {
-    return <p className="text-gray-500 text-sm text-center py-6">Select a robot to view live telemetry.</p>;
+    return <p className="text-gray-400 text-sm text-center py-6">Select a robot to view live telemetry.</p>;
   }
 
   return (
@@ -124,7 +124,7 @@ export function TelemetryDashboard({ robot }: { robot: RobotRow | null }) {
                     <div className="h-full bg-neon-cyan rounded-full"
                       style={{ width: `${(Math.abs(j.angle) / 180) * 100}%` }} />
                   </div>
-                  <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                  <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
                     <span>ω {j.velocity}</span>
                     <span>τ {j.torque}</span>
                   </div>

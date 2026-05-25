@@ -375,7 +375,7 @@ export default function DistrictViewport({
   if (!district) {
     return (
       <div className="flex-1 flex items-center justify-center bg-[#0a0f1a]">
-        <p className="text-gray-500">No district loaded</p>
+        <p className="text-gray-400">No district loaded</p>
       </div>
     );
   }

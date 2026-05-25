@@ -144,7 +144,7 @@ export function KinematicsStudio() {
                 fill={isEnd ? '#f59e0b' : '#0e7490'} stroke="#fff" strokeWidth={isEnd ? 2 : 1} />;
             })}
           </svg>
-          {mode === 'ik' && <p className="text-[11px] text-gray-500 text-center pb-1">Click anywhere to set the target — CCD solver runs.</p>}
+          {mode === 'ik' && <p className="text-[11px] text-gray-400 text-center pb-1">Click anywhere to set the target — CCD solver runs.</p>}
         </div>
 
         {/* Controls */}
@@ -193,23 +193,23 @@ export function KinematicsStudio() {
 
           {active && (
             <div className="panel p-3 text-xs space-y-1.5">
-              <div className="flex justify-between"><span className="text-gray-500">End effector</span>
+              <div className="flex justify-between"><span className="text-gray-400">End effector</span>
                 <span className="font-mono text-neon-cyan">({active.endEffector.x}, {active.endEffector.y})</span></div>
               {mode === 'fk' && fk && (
                 <>
-                  <div className="flex justify-between"><span className="text-gray-500">Orientation</span><span className="font-mono">{fk.orientation}°</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Extension</span><span className="font-mono">{fk.extension}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Max reach</span><span className="font-mono">{fk.maxReach}mm</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Orientation</span><span className="font-mono">{fk.orientation}°</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Extension</span><span className="font-mono">{fk.extension}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Max reach</span><span className="font-mono">{fk.maxReach}mm</span></div>
                 </>
               )}
               {mode === 'ik' && ik && (
                 <>
-                  <div className="flex justify-between"><span className="text-gray-500">Reachable</span>
+                  <div className="flex justify-between"><span className="text-gray-400">Reachable</span>
                     <span className={ik.reachable ? 'text-green-400' : 'text-red-400'}>{ik.reachable ? 'yes' : 'no'}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Converged</span>
+                  <div className="flex justify-between"><span className="text-gray-400">Converged</span>
                     <span className={ik.converged ? 'text-green-400' : 'text-yellow-400'}>{ik.converged ? 'yes' : 'partial'}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Residual error</span><span className="font-mono">{ik.error}mm</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">CCD iterations</span><span className="font-mono">{ik.iterations}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">Residual error</span><span className="font-mono">{ik.error}mm</span></div>
+                  <div className="flex justify-between"><span className="text-gray-400">CCD iterations</span><span className="font-mono">{ik.iterations}</span></div>
                 </>
               )}
             </div>

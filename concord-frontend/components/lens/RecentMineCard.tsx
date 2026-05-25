@@ -101,9 +101,9 @@ export function RecentMineCard({
         <Clock className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <h3 className="text-xs font-medium text-zinc-300 flex-1">{headline}</h3>
         {total > 0 && (
-          <span className="text-[10px] text-zinc-500 font-mono">{Math.min(items.length, limit)} / {total}</span>
+          <span className="text-[10px] text-zinc-400 font-mono">{Math.min(items.length, limit)} / {total}</span>
         )}
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" aria-hidden="true" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" aria-hidden="true" />}
       </header>
 
       {error && (
@@ -113,7 +113,7 @@ export function RecentMineCard({
       )}
 
       {!error && !loading && items.length === 0 && (
-        <div className="px-3 py-4 text-xs text-zinc-500 italic">
+        <div className="px-3 py-4 text-xs text-zinc-400 italic">
           Nothing recent — your work in this lens will show up here.
         </div>
       )}
@@ -135,9 +135,9 @@ export function RecentMineCard({
                     onSelect ? 'hover:bg-zinc-900/60 cursor-pointer transition-colors' : '',
                   )}
                 >
-                  <FileText className="w-3 h-3 text-zinc-500 shrink-0" aria-hidden="true" />
+                  <FileText className="w-3 h-3 text-zinc-400 shrink-0" aria-hidden="true" />
                   <span className="text-zinc-200 truncate flex-1">{itemTitle}</span>
-                  {ts && <span className="text-[10px] text-zinc-500 font-mono shrink-0">{formatRelative(ts)}</span>}
+                  {ts && <span className="text-[10px] text-zinc-400 font-mono shrink-0">{formatRelative(ts)}</span>}
                   {onSelect && <ArrowRight className="w-3 h-3 text-zinc-600 shrink-0" aria-hidden="true" />}
                 </Component>
               </li>

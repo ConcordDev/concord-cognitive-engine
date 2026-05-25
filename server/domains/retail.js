@@ -8,6 +8,7 @@ export default function registerRetailActions(registerLensAction) {
    * artifact.data.products: [{ sku, name, onHand, reorderPoint, reorderQty, leadTimeDays, dailyUsage }]
    */
   registerLensAction("retail", "reorderCheck", (ctx, artifact, _params) => {
+  try {
     const products = artifact.data.products || artifact.data.inventory || [];
 
     const needsReorder = [];
@@ -56,7 +57,8 @@ export default function registerRetailActions(registerLensAction) {
     artifact.data.reorderReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * pipelineValue
@@ -64,6 +66,7 @@ export default function registerRetailActions(registerLensAction) {
    * artifact.data.deals: [{ name, value, probability, stage, expectedCloseDate }]
    */
   registerLensAction("retail", "pipelineValue", (ctx, artifact, params) => {
+  try {
     const deals = artifact.data.deals || artifact.data.opportunities || [];
     const includeClosed = params.includeClosed || false;
 
@@ -127,7 +130,8 @@ export default function registerRetailActions(registerLensAction) {
     artifact.data.pipelineReport = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * customerLTV
@@ -136,6 +140,7 @@ export default function registerRetailActions(registerLensAction) {
    * params.customerId — compute for one customer (or all if omitted)
    */
   registerLensAction("retail", "customerLTV", (ctx, artifact, params) => {
+  try {
     const customers = artifact.data.customers || [];
     const targetId = params.customerId || null;
 
@@ -213,7 +218,8 @@ export default function registerRetailActions(registerLensAction) {
     artifact.data.ltvReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * slaStatus
@@ -222,6 +228,7 @@ export default function registerRetailActions(registerLensAction) {
    * params.defaultSlaHours — default SLA if not per-ticket (default 24)
    */
   registerLensAction("retail", "slaStatus", (ctx, artifact, params) => {
+  try {
     const tickets = artifact.data.tickets || [];
     const defaultSlaHours = params.defaultSlaHours || 24;
     const now = new Date();
@@ -298,7 +305,8 @@ export default function registerRetailActions(registerLensAction) {
     artifact.data.slaReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity — Shopify/Square/Stripe POS / Lightspeed parity ──
 
@@ -438,6 +446,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "cart-tender", (ctx, _artifact, params = {}) => {
+  try {
     const s = getRetailState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
@@ -483,7 +492,8 @@ export default function registerRetailActions(registerLensAction) {
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "orders-list", (ctx, _artifact, _params = {}) => {
     const s = getRetailState();
@@ -736,6 +746,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "customers-segments", (ctx, _a, _p = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const customers = ensureRetailBucket(s, "customers", userId);
@@ -764,7 +775,8 @@ export default function registerRetailActions(registerLensAction) {
         detail: segments,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Discount codes ─────────────────────────────────────────────
 
@@ -844,6 +856,7 @@ export default function registerRetailActions(registerLensAction) {
   // ── Abandoned carts ───────────────────────────────────────────
 
   registerLensAction("retail", "abandoned-carts-list", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const thresholdHours = Math.max(1, Number(params.thresholdHours) || 1);
@@ -869,7 +882,8 @@ export default function registerRetailActions(registerLensAction) {
     abandoned.sort((a, b) => b.subtotal - a.subtotal);
     const totalLost = abandoned.reduce((s, c) => s + c.subtotal, 0);
     return { ok: true, result: { carts: abandoned, totalAbandoned: abandoned.length, totalLostValue: Math.round(totalLost * 100) / 100 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "abandoned-cart-recover", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1050,6 +1064,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "refunds-create", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const orderId = String(params.orderId || "");
@@ -1076,7 +1091,8 @@ export default function registerRetailActions(registerLensAction) {
     }
     saveRetailState();
     return { ok: true, result: { refund } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Collections (product groupings) ───────────────────────────
 
@@ -1172,6 +1188,7 @@ export default function registerRetailActions(registerLensAction) {
   // ── Sales analytics ───────────────────────────────────────────
 
   registerLensAction("retail", "analytics-revenue-by-day", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const days = Math.max(7, Math.min(365, Number(params.days) || 30));
@@ -1205,7 +1222,8 @@ export default function registerRetailActions(registerLensAction) {
         avgOrderValue: totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "analytics-top-products", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1229,6 +1247,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "analytics-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const orders = s.orders.get(userId) || [];
@@ -1256,7 +1275,8 @@ export default function registerRetailActions(registerLensAction) {
         activeCarts: s.carts.get(userId)?.size || 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real consumer retail products from the Open Beauty
   // Facts open database as visible DTUs. Free, no key.
@@ -1358,6 +1378,7 @@ export default function registerRetailActions(registerLensAction) {
 
   // Buyer-facing read — returns published catalog with stock + ratings.
   registerLensAction("retail", "storefront-catalog", (ctx, _a, _p = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const sf = ensureStorefront(s, userId);
@@ -1385,11 +1406,13 @@ export default function registerRetailActions(registerLensAction) {
       ok: true,
       result: { published: true, storeName: sf.name, tagline: sf.tagline, theme: sf.theme, products },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Buyer places an order from the storefront. Decrements stock, writes
   // a real order tagged channel:'storefront'.
   registerLensAction("retail", "storefront-checkout", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const sf = ensureStorefront(s, userId);
@@ -1439,7 +1462,8 @@ export default function registerRetailActions(registerLensAction) {
     s.orders.get(userId).unshift(order);
     saveRetailState();
     return { ok: true, result: { order } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Order fulfillment workflow — pick / pack / ship ──────────
 
@@ -1467,6 +1491,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "fulfillment-advance", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const orderId = String(params.orderId || "");
@@ -1507,7 +1532,8 @@ export default function registerRetailActions(registerLensAction) {
     }
     saveRetailState();
     return { ok: true, result: { order: { id: order.id, number: order.number, fulfillmentStatus: order.fulfillmentStatus, fulfillmentLog: order.fulfillmentLog }, notification } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "fulfillment-notifications", (ctx, _a, _p = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1715,6 +1741,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "campaigns-performance", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const id = params.id ? String(params.id) : null;
@@ -1744,7 +1771,8 @@ export default function registerRetailActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Multi-channel listing — sync inventory to marketplaces ───
 
@@ -1843,6 +1871,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "reviews-submit", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const sku = String(params.sku || "").trim();
@@ -1873,7 +1902,8 @@ export default function registerRetailActions(registerLensAction) {
     ensureRetailBucket(s, "reviews", userId).push(review);
     saveRetailState();
     return { ok: true, result: { review } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "reviews-moderate", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1901,6 +1931,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "reviews-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const reviews = ensureRetailBucket(s, "reviews", userId).filter((r) => r.status === "published");
@@ -1928,7 +1959,8 @@ export default function registerRetailActions(registerLensAction) {
         topRated,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Staff accounts + permissions ─────────────────────────────
 
@@ -1948,6 +1980,7 @@ export default function registerRetailActions(registerLensAction) {
   });
 
   registerLensAction("retail", "staff-invite", (ctx, _a, params = {}) => {
+  try {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = retailActor(ctx);
     const name = String(params.name || "").trim();
@@ -1967,7 +2000,8 @@ export default function registerRetailActions(registerLensAction) {
     staff.push(member);
     saveRetailState();
     return { ok: true, result: { member } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("retail", "staff-update-role", (ctx, _a, params = {}) => {
     const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };

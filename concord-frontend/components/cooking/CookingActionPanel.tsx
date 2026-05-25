@@ -247,11 +247,11 @@ export function CookingActionPanel() {
           <input type="text" value={recipeName} onChange={(e) => setRecipeName(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" />
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] text-zinc-500">Base servings</label>
+              <label className="text-[10px] text-zinc-400">Base servings</label>
               <input type="number" min={1} value={baseServings} onChange={(e) => setBaseServings(Number(e.target.value) || 1)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
             </div>
             <div>
-              <label className="text-[10px] text-zinc-500">Target</label>
+              <label className="text-[10px] text-zinc-400">Target</label>
               <input type="number" min={1} value={targetServings} onChange={(e) => setTargetServings(Number(e.target.value) || 1)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
             </div>
           </div>
@@ -311,7 +311,7 @@ export function CookingActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -325,9 +325,9 @@ export function CookingActionPanel() {
               <div key={i} className="text-[11px] text-zinc-300 mt-1 flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <strong className="text-green-200">{f.description}</strong>
-                  <span className="font-mono text-zinc-500 text-[10px] ml-1">FDC {f.fdcId}</span>
+                  <span className="font-mono text-zinc-400 text-[10px] ml-1">FDC {f.fdcId}</span>
                   {f.brandOwner && <div className="text-[10px] text-zinc-400 truncate">{f.brandOwner}</div>}
-                  {f.servingSize && <div className="text-[10px] text-zinc-500">serving: {f.servingSize}{f.servingSizeUnit}</div>}
+                  {f.servingSize && <div className="text-[10px] text-zinc-400">serving: {f.servingSize}{f.servingSizeUnit}</div>}
                 </div>
                 <button type="button" onClick={() => addFoodAsIngredient(f)} className="flex-shrink-0 text-[10px] text-green-200 hover:text-white border border-green-500/30 rounded px-1.5 py-0.5 flex items-center gap-1" title="Add to ingredients">
                   <Plus className="w-3 h-3" /> add
@@ -340,22 +340,22 @@ export function CookingActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">{scaleResult.recipe}</div>
             <div className="text-[11px] text-zinc-300">scaled <span className="text-amber-200 font-mono">{scaleResult.scaleFactor}×</span> · {scaleResult.baseServings} → {scaleResult.targetServings}</div>
-            {scaleResult.ingredients.map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-500 line-through">{i.original}</span> → <span className="text-amber-200 font-mono">{i.scaled}</span></div>)}
+            {scaleResult.ingredients.map((i, idx) => <div key={idx} className="text-[10px] text-zinc-300 mt-0.5"><strong>{i.name}:</strong> <span className="text-zinc-400 line-through">{i.original}</span> → <span className="text-amber-200 font-mono">{i.scaled}</span></div>)}
           </div>
         )}
         {nutrResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Nutrition · {nutrResult.servings} servings</div>
             <div className="text-2xl font-bold text-blue-300">{nutrResult.perServing}<span className="text-xs text-zinc-400"> cal/serving</span></div>
-            <div className="text-[10px] text-zinc-500">total {nutrResult.totalCalories} cal</div>
+            <div className="text-[10px] text-zinc-400">total {nutrResult.totalCalories} cal</div>
             <div className="text-[10px] text-blue-200">P {nutrResult.macros.protein} · C {nutrResult.macros.carbs} · F {nutrResult.macros.fat}</div>
-            {nutrResult.note && <div className="text-[10px] text-zinc-500 italic">{nutrResult.note}</div>}
+            {nutrResult.note && <div className="text-[10px] text-zinc-400 italic">{nutrResult.note}</div>}
           </div>
         )}
         {subResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{subResult.ingredient} subs · {subResult.found ? '✓ found' : '✗ none'}</div>
-            {subResult.substitutions.map((s, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><strong className="text-purple-200">{s.sub}</strong> <span className="font-mono text-zinc-500">{s.ratio}</span>{s.note && <div className="text-[10px] text-zinc-500 italic">{s.note}</div>}</div>)}
+            {subResult.substitutions.map((s, i) => <div key={i} className="text-[11px] text-zinc-300 mt-1"><strong className="text-purple-200">{s.sub}</strong> <span className="font-mono text-zinc-400">{s.ratio}</span>{s.note && <div className="text-[10px] text-zinc-400 italic">{s.note}</div>}</div>)}
           </div>
         )}
       </div>

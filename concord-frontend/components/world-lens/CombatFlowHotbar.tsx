@@ -301,7 +301,7 @@ export default function CombatFlowHotbar({
                 key={i}
                 className="w-12 h-12 rounded-lg bg-slate-950/70 border border-white/10 flex flex-col items-center justify-center"
               >
-                <span className="text-[9px] text-slate-600 font-mono">{key}</span>
+                <span className="text-[9px] text-slate-400 font-mono">{key}</span>
               </div>
             );
           }

@@ -128,7 +128,7 @@ function HeartbeatBar() {
           className={`w-3.5 h-3.5 ${recentDtuFlash ? 'text-neon-cyan animate-pulse' : 'text-neon-blue'}`}
         />
         <span className="font-mono font-medium tabular-nums">{displayCount.toLocaleString()}</span>
-        <span className="hidden xl:inline text-gray-500">DTUs</span>
+        <span className="hidden xl:inline text-gray-400">DTUs</span>
       </div>
 
       {/* Active Emergents */}
@@ -137,10 +137,10 @@ function HeartbeatBar() {
         title={`${activeEmergents.length} emergent${activeEmergents.length !== 1 ? 's' : ''} active`}
       >
         <Brain
-          className={`w-3.5 h-3.5 ${activeEmergents.length > 0 ? 'text-neon-purple animate-pulse' : 'text-gray-500'}`}
+          className={`w-3.5 h-3.5 ${activeEmergents.length > 0 ? 'text-neon-purple animate-pulse' : 'text-gray-400'}`}
         />
         <span className="font-mono">{activeEmergents.length}</span>
-        <span className="hidden xl:inline text-gray-500">active</span>
+        <span className="hidden xl:inline text-gray-400">active</span>
         {/* Mini role indicators */}
         <div className="hidden lg:flex items-center gap-0.5 ml-0.5">
           {activeEmergents.slice(0, 3).map((e: EmergentEntity, i: number) => (
@@ -151,7 +151,7 @@ function HeartbeatBar() {
             />
           ))}
           {activeEmergents.length > 3 && (
-            <span className="text-gray-500 text-[10px]">+{activeEmergents.length - 3}</span>
+            <span className="text-gray-400 text-[10px]">+{activeEmergents.length - 3}</span>
           )}
         </div>
       </div>
@@ -174,7 +174,7 @@ function HeartbeatBar() {
           <span className="font-mono text-xs">
             {String((scopeData as Record<string, unknown>).total ?? 0)}
           </span>
-          <span className="text-gray-500 text-xs">scope</span>
+          <span className="text-gray-400 text-xs">scope</span>
         </div>
       )}
 

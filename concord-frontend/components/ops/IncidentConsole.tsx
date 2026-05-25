@@ -260,7 +260,7 @@ export function IncidentConsole() {
             key={k}
             onClick={() => setTab(k)}
             className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400/40 ${
-              tab === k ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300'
+              tab === k ? 'bg-rose-500/20 text-rose-200' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-300'
             }`}
           >
             <Icon className="h-3.5 w-3.5" /> {label}
@@ -355,7 +355,7 @@ function IncidentsTab({
         </div>
 
         {incidents.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">
             No incidents. Trigger one above or ingest an alert.
           </p>
         ) : (
@@ -371,12 +371,12 @@ function IncidentsTab({
                   <div className="flex items-center gap-2">
                     <span className="rounded px-1.5 py-0.5 text-[10px] font-bold text-black"
                       style={{ background: SEV_COLOR[i.severity] }}>{i.severity.toUpperCase()}</span>
-                    <span className="font-mono text-[10px] text-zinc-500">#{i.number}</span>
+                    <span className="font-mono text-[10px] text-zinc-400">#{i.number}</span>
                     <span className="flex-1 truncate text-xs font-medium text-zinc-100">{i.title}</span>
                     <span className="rounded px-1.5 py-0.5 text-[10px] font-medium"
                       style={{ background: STATUS_COLOR[i.status] + '22', color: STATUS_COLOR[i.status] }}>{i.status}</span>
                   </div>
-                  <div className="mt-0.5 text-[10px] text-zinc-600">
+                  <div className="mt-0.5 text-[10px] text-zinc-400">
                     opened {new Date(i.createdAt).toLocaleString()} · {i.timeline.length} timeline events
                   </div>
                 </button>
@@ -391,7 +391,7 @@ function IncidentsTab({
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 space-y-3">
             <div>
               <h3 className="text-sm font-semibold text-white">#{sel.number} {sel.title}</h3>
-              <p className="text-[10px] text-zinc-500">source: {sel.source} · {sel.severity.toUpperCase()}</p>
+              <p className="text-[10px] text-zinc-400">source: {sel.source} · {sel.severity.toUpperCase()}</p>
             </div>
 
             <div className="flex flex-wrap gap-1.5">
@@ -409,7 +409,7 @@ function IncidentsTab({
             </div>
 
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Timeline</p>
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Timeline</p>
               <TimelineView
                 events={sel.timeline.map((t, idx) => ({
                   id: `${sel.id}-${idx}`,
@@ -451,7 +451,7 @@ function IncidentsTab({
 
             {notifications.filter((n) => n.incidentId === sel.id).length > 0 && (
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Pages dispatched</p>
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Pages dispatched</p>
                 <ul className="space-y-0.5">
                   {notifications.filter((n) => n.incidentId === sel.id).map((n) => (
                     <li key={n.id} className="text-[10px] text-zinc-400">
@@ -463,7 +463,7 @@ function IncidentsTab({
             )}
           </div>
         ) : (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">
             Select an incident to drive its state machine, page responders, and view its timeline.
           </p>
         )}
@@ -506,21 +506,21 @@ function AlertsTab({
           {busy === 'alert-ingest' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />} Ingest
         </button>
       </div>
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-400">
         Alerts auto-map to a service when the signature contains the service name or one of its alert keys.
       </p>
       {alerts.length === 0 ? (
-        <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">No alerts ingested.</p>
+        <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">No alerts ingested.</p>
       ) : (
         <ul className="space-y-1">
           {alerts.map((a) => (
             <li key={a.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs">
               <span className="rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ background: SEV_COLOR[a.severity] }}>{a.severity.toUpperCase()}</span>
               <span className="font-mono text-zinc-200">{a.signature}</span>
-              {a.message && <span className="truncate text-zinc-500">{a.message}</span>}
+              {a.message && <span className="truncate text-zinc-400">{a.message}</span>}
               {a.serviceName && <span className="rounded bg-indigo-500/20 px-1.5 py-0.5 text-[10px] text-indigo-300">{a.serviceName}</span>}
               {a.incidentId && <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] text-rose-300">incident</span>}
-              <span className="ml-auto text-[10px] text-zinc-600">{new Date(a.receivedAt).toLocaleTimeString()}</span>
+              <span className="ml-auto text-[10px] text-zinc-400">{new Date(a.receivedAt).toLocaleTimeString()}</span>
             </li>
           ))}
         </ul>
@@ -577,7 +577,7 @@ function ServicesTab({
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white font-mono" />
           {services.length > 0 && (
             <div>
-              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Depends on</p>
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Depends on</p>
               <div className="flex flex-wrap gap-1">
                 {services.map((s) => (
                   <button key={s.id}
@@ -603,9 +603,9 @@ function ServicesTab({
         </div>
       </div>
       <div>
-        <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Dependency graph ({services.length} services · {edges.length} edges)</p>
+        <p className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Dependency graph ({services.length} services · {edges.length} edges)</p>
         {services.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">No services registered.</p>
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">No services registered.</p>
         ) : (
           <TreeDiagram root={tree} />
         )}
@@ -637,12 +637,12 @@ function OnCallTab({
     <div className="space-y-3">
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 text-xs">
         Current on-call: <strong className="text-white">{current.name || 'none'}</strong>
-        <span className="ml-1 text-zinc-500">({current.source})</span>
+        <span className="ml-1 text-zinc-400">({current.source})</span>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Add shift</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400">Add shift</p>
           <input value={resp} onChange={(e) => setResp(e.target.value)} placeholder="Responder"
             className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
           <div className="flex gap-2">
@@ -658,7 +658,7 @@ function OnCallTab({
           >Add shift</button>
         </div>
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Shift override / swap</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400">Shift override / swap</p>
           <div className="flex gap-2">
             <input value={ovrResp} onChange={(e) => setOvrResp(e.target.value)} placeholder="Covering responder"
               className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
@@ -693,11 +693,11 @@ function OnCallTab({
       )}
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">
           Schedule ({shifts.length} shifts · {overrides.length} overrides)
         </p>
         {shifts.length + overrides.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">No shifts scheduled.</p>
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">No shifts scheduled.</p>
         ) : (
           <TimelineView
             events={[
@@ -734,12 +734,12 @@ function PoliciesTab({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500">New escalation policy</p>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400">New escalation policy</p>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Policy name"
           className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-white" />
         {tiers.map((t, i) => (
           <div key={i} className="flex gap-1.5">
-            <span className="self-center text-[10px] text-zinc-500">T{i + 1}</span>
+            <span className="self-center text-[10px] text-zinc-400">T{i + 1}</span>
             <input value={t.afterMinutes} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, afterMinutes: e.target.value.replace(/[^\d.]/g, '') } : x))}
               placeholder="after min" className="w-20 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
             <input value={t.target} onChange={(e) => setTiers((ts) => ts.map((x, j) => j === i ? { ...x, target: e.target.value } : x))}
@@ -768,7 +768,7 @@ function PoliciesTab({
 
       <div className="space-y-2">
         {policies.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">No policies defined.</p>
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">No policies defined.</p>
         ) : policies.map((p) => {
           const ev = evalState[p.id];
           return (
@@ -808,7 +808,7 @@ function PoliciesTab({
 // ───────────────────────── analytics ─────────────────────────
 function AnalyticsTab({ analytics }: { analytics: Analytics | null }) {
   if (!analytics) {
-    return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">Loading analytics…</p>;
+    return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">Loading analytics…</p>;
   }
   return (
     <div className="space-y-4">
@@ -820,14 +820,14 @@ function AnalyticsTab({ analytics }: { analytics: Analytics | null }) {
           ['MTTR (min)', analytics.mttrMinutes],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
             <div className="font-mono text-xl font-semibold text-white">{value}</div>
           </div>
         ))}
       </div>
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Weekly incident trend ({analytics.windowDays}d window)</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Weekly incident trend ({analytics.windowDays}d window)</p>
         <ChartKit
           kind="bar"
           data={analytics.weeklyTrend.map((w) => ({ week: w.week, count: w.count }))}
@@ -838,7 +838,7 @@ function AnalyticsTab({ analytics }: { analytics: Analytics | null }) {
       </div>
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">MTTR by severity</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">MTTR by severity</p>
         <ChartKit
           kind="bar"
           data={Object.entries(analytics.bySeverity).map(([sev, v]) => ({ sev: sev.toUpperCase(), mttr: v.mttrMin, total: v.total }))}
@@ -867,7 +867,7 @@ const COMP_STATUS: Record<string, string> = {
 
 function StatusTab({ status }: { status: StatusPage | null }) {
   if (!status) {
-    return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-600">Loading status page…</p>;
+    return <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-8 text-center text-xs text-zinc-400">Loading status page…</p>;
   }
   const overall = OVERALL_LABEL[status.overall] || { text: status.overall, color: '#64748b' };
   return (
@@ -876,14 +876,14 @@ function StatusTab({ status }: { status: StatusPage | null }) {
         <div className="flex items-center gap-2">
           <span className="h-3 w-3 rounded-full" style={{ background: overall.color }} />
           <span className="text-sm font-semibold" style={{ color: overall.color }}>{overall.text}</span>
-          <span className="ml-auto text-[10px] text-zinc-500">{status.activeIncidentCount} active · as of {new Date(status.generatedAt).toLocaleTimeString()}</span>
+          <span className="ml-auto text-[10px] text-zinc-400">{status.activeIncidentCount} active · as of {new Date(status.generatedAt).toLocaleTimeString()}</span>
         </div>
       </div>
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Components</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Components</p>
         {status.components.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-6 text-center text-xs text-zinc-600">No services registered yet.</p>
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-6 text-center text-xs text-zinc-400">No services registered yet.</p>
         ) : (
           <ul className="space-y-1">
             {status.components.map((c) => (
@@ -891,7 +891,7 @@ function StatusTab({ status }: { status: StatusPage | null }) {
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: COMP_STATUS[c.status] || '#64748b' }} />
                 <span className="font-medium text-zinc-100">{c.name}</span>
                 <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">{c.tier}</span>
-                <span className="ml-auto text-[10px] text-zinc-500">{c.uptime90dPct}% uptime 90d</span>
+                <span className="ml-auto text-[10px] text-zinc-400">{c.uptime90dPct}% uptime 90d</span>
                 <span className="text-[10px]" style={{ color: COMP_STATUS[c.status] }}>{c.status.replace(/_/g, ' ')}</span>
               </li>
             ))}
@@ -900,15 +900,15 @@ function StatusTab({ status }: { status: StatusPage | null }) {
       </div>
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Recent incidents</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Recent incidents</p>
         {status.recentIncidents.length === 0 ? (
-          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-6 text-center text-xs text-zinc-600">No incidents on record.</p>
+          <p className="rounded border border-zinc-800 bg-zinc-900/30 px-4 py-6 text-center text-xs text-zinc-400">No incidents on record.</p>
         ) : (
           <ul className="space-y-1">
             {status.recentIncidents.map((i) => (
               <li key={i.id} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-xs">
                 <span className="rounded px-1.5 py-0.5 text-[10px] font-bold text-black" style={{ background: SEV_COLOR[i.severity] }}>{i.severity.toUpperCase()}</span>
-                <span className="font-mono text-[10px] text-zinc-500">#{i.number}</span>
+                <span className="font-mono text-[10px] text-zinc-400">#{i.number}</span>
                 <span className="flex-1 truncate text-zinc-200">{i.title}</span>
                 <span className="text-[10px]" style={{ color: STATUS_COLOR[i.status] }}>{i.status}</span>
               </li>

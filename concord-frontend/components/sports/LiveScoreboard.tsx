@@ -74,7 +74,7 @@ export function LiveScoreboard() {
       </header>
 
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling live scores…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling live scores…</div>}
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
         {events.map((e) => {
@@ -83,9 +83,9 @@ export function LiveScoreboard() {
           const completed = e.status?.type?.completed;
           return (
             <article key={e.id} className={`rounded-lg border ${live ? 'border-red-500/30 bg-red-500/5' : completed ? 'border-zinc-800 bg-zinc-950/40' : 'border-cyan-500/20 bg-zinc-950/40'} p-3`}>
-              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-500">
+              <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-zinc-400">
                 <span>{e.shortName || e.name}</span>
-                <span className={`flex items-center gap-1 font-mono ${live ? 'text-red-300' : completed ? 'text-zinc-500' : 'text-cyan-300'}`}>
+                <span className={`flex items-center gap-1 font-mono ${live ? 'text-red-300' : completed ? 'text-zinc-400' : 'text-cyan-300'}`}>
                   {live && <Circle className="h-2 w-2 animate-pulse fill-red-300 text-red-300" />}
                   {e.status?.type?.description}{live && e.status?.displayClock ? ` · ${e.status.displayClock}` : ''}
                 </span>
@@ -96,7 +96,7 @@ export function LiveScoreboard() {
           );
         })}
         {events.length === 0 && !load.isPending && !error && (
-          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">No {sport.toUpperCase()} games scheduled.</div>
+          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">No {sport.toUpperCase()} games scheduled.</div>
         )}
       </div>
     </div>
@@ -110,7 +110,7 @@ function Row({ team, winner, live }: { team?: Competitor; winner: boolean; live:
       <div className="flex min-w-0 items-center gap-2">
         {winner && <ChevronRight className="h-3 w-3 text-cyan-400" />}
         <span className={`line-clamp-1 ${winner ? 'font-semibold text-white' : 'text-zinc-300'}`}>{team.team || team.abbrev}</span>
-        {team.record && <span className="font-mono text-[10px] text-zinc-500">{team.record}</span>}
+        {team.record && <span className="font-mono text-[10px] text-zinc-400">{team.record}</span>}
       </div>
       <span className={`font-mono text-base ${live ? 'text-red-200' : winner ? 'text-cyan-300' : 'text-zinc-400'}`}>{team.score ?? '-'}</span>
     </div>

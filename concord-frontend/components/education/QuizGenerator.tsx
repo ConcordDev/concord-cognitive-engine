@@ -87,7 +87,7 @@ export function QuizGenerator({ initialSource = '', sourceDtuId, onDeckCreated }
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Quiz generator</span>
-        <span className="ml-auto text-[10px] text-gray-500">Quizlet Magic Notes parity</span>
+        <span className="ml-auto text-[10px] text-gray-400">Quizlet Magic Notes parity</span>
       </header>
       <div className="p-4 space-y-3">
         {!sourceDtuId && (
@@ -172,7 +172,7 @@ export function QuizGenerator({ initialSource = '', sourceDtuId, onDeckCreated }
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10px] uppercase tracking-wider text-gray-500">Q{i + 1}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-gray-400">Q{i + 1}</span>
                         <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-bold uppercase',
                           c.difficulty === 'easy' ? 'bg-green-500/20 text-green-300' :
                           c.difficulty === 'hard' ? 'bg-orange-500/20 text-orange-300' :

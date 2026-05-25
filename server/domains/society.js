@@ -615,6 +615,7 @@ export default function registerSocietyActions(registerLensAction) {
    *           perCapita?, inflationAdjust?, baseYear? }
    */
   registerLensAction("society", "wb-transform-series", (_ctx, _artifact, params = {}) => {
+  try {
     const series = Array.isArray(params.series) ? params.series : [];
     if (!series.length) return { ok: false, error: "series array required" };
     let out = series
@@ -644,5 +645,6 @@ export default function registerSocietyActions(registerLensAction) {
         max: values.length ? Math.max(...values) : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

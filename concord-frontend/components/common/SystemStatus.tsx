@@ -153,7 +153,7 @@ function SystemStatus() {
                     e.stopPropagation();
                     clearRequestErrors();
                   }}
-                  className="text-xs text-gray-500 hover:text-white"
+                  className="text-xs text-gray-400 hover:text-white"
                 >
                   Clear
                 </button>
@@ -178,7 +178,7 @@ function SystemStatus() {
           {/* Close */}
           <button
             onClick={() => setExpanded(false)}
-            className="w-full text-center text-xs text-gray-500 hover:text-gray-300 pt-1"
+            className="w-full text-center text-xs text-gray-400 hover:text-gray-300 pt-1"
           >
             Collapse
           </button>

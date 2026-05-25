@@ -47,7 +47,7 @@ export function ActivityHeatmap({ sinceDays }: { sinceDays: number }) {
   useEffect(() => { load(); }, [load]);
 
   if (loading) {
-    return <div className="flex items-center gap-2 p-4 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Building heatmap…</div>;
+    return <div className="flex items-center gap-2 p-4 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Building heatmap…</div>;
   }
   if (error) {
     return <div className="rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>;
@@ -59,12 +59,12 @@ export function ActivityHeatmap({ sinceDays }: { sinceDays: number }) {
       <div className="flex items-center gap-2">
         <Grid3x3 className="h-4 w-4 text-cyan-400" />
         <h2 className="text-sm font-semibold text-zinc-100">Activity heatmap</h2>
-        <span className="text-[11px] text-zinc-500">{data.totalActiveDays} active days · last {data.sinceDays}d</span>
+        <span className="text-[11px] text-zinc-400">{data.totalActiveDays} active days · last {data.sinceDays}d</span>
       </div>
 
       {/* Calendar strip */}
       <div>
-        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Daily intensity</div>
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Daily intensity</div>
         <div className="flex flex-wrap gap-1">
           {data.days.map((d) => (
             <div
@@ -78,13 +78,13 @@ export function ActivityHeatmap({ sinceDays }: { sinceDays: number }) {
 
       {/* Hour-of-week grid */}
       <div>
-        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Hour-of-week pattern</div>
+        <div className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Hour-of-week pattern</div>
         <div className="overflow-x-auto">
           <table className="border-separate" style={{ borderSpacing: '2px' }}>
             <tbody>
               {data.hourGrid.map((row, wd) => (
                 <tr key={wd}>
-                  <td className="pr-1.5 text-right font-mono text-[9px] text-zinc-500">{WEEKDAYS[wd]}</td>
+                  <td className="pr-1.5 text-right font-mono text-[9px] text-zinc-400">{WEEKDAYS[wd]}</td>
                   {row.map((v, hr) => (
                     <td key={hr}>
                       <div

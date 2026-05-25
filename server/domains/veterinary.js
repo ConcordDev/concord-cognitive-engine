@@ -73,6 +73,7 @@ export default function registerVeterinaryActions(registerLensAction) {
   });
 
   registerLensAction("veterinary", "visit-log", (ctx, _a, params = {}) => {
+  try {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patient = vtPatients(s, vtActor(ctx)).find((p) => p.id === params.patientId);
     if (!patient) return { ok: false, error: "patient not found" };
@@ -87,7 +88,8 @@ export default function registerVeterinaryActions(registerLensAction) {
     patient.visits.push(visit);
     saveVet();
     return { ok: true, result: { visit } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("veterinary", "vaccine-record", (ctx, _a, params = {}) => {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -105,6 +107,7 @@ export default function registerVeterinaryActions(registerLensAction) {
   });
 
   registerLensAction("veterinary", "vet-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getVetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const patients = vtPatients(s, vtActor(ctx));
     const bySpecies = {};
@@ -122,7 +125,8 @@ export default function registerVeterinaryActions(registerLensAction) {
         bySpecies,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Appointment scheduling / calendar ─────────────────────────────
   function vtCollection(s, key) {

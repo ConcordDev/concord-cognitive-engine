@@ -80,15 +80,15 @@ function LoadCalculator() {
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Square footage</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Square footage</span>
             <input type="number" min={0} value={sqft || ''} onChange={(e) => setSqft(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 1800" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Stories</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Stories</span>
             <input type="number" min={1} max={4} value={stories} onChange={(e) => setStories(Math.max(1, Math.min(4, Number(e.target.value) || 1)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Insulation</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Insulation</span>
             <select value={insulation} onChange={(e) => setInsulation(e.target.value as typeof insulation)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="poor">Poor (pre-1970)</option>
               <option value="average">Average (1970–2000)</option>
@@ -97,7 +97,7 @@ function LoadCalculator() {
             </select>
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Climate</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Climate</span>
             <select value={climate} onChange={(e) => setClimate(e.target.value as typeof climate)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="hot-humid">Hot &amp; humid (FL/Gulf)</option>
               <option value="hot-dry">Hot &amp; dry (SW desert)</option>
@@ -112,7 +112,7 @@ function LoadCalculator() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter dimensions above.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter dimensions above.</div>}
           {result && (
             <>
               <div className="grid grid-cols-2 gap-2">
@@ -129,11 +129,11 @@ function LoadCalculator() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded border border-blue-500/30 bg-zinc-950/40 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">Tonnage</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">Tonnage</div>
                   <div className="font-mono text-xl text-blue-200">{result.tonnageRecommended}</div>
                 </div>
                 <div className="rounded border border-blue-500/30 bg-zinc-950/40 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">Equipment</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">Equipment</div>
                   <div className="font-mono text-xl text-blue-200">{result.equipmentSize}</div>
                 </div>
               </div>
@@ -179,15 +179,15 @@ function EnergyAudit() {
       <div className="grid gap-3 p-4 md:grid-cols-[220px_1fr]">
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Monthly bill ($)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Monthly bill ($)</span>
             <input type="number" min={0} value={monthlyBill || ''} onChange={(e) => setMonthlyBill(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 180" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Square footage</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Square footage</span>
             <input type="number" min={0} value={sqft || ''} onChange={(e) => setSqft(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 1800" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">System age (yr)</span>
+            <span className="block text-[10px] uppercase tracking-wider text-zinc-400">System age (yr)</span>
             <input type="number" min={0} max={50} value={systemAge || ''} onChange={(e) => setSystemAge(Math.max(0, Math.min(50, Number(e.target.value) || 0)))} placeholder="e.g. 12" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
           <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || monthlyBill <= 0 || sqft <= 0} className="w-full rounded bg-green-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-400 disabled:opacity-50">
@@ -196,21 +196,21 @@ function EnergyAudit() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter bill + sqft + age.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter bill + sqft + age.</div>}
           {result && (
             <>
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Annual cost</div><div className="font-mono text-lg text-green-200">${result.annualCost?.toLocaleString()}</div></div>
-                <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">$/sqft</div><div className="font-mono text-lg text-green-200">${result.costPerSqFt}</div></div>
+                <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Annual cost</div><div className="font-mono text-lg text-green-200">${result.annualCost?.toLocaleString()}</div></div>
+                <div className="rounded border border-green-500/30 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">$/sqft</div><div className="font-mono text-lg text-green-200">${result.costPerSqFt}</div></div>
                 <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"><div className="text-[9px] text-emerald-300">Save up to</div><div className="font-mono text-lg text-emerald-100">${result.estimatedAnnualSavings?.toLocaleString()}/yr</div></div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Efficiency</div><div className="font-mono text-zinc-300">{result.systemEfficiency}</div></div>
-                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Lifespan</div><div className="font-mono text-zinc-300">{result.expectedLifespan}</div></div>
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Efficiency</div><div className="font-mono text-zinc-300">{result.systemEfficiency}</div></div>
+                <div className="rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Lifespan</div><div className="font-mono text-zinc-300">{result.expectedLifespan}</div></div>
               </div>
               {result.savingsOpportunities && (
                 <div className="space-y-1">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">Opportunities</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">Opportunities</div>
                   <ul className="list-disc space-y-0.5 pl-4 text-[11px] text-zinc-300">
                     {result.savingsOpportunities.map((o, i) => <li key={i}>{o}</li>)}
                   </ul>
@@ -334,7 +334,7 @@ function ZoneBalanceMonitor() {
               <input className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" placeholder="Room name" value={z.name} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" placeholder="Current °F" value={z.currentTemp} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, currentTemp: e.target.value } : x))} />
               <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" placeholder="Target °F" value={z.targetTemp} onChange={(e) => setZones((zs) => zs.map((x, idx) => idx === i ? { ...x, targetTemp: e.target.value } : x))} />
-              <button type="button" onClick={() => setZones((zs) => zs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
+              <button type="button" onClick={() => setZones((zs) => zs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300"><Trash2 className="mx-auto h-3 w-3" /></button>
             </div>
           ))}
         </div>
@@ -357,7 +357,7 @@ function ZoneBalanceMonitor() {
                     <span className="text-white">{z.zone}</span>
                     <span className="font-mono">
                       <span className="text-cyan-200">{z.current}°F</span>
-                      <span className="text-zinc-500"> / </span>
+                      <span className="text-zinc-400"> / </span>
                       <span className="text-zinc-300">{z.target}°F</span>
                       <span className={`ml-2 ${z.deviation < 1 ? 'text-emerald-300' : z.deviation < 3 ? 'text-amber-300' : 'text-rose-300'}`}>±{z.deviation.toFixed(1)}</span>
                     </span>

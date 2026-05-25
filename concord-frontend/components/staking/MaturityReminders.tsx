@@ -52,12 +52,12 @@ export function MaturityReminders({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey]);
 
   if (!data) {
-    return <div className="text-xs text-zinc-500 py-3">Loading reminders…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading reminders…</div>;
   }
 
   if (data.maturedCount === 0 && data.upcomingCount === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-400">
         No maturity reminders. Open a stake and a reminder appears as it nears unlock.
       </div>
     );

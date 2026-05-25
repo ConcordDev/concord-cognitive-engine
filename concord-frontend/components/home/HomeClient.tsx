@@ -22,7 +22,7 @@ const KnowledgeSpace3D = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+      <div className="h-full flex items-center justify-center text-gray-400 text-sm">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           Loading 3D lattice...
@@ -467,7 +467,7 @@ function DashboardPage() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-white">Concordos Dashboard</h1>
-          <p className="text-gray-500 mt-1 text-sm">
+          <p className="text-gray-400 mt-1 text-sm">
             {statusLoading ? (
               <span className="animate-pulse">Connecting to lattice...</span>
             ) : (
@@ -549,7 +549,7 @@ function DashboardPage() {
               <Layers className="w-4 h-4 text-neon-cyan" />
               DTU Tier Breakdown
             </h2>
-            <span className="text-[10px] text-gray-600">Auto-refreshes every 30s</span>
+            <span className="text-[10px] text-gray-400">Auto-refreshes every 30s</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
             <TierStatCard
@@ -635,14 +635,14 @@ function DashboardPage() {
                 <Activity className="w-4 h-4 text-neon-cyan" />
                 Resonance Universe
               </h2>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
+              <div className="flex items-center gap-3 text-xs text-gray-400">
                 <span>{graphData?.nodes?.length || graph3DNodesWithEdges.length} nodes</span>
                 <span className="text-neon-cyan">{(coherence * 100).toFixed(0)}% coherence</span>
               </div>
             </div>
             <div className="h-[420px]">
               {graphLoading ? (
-                <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
                   <div className="text-center">
                     <div className="w-8 h-8 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                     Loading resonance graph...
@@ -659,11 +659,11 @@ function DashboardPage() {
               ) : graph3DNodesWithEdges.length > 0 ? (
                 <KnowledgeSpace3D nodes={graph3DNodesWithEdges} />
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-500 text-sm">
+                <div className="h-full flex items-center justify-center text-gray-400 text-sm">
                   <div className="text-center">
                     <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p>Lattice is forming...</p>
-                    <p className="text-xs text-gray-600 mt-1">
+                    <p className="text-xs text-gray-400 mt-1">
                       DTUs will appear here as they generate
                     </p>
                   </div>
@@ -742,7 +742,7 @@ function DashboardPage() {
           </h2>
           <Link
             href="/lenses/graph"
-            className="text-xs text-gray-500 hover:text-neon-cyan transition-colors"
+            className="text-xs text-gray-400 hover:text-neon-cyan transition-colors"
           >
             View all in Graph &rarr;
           </Link>
@@ -756,7 +756,7 @@ function DashboardPage() {
         ) : dtusError ? (
           <div className="col-span-full text-center py-10">
             <p className="text-amber-400 mb-1">Unable to load DTUs</p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-400 text-sm">
               Check your connection or{' '}
               <Link href="/login" className="text-neon-cyan hover:underline">
                 sign in again
@@ -842,7 +842,7 @@ function DashboardPage() {
               <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">
                 {core.name}
               </span>
-              <span className="text-[10px] text-gray-600">{core.tagline}</span>
+              <span className="text-[10px] text-gray-400">{core.tagline}</span>
             </Link>
           );
         })}
@@ -890,7 +890,7 @@ function MetricCard({
       <div className="flex items-center gap-3">
         <span className="opacity-70">{icon}</span>
         <div>
-          <p className="text-xs text-gray-500">{label}</p>
+          <p className="text-xs text-gray-400">{label}</p>
           <p className="text-xl font-bold">{value}</p>
         </div>
       </div>
@@ -934,7 +934,7 @@ function QueueStatsRow({
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full rounded-lg border border-lattice-border bg-lattice-surface/30 px-4 py-2 flex items-center justify-between text-xs text-gray-500 hover:bg-lattice-surface/50 transition-colors"
+        className="w-full rounded-lg border border-lattice-border bg-lattice-surface/30 px-4 py-2 flex items-center justify-between text-xs text-gray-400 hover:bg-lattice-surface/50 transition-colors"
       >
         <span>Queues: all idle</span>
         <span className="text-gray-600">Click to expand</span>
@@ -976,7 +976,7 @@ function QueueCard({
   };
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface/30 p-3">
-      <p className="text-xs text-gray-500">{label}</p>
+      <p className="text-xs text-gray-400">{label}</p>
       <p className={`text-lg font-bold font-mono ${colorClasses[color]}`}>
         {loading ? <span className="animate-pulse">...</span> : value}
       </p>
@@ -1008,7 +1008,7 @@ function TierStatCard({
       <div className="flex items-center gap-2">
         <span className="opacity-60">{icon}</span>
         <div>
-          <p className="text-[10px] text-gray-500 uppercase">{label}</p>
+          <p className="text-[10px] text-gray-400 uppercase">{label}</p>
           <p className="text-base font-bold font-mono">{value}</p>
         </div>
       </div>

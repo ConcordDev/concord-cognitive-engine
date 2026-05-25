@@ -88,13 +88,13 @@ export function TriagePanel({
       </header>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Scoring crises…
         </div>
       )}
 
       {!loading && data && data.total === 0 && (
-        <p className="rounded border border-white/10 bg-white/5 p-4 text-center text-xs text-zinc-500">
+        <p className="rounded border border-white/10 bg-white/5 p-4 text-center text-xs text-zinc-400">
           No active crises to triage.
         </p>
       )}

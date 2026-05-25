@@ -75,7 +75,7 @@ export function SketchfabModels() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); load.mutate(); }} className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search 3D models…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <label className="flex items-center gap-1 text-[11px] text-zinc-400">
@@ -99,8 +99,8 @@ export function SketchfabModels() {
             )}
             <div className="px-2 py-1.5">
               <div className="line-clamp-1 text-[11px] text-white group-hover:text-cyan-300">{m.name}</div>
-              <div className="line-clamp-1 text-[10px] text-zinc-500">{m.user.displayName}</div>
-              <div className="mt-1 flex items-center justify-between font-mono text-[9px] text-zinc-500">
+              <div className="line-clamp-1 text-[10px] text-zinc-400">{m.user.displayName}</div>
+              <div className="mt-1 flex items-center justify-between font-mono text-[9px] text-zinc-400">
                 <span className="flex items-center gap-1"><Heart className="h-2.5 w-2.5" />{m.likeCount}</span>
                 <span className="flex items-center gap-1"><Eye className="h-2.5 w-2.5" />{m.viewCount.toLocaleString()}</span>
                 {m.isDownloadable && <span className="rounded bg-emerald-500/20 px-1 text-emerald-300">⬇</span>}
@@ -110,7 +110,7 @@ export function SketchfabModels() {
           </a>
         ))}
         {hits.length === 0 && !load.isPending && !error && (
-          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search for 3D models to anchor in AR.</div>
+          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search for 3D models to anchor in AR.</div>
         )}
       </div>
     </div>

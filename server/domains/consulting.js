@@ -117,6 +117,7 @@ export default function registerConsultingActions(registerLensAction) {
   // [M] Invoice generation from logged time — paid/overdue states
   // ═══════════════════════════════════════════════════════════════════
   registerLensAction("consulting", "invoice-create", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
     const eng = csEng(s, u).find((x) => x.id === params.engagementId);
@@ -145,8 +146,10 @@ export default function registerConsultingActions(registerLensAction) {
     for (const t of unbilled) t.invoiceId = invoice.id;
     invoices.push(invoice); saveConsulting();
     return { ok: true, result: { invoice } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "invoice-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const today = new Date().toISOString().slice(0, 10);
     const invoices = csColl(s, "invoices", csActor(ctx)).map((inv) => ({
@@ -157,7 +160,8 @@ export default function registerConsultingActions(registerLensAction) {
     const overdue = csRound2(invoices.filter((i) => i.status === "overdue").reduce((n, i) => n + i.total, 0));
     const collected = csRound2(invoices.filter((i) => i.status === "paid").reduce((n, i) => n + i.total, 0));
     return { ok: true, result: { invoices, count: invoices.length, outstanding, overdue, collected } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "invoice-mark-paid", (ctx, _a, params = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const inv = csColl(s, "invoices", csActor(ctx)).find((x) => x.id === params.id);
@@ -218,6 +222,7 @@ export default function registerConsultingActions(registerLensAction) {
     } };
   });
   registerLensAction("consulting", "proposal-create", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = csClean(params.title, 160);
     if (!title) return { ok: false, error: "proposal title required" };
@@ -232,7 +237,8 @@ export default function registerConsultingActions(registerLensAction) {
     };
     csColl(s, "proposals", csActor(ctx)).push(proposal); saveConsulting();
     return { ok: true, result: { proposal } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "proposal-list", (ctx, _a, _p = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const proposals = csColl(s, "proposals", csActor(ctx)).map((p) => {
@@ -324,6 +330,7 @@ export default function registerConsultingActions(registerLensAction) {
     return { ok: true, result: { deleted: params.id } };
   });
   registerLensAction("consulting", "staffing-plan", (ctx, _a, _p = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
     const consultants = csColl(s, "consultants", u);
@@ -346,12 +353,14 @@ export default function registerConsultingActions(registerLensAction) {
       engagementName: (engs.find((e) => e.id === a.engagementId) || {}).name || "—",
     }));
     return { ok: true, result: { rows, allocations, consultants: consultants.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════════
   // [M] Expense tracking + reimbursables attached to engagements
   // ═══════════════════════════════════════════════════════════════════
   registerLensAction("consulting", "expense-create", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
     const eng = csEng(s, u).find((x) => x.id === params.engagementId);
@@ -369,8 +378,10 @@ export default function registerConsultingActions(registerLensAction) {
     };
     csColl(s, "expenses", u).push(expense); saveConsulting();
     return { ok: true, result: { expense } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "expense-list", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let expenses = csColl(s, "expenses", csActor(ctx));
     if (params.engagementId) expenses = expenses.filter((e) => e.engagementId === params.engagementId);
@@ -378,7 +389,8 @@ export default function registerConsultingActions(registerLensAction) {
     const reimbursable = csRound2(expenses.filter((e) => e.reimbursable).reduce((n, e) => n + e.amount, 0));
     const approved = csRound2(expenses.filter((e) => e.status === "approved").reduce((n, e) => n + e.amount, 0));
     return { ok: true, result: { expenses, count: expenses.length, total, reimbursable, approved } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "expense-update", (ctx, _a, params = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const e = csColl(s, "expenses", csActor(ctx)).find((x) => x.id === params.id);
@@ -414,14 +426,17 @@ export default function registerConsultingActions(registerLensAction) {
     return { ok: true, result: { timer } };
   });
   registerLensAction("consulting", "timer-status", (ctx, _a, _p = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
     const timer = s.timers.get(csActor(ctx));
     if (!timer) return { ok: true, result: { running: false } };
     return { ok: true, result: { running: true, timer,
       elapsedHours: csRound2((Date.now() - timer.startedAt) / 3600000) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "timer-stop", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
     if (!(s.timers instanceof Map)) s.timers = new Map();
@@ -434,7 +449,8 @@ export default function registerConsultingActions(registerLensAction) {
       date: new Date().toISOString().slice(0, 10) };
     eng.timeEntries.push(entry); s.timers.delete(u); saveConsulting();
     return { ok: true, result: { entry, billed: Math.round(hours * eng.rate) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "timer-cancel", (ctx, _a, _p = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.timers instanceof Map)) s.timers = new Map();
@@ -446,6 +462,7 @@ export default function registerConsultingActions(registerLensAction) {
   // [M] Retainer / recurring-billing support
   // ═══════════════════════════════════════════════════════════════════
   registerLensAction("consulting", "retainer-create", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const client = csClean(params.client, 160);
     if (!client) return { ok: false, error: "client required" };
@@ -461,8 +478,10 @@ export default function registerConsultingActions(registerLensAction) {
     };
     csColl(s, "retainers", csActor(ctx)).push(retainer); saveConsulting();
     return { ok: true, result: { retainer } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "retainer-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const retainers = csColl(s, "retainers", csActor(ctx));
     const mrr = csRound2(retainers.filter((r) => r.status === "active").reduce((n, r) => {
@@ -470,8 +489,10 @@ export default function registerConsultingActions(registerLensAction) {
       return n + r.monthlyAmount * mult;
     }, 0));
     return { ok: true, result: { retainers, count: retainers.length, mrr } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "retainer-bill", (ctx, _a, params = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const r = csColl(s, "retainers", csActor(ctx)).find((x) => x.id === params.id);
     if (!r) return { ok: false, error: "retainer not found" };
@@ -489,7 +510,8 @@ export default function registerConsultingActions(registerLensAction) {
       .toISOString().slice(0, 10);
     saveConsulting();
     return { ok: true, result: { retainer: r, period } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("consulting", "retainer-update", (ctx, _a, params = {}) => {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const r = csColl(s, "retainers", csActor(ctx)).find((x) => x.id === params.id);
@@ -512,6 +534,7 @@ export default function registerConsultingActions(registerLensAction) {
   // [S] Project profitability report — cost vs billed margin
   // ═══════════════════════════════════════════════════════════════════
   registerLensAction("consulting", "profitability-report", (ctx, _a, _p = {}) => {
+  try {
     const s = getConsultingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const u = csActor(ctx);
     const engs = csEng(s, u);
@@ -540,7 +563,8 @@ export default function registerConsultingActions(registerLensAction) {
     const totalMargin = csRound2(totalBilled - totalCost);
     return { ok: true, result: { rows, totalBilled, totalCost, totalMargin,
       overallMarginPct: totalBilled > 0 ? Math.round((totalMargin / totalBilled) * 100) : 0 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════════
   // [M] Client portal — shared deliverables + external approvals

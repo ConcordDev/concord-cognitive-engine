@@ -10,6 +10,7 @@ export default function registerGraphActions(registerLensAction) {
    * artifact.data.directed: boolean (default false)
    */
   registerLensAction("graph", "nodeAnalysis", (ctx, artifact, _params) => {
+  try {
     const rawNodes = artifact.data?.nodes || [];
     const rawEdges = artifact.data?.edges || [];
     const directed = artifact.data?.directed || false;
@@ -183,7 +184,8 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.nodeAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * pathFind
@@ -194,6 +196,7 @@ export default function registerGraphActions(registerLensAction) {
    * artifact.data.directed: boolean (default false)
    */
   registerLensAction("graph", "pathFind", (ctx, artifact, _params) => {
+  try {
     const rawEdges = artifact.data?.edges || [];
     const from = artifact.data?.from != null ? String(artifact.data.from) : null;
     const to = artifact.data?.to != null ? String(artifact.data.to) : null;
@@ -299,7 +302,8 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.pathResult = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * clusterDetect
@@ -309,6 +313,7 @@ export default function registerGraphActions(registerLensAction) {
    * artifact.data.directed: boolean (default false; if true, finds weakly connected components)
    */
   registerLensAction("graph", "clusterDetect", (ctx, artifact, _params) => {
+  try {
     const rawEdges = artifact.data?.edges || [];
     const rawNodes = artifact.data?.nodes || [];
 
@@ -422,7 +427,8 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.clusters = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * graphMetrics
@@ -432,6 +438,7 @@ export default function registerGraphActions(registerLensAction) {
    * artifact.data.directed: boolean (default false)
    */
   registerLensAction("graph", "graphMetrics", (ctx, artifact, _params) => {
+  try {
     const rawEdges = artifact.data?.edges || [];
     const rawNodes = artifact.data?.nodes || [];
     const directed = artifact.data?.directed || false;
@@ -587,7 +594,8 @@ export default function registerGraphActions(registerLensAction) {
 
     artifact.data.graphMetrics = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Mind-map / concept-graph builder (XMind / MindMeister shape) ────
 
@@ -744,6 +752,7 @@ export default function registerGraphActions(registerLensAction) {
   });
 
   registerLensAction("graph", "graph-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const maps = gphMaps(s, gphActor(ctx));
     return {
@@ -754,7 +763,8 @@ export default function registerGraphActions(registerLensAction) {
         totalEdges: maps.reduce((n, m) => n + m.edges.length, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────────
   // Feature-parity backlog (vs Obsidian graph view / Kumu)
@@ -777,6 +787,7 @@ export default function registerGraphActions(registerLensAction) {
    * (Obsidian's "Local graph" pane). params: { mapId, nodeId, depth }
    */
   registerLensAction("graph", "local-graph", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMap(s, ctx, params.mapId);
     if (!m) return { ok: false, error: "map not found" };
@@ -815,7 +826,8 @@ export default function registerGraphActions(registerLensAction) {
         edges,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * filter-save — persist a named saved filter / query (Obsidian filter groups).
@@ -875,6 +887,7 @@ export default function registerGraphActions(registerLensAction) {
    * the matching node ids. params: { mapId, filterId } OR { mapId, query }
    */
   registerLensAction("graph", "filter-apply", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMap(s, ctx, params.mapId);
     if (!m) return { ok: false, error: "map not found" };
@@ -911,7 +924,8 @@ export default function registerGraphActions(registerLensAction) {
         query,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * group-rules-set — define color-grouping rules for a map.
@@ -970,6 +984,7 @@ export default function registerGraphActions(registerLensAction) {
    * from real createdAt timestamps. params: { mapId, index? }
    */
   registerLensAction("graph", "timeline", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMap(s, ctx, params.id || params.mapId);
     if (!m) return { ok: false, error: "map not found" };
@@ -1009,7 +1024,8 @@ export default function registerGraphActions(registerLensAction) {
         edges,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * layout — compute node positions for a map using a chosen algorithm
@@ -1017,6 +1033,7 @@ export default function registerGraphActions(registerLensAction) {
    * params: { mapId, algorithm, width?, height? }
    */
   registerLensAction("graph", "layout", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMap(s, ctx, params.mapId || params.id);
     if (!m) return { ok: false, error: "map not found" };
@@ -1092,7 +1109,8 @@ export default function registerGraphActions(registerLensAction) {
       ok: true,
       result: { mapId: m.id, algorithm, width, height, positions, nodeCount: m.nodes.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sync-to-dtu — bidirectional sync: push a node's edited label/notes
@@ -1150,6 +1168,7 @@ export default function registerGraphActions(registerLensAction) {
    * params: { mapId, format ('svg'|'json'), zoom?, panX?, panY?, nodeIds? }
    */
   registerLensAction("graph", "export-view", (ctx, _a, params = {}) => {
+  try {
     const s = getGraphState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const m = findMap(s, ctx, params.mapId || params.id);
     if (!m) return { ok: false, error: "map not found" };
@@ -1248,5 +1267,6 @@ export default function registerGraphActions(registerLensAction) {
         svg,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

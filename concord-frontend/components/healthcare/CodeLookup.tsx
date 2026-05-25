@@ -33,10 +33,10 @@ export function CodeLookup() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Database className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">ICD-10-CM lookup</span>
-        <span className="text-[10px] text-gray-500">live NLM Clinical Tables</span>
+        <span className="text-[10px] text-gray-400">live NLM Clinical Tables</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); search(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
-        <Search className="w-3.5 h-3.5 text-gray-500" />
+        <Search className="w-3.5 h-3.5 text-gray-400" />
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
@@ -47,10 +47,10 @@ export function CodeLookup() {
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}Search
         </button>
       </form>
-      {source && <div className="px-4 py-1 text-[10px] text-gray-500 border-b border-white/10">Source: {source}</div>}
+      {source && <div className="px-4 py-1 text-[10px] text-gray-400 border-b border-white/10">Source: {source}</div>}
       <div className="max-h-[32rem] overflow-y-auto">
         {matches.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">Run a search to see ICD-10 matches.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">Run a search to see ICD-10 matches.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {matches.map(m => (

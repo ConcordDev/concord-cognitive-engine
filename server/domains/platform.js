@@ -54,6 +54,7 @@ export default function registerPlatformActions(registerLensAction) {
    * artifact.data.target = 99.9 (SLA target percentage)
    */
   registerLensAction("platform", "slaCompute", (ctx, artifact, _params) => {
+  try {
     const incidents = artifact.data?.incidents || [];
     const period = artifact.data?.period || {};
     const target = artifact.data?.target || 99.9;
@@ -141,7 +142,8 @@ export default function registerPlatformActions(registerLensAction) {
         serviceBreakdown,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * capacityPlan
@@ -150,6 +152,7 @@ export default function registerPlatformActions(registerLensAction) {
    * params.forecastDays (default 30)
    */
   registerLensAction("platform", "capacityPlan", (ctx, artifact, params) => {
+  try {
     const metrics = artifact.data?.metrics || [];
     if (metrics.length < 2) return { ok: false, error: "Need at least 2 data points for capacity planning." };
 
@@ -240,7 +243,8 @@ export default function registerPlatformActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * incidentTimeline
@@ -248,6 +252,7 @@ export default function registerPlatformActions(registerLensAction) {
    * artifact.data.events = [{ timestamp, type, service, message, severity?, relatedTo? }]
    */
   registerLensAction("platform", "incidentTimeline", (ctx, artifact, _params) => {
+  try {
     const events = artifact.data?.events || [];
     if (events.length === 0) return { ok: true, result: { message: "No events to analyze." } };
 
@@ -358,7 +363,8 @@ export default function registerPlatformActions(registerLensAction) {
         noisiest: Object.entries(serviceFreq).sort((a, b) => b[1] - a[1])[0]?.[0],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dependencyMap
@@ -367,6 +373,7 @@ export default function registerPlatformActions(registerLensAction) {
    * artifact.data.services = [{ name, dependencies: string[], tier?, healthCheck? }]
    */
   registerLensAction("platform", "dependencyMap", (ctx, artifact, _params) => {
+  try {
     const services = artifact.data?.services || [];
     if (services.length === 0) return { ok: true, result: { message: "No services defined." } };
 
@@ -472,7 +479,8 @@ export default function registerPlatformActions(registerLensAction) {
         healthScore: Math.round(Math.max(0, 100 - spofs.length * 15 - circulars.length * 20 - (maxDepth > 5 ? 10 : 0))),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // DEPLOYMENT PIPELINE — build/deploy history with logs and rollback

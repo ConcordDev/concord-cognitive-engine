@@ -207,7 +207,7 @@ export function RetailActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -226,7 +226,7 @@ export function RetailActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Pipeline · {pipeResult.totalDeals} deals</div>
             <div className="text-2xl font-bold text-blue-300">${pipeResult.totalWeighted?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">unweighted ${pipeResult.totalUnweighted?.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">unweighted ${pipeResult.totalUnweighted?.toLocaleString()}</div>
             {pipeResult.expectedRevenue != null && <div className="text-[10px] text-blue-200">expected ${pipeResult.expectedRevenue.toLocaleString()}</div>}
             {pipeResult.byStage && Object.entries(pipeResult.byStage).slice(0, 4).map(([s, b]) => <div key={s} className="text-[10px] text-zinc-400 mt-0.5"><span className="font-mono text-blue-200">{s}</span>: {b.count} · ${b.weighted?.toLocaleString()}</div>)}
           </div>
@@ -235,16 +235,16 @@ export function RetailActionPanel() {
           <div className={cn('rounded-md border p-2.5', (ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'border-emerald-500/30 bg-emerald-500/5' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">LTV / CAC</div>
             <div className="text-2xl font-bold text-green-300">${ltvResult.ltv?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">AOV ${ltvResult.avgOrderValue} × {ltvResult.purchaseFrequency}/yr × {ltvResult.customerLifespanYears}yr</div>
-            <div className="text-[10px] text-zinc-500">CAC ${ltvResult.cac} · ratio <span className={(ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'text-emerald-300' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'text-amber-300' : 'text-red-300'}>{ltvResult.ltvToCacRatio?.toFixed(2)}×</span></div>
+            <div className="text-[10px] text-zinc-400">AOV ${ltvResult.avgOrderValue} × {ltvResult.purchaseFrequency}/yr × {ltvResult.customerLifespanYears}yr</div>
+            <div className="text-[10px] text-zinc-400">CAC ${ltvResult.cac} · ratio <span className={(ltvResult.ltvToCacRatio ?? 0) >= 3 ? 'text-emerald-300' : (ltvResult.ltvToCacRatio ?? 0) >= 1 ? 'text-amber-300' : 'text-red-300'}>{ltvResult.ltvToCacRatio?.toFixed(2)}×</span></div>
           </div>
         )}
         {slaResult && (
           <div className={cn('rounded-md border p-2.5', (slaResult.complianceRate ?? 0) >= 95 ? 'border-emerald-500/30 bg-emerald-500/5' : (slaResult.complianceRate ?? 0) >= 80 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">SLA · {slaResult.tier}</div>
             <div className="text-2xl font-bold text-amber-300">{slaResult.complianceRate}%</div>
-            <div className="text-[10px] text-zinc-500">{slaResult.withinSLA} within / {slaResult.breaches} breaches</div>
-            <div className="text-[10px] text-zinc-500">avg {slaResult.avgResponseMinutes}min response</div>
+            <div className="text-[10px] text-zinc-400">{slaResult.withinSLA} within / {slaResult.breaches} breaches</div>
+            <div className="text-[10px] text-zinc-400">avg {slaResult.avgResponseMinutes}min response</div>
           </div>
         )}
       </div>

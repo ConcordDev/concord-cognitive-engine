@@ -128,7 +128,7 @@ export function ConcordRepoWorkspace() {
       </header>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading repos…
         </div>
       )}
@@ -136,7 +136,7 @@ export function ConcordRepoWorkspace() {
       {!loading && !activeRepo && (
         <div className="space-y-2">
           {repos.length === 0 && (
-            <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+            <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
               No repos yet. Create one above to get a file tree, branches, issues, PRs and CI.
             </div>
           )}
@@ -148,12 +148,12 @@ export function ConcordRepoWorkspace() {
             >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-sm text-cyan-300">{r.name}</span>
-                <span className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] uppercase text-zinc-500">
+                <span className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] uppercase text-zinc-400">
                   {r.isPrivate ? 'private' : 'public'}
                 </span>
               </div>
               {r.description && <p className="mt-0.5 text-[11px] text-zinc-400">{r.description}</p>}
-              <div className="mt-1.5 flex flex-wrap gap-x-4 text-[10px] text-zinc-500">
+              <div className="mt-1.5 flex flex-wrap gap-x-4 text-[10px] text-zinc-400">
                 <span>{r.language}</span>
                 <span>{r.fileCount} files</span>
                 <span>{r.branchCount} branches</span>
@@ -245,14 +245,14 @@ function CodeTab({ repoId }: { repoId: string }) {
   return (
     <div className="grid grid-cols-12 gap-3">
       <div className="col-span-4 rounded-lg border border-zinc-800 bg-zinc-950 p-2">
-        <h3 className="mb-2 px-1 text-[10px] uppercase tracking-wider text-zinc-500">File tree</h3>
+        <h3 className="mb-2 px-1 text-[10px] uppercase tracking-wider text-zinc-400">File tree</h3>
         {tree.length === 0
-          ? <p className="px-1 text-[11px] text-zinc-600">empty</p>
+          ? <p className="px-1 text-[11px] text-zinc-400">empty</p>
           : <TreeDiagram root={toTreeNodes(tree)} onSelect={(n) => openFile(n.id)} />}
       </div>
       <div className="col-span-8 rounded-lg border border-zinc-800 bg-zinc-950">
         {!file ? (
-          <div className="p-8 text-center text-xs text-zinc-600">
+          <div className="p-8 text-center text-xs text-zinc-400">
             <FileText className="mx-auto mb-2 h-8 w-8 text-zinc-700" />
             Select a file from the tree to view its source.
           </div>
@@ -261,7 +261,7 @@ function CodeTab({ repoId }: { repoId: string }) {
             <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2">
               <span className="font-mono text-xs text-cyan-300">{file.path}</span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-zinc-500">{file.language} · {file.lineCount} lines</span>
+                <span className="text-[10px] text-zinc-400">{file.language} · {file.lineCount} lines</span>
                 {editing ? (
                   <>
                     <input
@@ -273,7 +273,7 @@ function CodeTab({ repoId }: { repoId: string }) {
                     <button onClick={saveFile} disabled={busy} className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
                       {busy ? 'Committing…' : 'Commit'}
                     </button>
-                    <button onClick={() => { setEditing(false); setDraft(file.content); }} className="text-[10px] text-zinc-500 hover:text-white">Cancel</button>
+                    <button onClick={() => { setEditing(false); setDraft(file.content); }} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
                   </>
                 ) : (
                   <button onClick={() => setEditing(true)} className="rounded border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800">Edit</button>
@@ -355,7 +355,7 @@ function BranchesTab({ repoId }: { repoId: string }) {
           {branches.map((b) => (
             <div key={b.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px]">
               <span className="flex items-center gap-1.5 font-mono text-zinc-200">
-                <GitBranch className="h-3 w-3 text-zinc-500" />{b.name}
+                <GitBranch className="h-3 w-3 text-zinc-400" />{b.name}
                 {b.isDefault && <span className="rounded bg-blue-500/15 px-1 text-[8px] text-blue-300">default</span>}
                 {b.protected && <span className="rounded bg-amber-500/15 px-1 text-[8px] text-amber-300">protected</span>}
               </span>
@@ -371,10 +371,10 @@ function BranchesTab({ repoId }: { repoId: string }) {
               <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
-          {tags.length === 0 && <p className="text-[11px] text-zinc-600">No tags yet.</p>}
+          {tags.length === 0 && <p className="text-[11px] text-zinc-400">No tags yet.</p>}
           {tags.map((t) => (
             <div key={t.name} className="flex items-center gap-1.5 border-t border-zinc-800/60 py-1 text-[11px]">
-              <Tag className="h-3 w-3 text-zinc-500" />
+              <Tag className="h-3 w-3 text-zinc-400" />
               <span className="font-mono text-zinc-200">{t.name}</span>
               <span className="text-zinc-600">{t.commit}</span>
             </div>
@@ -385,7 +385,7 @@ function BranchesTab({ repoId }: { repoId: string }) {
         <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-white">
           <GitCommit className="h-3.5 w-3.5" /> Commit history graph
         </h3>
-        {graph.length === 0 ? <p className="text-[11px] text-zinc-600">No commits.</p> : <TimelineView events={graph} />}
+        {graph.length === 0 ? <p className="text-[11px] text-zinc-400">No commits.</p> : <TimelineView events={graph} />}
       </div>
     </div>
   );
@@ -437,7 +437,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-white">#{detail.number} {detail.title}</h3>
-            <p className="mt-0.5 text-[10px] text-zinc-500">opened by {detail.author}</p>
+            <p className="mt-0.5 text-[10px] text-zinc-400">opened by {detail.author}</p>
           </div>
           <button onClick={toggleState} disabled={busy === 'state'} className={`rounded px-2 py-1 text-[10px] ${detail.state === 'open' ? 'bg-purple-600' : 'bg-green-600'} text-white disabled:opacity-50`}>
             {detail.state === 'open' ? 'Close issue' : 'Reopen'}
@@ -447,7 +447,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         <div className="mt-3 space-y-2">
           {detail.comments.map((c) => (
             <div key={c.id} className="rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px]">
-              <p className="text-zinc-500">{c.author}</p>
+              <p className="text-zinc-400">{c.author}</p>
               <p className="mt-0.5 text-zinc-200">{c.body}</p>
             </div>
           ))}
@@ -476,7 +476,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         ))}
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {issues.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-600">No issues.</p>}
+        {issues.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-400">No issues.</p>}
         {issues.map((i) => (
           <button key={i.number} onClick={() => openDetail(i.number)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
             {i.state === 'open' ? <AlertCircle className="h-3.5 w-3.5 text-green-500" /> : <CheckCircle className="h-3.5 w-3.5 text-purple-500" />}
@@ -542,7 +542,7 @@ function PullsTab({ repoId }: { repoId: string }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-white">#{detail.pull.number} {detail.pull.title}</h3>
-            <p className="mt-0.5 text-[10px] text-zinc-500">
+            <p className="mt-0.5 text-[10px] text-zinc-400">
               <span className="font-mono">{detail.pull.head}</span> → <span className="font-mono">{detail.pull.base}</span> · {detail.pull.state}
             </p>
           </div>
@@ -558,14 +558,14 @@ function PullsTab({ repoId }: { repoId: string }) {
         </div>
         {err && <p className="mt-2 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[10px] text-rose-300">{err}</p>}
         <div className="mt-3">
-          <h4 className="text-[10px] uppercase tracking-wider text-zinc-500">Diff · +{detail.diff.additions} across {detail.diff.fileCount} files</h4>
+          <h4 className="text-[10px] uppercase tracking-wider text-zinc-400">Diff · +{detail.diff.additions} across {detail.diff.fileCount} files</h4>
           <div className="mt-1.5 space-y-2">
             {detail.diff.files.map((f) => (
               <div key={f.path} className="rounded border border-zinc-800 bg-[#0d1117]">
                 <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">{f.path} <span className="text-green-400">+{f.additions}</span></div>
                 <pre className="max-h-40 overflow-auto p-2 text-[10px] leading-4">
                   {f.hunks.map((h, i) => (
-                    <div key={i} className={h.type === 'add' ? 'text-green-400' : h.type === 'del' ? 'text-rose-400' : 'text-zinc-500'}>
+                    <div key={i} className={h.type === 'add' ? 'text-green-400' : h.type === 'del' ? 'text-rose-400' : 'text-zinc-400'}>
                       {h.type === 'add' ? '+ ' : h.type === 'del' ? '- ' : '  '}{h.line}
                     </div>
                   ))}
@@ -613,10 +613,10 @@ function PullsTab({ repoId }: { repoId: string }) {
         {err && <p className="mt-1.5 text-[10px] text-rose-400">{err}</p>}
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {pulls.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-600">No pull requests. Create a branch, edit a file on it, then open a PR.</p>}
+        {pulls.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-400">No pull requests. Create a branch, edit a file on it, then open a PR.</p>}
         {pulls.map((p) => (
           <button key={p.number} onClick={() => openDetail(p.number)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
-            <GitPullRequest className={`h-3.5 w-3.5 ${p.state === 'merged' ? 'text-purple-500' : p.state === 'open' ? 'text-green-500' : 'text-zinc-500'}`} />
+            <GitPullRequest className={`h-3.5 w-3.5 ${p.state === 'merged' ? 'text-purple-500' : p.state === 'open' ? 'text-green-500' : 'text-zinc-400'}`} />
             <span className="flex-1 text-zinc-200">{p.title}</span>
             <span className="font-mono text-zinc-600">{p.head}→{p.base}</span>
             <span className="text-zinc-600">#{p.number} · {p.reviews} reviews</span>
@@ -659,7 +659,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
         </button>
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {runs.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-600">No runs. Trigger CI above.</p>}
+        {runs.length === 0 && <p className="p-4 text-center text-[11px] text-zinc-400">No runs. Trigger CI above.</p>}
         {runs.map((r) => (
           <button key={r.id} onClick={() => openLogs(r.id)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
             {r.conclusion === 'success'
@@ -675,11 +675,11 @@ function ActionsTab({ repoId }: { repoId: string }) {
         <div className="rounded-lg border border-zinc-800 bg-[#0d1117] p-3">
           <div className="mb-2 flex items-center justify-between">
             <h4 className="text-xs font-semibold text-white">Run #{logs.number} logs</h4>
-            <button onClick={() => setLogs(null)} className="text-[10px] text-zinc-500 hover:text-white">close</button>
+            <button onClick={() => setLogs(null)} className="text-[10px] text-zinc-400 hover:text-white">close</button>
           </div>
           {logs.steps.map((st, i) => (
             <div key={i} className="mb-2">
-              <p className={`text-[11px] font-semibold ${st.conclusion === 'success' ? 'text-green-400' : st.conclusion === 'failure' ? 'text-rose-400' : 'text-zinc-500'}`}>
+              <p className={`text-[11px] font-semibold ${st.conclusion === 'success' ? 'text-green-400' : st.conclusion === 'failure' ? 'text-rose-400' : 'text-zinc-400'}`}>
                 {st.conclusion === 'success' ? '✓' : st.conclusion === 'failure' ? '✗' : '○'} {st.name} ({(st.durationMs / 1000).toFixed(1)}s)
               </p>
               <pre className="ml-3 text-[10px] text-zinc-400">{st.logs.join('\n')}</pre>
@@ -726,7 +726,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
         </div>
       )}
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
-        {!scanned && <p className="p-4 text-center text-[11px] text-zinc-600">Run a scan to see Dependabot alerts + code scanning results.</p>}
+        {!scanned && <p className="p-4 text-center text-[11px] text-zinc-400">Run a scan to see Dependabot alerts + code scanning results.</p>}
         {scanned && alerts.length === 0 && <p className="p-4 text-center text-[11px] text-green-400">No security alerts. Clean.</p>}
         {alerts.map((a, i) => (
           <div key={i} className="flex items-start gap-2 border-b border-zinc-800/60 px-3 py-2 text-[11px] last:border-0">
@@ -735,12 +735,12 @@ function SecurityTab({ repoId }: { repoId: string }) {
               {a.kind === 'dependency' ? (
                 <>
                   <p className="text-zinc-200">{a.package}@{a.version} — {a.summary}</p>
-                  <p className="text-[10px] text-zinc-500">Dependabot · fixed in {a.fixedIn}</p>
+                  <p className="text-[10px] text-zinc-400">Dependabot · fixed in {a.fixedIn}</p>
                 </>
               ) : (
                 <>
                   <p className="text-zinc-200">{a.message}</p>
-                  <p className="font-mono text-[10px] text-zinc-500">{a.path}:{a.line} · {a.rule}</p>
+                  <p className="font-mono text-[10px] text-zinc-400">{a.path}:{a.line} · {a.rule}</p>
                 </>
               )}
             </div>
@@ -771,8 +771,8 @@ function InsightsTab({ repoId }: { repoId: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [repoId]);
 
-  if (loading) return <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading insights…</div>;
-  if (!data) return <p className="text-[11px] text-zinc-600">No insight data.</p>;
+  if (loading) return <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading insights…</div>;
+  if (!data) return <p className="text-[11px] text-zinc-400">No insight data.</p>;
 
   return (
     <div className="space-y-3">
@@ -780,7 +780,7 @@ function InsightsTab({ repoId }: { repoId: string }) {
         {Object.entries(data.totals).map(([k, v]) => (
           <div key={k} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-center">
             <div className="font-mono text-base text-cyan-300">{v}</div>
-            <div className="text-[9px] uppercase tracking-wider text-zinc-500">{k.replace(/([A-Z])/g, ' $1')}</div>
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">{k.replace(/([A-Z])/g, ' $1')}</div>
           </div>
         ))}
       </div>
@@ -803,7 +803,7 @@ function InsightsTab({ repoId }: { repoId: string }) {
           {data.contributors.map((c) => (
             <div key={c.author} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px] first:border-0">
               <span className="text-zinc-200">{c.author}</span>
-              <span className="text-zinc-500">{c.commits} commits · <span className="text-green-400">+{c.additions}</span> <span className="text-rose-400">-{c.deletions}</span></span>
+              <span className="text-zinc-400">{c.commits} commits · <span className="text-green-400">+{c.additions}</span> <span className="text-rose-400">-{c.deletions}</span></span>
             </div>
           ))}
         </div>

@@ -191,7 +191,7 @@ export function PurchaseFlow({
           animate={{ opacity: 1 }}
           className="text-center py-8 space-y-4"
         >
-          <XCircle className="w-16 h-16 mx-auto text-gray-500" />
+          <XCircle className="w-16 h-16 mx-auto text-gray-400" />
           <h3 className={ds.heading2}>Purchase Canceled</h3>
           <p className="text-gray-400">
             No charges were made. You can try again anytime.
@@ -280,7 +280,7 @@ export function PurchaseFlow({
                   <span className="text-lg font-mono font-bold">
                     {amount.toLocaleString()}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     ${amount.toLocaleString()}
                   </span>
                   {isActive && (
@@ -300,7 +300,7 @@ export function PurchaseFlow({
         <div>
           <label className={ds.label}>Or enter a custom amount</label>
           <div className="relative">
-            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               inputMode="numeric"
@@ -309,7 +309,7 @@ export function PurchaseFlow({
               placeholder={`${MIN_PURCHASE} - ${MAX_PURCHASE.toLocaleString()}`}
               className={cn(ds.input, 'pl-10 pr-20 font-mono')}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">
               CC
             </span>
           </div>
@@ -368,7 +368,7 @@ export function PurchaseFlow({
             'w-full px-6 py-3 text-base font-semibold',
             isValidAmount
               ? 'bg-gradient-to-r from-neon-blue to-neon-purple text-white hover:opacity-90 focus:ring-neon-blue'
-              : 'bg-lattice-elevated text-gray-500 cursor-not-allowed'
+              : 'bg-lattice-elevated text-gray-400 cursor-not-allowed'
           )}
         >
           <CreditCard className="w-5 h-5" />
@@ -381,7 +381,7 @@ export function PurchaseFlow({
         </motion.button>
 
         {/* Security Note */}
-        <p className="text-center text-xs text-gray-600">
+        <p className="text-center text-xs text-gray-400">
           Payments are processed securely by Stripe. Your card details never
           touch our servers.
         </p>
@@ -409,8 +409,7 @@ function Wrapper({
         <div
           className="absolute inset-0 bg-black/70 backdrop-blur-sm"
           onClick={onClose}
-          aria-hidden="true"
-        />
+          aria-hidden="true" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}

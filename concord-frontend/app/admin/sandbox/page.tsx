@@ -123,14 +123,14 @@ export default function SandboxAdminPage() {
 
       <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Active Tenants</h2>
       {tenants.length === 0 ? (
-        <p className="text-zinc-500 italic">No tenants yet.</p>
+        <p className="text-zinc-400 italic">No tenants yet.</p>
       ) : (
         <ul className="space-y-2">
           {tenants.map(t => (
             <li key={t.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-lg p-3 text-sm flex justify-between">
               <div>
                 <p className="text-zinc-100 font-medium">{t.tenant_org}</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                   {t.monthly_cc} CC/mo · {t.isolation_level} · escrow {t.escrow_cc} CC · {t.status}
                   · expires {new Date(t.expires_at * 1000).toLocaleDateString()}
                 </p>

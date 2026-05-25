@@ -19,6 +19,7 @@ export default function registerMentalhealthActions(registerLensAction) {
    * params: { country?: ISO-2 (default "US") }
    */
   registerLensAction("mental-health", "crisis-hotlines", (_ctx, _artifact, params = {}) => {
+  try {
     const country = String(params.country || "US").toUpperCase();
     const HOTLINES = {
       US: {
@@ -63,7 +64,8 @@ export default function registerMentalhealthActions(registerLensAction) {
         source: "988lifeline.org + verified national hotline registries",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * cdc-mental-health-stats — Real CDC PLACES mental-health prevalence
@@ -449,6 +451,7 @@ export default function registerMentalhealthActions(registerLensAction) {
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("mental-health", "wellness-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mhAid(ctx);
     const sessions = s.sessions.get(userId) || [];
@@ -471,7 +474,8 @@ export default function registerMentalhealthActions(registerLensAction) {
         gratitudeEntries: (s.gratitude.get(userId) || []).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Conversational AI check-in companion (Wysa-style) ───────────
   // Supportive, non-clinical chat backed by the conscious brain.
@@ -608,6 +612,7 @@ export default function registerMentalhealthActions(registerLensAction) {
 
   // ── [M] Correlation insights — which factors lift / lower mood ──────
   registerLensAction("mental-health", "factor-correlations", (ctx, _a, params = {}) => {
+  try {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mhAid(ctx);
     const minSamples = Math.max(2, Math.round(mhNum(params.minSamples, 3)));
@@ -650,10 +655,12 @@ export default function registerMentalhealthActions(registerLensAction) {
         correlations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Mood calendar / year-in-pixels ─────────────────────────────
   registerLensAction("mental-health", "mood-calendar", (ctx, _a, params = {}) => {
+  try {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const year = Math.round(mhNum(params.year, new Date().getUTCFullYear()));
     if (year < 2000 || year > 2200) return { ok: false, error: "year out of range" };
@@ -681,7 +688,8 @@ export default function registerMentalhealthActions(registerLensAction) {
         avgMood: days.length ? Math.round((days.reduce((a, d) => a + d.mood, 0) / days.length) * 100) / 100 : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Reminders for check-ins, breathing, gratitude ──────────────
   const REMINDER_KINDS = ["mood", "breathing", "gratitude", "journal", "meditation"];
@@ -904,6 +912,7 @@ export default function registerMentalhealthActions(registerLensAction) {
 
   // ── [S] Export / shareable report for a therapist ──────────────────
   registerLensAction("mental-health", "therapist-report", (ctx, _a, params = {}) => {
+  try {
     const s = getMhState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mhAid(ctx);
     const days = Math.max(7, Math.min(365, Math.round(mhNum(params.days, 30))));
@@ -964,5 +973,6 @@ export default function registerMentalhealthActions(registerLensAction) {
       ok: true,
       result: { summary, csv, text, moodLog: moods, worksheets },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -297,7 +297,7 @@ export default function ExpertModeLens() {
                   {shared.data.answer}
                 </p>
                 {shared.data.sources?.length > 0 && (
-                  <p className="mt-2 text-[11px] text-zinc-500">
+                  <p className="mt-2 text-[11px] text-zinc-400">
                     {shared.data.sources.length} source
                     {shared.data.sources.length === 1 ? '' : 's'}
                     {shared.data.model ? ` · ${shared.data.model}` : ''}
@@ -362,7 +362,7 @@ export default function ExpertModeLens() {
 
             {/* sources preview */}
             {previewCount != null && !busy && (
-              <p className="mb-4 text-[11px] text-zinc-500">
+              <p className="mb-4 text-[11px] text-zinc-400">
                 {uploadId
                   ? 'Next answer will be grounded in your uploaded document.'
                   : `About to consult ${previewCount} corpus source${previewCount === 1 ? '' : 's'}${
@@ -413,13 +413,13 @@ export default function ExpertModeLens() {
 
             {/* empty state */}
             {turns.length === 0 && !busy && !shared && (
-              <div className="mt-10 text-center text-sm text-zinc-500">
+              <div className="mt-10 text-center text-sm text-zinc-400">
                 <p className="mb-2">
                   Ask a question to open a research thread. Follow-ups carry context, focus
                   modes scope the sources, live web search runs alongside the corpus, and any
                   answer can be saved into a shareable Space.
                 </p>
-                <p className="text-xs text-zinc-600">
+                <p className="text-xs text-zinc-400">
                   Try: &quot;What does Tunya use as currency?&quot; or &quot;How does the
                   refusal field algebra work?&quot;
                 </p>

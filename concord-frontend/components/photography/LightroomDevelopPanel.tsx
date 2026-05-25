@@ -89,11 +89,11 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (photos.length === 0) {
-    return <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">Import photos in the Library tab first.</div>;
+    return <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">Import photos in the Library tab first.</div>;
   }
 
   return (
@@ -110,7 +110,7 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
             <div className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
               <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" /> Develop
-              {photo.appliedPreset && <span className="text-[10px] text-zinc-500">· preset: {photo.appliedPreset}</span>}
+              {photo.appliedPreset && <span className="text-[10px] text-zinc-400">· preset: {photo.appliedPreset}</span>}
             </div>
             {ADJ.map((a) => {
               const val = adjustments[a.key] ?? (a.key === 'temperature' ? 5500 : 0);
@@ -143,7 +143,7 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
 
           {presets.length > 0 && (
             <div>
-              <p className="text-[11px] text-zinc-500 mb-1">Apply a preset</p>
+              <p className="text-[11px] text-zinc-400 mb-1">Apply a preset</p>
               <div className="flex flex-wrap gap-1">
                 {presets.map((pr) => (
                   <button key={pr.id} type="button" onClick={() => applyPreset(pr.id)}

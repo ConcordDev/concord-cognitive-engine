@@ -70,7 +70,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -127,7 +127,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
 
       {/* Reminder list */}
       {reminders.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-8 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-8 border border-zinc-800 rounded-xl">
           No reminders yet.
         </div>
       ) : (
@@ -142,7 +142,7 @@ export function ProductivityRemindersPanel({ onChange }: { onChange: () => void 
                 <p className="text-xs text-zinc-200 truncate">
                   {r.task || r.note || (r.kind === 'location' ? r.location : 'Reminder')}
                 </p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {r.remindAt}{r.location ? ` · ${r.location}` : ''}{r.fired ? ' · fired' : ''}
                 </p>
               </div>

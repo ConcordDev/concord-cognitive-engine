@@ -110,7 +110,7 @@ export function ActorKeysPanel() {
       <h2 className="text-violet-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <KeyRound className="w-4 h-4" /> Signed-actor keys
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Register each peer&apos;s signing key. Re-registering a different key
         rotates it and preserves the prior fingerprint.
       </p>
@@ -156,7 +156,7 @@ export function ActorKeysPanel() {
 
       {/* Verify */}
       <div className="border-t border-white/10 mt-3 pt-3">
-        <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">Verify signature</div>
+        <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">Verify signature</div>
         <div className="flex flex-wrap gap-2 mb-2">
           <input
             value={verifyDomain}
@@ -202,13 +202,13 @@ export function ActorKeysPanel() {
 
       {/* List */}
       <div className="border-t border-white/10 mt-3 pt-3">
-        <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2">
+        <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-2">
           Registered keys {data ? `· ${data.verified}/${data.total} verified` : ''}
         </div>
         {loading ? (
-          <p className="text-xs text-gray-500 italic">Loading keys…</p>
+          <p className="text-xs text-gray-400 italic">Loading keys…</p>
         ) : !data || data.entries.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No actor keys registered.</p>
+          <p className="text-xs text-gray-400 italic">No actor keys registered.</p>
         ) : (
           <ul className="space-y-2">
             {data.entries.map((e) => (
@@ -228,12 +228,12 @@ export function ActorKeysPanel() {
                     </span>
                   )}
                 </div>
-                <div className="text-[11px] text-gray-500 mt-1">
+                <div className="text-[11px] text-gray-400 mt-1">
                   {e.keyId} · {e.algo}
                 </div>
-                <div className="text-[10px] text-gray-500 font-mono mt-1">fp: {e.fingerprint}</div>
+                <div className="text-[10px] text-gray-400 font-mono mt-1">fp: {e.fingerprint}</div>
                 {e.priorFingerprint && (
-                  <div className="text-[10px] text-gray-600 font-mono">prior: {e.priorFingerprint}</div>
+                  <div className="text-[10px] text-gray-400 font-mono">prior: {e.priorFingerprint}</div>
                 )}
               </li>
             ))}

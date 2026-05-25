@@ -108,6 +108,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "event-list", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let events = [...evList(s, evActor(ctx))];
     if (params.type) events = events.filter((e) => e.type === params.type);
@@ -120,15 +121,18 @@ export default function registerEventsActions(registerLensAction) {
       vendorCost: e.vendors.reduce((n, v) => n + v.cost, 0),
     }));
     return { ok: true, result: { events: out, count: out.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("events", "event-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = evList(s, evActor(ctx)).find((e) => e.id === params.id);
     if (!event) return { ok: false, error: "event not found" };
     const vendorCost = event.vendors.reduce((n, v) => n + v.cost, 0);
     return { ok: true, result: { event, vendorCost, budgetRemaining: event.budget - vendorCost } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("events", "event-update", (ctx, _a, params = {}) => {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -221,6 +225,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "events-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const events = evList(s, evActor(ctx));
     const now = new Date().toISOString().slice(0, 10);
@@ -234,7 +239,8 @@ export default function registerEventsActions(registerLensAction) {
         openTasks: events.reduce((n, e) => n + e.tasks.filter((t) => !t.done).length, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Substrate field bootstrap — every event carries the new collections ──
   function ensureEventCollections(event) {
@@ -276,6 +282,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "tier-list", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -296,7 +303,8 @@ export default function registerEventsActions(registerLensAction) {
         totalCapacity: tiers.reduce((n, t) => n + t.quantity, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("events", "tier-update", (ctx, _a, params = {}) => {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -329,6 +337,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "register-attendee", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -364,9 +373,11 @@ export default function registerEventsActions(registerLensAction) {
     event.registrations.push(reg);
     saveEvents();
     return { ok: true, result: { registration: reg } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("events", "registration-list", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -391,7 +402,8 @@ export default function registerEventsActions(registerLensAction) {
         capacityPct: capacity > 0 ? Math.round((totalTickets / capacity) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("events", "registration-cancel", (ctx, _a, params = {}) => {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -628,6 +640,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "budget-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -660,7 +673,8 @@ export default function registerEventsActions(registerLensAction) {
         lineCount: event.budgetLines.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══ Feature 5 — Run-of-show / agenda timeline per event day ═════════════
 
@@ -718,6 +732,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "agenda-timeline", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -745,7 +760,8 @@ export default function registerEventsActions(registerLensAction) {
         totalDurationMin: items.reduce((n, it) => n + it.durationMin, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══ Feature 6 — Check-in / QR scanning for attendees ════════════════════
 
@@ -789,6 +805,7 @@ export default function registerEventsActions(registerLensAction) {
   });
 
   registerLensAction("events", "check-in-status", (ctx, _a, params = {}) => {
+  try {
     const s = getEventsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const event = findEvent(s, ctx, params.eventId);
     if (!event) return { ok: false, error: "event not found" };
@@ -807,7 +824,8 @@ export default function registerEventsActions(registerLensAction) {
           ? Math.round((checkedIn.length / event.registrations.length) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══ Feature 7 — Email / notification blasts to registrants ══════════════
 

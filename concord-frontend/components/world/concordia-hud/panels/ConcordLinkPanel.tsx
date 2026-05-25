@@ -160,9 +160,9 @@ export function ConcordLinkPanel() {
 
       {tab === 'inbox' && (
         <div className="space-y-1.5 max-h-[24rem] overflow-auto">
-          {loading && <p className="text-xs text-zinc-500">Loading…</p>}
+          {loading && <p className="text-xs text-zinc-400">Loading…</p>}
           {!loading && inbox.length === 0 && (
-            <p className="text-xs text-zinc-500 italic">Inbox empty. Send a message via the Compose tab.</p>
+            <p className="text-xs text-zinc-400 italic">Inbox empty. Send a message via the Compose tab.</p>
           )}
           {inbox.map((m) => (
             <div
@@ -172,7 +172,7 @@ export function ConcordLinkPanel() {
             >
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-[10px] font-mono text-zinc-400">{m.sender_id}</span>
-                <span className="text-[10px] font-mono text-zinc-500">{m.source_world}</span>
+                <span className="text-[10px] font-mono text-zinc-400">{m.source_world}</span>
               </div>
               <p className="text-xs text-zinc-200 break-words">{m.payload}</p>
               {!m.read_at && (
@@ -193,7 +193,7 @@ export function ConcordLinkPanel() {
       {tab === 'compose' && (
         <div className="space-y-2">
           <label className="block">
-            <span className="block text-[10px] text-zinc-500 mb-0.5">Receiver (user id)</span>
+            <span className="block text-[10px] text-zinc-400 mb-0.5">Receiver (user id)</span>
             <input
               type="text"
               value={receiverId}
@@ -204,7 +204,7 @@ export function ConcordLinkPanel() {
             />
           </label>
           <label className="block">
-            <span className="block text-[10px] text-zinc-500 mb-0.5">Destination world</span>
+            <span className="block text-[10px] text-zinc-400 mb-0.5">Destination world</span>
             <input
               type="text"
               value={destWorld}
@@ -215,7 +215,7 @@ export function ConcordLinkPanel() {
             />
           </label>
           <label className="block">
-            <span className="block text-[10px] text-zinc-500 mb-0.5">Message</span>
+            <span className="block text-[10px] text-zinc-400 mb-0.5">Message</span>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
@@ -225,7 +225,7 @@ export function ConcordLinkPanel() {
             />
           </label>
           {costPreview !== null && (
-            <p className="text-[10px] font-mono text-zinc-500">Cost: <span className="text-amber-300">{costPreview} CC</span></p>
+            <p className="text-[10px] font-mono text-zinc-400">Cost: <span className="text-amber-300">{costPreview} CC</span></p>
           )}
           <button
             type="button"
@@ -240,20 +240,20 @@ export function ConcordLinkPanel() {
 
       {tab === 'anchors' && (
         <div className="space-y-1.5 max-h-[24rem] overflow-auto">
-          {loading && <p className="text-xs text-zinc-500">Loading…</p>}
+          {loading && <p className="text-xs text-zinc-400">Loading…</p>}
           {!loading && anchors.length === 0 && (
-            <p className="text-xs text-zinc-500 italic">No anchors registered for {worldId}.</p>
+            <p className="text-xs text-zinc-400 italic">No anchors registered for {worldId}.</p>
           )}
           {anchors.map((a) => (
             <div key={a.id} data-anchor-id={a.id} className="p-2 rounded border bg-zinc-900/40 border-zinc-800">
               <div className="flex items-center justify-between mb-0.5">
                 <span className="font-medium text-zinc-100">{a.name}</span>
                 {typeof a.stability === 'number' && (
-                  <span className="text-[10px] font-mono text-zinc-500">{Math.round(a.stability * 100)}%</span>
+                  <span className="text-[10px] font-mono text-zinc-400">{Math.round(a.stability * 100)}%</span>
                 )}
               </div>
               {a.access_method && (
-                <p className="text-[10px] text-zinc-500">via {a.access_method}</p>
+                <p className="text-[10px] text-zinc-400">via {a.access_method}</p>
               )}
               {a.controlled_by_faction && (
                 <p className="text-[10px] text-amber-300/70">controlled by {a.controlled_by_faction}</p>

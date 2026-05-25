@@ -204,7 +204,7 @@ export function HealthcareActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -215,14 +215,14 @@ export function HealthcareActionPanel() {
           <div className={cn('rounded-md border p-2.5 md:col-span-2 max-h-44 overflow-y-auto', SEV_COLOR[triageResult.severity] ?? SEV_COLOR.see_doctor)}>
             <div className="text-[10px] uppercase tracking-wider font-semibold">Triage · {triageResult.severity.replace('_', ' ').toUpperCase()}</div>
             <div className="text-[11px] text-zinc-200 mt-1">{triageResult.reasoning}</div>
-            {triageResult.candidates.map((c, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1.5 flex items-center gap-2"><div className="flex-1"><strong>{c.condition}</strong> {c.citations.length > 0 && <span className="text-zinc-500">[{c.citations.join(', ')}]</span>}</div><div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-current" style={{ width: `${c.confidence * 100}%` }} /></div><span className="font-mono text-[10px]">{Math.round(c.confidence * 100)}%</span></div>)}
-            <div className="text-[10px] text-zinc-500 italic mt-2">This is not medical advice. Triage decision-support only.</div>
+            {triageResult.candidates.map((c, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1.5 flex items-center gap-2"><div className="flex-1"><strong>{c.condition}</strong> {c.citations.length > 0 && <span className="text-zinc-400">[{c.citations.join(', ')}]</span>}</div><div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-current" style={{ width: `${c.confidence * 100}%` }} /></div><span className="font-mono text-[10px]">{Math.round(c.confidence * 100)}%</span></div>)}
+            <div className="text-[10px] text-zinc-400 italic mt-2">This is not medical advice. Triage decision-support only.</div>
           </div>
         )}
         {providerResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Providers ({providerResult.count} of {providerResult.totalMatching})</div>
-            {providerResult.providers.slice(0, 6).map((p, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1.5 pb-1.5 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{p.name}</strong> {p.credential && <span className="font-mono text-zinc-500">{p.credential}</span>} · {p.specialty}<div className="text-zinc-400">{p.practice}, {p.city}, {p.state} {p.zip}{p.phone ? ` · ☎ ${p.phone}` : ''}</div></div>)}
+            {providerResult.providers.slice(0, 6).map((p, i) => <div key={i} className="text-[10px] text-zinc-300 mt-1.5 pb-1.5 border-b border-zinc-800 last:border-0"><strong className="text-blue-200">{p.name}</strong> {p.credential && <span className="font-mono text-zinc-400">{p.credential}</span>} · {p.specialty}<div className="text-zinc-400">{p.practice}, {p.city}, {p.state} {p.zip}{p.phone ? ` · ☎ ${p.phone}` : ''}</div></div>)}
           </div>
         )}
         {medsResult && (

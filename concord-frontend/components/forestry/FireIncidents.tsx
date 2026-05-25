@@ -60,7 +60,7 @@ export function FireIncidents() {
           {load.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Flame className="h-3.5 w-3.5" />}
           Load active fires
         </button>
-        {fires.length > 0 && <span className="text-[10px] text-zinc-500">{fires.length} incidents</span>}
+        {fires.length > 0 && <span className="text-[10px] text-zinc-400">{fires.length} incidents</span>}
       </div>
 
       <div className="space-y-1.5">
@@ -75,7 +75,7 @@ export function FireIncidents() {
                   <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">{contained.toFixed(0)}% contained</span>
                   {f.sizeAcres != null && <span className="font-mono text-[11px] text-amber-300">{Math.round(f.sizeAcres).toLocaleString()} acres</span>}
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+                <div className="mt-0.5 flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                   {f.location && <span>{f.location}</span>}
                   {f.county && <span>{f.county} Co.</span>}
                   {f.state && <span>{f.state}</span>}
@@ -93,7 +93,7 @@ export function FireIncidents() {
                   extraTags={['forestry', 'wildfire', 'inciweb', f.state?.toLowerCase() || 'us']}
                   rawData={f}
                 />
-                {f.incidentUrl && <a href={f.incidentUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>}
+                {f.incidentUrl && <a href={f.incidentUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="open"><ExternalLink className="h-3 w-3" /></a>}
               </div>
             </motion.div>
           );

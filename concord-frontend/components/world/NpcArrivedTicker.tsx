@@ -82,8 +82,8 @@ export default function NpcArrivedTicker({ worldId }: { worldId: string }) {
             backdropFilter: 'blur(4px)',
           }}
         >
-          <span style={{ color: '#fce8a8' }}>{a.npcId}</span> arrived
-          {a.fromWorldId ? <> from <span style={{ color: '#bcd' }}>{a.fromWorldId}</span></> : null}
+          <span className="text-[#fce8a8]">{a.npcId}</span> arrived
+          {a.fromWorldId ? <> from <span className="text-[#bcd]">{a.fromWorldId}</span></> : null}
           {a.reason ? <span style={{ color: '#888', marginLeft: 6 }}>· {a.reason}</span> : null}
         </div>
       ))}

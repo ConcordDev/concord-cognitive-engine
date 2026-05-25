@@ -196,9 +196,9 @@ export default function BioLensPage() {
             <div key={item.id} className="panel p-3 flex items-center justify-between">
               <span className="text-sm font-medium">{item.title}</span>
               <div className="flex items-center gap-2">
-                <button onClick={() => handleAction(item.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
-                <button onClick={() => handleSave(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-500 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
-                <button onClick={() => handleRemove(item.id)} className="text-gray-500 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                <button onClick={() => handleAction(item.id)} className="text-gray-400 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                <button onClick={() => handleSave(item.id, { ...(item.data || {}), lastReviewed: new Date().toISOString() })} className="text-gray-400 hover:text-neon-blue" title="Update"><Activity className="w-4 h-4" /></button>
+                <button onClick={() => handleRemove(item.id)} className="text-gray-400 hover:text-red-400" title="Delete"><Trash2 className="w-4 h-4" /></button>
               </div>
             </div>
           ))}
@@ -230,7 +230,7 @@ export default function BioLensPage() {
         ]).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center ${
-              activeTab === tab.key ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white'
+              activeTab === tab.key ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
             }`}>
             <tab.icon className="w-4 h-4" /> {tab.label}
           </button>
@@ -269,7 +269,7 @@ export default function BioLensPage() {
             <motion.div key={tax.level} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
               className="flex items-center gap-2 py-1" style={{ paddingLeft: `${tax.indent * 16 + 8}px` }}>
               <div className="w-1.5 h-1.5 rounded-full bg-neon-green/50" />
-              <span className="text-xs text-gray-500 w-16">{tax.level}</span>
+              <span className="text-xs text-gray-400 w-16">{tax.level}</span>
               <span className="text-sm text-gray-300 font-mono">{tax.name}</span>
             </motion.div>
           ))}
@@ -355,7 +355,7 @@ export default function BioLensPage() {
           ))}
 
           {!(bioData?.systems as Record<string, { metrics?: BioMetric[] }>)?.[selectedSystem]?.metrics && (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-400 text-center py-4">
               Loading system metrics...
             </p>
           )}

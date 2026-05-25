@@ -52,7 +52,7 @@ export function LiveFeedIndicator({ domain, className, showCount = false }: Live
       </span>
       <span className={cn(
         'text-[10px] font-medium',
-        isLive ? 'text-green-400' : 'text-gray-500'
+        isLive ? 'text-green-400' : 'text-gray-400'
       )}>
         Live
       </span>

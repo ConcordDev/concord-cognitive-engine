@@ -60,7 +60,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
 
   if (!listingId) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-500">
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-400">
         <Building className="w-6 h-6 mx-auto mb-2 opacity-30" />
         Select a listing to view its tax history, lot facts, and similar homes.
       </div>
@@ -72,19 +72,19 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Building className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Property detail</span>
-        <span className="ml-auto text-[10px] text-gray-500">tax · lot · comps</span>
+        <span className="ml-auto text-[10px] text-gray-400">tax · lot · comps</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !detail ? (
-        <div className="py-8 text-center text-xs text-gray-500">No detail available for this listing.</div>
+        <div className="py-8 text-center text-xs text-gray-400">No detail available for this listing.</div>
       ) : (
         <div className="p-3 space-y-4">
           <div>
             <div className="text-2xl font-mono font-semibold text-white tabular-nums">${detail.listing.price.toLocaleString()}</div>
             <div className="text-xs text-gray-300">{detail.listing.address}</div>
-            <div className="text-[10px] text-gray-500">{detail.listing.city}{detail.listing.state ? `, ${detail.listing.state}` : ''} · {detail.photoCount} photo{detail.photoCount === 1 ? '' : 's'}</div>
+            <div className="text-[10px] text-gray-400">{detail.listing.city}{detail.listing.state ? `, ${detail.listing.state}` : ''} · {detail.photoCount} photo{detail.photoCount === 1 ? '' : 's'}</div>
           </div>
 
           {/* Lot facts */}
@@ -110,7 +110,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
               <span className="text-[10px] uppercase tracking-wider text-gray-400">Tax history</span>
             </div>
             {detail.taxHistory.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No tax history.</p>
+              <p className="text-[11px] text-gray-400">No tax history.</p>
             ) : (
               <>
                 <ChartKit
@@ -123,7 +123,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
                 />
                 <table className="w-full mt-2 text-xs">
                   <thead>
-                    <tr className="text-[10px] uppercase text-gray-500 border-b border-white/10">
+                    <tr className="text-[10px] uppercase text-gray-400 border-b border-white/10">
                       <th className="text-left py-1">Year</th>
                       <th className="text-right py-1">Assessed</th>
                       <th className="text-right py-1">Tax paid</th>
@@ -152,7 +152,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
               <span className="text-[10px] uppercase tracking-wider text-gray-400">Similar homes</span>
             </div>
             {detail.similarHomes.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No comparable homes in your listings yet.</p>
+              <p className="text-[11px] text-gray-400">No comparable homes in your listings yet.</p>
             ) : (
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {detail.similarHomes.map((h) => (
@@ -163,7 +163,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
                   >
                     <div className="text-sm font-mono font-semibold text-white">${h.price.toLocaleString()}</div>
                     <div className="text-[11px] text-gray-300 truncate">{h.address}</div>
-                    <div className="text-[10px] text-gray-500">{h.beds}bd · {h.baths}ba · {h.sqft.toLocaleString()} sqft</div>
+                    <div className="text-[10px] text-gray-400">{h.beds}bd · {h.baths}ba · {h.sqft.toLocaleString()} sqft</div>
                     <div className="mt-1 text-[10px] text-cyan-300">{h.similarityPct}% match{h.pricePerSqft != null ? ` · $${h.pricePerSqft}/sqft` : ''}</div>
                   </button>
                 ))}
@@ -179,7 +179,7 @@ export function PropertyDetailPanel({ listingId, onSelect }: { listingId?: strin
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-sm font-mono tabular-nums text-white">{value}</div>
     </div>
   );

@@ -58,7 +58,7 @@ export function DiscountsManager() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Tag className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Discount codes</span>
-        <span className="ml-auto text-[10px] text-gray-500">{discounts.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{discounts.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-7 gap-2">
@@ -76,9 +76,9 @@ export function DiscountsManager() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : discounts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No discount codes yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No discount codes yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {discounts.map(d => {
@@ -89,13 +89,13 @@ export function DiscountsManager() {
                   <span className="font-mono font-bold text-white text-sm tabular-nums">{d.code}</span>
                   <span className="text-xs text-gray-400">
                     {d.kind === 'free_shipping' ? 'Free shipping' : d.kind === 'percentage' ? `${d.value}% off` : `$${d.value} off`}
-                    {d.minSubtotal > 0 && <span className="text-gray-500"> · min ${d.minSubtotal}</span>}
+                    {d.minSubtotal > 0 && <span className="text-gray-400"> · min ${d.minSubtotal}</span>}
                   </span>
-                  <span className="ml-auto text-[10px] text-gray-500">
+                  <span className="ml-auto text-[10px] text-gray-400">
                     {d.usageCount}{d.usageLimit ? `/${d.usageLimit}` : ''} uses
                   </span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', d.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{d.active ? 'active' : 'inactive'}</span>
-                  <button onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </li>
               );
             })}

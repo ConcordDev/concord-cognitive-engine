@@ -32,7 +32,7 @@ export function MyBountyActivity({ refreshKey }: { refreshKey: number }) {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 text-center text-zinc-500">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6 text-center text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin mx-auto" />
       </div>
     );
@@ -63,7 +63,7 @@ export function MyBountyActivity({ refreshKey }: { refreshKey: number }) {
           Bounties I posted ({posted.length})
         </h4>
         {posted.length === 0 ? (
-          <p className="text-[11px] text-zinc-600">None yet.</p>
+          <p className="text-[11px] text-zinc-400">None yet.</p>
         ) : (
           <ul className="space-y-1">
             {posted.map((b) => (
@@ -83,7 +83,7 @@ export function MyBountyActivity({ refreshKey }: { refreshKey: number }) {
           <Send className="w-3 h-3" /> My submissions ({submitted.length})
         </h4>
         {submitted.length === 0 ? (
-          <p className="text-[11px] text-zinc-600">None yet.</p>
+          <p className="text-[11px] text-zinc-400">None yet.</p>
         ) : (
           <ul className="space-y-1">
             {submitted.map((sub) => (

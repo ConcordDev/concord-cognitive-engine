@@ -116,7 +116,7 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : (
@@ -187,7 +187,7 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
                   style={{ backgroundColor: selectedNode.color }}
                 />
                 <span className="text-sm font-semibold text-gray-100">{selectedNode.name}</span>
-                <span className="text-[10px] text-gray-500 ml-auto">
+                <span className="text-[10px] text-gray-400 ml-auto">
                   momentum {selectedNode.momentum >= 0 ? '+' : ''}
                   {selectedNode.momentum.toFixed(2)}
                 </span>
@@ -197,7 +197,7 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
               </p>
               {selectedRelations.length > 0 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Relations</p>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Relations</p>
                   <ul className="space-y-1">
                     {selectedRelations.map((r) => {
                       const otherId = r.a === selectedNode.id ? r.b : r.a;
@@ -219,7 +219,7 @@ export function FactionOverlay({ worldId, open, onClose }: Props) {
               )}
             </div>
           ) : (
-            <div className="px-4 py-3 border-t border-white/10 bg-black/40 text-[11px] text-gray-500 inline-flex items-center gap-2">
+            <div className="px-4 py-3 border-t border-white/10 bg-black/40 text-[11px] text-gray-400 inline-flex items-center gap-2">
               <Swords className="w-3 h-3" />
               Click a faction to view its stance, momentum, and relations.
             </div>

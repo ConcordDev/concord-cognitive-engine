@@ -45,7 +45,7 @@ export default function ComputeBadge({ computed }: ComputeBadgeProps) {
           {caps.map((c) => (
             <li key={c.key} className="flex items-baseline gap-2">
               <span className="font-mono text-[11px]">{c.key}</span>
-              {c.description && <span className="text-gray-500 text-[10px]">{c.description}</span>}
+              {c.description && <span className="text-gray-400 text-[10px]">{c.description}</span>}
             </li>
           ))}
         </ul>

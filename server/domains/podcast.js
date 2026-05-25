@@ -254,11 +254,13 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   registerLensAction("podcast", "episode-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.id));
     if (!ep) return { ok: false, error: "episode not found" };
     return { ok: true, result: { episode: episodeView(s, pcaid(ctx), ep) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Playback / progress ─────────────────────────────────────────────
   registerLensAction("podcast", "playback-update", (ctx, _a, params = {}) => {
@@ -294,6 +296,7 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   registerLensAction("podcast", "continue-listening", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const inProgress = (s.playback.get(userId) || [])
@@ -305,7 +308,8 @@ export default function registerPodcastActions(registerLensAction) {
       })
       .filter(Boolean);
     return { ok: true, result: { episodes: inProgress, count: inProgress.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "playback-speed-set", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -333,13 +337,15 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   registerLensAction("podcast", "queue-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const episodes = (s.queue.get(userId) || [])
       .map((id) => { const e = findEpisode(s, id); return e ? episodeView(s, userId, e) : null; })
       .filter(Boolean);
     return { ok: true, result: { episodes, count: episodes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "queue-remove", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -375,6 +381,7 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   registerLensAction("podcast", "download-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const episodes = (s.downloads.get(userId) || [])
@@ -382,7 +389,8 @@ export default function registerPodcastActions(registerLensAction) {
       .filter(Boolean);
     const totalSec = episodes.reduce((a, e) => a + e.durationSec, 0);
     return { ok: true, result: { episodes, count: episodes.length, totalSec } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "download-remove", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -424,6 +432,7 @@ export default function registerPodcastActions(registerLensAction) {
   });
 
   registerLensAction("podcast", "playlist-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const pl = (s.playlists.get(userId) || []).find((p) => p.id === params.id);
@@ -432,7 +441,8 @@ export default function registerPodcastActions(registerLensAction) {
       .map((id) => { const e = findEpisode(s, id); return e ? episodeView(s, userId, e) : null; })
       .filter(Boolean);
     return { ok: true, result: { playlist: pl, episodes } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Ratings / reviews ───────────────────────────────────────────────
   registerLensAction("podcast", "show-rate", (ctx, _a, params = {}) => {
@@ -637,6 +647,7 @@ export default function registerPodcastActions(registerLensAction) {
    * its audio enclosure URL plus chapter markers and resume position.
    */
   registerLensAction("podcast", "episode-stream", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
@@ -658,7 +669,8 @@ export default function registerPodcastActions(registerLensAction) {
         skipIntroSec: pcnum(prefs.skipIntroSec, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * playback-prefs-set — Apple-Podcasts-style smart playback settings:
@@ -717,6 +729,7 @@ export default function registerPodcastActions(registerLensAction) {
    * segments:[{startSec,text}] }.
    */
   registerLensAction("podcast", "transcript-set", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
     const ep = findEpisode(s, String(params.episodeId));
@@ -753,7 +766,8 @@ export default function registerPodcastActions(registerLensAction) {
     s.transcripts.set(ep.id, transcript);
     savePodState();
     return { ok: true, result: { episodeId: ep.id, segmentCount: segments.length, wordCount: transcript.wordCount } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("podcast", "transcript-get", (ctx, _a, params = {}) => {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -770,6 +784,7 @@ export default function registerPodcastActions(registerLensAction) {
    * matching segments with their timestamps (for jump-to playback).
    */
   registerLensAction("podcast", "transcript-search", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
     const ep = findEpisode(s, String(params.episodeId));
@@ -782,7 +797,8 @@ export default function registerPodcastActions(registerLensAction) {
       .filter((seg) => seg.text.toLowerCase().includes(query))
       .map((seg) => ({ startSec: seg.startSec, text: seg.text }));
     return { ok: true, result: { episodeId: ep.id, query, matches, count: matches.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Personalized recommendations ────────────────────────────────────
   /**
@@ -791,6 +807,7 @@ export default function registerPodcastActions(registerLensAction) {
    * excludes already-subscribed shows.
    */
   registerLensAction("podcast", "recommendations", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const subs = s.subscriptions.get(userId) || [];
@@ -836,7 +853,8 @@ export default function registerPodcastActions(registerLensAction) {
         basedOn: affinity.size > 0 ? "listening history" : "directory ratings",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Cross-device playback sync ──────────────────────────────────────
   /**
@@ -844,6 +862,7 @@ export default function registerPodcastActions(registerLensAction) {
    * fresh session/device can resume where the last one left off.
    */
   registerLensAction("podcast", "sync-state", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = pcaid(ctx);
     const progress = (s.playback.get(userId) || [])
@@ -873,7 +892,8 @@ export default function registerPodcastActions(registerLensAction) {
         syncedAt: pcnow(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sync-push — accept a playback position reported by a device and merge
@@ -881,6 +901,7 @@ export default function registerPodcastActions(registerLensAction) {
    * other devices then resume.
    */
   registerLensAction("podcast", "sync-push", (ctx, _a, params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
@@ -903,7 +924,8 @@ export default function registerPodcastActions(registerLensAction) {
       ok: true,
       result: { episodeId: ep.id, positionSec: prog.positionSec, merged, played: prog.played },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Smart download rules ────────────────────────────────────────────
   /**
@@ -946,6 +968,7 @@ export default function registerPodcastActions(registerLensAction) {
    * downloads beyond the keepRecent cap. Returns what changed.
    */
   registerLensAction("podcast", "download-rule-run", (ctx, _a, _params = {}) => {
+  try {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     if (!(s.downloadRules instanceof Map)) s.downloadRules = new Map();
     const userId = pcaid(ctx);
@@ -974,5 +997,6 @@ export default function registerPodcastActions(registerLensAction) {
       ok: true,
       result: { rulesApplied: rules.filter((r) => r.autoDownload).length, added: added.length, pruned: pruned.length, totalDownloads: dls.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

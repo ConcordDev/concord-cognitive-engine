@@ -53,7 +53,7 @@ export function DecreePanel() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!myRealm) {
-    return <p className="text-sm text-zinc-500 italic">You don&apos;t rule a realm. Take over one via conquest, inheritance, or election to issue decrees.</p>;
+    return <p className="text-sm text-zinc-400 italic">You don&apos;t rule a realm. Take over one via conquest, inheritance, or election to issue decrees.</p>;
   }
 
   const spec = selectedKind ? DECREE_SPECS.find((s) => s.kind === selectedKind) : null;
@@ -111,7 +111,7 @@ export function DecreePanel() {
                     {s.estimatedDelta > 0 ? '+' : ''}{s.estimatedDelta} popularity
                   </span>
                 </div>
-                <p className="mt-0.5 text-[10px] text-zinc-500">{s.description}</p>
+                <p className="mt-0.5 text-[10px] text-zinc-400">{s.description}</p>
               </button>
             </li>
           ))}
@@ -121,14 +121,14 @@ export function DecreePanel() {
           <div className="bg-zinc-900/50 border border-amber-700/60 rounded p-2">
             <h4 className="text-sm font-bold text-amber-200 mb-1">{spec.label}</h4>
             <p className="text-[10px] text-zinc-400">{spec.description}</p>
-            <p className="mt-1 text-[10px] font-mono text-zinc-500">
+            <p className="mt-1 text-[10px] font-mono text-zinc-400">
               Estimated popularity Δ: <span className={spec.estimatedDelta > 0 ? 'text-emerald-400' : 'text-red-400'}>{spec.estimatedDelta > 0 ? '+' : ''}{spec.estimatedDelta}</span>
             </p>
           </div>
 
           {spec.bodyFields.map((f) => (
             <label key={f.key} className="block">
-              <span className="block text-[10px] text-zinc-500 mb-0.5">{f.label}</span>
+              <span className="block text-[10px] text-zinc-400 mb-0.5">{f.label}</span>
               <input
                 type={f.type === 'number' ? 'number' : 'text'}
                 value={bodyValues[f.key] || ''}

@@ -208,7 +208,7 @@ export function HrActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -219,7 +219,7 @@ export function HrActionPanel() {
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">{compResult.role}</div>
             <div className="text-2xl font-bold text-emerald-300">${compResult.market50}k<span className="text-xs text-zinc-400 ml-1">median</span></div>
-            <div className="text-[10px] text-zinc-500">range ${compResult.rangeLow}-${compResult.rangeHigh}k · 75th ${compResult.market75}k</div>
+            <div className="text-[10px] text-zinc-400">range ${compResult.rangeLow}-${compResult.rangeHigh}k · 75th ${compResult.market75}k</div>
             {compResult.offerSuggestion && <div className="text-[11px] text-emerald-300">Suggested offer: ${compResult.offerSuggestion}k</div>}
           </div>
         )}
@@ -227,7 +227,7 @@ export function HrActionPanel() {
           <div className={cn('rounded-md border p-2.5', (turnoverResult.ratePct ?? 0) > 20 ? 'border-rose-500/40 bg-rose-500/5' : (turnoverResult.ratePct ?? 0) > 10 ? 'border-amber-500/40 bg-amber-500/5' : 'border-emerald-500/40 bg-emerald-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-rose-300 font-semibold">Turnover ({turnoverResult.band})</div>
             <div className="text-2xl font-bold text-zinc-100">{turnoverResult.ratePct}%</div>
-            <div className="text-[10px] text-zinc-500">vs benchmark {turnoverResult.benchmarkPct}%</div>
+            <div className="text-[10px] text-zinc-400">vs benchmark {turnoverResult.benchmarkPct}%</div>
             {turnoverResult.topReason && <div className="text-[11px] text-zinc-300">Top reason: {turnoverResult.topReason}</div>}
           </div>
         )}
@@ -235,7 +235,7 @@ export function HrActionPanel() {
           <div className={cn('rounded-md border p-2.5', interviewResult.recommendation === 'hire' || interviewResult.recommendation === 'strong-hire' ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-amber-500/40 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{candidateName}</div>
             <div className="text-lg font-bold text-purple-300 capitalize">{interviewResult.recommendation}</div>
-            <div className="text-[10px] text-zinc-500">{interviewResult.totalScore}/{interviewResult.passingScore} threshold</div>
+            <div className="text-[10px] text-zinc-400">{interviewResult.totalScore}/{interviewResult.passingScore} threshold</div>
             {interviewResult.topStrengths?.length ? <div className="text-[11px] text-emerald-300">+ {interviewResult.topStrengths.join(', ')}</div> : null}
             {interviewResult.topWeaknesses?.length ? <div className="text-[11px] text-amber-300">⚠ {interviewResult.topWeaknesses.join(', ')}</div> : null}
           </div>
@@ -244,7 +244,7 @@ export function HrActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">PTO {employeeId}</div>
             <div className="text-2xl font-bold text-cyan-300">{ptoResult.remaining}d</div>
-            <div className="text-[10px] text-zinc-500">accrued {ptoResult.accrued} · used {ptoResult.used}</div>
+            <div className="text-[10px] text-zinc-400">accrued {ptoResult.accrued} · used {ptoResult.used}</div>
             {ptoResult.rolloverDate && <div className="text-[10px] text-amber-300">rollover: {ptoResult.rolloverDate}</div>}
           </div>
         )}

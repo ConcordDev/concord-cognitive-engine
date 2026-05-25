@@ -220,11 +220,13 @@ export default function registerAnalyticsActions(registerLensAction) {
   }
 
   registerLensAction("analytics", "funnel-build", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const steps = Array.isArray(params.steps) ? params.steps.map((x) => anClean(x, 80)).filter(Boolean) : [];
     if (steps.length < 2) return { ok: false, error: "funnel needs at least 2 event steps" };
     return { ok: true, result: computeFunnel(anEvents(s, anActor(ctx)), steps) };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "funnel-save", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -238,11 +240,13 @@ export default function registerAnalyticsActions(registerLensAction) {
   });
 
   registerLensAction("analytics", "funnel-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const log = anEvents(s, anActor(ctx));
     const funnels = anFunnels(s, anActor(ctx)).map((f) => ({ ...f, result: computeFunnel(log, f.steps) }));
     return { ok: true, result: { funnels, count: funnels.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "funnel-delete", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -275,6 +279,7 @@ export default function registerAnalyticsActions(registerLensAction) {
   // retention — of users who did cohortEvent on a day, how many did
   // returnEvent on each of the following days (up to 7).
   registerLensAction("analytics", "retention-report", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const cohortEvent = anClean(params.cohortEvent, 80);
     const returnEvent = anClean(params.returnEvent, 80) || cohortEvent;
@@ -303,7 +308,8 @@ export default function registerAnalyticsActions(registerLensAction) {
       retention.push({ day: d, retained, pct: cohortSize > 0 ? Math.round((retained / cohortSize) * 1000) / 10 : 0 });
     }
     return { ok: true, result: { cohortEvent, returnEvent, cohortSize, retention } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "analytics-dashboard", (ctx, _a, _params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -410,13 +416,15 @@ export default function registerAnalyticsActions(registerLensAction) {
   });
 
   registerLensAction("analytics", "dashboard-get", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const d = anDashboards(s, anActor(ctx)).find((x) => x.id === params.id);
     if (!d) return { ok: false, error: "dashboard not found" };
     const log = anEvents(s, anActor(ctx));
     const widgets = d.widgets.map((w) => ({ ...w, data: computeWidget(log, w) }));
     return { ok: true, result: { dashboard: { ...d, widgets } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "dashboard-delete", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -433,6 +441,7 @@ export default function registerAnalyticsActions(registerLensAction) {
   // user's time-ordered event sequence. Optional anchorEvent pins the
   // journey to begin at that event.
   registerLensAction("analytics", "path-analysis", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const log = applyEventFilters(anEvents(s, anActor(ctx)), params);
     if (log.length === 0) return { ok: true, result: { nodes: [], links: [], journeys: 0, message: "no data yet" } };
@@ -470,7 +479,8 @@ export default function registerAnalyticsActions(registerLensAction) {
     }).sort((a, b) => a.depth - b.depth);
     const links = [...linkMap.values()].sort((a, b) => b.value - a.value);
     return { ok: true, result: { nodes, links, journeys, anchorEvent: anchor || null } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── [S] Multi-dimensional property breakdown ──────────────────────
   // Break an event's volume down across up to 2 property dimensions,
@@ -592,18 +602,22 @@ export default function registerAnalyticsActions(registerLensAction) {
   });
 
   registerLensAction("analytics", "alert-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const log = anEvents(s, anActor(ctx));
     const alerts = anAlerts(s, anActor(ctx)).map((a) => ({ ...a, ...evaluateAlert(log, a) }));
     return { ok: true, result: { alerts, count: alerts.length, firing: alerts.filter((a) => a.firing).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "alert-evaluate", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const a = anAlerts(s, anActor(ctx)).find((x) => x.id === params.id);
     if (!a) return { ok: false, error: "alert not found" };
     return { ok: true, result: { alert: { ...a, ...evaluateAlert(anEvents(s, anActor(ctx)), a) } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "alert-delete", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -640,13 +654,15 @@ export default function registerAnalyticsActions(registerLensAction) {
   }
 
   registerLensAction("analytics", "cohort-build", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const includes = Array.isArray(params.includes) ? params.includes.map((x) => anClean(x, 80)).filter(Boolean) : [];
     const excludes = Array.isArray(params.excludes) ? params.excludes.map((x) => anClean(x, 80)).filter(Boolean) : [];
     if (includes.length === 0 && excludes.length === 0) return { ok: false, error: "cohort needs at least one include or exclude event" };
     const log = applyEventFilters(anEvents(s, anActor(ctx)), params);
     return { ok: true, result: computeCohort(log, { includes, excludes }) };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("analytics", "cohort-save", (ctx, _a, params = {}) => {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -690,6 +706,7 @@ export default function registerAnalyticsActions(registerLensAction) {
   // Compare an event metric between two date windows (current vs prior),
   // returning per-window value, absolute delta and pct change.
   registerLensAction("analytics", "range-compare", (ctx, _a, params = {}) => {
+  try {
     const s = getAnalyticsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const a = params.current || {};
     const b = params.previous || {};
@@ -722,5 +739,6 @@ export default function registerAnalyticsActions(registerLensAction) {
         direction: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -172,10 +172,10 @@ export function Soundboard({
             <Layers className="w-4 h-4 text-neon-cyan" /> Soundboard
           </h2>
           <div className="flex items-center gap-1">
-            <button onClick={() => setViewMode('grid')} className={cn('p-1 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="Grid3 x3">
+            <button onClick={() => setViewMode('grid')} className={cn('p-1 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-400')} aria-label="Grid3 x3">
               <Grid3X3 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => setViewMode('list')} className={cn('p-1 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="List view">
+            <button onClick={() => setViewMode('list')} className={cn('p-1 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-400')} aria-label="List view">
               <List className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -183,7 +183,7 @@ export function Soundboard({
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={search}
@@ -208,7 +208,7 @@ export function Soundboard({
               onClick={() => setTab(t.id)}
               className={cn(
                 'px-2 py-0.5 rounded text-[10px]',
-                tab === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white'
+                tab === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white'
               )}
             >
               {t.label} <span className="text-gray-600">({t.count})</span>
@@ -217,7 +217,7 @@ export function Soundboard({
         </div>
 
         {/* Context info */}
-        <div className="flex items-center gap-2 text-[9px] text-gray-500">
+        <div className="flex items-center gap-2 text-[9px] text-gray-400">
           <Sparkles className="w-3 h-3 text-neon-purple" />
           <span>Context: {currentKey} {currentBpm}BPM {currentGenre && `| ${currentGenre}`}</span>
         </div>
@@ -236,7 +236,7 @@ export function Soundboard({
                 {typeIcon(item.type)}
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-medium block truncate">{item.title}</span>
-                  <span className="text-[9px] text-gray-500 flex items-center gap-1">
+                  <span className="text-[9px] text-gray-400 flex items-center gap-1">
                     <ArrowUpRight className="w-2.5 h-2.5" /> {item.reason}
                   </span>
                 </div>
@@ -257,8 +257,7 @@ export function Soundboard({
                 className="p-2.5 rounded-lg bg-white/5 border border-white/10 hover:border-neon-cyan/20 cursor-pointer group transition-colors"
                 onClick={() => handleLoadItem(item.type, item.data)}
                 draggable
-                onDragStart={() => onDragToTrack(item.type, item.data)}
-              >
+                onDragStart={() => onDragToTrack(item.type, item.data)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center gap-2 mb-1">
                   {typeIcon(item.type)}
                   <span className="text-[11px] font-medium truncate flex-1">{item.title}</span>
@@ -271,7 +270,7 @@ export function Soundboard({
                 </div>
                 <div className="flex flex-wrap gap-0.5">
                   {item.tags.slice(0, 4).map(tag => (
-                    <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[7px] text-gray-500">{tag}</span>
+                    <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[7px] text-gray-400">{tag}</span>
                   ))}
                 </div>
               </div>
@@ -290,7 +289,7 @@ export function Soundboard({
                 <span className="text-xs flex-1 truncate">{item.title}</span>
                 <div className="flex gap-0.5">
                   {item.tags.slice(0, 2).map(tag => (
-                    <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[7px] text-gray-500">{tag}</span>
+                    <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[7px] text-gray-400">{tag}</span>
                   ))}
                 </div>
                 <button
@@ -313,8 +312,8 @@ export function Soundboard({
         {filteredItems.length === 0 && tab !== 'suggestions' && (
           <div className="text-center py-12">
             <Layers className="w-10 h-10 mx-auto text-gray-600 mb-2" />
-            <p className="text-sm text-gray-500">No items found</p>
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-sm text-gray-400">No items found</p>
+            <p className="text-xs text-gray-400 mt-1">
               {search ? 'Try a different search term' : 'Create sounds to populate your soundboard'}
             </p>
           </div>

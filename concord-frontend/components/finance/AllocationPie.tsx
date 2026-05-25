@@ -62,7 +62,7 @@ export function AllocationPie() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <PieIcon className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Allocation</span>
-        <span className="ml-auto text-[10px] font-mono text-gray-500">${total.toFixed(0)}</span>
+        <span className="ml-auto text-[10px] font-mono text-gray-400">${total.toFixed(0)}</span>
         <select value={mode} onChange={e => setMode(e.target.value as typeof mode)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="class">By asset class</option>
           <option value="sector">By sector</option>
@@ -70,9 +70,9 @@ export function AllocationPie() {
         </select>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : data.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><PieIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />Add holdings to see your allocation.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><PieIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />Add holdings to see your allocation.</div>
       ) : (
         <div className="h-60 p-2">
           <ResponsiveContainer width="100%" height="100%">
@@ -98,7 +98,7 @@ export function AllocationPie() {
               />
               <Legend
                 wrapperStyle={{ fontSize: 10 }}
-                formatter={(value: string) => <span style={{ color: '#cbd5e1' }}>{String(value).replace(/_/g, ' ')}</span>}
+                formatter={(value: string) => <span className="text-[#cbd5e1]">{String(value).replace(/_/g, ' ')}</span>}
               />
             </PieChart>
           </ResponsiveContainer>

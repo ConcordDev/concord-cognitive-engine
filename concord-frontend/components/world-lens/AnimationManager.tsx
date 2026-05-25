@@ -337,14 +337,14 @@ export default function AnimationManager({ children, debug = false }: AnimationM
       {/* Debug overlay */}
       {debug && (
         <div className={`${panel} fixed bottom-4 left-4 z-50 p-3 max-w-xs`}>
-          <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+          <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
             Animation Debug
           </div>
 
           {/* Active animations */}
           {activeAnimations.size > 0 && (
             <div className="mb-2">
-              <div className="text-[9px] text-gray-600 mb-1">Active Animations</div>
+              <div className="text-[9px] text-gray-400 mb-1">Active Animations</div>
               {Array.from(activeAnimations.entries()).map(([entityId, anim]) => (
                 <div key={entityId} className="flex items-center gap-2 text-[10px]">
                   <span className="text-gray-400">{entityId}</span>
@@ -358,7 +358,7 @@ export default function AnimationManager({ children, debug = false }: AnimationM
           {/* Weather */}
           {weather && (
             <div className="mb-2">
-              <div className="text-[9px] text-gray-600 mb-1">Weather</div>
+              <div className="text-[9px] text-gray-400 mb-1">Weather</div>
               <div className="text-[10px] text-gray-400">
                 {weather.type} | density: {(weather.density * 100).toFixed(0)}% | wind:{' '}
                 {(weather.windSpeed * 100).toFixed(0)}%
@@ -369,7 +369,7 @@ export default function AnimationManager({ children, debug = false }: AnimationM
           {/* Construction */}
           {constructions.size > 0 && (
             <div className="mb-2">
-              <div className="text-[9px] text-gray-600 mb-1">Construction</div>
+              <div className="text-[9px] text-gray-400 mb-1">Construction</div>
               {Array.from(constructions.values())
                 .filter((c) => c.active)
                 .map((c) => (
@@ -392,7 +392,7 @@ export default function AnimationManager({ children, debug = false }: AnimationM
           {/* Destruction */}
           {destructions.size > 0 && (
             <div>
-              <div className="text-[9px] text-gray-600 mb-1">Destruction</div>
+              <div className="text-[9px] text-gray-400 mb-1">Destruction</div>
               {Array.from(destructions.values())
                 .filter((d) => d.active)
                 .map((d) => (
@@ -411,12 +411,12 @@ export default function AnimationManager({ children, debug = false }: AnimationM
 
           {/* State machine transitions */}
           <div className="mt-2 border-t border-white/5 pt-2">
-            <div className="text-[9px] text-gray-600 mb-1">Avatar State Machine</div>
+            <div className="text-[9px] text-gray-400 mb-1">Avatar State Machine</div>
             <div className="flex flex-wrap gap-1">
               {(Object.keys(avatarTransitions) as AvatarAnimation[]).map((state) => (
                 <span
                   key={state}
-                  className="px-1.5 py-0.5 rounded text-[8px] bg-white/5 text-gray-500"
+                  className="px-1.5 py-0.5 rounded text-[8px] bg-white/5 text-gray-400"
                 >
                   {state}
                 </span>
@@ -425,12 +425,12 @@ export default function AnimationManager({ children, debug = false }: AnimationM
           </div>
 
           <div className="mt-2 border-t border-white/5 pt-2">
-            <div className="text-[9px] text-gray-600 mb-1">NPC Occupation Animations</div>
+            <div className="text-[9px] text-gray-400 mb-1">NPC Occupation Animations</div>
             <div className="flex flex-wrap gap-1">
               {Object.entries(npcAnimationMap).map(([occ, anim]) => (
                 <span
                   key={occ}
-                  className="px-1.5 py-0.5 rounded text-[8px] bg-white/5 text-gray-500"
+                  className="px-1.5 py-0.5 rounded text-[8px] bg-white/5 text-gray-400"
                 >
                   {occ}: {anim}
                 </span>

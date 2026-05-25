@@ -214,7 +214,7 @@ export function EmergencyServicesActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -225,7 +225,7 @@ export function EmergencyServicesActionPanel() {
           <div className={cn('rounded-md border p-2.5', TRIAGE_COLOR[triageResult.triageLevel])}>
             <div className="text-[10px] uppercase tracking-wider font-semibold">Triage</div>
             <div className="text-[12px] font-bold">{triageResult.triageColor}</div>
-            <div className="text-[10px] text-zinc-500">response: {triageResult.responseTime}</div>
+            <div className="text-[10px] text-zinc-400">response: {triageResult.responseTime}</div>
             {triageResult.actions.map((a, i) => <div key={i} className="text-[10px] mt-0.5">→ {a}</div>)}
           </div>
         )}
@@ -241,7 +241,7 @@ export function EmergencyServicesActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Log 24h · {logResult.trend}</div>
             <div className="text-2xl font-bold text-blue-300">{logResult.total24h}</div>
-            <div className="text-[10px] text-zinc-500">avg {logResult.avgResponseMinutes}min · top: {logResult.mostCommon}</div>
+            <div className="text-[10px] text-zinc-400">avg {logResult.avgResponseMinutes}min · top: {logResult.mostCommon}</div>
             {Object.entries(logResult.byType).slice(0, 4).map(([t, c]) => <div key={t} className="text-[10px] text-blue-200">{t}: {c}</div>)}
           </div>
         )}
@@ -249,7 +249,7 @@ export function EmergencyServicesActionPanel() {
           <div className={cn('rounded-md border p-2.5', readyResult.overallReadiness >= 80 ? 'border-emerald-500/30 bg-emerald-500/5' : readyResult.overallReadiness >= 60 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Readiness · {readyResult.status}</div>
             <div className={cn('text-3xl font-bold', readyResult.overallReadiness >= 80 ? 'text-emerald-300' : readyResult.overallReadiness >= 60 ? 'text-amber-300' : 'text-red-300')}>{readyResult.overallReadiness}%</div>
-            <div className="text-[10px] text-zinc-500">V {readyResult.vehicleReadiness}% · P {readyResult.personnelReadiness}% · S {readyResult.suppliesLevel}%</div>
+            <div className="text-[10px] text-zinc-400">V {readyResult.vehicleReadiness}% · P {readyResult.personnelReadiness}% · S {readyResult.suppliesLevel}%</div>
             {readyResult.shortages.length > 0 && <div className="text-[10px] text-red-300">⚠ short: {readyResult.shortages.join(', ')}</div>}
           </div>
         )}

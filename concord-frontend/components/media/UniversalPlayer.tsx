@@ -219,8 +219,7 @@ function AudioPlayer({
       <div
         ref={progressRef}
         onClick={handleSeek}
-        className="px-4 py-3 cursor-pointer"
-      >
+        className="px-4 py-3 cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-end gap-[2px] h-12">
           {waveform.map((h, i) => {
             const filled = (i / waveform.length) * 100 < progress;
@@ -393,8 +392,7 @@ function VideoPlayer({
       {/* Video area */}
       <div
         className="relative aspect-video bg-black flex items-center justify-center cursor-pointer"
-        onClick={togglePlay}
-      >
+        onClick={togglePlay} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <video
           ref={videoRef}
           src={videoSrc}
@@ -422,7 +420,7 @@ function VideoPlayer({
         />
 
         {mediaDTU.resolution && (
-          <div className="absolute bottom-2 right-2 text-xs text-gray-500 bg-black/40 px-1.5 rounded pointer-events-none">
+          <div className="absolute bottom-2 right-2 text-xs text-gray-400 bg-black/40 px-1.5 rounded pointer-events-none">
             {mediaDTU.resolution.width}x{mediaDTU.resolution.height}
           </div>
         )}
@@ -473,8 +471,7 @@ function VideoPlayer({
             {/* Progress bar */}
             <div
               className="h-1 bg-gray-600 rounded-full mb-3 cursor-pointer group/progress"
-              onClick={handleSeek}
-            >
+              onClick={handleSeek} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div
                 className="h-full bg-neon-cyan rounded-full relative group-hover/progress:h-1.5 transition-all"
                 style={{ width: `${progress}%` }}
@@ -709,7 +706,7 @@ function DocumentViewer({
           <h3 className="text-white font-medium mb-2">{mediaDTU.title}</h3>
           <p className="text-sm text-gray-400">{mediaDTU.mimeType || 'Document'}</p>
           {mediaDTU.description && (
-            <p className="text-sm text-gray-500 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
+            <p className="text-sm text-gray-400 mt-3 max-w-md mx-auto">{mediaDTU.description}</p>
           )}
         </div>
       </div>
@@ -772,7 +769,7 @@ function StreamViewer({
               </div>
             </div>
 
-            <div className="flex items-center gap-1 text-gray-500">
+            <div className="flex items-center gap-1 text-gray-400">
               <Wifi className="w-8 h-8" />
               <span className="text-sm">Stream Active</span>
             </div>
@@ -782,7 +779,7 @@ function StreamViewer({
             <WifiOff className="w-12 h-12 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400 text-sm">Stream Offline</p>
             {mediaDTU.stream?.endedAt && (
-              <p className="text-gray-500 text-xs mt-1">
+              <p className="text-gray-400 text-xs mt-1">
                 Ended {new Date(mediaDTU.stream.endedAt).toLocaleDateString()}
               </p>
             )}
@@ -894,7 +891,7 @@ export function UniversalPlayer({
               <span className="text-sm text-gray-400">{mediaDTU.authorName}</span>
             )}
             {mediaDTU.engagement && (
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {formatViewCount(mediaDTU.engagement.views)} views
               </span>
             )}

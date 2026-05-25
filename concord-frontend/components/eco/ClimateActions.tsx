@@ -92,7 +92,7 @@ export function ClimateActions({ onLogged }: ClimateActionsProps) {
         </span>
       </header>
       <div className="px-3 py-2 border-b border-white/5 flex items-center gap-2 text-xs flex-wrap">
-        <Filter className="w-3.5 h-3.5 text-gray-500" />
+        <Filter className="w-3.5 h-3.5 text-gray-400" />
         <select
           value={filter}
           onChange={e => setFilter(e.target.value as ClimateAction['category'] | 'all')}
@@ -111,11 +111,11 @@ export function ClimateActions({ onLogged }: ClimateActionsProps) {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : visible.length === 0 ? (
-          <div className="px-3 py-8 text-xs text-gray-500 text-center">No actions match.</div>
+          <div className="px-3 py-8 text-xs text-gray-400 text-center">No actions match.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {visible.map(a => {
@@ -126,13 +126,13 @@ export function ClimateActions({ onLogged }: ClimateActionsProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className="text-sm text-white font-medium">{a.title}</span>
-                        <span className="text-[9px] text-gray-500 uppercase">{a.category}</span>
+                        <span className="text-[9px] text-gray-400 uppercase">{a.category}</span>
                         <span className="text-[9px] text-yellow-400">{'★'.repeat(a.effort)}{'☆'.repeat(5 - a.effort)}</span>
                       </div>
                       <p className="text-[11px] text-gray-400 mb-1">{a.description}</p>
                       <div className="flex items-center gap-3 text-[10px]">
                         <span className="text-green-400">~{a.kgCo2eSavedPerYear.toFixed(0)} kgCO₂e/yr saved</span>
-                        <span className="text-gray-500">· {a.citation}</span>
+                        <span className="text-gray-400">· {a.citation}</span>
                       </div>
                     </div>
                     <button

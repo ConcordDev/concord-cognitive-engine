@@ -140,7 +140,7 @@ export default function RoboticsLensPage() {
 
         {activeTab === 'telemetry' && (
           robots.length === 0
-            ? <p className="text-gray-500 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
+            ? <p className="text-gray-400 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
             : <TelemetryDashboard robot={selected} />
         )}
 
@@ -152,13 +152,13 @@ export default function RoboticsLensPage() {
 
         {activeTab === 'teleop' && (
           robots.length === 0
-            ? <p className="text-gray-500 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
+            ? <p className="text-gray-400 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
             : <TeleopConsole robot={selected} />
         )}
 
         {activeTab === 'sensors' && (
           robots.length === 0
-            ? <p className="text-gray-500 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
+            ? <p className="text-gray-400 text-sm text-center py-6">Register a robot in the Fleet tab first.</p>
             : <SensorLogPanel robot={selected} />
         )}
 

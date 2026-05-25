@@ -206,6 +206,7 @@ export default function registerLandscapingActions(registerLensAction) {
   });
 
   registerLensAction("landscaping", "planting-add", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const bed = lsBeds(s, lsActor(ctx)).find((b) => b.id === params.bedId);
     if (!bed) return { ok: false, error: "bed not found" };
@@ -219,7 +220,8 @@ export default function registerLandscapingActions(registerLensAction) {
     bed.plantings.push(planting);
     saveLand();
     return { ok: true, result: { planting } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("landscaping", "care-log", (ctx, _a, params = {}) => {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -335,6 +337,7 @@ export default function registerLandscapingActions(registerLensAction) {
   // layout-save-elements — replace the full element set for a layout
   // (used by the drag-drop canvas which submits the whole arrangement).
   registerLensAction("landscaping", "layout-save-elements", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const layout = lsLayouts(s, lsActor(ctx)).find((l) => l.id === params.layoutId);
     if (!layout) return { ok: false, error: "layout not found" };
@@ -352,7 +355,8 @@ export default function registerLandscapingActions(registerLensAction) {
     layout.updatedAt = new Date().toISOString();
     saveLand();
     return { ok: true, result: { layout, elementCount: layout.elements.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Feature 2 — AR / photo-overlay preview ─────────────────────────
   // Stores a yard photo (data URL) with positioned plant overlays so a
@@ -391,6 +395,7 @@ export default function registerLandscapingActions(registerLensAction) {
   });
 
   registerLensAction("landscaping", "overlay-place", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const overlay = lsPhotos(s, lsActor(ctx)).find((o) => o.id === params.overlayId);
     if (!overlay) return { ok: false, error: "overlay not found" };
@@ -405,7 +410,8 @@ export default function registerLandscapingActions(registerLensAction) {
     }));
     saveLand();
     return { ok: true, result: { overlay: { id: overlay.id, placements: overlay.placements } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("landscaping", "overlay-delete", (ctx, _a, params = {}) => {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -446,6 +452,7 @@ export default function registerLandscapingActions(registerLensAction) {
   };
 
   registerLensAction("landscaping", "care-reminders", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const beds = lsBeds(s, lsActor(ctx));
     const horizonDays = Math.max(1, Math.min(120, Math.round(lsNum(params.horizonDays)) || 14));
@@ -484,7 +491,8 @@ export default function registerLandscapingActions(registerLensAction) {
         horizonDays,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Feature 5 — Climate / hardiness-zone plant matching ────────────
   // Open-Meteo (free, no key) for local climate; derives an approximate
@@ -556,6 +564,7 @@ export default function registerLandscapingActions(registerLensAction) {
   // labor + materials, applies overhead + margin, returns a renderable
   // proposal document object (markdown body + totals).
   registerLensAction("landscaping", "proposal-build", (_ctx, _a, params = {}) => {
+  try {
     const client = lsClean(params.client, 200) || "Client";
     const project = lsClean(params.project, 200) || "Landscaping project";
     const rawItems = Array.isArray(params.lineItems) ? params.lineItems : [];
@@ -618,7 +627,8 @@ export default function registerLandscapingActions(registerLensAction) {
         generatedAt: new Date().toISOString(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Feature 7 — Maintenance calendar (per-bed seasonal tasks) ──────
   // Generates a 12-month task schedule for a bed, biased by sun
@@ -640,6 +650,7 @@ export default function registerLandscapingActions(registerLensAction) {
   };
 
   registerLensAction("landscaping", "maintenance-calendar", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const beds = lsBeds(s, lsActor(ctx));
     const bedId = lsClean(params.bedId, 80);
@@ -666,7 +677,8 @@ export default function registerLandscapingActions(registerLensAction) {
         bedCount: beds.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Feature 8 — Plant health diary (photo timeline per planting) ───
   function lsDiary(s, userId) {
@@ -697,6 +709,7 @@ export default function registerLandscapingActions(registerLensAction) {
   });
 
   registerLensAction("landscaping", "diary-timeline", (ctx, _a, params = {}) => {
+  try {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let entries = lsDiary(s, lsActor(ctx));
     const plant = lsClean(params.plant, 120);
@@ -710,7 +723,8 @@ export default function registerLandscapingActions(registerLensAction) {
         plants, filteredBy: plant || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("landscaping", "diary-delete", (ctx, _a, params = {}) => {
     const s = getLandState(); if (!s) return { ok: false, error: "STATE unavailable" };

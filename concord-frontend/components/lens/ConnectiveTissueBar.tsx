@@ -185,14 +185,14 @@ export function ConnectiveTissueBar({ lensId, userId, className }: ConnectiveTis
                 >
                   <span className="truncate text-neon-cyan">{r.title || r.id}</span>
                   <span className="flex items-center gap-1 flex-shrink-0 ml-2">
-                    {r.score !== undefined && <span className="text-gray-500">{r.score.toFixed(2)}</span>}
-                    <ExternalLink className="w-3 h-3 text-gray-500" />
+                    {r.score !== undefined && <span className="text-gray-400">{r.score.toFixed(2)}</span>}
+                    <ExternalLink className="w-3 h-3 text-gray-400" />
                   </span>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               Results ranked by CRETI score. Filter by lens, tier, or price.
             </p>
           )}
@@ -315,7 +315,7 @@ function Panel({
     <div className="px-3 pb-3 space-y-2">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-medium text-white">{title}</h4>
-        <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
+        <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>

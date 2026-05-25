@@ -190,12 +190,14 @@ export default function registerPoetryActions(registerLensAction) {
   });
 
   registerLensAction("poetry", "poem-analyze", (ctx, _a, params = {}) => {
+  try {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const poem = poList(s, poActor(ctx)).find((p) => p.id === params.id);
     if (!poem) return { ok: false, error: "poem not found" };
     if (!poem.body.trim()) return { ok: false, error: "poem has no text to analyze" };
     return { ok: true, result: { poemId: poem.id, title: poem.title, analysis: analyzePoem(poem.body) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("poetry", "poetry-dashboard", (ctx, _a, _params = {}) => {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -471,6 +473,7 @@ export default function registerPoetryActions(registerLensAction) {
    * favorite-add — bookmark a discovered poem (real title/author/lines).
    */
   registerLensAction("poetry", "favorite-add", (ctx, _a, params = {}) => {
+  try {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = poClean(params.title, 200);
     const author = poClean(params.author, 80);
@@ -496,7 +499,8 @@ export default function registerPoetryActions(registerLensAction) {
     if (arr.length > 500) arr.length = 500;
     savePoetry();
     return { ok: true, result: { favorite: fav } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * favorite-list — list a user's bookmarked poems.
@@ -789,6 +793,7 @@ export default function registerPoetryActions(registerLensAction) {
    * params: { title, author, poemIds?: string[] (default: all finished) }
    */
   registerLensAction("poetry", "chapbook-export", (ctx, _a, params = {}) => {
+  try {
     const s = getPoetryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const poems = poList(s, poActor(ctx));
     let selected;
@@ -865,5 +870,6 @@ ${pages}
         filename: `${cbTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "chapbook"}.html`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -98,7 +98,7 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -137,25 +137,25 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Video className="w-3.5 h-3.5 text-fuchsia-400" /> Media bin
-          <span className="text-zinc-500 font-normal">· {media.length} items · {proxyCount} proxy</span>
+          <span className="text-zinc-400 font-normal">· {media.length} items · {proxyCount} proxy</span>
         </h3>
         {media.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No media registered. Add source files to build a multicam edit.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No media registered. Add source files to build a multicam edit.</p>
         ) : (
           <ul className="space-y-1.5">
             {media.map((m) => (
               <li key={m.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <input type="checkbox" checked={grpPick.includes(m.id)} onChange={() => toggleGrpPick(m.id)}
                   className="accent-fuchsia-500" aria-label={`Select ${m.name} for multicam group`} />
-                <Film className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-zinc-100 truncate">
                     {m.name}
                     {m.camera && <span className="text-fuchsia-300"> · CAM {m.camera}</span>}
-                    {m.mcamAngle != null && <span className="text-zinc-500"> · angle {m.mcamAngle}</span>}
+                    {m.mcamAngle != null && <span className="text-zinc-400"> · angle {m.mcamAngle}</span>}
                   </p>
                   {(m.sourceUrl || m.proxyUrl) && (
-                    <p className="text-[10px] text-zinc-500 truncate">
+                    <p className="text-[10px] text-zinc-400 truncate">
                       {m.proxyUrl ? 'proxy available' : m.sourceUrl ? 'source only' : ''}
                     </p>
                   )}
@@ -182,21 +182,21 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
           <input placeholder="Group name (e.g. Interview)" value={grpName}
             onChange={(e) => setGrpName(e.target.value)}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <span className="text-[10px] text-zinc-500">{grpPick.length} selected</span>
+          <span className="text-[10px] text-zinc-400">{grpPick.length} selected</span>
           <button type="button" onClick={createGroup} disabled={grpPick.length < 2}
             className="px-3 py-1.5 text-xs font-medium bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-white rounded-lg">
             Group cameras
           </button>
         </div>
         {groups.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No multicam groups. Check 2+ media items above to sync angles.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No multicam groups. Check 2+ media items above to sync angles.</p>
         ) : (
           <ul className="space-y-1.5">
             {groups.map((g) => (
               <li key={g.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-zinc-100">{g.name}</span>
-                  <span className="text-[10px] text-zinc-500">{g.angleCount} angles</span>
+                  <span className="text-[10px] text-zinc-400">{g.angleCount} angles</span>
                   <button type="button" onClick={() => delGroup(g.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

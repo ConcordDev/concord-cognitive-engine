@@ -74,7 +74,7 @@ export function WordTools() {
       <div className="flex items-center gap-2 mb-3">
         <ScrollText className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-bold text-zinc-100">Word Tools</h3>
-        <span className="text-[10px] text-zinc-500">pronunciation · usage · etymology</span>
+        <span className="text-[10px] text-zinc-400">pronunciation · usage · etymology</span>
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -106,7 +106,7 @@ export function WordTools() {
           <div className="flex items-center gap-2 flex-wrap">
             {pron.ipa
               ? <span className="text-sm font-mono text-cyan-300">{pron.ipa}</span>
-              : <span className="text-xs text-zinc-500 italic">no IPA available</span>}
+              : <span className="text-xs text-zinc-400 italic">no IPA available</span>}
             {pron.audio ? (
               <button
                 onClick={() => playAudio(pron.audio!)}
@@ -148,13 +148,13 @@ export function WordTools() {
             <Quote className="w-3 h-3" />In context ({context.count})
           </p>
           {context.examples.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No usage examples available for this word.</p>
+            <p className="text-xs text-zinc-400 italic">No usage examples available for this word.</p>
           ) : (
             <ul className="space-y-1.5">
               {context.examples.map((ex, i) => (
                 <li key={i} className="text-xs text-zinc-300 pl-2 border-l-2 border-violet-500/40">
                   <span className="italic">&ldquo;{ex.sentence}&rdquo;</span>
-                  <span className="block text-[10px] text-zinc-500 mt-0.5">
+                  <span className="block text-[10px] text-zinc-400 mt-0.5">
                     {ex.partOfSpeech} · {ex.sense}
                   </span>
                 </li>
@@ -177,13 +177,13 @@ export function WordTools() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 italic">No recorded etymology for this word.</p>
+            <p className="text-xs text-zinc-400 italic">No recorded etymology for this word.</p>
           )}
         </div>
       )}
 
       {queried && !busy && !pron && !context && !etym && !err && (
-        <p className="text-xs text-zinc-500 italic">No data yet.</p>
+        <p className="text-xs text-zinc-400 italic">No data yet.</p>
       )}
     </div>
   );

@@ -104,7 +104,7 @@ export function RemindersPanel() {
   }, [load]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   const next = data?.nextFire;
@@ -145,7 +145,7 @@ export function RemindersPanel() {
         <div className="flex gap-1">
           {DOW.map((d) => (
             <button key={d.id} type="button" onClick={() => toggleDay(d.id)}
-              className={cn('w-7 h-7 rounded text-[11px]', days.includes(d.id) ? 'bg-rose-600 text-white' : 'bg-zinc-950 text-zinc-500')}>
+              className={cn('w-7 h-7 rounded text-[11px]', days.includes(d.id) ? 'bg-rose-600 text-white' : 'bg-zinc-950 text-zinc-400')}>
               {d.label}
             </button>
           ))}
@@ -166,23 +166,23 @@ export function RemindersPanel() {
               <span className="text-sm font-mono text-zinc-100 w-12">{r.time}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-zinc-200 truncate">{r.label}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {r.days.length === 7 ? 'Every day' : r.days.join(' · ')}
                 </p>
               </div>
               <button type="button" onClick={() => toggle(r.id, r.enabled)} disabled={busy}
                 className="p-1 rounded hover:bg-zinc-800" aria-label={r.enabled ? 'Disable' : 'Enable'}>
-                {r.enabled ? <Bell className="w-3.5 h-3.5 text-rose-300" /> : <BellOff className="w-3.5 h-3.5 text-zinc-500" />}
+                {r.enabled ? <Bell className="w-3.5 h-3.5 text-rose-300" /> : <BellOff className="w-3.5 h-3.5 text-zinc-400" />}
               </button>
               <button type="button" onClick={() => remove(r.id)} disabled={busy}
                 className="p-1 rounded hover:bg-zinc-800" aria-label="Delete">
-                <Trash2 className="w-3.5 h-3.5 text-zinc-500 hover:text-rose-400" />
+                <Trash2 className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-400" />
               </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-zinc-600 text-center py-2">No reminders yet — add one above.</p>
+        <p className="text-xs text-zinc-400 text-center py-2">No reminders yet — add one above.</p>
       )}
     </div>
   );

@@ -169,8 +169,8 @@ export default function ProjectsLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)}>
-        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
@@ -201,7 +201,7 @@ export default function ProjectsLensPage() {
   const renderLibrary = () => (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" /><input className={cn(ds.input, 'pl-10')} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input className={cn(ds.input, 'pl-10')} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
         <select className={cn(ds.select, 'w-auto')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All Status</option>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>
@@ -290,17 +290,17 @@ export default function ProjectsLensPage() {
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Total Days</p>
+                      <p className="text-xs text-gray-400">Total Days</p>
                       <p className="text-lg font-bold text-white">{String(ganttResult.totalDays ?? 0)}</p>
                     </div>
                     <div className={cn(ds.panel, 'text-center')}>
-                      <p className="text-xs text-gray-500">Total Weeks</p>
+                      <p className="text-xs text-gray-400">Total Weeks</p>
                       <p className="text-lg font-bold text-violet-400">{String(ganttResult.totalWeeks ?? 0)}</p>
                     </div>
                   </div>
                   {Array.isArray(ganttResult.tasks) && (
                     <div className="space-y-2">
-                      <p className="text-xs text-gray-500 font-medium">Task Timeline</p>
+                      <p className="text-xs text-gray-400 font-medium">Task Timeline</p>
                       {(ganttResult.tasks as Array<Record<string, unknown>>).slice(0, 8).map((task, i) => {
                         const total = Number(ganttResult.totalDays) || 1;
                         const startPct = (Number(task.startDay) / total) * 100;
@@ -408,14 +408,14 @@ export default function ProjectsLensPage() {
                   { label: 'Velocity', value: `${String(burndownResult.actualVelocity ?? '—')} pts/day`, color: 'text-neon-cyan' },
                 ].map(({ label, value, color }) => (
                   <div key={label} className={cn(ds.panel, 'text-center')}>
-                    <p className="text-xs text-gray-500">{label}</p>
+                    <p className="text-xs text-gray-400">{label}</p>
                     <p className={cn('text-sm font-bold font-mono', color)}>{value}</p>
                   </div>
                 ))}
               </div>
               {'projectedDaysToFinish' in burndownResult && (
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-gray-500">Projected Finish:</span>
+                  <span className="text-gray-400">Projected Finish:</span>
                   <span className={`font-mono font-bold ${
                     burndownResult.onTrack ? 'text-green-400' : 'text-red-400'
                   }`}>
@@ -429,7 +429,7 @@ export default function ProjectsLensPage() {
                 </div>
               )}
               {'idealBurnRate' in burndownResult && (
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-gray-400">
                   <span>Ideal rate: <span className="text-gray-300 font-mono">{String(burndownResult.idealBurnRate)} pts/day</span></span>
                   <span>Days elapsed: <span className="text-gray-300 font-mono">{String(burndownResult.daysElapsed)}</span></span>
                 </div>
@@ -459,20 +459,20 @@ export default function ProjectsLensPage() {
                           <p className={cn('text-lg font-bold', color)}>
                             {String((stakeholderMapResult.byQuadrant as Record<string, unknown>)[key] ?? 0)}
                           </p>
-                          <p className="text-xs text-gray-500">{label}</p>
+                          <p className="text-xs text-gray-400">{label}</p>
                         </div>
                       ))}
                     </div>
                   )}
                   {Array.isArray(stakeholderMapResult.stakeholders) && (
                     <div className="space-y-1.5">
-                      <p className="text-xs text-gray-500 font-medium">Stakeholders ({String(stakeholderMapResult.total ?? 0)})</p>
+                      <p className="text-xs text-gray-400 font-medium">Stakeholders ({String(stakeholderMapResult.total ?? 0)})</p>
                       {(stakeholderMapResult.stakeholders as Array<Record<string, unknown>>).slice(0, 8).map((s, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs">
                           <span className="flex-1 text-gray-300">{String(s.name)}</span>
                           <div className="flex gap-1 text-[10px]">
-                            <span className="text-gray-500">P:{String(s.power)}</span>
-                            <span className="text-gray-500">I:{String(s.interest)}</span>
+                            <span className="text-gray-400">P:{String(s.power)}</span>
+                            <span className="text-gray-400">I:{String(s.interest)}</span>
                           </div>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                             String(s.quadrant) === 'manage-closely' ? 'bg-red-500/20 text-red-400' :

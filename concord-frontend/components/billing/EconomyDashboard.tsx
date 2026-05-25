@@ -77,7 +77,7 @@ export function EconomyDashboard() {
           <Cell label="Platform" value={fmtPct(f.platformFee)} />
           <Cell label="Treasury" value={fmtPct(f.treasuryShare)} />
         </div>
-        <p className="mt-2 text-[10px] text-zinc-500">Marketplace fees are CLAUDE.md-frozen and cannot be modified without governance approval.</p>
+        <p className="mt-2 text-[10px] text-zinc-400">Marketplace fees are CLAUDE.md-frozen and cannot be modified without governance approval.</p>
       </div>
       <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
         <div className="mb-2 text-xs font-semibold text-zinc-200">Supply</div>
@@ -87,7 +87,7 @@ export function EconomyDashboard() {
           <Cell label="Circulating" value={s.circulatingSupply?.toLocaleString() || '—'} />
         </div>
       </div>
-      {(balance.isPending || status.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
+      {(balance.isPending || status.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
     </div>
   );
 }
@@ -95,7 +95,7 @@ export function EconomyDashboard() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

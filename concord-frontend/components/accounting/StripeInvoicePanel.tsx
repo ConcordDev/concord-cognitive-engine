@@ -229,13 +229,13 @@ export function StripeInvoicePanel() {
       </div>
 
       {listMutation.isPending && invoices.length === 0 && (
-        <div className="flex items-center justify-center py-6 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading invoices…
         </div>
       )}
 
       {!listMutation.isPending && visible.length === 0 && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           No {filter} invoices yet — create one above and finalize via Stripe.
         </div>
       )}
@@ -296,7 +296,7 @@ function InvoiceRow({ invoice, onStripeSend, onMarkPaid, isPending }: {
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-500">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[11px] text-zinc-400">
             <span>Issued {invoice.issuedAt}</span>
             <span>Due {invoice.dueAt}</span>
             {invoice.paidAt && <span className="text-emerald-400">Paid {invoice.paidAt}</span>}

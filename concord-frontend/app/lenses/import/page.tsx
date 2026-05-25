@@ -473,28 +473,28 @@ export default function ImportLens() {
           <Upload className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{importJobs.length}</p>
-            <p className="text-xs text-gray-500">Total Imports</p>
+            <p className="text-xs text-gray-400">Total Imports</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Clock className="w-5 h-5 text-neon-yellow" />
           <div>
             <p className="text-lg font-bold">{importJobs.filter(j => j.status === 'pending' || j.status === 'importing' || j.status === 'validating').length}</p>
-            <p className="text-xs text-gray-500">Pending</p>
+            <p className="text-xs text-gray-400">Pending</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-400" />
           <div>
             <p className="text-lg font-bold">{importJobs.filter(j => j.status === 'failed').length}</p>
-            <p className="text-xs text-gray-500">Failed</p>
+            <p className="text-xs text-gray-400">Failed</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{importJobs.filter(j => j.status === 'completed').length}</p>
-            <p className="text-xs text-gray-500">Completed</p>
+            <p className="text-xs text-gray-400">Completed</p>
           </div>
         </motion.div>
       </div>
@@ -839,7 +839,7 @@ export default function ImportLens() {
           AI Import Analysis Actions
         </h2>
         {!importJobItems[0]?.id && (
-          <p className="text-xs text-gray-500">Create an import job to run AI actions.</p>
+          <p className="text-xs text-gray-400">Create an import job to run AI actions.</p>
         )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
@@ -894,7 +894,7 @@ export default function ImportLens() {
                 {(d.errors || []).slice(0, 3).map((err, i) => (
                   <p key={i} className="text-xs text-red-400">Row {err.row}: {err.field} — {err.message}</p>
                 ))}
-                {d.totalErrorCount > 3 && <p className="text-xs text-gray-500">+{d.totalErrorCount - 3} more errors</p>}
+                {d.totalErrorCount > 3 && <p className="text-xs text-gray-400">+{d.totalErrorCount - 3} more errors</p>}
               </div>
             );
           }
@@ -921,7 +921,7 @@ export default function ImportLens() {
                   {(d.mappings || []).map((m, i) => (
                     <div key={i} className="flex items-center justify-between text-xs">
                       <span className="text-gray-300">{m.source}</span>
-                      <span className="text-gray-500">→</span>
+                      <span className="text-gray-400">→</span>
                       <span className="text-neon-cyan">{m.target}</span>
                       <span className={`px-1.5 py-0.5 rounded text-xs ${m.confidence > 0.8 ? 'bg-neon-green/10 text-neon-green' : m.confidence > 0.5 ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-400/10 text-red-400'}`}>
                         {m.confidenceLabel}
@@ -952,7 +952,7 @@ export default function ImportLens() {
                 </div>
                 {(d.keyFields || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-500 mr-1">Key fields:</span>
+                    <span className="text-xs text-gray-400 mr-1">Key fields:</span>
                     {d.keyFields.map((f, i) => (
                       <span key={i} className="text-xs px-2 py-0.5 bg-yellow-400/10 text-yellow-400 rounded">{f}</span>
                     ))}
@@ -964,7 +964,7 @@ export default function ImportLens() {
                     <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${fr.repetitionRate * 100}%` }} />
                     </div>
-                    <span className="text-gray-500">{(fr.repetitionRate * 100).toFixed(1)}%</span>
+                    <span className="text-gray-400">{(fr.repetitionRate * 100).toFixed(1)}%</span>
                   </div>
                 ))}
               </div>
@@ -995,7 +995,7 @@ export default function ImportLens() {
                     <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div className="h-full bg-neon-purple rounded-full" style={{ width: `${fi.changeRate * 100}%` }} />
                     </div>
-                    <span className="text-gray-500">{fi.changes} changes</span>
+                    <span className="text-gray-400">{fi.changes} changes</span>
                   </div>
                 ))}
               </div>

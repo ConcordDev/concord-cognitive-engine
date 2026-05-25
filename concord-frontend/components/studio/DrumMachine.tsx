@@ -60,16 +60,16 @@ export function DrumMachine({
       {/* Toolbar */}
       <div className="h-8 bg-black/40 border-b border-white/10 flex items-center px-3 gap-3 flex-shrink-0">
         <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Drum Machine</span>
-        <span className="text-[10px] text-gray-500 ml-1">{stepCount} steps</span>
+        <span className="text-[10px] text-gray-400 ml-1">{stepCount} steps</span>
         <div className="w-px h-4 bg-white/10" />
 
         <div className="flex items-center gap-1 text-[10px]">
-          <span className="text-gray-500">Steps:</span>
+          <span className="text-gray-400">Steps:</span>
           {[8, 16, 32, 64].map(s => (
             <button
               key={s}
               onClick={() => { setStepCount(s); onSetSteps(s); }}
-              className={cn('px-1.5 py-0.5 rounded', steps === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('px-1.5 py-0.5 rounded', steps === s ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
             >
               {s}
             </button>
@@ -86,7 +86,7 @@ export function DrumMachine({
         </button>
         <button
           onClick={() => setShowVelocity(!showVelocity)}
-          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-green/20 text-neon-green' : 'text-gray-500 hover:text-white')}
+          className={cn('text-[10px] px-2 py-0.5 rounded', showVelocity ? 'bg-neon-green/20 text-neon-green' : 'text-gray-400 hover:text-white')}
         >
           Velocity
         </button>
@@ -105,8 +105,7 @@ export function DrumMachine({
               className={cn(
                 'h-10 flex items-center gap-2 px-2 border-b border-white/5 cursor-pointer hover:bg-white/5',
                 selectedPadId === pad.id && 'bg-white/5'
-              )}
-            >
+              )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div
                 className="w-6 h-6 rounded flex items-center justify-center text-[8px] font-bold text-black"
                 style={{ backgroundColor: pad.color || DEFAULT_PAD_COLORS[i % DEFAULT_PAD_COLORS.length] }}
@@ -189,7 +188,7 @@ export function DrumMachine({
       {showVelocity && selectedPadId && (
         <div className="h-20 border-t border-white/10 bg-black/40 flex overflow-hidden">
           <div className="w-28 flex-shrink-0 flex items-center justify-center border-r border-white/10">
-            <span className="text-[9px] text-gray-500">VELOCITY</span>
+            <span className="text-[9px] text-gray-400">VELOCITY</span>
           </div>
           <div className="flex-1 flex items-end overflow-auto">
             {tracks.find(t => t.padId === selectedPadId)?.steps.map((step, i) => (
@@ -208,8 +207,7 @@ export function DrumMachine({
                     onClick={() => {
                       const newVel = step.velocity >= 120 ? 40 : step.velocity + 20;
                       onUpdateStepVelocity(selectedPadId, i, Math.min(127, newVel));
-                    }}
-                  />
+                    }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
                 )}
               </div>
             ))}

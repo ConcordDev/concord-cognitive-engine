@@ -239,9 +239,9 @@ export function SeedTrialPanel() {
 
       {/* Entry list */}
       {loading ? (
-        <div className="text-xs text-gray-500 py-2">Loading…</div>
+        <div className="text-xs text-gray-400 py-2">Loading…</div>
       ) : entries.length === 0 ? (
-        <div className="text-xs text-gray-500 py-2">
+        <div className="text-xs text-gray-400 py-2">
           {trialName ? 'No entries for this trial yet.' : 'No trial entries logged yet.'}
         </div>
       ) : (
@@ -249,7 +249,7 @@ export function SeedTrialPanel() {
           {entries.map((e) => (
             <li key={e.id} className="py-1.5 flex items-center gap-2 text-xs">
               <span className="text-gray-200 font-medium">{e.hybrid}</span>
-              {e.brand && <span className="text-gray-500">{e.brand}</span>}
+              {e.brand && <span className="text-gray-400">{e.brand}</span>}
               <span className="text-gray-600">rep {e.replicate}</span>
               <span className="ml-auto text-emerald-300 font-mono">{e.yieldPerAcre} bu/ac</span>
               {e.moisturePct != null && (
@@ -295,7 +295,7 @@ export function SeedTrialPanel() {
           />
           <div className="overflow-x-auto">
             <table className="w-full text-[11px]">
-              <thead className="text-gray-500">
+              <thead className="text-gray-400">
                 <tr>
                   <th className="text-left px-2 py-1 font-normal">Hybrid</th>
                   <th className="px-2 py-1 font-normal">Reps</th>
@@ -311,7 +311,7 @@ export function SeedTrialPanel() {
                     <td className="px-2 py-1 text-gray-200">
                       {i === 0 && '🏆 '}
                       {r.hybrid}
-                      {r.brand && <span className="text-gray-500"> · {r.brand}</span>}
+                      {r.brand && <span className="text-gray-400"> · {r.brand}</span>}
                     </td>
                     <td className="px-2 py-1 text-center text-gray-400">{r.replicates}</td>
                     <td className="px-2 py-1 text-center text-emerald-300 font-mono">

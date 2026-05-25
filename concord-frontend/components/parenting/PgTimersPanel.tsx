@@ -75,7 +75,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -88,7 +88,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
           <Timer className="w-3.5 h-3.5 text-rose-400" /> Live timers
         </h3>
         {timers.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No timer running. Start one below.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No timer running. Start one below.</p>
         ) : (
           <ul className="space-y-2">
             {timers.map((t) => (
@@ -123,7 +123,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2.5">
         <h3 className="text-xs font-semibold text-zinc-300">One-tap start</h3>
         <div className="space-y-1.5">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Nursing</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Nursing</p>
           <div className="flex flex-wrap gap-2">
             {(['left', 'right', 'both'] as const).map((side) => (
               <button key={side} type="button" onClick={() => start('nursing', { side })}
@@ -134,7 +134,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
           </div>
         </div>
         <div className="space-y-1.5">
-          <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Sleep</p>
+          <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Sleep</p>
           <div className="flex flex-wrap gap-2">
             {(['nap', 'night'] as const).map((st) => (
               <button key={st} type="button" onClick={() => start('sleep', { sleepType: st })}
@@ -145,7 +145,7 @@ export function PgTimersPanel({ childId }: { childId: string }) {
           </div>
         </div>
       </section>
-      <p className="text-[10px] text-zinc-500">Stopping a timer commits a real feed/sleep entry with the elapsed duration.</p>
+      <p className="text-[10px] text-zinc-400">Stopping a timer commits a real feed/sleep entry with the elapsed duration.</p>
     </div>
   );
 }

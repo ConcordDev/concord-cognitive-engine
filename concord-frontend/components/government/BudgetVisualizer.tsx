@@ -42,7 +42,7 @@ export function BudgetVisualizer() {
         <div className="ml-auto flex items-center gap-1">
           {(['federal', 'state', 'local'] as const).map(s => (
             <button key={s} onClick={() => setScope(s)} className={cn('px-2 py-0.5 text-[10px] uppercase tracking-wider rounded',
-              scope === s ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500 hover:text-white'
+              scope === s ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'
             )}>{s}</button>
           ))}
           <select value={year} onChange={e => setYear(Number(e.target.value))} className="px-2 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
@@ -51,12 +51,12 @@ export function BudgetVisualizer() {
         </div>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <>
           <div className="px-4 py-3 border-b border-white/5">
             <div className="text-3xl font-bold text-white tabular-nums">${total.toFixed(0)}B</div>
-            <div className="text-xs text-gray-500">FY {year} {scope} budget</div>
+            <div className="text-xs text-gray-400">FY {year} {scope} budget</div>
           </div>
           <div className="p-4 space-y-2">
             {sortedCats.map((c, i) => (
@@ -65,16 +65,16 @@ export function BudgetVisualizer() {
                   <span className="w-3 h-3 rounded" style={{ backgroundColor: c.color }} />
                   <span className="text-white">{c.name}</span>
                   <span className="ml-auto tabular-nums text-cyan-300">${c.amountBillions.toFixed(1)}B</span>
-                  <span className="tabular-nums text-gray-500 w-12 text-right">{c.pctOfTotal.toFixed(1)}%</span>
+                  <span className="tabular-nums text-gray-400 w-12 text-right">{c.pctOfTotal.toFixed(1)}%</span>
                   <span className={cn('tabular-nums w-14 text-right',
-                    c.yoyChangePct > 0 ? 'text-green-400' : c.yoyChangePct < 0 ? 'text-red-400' : 'text-gray-500'
+                    c.yoyChangePct > 0 ? 'text-green-400' : c.yoyChangePct < 0 ? 'text-red-400' : 'text-gray-400'
                   )}>{c.yoyChangePct > 0 ? '+' : ''}{c.yoyChangePct.toFixed(1)}%</span>
                 </div>
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div className="h-full transition-all" style={{ width: `${c.pctOfTotal}%`, backgroundColor: c.color }} />
                 </div>
                 {i === 0 && (
-                  <div className="text-[9px] text-gray-500 mt-0.5">Largest single budget line</div>
+                  <div className="text-[9px] text-gray-400 mt-0.5">Largest single budget line</div>
                 )}
               </div>
             ))}

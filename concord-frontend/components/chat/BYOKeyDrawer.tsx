@@ -180,7 +180,7 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
         {okMsg && <div className="mb-3 p-2 rounded bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs">{okMsg}</div>}
 
         <fieldset className="space-y-2 mb-5 p-3 rounded-lg border border-white/10 bg-white/[0.02]">
-          <legend className="px-1 text-xs uppercase tracking-wide text-gray-500">Add / replace</legend>
+          <legend className="px-1 text-xs uppercase tracking-wide text-gray-400">Add / replace</legend>
           <label className="block">
             <span className="text-xs text-gray-400">Slot</span>
             <select
@@ -238,11 +238,11 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
         </fieldset>
 
         <div>
-          <h3 className="text-xs uppercase tracking-wide text-gray-500 mb-2">Active overrides</h3>
+          <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Active overrides</h3>
           {loading ? (
-            <p className="text-xs text-gray-500">Loading…</p>
+            <p className="text-xs text-gray-400">Loading…</p>
           ) : overrides.length === 0 ? (
-            <p className="text-xs text-gray-500">No overrides yet — Concord uses its built-in 5-brain Ollama setup.</p>
+            <p className="text-xs text-gray-400">No overrides yet — Concord uses its built-in 5-brain Ollama setup.</p>
           ) : (
             <ul className="space-y-2">
               {overrides.map((o) => {
@@ -268,7 +268,7 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
                         </button>
                         <button
                           onClick={() => toggle(o.slot, isActive)}
-                          className={`p-1.5 rounded ${isActive ? 'text-neon-cyan hover:bg-neon-cyan/15' : 'text-gray-500 hover:bg-white/5'}`}
+                          className={`p-1.5 rounded ${isActive ? 'text-neon-cyan hover:bg-neon-cyan/15' : 'text-gray-400 hover:bg-white/5'}`}
                           aria-label={`${isActive ? 'Disable' : 'Enable'} ${o.slot} override`}
                           title={isActive ? 'Active — click to disable' : 'Disabled — click to enable'}
                         >

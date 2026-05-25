@@ -28,7 +28,7 @@ export function EJScreenLookup() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapIcon className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">EPA EJScreen · environmental justice</span>
-        <span className="ml-auto text-[10px] text-gray-500">ejscreen.epa.gov</span>
+        <span className="ml-auto text-[10px] text-gray-400">ejscreen.epa.gov</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); lookup(); }} className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
         <input type="number" step="0.0001" value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} placeholder="Latitude" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -41,7 +41,7 @@ export function EJScreenLookup() {
       <div className="max-h-96 overflow-y-auto p-3">
         {error && <div className="text-center text-xs text-rose-300">{error}</div>}
         {!loading && !error && !result && (
-          <div className="px-3 py-8 text-center text-xs text-gray-500"><MapIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter coords to pull EPA environmental justice screening data for that area.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400"><MapIcon className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter coords to pull EPA environmental justice screening data for that area.</div>
         )}
         {result && (
           <div className="space-y-2">

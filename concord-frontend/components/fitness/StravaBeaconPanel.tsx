@@ -216,18 +216,18 @@ export function StravaBeaconPanel() {
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
-              <p className="text-[11px] text-zinc-500">Share this token with people you want to track you live.</p>
+              <p className="text-[11px] text-zinc-400">Share this token with people you want to track you live.</p>
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Time</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Time</p>
                   <p className="text-sm font-bold text-zinc-100">{durLabel(elapsed)}</p>
                 </div>
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Distance</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Distance</p>
                   <p className="text-sm font-bold text-zinc-100">{active.distanceKm} km</p>
                 </div>
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Last fix</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Last fix</p>
                   <p className="text-sm font-bold text-zinc-100 flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-orange-400" />
                     {active.position ? '✓' : '—'}
@@ -246,7 +246,7 @@ export function StravaBeaconPanel() {
             </>
           )}
           {active?.status === 'ended' && (
-            <p className="text-xs text-zinc-500">Beacon ended.</p>
+            <p className="text-xs text-zinc-400">Beacon ended.</p>
           )}
           {error && <p className="text-xs text-rose-400">{error}</p>}
         </div>
@@ -278,26 +278,26 @@ export function StravaBeaconPanel() {
             <>
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Status</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Status</p>
                   <p className={cn('text-sm font-bold capitalize', followed.status === 'live' ? 'text-rose-400' : 'text-zinc-400')}>
                     {followed.status}
                   </p>
                 </div>
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Distance</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Distance</p>
                   <p className="text-sm font-bold text-zinc-100">{followed.distanceKm} km</p>
                 </div>
                 <div className="rounded-lg bg-zinc-950 border border-zinc-800 px-2 py-1.5">
-                  <p className="text-[10px] uppercase text-zinc-500">Duration</p>
+                  <p className="text-[10px] uppercase text-zinc-400">Duration</p>
                   <p className="text-sm font-bold text-zinc-100">{durLabel(followed.durationSec)}</p>
                 </div>
               </div>
               {followed.position ? (
                 <MapView markers={followMarkers} height={220} />
               ) : (
-                <p className="text-xs text-zinc-500 italic">Waiting for the first position fix…</p>
+                <p className="text-xs text-zinc-400 italic">Waiting for the first position fix…</p>
               )}
-              <p className="text-[11px] text-zinc-500">Auto-refreshes every 10 seconds.</p>
+              <p className="text-[11px] text-zinc-400">Auto-refreshes every 10 seconds.</p>
             </>
           )}
         </div>

@@ -363,7 +363,7 @@ export default function EnergyLensPage() {
           )}
         </motion.div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>No energy assets tracked yet. Add assets to monitor energy production.</p>
         </div>
       )}
@@ -423,7 +423,7 @@ export default function EnergyLensPage() {
 
           <div className="space-y-2">
             {assets.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">
+              <p className="text-gray-400 text-sm text-center py-4">
                 No energy assets tracked yet.
               </p>
             ) : (
@@ -460,7 +460,7 @@ export default function EnergyLensPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleAction(asset.id)}
-                        className="text-gray-500 hover:text-neon-cyan"
+                        className="text-gray-400 hover:text-neon-cyan"
                         title="Run AI analysis"
                       >
                         <Zap className="w-4 h-4" />
@@ -474,14 +474,14 @@ export default function EnergyLensPage() {
                             } as unknown as Partial<Record<string, unknown>>,
                           })
                         }
-                        className="text-gray-500 hover:text-yellow-400"
+                        className="text-gray-400 hover:text-yellow-400"
                         title="Update"
                       >
                         <TrendingUp className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => remove(asset.id)}
-                        className="text-gray-500 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400"
                       aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -511,7 +511,7 @@ export default function EnergyLensPage() {
             <Plus className="w-4 h-4" /> Add Reading
           </button>
           {consumption.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">
+            <p className="text-gray-400 text-sm text-center py-4">
               No consumption data yet. Energy assets will generate consumption records over time.
             </p>
           ) : (
@@ -539,7 +539,7 @@ export default function EnergyLensPage() {
             <Zap className="w-4 h-4 text-yellow-500" /> Energy Mix
           </h3>
           {assets.length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">
+            <p className="text-gray-400 text-sm text-center py-4">
               Add energy assets to see the generation mix.
             </p>
           ) : (

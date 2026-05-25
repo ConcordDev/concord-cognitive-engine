@@ -160,7 +160,7 @@ export default function ClassroomPage() {
         </div>
 
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Teaching</h2>
-        {teaching.length === 0 ? <p className="text-zinc-500 italic mb-4">No cohorts you teach.</p> : (
+        {teaching.length === 0 ? <p className="text-zinc-400 italic mb-4">No cohorts you teach.</p> : (
           <ul className="space-y-1 mb-6">
             {teaching.map(c => (
               <li key={c.id}>
@@ -172,7 +172,7 @@ export default function ClassroomPage() {
                       ? 'bg-cyan-950/60 border-cyan-700/60'
                       : 'bg-zinc-900/80 border-zinc-700/50 hover:border-zinc-600'}`}
                 >
-                  <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
+                  <span className="text-zinc-100"><span className="font-mono text-zinc-400">#{c.id}</span> {c.name}</span>
                   <span className="text-zinc-400">{c.enrolled ?? 0} students</span>
                 </button>
               </li>
@@ -181,7 +181,7 @@ export default function ClassroomPage() {
         )}
 
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Studying</h2>
-        {studying.length === 0 ? <p className="text-zinc-500 italic">No cohorts you're enrolled in.</p> : (
+        {studying.length === 0 ? <p className="text-zinc-400 italic">No cohorts you're enrolled in.</p> : (
           <ul className="space-y-1">
             {studying.map(c => (
               <li key={c.id}>
@@ -193,8 +193,8 @@ export default function ClassroomPage() {
                       ? 'bg-cyan-950/60 border-cyan-700/60'
                       : 'bg-zinc-900/80 border-zinc-700/50 hover:border-zinc-600'}`}
                 >
-                  <span className="text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
-                  <span className="text-zinc-500 ml-2">teacher {c.teacher_user_id?.slice(0, 8)}</span>
+                  <span className="text-zinc-100"><span className="font-mono text-zinc-400">#{c.id}</span> {c.name}</span>
+                  <span className="text-zinc-400 ml-2">teacher {c.teacher_user_id?.slice(0, 8)}</span>
                 </button>
               </li>
             ))}

@@ -134,6 +134,7 @@ export default function registerSelfActions(registerLensAction) {
   // Idempotency: a sample equal in (metric, value, day, source) to an
   // existing reading is skipped so re-importing the same export is safe.
   registerLensAction("self", "importBatch", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const samples = Array.isArray(params.samples) ? params.samples : [];
     if (samples.length === 0) return { ok: false, error: "samples must be a non-empty array" };
@@ -160,10 +161,12 @@ export default function registerSelfActions(registerLensAction) {
       ok: true,
       result: { imported, skipped, total: rows.length, source, errors: errors.slice(0, 10) },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── trend — time-series for one metric (chart-ready) ────────────────
   registerLensAction("self", "trend", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const metric = normMetric(params.metric);
     if (!metric) return { ok: false, error: `metric must be one of: ${METRIC_KEYS.join(", ")}` };
@@ -200,12 +203,14 @@ export default function registerSelfActions(registerLensAction) {
         stats,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── correlate — cross-metric Pearson correlation ────────────────────
   // "You sleep better on workout days" style insight: pairs daily
   // series of two metrics on common days and computes r.
   registerLensAction("self", "correlate", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const readings = readingsFor(s, actor(ctx));
     const days = Math.max(14, Math.min(365, parseInt(params.days, 10) || 90));
@@ -261,7 +266,8 @@ export default function registerSelfActions(registerLensAction) {
     }
     links.sort((x, y) => Math.abs(y.r) - Math.abs(x.r));
     return { ok: true, result: { links: links.slice(0, 8), scanned: true, days } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── setGoal / goals — per-metric targets with progress rings ────────
   registerLensAction("self", "setGoal", (ctx, _a, params = {}) => {
@@ -291,6 +297,7 @@ export default function registerSelfActions(registerLensAction) {
   });
 
   registerLensAction("self", "goals", (ctx, _a, _params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const goalMap = s.goals.get(userId) || new Map();
@@ -326,10 +333,12 @@ export default function registerSelfActions(registerLensAction) {
       };
     });
     return { ok: true, result: { goals: rings, count: rings.length, available: METRICS } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── digest — generated daily / weekly "your day" recap ──────────────
   registerLensAction("self", "digest", (ctx, _a, params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const readings = readingsFor(s, userId);
@@ -383,7 +392,8 @@ export default function registerSelfActions(registerLensAction) {
         readingCount: cur.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── saveLayout / layout — customizable overview tiles ───────────────
   registerLensAction("self", "saveLayout", (ctx, _a, params = {}) => {
@@ -415,6 +425,7 @@ export default function registerSelfActions(registerLensAction) {
 
   // ─── streaks — consecutive-day logging streaks per subsystem ─────────
   registerLensAction("self", "streaks", (ctx, _a, _params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const readings = readingsFor(s, actor(ctx));
     const today = dayKey(Date.now());
@@ -471,10 +482,12 @@ export default function registerSelfActions(registerLensAction) {
         activeDays: anyDays.size,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── overview — combined dashboard payload (layout-aware) ────────────
   registerLensAction("self", "overview", (ctx, _a, _params = {}) => {
+  try {
     const s = getState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     const readings = readingsFor(s, userId);
@@ -508,5 +521,6 @@ export default function registerSelfActions(registerLensAction) {
         hasData: readings.length > 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

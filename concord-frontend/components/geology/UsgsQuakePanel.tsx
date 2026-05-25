@@ -92,7 +92,7 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
         <Activity className="w-4 h-4 text-amber-400" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">USGS · Earthquakes (24h)</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
-        <label className="text-[10px] text-zinc-500 flex items-center gap-1">
+        <label className="text-[10px] text-zinc-400 flex items-center gap-1">
           ≥M
           <select
             className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-zinc-200 font-mono text-[10px]"
@@ -107,14 +107,14 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
 
-      <div className="px-3 py-2 border-b border-zinc-800/40 text-[10px] text-zinc-500 flex items-center gap-2">
+      <div className="px-3 py-2 border-b border-zinc-800/40 text-[10px] text-zinc-400 flex items-center gap-2">
         <span>{total} events ≥M{minMag.toFixed(1)}</span>
         {updatedAt && <span className="ml-auto font-mono">updated {new Date(updatedAt * 1000).toLocaleTimeString()}</span>}
       </div>
@@ -127,7 +127,7 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
       )}
 
       {!error && quakes.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           No quakes ≥M{minMag.toFixed(1)} in the past 24 hours.
         </div>
       )}
@@ -151,12 +151,12 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
                   depth {q.depthKm?.toFixed(1) ?? '—'} km · {q.latitude?.toFixed(2)}°, {q.longitude?.toFixed(2)}° · {formatRelative(q.timeMs)}
                 </div>
               </div>
               {q.url && (
-                <a href={q.url} target="_blank" rel="noopener noreferrer" className="text-zinc-500 hover:text-amber-400 shrink-0" aria-label="USGS event details">
+                <a href={q.url} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-amber-400 shrink-0" aria-label="USGS event details">
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               )}
@@ -165,7 +165,7 @@ export function UsgsQuakePanel({ className, minMagnitude = 2.5 }: { className?: 
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: USGS Earthquake Catalog · auto-refresh 60s
         {loading && <Loader2 className="inline w-2.5 h-2.5 ml-1 animate-spin" aria-hidden="true" />}
       </footer>

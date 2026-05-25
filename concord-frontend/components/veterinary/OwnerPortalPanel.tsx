@@ -51,7 +51,7 @@ export function OwnerPortalPanel() {
         className="flex gap-2"
       >
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
           <input
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
@@ -82,11 +82,11 @@ export function OwnerPortalPanel() {
               <UserCircle className="h-8 w-8 text-pink-400" />
               <div>
                 <p className="text-sm font-semibold text-white">{data.owner}</p>
-                <p className="text-xs text-zinc-500">{data.petCount} pet(s) on file</p>
+                <p className="text-xs text-zinc-400">{data.petCount} pet(s) on file</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-wide text-zinc-500">Balance due</p>
+              <p className="text-[10px] uppercase tracking-wide text-zinc-400">Balance due</p>
               <p
                 className={`font-mono text-lg ${data.balanceDue > 0 ? 'text-red-300' : 'text-green-300'}`}
               >
@@ -180,7 +180,7 @@ export function OwnerPortalPanel() {
       )}
 
       {!data && !error && !loading && (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <UserCircle className="mx-auto mb-2 h-8 w-8 opacity-30" />
           Search an owner to open their portal view.
         </div>
@@ -209,5 +209,5 @@ function Section({
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-zinc-600">{children}</p>;
+  return <p className="text-xs text-zinc-400">{children}</p>;
 }

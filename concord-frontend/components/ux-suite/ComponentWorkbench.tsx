@@ -257,13 +257,13 @@ export function ComponentWorkbench() {
         <aside className="border-b border-zinc-800 lg:border-b-0 lg:border-r">
           <div className="p-3">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search components…"
                 aria-label="Search components"
-                className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-zinc-600 focus:border-fuchsia-500/50 focus:outline-none"
+                className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-2 text-xs text-white placeholder:text-zinc-400 focus:border-fuchsia-500/50 focus:outline-none"
               />
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
@@ -286,12 +286,12 @@ export function ComponentWorkbench() {
           </div>
           <div className="max-h-[460px] overflow-y-auto px-2 pb-3">
             {loadingCatalog && (
-              <div className="flex items-center gap-2 px-2 py-3 text-xs text-zinc-500">
+              <div className="flex items-center gap-2 px-2 py-3 text-xs text-zinc-400">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating catalog…
               </div>
             )}
             {!loadingCatalog && visible.length === 0 && (
-              <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-500">
+              <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">
                 No components match.
               </div>
             )}
@@ -305,7 +305,7 @@ export function ComponentWorkbench() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-mono text-[11px] font-semibold text-zinc-100">{c.name}</span>
-                    <span className="block truncate text-[10px] text-zinc-500">{c.group} · {c.propCount} props · {c.states.length} states</span>
+                    <span className="block truncate text-[10px] text-zinc-400">{c.group} · {c.propCount} props · {c.states.length} states</span>
                   </span>
                   <span
                     role="button"
@@ -321,14 +321,14 @@ export function ComponentWorkbench() {
             })}
           </div>
           {catalogSource && (
-            <p className="border-t border-zinc-900 px-3 py-1.5 text-[9px] text-zinc-600">{catalogSource}</p>
+            <p className="border-t border-zinc-900 px-3 py-1.5 text-[9px] text-zinc-400">{catalogSource}</p>
           )}
         </aside>
 
         {/* ── Right: workbench tabs ── */}
         <section className="min-w-0 p-3">
           {!selComp && (
-            <div className="flex h-64 items-center justify-center text-xs text-zinc-500">
+            <div className="flex h-64 items-center justify-center text-xs text-zinc-400">
               Select a component to inspect.
             </div>
           )}
@@ -342,7 +342,7 @@ export function ComponentWorkbench() {
                     <ExternalLink className="h-3 w-3" /> Live mount: {selComp.homeLabel}
                   </a>
                 </div>
-                {busy && <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />}
+                {busy && <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />}
               </div>
 
               {/* tabs */}
@@ -357,7 +357,7 @@ export function ComponentWorkbench() {
                   <button
                     key={id}
                     onClick={() => setTab(id)}
-                    className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-medium ${tab === id ? 'border-fuchsia-500 text-fuchsia-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}
+                    className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[11px] font-medium ${tab === id ? 'border-fuchsia-500 text-fuchsia-300' : 'border-transparent text-zinc-400 hover:text-zinc-300'}`}
                   >
                     <Icon className="h-3.5 w-3.5" /> {label}
                   </button>
@@ -379,7 +379,7 @@ export function ComponentWorkbench() {
                     ))}
                   </div>
                   <div className="rounded-lg border border-zinc-800 bg-[#0a0a0f] p-4">
-                    <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-600">
+                    <div className="mb-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400">
                       <span className="h-2 w-2 rounded-full bg-rose-500/60" />
                       <span className="h-2 w-2 rounded-full bg-amber-500/60" />
                       <span className="h-2 w-2 rounded-full bg-emerald-500/60" />
@@ -387,7 +387,7 @@ export function ComponentWorkbench() {
                     </div>
                     <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/60 p-5 text-center">
                       <p className="font-mono text-sm text-zinc-200">&lt;{selComp.name} /&gt;</p>
-                      <p className="mt-1 text-[11px] text-zinc-500">
+                      <p className="mt-1 text-[11px] text-zinc-400">
                         State: <span className="text-fuchsia-300">{previewState}</span>
                       </p>
                       {preview?.props != null && (
@@ -396,7 +396,7 @@ export function ComponentWorkbench() {
                         </pre>
                       )}
                       {(preview?.sandbox as { note?: string })?.note && (
-                        <p className="mt-2 text-[10px] text-zinc-600">{(preview!.sandbox as { note: string }).note}</p>
+                        <p className="mt-2 text-[10px] text-zinc-400">{(preview!.sandbox as { note: string }).note}</p>
                       )}
                     </div>
                   </div>
@@ -407,7 +407,7 @@ export function ComponentWorkbench() {
               {tab === 'props' && (
                 <div>
                   {schema.length === 0 && (
-                    <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-500">
+                    <p className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">
                       This component exposes no controllable props.
                     </p>
                   )}
@@ -451,7 +451,7 @@ export function ComponentWorkbench() {
                           </div>
                         )}
                         {propDefaults[p.key] !== propValues[p.key] && (
-                          <p className="mt-1 text-[9px] text-zinc-600">default: {String(propDefaults[p.key])}</p>
+                          <p className="mt-1 text-[9px] text-zinc-400">default: {String(propDefaults[p.key])}</p>
                         )}
                       </div>
                     ))}
@@ -484,7 +484,7 @@ export function ComponentWorkbench() {
                 <div className="space-y-3">
                   <div className="rounded-md border border-zinc-800 bg-[#0a0a0f]">
                     <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-1.5">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-500">usage.tsx</span>
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">usage.tsx</span>
                       <button onClick={copySnippet} className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-white">
                         {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                         {copied ? 'copied' : 'copy'}
@@ -493,7 +493,7 @@ export function ComponentWorkbench() {
                     <pre className="overflow-x-auto p-3 text-[11px] leading-relaxed text-zinc-300">{snippet.usage}</pre>
                   </div>
                   <div className="rounded-md border border-zinc-800 bg-[#0a0a0f]">
-                    <div className="border-b border-zinc-800 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
+                    <div className="border-b border-zinc-800 px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
                       props interface
                     </div>
                     <pre className="overflow-x-auto p-3 text-[11px] leading-relaxed text-zinc-400">{snippet.propsInterface}</pre>
@@ -523,7 +523,7 @@ export function ComponentWorkbench() {
                           <Icon className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${SEV_COLOR[f.severity] || 'text-zinc-400'}`} />
                           <div className="min-w-0">
                             <span className="font-mono text-[10px] text-zinc-400">{f.rule}</span>
-                            <span className="ml-1.5 rounded bg-zinc-800 px-1 text-[9px] uppercase text-zinc-500">{f.category}</span>
+                            <span className="ml-1.5 rounded bg-zinc-800 px-1 text-[9px] uppercase text-zinc-400">{f.category}</span>
                             <p className="text-[11px] text-zinc-300">{f.detail}</p>
                           </div>
                         </div>
@@ -531,7 +531,7 @@ export function ComponentWorkbench() {
                     })}
                   </div>
                   <div>
-                    <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Responsive</h4>
+                    <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Responsive</h4>
                     <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                       {a11y.responsive.map((r) => {
                         const Icon = BP_ICON[r.breakpoint] || Monitor;
@@ -540,15 +540,15 @@ export function ComponentWorkbench() {
                             <div className="flex items-center gap-1.5">
                               <Icon className="h-3.5 w-3.5 text-zinc-400" />
                               <span className="text-[11px] font-medium text-zinc-200">{r.label}</span>
-                              <span className="ml-auto font-mono text-[9px] text-zinc-500">{r.widthPx}px</span>
+                              <span className="ml-auto font-mono text-[9px] text-zinc-400">{r.widthPx}px</span>
                             </div>
-                            <p className="mt-1 text-[10px] text-zinc-500">{r.note}</p>
+                            <p className="mt-1 text-[10px] text-zinc-400">{r.note}</p>
                           </div>
                         );
                       })}
                     </div>
                   </div>
-                  <p className="text-[9px] text-zinc-600">{a11y.standard}</p>
+                  <p className="text-[9px] text-zinc-400">{a11y.standard}</p>
                 </div>
               )}
 

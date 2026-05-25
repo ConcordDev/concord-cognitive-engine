@@ -63,7 +63,7 @@ export function IdentityTimeline({ emergentId }: { emergentId: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading timeline…
       </div>
     );
@@ -91,7 +91,7 @@ export function IdentityTimeline({ emergentId }: { emergentId: string }) {
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-cyan-500/15 pb-3">
         <div>
           <h3 className="text-base font-semibold text-white">{em.given_name || em.id}</h3>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             {em.role || 'emergent'} · {em.naming_origin ? `named via ${em.naming_origin}` : 'unnamed origin'}
             {em.active ? ' · active' : ' · dormant'}
           </p>
@@ -113,14 +113,14 @@ export function IdentityTimeline({ emergentId }: { emergentId: string }) {
           ] as const).map(([label, n]) => (
             <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-2">
               <p className="text-lg font-bold text-white">{n}</p>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</p>
             </div>
           ))}
         </div>
       )}
 
       {events.length === 0 ? (
-        <p className="text-xs text-zinc-600">No recorded actions or decisions yet.</p>
+        <p className="text-xs text-zinc-400">No recorded actions or decisions yet.</p>
       ) : (
         <>
           <TimelineView events={events} height={110} />
@@ -135,8 +135,8 @@ export function IdentityTimeline({ emergentId }: { emergentId: string }) {
                   <Icon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-cyan-400" />
                   <div className="min-w-0 flex-1">
                     <p className="text-[12px] text-zinc-200">{t.label}</p>
-                    {t.detail && <p className="mt-0.5 truncate text-[11px] text-zinc-500">{t.detail}</p>}
-                    <p className="text-[10px] text-zinc-600">
+                    {t.detail && <p className="mt-0.5 truncate text-[11px] text-zinc-400">{t.detail}</p>}
+                    <p className="text-[10px] text-zinc-400">
                       {t.kind}
                       {t.status ? ` · ${t.status}` : ''}
                       {' · '}

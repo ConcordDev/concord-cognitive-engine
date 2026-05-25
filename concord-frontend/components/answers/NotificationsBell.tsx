@@ -99,9 +99,9 @@ export function NotificationsBell({ onOpenQuestion, refreshKey }: NotificationsB
             </button>
           </div>
           {loading ? (
-            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+            <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
           ) : items.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic text-center py-8">No notifications yet.</p>
+            <p className="text-xs text-zinc-400 italic text-center py-8">No notifications yet.</p>
           ) : (
             <ul>
               {items.map((n) => (
@@ -118,7 +118,7 @@ export function NotificationsBell({ onOpenQuestion, refreshKey }: NotificationsB
                     <div className="flex items-center gap-1.5">
                       {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />}
                       <span className="text-[10px] uppercase tracking-wide text-orange-400">{n.kind}</span>
-                      <span className="ml-auto text-[10px] text-zinc-600">
+                      <span className="ml-auto text-[10px] text-zinc-400">
                         {new Date(n.createdAt).toLocaleDateString()}
                       </span>
                     </div>

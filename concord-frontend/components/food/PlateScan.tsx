@@ -74,7 +74,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Camera className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Plate scan</span>
-        <span className="ml-auto text-[10px] text-gray-500">LLaVA vision</span>
+        <span className="ml-auto text-[10px] text-gray-400">LLaVA vision</span>
         {imageDataUrl && <button onClick={reset} className="p-1 text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>}
       </header>
       <div className="p-4">
@@ -84,7 +84,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
             <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-2 px-4 py-2 rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">
               <Upload className="w-4 h-4" /> Snap or pick a plate photo
             </button>
-            <p className="text-xs text-gray-500">~13-25% calorie estimate error per PlateLens benchmark</p>
+            <p className="text-xs text-gray-400">~13-25% calorie estimate error per PlateLens benchmark</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -97,7 +97,7 @@ export function PlateScan({ onLog }: PlateScanProps) {
                 <div className="bg-white/[0.02] rounded p-3">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="text-base font-bold text-white">{result.dish}</h3>
-                    <span className="text-[10px] text-gray-500">{Math.round(result.confidence * 100)}% confidence</span>
+                    <span className="text-[10px] text-gray-400">{Math.round(result.confidence * 100)}% confidence</span>
                   </div>
                   <div className="text-sm">
                     <span className="text-yellow-300 font-mono text-xl">{Math.round(result.estimatedCalories)} kcal</span>

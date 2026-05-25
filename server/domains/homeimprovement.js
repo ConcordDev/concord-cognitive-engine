@@ -135,6 +135,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
   });
 
   registerLensAction("home-improvement", "expense-log", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = hiProjects(s, hiActor(ctx)).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
@@ -148,9 +149,11 @@ export default function registerHomeImprovementActions(registerLensAction) {
     project.expenses.push(expense);
     saveHi();
     return { ok: true, result: { expense } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("home-improvement", "home-improvement-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const projects = hiProjects(s, hiActor(ctx));
     let budget = 0, spent = 0, tasks = 0, tasksDone = 0;
@@ -170,7 +173,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
         tasks, tasksDone,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Photo gallery — before/after rooms (per-user, STATE-backed) ────
   function hiList(s, key, userId) {
@@ -241,6 +245,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
   });
 
   registerLensAction("home-improvement", "board-idea-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = hiList(s, "boards", hiActor(ctx)).find((b) => b.id === params.boardId);
     if (!board) return { ok: false, error: "board not found" };
@@ -258,7 +263,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
     board.ideas.push(idea);
     saveHi();
     return { ok: true, result: { idea, boardId: board.id } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("home-improvement", "board-idea-delete", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -337,6 +343,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
   });
 
   registerLensAction("home-improvement", "pro-review-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pro = hiList(s, "pros", hiActor(ctx)).find((p) => p.id === params.proId);
     if (!pro) return { ok: false, error: "contractor not found" };
@@ -351,7 +358,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
     pro.reviews.push(review);
     saveHi();
     return { ok: true, result: { review, proId: pro.id } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("home-improvement", "pro-delete", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -503,6 +511,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
 
   // ─── Project timeline / Gantt with dependencies ────────────────────
   registerLensAction("home-improvement", "phase-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = hiProjects(s, hiActor(ctx)).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
@@ -522,7 +531,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
     project.phases.push(phase);
     saveHi();
     return { ok: true, result: { phase, projectId: project.id } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("home-improvement", "phase-update", (ctx, _a, params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -550,6 +560,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
   });
 
   registerLensAction("home-improvement", "gantt", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const project = hiProjects(s, hiActor(ctx)).find((p) => p.id === params.projectId);
     if (!project) return { ok: false, error: "project not found" };
@@ -600,7 +611,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
         avgProgress,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Maintenance reminders (seasonal home upkeep) ──────────────────
   const SEASONAL_TASKS = {
@@ -624,6 +636,7 @@ export default function registerHomeImprovementActions(registerLensAction) {
   });
 
   registerLensAction("home-improvement", "maintenance-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const task = hiClean(params.task, 200);
     if (!task) return { ok: false, error: "task description required" };
@@ -639,7 +652,8 @@ export default function registerHomeImprovementActions(registerLensAction) {
     hiList(s, "maintenance", hiActor(ctx)).push(reminder);
     saveHi();
     return { ok: true, result: { reminder } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("home-improvement", "maintenance-list", (ctx, _a, _params = {}) => {
     const s = getHiState(); if (!s) return { ok: false, error: "STATE unavailable" };

@@ -83,7 +83,7 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
           type="button"
           onClick={() => void fetchData(word)}
           disabled={loading || !word.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -91,7 +91,7 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={word}
@@ -108,11 +108,11 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
       )}
 
       {!error && !loading && entries.length === 0 && word.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No definitions for that word.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No definitions for that word.</div>
       )}
 
       {!error && !word.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Type a word to look it up.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Type a word to look it up.</div>
       )}
 
       {entries.length > 0 && (
@@ -126,7 +126,7 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
                   <button
                     type="button"
                     onClick={() => { try { new Audio(e.audio!).play(); } catch { /* silent */ } }}
-                    className="text-zinc-500 hover:text-sky-300 ml-auto"
+                    className="text-zinc-400 hover:text-sky-300 ml-auto"
                     aria-label="Play pronunciation"
                   >
                     <Volume2 className="w-3.5 h-3.5" />
@@ -135,14 +135,14 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
               </header>
               {e.meanings.map((m, mi) => (
                 <div key={mi} className="mb-2">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">{m.partOfSpeech}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">{m.partOfSpeech}</div>
                   <ol className="space-y-1 ml-3 list-decimal text-xs text-zinc-300">
                     {m.definitions.map((d, di) => (
                       <li key={di}>
                         {d.definition}
-                        {d.example && <div className="italic text-zinc-500 mt-0.5">— {d.example}</div>}
+                        {d.example && <div className="italic text-zinc-400 mt-0.5">— {d.example}</div>}
                         {d.synonyms.length > 0 && (
-                          <div className="text-[10px] text-zinc-500 mt-0.5">syn: {d.synonyms.slice(0, 4).join(', ')}</div>
+                          <div className="text-[10px] text-zinc-400 mt-0.5">syn: {d.synonyms.slice(0, 4).join(', ')}</div>
                         )}
                       </li>
                     ))}
@@ -150,14 +150,14 @@ export function DictionaryPanel({ domain, className }: DictionaryPanelProps) {
                 </div>
               ))}
               {e.origin && (
-                <div className="text-[10px] text-zinc-500 italic mt-1.5">Origin: {e.origin}</div>
+                <div className="text-[10px] text-zinc-400 italic mt-1.5">Origin: {e.origin}</div>
               )}
             </article>
           ))}
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Free Dictionary API (dictionaryapi.dev)
       </footer>
     </section>

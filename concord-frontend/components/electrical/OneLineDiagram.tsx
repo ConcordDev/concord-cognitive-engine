@@ -130,13 +130,13 @@ export function OneLineDiagram() {
           <div className="flex flex-wrap gap-1.5">
             {diagrams.map((d) => (
               <button key={d.id} type="button" onClick={() => setActiveId(d.id)} className={`rounded px-2.5 py-1 text-xs ${activeId === d.id ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-500/40' : 'border border-zinc-800 text-zinc-400 hover:text-white'}`}>
-                {d.name} <span className="font-mono text-[10px] text-zinc-500">{d.nodes.length}</span>
+                {d.name} <span className="font-mono text-[10px] text-zinc-400">{d.nodes.length}</span>
               </button>
             ))}
           </div>
         )}
 
-        {diagrams.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No diagrams yet. Name one and add a utility supply node to begin.</div>}
+        {diagrams.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No diagrams yet. Name one and add a utility supply node to begin.</div>}
 
         {active && (
           <>
@@ -163,14 +163,14 @@ export function OneLineDiagram() {
               <div className="space-y-1">
                 {active.nodes.map((n) => (
                   <div key={n.id} className="flex items-center justify-between rounded border border-cyan-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
-                    <span className="text-zinc-200">{n.label} <span className="text-zinc-500">· {n.kind.replace('_', ' ')}{n.rating ? ` · ${n.rating}` : ''}</span></span>
+                    <span className="text-zinc-200">{n.label} <span className="text-zinc-400">· {n.kind.replace('_', ' ')}{n.rating ? ` · ${n.rating}` : ''}</span></span>
                     <button type="button" onClick={() => removeNode.mutate(n.id)} className="text-zinc-600 hover:text-rose-300"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 ))}
               </div>
             )}
 
-            <button type="button" onClick={() => deleteDiagram.mutate(active.id)} className="text-[10px] text-zinc-600 hover:text-rose-400">Delete this diagram</button>
+            <button type="button" onClick={() => deleteDiagram.mutate(active.id)} className="text-[10px] text-zinc-400 hover:text-rose-400">Delete this diagram</button>
           </>
         )}
       </div>

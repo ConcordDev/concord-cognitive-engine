@@ -230,7 +230,7 @@ export default function FashionLensPage() {
 
         {actionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -257,7 +257,7 @@ export default function FashionLensPage() {
                     </div>
                     {Array.isArray(actionResult.dominantColors) && (actionResult.dominantColors as {color:string;count:number}[]).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 mb-2">Dominant Colors</p>
+                        <p className="text-xs text-gray-400 mb-2">Dominant Colors</p>
                         <div className="flex flex-wrap gap-2">
                           {(actionResult.dominantColors as {color:string;count:number}[]).map(c => (
                             <span key={c.color} className="text-xs px-2 py-1 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300 capitalize">{c.color} ×{c.count}</span>
@@ -369,7 +369,7 @@ export default function FashionLensPage() {
                         ))}
                       </div>
                     )}
-                    {actionResult.tip && <p className="text-xs text-gray-500 italic">{actionResult.tip as string}</p>}
+                    {actionResult.tip && <p className="text-xs text-gray-400 italic">{actionResult.tip as string}</p>}
                   </>
                 )}
               </div>
@@ -447,8 +447,8 @@ export default function FashionLensPage() {
         </div>
         {tab === 'wardrobe' && (
           <div className="flex gap-1 bg-lattice-surface p-0.5 rounded-lg border border-lattice-border">
-            <button onClick={() => setViewMode('grid')} className={cn('p-1.5 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="Grid3 x3"><Grid3X3 className="w-4 h-4" /></button>
-            <button onClick={() => setViewMode('list')} className={cn('p-1.5 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-500')} aria-label="List view"><List className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('grid')} className={cn('p-1.5 rounded', viewMode === 'grid' ? 'bg-white/10 text-white' : 'text-gray-400')} aria-label="Grid3 x3"><Grid3X3 className="w-4 h-4" /></button>
+            <button onClick={() => setViewMode('list')} className={cn('p-1.5 rounded', viewMode === 'list' ? 'bg-white/10 text-white' : 'text-gray-400')} aria-label="List view"><List className="w-4 h-4" /></button>
           </div>
         )}
       </div>
@@ -458,7 +458,7 @@ export default function FashionLensPage() {
         <>
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search wardrobe..." className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm" />
             </div>
             <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="input-lattice w-40">
@@ -485,9 +485,9 @@ export default function FashionLensPage() {
                     <h3 className="font-semibold text-white truncate">{g.name}</h3>
                     <div className="flex items-center gap-1">
                       <button onClick={() => toggleFavorite(g.id)} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Like">
-                        <Heart className={cn('w-4 h-4', favorites.has(g.id) ? 'fill-pink-500 text-pink-500' : 'text-gray-500')} />
+                        <Heart className={cn('w-4 h-4', favorites.has(g.id) ? 'fill-pink-500 text-pink-500' : 'text-gray-400')} />
                       </button>
-                      <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+                      <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5 text-xs mb-2">
@@ -530,7 +530,7 @@ export default function FashionLensPage() {
                   <div className="flex items-center gap-3">
                     {g.condition && <span className={cn('text-[10px] px-2 py-0.5 rounded border', CONDITION_COLORS[g.condition])}>{g.condition}</span>}
                     {g.price > 0 && <span className="text-sm font-medium text-neon-green">${g.price}</span>}
-                    <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
+                    <button onClick={() => remove(g.id)} disabled={deleteMut.isPending} className="p-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400">{deleteMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}</button>
                   </div>
                 </motion.div>
               ))}
@@ -561,7 +561,7 @@ export default function FashionLensPage() {
             <div className="panel p-8 text-center">
               <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-600" />
               <p className="text-gray-400 text-sm">No outfits created yet.</p>
-              <p className="text-xs text-gray-600 mt-1">Combine wardrobe items into outfit combos.</p>
+              <p className="text-xs text-gray-400 mt-1">Combine wardrobe items into outfit combos.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -608,7 +608,7 @@ export default function FashionLensPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {item.price > 0 && <span className="text-sm text-neon-green">${item.price}</span>}
-                    <button onClick={() => setWishlist(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400" aria-label="Close"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setWishlist(prev => prev.filter((_, j) => j !== i))} className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400" aria-label="Close"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 </motion.div>
               ))}

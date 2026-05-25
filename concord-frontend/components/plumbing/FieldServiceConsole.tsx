@@ -75,7 +75,7 @@ const SECTIONS: { id: Section; label: string; icon: typeof Calendar }[] = [
   { id: 'inventory', label: 'Parts Inventory', icon: Boxes },
 ];
 
-const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600';
+const inputCls = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400';
 const btnCls = 'inline-flex items-center gap-1 rounded bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-40';
 const cardCls = 'rounded-lg border border-zinc-800 bg-zinc-950/60 p-3';
 
@@ -475,12 +475,12 @@ export function FieldServiceConsole() {
                     <span className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.baseColor }} />
                       <span className="text-white">{t.name}</span>
-                      <span className="text-zinc-500">{t.openJobs ?? 0} open</span>
+                      <span className="text-zinc-400">{t.openJobs ?? 0} open</span>
                     </span>
                     <button onClick={() => removeTech(t.id)} aria-label="Remove technician" className="text-zinc-600 hover:text-rose-400"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
                 ))}
-                {techs.length === 0 && <p className="text-xs text-zinc-600">No technicians yet.</p>}
+                {techs.length === 0 && <p className="text-xs text-zinc-400">No technicians yet.</p>}
               </div>
             </div>
 
@@ -524,11 +524,11 @@ export function FieldServiceConsole() {
                     <span className="flex items-center gap-2 font-medium text-white">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: lane.baseColor }} />{lane.techName}
                     </span>
-                    <span className="text-zinc-500">{lane.loadHours}h scheduled</span>
+                    <span className="text-zinc-400">{lane.loadHours}h scheduled</span>
                   </div>
                   <div className="divide-y divide-zinc-900">
                     {lane.assignments.map((a) => <AssignmentRow key={a.id} a={a} onUpdate={updateAssignment} onComplete={completeJob} />)}
-                    {lane.assignments.length === 0 && <p className="px-2 py-1.5 text-[11px] text-zinc-600">No jobs.</p>}
+                    {lane.assignments.length === 0 && <p className="px-2 py-1.5 text-[11px] text-zinc-400">No jobs.</p>}
                   </div>
                 </div>
               ))}
@@ -540,7 +540,7 @@ export function FieldServiceConsole() {
                   </div>
                 </div>
               )}
-              {lanes.length === 0 && unassigned.length === 0 && <p className="text-xs text-zinc-600">No scheduled jobs.</p>}
+              {lanes.length === 0 && unassigned.length === 0 && <p className="text-xs text-zinc-400">No scheduled jobs.</p>}
             </div>
           </div>
         </div>
@@ -564,7 +564,7 @@ export function FieldServiceConsole() {
           </div>
           <div className={cardCls}>
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-zinc-500"><th className="py-1">Item</th><th>Kind</th><th>Cost</th><th>Markup</th><th>Price</th><th /></tr></thead>
+              <thead><tr className="text-left text-zinc-400"><th className="py-1">Item</th><th>Kind</th><th>Cost</th><th>Markup</th><th>Price</th><th /></tr></thead>
               <tbody>
                 {priceItems.map((i) => (
                   <tr key={i.id} className="border-t border-zinc-900 text-white">
@@ -581,7 +581,7 @@ export function FieldServiceConsole() {
                 ))}
               </tbody>
             </table>
-            {priceItems.length === 0 && <p className="text-xs text-zinc-600">No price book items yet.</p>}
+            {priceItems.length === 0 && <p className="text-xs text-zinc-400">No price book items yet.</p>}
           </div>
         </div>
       )}
@@ -626,7 +626,7 @@ export function FieldServiceConsole() {
                       <span className="font-medium text-white">{inv.number} · {inv.client || 'No client'}</span>
                       <span className={`rounded px-1.5 py-0.5 text-[10px] ${inv.status === 'paid' ? 'bg-emerald-500/20 text-emerald-300' : inv.status === 'partial' ? 'bg-amber-500/20 text-amber-300' : 'bg-sky-500/20 text-sky-300'}`}>{inv.status}</span>
                     </div>
-                    <div className="mt-1 text-zinc-500">{inv.lines.length} lines · subtotal ${inv.subtotal} · tax ${inv.tax} · <span className="text-white">total ${inv.total}</span></div>
+                    <div className="mt-1 text-zinc-400">{inv.lines.length} lines · subtotal ${inv.subtotal} · tax ${inv.tax} · <span className="text-white">total ${inv.total}</span></div>
                     <div className="mt-1.5 flex items-center justify-between">
                       <span className="text-zinc-400">Paid ${inv.amountPaid} · Balance <span className="text-amber-300">${balance}</span></span>
                       {balance > 0 && <button onClick={() => recordPayment(inv.id, balance)} className={btnCls}><Check className="h-3.5 w-3.5" /> Record Payment</button>}
@@ -634,7 +634,7 @@ export function FieldServiceConsole() {
                   </div>
                 );
               })}
-              {invoices.length === 0 && <p className="text-xs text-zinc-600">No invoices yet.</p>}
+              {invoices.length === 0 && <p className="text-xs text-zinc-400">No invoices yet.</p>}
             </div>
           </div>
         </div>
@@ -664,7 +664,7 @@ export function FieldServiceConsole() {
                 {activeWf.checklist.map((c, idx) => (
                   <label key={idx} className="flex items-center gap-2 text-xs text-zinc-300">
                     <input type="checkbox" checked={c.done} onChange={(e) => toggleCheck(idx, e.target.checked)} />
-                    <span className={c.done ? 'text-zinc-500 line-through' : ''}>{c.label}</span>
+                    <span className={c.done ? 'text-zinc-400 line-through' : ''}>{c.label}</span>
                   </label>
                 ))}
               </div>
@@ -675,7 +675,7 @@ export function FieldServiceConsole() {
                     <input className={`${inputCls} flex-1`} placeholder="Photo caption" value={wfPhotoCaption} onChange={(e) => setWfPhotoCaption(e.target.value)} />
                     <button className={btnCls} onClick={addPhoto} disabled={busy}>Add</button>
                   </div>
-                  <ul className="mt-1.5 space-y-0.5 text-[11px] text-zinc-500">
+                  <ul className="mt-1.5 space-y-0.5 text-[11px] text-zinc-400">
                     {activeWf.photos.map((p) => <li key={p.id}>📷 {p.caption}</li>)}
                   </ul>
                 </div>
@@ -724,12 +724,12 @@ export function FieldServiceConsole() {
                 <div key={p.id} className="flex items-center justify-between rounded border border-zinc-800 p-2 text-xs">
                   <div>
                     <span className="font-medium text-white">{p.client} · {p.title}</span>
-                    <div className="text-zinc-500">{p.cadence} · ${p.fee} · next {p.nextVisit} · {p.visitsCompleted} visits done</div>
+                    <div className="text-zinc-400">{p.cadence} · ${p.fee} · next {p.nextVisit} · {p.visitsCompleted} visits done</div>
                   </div>
                   <button onClick={() => logVisit(p.id)} className={btnCls}><Check className="h-3.5 w-3.5" /> Log Visit</button>
                 </div>
               ))}
-              {plans.length === 0 && <p className="text-xs text-zinc-600">No service plans yet.</p>}
+              {plans.length === 0 && <p className="text-xs text-zinc-400">No service plans yet.</p>}
             </div>
           </div>
         </div>
@@ -766,12 +766,12 @@ export function FieldServiceConsole() {
                 <div key={n.id} className="rounded border border-zinc-800 px-2 py-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-white">{n.client}</span>
-                    <span className="text-zinc-500">{n.kind} · {n.channel}</span>
+                    <span className="text-zinc-400">{n.kind} · {n.channel}</span>
                   </div>
                   <p className="mt-0.5 text-zinc-400">{n.message}</p>
                 </div>
               ))}
-              {notices.length === 0 && <p className="text-xs text-zinc-600">No notifications sent.</p>}
+              {notices.length === 0 && <p className="text-xs text-zinc-400">No notifications sent.</p>}
             </div>
           </div>
         </div>
@@ -796,12 +796,12 @@ export function FieldServiceConsole() {
           </div>
           <div className={cardCls}>
             <table className="w-full text-xs">
-              <thead><tr className="text-left text-zinc-500"><th className="py-1">Part</th><th>SKU</th><th>On Hand</th><th>Reorder At</th><th>Unit Cost</th><th>Value</th></tr></thead>
+              <thead><tr className="text-left text-zinc-400"><th className="py-1">Part</th><th>SKU</th><th>On Hand</th><th>Reorder At</th><th>Unit Cost</th><th>Value</th></tr></thead>
               <tbody>
                 {parts.map((p) => (
                   <tr key={p.id} className={`border-t border-zinc-900 ${p.onHand <= p.reorderAt ? 'text-amber-300' : 'text-white'}`}>
                     <td className="py-1.5">{p.name}</td>
-                    <td className="text-zinc-500">{p.sku || '—'}</td>
+                    <td className="text-zinc-400">{p.sku || '—'}</td>
                     <td>{p.onHand}</td>
                     <td>{p.reorderAt}</td>
                     <td>${p.unitCost.toFixed(2)}</td>
@@ -810,7 +810,7 @@ export function FieldServiceConsole() {
                 ))}
               </tbody>
             </table>
-            {parts.length === 0 && <p className="text-xs text-zinc-600">No parts stocked. Parts deduct automatically when a job is completed on the dispatch board.</p>}
+            {parts.length === 0 && <p className="text-xs text-zinc-400">No parts stocked. Parts deduct automatically when a job is completed on the dispatch board.</p>}
           </div>
         </div>
       )}
@@ -822,7 +822,7 @@ function Stat({ label, value, tone }: { label: string; value: string | number; t
   const color = tone === 'bad' ? 'text-rose-300' : tone === 'warn' ? 'text-amber-300' : 'text-blue-300';
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-lg ${color}`}>{value}</div>
     </div>
   );
@@ -841,7 +841,7 @@ function AssignmentRow({
       <div className="min-w-0">
         <span className="font-medium text-white">{a.jobTitle}</span>
         <span className={`ml-2 ${PRIORITY_COLOR[a.priority] || 'text-zinc-400'}`}>{a.priority}</span>
-        <div className="truncate text-zinc-500">{a.client} · {a.address || 'no address'} · {a.date} {a.startHour}:00 ({a.durationHours}h)</div>
+        <div className="truncate text-zinc-400">{a.client} · {a.address || 'no address'} · {a.date} {a.startHour}:00 ({a.durationHours}h)</div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {techs && (

@@ -197,7 +197,7 @@ export function ArtActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -208,7 +208,7 @@ export function ArtActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Harmony</div>
             <div className="text-sm font-semibold text-zinc-100 capitalize">{harmonyResult.harmony} · {harmonyResult.mood}</div>
-            {harmonyResult.balanceScore != null && <div className="text-[10px] text-zinc-500">balance {harmonyResult.balanceScore}</div>}
+            {harmonyResult.balanceScore != null && <div className="text-[10px] text-zinc-400">balance {harmonyResult.balanceScore}</div>}
           </div>
         )}
         {compositionResult && (
@@ -234,7 +234,7 @@ export function ArtActionPanel() {
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Style</div>
             <div className="text-sm font-semibold text-zinc-100 capitalize">{styleResult.style} · {styleResult.period}</div>
-            {styleResult.confidence != null && <div className="text-[10px] text-zinc-500">confidence {Math.round(styleResult.confidence * 100)}%</div>}
+            {styleResult.confidence != null && <div className="text-[10px] text-zinc-400">confidence {Math.round(styleResult.confidence * 100)}%</div>}
           </div>
         )}
       </div>

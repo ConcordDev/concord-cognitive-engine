@@ -43,7 +43,7 @@ export function SyncthingReleases() {
         </span>
       </header>
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Pulling latest releases…
         </div>
       )}
@@ -65,17 +65,17 @@ export function SyncthingReleases() {
                   {r.prerelease && (
                     <span className="rounded bg-amber-900/50 px-1 text-[9px] uppercase text-amber-300">pre</span>
                   )}
-                  <ExternalLink className="h-3 w-3 text-zinc-500" />
+                  <ExternalLink className="h-3 w-3 text-zinc-400" />
                 </div>
               </div>
-              <p className="mt-0.5 text-[10px] text-zinc-500">
+              <p className="mt-0.5 text-[10px] text-zinc-400">
                 {r.publishedAt ? new Date(r.publishedAt).toLocaleDateString() : ''}
               </p>
             </a>
           </li>
         ))}
         {!loading && !err && releases.length === 0 && (
-          <li className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-500">
+          <li className="rounded border border-dashed border-zinc-800 p-3 text-center text-[11px] text-zinc-400">
             No releases.
           </li>
         )}

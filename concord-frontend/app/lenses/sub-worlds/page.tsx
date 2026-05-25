@@ -233,7 +233,7 @@ export default function SubWorldsPage() {
               className={`flex items-center gap-1.5 px-3 py-2 text-sm border-b-2 -mb-px focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                 tab === id
                   ? 'border-cyan-500 text-cyan-300'
-                  : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-300'
               }`}
             >
               <Icon className="h-4 w-4" /> {label}
@@ -245,7 +245,7 @@ export default function SubWorldsPage() {
         {tab === 'discover' && (
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <div className="relative flex-1 min-w-[180px]">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-500" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
               <input
                 type="text" placeholder="Search worlds…"
                 value={query}
@@ -277,7 +277,7 @@ export default function SubWorldsPage() {
 
         {/* World grid */}
         {worlds.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 py-10 text-center text-sm italic text-zinc-500">
+          <div className="rounded-xl border border-zinc-800 py-10 text-center text-sm italic text-zinc-400">
             {tab === 'discover' && 'No public sub-worlds match. Spawn one above.'}
             {tab === 'mine' && 'You have not spawned any sub-worlds yet.'}
             {tab === 'favorites' && 'No favorites yet — star a world to pin it here.'}
@@ -301,7 +301,7 @@ export default function SubWorldsPage() {
         {/* Owner tools row for "mine" tab */}
         {tab === 'mine' && worlds.length > 0 && (
           <div className="mt-4 space-y-2">
-            <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Owner tools</h3>
+            <h3 className="text-[11px] uppercase tracking-wider text-zinc-400">Owner tools</h3>
             <div className="flex flex-wrap gap-2">
               {worlds.filter((w) => w.is_owner).map((w) => (
                 <div key={w.world_id} className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1">

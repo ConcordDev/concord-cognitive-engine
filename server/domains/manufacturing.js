@@ -110,6 +110,7 @@ export default function registerManufacturingActions(registerLensAction) {
   });
 
   registerLensAction("manufacturing", "spc-chart", (ctx, _artifact, params = {}) => {
+  try {
     const state = getMfgState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
@@ -154,7 +155,8 @@ export default function registerManufacturingActions(registerLensAction) {
         source: "wired-feed",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────────
   // Parity backlog (vs Tulip / Plex MES) — full shop-floor execution layer.

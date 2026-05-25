@@ -257,7 +257,7 @@ export function WhiteboardActionPanel() {
         <Palette className="h-4 w-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-white">Whiteboard session</h3>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">excalidraw · miro</span>
-        {templates.length > 0 && <span className="ml-auto text-[10px] text-zinc-500">{templates.length} templates · {boards.length} boards</span>}
+        {templates.length > 0 && <span className="ml-auto text-[10px] text-zinc-400">{templates.length} templates · {boards.length} boards</span>}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -293,7 +293,7 @@ export function WhiteboardActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -304,7 +304,7 @@ export function WhiteboardActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex items-center gap-1.5"><FolderOpen className="w-3 h-3" /> Saved boards</div>
           {boards.slice(0, 10).map(b => (
             <button key={b.id} onClick={() => setSelectedBoardId(b.id)} className={cn('block w-full text-left text-[11px] py-0.5 px-1 hover:bg-zinc-800 rounded', selectedBoardId === b.id ? 'text-violet-300 font-semibold' : 'text-zinc-300')}>
-              <span className="font-mono text-zinc-500">{b.id.slice(0, 8)}</span> {b.name}
+              <span className="font-mono text-zinc-400">{b.id.slice(0, 8)}</span> {b.name}
             </button>
           ))}
         </div>

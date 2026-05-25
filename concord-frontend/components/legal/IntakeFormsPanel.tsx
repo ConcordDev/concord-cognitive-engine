@@ -184,7 +184,7 @@ export function IntakeFormsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Client Intake Forms</span>
-          <span className="text-[10px] text-gray-500">{forms.length}</span>
+          <span className="text-[10px] text-gray-400">{forms.length}</span>
           <button
             onClick={() => { setCreating((v) => !v); setError(null); }}
             className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-500 text-black font-semibold hover:bg-amber-400 inline-flex items-center gap-1"
@@ -213,7 +213,7 @@ export function IntakeFormsPanel() {
                 className="col-span-12 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
               />
             </div>
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold pt-1">Fields</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold pt-1">Fields</div>
             {draftFields.map((f, i) => (
               <div key={i} className="grid grid-cols-12 gap-2 items-center">
                 <input
@@ -268,11 +268,11 @@ export function IntakeFormsPanel() {
 
         <div className="max-h-72 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
             </div>
           ) : forms.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">
+            <div className="px-3 py-10 text-center text-xs text-gray-400">
               <ClipboardList className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No intake forms yet. Build one to capture prospective clients.
             </div>
@@ -292,7 +292,7 @@ export function IntakeFormsPanel() {
                       {f.name}
                       <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{f.matterType.replace(/_/g, ' ')}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       <span className="font-mono">{f.number}</span>
                       <span> · {f.fields.length} field(s)</span>
                       <span> · {f.submissionCount} submission(s)</span>
@@ -333,7 +333,7 @@ export function IntakeFormsPanel() {
               )}
               {selectedForm.fields.map((field) => (
                 <div key={field.key} className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                  <label className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">
                     {field.label}{field.required && <span className="text-rose-400"> *</span>}
                   </label>
                   {field.type === 'textarea' ? (
@@ -384,11 +384,11 @@ export function IntakeFormsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <UserPlus className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Submissions</span>
-          <span className="text-[10px] text-gray-500">{submissions.length}</span>
+          <span className="text-[10px] text-gray-400">{submissions.length}</span>
         </header>
         <div className="max-h-72 overflow-y-auto">
           {submissions.length === 0 ? (
-            <div className="px-3 py-8 text-center text-xs text-gray-500">No submissions yet.</div>
+            <div className="px-3 py-8 text-center text-xs text-gray-400">No submissions yet.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {submissions.map((sub) => (
@@ -401,7 +401,7 @@ export function IntakeFormsPanel() {
                         sub.status === 'converted' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300',
                       )}>{sub.status}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       <span className="font-mono">{sub.number}</span>
                       <span> · {sub.formName}</span>
                       {sub.contactEmail && <span> · {sub.contactEmail}</span>}

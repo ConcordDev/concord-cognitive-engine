@@ -224,7 +224,7 @@ export function RecipeKitchen() {
         <header className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
           <ChefHat className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Kitchen workbench</span>
-          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+          {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
           <button
             onClick={loadByStore}
             className="ml-auto inline-flex items-center gap-1.5 rounded border border-orange-500/30 px-2.5 py-1 text-xs text-orange-300 hover:bg-orange-500/10"
@@ -237,7 +237,7 @@ export function RecipeKitchen() {
           {/* Recipe picker */}
           <div className="border-b border-white/10 lg:border-b-0 lg:border-r">
             {recipes.length === 0 ? (
-              <p className="p-6 text-center text-xs text-gray-500">No recipes yet. Import one above to get started.</p>
+              <p className="p-6 text-center text-xs text-gray-400">No recipes yet. Import one above to get started.</p>
             ) : (
               <ul className="max-h-[420px] overflow-y-auto">
                 {recipes.map((r) => (
@@ -249,7 +249,7 @@ export function RecipeKitchen() {
                         selectedId === r.id ? 'bg-orange-500/10 text-orange-200' : 'text-gray-300 hover:bg-white/[0.03]',
                       )}
                     >
-                      <ChefHat className="w-3.5 h-3.5 shrink-0 text-gray-500" />
+                      <ChefHat className="w-3.5 h-3.5 shrink-0 text-gray-400" />
                       <span className="min-w-0 flex-1 truncate">{r.title}</span>
                       {r.ratings.length > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-300">
@@ -266,13 +266,13 @@ export function RecipeKitchen() {
           {/* Detail / actions */}
           <div className="p-4">
             {!selected ? (
-              <p className="py-10 text-center text-xs text-gray-500">Select a recipe to cook, rate, compute nutrition, or export.</p>
+              <p className="py-10 text-center text-xs text-gray-400">Select a recipe to cook, rate, compute nutrition, or export.</p>
             ) : (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-white">{selected.title}</div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-[11px] text-gray-400">
                       serves {selected.servings} · {selected.prepMin + selected.cookMin} min · {selected.ingredients.length} ingredients · {selected.steps.length} steps
                     </div>
                   </div>
@@ -320,7 +320,7 @@ export function RecipeKitchen() {
                       ].map(([label, val]) => (
                         <div key={String(label)} className="rounded bg-lattice-deep p-2 text-center">
                           <div className="text-base font-bold text-orange-400">{val}</div>
-                          <div className="text-[10px] text-gray-500">{label}</div>
+                          <div className="text-[10px] text-gray-400">{label}</div>
                         </div>
                       ))}
                     </div>
@@ -333,7 +333,7 @@ export function RecipeKitchen() {
                       showLegend={false}
                     />
                     {nutrition.resolvedCount < nutrition.ingredientCount && (
-                      <p className="mt-1.5 text-[10px] text-gray-500">
+                      <p className="mt-1.5 text-[10px] text-gray-400">
                         Unmatched: {nutrition.lines.filter((l) => !l.resolved).map((l) => l.ingredient).join(', ') || 'none'}
                       </p>
                     )}
@@ -416,23 +416,23 @@ export function RecipeKitchen() {
                     <History className="w-3 h-3" /> History
                   </div>
                   {busy === 'history' ? (
-                    <p className="text-xs text-gray-500">Loading…</p>
+                    <p className="text-xs text-gray-400">Loading…</p>
                   ) : !history || (history.ratingCount === 0 && history.timesCooked === 0) ? (
-                    <p className="text-xs text-gray-500">No ratings or cook log yet — rate it or log a cook above.</p>
+                    <p className="text-xs text-gray-400">No ratings or cook log yet — rate it or log a cook above.</p>
                   ) : (
                     <div className="space-y-2">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded bg-lattice-deep p-2 text-center">
                           <div className="text-base font-bold text-amber-400">{history.avgRating || '—'}</div>
-                          <div className="text-[10px] text-gray-500">avg ({history.ratingCount})</div>
+                          <div className="text-[10px] text-gray-400">avg ({history.ratingCount})</div>
                         </div>
                         <div className="rounded bg-lattice-deep p-2 text-center">
                           <div className="text-base font-bold text-emerald-400">{history.timesCooked}</div>
-                          <div className="text-[10px] text-gray-500">times cooked</div>
+                          <div className="text-[10px] text-gray-400">times cooked</div>
                         </div>
                         <div className="rounded bg-lattice-deep p-2 text-center">
                           <div className="text-xs font-bold text-gray-200">{history.lastCooked || '—'}</div>
-                          <div className="text-[10px] text-gray-500">last cooked</div>
+                          <div className="text-[10px] text-gray-400">last cooked</div>
                         </div>
                       </div>
                       {history.ratings.length > 0 && (
@@ -454,7 +454,7 @@ export function RecipeKitchen() {
                             <li key={ml.id} className="flex items-start gap-2 text-[11px]">
                               <CheckCircle2 className="mt-0.5 w-3 h-3 shrink-0 text-emerald-400" />
                               <span className="text-gray-300">{ml.date}</span>
-                              <span className="text-gray-500">{ml.note}</span>
+                              <span className="text-gray-400">{ml.note}</span>
                             </li>
                           ))}
                         </ul>
@@ -474,32 +474,32 @@ export function RecipeKitchen() {
           <div className="mb-2 flex items-center gap-2">
             <Store className="w-4 h-4 text-orange-400" />
             <span className="text-sm font-semibold text-gray-200">Shopping by store</span>
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-gray-400">
               {byStore.consolidatedFrom} items → {byStore.totalItems} after unit normalization · {byStore.storeCount} store(s)
             </span>
-            <button onClick={() => setByStore(null)} className="ml-auto text-gray-500 hover:text-white" aria-label="close">
+            <button onClick={() => setByStore(null)} className="ml-auto text-gray-400 hover:text-white" aria-label="close">
               <X className="w-4 h-4" />
             </button>
           </div>
           {byStore.stores.length === 0 ? (
-            <p className="py-6 text-center text-xs text-gray-500">Shopping list is empty — generate one from your meal plan first.</p>
+            <p className="py-6 text-center text-xs text-gray-400">Shopping list is empty — generate one from your meal plan first.</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {byStore.stores.map((st) => (
                 <div key={st.store} className="rounded border border-white/10 bg-black/30 p-3">
                   <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-orange-300">
                     <Store className="w-3 h-3" /> {st.store}
-                    <span className="ml-auto text-[10px] text-gray-500">{st.itemCount} items</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{st.itemCount} items</span>
                   </div>
                   {st.aisles.map((al) => (
                     <div key={al.aisle} className="mb-1.5">
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500">{al.aisle}</div>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400">{al.aisle}</div>
                       <ul className="space-y-0.5">
                         {al.items.map((it, i) => (
                           <li key={`${it.name}-${i}`} className="flex items-center gap-2 text-xs">
                             <span className={cn('flex-1', it.checked ? 'text-gray-600 line-through' : 'text-gray-200')}>{it.name}</span>
                             {it.qty !== null && (
-                              <span className="font-mono text-[10px] text-gray-500">
+                              <span className="font-mono text-[10px] text-gray-400">
                                 {it.qty} {it.unit}{it.normalized && <span className="ml-0.5 text-orange-400/70">·norm</span>}
                               </span>
                             )}

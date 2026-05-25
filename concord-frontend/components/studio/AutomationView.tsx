@@ -116,7 +116,7 @@ export function AutomationView({
 
   if (!track) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-gray-400">
         <div className="text-center">
           <PenTool className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Select a track to edit automation</p>
@@ -142,7 +142,7 @@ export function AutomationView({
             <button
               key={t.id}
               onClick={() => setTool(t.id)}
-              className={cn('p-1 rounded', tool === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('p-1 rounded', tool === t.id ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
               title={t.label}
             >
               <t.icon className="w-3.5 h-3.5" />
@@ -181,11 +181,11 @@ export function AutomationView({
       {/* Automation lanes */}
       <div className="flex-1 overflow-auto" ref={canvasRef}>
         {lanes.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
+          <div className="flex items-center justify-center h-full text-gray-400">
             <div className="text-center">
               <PenTool className="w-8 h-8 mx-auto mb-2 opacity-30" />
               <p className="text-xs">No automation lanes</p>
-              <p className="text-[10px] text-gray-600 mt-1">Click &quot;Add Parameter&quot; to start automating</p>
+              <p className="text-[10px] text-gray-400 mt-1">Click &quot;Add Parameter&quot; to start automating</p>
             </div>
           </div>
         ) : (
@@ -201,7 +201,7 @@ export function AutomationView({
                 </button>
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: lane.color || LANE_COLORS[laneIdx % LANE_COLORS.length] }} />
                 <span className="text-[10px] font-medium flex-1">{lane.parameterName}</span>
-                <span className="text-[8px] text-gray-500">{lane.points.length} pts</span>
+                <span className="text-[8px] text-gray-400">{lane.points.length} pts</span>
                 <button
                   onClick={() => onRemoveLane(track.id, lane.id)}
                   className="p-0.5 text-gray-600 hover:text-red-400"
@@ -218,8 +218,7 @@ export function AutomationView({
                   onClick={(e) => handleCanvasClick(e, lane.id)}
                   onMouseMove={(e) => handlePointDrag(e, lane.id)}
                   onMouseUp={handlePointDragEnd}
-                  onMouseLeave={handlePointDragEnd}
-                >
+                  onMouseLeave={handlePointDragEnd} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {/* Beat grid */}
                   {Array.from({ length: Math.ceil(lengthBeats / 4) }).map((_, i) => (
                     <div

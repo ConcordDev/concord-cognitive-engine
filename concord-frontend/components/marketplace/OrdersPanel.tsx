@@ -67,7 +67,7 @@ export function OrdersPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Package className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Orders</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All</option>
           <option value="paid">Paid (needs shipping)</option>
@@ -88,9 +88,9 @@ export function OrdersPanel() {
 
       <div className="max-h-[36rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Package className="w-6 h-6 mx-auto mb-2 opacity-30" />No orders in this view.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Package className="w-6 h-6 mx-auto mb-2 opacity-30" />No orders in this view.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(o => (
@@ -98,11 +98,11 @@ export function OrdersPanel() {
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', STATUS_COLOUR[o.status])}>{o.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-gray-500">{o.number}</span>
+                    <span className="font-mono text-[10px] text-gray-400">{o.number}</span>
                     <span className="truncate">{o.listingTitle}</span>
-                    <span className="text-[10px] text-gray-500">× {o.qty}</span>
+                    <span className="text-[10px] text-gray-400">× {o.qty}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 truncate">
+                  <div className="text-[10px] text-gray-400 truncate">
                     {o.buyerName}{o.buyerEmail && ` · ${o.buyerEmail}`} · placed {o.placedAt.slice(0, 10)}
                     {o.trackingNumber && <span> · 🚚 {o.carrier} {o.trackingNumber}</span>}
                   </div>

@@ -128,11 +128,11 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
         )}
 
         {loading ? (
-          <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
             <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
           </div>
         ) : empty || !econ ? (
-          <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">
             No quest data to analyze yet. Post quests to populate the reward economy.
           </div>
         ) : (
@@ -146,7 +146,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
 
             {chartData.length > 0 && (
               <div>
-                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">
                   Average reward by difficulty
                 </p>
                 <ChartKit
@@ -195,13 +195,13 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
           <Scale className="h-4 w-4 text-sky-400" />
           <h3 className="text-sm font-semibold text-white">Difficulty Balancer</h3>
         </div>
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Model a quest before posting — checks reward against the target range
           and suggests adjustments.
         </p>
         <div className="grid grid-cols-3 gap-2">
           <div>
-            <label className="text-[10px] text-zinc-500">Difficulty</label>
+            <label className="text-[10px] text-zinc-400">Difficulty</label>
             <select value={bDiff} onChange={(e) => setBDiff(e.target.value)}
               className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="easy">Easy</option>
@@ -211,12 +211,12 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-zinc-500">Reward (CC)</label>
+            <label className="text-[10px] text-zinc-400">Reward (CC)</label>
             <input type="number" value={bReward} onChange={(e) => setBReward(e.target.value)}
               className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
           </div>
           <div>
-            <label className="text-[10px] text-zinc-500">Completion rate</label>
+            <label className="text-[10px] text-zinc-400">Completion rate</label>
             <input type="number" step="0.05" min="0" max="1"
               value={bCompletion} onChange={(e) => setBCompletion(e.target.value)}
               className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
@@ -267,7 +267,7 @@ export function RewardsPanel({ refreshKey }: { refreshKey?: number }) {
 function Metric({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950/60 p-2.5">
-      <p className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</p>
       <p className={`text-sm font-bold ${accent}`}>{value}</p>
     </div>
   );

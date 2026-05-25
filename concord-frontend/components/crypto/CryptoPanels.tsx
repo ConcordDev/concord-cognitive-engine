@@ -48,22 +48,22 @@ export function WatchlistPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Eye className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Watchlist</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); add(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
         <input value={draft} onChange={e => setDraft(e.target.value)} placeholder="CoinGecko id (e.g. bitcoin, ethereum, solana)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
         <button type="submit" disabled={!draft.trim()} className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </form>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : list.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No tokens watched yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No tokens watched yet.</div>
       ) : (
         <ul className="divide-y divide-white/5">
           {list.map(w => (
             <li key={w.symbol} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3 group">
               <span className="text-sm font-semibold text-white w-20">{w.ticker}</span>
-              <span className="text-[11px] font-mono text-gray-500 flex-1">{w.symbol}</span>
+              <span className="text-[11px] font-mono text-gray-400 flex-1">{w.symbol}</span>
               <span className="text-sm font-mono text-white w-24 text-right">{w.priceUsd !== null ? `$${w.priceUsd.toLocaleString()}` : '—'}</span>
               <button onClick={() => remove(w.symbol)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-rose-500/20 text-rose-300"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -134,7 +134,7 @@ export function RecurringBuysPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Repeat className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Recurring buys (DCA)</span>
-        <span className="text-[10px] text-gray-500">{list.filter(r => r.active).length} active</span>
+        <span className="text-[10px] text-gray-400">{list.filter(r => r.active).length} active</span>
         <button onClick={runDue} disabled={running} className="ml-auto px-2.5 py-1 text-xs rounded border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 disabled:opacity-40 inline-flex items-center gap-1">
           {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}Run due
         </button>
@@ -158,11 +158,11 @@ export function RecurringBuysPanel() {
         <ul className="divide-y divide-white/5">
           {list.map(r => (
             <li key={r.id} className="px-4 py-2.5 hover:bg-white/[0.02] flex items-center gap-3">
-              <button onClick={() => toggle(r.id)} className={cn('p-1 rounded', r.active ? 'text-emerald-300' : 'text-gray-500')}>{r.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
+              <button onClick={() => toggle(r.id)} className={cn('p-1 rounded', r.active ? 'text-emerald-300' : 'text-gray-400')}>{r.active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
               <span className="text-sm font-semibold text-white w-16">{r.ticker}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white">${r.amountUsd.toFixed(2)} {r.cadence}</div>
-                <div className="text-[10px] text-gray-500">Next: {r.nextRunAt} · {r.runCount} run(s){r.lastRunAt && ` · last ${r.lastRunAt}`}</div>
+                <div className="text-[10px] text-gray-400">Next: {r.nextRunAt} · {r.runCount} run(s){r.lastRunAt && ` · last ${r.lastRunAt}`}</div>
               </div>
             </li>
           ))}
@@ -226,7 +226,7 @@ export function StakingPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Coins className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Staking</span>
-        <span className="text-[10px] text-gray-500">{list.filter(p => p.active).length} active</span>
+        <span className="text-[10px] text-gray-400">{list.filter(p => p.active).length} active</span>
         <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Stake</button>
       </header>
       {show && (
@@ -256,7 +256,7 @@ export function StakingPanel() {
               <span className="text-sm font-semibold text-white w-16">{p.ticker}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white">{p.qty.toFixed(4)} on {p.chain}{p.aprPct !== null && ` · ~${p.aprPct}% APR`}</div>
-                <div className="text-[10px] text-gray-500">{p.validator || 'no validator'} · since {p.stakedAt} · rewards $${p.cumulativeRewardsUsd.toFixed(2)}</div>
+                <div className="text-[10px] text-gray-400">{p.validator || 'no validator'} · since {p.stakedAt} · rewards $${p.cumulativeRewardsUsd.toFixed(2)}</div>
               </div>
               {p.active && (
                 <>
@@ -314,7 +314,7 @@ export function NFTsPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <ImageIcon className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">NFTs</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <button onClick={() => setShow(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
       </header>
       {show && (
@@ -339,8 +339,8 @@ export function NFTsPanel() {
               </div>
               <div className="p-2">
                 <div className="text-xs text-white truncate">{n.name}</div>
-                <div className="text-[10px] text-gray-500 truncate">{n.collection || n.chain}</div>
-                <div className="text-[10px] text-gray-500 font-mono">{n.tokenId ? `#${n.tokenId}` : ''}{n.costBasisUsd > 0 && ` · $${n.costBasisUsd.toFixed(0)} cost`}</div>
+                <div className="text-[10px] text-gray-400 truncate">{n.collection || n.chain}</div>
+                <div className="text-[10px] text-gray-400 font-mono">{n.tokenId ? `#${n.tokenId}` : ''}{n.costBasisUsd > 0 && ` · $${n.costBasisUsd.toFixed(0)} cost`}</div>
                 <button onClick={() => remove(n.id)} className="mt-1 opacity-0 group-hover:opacity-100 px-1.5 py-0.5 text-[10px] rounded text-rose-300 hover:bg-rose-500/20">Remove</button>
               </div>
             </div>
@@ -389,7 +389,7 @@ export function ActivityPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Activity className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Activity</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <select value={kind} onChange={e => setKind(e.target.value)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="all">All</option>
           {['buy','sell','receive','send','swap','stake','unstake','reward','fee'].map(k => <option key={k} value={k}>{k}</option>)}
@@ -400,10 +400,10 @@ export function ActivityPanel() {
           {list.map(t => (
             <li key={t.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
               <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', KIND_COLOUR[t.kind] || 'bg-white/5 text-gray-400')}>{t.kind}</span>
-              <span className="text-xs font-mono text-gray-500 w-20">{t.at}</span>
+              <span className="text-xs font-mono text-gray-400 w-20">{t.at}</span>
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white"><span className="font-semibold">{t.ticker}</span> · {t.qty.toFixed(6)} on {t.chain}</div>
-                {t.notes && <div className="text-[10px] text-gray-500 truncate">{t.notes}</div>}
+                {t.notes && <div className="text-[10px] text-gray-400 truncate">{t.notes}</div>}
               </div>
               <div className="text-sm font-mono text-white w-24 text-right">{t.totalUsd > 0 ? `$${t.totalUsd.toFixed(2)}` : '—'}</div>
               {t.realizedPnlUsd !== undefined && (
@@ -469,7 +469,7 @@ export function TaxPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Receipt className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Tax report</span>
-        {report && <span className="text-[10px] text-gray-500">{report.form}</span>}
+        {report && <span className="text-[10px] text-gray-400">{report.form}</span>}
         <select value={year} onChange={e => setYear(Number(e.target.value))} className="ml-auto text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white font-mono">
           {years.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
@@ -486,7 +486,7 @@ export function TaxPanel() {
           {(report.realizedShortTerm.length + report.realizedLongTerm.length) > 0 && (
             <div className="rounded border border-white/10 bg-black/30 overflow-hidden">
               <table className="w-full text-xs">
-                <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                   <tr><th className="text-left py-1.5 pl-3">Term</th><th>Symbol</th><th className="text-right">Qty</th><th className="text-right">Held days</th><th className="text-right">Cost</th><th className="text-right">Proceeds</th><th className="text-right pr-3">Gain</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -505,7 +505,7 @@ export function TaxPanel() {
               </table>
             </div>
           )}
-          <div className="text-[10px] text-gray-500 italic">NOT tax advice. Cost basis is FIFO. Reconcile with a tax professional before filing.</div>
+          <div className="text-[10px] text-gray-400 italic">NOT tax advice. Cost basis is FIFO. Reconcile with a tax professional before filing.</div>
         </div>
       )}
     </div>
@@ -541,12 +541,12 @@ export function InsightsPanel() {
       </header>
       <div className="p-4">
         {!data ? (
-          <div className="text-xs text-gray-500">Click Analyze to get a deterministic + optional brain-enhanced read on your portfolio: concentration risk, biggest winner/loser, factual observations. NOT financial advice.</div>
+          <div className="text-xs text-gray-400">Click Analyze to get a deterministic + optional brain-enhanced read on your portfolio: concentration risk, biggest winner/loser, factual observations. NOT financial advice.</div>
         ) : (
           <>
             <div className="rounded border border-blue-500/30 bg-blue-500/[0.04] p-3 text-sm text-blue-100">{data.insight}</div>
-            <div className="mt-2 text-[10px] text-gray-500">source: {data.source}{data.stats && ` · concentration ${data.stats.concentrationPct.toFixed(1)}%`}</div>
-            <div className="mt-2 text-[10px] text-gray-500 italic">NOT financial advice.</div>
+            <div className="mt-2 text-[10px] text-gray-400">source: {data.source}{data.stats && ` · concentration ${data.stats.concentrationPct.toFixed(1)}%`}</div>
+            <div className="mt-2 text-[10px] text-gray-400 italic">NOT financial advice.</div>
           </>
         )}
       </div>
@@ -556,15 +556,15 @@ export function InsightsPanel() {
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function Loading() { return <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>; }
-function Empty({ label }: { label: string }) { return <div className="px-3 py-10 text-center text-xs text-gray-500">{label}</div>; }
+function Loading() { return <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>; }
+function Empty({ label }: { label: string }) { return <div className="px-3 py-10 text-center text-xs text-gray-400">{label}</div>; }
 function Tile({ label, value, sub, tone = 'neutral', bold }: { label: string; value: string; sub?: string; tone?: 'positive' | 'negative' | 'amber' | 'neutral'; bold?: boolean }) {
   const colour = tone === 'positive' ? 'text-emerald-300' : tone === 'negative' ? 'text-rose-300' : tone === 'amber' ? 'text-amber-300' : 'text-white';
   return (
     <div className={cn('p-3 rounded border bg-black/30', bold ? 'border-blue-500/30' : 'border-white/10')}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-lg font-mono tabular-nums', colour, bold && 'text-xl font-bold')}>{value}</div>
-      {sub && <div className="text-[10px] text-gray-500 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
     </div>
   );
 }

@@ -50,9 +50,9 @@ function EntityAttributionCardInner({ entityId, compact = false }: EntityAttribu
       <div className="min-w-0">
         <p className="text-sm font-medium text-zinc-200">
           {resolved.displayName}
-          <span className="text-zinc-500 ml-1 text-xs">· {resolved.fullTitle}</span>
+          <span className="text-zinc-400 ml-1 text-xs">· {resolved.fullTitle}</span>
         </p>
-        <p className="text-[10px] text-zinc-500 font-mono">#{resolved.shortId}{entity.species ? ` · ${entity.species}` : ''}</p>
+        <p className="text-[10px] text-zinc-400 font-mono">#{resolved.shortId}{entity.species ? ` · ${entity.species}` : ''}</p>
         <div className="flex gap-3 text-xs text-zinc-400 flex-wrap">
           <span>Maturity: {(entity.organMaturity * 100).toFixed(0)}%</span>
           <span>Produced: {entity.totalArtifacts}</span>

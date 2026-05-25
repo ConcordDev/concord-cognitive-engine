@@ -98,7 +98,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Bills & cash flow</span>
-        <span className="ml-auto text-[10px] text-gray-500 font-mono">${monthlyTotal.toFixed(0)}/mo</span>
+        <span className="ml-auto text-[10px] text-gray-400 font-mono">${monthlyTotal.toFixed(0)}/mo</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white" title="New bill"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -120,7 +120,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
       {forecast && (
         <div className="px-4 py-3 border-b border-white/10">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] uppercase tracking-wider text-gray-500">60-day cash-flow forecast</span>
+            <span className="text-[11px] uppercase tracking-wider text-gray-400">60-day cash-flow forecast</span>
             <span className={cn('text-xs font-mono', forecast.finalBalance >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
               End: ${forecast.finalBalance.toFixed(0)}
             </span>
@@ -136,9 +136,9 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : bills.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No bills yet. Hit + to add.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No bills yet. Hit + to add.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {upcoming.map(b => (
@@ -152,7 +152,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
                     {b.name}
                     {b.autopay && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 inline-flex items-center gap-0.5"><Zap className="w-2.5 h-2.5" />AUTOPAY</span>}
                   </div>
-                  <div className="text-[10px] text-gray-500">{b.category} · {b.cadence}</div>
+                  <div className="text-[10px] text-gray-400">{b.category} · {b.cadence}</div>
                 </div>
                 <span className="font-mono text-sm text-white tabular-nums">${b.amount.toFixed(0)}</span>
                 <button onClick={() => pay(b.id)} className="p-1.5 rounded hover:bg-emerald-500/20 text-emerald-300" title="Mark paid"><Check className="w-3.5 h-3.5" /></button>
@@ -164,7 +164,7 @@ export function BillsCalendar({ startBalance = 2000 }: { startBalance?: number }
                 <div className="w-10 h-10 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-300"><Check className="w-4 h-4" /></div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate line-through">{b.name}</div>
-                  <div className="text-[10px] text-gray-500">Paid {b.lastPaidAt ? new Date(b.lastPaidAt).toLocaleDateString() : ''}</div>
+                  <div className="text-[10px] text-gray-400">Paid {b.lastPaidAt ? new Date(b.lastPaidAt).toLocaleDateString() : ''}</div>
                 </div>
                 <span className="font-mono text-xs text-gray-400 tabular-nums">${b.amount.toFixed(0)}</span>
               </li>

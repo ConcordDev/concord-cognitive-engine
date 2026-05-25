@@ -121,7 +121,7 @@ export function VideoLessonPlayer() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[200px]">
-          <label className="text-[10px] uppercase tracking-wider text-gray-500">Lesson ID</label>
+          <label className="text-[10px] uppercase tracking-wider text-gray-400">Lesson ID</label>
           <input
             value={lessonId}
             onChange={e => setLessonId(e.target.value)}
@@ -141,7 +141,7 @@ export function VideoLessonPlayer() {
       </div>
 
       {!activeLesson && (
-        <div className="text-center py-12 text-sm text-gray-500">
+        <div className="text-center py-12 text-sm text-gray-400">
           No lesson loaded yet. Enter a lesson ID to play and track video progress.
         </div>
       )}
@@ -161,8 +161,7 @@ export function VideoLessonPlayer() {
                 onClick={e => {
                   const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   seek(Math.round(((e.clientX - rect.left) / rect.width) * duration));
-                }}
-              >
+                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${pct}%` }} />
               </div>
               <div className="flex items-center gap-3">
@@ -173,7 +172,7 @@ export function VideoLessonPlayer() {
                   {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   {playing ? 'Pause' : 'Play'}
                 </button>
-                <label className="text-[10px] text-gray-500 flex items-center gap-1">
+                <label className="text-[10px] text-gray-400 flex items-center gap-1">
                   Duration
                   <input
                     type="number" min={1} value={duration}
@@ -221,7 +220,7 @@ export function VideoLessonPlayer() {
                 </button>
               </div>
             ) : cues.length === 0 ? (
-              <p className="text-xs text-gray-500 py-4">No transcript yet. Click Edit to author timed cues.</p>
+              <p className="text-xs text-gray-400 py-4">No transcript yet. Click Edit to author timed cues.</p>
             ) : (
               <div className="max-h-[420px] overflow-y-auto space-y-1 pr-1">
                 {cues.map((c, i) => (

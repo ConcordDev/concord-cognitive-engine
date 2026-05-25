@@ -241,12 +241,12 @@ export default function WiresDashboard() {
           <Tile label="OK" value={totals.ok} icon={CheckCircle2} tint="text-emerald-300" />
           <Tile label="Failed" value={totals.fail} icon={AlertTriangle} tint="text-rose-300" />
           <Tile label="Running" value={totals.running} icon={Loader2} tint="text-amber-300" />
-          <Tile label="Untested" value={totals.idle} icon={Database} tint="text-zinc-500" />
+          <Tile label="Untested" value={totals.idle} icon={Database} tint="text-zinc-400" />
         </div>
 
         <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
             <input
               type="search"
               value={filter}
@@ -265,11 +265,11 @@ export default function WiresDashboard() {
         </div>
 
         {discoveryQueries.isLoading && (
-          <div className="text-sm text-zinc-500 italic">Discovering wires...</div>
+          <div className="text-sm text-zinc-400 italic">Discovering wires...</div>
         )}
 
         {!discoveryQueries.isLoading && wires.length === 0 && (
-          <div className="rounded border border-zinc-800 bg-zinc-950/60 p-6 text-sm text-zinc-500 italic text-center">
+          <div className="rounded border border-zinc-800 bg-zinc-950/60 p-6 text-sm text-zinc-400 italic text-center">
             No live wires discovered. The backend may not be reachable or no live_* macros are registered for the known lens set.
           </div>
         )}
@@ -303,7 +303,7 @@ function Tile({ label, value, icon: Icon, tint }: { label: string; value: number
     <div className={cn('rounded border border-zinc-800 bg-zinc-950/60 p-3', tint)}>
       <div className="flex items-center gap-2">
         <Icon className="w-3.5 h-3.5" />
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-mono">{label}</div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-mono">{label}</div>
       </div>
       <div className="text-2xl font-bold tabular-nums mt-1">{value}</div>
     </div>
@@ -341,7 +341,7 @@ function WireRowCard({
             <span className="text-sm text-zinc-300 font-mono">{row.action}</span>
             <span className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded border', tier.tint)}>{tier.label}</span>
             {result.durationMs != null && (
-              <span className="text-[10px] text-zinc-500 font-mono">{result.durationMs}ms</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{result.durationMs}ms</span>
             )}
           </div>
           {result.reason && (
@@ -352,7 +352,7 @@ function WireRowCard({
           type="button"
           onClick={() => setExpanded(v => !v)}
           disabled={!result.envelope && !result.reason}
-          className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+          className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}

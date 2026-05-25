@@ -86,7 +86,7 @@ export default function DmcaPolicyPage() {
       {/* Page title */}
       <header className="mb-10">
         <h1 className="text-3xl font-bold text-white">DMCA Policy</h1>
-        <p className="mt-2 text-sm text-zinc-500">Effective Date: {EFFECTIVE_DATE}</p>
+        <p className="mt-2 text-sm text-zinc-400">Effective Date: {EFFECTIVE_DATE}</p>
         <p className="mt-4 text-zinc-400 leading-relaxed">
           Concord Cognitive Engine (&quot;Concord&quot;) respects the intellectual property rights of
           others and complies with the Digital Millennium Copyright Act of 1998 (the &quot;DMCA&quot;).
@@ -297,7 +297,7 @@ export default function DmcaPolicyPage() {
             </a>
           </p>
           <p className="mt-1">Subject Line: DMCA Takedown Notice</p>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             We aim to acknowledge all DMCA notices within 24 hours and take action within 48 hours
             of receiving a valid and complete notice.
           </p>
@@ -511,7 +511,7 @@ export default function DmcaPolicyPage() {
                 className="w-full rounded-lg border border-lattice-border bg-lattice-deep px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/30"
                 placeholder="Your full legal name"
               />
-              <p className="mt-1 text-xs text-zinc-600">
+              <p className="mt-1 text-xs text-zinc-400">
                 By typing your name above, you are signing this notice electronically under penalty
                 of perjury.
               </p>
@@ -520,7 +520,7 @@ export default function DmcaPolicyPage() {
 
           {/* Submit */}
           <div className="flex items-center justify-between border-t border-lattice-border pt-6">
-            <p className="text-xs text-zinc-600 max-w-md">
+            <p className="text-xs text-zinc-400 max-w-md">
               Submitting a false DMCA notice is a federal offense. Please review all information
               before submitting.
             </p>
@@ -535,7 +535,7 @@ export default function DmcaPolicyPage() {
         </form>
 
         {/* Closing */}
-        <div className="mt-12 border-t border-lattice-border pt-6 text-xs text-zinc-600">
+        <div className="mt-12 border-t border-lattice-border pt-6 text-xs text-zinc-400">
           <p>
             This DMCA Policy was last updated on {EFFECTIVE_DATE}. For questions about this policy,
             contact{' '}

@@ -225,7 +225,7 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                     <p className="text-sm text-gray-300 font-medium mb-1">
                       {domainLabel} Specialist
                     </p>
-                    <p className="text-xs text-gray-500 max-w-xs">
+                    <p className="text-xs text-gray-400 max-w-xs">
                       Ask me anything about {domainLabel.toLowerCase()}. I have
                       domain-specific context to help you. Press{' '}
                       <kbd className="px-1 py-0.5 text-[10px] font-mono bg-lattice-surface border border-lattice-border rounded">
@@ -324,7 +324,7 @@ export default function DomainAssistant({ domain, domainLabel }: DomainAssistant
                     <Send className="w-4 h-4" />
                   </button>
                 </div>
-                <p className="text-[10px] text-gray-500 text-center mt-2">
+                <p className="text-[10px] text-gray-400 text-center mt-2">
                   {modKey}+Enter to send &middot; {modKey}+/ to toggle
                 </p>
               </div>

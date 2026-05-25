@@ -117,7 +117,7 @@ export function KnowledgeGraphWorkbench() {
           <Network className="w-4 h-4 text-neon-cyan" />
           Knowledge-Graph Workbench
         </h2>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           <span>{graph.nodes.length} nodes</span>
           <span>{graph.edges.length} edges</span>
           <span>{graph.schemas.length} schemas</span>
@@ -141,7 +141,7 @@ export function KnowledgeGraphWorkbench() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-colors ${
-              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             }`}
           >
             <t.icon className="w-3.5 h-3.5" />
@@ -151,7 +151,7 @@ export function KnowledgeGraphWorkbench() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-gray-500 py-8 justify-center">
+        <div className="flex items-center gap-2 text-sm text-gray-400 py-8 justify-center">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading graph…
         </div>
       ) : (
@@ -313,7 +313,7 @@ function GraphTab({ graph, busy, mutate }: {
         <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">
           <p className="text-xs font-semibold uppercase text-gray-400 mb-2">Relationship Graph</p>
           {graph.nodes.length === 0 ? (
-            <p className="text-xs text-gray-600 py-6 text-center">No nodes yet. Add an entity above.</p>
+            <p className="text-xs text-gray-400 py-6 text-center">No nodes yet. Add an entity above.</p>
           ) : (
             <div className="max-h-[420px] overflow-y-auto">
               <TreeDiagram
@@ -329,12 +329,12 @@ function GraphTab({ graph, busy, mutate }: {
         {/* Selected node detail */}
         <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">
           {!selNode ? (
-            <p className="text-xs text-gray-600 py-6 text-center">Select a node in the graph to inspect and edit it.</p>
+            <p className="text-xs text-gray-400 py-6 text-center">Select a node in the graph to inspect and edit it.</p>
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold uppercase text-gray-400">Node Detail</p>
-                <button onClick={() => setSelected(null)} className="text-gray-500 hover:text-white" aria-label="Deselect">
+                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-white" aria-label="Deselect">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -362,16 +362,16 @@ function GraphTab({ graph, busy, mutate }: {
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
-              <p className="text-[11px] text-gray-500 font-mono">
+              <p className="text-[11px] text-gray-400 font-mono">
                 {selNode.entityType} · #{selNode.id}
                 {selNode.wikidataId && <span className="text-cyan-400"> · {selNode.wikidataId}</span>}
               </p>
 
               {/* Attributes with provenance */}
               <div className="space-y-1">
-                <p className="text-[10px] uppercase text-gray-500">Attributes</p>
+                <p className="text-[10px] uppercase text-gray-400">Attributes</p>
                 {Object.keys(selNode.attributes).length === 0 ? (
-                  <p className="text-[11px] text-gray-600">No attributes.</p>
+                  <p className="text-[11px] text-gray-400">No attributes.</p>
                 ) : (
                   Object.entries(selNode.attributes).map(([k, a]) => (
                     <div key={k} className="flex items-center gap-2 text-[11px] bg-zinc-950 rounded px-2 py-1 border border-zinc-800">
@@ -417,15 +417,15 @@ function GraphTab({ graph, busy, mutate }: {
 
               {/* Incident edges */}
               <div className="space-y-1">
-                <p className="text-[10px] uppercase text-gray-500">Edges</p>
+                <p className="text-[10px] uppercase text-gray-400">Edges</p>
                 {graph.edges.filter((e) => e.from === selNode.id || e.to === selNode.id).length === 0 ? (
-                  <p className="text-[11px] text-gray-600">No edges.</p>
+                  <p className="text-[11px] text-gray-400">No edges.</p>
                 ) : (
                   graph.edges.filter((e) => e.from === selNode.id || e.to === selNode.id).map((e) => {
                     const other = graph.nodes.find((n) => n.id === (e.from === selNode.id ? e.to : e.from));
                     return (
                       <div key={e.id} className="flex items-center gap-2 text-[11px] bg-zinc-950 rounded px-2 py-1 border border-zinc-800">
-                        <span className="text-gray-500">{e.from === selNode.id ? '→' : '←'}</span>
+                        <span className="text-gray-400">{e.from === selNode.id ? '→' : '←'}</span>
                         <span className="text-gray-300 flex-1 truncate">{other?.name || '?'}</span>
                         <span className="text-purple-300">{e.relType}</span>
                         <button
@@ -548,7 +548,7 @@ function SchemasTab({ schemas, busy, mutate }: {
       {/* Schema list */}
       <div className="space-y-2">
         {schemas.length === 0 ? (
-          <p className="text-xs text-gray-600">No entity classes defined yet.</p>
+          <p className="text-xs text-gray-400">No entity classes defined yet.</p>
         ) : (
           schemas.map((s) => (
             <div key={s.id} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">
@@ -558,13 +558,13 @@ function SchemasTab({ schemas, busy, mutate }: {
                   {s.className}
                 </span>
                 <div className="flex gap-2">
-                  <button onClick={() => startEdit(s)} className="text-gray-500 hover:text-white" aria-label="Edit schema">
+                  <button onClick={() => startEdit(s)} className="text-gray-400 hover:text-white" aria-label="Edit schema">
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
                     disabled={busy}
                     onClick={() => mutate('schema-delete', { id: s.id }, 'Schema deleted')}
-                    className="text-gray-500 hover:text-red-400"
+                    className="text-gray-400 hover:text-red-400"
                     aria-label="Delete schema"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -573,7 +573,7 @@ function SchemasTab({ schemas, busy, mutate }: {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {s.attributes.length === 0 ? (
-                  <span className="text-[11px] text-gray-600">No attributes</span>
+                  <span className="text-[11px] text-gray-400">No attributes</span>
                 ) : s.attributes.map((a) => (
                   <span key={a.name} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-gray-300">
                     {a.name}: <span className="text-cyan-300">{a.type}</span>
@@ -625,7 +625,7 @@ function MergeSplitTab({ graph, busy, mutate }: {
             key={m}
             onClick={() => setMode(m)}
             className={`py-1 px-3 rounded-md text-xs font-medium capitalize ${
-              mode === m ? 'bg-zinc-800 text-white' : 'text-zinc-500'
+              mode === m ? 'bg-zinc-800 text-white' : 'text-zinc-400'
             }`}
           >
             {m}
@@ -716,9 +716,9 @@ function MergeSplitTab({ graph, busy, mutate }: {
                 className="input-lattice text-sm w-full"
               />
               <div className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 space-y-1">
-                <p className="text-[10px] uppercase text-gray-500">Attributes to move</p>
+                <p className="text-[10px] uppercase text-gray-400">Attributes to move</p>
                 {Object.keys(splitNode.attributes).length === 0 ? (
-                  <p className="text-[11px] text-gray-600">Node has no attributes to split.</p>
+                  <p className="text-[11px] text-gray-400">Node has no attributes to split.</p>
                 ) : Object.entries(splitNode.attributes).map(([k, a]) => (
                   <label key={k} className="flex items-center gap-2 text-[11px] cursor-pointer">
                     <input
@@ -754,7 +754,7 @@ function NodeAttrList({ node }: { node: GraphNode }) {
   return (
     <div className="mt-2 flex flex-wrap gap-1">
       {keys.length === 0 ? (
-        <span className="text-[10px] text-gray-600">No attributes</span>
+        <span className="text-[10px] text-gray-400">No attributes</span>
       ) : keys.map((k) => (
         <span key={k} className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-gray-300">
           {k}
@@ -917,7 +917,7 @@ function ImportTab({ busy, mutate }: {
             key={id}
             onClick={() => setSub(id)}
             className={`py-1 px-3 rounded-md text-xs font-medium ${
-              sub === id ? 'bg-zinc-800 text-white' : 'text-zinc-500'
+              sub === id ? 'bg-zinc-800 text-white' : 'text-zinc-400'
             }`}
           >
             {label}
@@ -975,7 +975,7 @@ function ImportTab({ busy, mutate }: {
           </p>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
               <input
                 value={wdQuery}
                 onChange={(e) => setWdQuery(e.target.value)}
@@ -998,7 +998,7 @@ function ImportTab({ busy, mutate }: {
                 <span className="font-mono text-[10px] text-cyan-300 shrink-0">{m.id}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-white truncate">{m.label}</p>
-                  {m.description && <p className="text-[10px] text-gray-500 truncate">{m.description}</p>}
+                  {m.description && <p className="text-[10px] text-gray-400 truncate">{m.description}</p>}
                 </div>
                 <button
                   disabled={busy}
@@ -1014,7 +1014,7 @@ function ImportTab({ busy, mutate }: {
               </div>
             ))}
             {!wdSearching && wdResults.length === 0 && wdQuery.trim().length >= 2 && (
-              <p className="text-xs text-gray-600 text-center py-3">No results — search to load entities.</p>
+              <p className="text-xs text-gray-400 text-center py-3">No results — search to load entities.</p>
             )}
           </div>
         </div>
@@ -1056,13 +1056,13 @@ function ProvenanceTab() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-gray-500 py-6 justify-center">
+      <div className="flex items-center gap-2 text-sm text-gray-400 py-6 justify-center">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading provenance…
       </div>
     );
   }
   if (!data || data.totalAttributes === 0) {
-    return <p className="text-xs text-gray-600 py-4">No attributes recorded yet. Add attributes to nodes to track provenance.</p>;
+    return <p className="text-xs text-gray-400 py-4">No attributes recorded yet. Add attributes to nodes to track provenance.</p>;
   }
 
   return (
@@ -1101,7 +1101,7 @@ function ProvenanceTab() {
             <span className="font-mono text-cyan-300 w-24 truncate">{e.attribute}</span>
             <span className="text-gray-300 flex-1 truncate">{String(e.value)}</span>
             <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-gray-400">{e.source}</span>
-            {e.at && <span className="text-[9px] text-gray-600 tabular-nums">{new Date(e.at).toLocaleDateString()}</span>}
+            {e.at && <span className="text-[9px] text-gray-400 tabular-nums">{new Date(e.at).toLocaleDateString()}</span>}
           </div>
         ))}
       </div>

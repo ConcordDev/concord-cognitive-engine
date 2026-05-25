@@ -179,7 +179,7 @@ export default function BridgeLens() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Organism Bridge</h1>
-            <p className="text-sm text-zinc-500">Emergent ↔ Knowledge Organism Communication</p>
+            <p className="text-sm text-zinc-400">Emergent ↔ Knowledge Organism Communication</p>
           </div>
 
       {/* Real-time Enhancement Toolbar */}
@@ -215,7 +215,7 @@ export default function BridgeLens() {
           >
             <div className="flex items-center gap-2 mb-2">{stat.icon}</div>
             <p className={`text-2xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
-            <p className="text-xs text-zinc-500">{stat.label}</p>
+            <p className="text-xs text-zinc-400">{stat.label}</p>
           </motion.div>
         ))}
       </div>
@@ -263,7 +263,7 @@ export default function BridgeLens() {
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              tab === t ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>
+              tab === t ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>
             {tabIcons[t]}
             <span className="capitalize">{t}</span>
           </button>
@@ -313,7 +313,7 @@ export default function BridgeLens() {
           ))}
         </div>
         {bridgeItems.length === 0 && (
-          <p className="text-xs text-zinc-600 text-center py-1">No bridge connection artifact found — actions are unavailable.</p>
+          <p className="text-xs text-zinc-400 text-center py-1">No bridge connection artifact found — actions are unavailable.</p>
         )}
         {actionResult && (
           <motion.div
@@ -328,7 +328,7 @@ export default function BridgeLens() {
               </h3>
               <button
                 onClick={() => setActionResult(null)}
-                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                className="text-zinc-400 hover:text-zinc-300 transition-colors"
                 title="Dismiss"
               >
                 <XCircle className="w-4 h-4" />
@@ -360,15 +360,15 @@ export default function BridgeLens() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-green-400">{actionResult.healthy as number}</p>
-                    <p className="text-[10px] text-zinc-500">Healthy</p>
+                    <p className="text-[10px] text-zinc-400">Healthy</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-amber-400">{actionResult.degraded as number}</p>
-                    <p className="text-[10px] text-zinc-500">Degraded</p>
+                    <p className="text-[10px] text-zinc-400">Degraded</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-red-400">{actionResult.critical as number}</p>
-                    <p className="text-[10px] text-zinc-500">Critical</p>
+                    <p className="text-[10px] text-zinc-400">Critical</p>
                   </div>
                 </div>
                 {(actionResult.connections as Array<{ name: string; status: string; latencyMs: number; uptimePercent: number; errorRate: number; healthScore: number }>)?.map((conn, i) => (
@@ -418,20 +418,20 @@ export default function BridgeLens() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-zinc-200">{actionResult.total as number}</p>
-                    <p className="text-[10px] text-zinc-500">Total</p>
+                    <p className="text-[10px] text-zinc-400">Total</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-green-400">{actionResult.valid as number}</p>
-                    <p className="text-[10px] text-zinc-500">Valid</p>
+                    <p className="text-[10px] text-zinc-400">Valid</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-red-400">{actionResult.invalid as number}</p>
-                    <p className="text-[10px] text-zinc-500">Invalid</p>
+                    <p className="text-[10px] text-zinc-400">Invalid</p>
                   </div>
                 </div>
                 {(actionResult.transforms as string[])?.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-[10px] text-zinc-500 self-center mr-1">Transforms:</span>
+                    <span className="text-[10px] text-zinc-400 self-center mr-1">Transforms:</span>
                     {(actionResult.transforms as string[]).map((t, i) => (
                       <span key={i} className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded">{t}</span>
                     ))}
@@ -443,7 +443,7 @@ export default function BridgeLens() {
                     <span className="text-zinc-300 font-mono">{m.sourceField}</span>
                     <ArrowLeftRight className="w-3 h-3 text-zinc-600 flex-shrink-0" />
                     <span className="text-zinc-300 font-mono">{m.targetField}</span>
-                    <span className="ml-auto text-zinc-500">{m.transform}</span>
+                    <span className="ml-auto text-zinc-400">{m.transform}</span>
                   </div>
                 ))}
               </div>
@@ -470,23 +470,23 @@ export default function BridgeLens() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-zinc-200">{actionResult.totalSyncs as number}</p>
-                    <p className="text-[10px] text-zinc-500">Total Syncs</p>
+                    <p className="text-[10px] text-zinc-400">Total Syncs</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-cyan-400">{(actionResult.totalRecordsProcessed as number).toLocaleString()}</p>
-                    <p className="text-[10px] text-zinc-500">Records</p>
+                    <p className="text-[10px] text-zinc-400">Records</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-red-400">{actionResult.totalErrors as number}</p>
-                    <p className="text-[10px] text-zinc-500">Errors</p>
+                    <p className="text-[10px] text-zinc-400">Errors</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-amber-400">{actionResult.errorRate as number}%</p>
-                    <p className="text-[10px] text-zinc-500">Error Rate</p>
+                    <p className="text-[10px] text-zinc-400">Error Rate</p>
                   </div>
                 </div>
                 {actionResult.lastSync !== 'never' && (
-                  <p className="text-[10px] text-zinc-600 font-mono">
+                  <p className="text-[10px] text-zinc-400 font-mono">
                     Last sync: {new Date(actionResult.lastSync as string).toLocaleString()}
                   </p>
                 )}
@@ -506,21 +506,21 @@ export default function BridgeLens() {
                   </div>
                   <div>
                     <p className="text-xs text-zinc-400">Avg Records / sec</p>
-                    <span className="text-xs text-zinc-500">{actionResult.dataPoints as number} data points</span>
+                    <span className="text-xs text-zinc-400">{actionResult.dataPoints as number} data points</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-green-400">{actionResult.peakRPS as number}</p>
-                    <p className="text-[10px] text-zinc-500">Peak RPS</p>
+                    <p className="text-[10px] text-zinc-400">Peak RPS</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-cyan-400">{actionResult.avgRPS as number}</p>
-                    <p className="text-[10px] text-zinc-500">Avg RPS</p>
+                    <p className="text-[10px] text-zinc-400">Avg RPS</p>
                   </div>
                   <div className="p-2 bg-zinc-900 rounded text-center">
                     <p className="text-sm font-bold text-zinc-400">{actionResult.minRPS as number}</p>
-                    <p className="text-[10px] text-zinc-500">Min RPS</p>
+                    <p className="text-[10px] text-zinc-400">Min RPS</p>
                   </div>
                 </div>
                 {!!actionResult.bottleneck && (
@@ -606,7 +606,7 @@ function ActivityTab({ log, onDtuClick }: { log: BridgeLogEntry[]; onDtuClick?: 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-zinc-200">{formatAction(entry.action)}</span>
-              <span className="text-xs text-zinc-600">{new Date(entry.at).toLocaleString()}</span>
+              <span className="text-xs text-zinc-400">{new Date(entry.at).toLocaleString()}</span>
             </div>
             {entry.dtuId && <button onClick={() => onDtuClick?.(String(entry.dtuId))} className="text-xs text-neon-cyan hover:underline cursor-pointer">DTU: {String(entry.dtuId).slice(0, 12)}...</button>}
             {entry.swarmName && <span className="text-xs text-purple-400 ml-2">{String(entry.swarmName)}</span>}
@@ -631,13 +631,13 @@ function OrganismsTab({ organisms, onRefresh }: { organisms: Organism[]; onRefre
       {organisms.map(org => (
         <div key={org.id} className="p-4 bg-zinc-900 rounded-lg border border-zinc-800">
           <div className="flex items-center gap-2 mb-2">
-            {org.isOrganism ? <Zap className="w-4 h-4 text-yellow-400" /> : <Network className="w-4 h-4 text-zinc-500" />}
+            {org.isOrganism ? <Zap className="w-4 h-4 text-yellow-400" /> : <Network className="w-4 h-4 text-zinc-400" />}
             <h3 className="font-semibold text-sm">{org.persona?.name || org.name}</h3>
             <span className={`text-xs px-2 py-0.5 rounded-full ${org.isOrganism ? 'bg-green-500/20 text-green-400' : 'bg-zinc-700 text-zinc-400'}`}>
               {org.isOrganism ? 'Awakened' : 'Dormant'}
             </span>
           </div>
-          <div className="text-xs text-zinc-500 space-y-1">
+          <div className="text-xs text-zinc-400 space-y-1">
             <div>{org.size} DTUs in swarm</div>
             {org.topTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
@@ -664,14 +664,14 @@ function DebatesTab({ debates, expanded, setExpanded, onDtuClick }: { debates: D
         <div key={debate.id} className="bg-zinc-900 rounded-lg border border-zinc-800 overflow-hidden">
           <button onClick={() => setExpanded(expanded === debate.id ? null : debate.id)}
             className="w-full flex items-center gap-3 p-4 text-left hover:bg-zinc-800/50 transition-colors">
-            {expanded === debate.id ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
+            {expanded === debate.id ? <ChevronDown className="w-4 h-4 text-zinc-400" /> : <ChevronRight className="w-4 h-4 text-zinc-400" />}
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium capitalize">{debate.challengerRole}</span>
                 <span className="text-zinc-600">challenged</span>
                 <button onClick={(e) => { e.stopPropagation(); onDtuClick?.(debate.dtuId); }} className="text-xs text-neon-cyan hover:underline cursor-pointer">{debate.dtuId.slice(0, 12)}...</button>
               </div>
-              <div className="text-xs text-zinc-500 mt-0.5">{debate.challenge.slice(0, 100)}</div>
+              <div className="text-xs text-zinc-400 mt-0.5">{debate.challenge.slice(0, 100)}</div>
             </div>
             <VerdictBadge verdict={debate.verdict} />
           </button>
@@ -709,7 +709,7 @@ function LifecycleTab({ births }: { births: BirthCert[] }) {
             <span className={`text-xs px-2 py-0.5 rounded-full ${cert.approved ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
               {cert.approved ? 'Approved' : 'Denied'} — {cert.approvalRatio}
             </span>
-            <span className="text-xs text-zinc-600 ml-auto">{new Date(cert.at).toLocaleDateString()}</span>
+            <span className="text-xs text-zinc-400 ml-auto">{new Date(cert.at).toLocaleDateString()}</span>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {cert.governanceReviews.map((review, i) => (
@@ -718,7 +718,7 @@ function LifecycleTab({ births }: { births: BirthCert[] }) {
                   {review.approve ? <CheckCircle2 className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
                   <span className="font-medium capitalize">{review.role}</span>
                 </div>
-                <div className="text-zinc-500 mt-1 line-clamp-2">{review.note}</div>
+                <div className="text-zinc-400 mt-1 line-clamp-2">{review.note}</div>
               </div>
             ))}
           </div>
@@ -756,7 +756,7 @@ function EmergentsTab({ emergents }: { emergents: EmergentRole[] }) {
 function EmptyCard({ icon, message, hint }: { icon: React.ReactNode; message: string; hint: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center">
-      <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4 text-zinc-500">{icon}</div>
+      <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center mb-4 text-zinc-400">{icon}</div>
       <p className="text-zinc-400 font-medium">{message}</p>
       <p className="text-sm text-zinc-600 mt-1 max-w-md">{hint}</p>
     </div>
@@ -782,7 +782,7 @@ function actionIcon(action: string) {
   if (action.includes('death') || action.includes('dormant')) return <Skull className="w-4 h-4 text-red-400" />;
   if (action.includes('validation') || action.includes('submit')) return <Shield className="w-4 h-4 text-blue-400" />;
   if (action.includes('query') || action.includes('response')) return <Search className="w-4 h-4 text-purple-400" />;
-  return <Eye className="w-4 h-4 text-zinc-500" />;
+  return <Eye className="w-4 h-4 text-zinc-400" />;
 }
 
 function formatAction(action: string): string {

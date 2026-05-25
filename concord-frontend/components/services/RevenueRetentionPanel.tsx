@@ -99,12 +99,12 @@ export function RevenueRetentionPanel() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Appointments</div>
-          <label className="text-[10px] text-zinc-500">Period (days)
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Appointments</div>
+          <label className="text-[10px] text-zinc-400">Period (days)
             <input type="number" min={1} max={365} value={period} onChange={(e) => setPeriod(Math.max(1, Math.min(365, Number(e.target.value) || 30)))} className="ml-2 w-16 rounded border border-zinc-800 bg-zinc-950 px-1.5 py-0.5 text-xs text-white font-mono" />
           </label>
         </div>
-        <div className="grid grid-cols-[1fr_130px_80px_110px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_130px_80px_110px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Provider</span><span>Date</span><span>Price</span><span>Status</span><span></span>
         </div>
         {appts.map((a, i) => (
@@ -118,15 +118,15 @@ export function RevenueRetentionPanel() {
               <option value="scheduled">scheduled</option>
               <option value="cancelled">cancelled</option>
             </select>
-            <button type="button" onClick={() => removeAppt(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => removeAppt(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button type="button" onClick={addAppt} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-violet-500/40 hover:text-violet-200"><Plus className="h-3 w-3" />Add appointment</button>
       </div>
 
       <div className="space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500">Clients</div>
-        <div className="grid grid-cols-[1fr_70px_100px_130px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400">Clients</div>
+        <div className="grid grid-cols-[1fr_70px_100px_130px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Name</span><span>Visits</span><span>Lifetime $</span><span>Last visit</span><span></span>
         </div>
         {clients.map((c, i) => (
@@ -135,7 +135,7 @@ export function RevenueRetentionPanel() {
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={c.visits} onChange={(e) => updateClient(i, 'visits', e.target.value)} />
             <input type="number" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={c.totalRevenue} onChange={(e) => updateClient(i, 'totalRevenue', e.target.value)} />
             <input type="date" className="rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-xs text-white font-mono" value={c.lastVisit} onChange={(e) => updateClient(i, 'lastVisit', e.target.value)} />
-            <button type="button" onClick={() => removeClient(i)} className="rounded border border-zinc-800 text-xs text-zinc-500 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => removeClient(i)} className="rounded border border-zinc-800 text-xs text-zinc-400 hover:text-rose-300" aria-label="Remove"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button type="button" onClick={addClient} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-violet-500/40 hover:text-violet-200"><Plus className="h-3 w-3" />Add client</button>
@@ -150,12 +150,12 @@ export function RevenueRetentionPanel() {
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><DollarSign className="h-3 w-3" />Revenue by provider</div>
-          {!revenue && <div className="text-[11px] text-zinc-500">Analyze to compute.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><DollarSign className="h-3 w-3" />Revenue by provider</div>
+          {!revenue && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
           {revenue?.summary && (
             <div className="space-y-1.5 text-[11px]">
               <div className="rounded border border-violet-500/20 bg-zinc-950/40 px-2 py-1">
-                <div className="text-[9px] text-zinc-500">Total ({revenue.period}d)</div>
+                <div className="text-[9px] text-zinc-400">Total ({revenue.period}d)</div>
                 <div className="font-mono text-xl text-violet-200">${revenue.totalRevenue?.toLocaleString()}</div>
               </div>
               {revenue.summary.map((s, i) => {
@@ -169,7 +169,7 @@ export function RevenueRetentionPanel() {
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-800">
                       <div className="h-full bg-violet-500/60" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="mt-0.5 text-[9px] text-zinc-500">{s.appointments} appts</div>
+                    <div className="mt-0.5 text-[9px] text-zinc-400">{s.appointments} appts</div>
                   </div>
                 );
               })}
@@ -177,23 +177,23 @@ export function RevenueRetentionPanel() {
           )}
         </div>
         <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Users className="h-3 w-3" />Retention</div>
-          {!retention && <div className="text-[11px] text-zinc-500">Analyze to compute.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Users className="h-3 w-3" />Retention</div>
+          {!retention && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
           {retention && (
             <div className="space-y-2 text-[11px]">
               <div className="grid grid-cols-2 gap-1.5">
-                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Repeat rate</div><div className="font-mono text-xl text-sky-200">{retention.repeatRate}%</div></div>
-                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Avg LTV</div><div className="font-mono text-xl text-sky-200">${retention.avgLifetimeValue}</div></div>
+                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Repeat rate</div><div className="font-mono text-xl text-sky-200">{retention.repeatRate}%</div></div>
+                <div className="rounded border border-sky-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Avg LTV</div><div className="font-mono text-xl text-sky-200">${retention.avgLifetimeValue}</div></div>
               </div>
               <div className="text-[10px] text-zinc-400">{retention.totalClients} clients · <span className="text-rose-300">{retention.atRiskCount} at risk</span></div>
               {retention.atRiskClients && retention.atRiskClients.length > 0 && (
                 <div className="space-y-0.5">
-                  <div className="text-[9px] uppercase text-zinc-500">At-risk clients</div>
+                  <div className="text-[9px] uppercase text-zinc-400">At-risk clients</div>
                   {retention.atRiskClients.map((c, i) => (
                     <div key={i} className="flex items-center justify-between rounded border border-rose-500/20 bg-zinc-950/40 px-2 py-1">
                       <div>
                         <div className="text-zinc-100">{c.name}</div>
-                        <div className="text-[9px] text-zinc-500">{c.daysSinceVisit}d ago · ${c.lifetimeValue} LTV</div>
+                        <div className="text-[9px] text-zinc-400">{c.daysSinceVisit}d ago · ${c.lifetimeValue} LTV</div>
                       </div>
                       <span className={`rounded px-1.5 py-0.5 text-[9px] ${churnBadge(c.churnRisk)}`}>{c.churnRisk}</span>
                     </div>

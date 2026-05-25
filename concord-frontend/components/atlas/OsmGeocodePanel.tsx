@@ -90,7 +90,7 @@ export function OsmGeocodePanel({ className, onSelect, limit = 5 }: OsmGeocodePa
 
       <div className="p-3 border-b border-zinc-800/40">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
           <input
             type="search"
             value={query}
@@ -112,13 +112,13 @@ export function OsmGeocodePanel({ className, onSelect, limit = 5 }: OsmGeocodePa
       )}
 
       {!error && results.length === 0 && query.trim().length >= 2 && !loading && (
-        <div className="px-3 py-4 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-4 text-xs text-zinc-400 italic text-center">
           No matches for &ldquo;{query.trim()}&rdquo;.
         </div>
       )}
 
       {!error && results.length === 0 && query.trim().length < 2 && (
-        <div className="px-3 py-4 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-4 text-xs text-zinc-400 italic text-center">
           Type at least 2 characters to search.
         </div>
       )}
@@ -136,7 +136,7 @@ export function OsmGeocodePanel({ className, onSelect, limit = 5 }: OsmGeocodePa
                   <MapPin className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 min-w-0">
                     <div className="text-zinc-200 truncate">{r.displayName}</div>
-                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
                       {r.latitude.toFixed(4)}°, {r.longitude.toFixed(4)}° · {r.category}/{r.type}
                     </div>
                   </div>
@@ -146,14 +146,14 @@ export function OsmGeocodePanel({ className, onSelect, limit = 5 }: OsmGeocodePa
                   <MapPin className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="flex-1 min-w-0">
                     <div className="text-zinc-200 truncate">{r.displayName}</div>
-                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
                       {r.latitude.toFixed(4)}°, {r.longitude.toFixed(4)}° · {r.category}/{r.type}
                     </div>
                   </div>
                   <a
                     href={`https://www.openstreetmap.org/?mlat=${r.latitude}&mlon=${r.longitude}#map=14/${r.latitude}/${r.longitude}`}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-zinc-500 hover:text-emerald-300 shrink-0 mt-0.5"
+                    className="text-zinc-400 hover:text-emerald-300 shrink-0 mt-0.5"
                     aria-label="View on OpenStreetMap"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -165,7 +165,7 @@ export function OsmGeocodePanel({ className, onSelect, limit = 5 }: OsmGeocodePa
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: OpenStreetMap Nominatim · 1 req/sec polite-use
       </footer>
     </section>

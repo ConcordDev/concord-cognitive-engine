@@ -64,7 +64,7 @@ export function PermitsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Permits</span>
-        <span className="ml-auto text-[10px] text-gray-500">{permits.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{permits.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
         <input value={form.applicantName} onChange={e => setForm({ ...form, applicantName: e.target.value })} placeholder="Applicant name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -77,9 +77,9 @@ export function PermitsPanel() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : permits.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No permits yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" />No permits yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {permits.map(p => (
@@ -88,7 +88,7 @@ export function PermitsPanel() {
                   <span className="text-[10px] font-mono text-violet-300">{p.recordNumber}</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', STATUS_COLOUR[p.status])}>{p.status.replace(/_/g, ' ')}</span>
                   <span className="text-sm text-white">{p.kind}</span>
-                  <span className="ml-auto text-[10px] text-gray-500">{p.applicantName} · ${p.feeUsd} {p.paid ? 'paid' : 'unpaid'}</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{p.applicantName} · ${p.feeUsd} {p.paid ? 'paid' : 'unpaid'}</span>
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 mb-1">{p.description}</div>}
                 <div className="flex items-center gap-1">
@@ -96,7 +96,7 @@ export function PermitsPanel() {
                   {p.status === 'under_review' && <button onClick={() => action(p.id, 'approve')} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50 inline-flex items-center gap-1"><Check className="w-2.5 h-2.5" />Approve</button>}
                   {p.status === 'approved' && <button onClick={() => action(p.id, 'issue')} className="px-2 py-0.5 text-[10px] rounded bg-emerald-500/30 text-emerald-300 hover:bg-emerald-500/50 inline-flex items-center gap-1"><Send className="w-2.5 h-2.5" />Issue</button>}
                   {p.status !== 'issued' && p.status !== 'denied' && <button onClick={() => action(p.id, 'deny')} className="px-2 py-0.5 text-[10px] rounded bg-rose-500/30 text-rose-300 hover:bg-rose-500/50 inline-flex items-center gap-1"><X className="w-2.5 h-2.5" />Deny</button>}
-                  {p.expiresAt && <span className="ml-auto text-[10px] text-gray-500">Expires {p.expiresAt.slice(0, 10)}</span>}
+                  {p.expiresAt && <span className="ml-auto text-[10px] text-gray-400">Expires {p.expiresAt.slice(0, 10)}</span>}
                 </div>
                 {p.denialReason && <div className="mt-1 text-[10px] text-rose-300">Denial reason: {p.denialReason}</div>}
               </li>

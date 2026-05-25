@@ -104,7 +104,7 @@ export function PaymentsPanel() {
 
       {/* Issue a fine */}
       <div className="p-3 border-b border-white/10">
-        <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><Gavel className="w-3 h-3" />Issue a fine / citation</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Gavel className="w-3 h-3" />Issue a fine / citation</div>
         <div className="grid grid-cols-6 gap-2">
           <input value={fineForm.payerName} onChange={e => setFineForm({ ...fineForm, payerName: e.target.value })} placeholder="Payer name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input value={fineForm.reason} onChange={e => setFineForm({ ...fineForm, reason: e.target.value })} placeholder="Reason" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -115,14 +115,14 @@ export function PaymentsPanel() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
       ) : (
         <div className="p-3 space-y-3">
           {/* Outstanding charges */}
           <div>
-            <div className="text-[10px] uppercase text-gray-500 mb-1.5">Outstanding charges</div>
+            <div className="text-[10px] uppercase text-gray-400 mb-1.5">Outstanding charges</div>
             {unpaidPermits.length === 0 && unpaidFines.length === 0 ? (
-              <div className="text-xs text-gray-500 py-2">No unpaid permit fees or fines.</div>
+              <div className="text-xs text-gray-400 py-2">No unpaid permit fees or fines.</div>
             ) : (
               <ul className="space-y-1.5">
                 {unpaidPermits.map(p => (
@@ -147,16 +147,16 @@ export function PaymentsPanel() {
 
           {/* Payment ledger */}
           <div>
-            <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><Receipt className="w-3 h-3" />Payment ledger</div>
+            <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Receipt className="w-3 h-3" />Payment ledger</div>
             {payments.length === 0 ? (
-              <div className="text-xs text-gray-500 py-2">No payments processed yet.</div>
+              <div className="text-xs text-gray-400 py-2">No payments processed yet.</div>
             ) : (
               <ul className="divide-y divide-white/5 max-h-56 overflow-y-auto">
                 {payments.map(p => (
                   <li key={p.id} className="py-2 flex items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-xs text-white truncate">{p.description}</div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {p.receiptNumber || p.id} {p.cardLast4 && `· card ••${p.cardLast4}`}
                         {p.refundReason && ` · refund: ${p.refundReason}`}
                       </div>
@@ -176,14 +176,14 @@ export function PaymentsPanel() {
 
       {/* Checkout modal */}
       {checkout && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCheckout(null)}>
-          <div className="bg-[#0d1117] border border-cyan-500/30 rounded-lg w-full max-w-sm p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setCheckout(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-[#0d1117] border border-cyan-500/30 rounded-lg w-full max-w-sm p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h3 className="text-sm font-semibold text-white mb-1">Checkout</h3>
             <p className="text-xs text-gray-400 mb-3">{checkout.description}</p>
             <div className="text-2xl font-bold text-emerald-300 mb-3">{money(checkout.amountUsd)}</div>
-            <label className="block text-[10px] uppercase text-gray-500 mb-1">Payment method token</label>
+            <label className="block text-[10px] uppercase text-gray-400 mb-1">Payment method token</label>
             <input value={card.methodToken} onChange={e => setCard({ ...card, methodToken: e.target.value })} placeholder="tok_..." className="w-full mb-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-            <label className="block text-[10px] uppercase text-gray-500 mb-1">Card last 4 digits</label>
+            <label className="block text-[10px] uppercase text-gray-400 mb-1">Card last 4 digits</label>
             <input value={card.cardLast4} onChange={e => setCard({ ...card, cardLast4: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="4242" maxLength={4} className="w-full mb-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
             <div className="flex gap-2">
               <button onClick={() => setCheckout(null)} className="flex-1 px-3 py-1.5 text-xs rounded bg-white/5 text-gray-300 hover:bg-white/10">Cancel</button>

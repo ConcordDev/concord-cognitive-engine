@@ -541,7 +541,7 @@ export default function ExperienceLensPage() {
             <div>
               <h2 className="text-lg font-bold">{PROFILE.name}</h2>
               <p className="text-sm text-gray-400">{PROFILE.bio}</p>
-              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+              <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
                 <MapPin className="w-3 h-3" />
                 {PROFILE.location}
               </p>
@@ -558,7 +558,7 @@ export default function ExperienceLensPage() {
                 <div key={stat.label} className="lens-card text-center py-2">
                   <stat.icon className="w-4 h-4 mx-auto mb-1 text-gray-400" />
                   <p className="text-lg font-bold">{stat.value}</p>
-                  <p className="text-xs text-gray-500">{stat.label}</p>
+                  <p className="text-xs text-gray-400">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -689,7 +689,7 @@ export default function ExperienceLensPage() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-400">{item.subtitle}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
+                      <div className="flex items-center justify-between text-xs text-gray-400">
                         <span>{item.genre}</span>
                         {item.playCount !== undefined && (
                           <span className="flex items-center gap-1">
@@ -704,7 +704,7 @@ export default function ExperienceLensPage() {
                           <span>{item.medium}</span>
                         )}
                       </div>
-                      <p className="text-[10px] text-gray-600">{item.date}</p>
+                      <p className="text-[10px] text-gray-400">{item.date}</p>
                     </div>
                   </motion.div>
                 );
@@ -825,7 +825,7 @@ export default function ExperienceLensPage() {
                           transition={{ duration: 0.6, delay: 0.1, ease: 'easeOut' }}
                         />
                       </div>
-                      <div className="flex items-center justify-between text-[10px] text-gray-500">
+                      <div className="flex items-center justify-between text-[10px] text-gray-400">
                         <span>{skill.xp} / {skill.xpToNext} XP to next level</span>
                         <a href={`/lenses/${skill.linkedLens}`} className="flex items-center gap-0.5 text-neon-cyan hover:underline">
                           Practice <ChevronRight className="w-3 h-3" />
@@ -871,7 +871,7 @@ export default function ExperienceLensPage() {
                                 style={{ width: `${(level / 10) * 100}%` }}
                               />
                             </div>
-                            <span className="text-gray-500 w-4 text-right">{level}</span>
+                            <span className="text-gray-400 w-4 text-right">{level}</span>
                           </div>
                         </div>
                       );
@@ -898,7 +898,7 @@ export default function ExperienceLensPage() {
               if (!items || items.length === 0) return null;
               return (
                 <div key={group}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
                     <Calendar className="w-3 h-3" />
                     {groupLabel(group)}
                   </h3>
@@ -924,7 +924,7 @@ export default function ExperienceLensPage() {
                               <p className="text-sm font-medium">{item.title}</p>
                               <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
                             </div>
-                            <span className="text-[10px] text-gray-500 flex-shrink-0 ml-4 flex items-center gap-1">
+                            <span className="text-[10px] text-gray-400 flex-shrink-0 ml-4 flex items-center gap-1">
                               <Clock className="w-3 h-3" />
                               {item.timestamp}
                             </span>
@@ -954,14 +954,14 @@ export default function ExperienceLensPage() {
               <div className="lens-card text-center py-4">
                 <Flame className="w-6 h-6 mx-auto mb-2 text-orange-400" />
                 <p className="text-lg font-bold">
-                  {computedInsights.mostProductiveDay || <span className="text-gray-500 text-sm font-normal">Add history to see</span>}
+                  {computedInsights.mostProductiveDay || <span className="text-gray-400 text-sm font-normal">Add history to see</span>}
                 </p>
                 <p className="text-xs text-gray-400">Most Productive Day</p>
               </div>
               <div className="lens-card text-center py-4">
                 <Eye className="w-6 h-6 mx-auto mb-2 text-neon-purple" />
                 <p className="text-lg font-bold">
-                  {computedInsights.favoriteGenre || <span className="text-gray-500 text-sm font-normal">Add items to see</span>}
+                  {computedInsights.favoriteGenre || <span className="text-gray-400 text-sm font-normal">Add items to see</span>}
                 </p>
                 <p className="text-xs text-gray-400">Favorite Genre</p>
               </div>
@@ -970,7 +970,7 @@ export default function ExperienceLensPage() {
                 <p className="text-lg font-bold">
                   {portfolio.length > 0
                     ? `${computedInsights.collaborationScore}%`
-                    : <span className="text-gray-500 text-sm font-normal">Add items to see</span>}
+                    : <span className="text-gray-400 text-sm font-normal">Add items to see</span>}
                 </p>
                 <p className="text-xs text-gray-400">Collaboration Score</p>
               </div>
@@ -987,7 +987,7 @@ export default function ExperienceLensPage() {
                   <div className="space-y-1.5">
                     {computedInsights.weeklyHeatmap.map((row, dayIdx) => (
                       <div key={dayIdx} className="flex items-center gap-2">
-                        <span className="text-[10px] text-gray-500 w-7">{DAY_LABELS[dayIdx]}</span>
+                        <span className="text-[10px] text-gray-400 w-7">{DAY_LABELS[dayIdx]}</span>
                         <div className="flex gap-1.5">
                           {row.map((val, weekIdx) => (
                             <motion.div
@@ -1003,11 +1003,11 @@ export default function ExperienceLensPage() {
                       </div>
                     ))}
                     <div className="flex items-center gap-2 mt-3 ml-9">
-                      <span className="text-[10px] text-gray-500">Less</span>
+                      <span className="text-[10px] text-gray-400">Less</span>
                       {HEAT_COLORS.map((c, i) => (
                         <div key={i} className={`w-4 h-4 rounded-sm ${c} border border-white/5`} />
                       ))}
-                      <span className="text-[10px] text-gray-500">More</span>
+                      <span className="text-[10px] text-gray-400">More</span>
                     </div>
                   </div>
                 ) : (
@@ -1264,10 +1264,10 @@ function JourneyMapResult({ result }: { result: Record<string, unknown> }) {
               <div key={i} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 font-mono w-5">{i + 1}</span>
+                    <span className="text-xs text-gray-400 font-mono w-5">{i + 1}</span>
                     <span className="text-sm font-medium text-white">{s.stage}</span>
                     {emotionIcon(s.emotion)}
-                    <span className="text-[10px] text-gray-500 capitalize">{s.emotion}</span>
+                    <span className="text-[10px] text-gray-400 capitalize">{s.emotion}</span>
                   </div>
                   <span className={`text-sm font-bold ${satisfactionText(s.satisfactionScore)}`}>
                     {s.satisfactionScore}%
@@ -1283,7 +1283,7 @@ function JourneyMapResult({ result }: { result: Record<string, unknown> }) {
                 <div className="grid grid-cols-3 gap-2 text-[10px]">
                   {s.touchpoints.length > 0 && (
                     <div>
-                      <p className="text-gray-500 mb-1">Touchpoints</p>
+                      <p className="text-gray-400 mb-1">Touchpoints</p>
                       {s.touchpoints.map((t, j) => (
                         <p key={j} className="text-gray-300">• {t}</p>
                       ))}
@@ -1342,7 +1342,7 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
         <div>
           <p className="text-xs text-gray-400 mb-1">SUS Score</p>
           <p className={`text-4xl font-bold ${gradeColor}`}>{susScore}</p>
-          <p className="text-xs text-gray-500 mt-1">{benchmark}</p>
+          <p className="text-xs text-gray-400 mt-1">{benchmark}</p>
         </div>
         <div className="text-center">
           <p className={`text-6xl font-bold ${gradeColor}`}>{grade}</p>
@@ -1352,7 +1352,7 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
 
       {/* SUS bar */}
       <div className="space-y-1.5">
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between text-xs text-gray-400">
           <span>0</span>
           <span className="text-yellow-400">Poor (50)</span>
           <span className="text-cyan-400">Good (68)</span>
@@ -1381,7 +1381,7 @@ function UsabilityScoreResult({ result }: { result: Record<string, unknown> }) {
             <Icon className={`w-4 h-4 shrink-0 ${color}`} />
             <div>
               <p className={`text-sm font-bold ${color}`}>{value}</p>
-              <p className="text-[10px] text-gray-500">{label}</p>
+              <p className="text-[10px] text-gray-400">{label}</p>
             </div>
           </div>
         ))}
@@ -1412,7 +1412,7 @@ function HeuristicEvalResult({ result }: { result: Record<string, unknown> }) {
     if (sev >= 3) return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
     if (sev >= 2) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
     if (sev >= 1) return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-    return 'bg-zinc-700 text-gray-500 border-zinc-600';
+    return 'bg-zinc-700 text-gray-400 border-zinc-600';
   };
   const severityLabel = (sev: number) => {
     if (sev >= 4) return 'Critical';
@@ -1458,7 +1458,7 @@ function HeuristicEvalResult({ result }: { result: Record<string, unknown> }) {
               <div key={i} className={`bg-zinc-900 rounded-lg p-3 border space-y-2 ${h.severity >= 4 ? 'border-red-500/30' : 'border-zinc-800'}`}>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-xs text-gray-500 font-mono w-4 shrink-0">{i + 1}</span>
+                    <span className="text-xs text-gray-400 font-mono w-4 shrink-0">{i + 1}</span>
                     <span className="text-xs font-medium text-white truncate">{h.heuristic}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1481,7 +1481,7 @@ function HeuristicEvalResult({ result }: { result: Record<string, unknown> }) {
                   <p className="text-[10px] text-gray-400 leading-relaxed">{h.finding}</p>
                 )}
                 {h.notes && (
-                  <p className="text-[10px] text-gray-500 italic">{h.notes}</p>
+                  <p className="text-[10px] text-gray-400 italic">{h.notes}</p>
                 )}
               </div>
             ))}
@@ -1551,7 +1551,7 @@ function PersonaBuilderResult({ result }: { result: Record<string, unknown> }) {
                 <p className={`text-sm font-bold ${techSavvyColor(persona.techSavvy)}`}>
                   {persona.techSavvy}
                 </p>
-                <p className="text-[10px] text-gray-500">Tech Savvy</p>
+                <p className="text-[10px] text-gray-400">Tech Savvy</p>
               </div>
             </div>
             {persona.quote && (

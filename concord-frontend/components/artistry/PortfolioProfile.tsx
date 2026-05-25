@@ -91,7 +91,7 @@ export function PortfolioProfile() {
     return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>;
   }
   if (!data) {
-    return <div className="text-center py-12 text-gray-500 text-sm">Profile unavailable.</div>;
+    return <div className="text-center py-12 text-gray-400 text-sm">Profile unavailable.</div>;
   }
 
   const { profile, projects, stats, isOwner } = data;
@@ -113,7 +113,7 @@ export function PortfolioProfile() {
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-2 border-gray-900 bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
               {profile.avatarUrl
                 ? <img src={profile.avatarUrl} alt={profile.displayName} className="w-full h-full object-cover" />
-                : <User className="w-9 h-9 text-gray-500" />}
+                : <User className="w-9 h-9 text-gray-400" />}
             </div>
             <div className="flex-1 min-w-0 pb-1">
               <h2 className="text-xl font-bold truncate">{profile.displayName}</h2>
@@ -128,7 +128,7 @@ export function PortfolioProfile() {
 
           {profile.bio && <p className="text-sm text-gray-300 mt-3 whitespace-pre-wrap">{profile.bio}</p>}
 
-          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-gray-400">
             {profile.location && <span>{profile.location}</span>}
             {profile.availableForHire && (
               <span className="flex items-center gap-1 text-neon-green"><Briefcase className="w-3 h-3" /> Available for hire</span>
@@ -167,14 +167,14 @@ export function PortfolioProfile() {
           <div key={s.label} className="bg-white/5 border border-white/10 rounded-lg p-2.5 text-center">
             <s.icon className="w-3.5 h-3.5 mx-auto mb-1 text-neon-pink" />
             <div className="text-lg font-bold">{s.value}</div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider">{s.label}</div>
+            <div className="text-[9px] text-gray-400 uppercase tracking-wider">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Project grid in chosen layout */}
       {projects.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 text-sm">No published projects yet.</div>
+        <div className="text-center py-10 text-gray-400 text-sm">No published projects yet.</div>
       ) : (
         <div className={gridClass}>
           {projects.map((p) => (
@@ -186,8 +186,8 @@ export function PortfolioProfile() {
               </div>
               <div className="p-3">
                 <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                <div className="text-[11px] text-gray-500 capitalize">{p.discipline}</div>
-                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
+                <div className="text-[11px] text-gray-400 capitalize">{p.discipline}</div>
+                <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                   <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                   <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations}</span>
                 </div>
@@ -199,8 +199,8 @@ export function PortfolioProfile() {
 
       {/* Edit modal */}
       {editing && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setEditing(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setEditing(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">Edit Portfolio Profile</h3>
               <button onClick={() => setEditing(false)} aria-label="Close"><X className="w-4 h-4" /></button>

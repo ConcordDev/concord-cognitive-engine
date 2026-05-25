@@ -75,7 +75,7 @@ export function InterventionTracker({
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Wrench className="w-4 h-4 text-neon-blue" /> Intervention Tracking
-          <span className="text-xs text-gray-500">({interventions.length})</span>
+          <span className="text-xs text-gray-400">({interventions.length})</span>
           {(loading || busy) && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
         </h3>
         <button
@@ -134,7 +134,7 @@ export function InterventionTracker({
       )}
 
       {interventions.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">No interventions tracked yet.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No interventions tracked yet.</p>
       ) : (
         <div className="space-y-2">
           {interventions.map((iv) => {
@@ -143,19 +143,19 @@ export function InterventionTracker({
             return (
               <div key={iv.id} className="rounded-lg bg-white/[0.03] border border-white/10">
                 <div className="flex items-center gap-2 p-2.5">
-                  <button onClick={() => setExpanded(open ? null : iv.id)} className="text-gray-500 hover:text-gray-200" aria-label="Expand">
+                  <button onClick={() => setExpanded(open ? null : iv.id)} className="text-gray-400 hover:text-gray-200" aria-label="Expand">
                     {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium truncate">{iv.title}</span>
-                      {pain && <span className="text-[10px] text-gray-500">→ {pain.title}</span>}
+                      {pain && <span className="text-[10px] text-gray-400">→ {pain.title}</span>}
                     </div>
                     <div className="h-1.5 bg-white/10 rounded-full mt-1 overflow-hidden">
                       <div className="h-full bg-neon-blue" style={{ width: `${iv.progress}%` }} />
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500 shrink-0">{iv.progress}%</span>
+                  <span className="text-xs text-gray-400 shrink-0">{iv.progress}%</span>
                   <select
                     value={iv.status}
                     onChange={(e) => run('intervention-update', {
@@ -174,7 +174,7 @@ export function InterventionTracker({
                   <div className="border-t border-white/10 p-3 space-y-3">
                     {iv.description && <p className="text-xs text-gray-400">{iv.description}</p>}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Progress</span>
+                      <span className="text-xs text-gray-400">Progress</span>
                       <input
                         type="range" min={0} max={100} value={iv.progress}
                         onChange={(e) => run('intervention-update', { id: iv.id, progress: Number(e.target.value) })}
@@ -182,9 +182,9 @@ export function InterventionTracker({
                       />
                       <span className="text-xs text-neon-blue font-bold w-10 text-right">{iv.progress}%</span>
                     </div>
-                    {iv.owner && <p className="text-xs text-gray-500">Owner: {iv.owner}</p>}
+                    {iv.owner && <p className="text-xs text-gray-400">Owner: {iv.owner}</p>}
                     <div>
-                      <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
                         <History className="w-3 h-3" /> Resolution history
                       </p>
                       <ul className="space-y-1">

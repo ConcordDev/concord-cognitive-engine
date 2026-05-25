@@ -136,10 +136,10 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-indigo-400">CONCORD</h1>
-          <p className="text-zinc-500 mt-2">Set new password</p>
+          <p className="text-zinc-400 mt-2">Set new password</p>
         </div>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8">
-          <Suspense fallback={<div className="text-zinc-500 text-center">Loading...</div>}>
+          <Suspense fallback={<div className="text-zinc-400 text-center">Loading...</div>}>
             <ResetPasswordForm />
           </Suspense>
         </div>

@@ -1123,7 +1123,7 @@ export default function HealthcareLensPage() {
           <VitalGauge value={value} vitalKey={vitalKey} label="" unit={displayUnit} />
         ) : (
           <div className="w-[60px] h-[60px] flex items-center justify-center">
-            <Icon className="w-6 h-6 text-gray-500" />
+            <Icon className="w-6 h-6 text-gray-400" />
           </div>
         )}
         {/* Label + range */}
@@ -1132,7 +1132,7 @@ export default function HealthcareLensPage() {
             <Icon
               className={cn(
                 'w-3.5 h-3.5',
-                value ? getVitalColor(vitalKey, value) : 'text-gray-500'
+                value ? getVitalColor(vitalKey, value) : 'text-gray-400'
               )}
             />
             <span className={cn(ds.textMuted, 'text-xs')}>{label}</span>
@@ -1140,14 +1140,14 @@ export default function HealthcareLensPage() {
           <p
             className={cn(
               'text-lg font-bold',
-              value ? getVitalColor(vitalKey, value) : 'text-gray-500'
+              value ? getVitalColor(vitalKey, value) : 'text-gray-400'
             )}
           >
             {value ?? '--'}
             <span className="text-xs font-normal ml-1">{displayUnit}</span>
           </p>
           {range && (
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               {range.low}-{range.high} {displayUnit}
             </p>
           )}
@@ -1183,7 +1183,7 @@ export default function HealthcareLensPage() {
                 : 'bg-gray-600'
           )}
         />
-        <div className={cn(ds.panelHover, 'flex-1')} onClick={() => openEditEditor(item)}>
+        <div className={cn(ds.panelHover, 'flex-1')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <TypeIcon className="w-4 h-4 text-gray-400" />
@@ -1192,7 +1192,7 @@ export default function HealthcareLensPage() {
             <StatusBadge status={d.status} />
           </div>
           <p className={cn(ds.textMuted, 'line-clamp-2 mb-2')}>{d.description}</p>
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-gray-400">
             {d.date && (
               <span className="flex items-center gap-1">
                 <Clock className="w-3 h-3" />
@@ -1215,7 +1215,7 @@ export default function HealthcareLensPage() {
     const daysLeft = calculateDaysRemaining(d.endDate);
     const adherence = d.adherencePercent ?? 0;
     return (
-      <div className={cn(ds.panelHover, 'space-y-2')} onClick={() => openEditEditor(item)}>
+      <div className={cn(ds.panelHover, 'space-y-2')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
@@ -1228,26 +1228,26 @@ export default function HealthcareLensPage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
-            <span className="text-gray-500 block">Dosage</span>
+            <span className="text-gray-400 block">Dosage</span>
             <span className="text-gray-200 font-medium">{d.dosage || '--'}</span>
           </div>
           <div>
-            <span className="text-gray-500 block">Frequency</span>
+            <span className="text-gray-400 block">Frequency</span>
             <span className="text-gray-200 font-medium">{d.frequency || '--'}</span>
           </div>
           <div>
-            <span className="text-gray-500 block">Route</span>
+            <span className="text-gray-400 block">Route</span>
             <span className="text-gray-200 font-medium">{d.route || '--'}</span>
           </div>
           <div>
-            <span className="text-gray-500 block">Start Date</span>
+            <span className="text-gray-400 block">Start Date</span>
             <span className="text-gray-200 font-medium">{d.startDate || d.date || '--'}</span>
           </div>
         </div>
         <div className="flex items-center gap-4 mt-2">
           {/* Refill tracking */}
           <div className="flex items-center gap-2 text-xs">
-            <RefreshCw className="w-3 h-3 text-gray-500" />
+            <RefreshCw className="w-3 h-3 text-gray-400" />
             <span className="text-gray-400">
               Refills:{' '}
               <span className="text-gray-200 font-medium">{d.refillsRemaining ?? '--'}</span>
@@ -1271,7 +1271,7 @@ export default function HealthcareLensPage() {
           )}
           {/* Adherence */}
           <div className="flex items-center gap-2 text-xs flex-1">
-            <span className="text-gray-500">Adherence:</span>
+            <span className="text-gray-400">Adherence:</span>
             <div className="flex-1 bg-gray-800 rounded-full h-1.5 max-w-[80px]">
               <div
                 className={cn(
@@ -1325,8 +1325,7 @@ export default function HealthcareLensPage() {
     return (
       <div
         className={cn(ds.panelHover, d.isCritical && 'border-red-500/50 pulse-critical-glow')}
-        onClick={() => openEditEditor(item)}
-      >
+        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <div className="flex items-center gap-2">
@@ -1344,7 +1343,7 @@ export default function HealthcareLensPage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           <div>
-            <span className="text-gray-500 block">Result</span>
+            <span className="text-gray-400 block">Result</span>
             <span
               className={cn(
                 'font-bold text-sm',
@@ -1356,13 +1355,13 @@ export default function HealthcareLensPage() {
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block">Reference Range</span>
+            <span className="text-gray-400 block">Reference Range</span>
             <span className="text-gray-200">
               {d.referenceRange || '--'} {d.unit || ''}
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block">Trend</span>
+            <span className="text-gray-400 block">Trend</span>
             <span className="flex items-center gap-1">
               {trend === 'up' && (
                 <ArrowUpRight
@@ -1375,12 +1374,12 @@ export default function HealthcareLensPage() {
                 />
               )}
               {trend === 'stable' && <Minus className="w-4 h-4 text-green-400" />}
-              {trend === 'none' && <span className="text-gray-500">--</span>}
+              {trend === 'none' && <span className="text-gray-400">--</span>}
               {d.previousValue && <span className="text-gray-400">(prev: {d.previousValue})</span>}
             </span>
           </div>
           <div>
-            <span className="text-gray-500 block">Date</span>
+            <span className="text-gray-400 block">Date</span>
             <span className="text-gray-200">{d.date || '--'}</span>
           </div>
         </div>
@@ -1399,7 +1398,7 @@ export default function HealthcareLensPage() {
     const overallProgress =
       goals.length > 0 ? Math.round(goals.reduce((s, g) => s + g.percent, 0) / goals.length) : 0;
     return (
-      <div className={cn(ds.panelHover, 'space-y-3')} onClick={() => openEditEditor(item)}>
+      <div className={cn(ds.panelHover, 'space-y-3')} onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between">
           <div>
             <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
@@ -1440,14 +1439,14 @@ export default function HealthcareLensPage() {
         {/* Goals summary */}
         {goals.length > 0 && (
           <div className="space-y-1">
-            <span className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+            <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">
               Goals ({goals.length})
             </span>
             {goals.slice(0, 3).map((g, idx) => (
               <div key={idx} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 flex-1">
                   <Target
-                    className={cn('w-3 h-3', g.percent >= 100 ? 'text-green-400' : 'text-gray-500')}
+                    className={cn('w-3 h-3', g.percent >= 100 ? 'text-green-400' : 'text-gray-400')}
                   />
                   <span className="text-gray-300 truncate">{g.name}</span>
                 </div>
@@ -1466,7 +1465,7 @@ export default function HealthcareLensPage() {
               </div>
             ))}
             {goals.length > 3 && (
-              <p className="text-xs text-gray-500">+{goals.length - 3} more goals</p>
+              <p className="text-xs text-gray-400">+{goals.length - 3} more goals</p>
             )}
           </div>
         )}
@@ -1759,23 +1758,23 @@ export default function HealthcareLensPage() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="text-center">
                   <p className="text-lg font-bold text-white">{stats.patients}</p>
-                  <p className="text-xs text-gray-500">Patients</p>
+                  <p className="text-xs text-gray-400">Patients</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-white">{stats.encounters}</p>
-                  <p className="text-xs text-gray-500">Encounters</p>
+                  <p className="text-xs text-gray-400">Encounters</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-white">{stats.prescriptions}</p>
-                  <p className="text-xs text-gray-500">Prescriptions</p>
+                  <p className="text-xs text-gray-400">Prescriptions</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-white">{stats.labs}</p>
-                  <p className="text-xs text-gray-500">Lab Results</p>
+                  <p className="text-xs text-gray-400">Lab Results</p>
                 </div>
                 <div className="text-center">
                   <p className="text-lg font-bold text-white">{stats.total}</p>
-                  <p className="text-xs text-gray-500">Total Records</p>
+                  <p className="text-xs text-gray-400">Total Records</p>
                 </div>
               </div>
             </div>
@@ -1851,7 +1850,7 @@ export default function HealthcareLensPage() {
                       <p className="text-sm font-bold text-neon-cyan">
                         {String(actionResult.totalChecked)}
                       </p>
-                      <p className="text-[10px] text-gray-500">Prescriptions</p>
+                      <p className="text-[10px] text-gray-400">Prescriptions</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p
@@ -1859,7 +1858,7 @@ export default function HealthcareLensPage() {
                       >
                         {String(actionResult.interactionsFound)}
                       </p>
-                      <p className="text-[10px] text-gray-500">Interactions</p>
+                      <p className="text-[10px] text-gray-400">Interactions</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p
@@ -1867,7 +1866,7 @@ export default function HealthcareLensPage() {
                       >
                         {actionResult.hasCritical ? 'Critical' : 'Safe'}
                       </p>
-                      <p className="text-[10px] text-gray-500">Risk Level</p>
+                      <p className="text-[10px] text-gray-400">Risk Level</p>
                     </div>
                   </div>
                   {Array.isArray(actionResult.interactions) &&
@@ -1900,7 +1899,7 @@ export default function HealthcareLensPage() {
                       <p className="text-sm font-bold text-neon-cyan">
                         {String(actionResult.conditionsEvaluated)}
                       </p>
-                      <p className="text-[10px] text-gray-500">Conditions</p>
+                      <p className="text-[10px] text-gray-400">Conditions</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-green-400">
@@ -1908,7 +1907,7 @@ export default function HealthcareLensPage() {
                           ? (actionResult.matched as unknown[]).length
                           : 0}
                       </p>
-                      <p className="text-[10px] text-gray-500">Full Matches</p>
+                      <p className="text-[10px] text-gray-400">Full Matches</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-amber-400">
@@ -1916,7 +1915,7 @@ export default function HealthcareLensPage() {
                           ? (actionResult.partial as unknown[]).length
                           : 0}
                       </p>
-                      <p className="text-[10px] text-gray-500">Partial</p>
+                      <p className="text-[10px] text-gray-400">Partial</p>
                     </div>
                   </div>
                   {Array.isArray(actionResult.matched) &&
@@ -1944,13 +1943,13 @@ export default function HealthcareLensPage() {
                         <p className="text-sm font-bold text-neon-cyan">
                           {String((actionResult.encounterSummary as { total: number }).total)}
                         </p>
-                        <p className="text-[10px] text-gray-500">Encounters</p>
+                        <p className="text-[10px] text-gray-400">Encounters</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p className="text-sm font-bold text-neon-cyan">
                           {String((actionResult.labSummary as { totalTests: number }).totalTests)}
                         </p>
-                        <p className="text-[10px] text-gray-500">Lab Tests</p>
+                        <p className="text-[10px] text-gray-400">Lab Tests</p>
                       </div>
                       <div className="p-2 bg-lattice-surface rounded text-center">
                         <p
@@ -1960,7 +1959,7 @@ export default function HealthcareLensPage() {
                             (actionResult.labSummary as { abnormalCount: number }).abnormalCount
                           )}
                         </p>
-                        <p className="text-[10px] text-gray-500">Abnormal Labs</p>
+                        <p className="text-[10px] text-gray-400">Abnormal Labs</p>
                       </div>
                     </div>
                     {Array.isArray(actionResult.activeConditions) &&
@@ -2109,8 +2108,7 @@ export default function HealthcareLensPage() {
                     >
                       <div
                         className={cn(ds.panelHover, 'mb-2')}
-                        onClick={() => openDetailDrawer(item)}
-                      >
+                        onClick={() => openDetailDrawer(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <Users className="w-5 h-5 text-neon-blue" />
@@ -2125,7 +2123,7 @@ export default function HealthcareLensPage() {
                             <StatusBadge
                               status={(item.data as unknown as HealthcareArtifact).status}
                             />
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
                           </div>
                         </div>
                       </div>
@@ -2162,8 +2160,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openDetailDrawer(item)}
-                      >
+                        onClick={() => openDetailDrawer(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2211,7 +2208,7 @@ export default function HealthcareLensPage() {
                             )}
                           </div>
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-500">
+                            <span className="flex items-center gap-1 text-gray-400">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2240,8 +2237,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openEditEditor(item)}
-                      >
+                        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2259,7 +2255,7 @@ export default function HealthcareLensPage() {
                           </div>
                         )}
                         {d.visitStart && d.visitEnd && (
-                          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+                          <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
                             <Timer className="w-3 h-3" />
                             Duration: {calculateVisitDuration(d.visitStart, d.visitEnd)}
                           </div>
@@ -2267,7 +2263,7 @@ export default function HealthcareLensPage() {
                         <div className="flex items-center justify-between text-xs">
                           {d.provider && <span className={ds.textMuted}>{d.provider}</span>}
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-500">
+                            <span className="flex items-center gap-1 text-gray-400">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2294,8 +2290,7 @@ export default function HealthcareLensPage() {
                       <div
                         key={item.id}
                         className={ds.panelHover}
-                        onClick={() => openEditEditor(item)}
-                      >
+                        onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-start justify-between mb-2">
                           <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>
                             {item.title}
@@ -2306,7 +2301,7 @@ export default function HealthcareLensPage() {
                         <div className="flex items-center justify-between text-xs">
                           {d.provider && <span className={ds.textMuted}>{d.provider}</span>}
                           {d.date && (
-                            <span className="flex items-center gap-1 text-gray-500">
+                            <span className="flex items-center gap-1 text-gray-400">
                               <Clock className="w-3 h-3" /> {d.date}
                             </span>
                           )}
@@ -2412,7 +2407,7 @@ export default function HealthcareLensPage() {
                                     className={cn('w-full rounded-t', barColor)}
                                     style={{ height: `${Math.max(8, pct)}%` }}
                                   />
-                                  <span className="text-[8px] text-gray-500 mt-0.5 truncate w-full text-center">
+                                  <span className="text-[8px] text-gray-400 mt-0.5 truncate w-full text-center">
                                     {(d.symptomDate || '').slice(5)}
                                   </span>
                                 </div>
@@ -2466,8 +2461,7 @@ export default function HealthcareLensPage() {
                         <div
                           key={item.id}
                           className={cn(ds.panelHover, 'space-y-2')}
-                          onClick={() => openEditEditor(item)}
-                        >
+                          onClick={() => openEditEditor(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="flex items-start justify-between">
                             <h3 className={cn(ds.heading3, 'text-base')}>{item.title}</h3>
                             <StatusBadge status={d.status} />
@@ -2485,7 +2479,7 @@ export default function HealthcareLensPage() {
                               <span className={ds.badge('neon-blue')}>{d.symptomCategory}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
                             {d.symptomDate && (
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
@@ -2495,7 +2489,7 @@ export default function HealthcareLensPage() {
                             {d.provider && <span>{d.provider}</span>}
                           </div>
                           {d.symptomNotes && (
-                            <p className="text-xs text-gray-500 italic line-clamp-2">
+                            <p className="text-xs text-gray-400 italic line-clamp-2">
                               {d.symptomNotes}
                             </p>
                           )}
@@ -2628,11 +2622,11 @@ export default function HealthcareLensPage() {
                     <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className={cn(ds.panel, 'p-2')}>
-                          <span className="text-gray-500 block">Records</span>
+                          <span className="text-gray-400 block">Records</span>
                           <span className="text-lg font-bold text-white">{linked.length}</span>
                         </div>
                         <div className={cn(ds.panel, 'p-2')}>
-                          <span className="text-gray-500 block">Priority</span>
+                          <span className="text-gray-400 block">Priority</span>
                           <span
                             className={cn(
                               'text-lg font-bold',
@@ -2645,12 +2639,12 @@ export default function HealthcareLensPage() {
                       </div>
                       {dd.notes && (
                         <div>
-                          <span className="text-xs text-gray-500 font-medium">Notes</span>
+                          <span className="text-xs text-gray-400 font-medium">Notes</span>
                           <p className="text-sm text-gray-300 mt-1">{dd.notes}</p>
                         </div>
                       )}
                       <div>
-                        <span className="text-xs text-gray-500 font-medium">Recent Activity</span>
+                        <span className="text-xs text-gray-400 font-medium">Recent Activity</span>
                         <div className="mt-1 space-y-1">
                           {linked.slice(0, 5).map((l) => {
                             const ld = l.data as unknown as HealthcareArtifact;
@@ -2658,8 +2652,7 @@ export default function HealthcareLensPage() {
                               <div
                                 key={l.id}
                                 className="flex items-center justify-between text-xs p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer"
-                                onClick={() => openEditEditor(l)}
-                              >
+                                onClick={() => openEditEditor(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                                 <span className="text-gray-300 truncate flex-1">{l.title}</span>
                                 <StatusBadge status={ld.status} />
                               </div>
@@ -2725,19 +2718,19 @@ export default function HealthcareLensPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-center text-xs">
                           <div>
-                            <span className="text-gray-500 block">Weight</span>
+                            <span className="text-gray-400 block">Weight</span>
                             <span className="text-sm font-bold text-white">
                               {dd.weight ?? '--'} lbs
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">Height</span>
+                            <span className="text-gray-400 block">Height</span>
                             <span className="text-sm font-bold text-white">
                               {dd.height ?? '--'} in
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500 block">BMI</span>
+                            <span className="text-gray-400 block">BMI</span>
                             <span className={cn('text-sm font-bold', bmi.color)}>
                               {bmi.value || '--'}
                             </span>
@@ -2783,13 +2776,12 @@ export default function HealthcareLensPage() {
                             <div
                               key={med.id}
                               className="p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer text-xs"
-                              onClick={() => openEditEditor(med)}
-                            >
+                              onClick={() => openEditEditor(med)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-gray-200 font-medium">{med.title}</span>
                                 {md.isPRN && <span className={ds.badge('neon-blue')}>PRN</span>}
                               </div>
-                              <div className="flex items-center gap-2 text-gray-500">
+                              <div className="flex items-center gap-2 text-gray-400">
                                 {md.dosage && <span>{md.dosage}</span>}
                                 {md.frequency && <span>- {md.frequency}</span>}
                               </div>
@@ -2832,8 +2824,7 @@ export default function HealthcareLensPage() {
                                   ? 'bg-red-500/10 border border-red-500/30 pulse-critical-glow'
                                   : 'bg-lattice-surface hover:bg-lattice-elevated'
                               )}
-                              onClick={() => openEditEditor(lab)}
-                            >
+                              onClick={() => openEditEditor(lab)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-gray-200 font-medium">{lab.title}</span>
                                 {ld.isCritical && (
@@ -2853,7 +2844,7 @@ export default function HealthcareLensPage() {
                                 >
                                   {ld.resultValue || '--'} {ld.unit || ''}
                                 </span>
-                                <span className="text-gray-500">
+                                <span className="text-gray-400">
                                   Ref: {ld.referenceRange || '--'}
                                 </span>
                               </div>
@@ -2905,25 +2896,25 @@ export default function HealthcareLensPage() {
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div>
-                              <span className="text-gray-500 block">Date</span>
+                              <span className="text-gray-400 block">Date</span>
                               <span className="text-gray-200 font-medium">
                                 {dd.appointmentDate || '--'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Time</span>
+                              <span className="text-gray-400 block">Time</span>
                               <span className="text-gray-200 font-medium">
                                 {dd.appointmentTime || '--'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Type</span>
+                              <span className="text-gray-400 block">Type</span>
                               <span className="text-gray-200 font-medium">
                                 {dd.appointmentType || '--'}
                               </span>
                             </div>
                             <div>
-                              <span className="text-gray-500 block">Location</span>
+                              <span className="text-gray-400 block">Location</span>
                               <span className="text-gray-200 font-medium">
                                 {dd.appointmentLocation || '--'}
                               </span>
@@ -2933,7 +2924,7 @@ export default function HealthcareLensPage() {
                       )}
                       {/* Scheduled encounters */}
                       <div>
-                        <span className="text-xs text-gray-500 font-medium">Scheduled Visits</span>
+                        <span className="text-xs text-gray-400 font-medium">Scheduled Visits</span>
                         <div className="mt-1 space-y-1">
                           {linkedEncounters.length === 0 ? (
                             <p className={cn(ds.textMuted, 'text-center py-4')}>
@@ -2946,13 +2937,12 @@ export default function HealthcareLensPage() {
                                 <div
                                   key={enc.id}
                                   className="flex items-center justify-between p-2 rounded bg-lattice-surface hover:bg-lattice-elevated cursor-pointer text-xs"
-                                  onClick={() => openEditEditor(enc)}
-                                >
+                                  onClick={() => openEditEditor(enc)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                                   <div className="flex items-center gap-2">
                                     <Calendar className="w-3 h-3 text-neon-blue" />
                                     <span className="text-gray-200 font-medium">{enc.title}</span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-gray-500">
+                                  <div className="flex items-center gap-2 text-gray-400">
                                     {ed.date && <span>{ed.date}</span>}
                                     {ed.provider && <span>{ed.provider}</span>}
                                   </div>
@@ -2981,7 +2971,7 @@ export default function HealthcareLensPage() {
       {/* ============================================================ */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-3xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -3696,7 +3686,7 @@ export default function HealthcareLensPage() {
                         onChange={(e) => setFormSeverity(Number(e.target.value))}
                         className="w-full accent-neon-blue"
                       />
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex justify-between text-xs text-gray-400">
                         <span>Mild</span>
                         <span>Moderate</span>
                         <span>Severe</span>

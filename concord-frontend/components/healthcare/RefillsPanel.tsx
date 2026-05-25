@@ -64,7 +64,7 @@ export function RefillsPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Pill className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Refill requests</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="requested">Pending</option>
           <option value="approved">Approved</option>
@@ -92,9 +92,9 @@ export function RefillsPanel() {
 
       <div className="max-h-[32rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Pill className="w-6 h-6 mx-auto mb-2 opacity-30" />No refill requests in this view.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Pill className="w-6 h-6 mx-auto mb-2 opacity-30" />No refill requests in this view.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(r => (
@@ -108,9 +108,9 @@ export function RefillsPanel() {
                 )}>{r.status}</span>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">
-                    {r.medication} {r.dose && <span className="text-[10px] text-gray-500">{r.dose}</span>}
+                    {r.medication} {r.dose && <span className="text-[10px] text-gray-400">{r.dose}</span>}
                   </div>
-                  <div className="text-[10px] text-gray-500 truncate">{patientName(r.patientId)} · {r.pharmacy || 'no pharmacy'} · {r.requestedAt.slice(0, 10)}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{patientName(r.patientId)} · {r.pharmacy || 'no pharmacy'} · {r.requestedAt.slice(0, 10)}</div>
                 </div>
                 {r.status === 'requested' && (
                   <div className="flex items-center gap-1">

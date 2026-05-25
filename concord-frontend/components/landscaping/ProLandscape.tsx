@@ -72,17 +72,17 @@ function PlantSelector() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">USDA Hardiness Zone</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">USDA Hardiness Zone</span>
             <input type="number" min={1} max={13} value={zone || ''} onChange={(e) => setZone(Math.max(1, Math.min(13, Number(e.target.value) || 0)))} placeholder="e.g. 7 (mid-Atlantic)" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Sun exposure</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Sun exposure</span>
             <select value={sun} onChange={(e) => setSun(e.target.value as typeof sun)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="full">Full sun (6+ hrs)</option>
               <option value="partial">Partial (3-6 hrs)</option>
               <option value="shade">Shade (&lt;3 hrs)</option>
             </select>
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Soil type</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Soil type</span>
             <select value={soil} onChange={(e) => setSoil(e.target.value as typeof soil)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="loam">Loam</option><option value="clay">Clay</option><option value="sandy">Sandy</option>
             </select>
@@ -93,7 +93,7 @@ function PlantSelector() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter zone + sun + soil.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter zone + sun + soil.</div>}
           {result && (
             <>
               <div className="text-[11px] text-zinc-400">{result.totalMatches} match{result.totalMatches === 1 ? '' : 'es'} for zone {result.zone}, {result.sunExposure} sun, {result.soilType} soil</div>
@@ -148,10 +148,10 @@ function IrrigationCalc() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Square footage</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Square footage</span>
             <input type="number" min={0} value={sqft || ''} onChange={(e) => setSqft(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 1500" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Plant type</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Plant type</span>
             <select value={plantType} onChange={(e) => setPlantType(e.target.value as typeof plantType)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="lawn">Lawn (1.0&Prime;/wk)</option>
               <option value="garden">Garden (0.8&Prime;)</option>
@@ -166,16 +166,16 @@ function IrrigationCalc() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter area + plant type.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter area + plant type.</div>}
           {result && (
             <>
               <div className="rounded-lg border-2 border-cyan-500/40 bg-cyan-500/10 p-3">
                 <div className="text-[10px] uppercase tracking-wider text-cyan-300">Weekly water need</div>
-                <div className="font-mono text-3xl text-cyan-100">{result.gallonsPerWeek?.toLocaleString()} <span className="text-sm text-zinc-500">gal/wk</span></div>
+                <div className="font-mono text-3xl text-cyan-100">{result.gallonsPerWeek?.toLocaleString()} <span className="text-sm text-zinc-400">gal/wk</span></div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-[11px]">
-                <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Runtime</div><div className="font-mono text-cyan-200">{result.runtimeMinutes} min</div></div>
-                <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Frequency</div><div className="font-mono text-cyan-200">{result.frequency}</div></div>
+                <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Runtime</div><div className="font-mono text-cyan-200">{result.runtimeMinutes} min</div></div>
+                <div className="rounded border border-cyan-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Frequency</div><div className="font-mono text-cyan-200">{result.frequency}</div></div>
                 <div className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5"><div className="text-[9px] text-emerald-300">$/mo</div><div className="font-mono text-emerald-100">${result.monthlyCost}</div></div>
               </div>
             </>
@@ -276,10 +276,10 @@ function MaterialEstimator() {
 
       <div className="grid gap-3 p-4 md:grid-cols-[200px_1fr]">
         <div className="space-y-2">
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Coverage area (sf)</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Coverage area (sf)</span>
             <input type="number" min={0} value={sqft || ''} onChange={(e) => setSqft(Math.max(0, Number(e.target.value) || 0))} placeholder="e.g. 500" className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white font-mono" />
           </label>
-          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-500">Material</span>
+          <label className="block"><span className="block text-[10px] uppercase tracking-wider text-zinc-400">Material</span>
             <select value={material} onChange={(e) => setMaterial(e.target.value as typeof material)} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
               <option value="mulch">Mulch (3&Prime;)</option><option value="gravel">Gravel (2&Prime;)</option>
               <option value="topsoil">Topsoil (4&Prime;)</option><option value="compost">Compost (2&Prime;)</option>
@@ -292,7 +292,7 @@ function MaterialEstimator() {
         </div>
 
         <div className="space-y-2">
-          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Enter area + material.</div>}
+          {!result && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Enter area + material.</div>}
           {result && (
             <>
               <div className="grid grid-cols-3 gap-2">

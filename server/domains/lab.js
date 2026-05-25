@@ -12,6 +12,7 @@ export default function registerLabActions(registerLensAction) {
    * params.model: "linear" | "quadratic" | "4PL" (default "linear")
    */
   registerLensAction("lab", "calibrationCurve", (ctx, artifact, params) => {
+  try {
     const standards = artifact.data?.standards || [];
     if (standards.length < 2) return { ok: false, error: "Need at least 2 standard points." };
 
@@ -179,7 +180,8 @@ export default function registerLabActions(registerLensAction) {
         range: { min: r(Math.min(...xs)), max: r(Math.max(...xs)) },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * qcAnalysis
@@ -188,6 +190,7 @@ export default function registerLabActions(registerLensAction) {
    * artifact.data.targetMean, artifact.data.targetSD
    */
   registerLensAction("lab", "qcAnalysis", (ctx, artifact, _params) => {
+  try {
     const controls = artifact.data?.controls || [];
     if (controls.length < 2) return { ok: false, error: "Need at least 2 control measurements." };
 
@@ -299,7 +302,8 @@ export default function registerLabActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sampleTracker
@@ -307,6 +311,7 @@ export default function registerLabActions(registerLensAction) {
    * artifact.data.samples = [{ id, type, receivedAt, steps: [{ action, timestamp, operator?, result? }] }]
    */
   registerLensAction("lab", "sampleTracker", (ctx, artifact, _params) => {
+  try {
     const samples = artifact.data?.samples || [];
     if (samples.length === 0) return { ok: true, result: { message: "No samples." } };
 
@@ -395,7 +400,8 @@ export default function registerLabActions(registerLensAction) {
         custodyCompliance: Math.round((analyzed.filter(s => s.chainOfCustodyComplete).length / analyzed.length) * 100),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * experimentDesign
@@ -405,6 +411,7 @@ export default function registerLabActions(registerLensAction) {
    * params.replicates (default 1)
    */
   registerLensAction("lab", "experimentDesign", (ctx, artifact, params) => {
+  try {
     const factors = artifact.data?.factors || [];
     if (factors.length === 0) return { ok: false, error: "No factors defined." };
 
@@ -504,7 +511,8 @@ export default function registerLabActions(registerLensAction) {
           : effectsDetectable ? "Design is adequate for effect estimation" : "Consider adding replicates",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── ELN / LIMS substrate (per-user, STATE-backed) ──────────────────────
   //

@@ -53,14 +53,14 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
     } catch (e) { console.error('[Agent] finish', e); }
   }
 
-  if (!projectId) return <div className="p-3 text-xs text-gray-500 italic">Open a project to use the agent.</div>;
+  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to use the agent.</div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="px-2 py-1.5 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-3.5 h-3.5 text-blue-400" />
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Agent (Composer)</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
       </div>
       <div className="p-2 border-b border-white/10 space-y-1.5">
         <textarea
@@ -76,9 +76,9 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
         ) : list.length === 0 ? (
-          <div className="p-3 text-xs text-gray-500 italic">No tasks yet.</div>
+          <div className="p-3 text-xs text-gray-400 italic">No tasks yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(t => (
@@ -90,7 +90,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
                     t.status === 'cancelled' ? 'bg-gray-500/20 text-gray-300' :
                                                 'bg-rose-500/20 text-rose-300',
                   )}>{t.status}</span>
-                  <span className="font-mono text-[10px] text-gray-500">{t.number}</span>
+                  <span className="font-mono text-[10px] text-gray-400">{t.number}</span>
                   {t.source === 'brain' && <span className="text-[9px] text-blue-300">· brain</span>}
                   {t.status === 'running' && (
                     <div className="ml-auto flex items-center gap-1">
@@ -106,7 +106,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
                   </ol>
                 )}
                 {t.filesChanged?.length > 0 && (
-                  <div className="mt-1 text-[10px] text-gray-500">Files changed: {t.filesChanged.join(', ')}</div>
+                  <div className="mt-1 text-[10px] text-gray-400">Files changed: {t.filesChanged.join(', ')}</div>
                 )}
               </li>
             ))}

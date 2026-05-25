@@ -131,7 +131,7 @@ export function ScienceNotebook() {
         />
 
         <div className="space-y-1.5">
-          <p className="text-[10px] text-gray-500 uppercase flex items-center gap-1">
+          <p className="text-[10px] text-gray-400 uppercase flex items-center gap-1">
             <Paperclip className="w-3 h-3" /> Embedded Attachments
           </p>
           {attachments.map((a, i) => (
@@ -195,9 +195,9 @@ export function ScienceNotebook() {
         </RunButton>
       </div>
       {loading ? (
-        <p className="text-xs text-gray-500">Loading…</p>
+        <p className="text-xs text-gray-400">Loading…</p>
       ) : entries.length === 0 ? (
-        <p className="text-xs text-gray-500">No notebook entries yet.</p>
+        <p className="text-xs text-gray-400">No notebook entries yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {entries.map((e) => (
@@ -205,12 +205,12 @@ export function ScienceNotebook() {
               <div className="flex items-start justify-between gap-2">
                 <button type="button" onClick={() => openEntry(e)} className="text-left flex-1 min-w-0">
                   <span className="block text-xs text-gray-100 font-medium truncate">{e.title}</span>
-                  <span className="block text-[11px] text-gray-500 line-clamp-2 mt-0.5">{e.body}</span>
+                  <span className="block text-[11px] text-gray-400 line-clamp-2 mt-0.5">{e.body}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => del(e.id)}
-                  className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                  className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
                   aria-label="Delete entry"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -223,11 +223,11 @@ export function ScienceNotebook() {
                   </span>
                 ))}
                 {e.attachments.length > 0 && (
-                  <span className="text-[10px] text-gray-500 flex items-center gap-0.5">
+                  <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
                     <Paperclip className="w-2.5 h-2.5" /> {e.attachments.length}
                   </span>
                 )}
-                <span className="text-[10px] text-gray-600 ml-auto">
+                <span className="text-[10px] text-gray-400 ml-auto">
                   {new Date(e.createdAt).toLocaleDateString()}
                 </span>
               </div>

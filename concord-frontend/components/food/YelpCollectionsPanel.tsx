@@ -70,7 +70,7 @@ export function YelpCollectionsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -87,7 +87,7 @@ export function YelpCollectionsPanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {collections.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No lists yet. Create one to bookmark restaurants.
         </div>
       ) : (
@@ -100,7 +100,7 @@ export function YelpCollectionsPanel() {
                   <Bookmark className="w-4 h-4 text-red-400" />
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{c.name}</p>
-                    <p className="text-[11px] text-zinc-500">{c.bizCount} restaurants</p>
+                    <p className="text-[11px] text-zinc-400">{c.bizCount} restaurants</p>
                   </div>
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 ml-auto transition-transform', open === c.id && 'rotate-90')} />
                 </button>
@@ -121,11 +121,11 @@ export function YelpCollectionsPanel() {
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-[11px] text-zinc-500 italic">No restaurants in this list yet.</p>
+                    <p className="text-[11px] text-zinc-400 italic">No restaurants in this list yet.</p>
                   )}
                   {allBiz.filter((b) => !openBiz.some((x) => x.id === b.id)).length > 0 && (
                     <div>
-                      <p className="text-[10px] text-zinc-600 uppercase tracking-wide mb-1">Add from directory</p>
+                      <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Add from directory</p>
                       <div className="flex flex-wrap gap-1">
                         {allBiz.filter((b) => !openBiz.some((x) => x.id === b.id)).slice(0, 12).map((b) => (
                           <button key={b.id} type="button" onClick={() => addBiz(c.id, b.id)}

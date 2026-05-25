@@ -172,12 +172,12 @@ export function FinanceShell({
       {/* Hero: net worth + sparkline + range chips */}
       <header className="space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-gray-500">Net worth</span>
+          <span className="text-[11px] uppercase tracking-wider text-gray-400">Net worth</span>
           <button
             type="button"
             onClick={() => setHidden((v) => !v)}
             aria-pressed={hidden}
-            className="text-gray-500 hover:text-gray-300"
+            className="text-gray-400 hover:text-gray-300"
             title={hidden ? 'Show balance' : 'Hide balance'}
           >
             {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -211,7 +211,7 @@ export function FinanceShell({
                 'px-2.5 py-1 rounded text-[11px] font-mono tracking-wider transition',
                 r === range
                   ? 'bg-white/10 text-white'
-                  : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
               )}
             >
               {r}
@@ -247,11 +247,11 @@ export function FinanceShell({
         {/* Holdings (Robinhood-shape rows with mini-sparklines) */}
         <section className="lg:col-span-2">
           <header className="flex items-center justify-between mb-2">
-            <h2 className="text-xs uppercase tracking-wider text-gray-500">Holdings</h2>
-            <span className="text-[11px] text-gray-500 font-mono">{holdings.length} positions</span>
+            <h2 className="text-xs uppercase tracking-wider text-gray-400">Holdings</h2>
+            <span className="text-[11px] text-gray-400 font-mono">{holdings.length} positions</span>
           </header>
           {holdings.length === 0 ? (
-            <p className="text-xs text-gray-500 italic px-3 py-6 text-center border border-dashed border-white/10 rounded-md">
+            <p className="text-xs text-gray-400 italic px-3 py-6 text-center border border-dashed border-white/10 rounded-md">
               No positions yet. Trade to open one.
             </p>
           ) : (
@@ -278,7 +278,7 @@ export function FinanceShell({
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-white truncate">{h.name}</div>
-                        <div className="text-[11px] text-gray-500 font-mono">
+                        <div className="text-[11px] text-gray-400 font-mono">
                           {h.shares !== undefined ? `${h.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} @ ${fmtShort(h.price, fiatSymbol)}` : fmtShort(h.price, fiatSymbol)}
                         </div>
                       </div>
@@ -306,18 +306,18 @@ export function FinanceShell({
         {/* Watchlist */}
         <section>
           <header className="flex items-center justify-between mb-2">
-            <h2 className="text-xs uppercase tracking-wider text-gray-500">Watchlist</h2>
+            <h2 className="text-xs uppercase tracking-wider text-gray-400">Watchlist</h2>
             <button
               type="button"
               onClick={onAddWatch}
               aria-label="Add to watchlist"
-              className="text-gray-500 hover:text-cyan-300"
+              className="text-gray-400 hover:text-cyan-300"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
           </header>
           {watchlist.length === 0 ? (
-            <p className="text-xs text-gray-500 italic px-3 py-4 text-center border border-dashed border-white/10 rounded-md">
+            <p className="text-xs text-gray-400 italic px-3 py-4 text-center border border-dashed border-white/10 rounded-md">
               Star tickers to track here.
             </p>
           ) : (
@@ -332,7 +332,7 @@ export function FinanceShell({
                     <Star className="w-3 h-3 text-amber-300" aria-hidden="true" />
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-white truncate">{w.symbol}</div>
-                      <div className="text-[11px] text-gray-500 truncate">{w.name}</div>
+                      <div className="text-[11px] text-gray-400 truncate">{w.name}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-mono tabular-nums text-white">{fmtShort(w.price, fiatSymbol)}</div>
@@ -353,9 +353,9 @@ export function FinanceShell({
 
       {/* Activity */}
       <section>
-        <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Recent activity</h2>
+        <h2 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Recent activity</h2>
         {activity.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No activity yet.</p>
+          <p className="text-xs text-gray-400 italic">No activity yet.</p>
         ) : (
           <ul className="space-y-1">
             {activity.slice(0, 8).map((a) => {
@@ -386,7 +386,7 @@ export function FinanceShell({
                     <div className="text-sm font-medium text-white truncate capitalize">
                       {a.kind} {a.asset ?? ''} <span className="text-gray-400 font-normal">— {a.label}</span>
                     </div>
-                    <div className="text-[11px] text-gray-500 truncate">
+                    <div className="text-[11px] text-gray-400 truncate">
                       {new Date(a.timestamp).toLocaleString()}
                     </div>
                   </div>
@@ -438,7 +438,7 @@ function MetaTile({ icon: Icon, label, value, meter }: MetaTileProps) {
     <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3">
       <div className="flex items-center gap-2 mb-1">
         <Icon className="w-3.5 h-3.5 text-cyan-300" aria-hidden="true" />
-        <span className="text-[11px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[11px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-lg font-mono tabular-nums text-white">{value}</div>
       {meter !== undefined && (

@@ -306,7 +306,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                       <AlertCircle className="w-6 h-6 text-red-400" />
                     </div>
                     <p className="text-sm text-gray-300">Unable to load connections</p>
-                    <p className="text-xs text-gray-500 max-w-xs">
+                    <p className="text-xs text-gray-400 max-w-xs">
                       The graph service may be unavailable. Try refreshing.
                     </p>
                     <button
@@ -327,7 +327,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                     <p className="text-sm text-gray-300 font-medium">
                       No cross-domain connections yet
                     </p>
-                    <p className="text-xs text-gray-500 max-w-xs">
+                    <p className="text-xs text-gray-400 max-w-xs">
                       As you add content to {domainLabel.toLowerCase()} and other domains,
                       cross-domain connections will appear here automatically.
                     </p>
@@ -338,7 +338,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                 {!isLoading && !hasError && connections.length > 0 && (
                   <div className="space-y-5">
                     {/* Summary */}
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {connections.length} connection
                       {connections.length !== 1 ? 's' : ''} across {domainKeys.length} domain
                       {domainKeys.length !== 1 ? 's' : ''}
@@ -356,7 +356,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                           >
                             {domKey.charAt(0).toUpperCase() + domKey.slice(1)}
                           </span>
-                          <span className="text-[11px] text-gray-500">
+                          <span className="text-[11px] text-gray-400">
                             {grouped[domKey].length} item
                             {grouped[domKey].length !== 1 ? 's' : ''}
                           </span>
@@ -375,13 +375,13 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
                                   {item.title}
                                 </p>
                                 {item.excerpt && (
-                                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                                  <p className="text-xs text-gray-400 truncate mt-0.5">
                                     {item.excerpt}
                                   </p>
                                 )}
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-[10px] font-mono text-gray-500 tabular-nums">
+                                <span className="text-[10px] font-mono text-gray-400 tabular-nums">
                                   {formatScore(item.similarity)}
                                 </span>
                                 <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 transition-colors" />
@@ -397,7 +397,7 @@ function CrossDomainConnections({ domain, domainLabel }: CrossDomainConnectionsP
 
               {/* Footer */}
               <div className="px-4 py-2.5 border-t border-lattice-border bg-lattice-surface">
-                <p className="text-[10px] text-gray-500 text-center">
+                <p className="text-[10px] text-gray-400 text-center">
                   {modKey}+J to toggle &middot; Click a result to navigate
                 </p>
               </div>

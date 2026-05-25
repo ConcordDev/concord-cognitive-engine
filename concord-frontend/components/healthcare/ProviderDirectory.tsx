@@ -155,7 +155,7 @@ export function ProviderDirectory() {
           </span>
         </div>
         {result && (
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             {result.providers.length} of {result.totalMatching} shown
           </span>
         )}
@@ -163,7 +163,7 @@ export function ProviderDirectory() {
 
       {/* Popular specialty chip grid */}
       <div>
-        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">
           Common specialties
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -188,7 +188,7 @@ export function ProviderDirectory() {
       {/* Custom specialty + location controls */}
       <form onSubmit={submitCustom} className="grid grid-cols-1 gap-2 sm:grid-cols-12">
         <div className="relative sm:col-span-5">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={customSpecialty}
@@ -236,7 +236,7 @@ export function ProviderDirectory() {
           <button
             type="button"
             onClick={() => { setZip(''); setStateInput(''); setCity(''); }}
-            className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             Clear filters
           </button>
@@ -250,7 +250,7 @@ export function ProviderDirectory() {
       )}
 
       {!result && !searchQuery.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Pick a specialty above or add ZIP + state to find verified providers from
           the CMS NPI Registry. All providers are NPI-verified at the federal level.
         </div>
@@ -314,7 +314,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
         </div>
         <p className="mt-0.5 text-xs text-zinc-300">{provider.specialty}</p>
 
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400">
           {(provider.city || provider.state) && (
             <span className="flex items-center gap-1">
               <MapPin className="h-3 w-3" />
@@ -344,7 +344,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           )}
         </div>
 
-        <div className="mt-2 flex items-center gap-1.5 border-t border-zinc-800 pt-1.5 text-[10px] text-zinc-600">
+        <div className="mt-2 flex items-center gap-1.5 border-t border-zinc-800 pt-1.5 text-[10px] text-zinc-400">
           <ShieldCheck className="h-2.5 w-2.5 text-cyan-400/70" />
           <span title={`NPI: ${provider.npi}${provider.enumeratedAt ? ` · enumerated ${provider.enumeratedAt}` : ''}`}>
             Verified provider · CMS NPI Registry
@@ -359,7 +359,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             saved
               ? 'bg-rose-500/15 text-rose-400'
-              : 'text-zinc-500 hover:bg-rose-500/10 hover:text-rose-400'
+              : 'text-zinc-400 hover:bg-rose-500/10 hover:text-rose-400'
           }`}
           title={saved ? 'Saved provider' : 'Save provider'}
           aria-label={saved ? 'Unsave provider' : 'Save provider'}
@@ -390,7 +390,7 @@ function ProviderCard({ provider, saved, onToggleSave }: { provider: Provider; s
           href={`https://npiregistry.cms.hhs.gov/provider-view/${provider.npi}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           title="Open NPI registry page"
           aria-label="Open NPI registry"
         >

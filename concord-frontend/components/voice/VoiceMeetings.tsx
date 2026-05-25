@@ -147,7 +147,7 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
             <input type="number" min={5} value={draft.durationMin}
               onChange={e => setDraft({ ...draft, durationMin: Number(e.target.value) })}
               className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-            <span className="text-[11px] text-zinc-500 self-center">min</span>
+            <span className="text-[11px] text-zinc-400 self-center">min</span>
           </div>
           <input value={draft.meetingUrl} onChange={e => setDraft({ ...draft, meetingUrl: e.target.value })} placeholder="Meeting URL (optional)"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
@@ -163,7 +163,7 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
       {error && <p className="text-xs text-rose-400">{error}</p>}
 
       {meetings.length === 0 ? (
-        <p className="text-xs text-zinc-600 italic">No meetings scheduled yet.</p>
+        <p className="text-xs text-zinc-400 italic">No meetings scheduled yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {meetings.map(m => (
@@ -171,7 +171,7 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{m.title}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {new Date(m.startAt).toLocaleString()} · {m.durationMin} min
                     {m.attendees.length > 0 && ` · ${m.attendees.length} attendee${m.attendees.length !== 1 ? 's' : ''}`}
                   </p>
@@ -200,7 +200,7 @@ export function VoiceMeetings({ onRecorded }: { onRecorded?: () => void }) {
                   </button>
                 )}
                 {m.botStatus === 'joined' && activeBot !== m.id && (
-                  <span className="text-[10px] text-zinc-500 inline-flex items-center gap-1"><Square className="w-2.5 h-2.5" />bot in another tab</span>
+                  <span className="text-[10px] text-zinc-400 inline-flex items-center gap-1"><Square className="w-2.5 h-2.5" />bot in another tab</span>
                 )}
               </div>
             </li>

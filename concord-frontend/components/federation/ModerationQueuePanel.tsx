@@ -86,7 +86,7 @@ export function ModerationQueuePanel() {
       <h2 className="text-rose-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <Inbox className="w-4 h-4" /> Inbound moderation queue
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Report federated content for review. A defederate decision blocks
         the source peer automatically.
       </p>
@@ -150,9 +150,9 @@ export function ModerationQueuePanel() {
       </div>
 
       {loading ? (
-        <p className="text-xs text-gray-500 italic">Loading queue…</p>
+        <p className="text-xs text-gray-400 italic">Loading queue…</p>
       ) : !data || data.items.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No items in the queue.</p>
+        <p className="text-xs text-gray-400 italic">No items in the queue.</p>
       ) : (
         <ul className="space-y-2">
           {data.items.map((item) => (
@@ -167,12 +167,12 @@ export function ModerationQueuePanel() {
                   {item.status === 'reviewed' ? `${item.decision}` : 'open'}
                 </span>
                 {item.contentId && (
-                  <span className="text-[10px] text-gray-500 font-mono">{item.contentId}</span>
+                  <span className="text-[10px] text-gray-400 font-mono">{item.contentId}</span>
                 )}
               </div>
               {item.summary && <div className="text-xs text-gray-300 mt-1">{item.summary}</div>}
-              <div className="text-[11px] text-gray-500 mt-1">reason: {item.reason}</div>
-              <div className="text-[10px] text-gray-600 mt-1">
+              <div className="text-[11px] text-gray-400 mt-1">reason: {item.reason}</div>
+              <div className="text-[10px] text-gray-400 mt-1">
                 reported {new Date(item.reportedAt).toLocaleString()}
               </div>
               {item.status === 'open' && (

@@ -88,9 +88,9 @@ export function AgentMessenger() {
       <div className="flex" style={{ height: 360 }}>
         <aside className="w-48 border-r border-white/10 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+            <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
           ) : agents.length === 0 ? (
-            <div className="px-3 py-6 text-center text-xs text-gray-500">No agents yet</div>
+            <div className="px-3 py-6 text-center text-xs text-gray-400">No agents yet</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {agents.map(a => (
@@ -100,7 +100,7 @@ export function AgentMessenger() {
                     className={cn('w-full text-left px-3 py-2 hover:bg-white/[0.03]', activeAgent?.id === a.id && 'bg-cyan-500/5')}
                   >
                     <div className="text-sm text-white truncate">{a.name}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{a.brokerage}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{a.brokerage}</div>
                     <div className="text-[10px] text-amber-300 inline-flex items-center gap-0.5"><Star className="w-2.5 h-2.5 fill-amber-300" />{a.rating}</div>
                   </button>
                 </li>
@@ -118,11 +118,11 @@ export function AgentMessenger() {
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {messages.length === 0 ? (
-                  <div className="text-center text-xs text-gray-500 pt-12">No messages yet — say hello.</div>
+                  <div className="text-center text-xs text-gray-400 pt-12">No messages yet — say hello.</div>
                 ) : messages.map(m => (
                   <div key={m.id} className={cn('max-w-[80%] rounded-lg px-3 py-2 text-xs', m.from === 'user' ? 'ml-auto bg-cyan-500/15 text-cyan-100 border border-cyan-500/20' : 'bg-white/5 text-gray-100 border border-white/10')}>
                     <div>{m.text}</div>
-                    <div className="mt-0.5 text-[9px] text-gray-500">{new Date(m.timestamp).toLocaleString()}</div>
+                    <div className="mt-0.5 text-[9px] text-gray-400">{new Date(m.timestamp).toLocaleString()}</div>
                   </div>
                 ))}
               </div>
@@ -132,7 +132,7 @@ export function AgentMessenger() {
               </form>
             </>
           ) : (
-            <div className="flex items-center justify-center flex-1 text-xs text-gray-500">Select an agent to message</div>
+            <div className="flex items-center justify-center flex-1 text-xs text-gray-400">Select an agent to message</div>
           )}
         </div>
       </div>

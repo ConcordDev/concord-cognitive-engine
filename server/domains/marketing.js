@@ -186,6 +186,7 @@ export default function registerMarketingActions(registerLensAction) {
   });
 
   registerLensAction("marketing", "campaign-kpis", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = findCampaign(s, mkAid(ctx), params.campaignId);
     if (!c) return { ok: false, error: "campaign not found" };
@@ -196,10 +197,12 @@ export default function registerMarketingActions(registerLensAction) {
       verdict = kpis.roas >= 4 ? "strong" : kpis.roas >= 2 ? "acceptable" : kpis.roas >= 1 ? "break_even" : "underperforming";
     }
     return { ok: true, result: { campaign: { id: c.id, name: c.name, channel: c.channel }, kpis, verdict } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Channel performance ─────────────────────────────────────────────
   registerLensAction("marketing", "channel-performance", (ctx, _a, _params = {}) => {
+  try {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mkAid(ctx);
     const byChannel = {};
@@ -215,7 +218,8 @@ export default function registerMarketingActions(registerLensAction) {
       if (ch) ch.campaigns += 1;
     }
     return { ok: true, result: { channels, count: channels.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Leads ───────────────────────────────────────────────────────────
   registerLensAction("marketing", "lead-add", (ctx, _a, params = {}) => {
@@ -461,6 +465,7 @@ export default function registerMarketingActions(registerLensAction) {
 
   // ── Budget pacing ───────────────────────────────────────────────────
   registerLensAction("marketing", "budget-pacing", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = findCampaign(s, mkAid(ctx), params.campaignId);
     if (!c) return { ok: false, error: "campaign not found" };
@@ -484,7 +489,8 @@ export default function registerMarketingActions(registerLensAction) {
         utilisationPct: c.budget > 0 ? Math.round((spent / c.budget) * 100) : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   //  HubSpot-parity backlog: email builder + send engine, automation
@@ -594,6 +600,7 @@ export default function registerMarketingActions(registerLensAction) {
   }
 
   registerLensAction("marketing", "email-send", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const e = (s.emails.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
     if (!e) return { ok: false, error: "email not found" };
@@ -624,7 +631,8 @@ export default function registerMarketingActions(registerLensAction) {
         clickRate: Math.round((clicked / recipients.length) * 1000) / 10,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Marketing automation workflows ──────────────────────────────────
   // A workflow is an ordered list of trigger → delay → email → branch
@@ -831,6 +839,7 @@ export default function registerMarketingActions(registerLensAction) {
   // Capture a form submission. A submission also becomes a lead so the
   // landing page feeds the pipeline — that's HubSpot's whole point.
   registerLensAction("marketing", "page-submit", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const p = (s.pages.get(mkAid(ctx)) || []).find((x) => x.id === params.id);
     if (!p) return { ok: false, error: "page not found" };
@@ -860,7 +869,8 @@ export default function registerMarketingActions(registerLensAction) {
     mkListB(s.leads, mkAid(ctx)).push(lead);
     saveMktState();
     return { ok: true, result: { submission, leadId: lead.id } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketing", "page-submissions", (ctx, _a, params = {}) => {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -943,6 +953,7 @@ export default function registerMarketingActions(registerLensAction) {
   // Configurable rule set. Each rule maps an attribute/behaviour signal
   // to a point value. Applying the model to a lead computes a real score.
   registerLensAction("marketing", "scoring-model-save", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = mkClean(params.name, 120);
     if (!name) return { ok: false, error: "model name required" };
@@ -973,7 +984,8 @@ export default function registerMarketingActions(registerLensAction) {
     mkListB(s.scoringModels, userId).push(model);
     saveMktState();
     return { ok: true, result: { model } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketing", "scoring-model-list", (ctx, _a, _params = {}) => {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1027,6 +1039,7 @@ export default function registerMarketingActions(registerLensAction) {
   // On-page analysis from real text inputs — title length, meta length,
   // word count, keyword density, heading/image checks — plus a score.
   registerLensAction("marketing", "seo-audit", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const url = mkClean(params.url, 300);
     if (!url) return { ok: false, error: "page url required" };
@@ -1076,7 +1089,8 @@ export default function registerMarketingActions(registerLensAction) {
     mkListB(s.seoAudits, mkAid(ctx)).push(audit);
     saveMktState();
     return { ok: true, result: { audit } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("marketing", "seo-audit-list", (ctx, _a, _params = {}) => {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1205,6 +1219,7 @@ export default function registerMarketingActions(registerLensAction) {
   // Unified scheduling view: campaigns, content, social posts and sent
   // emails collapsed onto a single date-keyed timeline.
   registerLensAction("marketing", "campaign-calendar", (ctx, _a, params = {}) => {
+  try {
     const s = getMktState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mkAid(ctx);
     const from = mkDay(params.from) || null;
@@ -1244,10 +1259,12 @@ export default function registerMarketingActions(registerLensAction) {
         days: Object.keys(byDate).sort(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("marketing", "marketing-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getMktState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = mkAid(ctx);
     const campaigns = s.campaigns.get(userId) || [];
@@ -1270,5 +1287,6 @@ export default function registerMarketingActions(registerLensAction) {
         abTests: (s.abtests.get(userId) || []).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

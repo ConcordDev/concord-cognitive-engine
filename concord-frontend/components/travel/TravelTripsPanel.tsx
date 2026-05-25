@@ -19,7 +19,7 @@ interface Booking { id: string; type: string; provider: string | null; cost: num
 interface ChecklistItem { id: string; item: string; done: boolean }
 
 const STATUS_COLOR: Record<string, string> = {
-  draft: 'text-zinc-500', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
+  draft: 'text-zinc-400', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
 };
 
 export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
@@ -102,7 +102,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
   const toggleCheck = async (id: string) => { if (selected) { await lensRun('travel', 'checklist-toggle', { tripId: selected.id, id }); await openTrip(selected); } };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Trip detail ──
@@ -115,7 +115,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-          <p className="text-xs text-zinc-500 flex items-center gap-1">
+          <p className="text-xs text-zinc-400 flex items-center gap-1">
             <MapPin className="w-3 h-3" />{selected.destination}
             {selected.startDate ? ` · ${selected.startDate} → ${selected.endDate}` : ''}
             {selected.durationDays ? ` · ${selected.durationDays} days` : ''} · {selected.travelers} travelers
@@ -142,14 +142,14 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
             </button>
           </div>
           {itinerary.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No itinerary items.</p>
+            <p className="text-[11px] text-zinc-400 italic">No itinerary items.</p>
           ) : (
             <ul className="space-y-1">
               {itinerary.map((it) => (
                 <li key={it.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <div>
                     <p className="text-xs text-zinc-200">{it.title}</p>
-                    <p className="text-[10px] text-zinc-500 capitalize">
+                    <p className="text-[10px] text-zinc-400 capitalize">
                       {[it.day, it.time, it.category].filter(Boolean).join(' · ')}
                     </p>
                   </div>
@@ -167,7 +167,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
           <h4 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
             <Ticket className="w-3.5 h-3.5 text-sky-400" /> Bookings
             {budget && (
-              <span className={cn('text-[10px]', budget.overBudget ? 'text-rose-400' : 'text-zinc-500')}>
+              <span className={cn('text-[10px]', budget.overBudget ? 'text-rose-400' : 'text-zinc-400')}>
                 · ${budget.booked} booked / ${budget.planned} planned
               </span>
             )}
@@ -187,7 +187,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
             </button>
           </div>
           {bookings.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No bookings.</p>
+            <p className="text-[11px] text-zinc-400 italic">No bookings.</p>
           ) : (
             <ul className="space-y-1">
               {bookings.map((b) => (
@@ -225,7 +225,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
                       c.done ? 'bg-sky-600 border-sky-600' : 'border-zinc-600')}>
                     {c.done && <Check className="w-3 h-3 text-white" />}
                   </button>
-                  <span className={cn(c.done ? 'text-zinc-500 line-through' : 'text-zinc-200')}>{c.item}</span>
+                  <span className={cn(c.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{c.item}</span>
                 </li>
               ))}
             </ul>
@@ -266,7 +266,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {trips.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No trips yet. Plan your first one.
         </div>
       ) : (
@@ -278,7 +278,7 @@ export function TravelTripsPanel({ onChange }: { onChange: () => void }) {
                   {t.name}
                   {t.status && <span className={cn('ml-2 text-[10px] uppercase', STATUS_COLOR[t.status])}>{t.status}</span>}
                 </p>
-                <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                <p className="text-[11px] text-zinc-400 flex items-center gap-1">
                   <MapPin className="w-3 h-3" />{t.destination}
                   {t.startDate ? ` · ${t.startDate}` : ''}{t.durationDays ? ` · ${t.durationDays}d` : ''}
                 </p>

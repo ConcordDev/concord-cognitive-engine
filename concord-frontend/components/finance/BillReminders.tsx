@@ -67,7 +67,7 @@ export function BillReminders() {
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">
           Bill reminders
         </span>
-        <span className="ml-auto text-[10px] text-gray-500 flex items-center gap-1">
+        <span className="ml-auto text-[10px] text-gray-400 flex items-center gap-1">
           Lead
           <select
             value={leadDays}
@@ -96,11 +96,11 @@ export function BillReminders() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : !data || data.reminders.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">
+          <div className="px-3 py-10 text-center text-xs text-gray-400">
             <BellRing className="w-6 h-6 mx-auto mb-2 opacity-30" />
             No upcoming or overdue bills. Add bills in the Bills tab to get reminders.
           </div>

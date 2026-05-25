@@ -86,7 +86,7 @@ export function GoalTrackerPanel() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Target className="w-4 h-4 text-yellow-400" /> Learning Goals
-          <span className="text-xs text-gray-500 font-normal">
+          <span className="text-xs text-gray-400 font-normal">
             {active} active · {achieved} achieved
           </span>
         </h3>
@@ -97,7 +97,7 @@ export function GoalTrackerPanel() {
       </div>
 
       {err && <p className="text-xs text-red-400">{err}</p>}
-      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+      {loading && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
 
       {showForm && (
         <div className="bg-lattice-deep rounded-lg p-3 space-y-2 border border-white/5">
@@ -119,7 +119,7 @@ export function GoalTrackerPanel() {
       )}
 
       {goals.length === 0 && !loading && (
-        <p className="text-center py-6 text-gray-500 text-sm">No goals yet.</p>
+        <p className="text-center py-6 text-gray-400 text-sm">No goals yet.</p>
       )}
 
       <div className="space-y-2">
@@ -136,7 +136,7 @@ export function GoalTrackerPanel() {
                     : 'bg-white/5 text-gray-400'
               }`}>{g.status}</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-0.5">
+            <p className="text-[10px] text-gray-400 mt-0.5">
               {g.currentValue} / {g.targetValue} {g.metric}
               {g.deadline && ` · by ${g.deadline}`}
             </p>
@@ -157,7 +157,7 @@ export function GoalTrackerPanel() {
               </div>
             )}
             {g.checkInCount > 0 && (
-              <p className="text-[10px] text-gray-600 mt-1">{g.checkInCount} check-in{g.checkInCount !== 1 ? 's' : ''}</p>
+              <p className="text-[10px] text-gray-400 mt-1">{g.checkInCount} check-in{g.checkInCount !== 1 ? 's' : ''}</p>
             )}
           </div>
         ))}

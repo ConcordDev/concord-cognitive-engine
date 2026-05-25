@@ -175,9 +175,9 @@ export default function EFBSyntheticVision() {
 
   const tape = (label: string, value: string, unit: string, tone: string) => (
     <div className="rounded border border-white/10 bg-black/30 px-3 py-2 text-center">
-      <p className="text-[9px] uppercase tracking-wider text-gray-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-gray-400">{label}</p>
       <p className={'text-lg font-mono ' + tone}>{value}</p>
-      <p className="text-[9px] text-gray-600">{unit}</p>
+      <p className="text-[9px] text-gray-400">{unit}</p>
     </div>
   );
 
@@ -191,11 +191,11 @@ export default function EFBSyntheticVision() {
           </span>
         </div>
         {loading ? (
-          <div className="flex items-center py-3 text-xs text-gray-500">
+          <div className="flex items-center py-3 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading tracks…
           </div>
         ) : tracks.length === 0 ? (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             No recorded track logs yet. Record a flight with the track logger first.
           </p>
         ) : (
@@ -242,7 +242,7 @@ export default function EFBSyntheticVision() {
               {tape('Ground track', String(snap.state.groundTrackDeg).padStart(3, '0'), 'deg', 'text-fuchsia-300')}
             </div>
           </div>
-          <p className="text-[10px] text-gray-500 mt-3 text-center">
+          <p className="text-[10px] text-gray-400 mt-3 text-center">
             {snap.tail} · derived from {snap.pointCount} track points ·{' '}
             {snap.sampleIntervalSec}s sample interval
           </p>

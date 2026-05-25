@@ -21,21 +21,21 @@ export function CouncilPanel() {
   }, [activeSession]);
   return (
     <div className="text-sm">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Open sessions</h3>
-      {sessions.length === 0 ? <p className="text-zinc-500 text-xs italic">No councils in session.</p> : (
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Open sessions</h3>
+      {sessions.length === 0 ? <p className="text-zinc-400 text-xs italic">No councils in session.</p> : (
         <ul className="space-y-1 mb-3">
           {sessions.map((s) => (
             <li key={s.id} className={`text-xs border rounded p-2 cursor-pointer ${activeSession === s.id ? 'bg-amber-950/50 border-amber-700' : 'bg-zinc-900/50 border-zinc-800'}`} onClick={() => setActiveSession(s.id)}>
               <span className="text-zinc-200">{s.realm_id}</span>
-              <span className="ml-2 text-zinc-500">season {s.season_id} · year {s.year}</span>
+              <span className="ml-2 text-zinc-400">season {s.season_id} · year {s.year}</span>
             </li>
           ))}
         </ul>
       )}
       {activeSession && (
         <>
-          <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Petitions ({petitions.length})</h3>
-          {petitions.length === 0 ? <p className="text-zinc-500 text-xs italic mb-2">None yet.</p> : (
+          <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Petitions ({petitions.length})</h3>
+          {petitions.length === 0 ? <p className="text-zinc-400 text-xs italic mb-2">None yet.</p> : (
             <ul className="space-y-1 mb-3">
               {petitions.map((p) => (
                 <li key={p.id} className="text-xs bg-zinc-900/50 border border-zinc-800 rounded p-2">

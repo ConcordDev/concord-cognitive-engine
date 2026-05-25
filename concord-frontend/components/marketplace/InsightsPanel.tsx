@@ -59,7 +59,7 @@ export function InsightsPanel() {
           <span className="text-sm font-semibold text-gray-200">Marketplace Insights</span>
         </header>
         <form onSubmit={(e) => { e.preventDefault(); search(q); }} className="p-3 border-b border-white/10 flex items-center gap-2">
-          <Search className="w-3.5 h-3.5 text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
             value={q}
             onChange={e => setQ(e.target.value)}
@@ -87,7 +87,7 @@ export function InsightsPanel() {
             </div>
             {result.ownTopMatches.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 mt-2 mb-1">Your top matches</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mt-2 mb-1">Your top matches</div>
                 <ul className="space-y-0.5">
                   {result.ownTopMatches.map(m => (
                     <li key={m.id} className="text-xs text-white">· {m.title}</li>
@@ -103,17 +103,17 @@ export function InsightsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Bookmark className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Saved searches</span>
-          <span className="text-[10px] text-gray-500">{saved.length}/50</span>
+          <span className="text-[10px] text-gray-400">{saved.length}/50</span>
         </header>
         {saved.length === 0 ? (
-          <div className="px-3 py-6 text-center text-xs text-gray-500">No saved searches.</div>
+          <div className="px-3 py-6 text-center text-xs text-gray-400">No saved searches.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {saved.map(s => (
               <li key={s.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-2 group">
-                <Search className="w-3 h-3 text-gray-500" />
+                <Search className="w-3 h-3 text-gray-400" />
                 <button onClick={() => { setQ(s.keyword); search(s.keyword); }} className="text-xs text-white flex-1 text-left hover:text-orange-300">{s.keyword}</button>
-                <span className="text-[10px] text-gray-500">{s.savedAt.slice(0, 10)}</span>
+                <span className="text-[10px] text-gray-400">{s.savedAt.slice(0, 10)}</span>
                 <button onClick={() => remove(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
@@ -127,7 +127,7 @@ export function InsightsPanel() {
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="p-2 rounded border border-white/10 bg-black/30">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-base font-mono tabular-nums text-white">{value}</div>
     </div>
   );

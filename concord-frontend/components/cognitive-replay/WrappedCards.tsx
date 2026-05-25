@@ -50,7 +50,7 @@ export function WrappedCards({ sinceDays }: { sinceDays: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 p-6 text-sm text-zinc-500">
+      <div className="flex items-center gap-2 p-6 text-sm text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Composing your cognitive wrapped…
       </div>
     );

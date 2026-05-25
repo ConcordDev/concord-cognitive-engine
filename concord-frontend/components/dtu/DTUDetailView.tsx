@@ -59,7 +59,7 @@ const tierConfig: Record<string, { icon: typeof Zap; color: string; label: strin
   mega: { icon: Crown, color: 'text-neon-purple', label: 'Mega DTU', bg: 'bg-neon-purple/10' },
   hyper: { icon: Zap, color: 'text-neon-pink', label: 'Hyper DTU', bg: 'bg-neon-pink/10' },
   shadow: { icon: Ghost, color: 'text-gray-400', label: 'Shadow DTU', bg: 'bg-gray-500/10' },
-  archive: { icon: FileType, color: 'text-gray-500', label: 'Archived DTU', bg: 'bg-gray-600/10' },
+  archive: { icon: FileType, color: 'text-gray-400', label: 'Archived DTU', bg: 'bg-gray-600/10' },
 };
 
 // ── DTU Creation Path Labels (Feature 11: All 15 DTU Creation Paths) ────────
@@ -117,7 +117,7 @@ const DTU_SOURCE_STYLES: Record<string, { bg: string }> = {
   invoice: { bg: 'bg-emerald-500/10 text-emerald-400' },
   tax_summary: { bg: 'bg-emerald-500/10 text-emerald-400' },
   forge: { bg: 'bg-neon-pink/10 text-neon-pink' },
-  seed: { bg: 'bg-gray-500/10 text-gray-500' },
+  seed: { bg: 'bg-gray-500/10 text-gray-400' },
   federation: { bg: 'bg-cyan-500/10 text-cyan-400' },
 };
 
@@ -307,7 +307,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
       {/* Modal */}
       <div className="relative w-full max-w-2xl max-h-[85vh] bg-lattice-surface border border-lattice-border rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -334,7 +334,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     />
                   )}
                 </h2>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
                   <span className="font-mono truncate">{dtuId.slice(0, 20)}...</span>
                   <button onClick={handleCopyId} className="hover:text-white" title="Copy ID">
                     <Copy className="w-3 h-3" />
@@ -348,7 +348,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                     </span>
                   )}
                   {offlineSource === 'offline' && !serverDtu && (
-                    <span className="text-gray-500" title="Loaded from offline cache">
+                    <span className="text-gray-400" title="Loaded from offline cache">
                       offline
                     </span>
                   )}
@@ -413,7 +413,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
           ) : isError || !dtu ? (
             <div className="text-center py-8">
               <p className="text-red-400 text-sm">Failed to load DTU details</p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 The DTU may have been deleted or you may not have access.
               </p>
             </div>
@@ -611,7 +611,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                         />
                       ) : (
                         <div className="bg-lattice-deep p-4 rounded-lg text-center">
-                          <p className="text-gray-500 text-sm">
+                          <p className="text-gray-400 text-sm">
                             This DTU has type "{primaryType.replace(/_/g, ' ')}" but no artifact is
                             attached.
                           </p>
@@ -653,7 +653,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                   {/* Created via: source path badge */}
                   {dtu.source && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Created via:</span>
+                      <span className="text-xs text-gray-400">Created via:</span>
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${DTU_SOURCE_STYLES[dtu.source]?.bg || 'bg-gray-500/10 text-gray-400'}`}
                       >
@@ -668,7 +668,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                       <Clock className="w-4 h-4" />
                       {new Date(dtu.timestamp).toLocaleString()}
                     </span>
-                    {dtu.ownerId && <span className="text-gray-500">Creator: {dtu.ownerId}</span>}
+                    {dtu.ownerId && <span className="text-gray-400">Creator: {dtu.ownerId}</span>}
                     {dtu.resonance !== undefined && (
                       <span>Resonance: {(dtu.resonance * 100).toFixed(1)}%</span>
                     )}
@@ -907,7 +907,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                                 {entry.royaltyPercent}
                               </span>
                               {entry.ownerId && (
-                                <span className="text-gray-500 truncate max-w-[80px]">
+                                <span className="text-gray-400 truncate max-w-[80px]">
                                   {entry.ownerId}
                                 </span>
                               )}
@@ -974,7 +974,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                         .filter(([, v]) => v !== undefined && v !== null && v !== '')
                         .map(([key, val]) => (
                           <div key={key} className="flex items-start justify-between">
-                            <span className="text-gray-500">{key}:</span>
+                            <span className="text-gray-400">{key}:</span>
                             <span className="text-gray-300 text-right font-mono max-w-[250px] truncate">
                               {String(val)}
                             </span>
@@ -1048,10 +1048,10 @@ function LineageSection({
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
                   {node.tier && (
-                    <span className="text-[10px] text-gray-500 uppercase">{node.tier}</span>
+                    <span className="text-[10px] text-gray-400 uppercase">{node.tier}</span>
                   )}
                   {node.ownerId && (
-                    <span className="text-[10px] text-gray-600 truncate max-w-[120px]">
+                    <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
                       {node.ownerId}
                     </span>
                   )}
@@ -1062,7 +1062,7 @@ function LineageSection({
           ))}
         </div>
       ) : emptyText ? (
-        <p className="text-gray-500 text-sm">{emptyText}</p>
+        <p className="text-gray-400 text-sm">{emptyText}</p>
       ) : null}
     </div>
   );

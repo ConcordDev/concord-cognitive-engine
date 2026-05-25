@@ -208,11 +208,11 @@ export default function EFBEndorsements() {
         </button>
 
         {loading ? (
-          <div className="flex items-center py-4 text-xs text-gray-500">
+          <div className="flex items-center py-4 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : ratings.length === 0 ? (
-          <p className="text-xs text-gray-500 mt-3">No ratings recorded yet.</p>
+          <p className="text-xs text-gray-400 mt-3">No ratings recorded yet.</p>
         ) : (
           <div className="space-y-1.5 mt-3">
             {ratings.map((r) => (
@@ -222,7 +222,7 @@ export default function EFBEndorsements() {
               >
                 <div>
                   <p className="text-xs text-amber-200 font-mono">{fmt(r.kind)}</p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-400">
                     Earned {r.dateEarned}
                     {r.examiner ? ` · ${r.examiner}` : ''}
                     {r.checkrideAirport ? ` · ${r.checkrideAirport}` : ''}
@@ -317,7 +317,7 @@ export default function EFBEndorsements() {
         </button>
 
         {!loading && endorsements.length === 0 ? (
-          <p className="text-xs text-gray-500 mt-3">No endorsements recorded yet.</p>
+          <p className="text-xs text-gray-400 mt-3">No endorsements recorded yet.</p>
         ) : (
           <div className="space-y-1.5 mt-3">
             {endorsements.map((e) => {
@@ -332,7 +332,7 @@ export default function EFBEndorsements() {
                       {fmt(e.kind)}
                       {e.farReference ? ` · ${e.farReference}` : ''}
                     </p>
-                    <p className="text-[10px] text-gray-500 truncate">
+                    <p className="text-[10px] text-gray-400 truncate">
                       {e.date} · {e.cfiName}
                       {e.cfiCertNumber ? ` (${e.cfiCertNumber})` : ''}
                       {e.expiryDate && (
@@ -341,7 +341,7 @@ export default function EFBEndorsements() {
                         </span>
                       )}
                     </p>
-                    {e.text && <p className="text-[10px] text-gray-600 truncate">{e.text}</p>}
+                    {e.text && <p className="text-[10px] text-gray-400 truncate">{e.text}</p>}
                   </div>
                   <button
                     type="button"

@@ -59,7 +59,7 @@ export function RedditCreative() {
           </select>
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {(['top', 'hot', 'new'] as const).map((s) => (
-              <button key={s} onClick={() => setSort(s)} className={`rounded px-2 py-0.5 font-mono uppercase ${sort === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{s}</button>
+              <button key={s} onClick={() => setSort(s)} className={`rounded px-2 py-0.5 font-mono uppercase ${sort === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
             ))}
           </div>
           {(posts.data?.length ?? 0) > 0 && (
@@ -76,7 +76,7 @@ export function RedditCreative() {
         </div>
       </header>
       {posts.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Reddit unreachable.</div>}
-      {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+      {posts.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 max-h-[520px] overflow-y-auto">
         {(posts.data || []).map((p) => {
           const img = p.preview?.images?.[0]?.source?.url?.replace(/&amp;/g, '&');
@@ -91,7 +91,7 @@ export function RedditCreative() {
               )}
               <div className="px-2 py-1.5">
                 <div className="line-clamp-2 text-[11px] text-white group-hover:text-cyan-300">{p.title}</div>
-                <div className="mt-0.5 flex items-center justify-between font-mono text-[9px] text-zinc-500">
+                <div className="mt-0.5 flex items-center justify-between font-mono text-[9px] text-zinc-400">
                   <span className="flex items-center gap-0.5"><ArrowUp className="h-2.5 w-2.5" />{p.score}</span>
                   <span className="flex items-center gap-0.5"><MessageSquare className="h-2.5 w-2.5" />{p.num_comments}</span>
                   <ExternalLink className="h-2.5 w-2.5" />

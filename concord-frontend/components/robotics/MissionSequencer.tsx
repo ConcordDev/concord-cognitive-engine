@@ -15,7 +15,7 @@ const STEP_ICON: Record<string, typeof Circle> = {
   pending: Circle, complete: CheckCircle2, failed: XCircle, aborted: XCircle, running: Loader2,
 };
 const STEP_COLOR: Record<string, string> = {
-  pending: 'text-gray-500', complete: 'text-green-400', failed: 'text-red-400',
+  pending: 'text-gray-400', complete: 'text-green-400', failed: 'text-red-400',
   aborted: 'text-gray-600', running: 'text-neon-cyan',
 };
 const MISSION_COLOR: Record<string, string> = {
@@ -107,7 +107,7 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>
       ) : missions.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">No missions queued.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No missions queued.</p>
       ) : (
         <div className="space-y-3">
           {missions.map(m => {
@@ -135,7 +135,7 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
                       <Square className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => remove(m.id)} disabled={busy === m.id}
-                      className="p-1.5 rounded text-gray-500 hover:text-red-400" aria-label="Delete mission">
+                      className="p-1.5 rounded text-gray-400 hover:text-red-400" aria-label="Delete mission">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -148,14 +148,14 @@ export function MissionSequencer({ robots }: { robots: RobotRow[] }) {
                     const Icon = STEP_ICON[step.status] || Circle;
                     return (
                       <div key={step.index} className={`flex items-center gap-2 text-xs ${step.index === m.currentStep && m.status === 'running' ? 'bg-neon-cyan/5 rounded px-1' : ''}`}>
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${STEP_COLOR[step.status] || 'text-gray-500'}`} />
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${STEP_COLOR[step.status] || 'text-gray-400'}`} />
                         <span className="font-mono text-gray-300">{step.command}</span>
-                        <span className="ml-auto text-[10px] text-gray-500">{step.durationMs}ms</span>
+                        <span className="ml-auto text-[10px] text-gray-400">{step.durationMs}ms</span>
                       </div>
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-gray-500 mt-1.5">
+                <p className="text-[10px] text-gray-400 mt-1.5">
                   {done}/{m.steps.length} steps · est {Math.round(m.estimatedMs / 1000)}s total
                 </p>
               </div>

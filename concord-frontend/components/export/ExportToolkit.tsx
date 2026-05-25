@@ -55,7 +55,7 @@ export function ExportToolkit() {
     <div className="space-y-6">
       <header className="border-b border-zinc-800 pb-3">
         <h2 className="text-sm font-semibold text-white">Export Toolkit</h2>
-        <p className="mt-0.5 text-[11px] text-zinc-500">
+        <p className="mt-0.5 text-[11px] text-zinc-400">
           Scheduled runs, cloud delivery, PDF, delta exports, history, encryption and column selection — all backed by the export domain.
         </p>
       </header>
@@ -135,18 +135,18 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
   return (
     <Panel icon={CalendarClock} title="Scheduled exports" tag="auto-runs every 60s">
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Weekly backup"
             className="w-44 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Frequency
           <select value={frequency} onChange={(e) => setFrequency(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white">
             <option value="daily">daily</option><option value="weekly">weekly</option><option value="monthly">monthly</option>
           </select>
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Format
           <select value={format} onChange={(e) => setFormat(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white">
             <option value="json">json</option><option value="csv">csv</option><option value="markdown">markdown</option><option value="pdf">pdf</option>
@@ -161,14 +161,14 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
       </div>
       {lastRun && <p className="mb-2 text-[10px] text-teal-400">{lastRun}</p>}
       {schedules.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No schedules configured yet.</p>
+        <p className="text-[11px] text-zinc-400">No schedules configured yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {schedules.map((s) => (
             <li key={s.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
               <div className="flex-1 min-w-0">
                 <p className="truncate text-xs text-white">{s.name}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {s.frequency} · {s.format.toUpperCase()} · ran {s.runCount}× · next {fmtTime(s.nextRun)}
                   {s.due && <span className="ml-1 text-amber-400">due</span>}
                 </p>
@@ -177,7 +177,7 @@ function ScheduledExports({ dtus }: { dtus: Dtu[] }) {
                 className={`rounded p-1 ${s.enabled ? 'text-teal-400' : 'text-zinc-600'} hover:bg-zinc-800`}>
                 <Power className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => remove(s.id)} title="Delete" className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400">
+              <button onClick={() => remove(s.id)} title="Delete" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </li>
@@ -232,15 +232,15 @@ function IncrementalExport({ dtus }: { dtus: Dtu[] }) {
         <p className="mb-2 text-[11px] text-zinc-400">
           {result.isFirstRun ? 'First run — ' : ''}
           <span className="text-teal-400">{result.changedRecords}</span> changed,{' '}
-          <span className="text-zinc-500">{result.unchangedRecords}</span> unchanged.
+          <span className="text-zinc-400">{result.unchangedRecords}</span> unchanged.
         </p>
       )}
       {cursors.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No export cursor yet — first delta export captures everything.</p>
+        <p className="text-[11px] text-zinc-400">No export cursor yet — first delta export captures everything.</p>
       ) : (
         <ul className="space-y-1">
           {cursors.map((c) => (
-            <li key={c.dataSource} className="text-[10px] text-zinc-500">
+            <li key={c.dataSource} className="text-[10px] text-zinc-400">
               <span className="font-mono text-zinc-300">{c.dataSource}</span> — last exported {fmtTime(c.lastRunAt)}
             </li>
           ))}
@@ -288,7 +288,7 @@ function SelectiveFields({ dtus }: { dtus: Dtu[] }) {
   return (
     <Panel icon={Columns3} title="Selective field export" tag="column picker">
       {fields.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No records to inspect yet — create DTUs to populate the field schema.</p>
+        <p className="text-[11px] text-zinc-400">No records to inspect yet — create DTUs to populate the field schema.</p>
       ) : (
         <>
           <div className="mb-3 flex flex-wrap gap-1.5">
@@ -298,7 +298,7 @@ function SelectiveFields({ dtus }: { dtus: Dtu[] }) {
                 <button key={f.name} onClick={() => toggle(f.name)}
                   className={`rounded border px-2 py-1 text-[10px] ${on ? 'border-teal-500 bg-teal-500/15 text-teal-200' : 'border-zinc-800 bg-zinc-900 text-zinc-400'}`}>
                   <span className="font-mono">{f.name}</span>
-                  <span className="ml-1 text-zinc-500">{f.type} · {f.coverage}%</span>
+                  <span className="ml-1 text-zinc-400">{f.type} · {f.coverage}%</span>
                 </button>
               );
             })}
@@ -338,7 +338,7 @@ function PdfExport({ dtus }: { dtus: Dtu[] }) {
   return (
     <Panel icon={FileDown} title="PDF export" tag="server-rendered">
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Document title
           <input value={title} onChange={(e) => setTitle(e.target.value)}
             className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
@@ -380,7 +380,7 @@ function EncryptedArchive({ dtus }: { dtus: Dtu[] }) {
   return (
     <Panel icon={Lock} title="Encrypted archive" tag="password-protected">
       <div className="flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Archive password
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="min 4 chars"
             className="w-56 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
@@ -432,22 +432,22 @@ function CloudDestinations() {
 
   return (
     <Panel icon={Cloud} title="Cloud destinations" tag="OAuth delivery">
-      <p className="mb-2 text-[10px] text-zinc-500">
+      <p className="mb-2 text-[10px] text-zinc-400">
         Paste an access token obtained from the provider&apos;s OAuth flow. Only a non-reversible token fingerprint is stored.
       </p>
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Provider
           <select value={provider} onChange={(e) => setProvider(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white">
             {PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           Account label
           <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="work drive"
             className="w-40 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
         </label>
-        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-500">
+        <label className="flex flex-col gap-0.5 text-[10px] text-zinc-400">
           OAuth access token
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ya29...."
             className="w-52 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white" />
@@ -458,21 +458,21 @@ function CloudDestinations() {
       </div>
       {err && <p className="mb-2 text-[10px] text-red-400">{err}</p>}
       {conns.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No cloud destinations connected.</p>
+        <p className="text-[11px] text-zinc-400">No cloud destinations connected.</p>
       ) : (
         <ul className="space-y-1.5">
           {conns.map((c) => (
             <li key={c.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
               <div className="flex-1 min-w-0">
-                <p className="truncate text-xs text-white">{c.accountLabel} <span className="text-zinc-500">· {c.provider}</span></p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="truncate text-xs text-white">{c.accountLabel} <span className="text-zinc-400">· {c.provider}</span></p>
+                <p className="text-[10px] text-zinc-400">
                   token #{c.tokenFingerprint} · {c.deliveries} deliveries · last {fmtTime(c.lastDeliveryAt)}
                 </p>
               </div>
               <button onClick={() => push(c.id)} className="rounded border border-zinc-700 px-2 py-1 text-[10px] text-zinc-300 hover:border-teal-500">
                 Record delivery
               </button>
-              <button onClick={() => disconnect(c.id)} title="Disconnect" className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400">
+              <button onClick={() => disconnect(c.id)} title="Disconnect" className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400">
                 <X className="h-3.5 w-3.5" />
               </button>
             </li>
@@ -514,7 +514,7 @@ function ExportHistory() {
   return (
     <Panel icon={History} title="Export history" tag={`${runs.length} runs · ${fmtBytes(totalBytes)}`}>
       {runs.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No exports run yet — completed exports are logged here.</p>
+        <p className="text-[11px] text-zinc-400">No exports run yet — completed exports are logged here.</p>
       ) : (
         <>
           <div className="mb-2 flex justify-end">
@@ -527,7 +527,7 @@ function ExportHistory() {
               <li key={run.id} className="flex items-center gap-3 rounded border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5">
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-xs text-white">{run.filename}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {fmtTime(run.at)} · {run.format.toUpperCase()} · {run.itemCount} items · {fmtBytes(run.byteLength)} · {run.trigger}
                   </p>
                 </div>
@@ -536,7 +536,7 @@ function ExportHistory() {
                     <Download className="h-3 w-3" /> Re-download
                   </button>
                 ) : (
-                  <span className="text-[10px] text-zinc-600">no payload retained</span>
+                  <span className="text-[10px] text-zinc-400">no payload retained</span>
                 )}
               </li>
             ))}

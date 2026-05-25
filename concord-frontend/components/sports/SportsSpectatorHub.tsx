@@ -97,7 +97,7 @@ function NewsPanel() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <SportPicker value={sport} onChange={setSport} />
-        <span className="font-mono text-[10px] uppercase text-zinc-500">espn news</span>
+        <span className="font-mono text-[10px] uppercase text-zinc-400">espn news</span>
       </div>
       {loading && <Spinner label="Loading headlines" />}
       {err && <ErrLine msg={err} />}
@@ -119,7 +119,7 @@ function NewsPanel() {
               {a.description && (
                 <p className="mt-0.5 line-clamp-2 text-xs text-zinc-400">{a.description}</p>
               )}
-              <p className="mt-1 font-mono text-[10px] text-zinc-600">
+              <p className="mt-1 font-mono text-[10px] text-zinc-400">
                 {a.byline ? `${a.byline} · ` : ''}
                 {a.published ? new Date(a.published).toLocaleDateString() : ''}
               </p>
@@ -206,7 +206,7 @@ function SchedulePanel({ onPickGame }: { onPickGame: (sport: string, eventId: st
                   </span>
                 )}
               </p>
-              <p className="font-mono text-[10px] text-zinc-500">
+              <p className="font-mono text-[10px] text-zinc-400">
                 {new Date(f.date).toLocaleString()} · {f.status || '?'}
                 {f.venue ? ` · ${f.venue}` : ''}
               </p>
@@ -275,7 +275,7 @@ function StandingsPanel() {
             <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">{g.name}</h4>
             <div className="overflow-hidden rounded-lg border border-zinc-800">
               <table className="w-full text-xs">
-                <thead className="bg-zinc-900 text-zinc-500">
+                <thead className="bg-zinc-900 text-zinc-400">
                   <tr>
                     <th className="px-2 py-1.5 text-left">#</th>
                     <th className="px-2 py-1.5 text-left">Team</th>
@@ -288,7 +288,7 @@ function StandingsPanel() {
                 <tbody>
                   {g.teams.map((t, ti) => (
                     <tr key={ti} className="border-t border-zinc-800/60">
-                      <td className="px-2 py-1.5 font-mono text-zinc-500">{t.rank ?? ti + 1}</td>
+                      <td className="px-2 py-1.5 font-mono text-zinc-400">{t.rank ?? ti + 1}</td>
                       <td className="px-2 py-1.5">
                         <span className="flex items-center gap-1.5">
                           {t.logo && <img src={t.logo} alt="" className="h-4 w-4" />}
@@ -373,7 +373,7 @@ function PlayByPlayPanel({ initial }: { initial: { sport: string; eventId: strin
           Load
         </button>
       </div>
-      <p className="text-[10px] text-zinc-600">
+      <p className="text-[10px] text-zinc-400">
         Tip: pick a completed game from the Schedule tab to auto-load its play-by-play.
       </p>
       {loading && <Spinner label="Loading game" />}
@@ -387,14 +387,14 @@ function PlayByPlayPanel({ initial }: { initial: { sport: string; eventId: strin
                 <span className={cn('text-sm', t.winner ? 'font-bold text-white' : 'text-zinc-300')}>
                   {t.team}
                 </span>
-                {t.record && <span className="font-mono text-[10px] text-zinc-500">{t.record}</span>}
+                {t.record && <span className="font-mono text-[10px] text-zinc-400">{t.record}</span>}
               </span>
               <span className={cn('font-mono text-lg', t.winner ? 'text-emerald-300' : 'text-zinc-400')}>
                 {t.score ?? '-'}
               </span>
             </div>
           ))}
-          {status && <p className="mt-1 font-mono text-[10px] uppercase text-zinc-500">{status}</p>}
+          {status && <p className="mt-1 font-mono text-[10px] uppercase text-zinc-400">{status}</p>}
         </div>
       )}
       {recap && (
@@ -413,13 +413,13 @@ function PlayByPlayPanel({ initial }: { initial: { sport: string; eventId: strin
                 p.scoringPlay ? 'bg-emerald-500/10' : 'bg-transparent',
               )}
             >
-              <span className="shrink-0 font-mono text-[10px] text-zinc-600">
+              <span className="shrink-0 font-mono text-[10px] text-zinc-400">
                 {p.period != null ? `P${p.period}` : ''}
                 {p.clock ? ` ${p.clock}` : ''}
               </span>
               <span className="text-zinc-300">{p.text}</span>
               {p.homeScore != null && p.awayScore != null && (
-                <span className="ml-auto shrink-0 font-mono text-[10px] text-zinc-500">
+                <span className="ml-auto shrink-0 font-mono text-[10px] text-zinc-400">
                   {p.awayScore}-{p.homeScore}
                 </span>
               )}
@@ -505,7 +505,7 @@ function RosterPanel() {
             >
               {t.badge && <img src={t.badge} alt="" className="h-4 w-4" />}
               {t.name}
-              <span className="font-mono text-[9px] text-zinc-500">{t.league}</span>
+              <span className="font-mono text-[9px] text-zinc-400">{t.league}</span>
             </button>
           ))}
         </div>
@@ -520,7 +520,7 @@ function RosterPanel() {
                 <p className="truncate text-xs font-semibold text-zinc-200">
                   {p.number ? `#${p.number} ` : ''}{p.name}
                 </p>
-                <p className="font-mono text-[10px] text-zinc-500">
+                <p className="font-mono text-[10px] text-zinc-400">
                   {[p.position, p.nationality, p.height].filter(Boolean).join(' · ')}
                 </p>
               </div>
@@ -583,10 +583,10 @@ function PlayersPanel() {
             {p.thumb && <img src={p.thumb} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" />}
             <div className="min-w-0">
               <p className="text-sm font-bold text-zinc-100">{p.name}</p>
-              <p className="font-mono text-[10px] text-zinc-500">
+              <p className="font-mono text-[10px] text-zinc-400">
                 {[p.team, p.position, p.sport, p.nationality].filter(Boolean).join(' · ')}
               </p>
-              <p className="mt-0.5 font-mono text-[10px] text-zinc-600">
+              <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
                 {[p.birthDate && `Born ${p.birthDate}`, p.height, p.weight].filter(Boolean).join(' · ')}
               </p>
               {p.description && (
@@ -686,7 +686,7 @@ function RemindersPanel() {
                   </span>
                 )}
               </p>
-              <p className="font-mono text-[10px] text-zinc-500">
+              <p className="font-mono text-[10px] text-zinc-400">
                 {r.sport.toUpperCase()}
                 {r.kickoff ? ` · ${new Date(r.kickoff).toLocaleString()}` : ''}
                 {r.note ? ` · ${r.note}` : ''}
@@ -695,7 +695,7 @@ function RemindersPanel() {
             <button
               type="button"
               onClick={() => del(r.id)}
-              className="shrink-0 text-zinc-500 hover:text-rose-400"
+              className="shrink-0 text-zinc-400 hover:text-rose-400"
               aria-label="Delete reminder"
             >
               <Trash2 className="h-4 w-4" />
@@ -783,7 +783,7 @@ function BracketPanel() {
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-zinc-100">
                   {b.name}
-                  <span className="ml-2 font-mono text-[10px] text-zinc-500">{b.size}-team</span>
+                  <span className="ml-2 font-mono text-[10px] text-zinc-400">{b.size}-team</span>
                   {b.champion && (
                     <span className="ml-2 inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-300">
                       <Trophy className="h-3 w-3" /> {b.champion}
@@ -793,7 +793,7 @@ function BracketPanel() {
                 <button
                   type="button"
                   onClick={() => del(b.id)}
-                  className="text-zinc-500 hover:text-rose-400"
+                  className="text-zinc-400 hover:text-rose-400"
                   aria-label="Delete bracket"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -802,7 +802,7 @@ function BracketPanel() {
               <div className="flex gap-3 overflow-x-auto">
                 {rounds.map((round, ri) => (
                   <div key={ri} className="flex min-w-[150px] flex-col justify-around gap-2">
-                    <p className="font-mono text-[9px] uppercase text-zinc-600">
+                    <p className="font-mono text-[9px] uppercase text-zinc-400">
                       {ri === b.rounds - 1 ? 'Final' : `Round ${ri + 1}`}
                     </p>
                     {round.map((m) => (
@@ -875,7 +875,7 @@ function WinProbPanel() {
         <NumField label="Periods total" value={form.periodsTotal}
           onChange={(v) => setForm((p) => ({ ...p, periodsTotal: v }))} />
         <div>
-          <label className="block font-mono text-[10px] uppercase text-zinc-500">Clock (mm:ss)</label>
+          <label className="block font-mono text-[10px] uppercase text-zinc-400">Clock (mm:ss)</label>
           <input
             value={form.clock}
             onChange={(e) => setForm((p) => ({ ...p, clock: e.target.value }))}
@@ -907,7 +907,7 @@ function WinProbPanel() {
               {result.awayWinPct}%
             </div>
           </div>
-          <div className="flex justify-between text-[10px] uppercase tracking-wide text-zinc-500">
+          <div className="flex justify-between text-[10px] uppercase tracking-wide text-zinc-400">
             <span className="text-emerald-400">Home win</span>
             <span className="text-rose-400">Away win</span>
           </div>
@@ -925,7 +925,7 @@ function WinProbPanel() {
 /* ── Shared bits ───────────────────────────────────────────────────── */
 function Spinner({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 text-xs text-zinc-500">
+    <div className="flex items-center gap-2 text-xs text-zinc-400">
       <Loader2 className="h-4 w-4 animate-spin" /> {label}…
     </div>
   );
@@ -939,7 +939,7 @@ function ErrLine({ msg }: { msg: string }) {
 }
 function EmptyLine({ msg }: { msg: string }) {
   return (
-    <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">
+    <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-400">
       {msg}
     </div>
   );
@@ -949,7 +949,7 @@ function NumField({ label, value, onChange }: {
 }) {
   return (
     <div>
-      <label className="block font-mono text-[10px] uppercase text-zinc-500">{label}</label>
+      <label className="block font-mono text-[10px] uppercase text-zinc-400">{label}</label>
       <input
         type="number"
         value={value}
@@ -963,7 +963,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded bg-zinc-900 p-2">
       <p className="text-sm font-bold capitalize text-zinc-100">{value}</p>
-      <p className="font-mono text-[9px] uppercase text-zinc-500">{label}</p>
+      <p className="font-mono text-[9px] uppercase text-zinc-400">{label}</p>
     </div>
   );
 }
@@ -982,7 +982,7 @@ export function SportsSpectatorHub() {
       <header className="flex items-center gap-2 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent px-4 py-3">
         <Trophy className="h-5 w-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Spectator Center</h2>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           ESPN shape — play-by-play, schedules, standings, news, rosters, brackets
         </span>
       </header>

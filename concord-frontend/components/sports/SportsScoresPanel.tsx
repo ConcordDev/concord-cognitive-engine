@@ -16,7 +16,7 @@ interface Game {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  scheduled: 'text-zinc-500', live: 'text-red-400', final: 'text-emerald-400',
+  scheduled: 'text-zinc-400', live: 'text-red-400', final: 'text-emerald-400',
 };
 
 function GameCard({ g, onChange, watchIds, refresh }: {
@@ -47,7 +47,7 @@ function GameCard({ g, onChange, watchIds, refresh }: {
       <div className="flex items-center justify-between">
         <span className={cn('text-[10px] uppercase', STATUS_COLOR[g.status])}>{g.status}</span>
         <div className="flex items-center gap-1">
-          <span className="text-[10px] text-zinc-600 uppercase">{g.league} · {g.date}</span>
+          <span className="text-[10px] text-zinc-400 uppercase">{g.league} · {g.date}</span>
           <button type="button" onClick={watch}
             className={cn('p-0.5', watchIds.includes(g.id) ? 'text-amber-400' : 'text-zinc-600 hover:text-amber-400')}>
             <Star className={cn('w-3.5 h-3.5', watchIds.includes(g.id) && 'fill-amber-400')} />
@@ -77,7 +77,7 @@ function GameCard({ g, onChange, watchIds, refresh }: {
       </div>
       {g.status !== 'final' && (
         <button type="button" onClick={() => setStatus('final')}
-          className="mt-1.5 text-[10px] text-zinc-500 hover:text-emerald-400">Mark final</button>
+          className="mt-1.5 text-[10px] text-zinc-400 hover:text-emerald-400">Mark final</button>
       )}
     </li>
   );
@@ -119,7 +119,7 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -160,7 +160,7 @@ export function SportsScoresPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">All games</h3>
         {games.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
             No games tracked. Add one to follow the score.
           </div>
         ) : (

@@ -289,7 +289,7 @@ export default function QuantumLensPage() {
             <Atom className="w-4 h-4 text-neon-purple" /> Circuit Composer
           </h2>
           {gateLib.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading gate library…
             </div>
           ) : (
@@ -304,7 +304,7 @@ export default function QuantumLensPage() {
 
           {/* algorithm templates */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] uppercase tracking-wider text-zinc-500 mr-1 flex items-center gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-400 mr-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3" /> Templates
             </span>
             {TEMPLATES.map((t) => (
@@ -400,7 +400,7 @@ export default function QuantumLensPage() {
                   <span>Gates <span className="text-white font-mono">{sim.gatesApplied}</span></span>
                   <span>Depth <span className="text-neon-cyan font-mono">{sim.circuitDepth}</span></span>
                   <span>Entropy <span className="text-neon-cyan font-mono">{sim.entropy}</span></span>
-                  <span className={sim.maxEntanglement ? 'text-neon-purple' : 'text-gray-500'}>
+                  <span className={sim.maxEntanglement ? 'text-neon-purple' : 'text-gray-400'}>
                     {sim.maxEntanglement ? 'High entanglement' : 'Low entanglement'}
                   </span>
                 </div>
@@ -440,7 +440,7 @@ export default function QuantumLensPage() {
                       {(p.probability * 100).toFixed(1)}%
                     </span>
                     {p.amplitude && (
-                      <span className="text-gray-500 w-28 text-right">
+                      <span className="text-gray-400 w-28 text-right">
                         {p.amplitude.re.toFixed(3)}
                         {p.amplitude.im >= 0 ? '+' : ''}{p.amplitude.im.toFixed(3)}i
                       </span>
@@ -476,7 +476,7 @@ export default function QuantumLensPage() {
               <h2 className="font-semibold flex items-center gap-2">
                 <Zap className="w-4 h-4 text-neon-purple" /> Circuit Analysis
               </h2>
-              <button onClick={() => setAnalysis(null)}><X className="w-4 h-4 text-gray-500" /></button>
+              <button onClick={() => setAnalysis(null)}><X className="w-4 h-4 text-gray-400" /></button>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               {[
@@ -490,7 +490,7 @@ export default function QuantumLensPage() {
                 ['Avg utilization', `${analysis.avgUtilization}%`],
               ].map(([label, val]) => (
                 <div key={String(label)} className="bg-black/30 rounded p-2">
-                  <p className="text-gray-500">{label}</p>
+                  <p className="text-gray-400">{label}</p>
                   <p className="font-mono text-neon-cyan text-base">{String(val)}</p>
                 </div>
               ))}
@@ -531,7 +531,7 @@ export default function QuantumLensPage() {
           {(() => {
             const np = noisePresets.find((p) => p.id === selectedPreset);
             return np ? (
-              <p className="text-[11px] text-gray-500 font-mono">
+              <p className="text-[11px] text-gray-400 font-mono">
                 T1 {np.t1}µs · T2 {np.t2}µs · gate err {np.gateErrorRate} · readout err {np.readoutError}
               </p>
             ) : null;
@@ -556,7 +556,7 @@ export default function QuantumLensPage() {
                   ['Readout', errAnalysis.errorBudget.readout.contribution],
                 ].map(([label, val]) => (
                   <div key={String(label)} className="bg-black/30 rounded p-2">
-                    <p className="text-gray-500">{label}</p>
+                    <p className="text-gray-400">{label}</p>
                     <p className="font-mono text-neon-cyan">{((val as number) * 100).toFixed(3)}%</p>
                   </div>
                 ))}
@@ -602,7 +602,7 @@ export default function QuantumLensPage() {
             <FolderOpen className="w-4 h-4 text-neon-green" /> Saved Circuits
           </h2>
           {saved.length === 0 ? (
-            <p className="text-xs text-gray-500">No saved circuits yet — compose one and click Save.</p>
+            <p className="text-xs text-gray-400">No saved circuits yet — compose one and click Save.</p>
           ) : (
             <div className="space-y-1.5">
               {saved.map((sc) => (
@@ -610,7 +610,7 @@ export default function QuantumLensPage() {
                   className="flex items-center justify-between p-2 bg-black/30 rounded-lg">
                   <div className="text-xs">
                     <p className="text-white font-medium">{sc.name}</p>
-                    <p className="text-gray-500 font-mono">
+                    <p className="text-gray-400 font-mono">
                       {sc.qubits} qubits · {sc.gateCount} gates ·{' '}
                       {new Date(sc.updatedAt).toLocaleString()}
                     </p>

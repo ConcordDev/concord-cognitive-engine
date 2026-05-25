@@ -44,7 +44,7 @@ export function LiveFlightsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Radar className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Live flight tracking</span>
-        <span className="ml-auto text-[10px] text-gray-500">{watched.length} watched</span>
+        <span className="ml-auto text-[10px] text-gray-400">{watched.length} watched</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-2">
         <input value={ident} onChange={e => setIdent(e.target.value.toUpperCase())} placeholder="Callsign or tail (UAL123 / N12345)" className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -52,16 +52,16 @@ export function LiveFlightsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : watched.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Radar className="w-6 h-6 mx-auto mb-2 opacity-30" />Add a callsign or tail to watch. Live position requires FAA SWIM / FlightAware AeroAPI key in production.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Radar className="w-6 h-6 mx-auto mb-2 opacity-30" />Add a callsign or tail to watch. Live position requires FAA SWIM / FlightAware AeroAPI key in production.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {watched.map(w => (
               <li key={w.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
                 <Radar className="w-3.5 h-3.5 text-cyan-300" />
                 <span className="font-mono text-sm text-white">{w.ident}</span>
-                <span className="ml-auto text-[10px] text-gray-500">
+                <span className="ml-auto text-[10px] text-gray-400">
                   {w.lastPosition ? `${w.lastPosition.lat.toFixed(2)},${w.lastPosition.lng.toFixed(2)} @ ${w.lastPosition.altitudeFt}ft` : 'awaiting position feed'}
                 </span>
                 <button onClick={() => unwatch(w.ident)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><X className="w-3 h-3" /></button>

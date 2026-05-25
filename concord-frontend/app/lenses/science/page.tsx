@@ -1379,7 +1379,7 @@ export default function ScienceLensPage() {
                 )}
               </div>
               {Boolean(d.startDate) && (
-                <p className={cn(ds.textMono, 'text-gray-500 text-xs')}>
+                <p className={cn(ds.textMono, 'text-gray-400 text-xs')}>
                   {d.startDate as string} to {(d.endDate as string) || 'ongoing'}
                 </p>
               )}
@@ -1404,7 +1404,7 @@ export default function ScienceLensPage() {
           {/* Sample card */}
           {currentType === 'Sample' && (
             <>
-              <p className={cn(ds.textMono, 'text-gray-500')}>{d.sampleId as string}</p>
+              <p className={cn(ds.textMono, 'text-gray-400')}>{d.sampleId as string}</p>
               <p className={ds.textMuted}>
                 {d.type as string} | {d.storageLocation as string}
               </p>
@@ -1439,7 +1439,7 @@ export default function ScienceLensPage() {
               </div>
               <p className={ds.textMuted}>Location: {d.location as string}</p>
               <p className={ds.textMuted}>Assigned: {d.assignedTo as string}</p>
-              <p className={cn(ds.textMono, 'text-gray-500 text-xs')}>
+              <p className={cn(ds.textMono, 'text-gray-400 text-xs')}>
                 Cal: {d.calibrationDate as string} | Next: {d.nextCalibration as string}
               </p>
               {Boolean(d.maintenanceSchedule) && (
@@ -1509,7 +1509,7 @@ export default function ScienceLensPage() {
               {Boolean(d.approvedBy) && (
                 <p className={ds.textMuted}>Approved by: {d.approvedBy as string}</p>
               )}
-              <p className={cn(ds.textMono, 'text-xs text-gray-500')}>
+              <p className={cn(ds.textMono, 'text-xs text-gray-400')}>
                 Review: {d.reviewDate as string} | Next: {d.nextReviewDate as string}
               </p>
               {(d.equipment as string[])?.length > 0 && (
@@ -1818,7 +1818,7 @@ export default function ScienceLensPage() {
           <FlaskConical className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{experiments.length}</p>
-            <p className="text-xs text-gray-500">Experiments</p>
+            <p className="text-xs text-gray-400">Experiments</p>
           </div>
         </motion.div>
         <motion.div
@@ -1830,7 +1830,7 @@ export default function ScienceLensPage() {
           <BookOpen className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{publications.length}</p>
-            <p className="text-xs text-gray-500">Published</p>
+            <p className="text-xs text-gray-400">Published</p>
           </div>
         </motion.div>
         <motion.div
@@ -1848,7 +1848,7 @@ export default function ScienceLensPage() {
                 0
               )}
             </p>
-            <p className="text-xs text-gray-500">Citations</p>
+            <p className="text-xs text-gray-400">Citations</p>
           </div>
         </motion.div>
         <motion.div
@@ -1860,7 +1860,7 @@ export default function ScienceLensPage() {
           <TestTubes className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{samples.length}</p>
-            <p className="text-xs text-gray-500">Samples</p>
+            <p className="text-xs text-gray-400">Samples</p>
           </div>
         </motion.div>
       </div>
@@ -1988,13 +1988,13 @@ export default function ScienceLensPage() {
                       >
                         {actionResult.intact ? 'Intact' : 'Broken'}
                       </p>
-                      <p className="text-[10px] text-gray-500">Chain Status</p>
+                      <p className="text-[10px] text-gray-400">Chain Status</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">
                         {String(actionResult.transfers)}
                       </p>
-                      <p className="text-[10px] text-gray-500">Transfers</p>
+                      <p className="text-[10px] text-gray-400">Transfers</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p
@@ -2004,10 +2004,10 @@ export default function ScienceLensPage() {
                           ? (actionResult.gaps as unknown[]).length
                           : 0}
                       </p>
-                      <p className="text-[10px] text-gray-500">Gaps</p>
+                      <p className="text-[10px] text-gray-400">Gaps</p>
                     </div>
                   </div>
-                  <p className="text-[10px] text-gray-500">Sample: {String(actionResult.sample)}</p>
+                  <p className="text-[10px] text-gray-400">Sample: {String(actionResult.sample)}</p>
                 </div>
               )}
             {/* calibrationCheck */}
@@ -2020,7 +2020,7 @@ export default function ScienceLensPage() {
                     >
                       {String(actionResult.status).replace(/_/g, ' ')}
                     </p>
-                    <p className="text-[10px] text-gray-500">Calibration Status</p>
+                    <p className="text-[10px] text-gray-400">Calibration Status</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2030,10 +2030,10 @@ export default function ScienceLensPage() {
                         ? `${String(actionResult.daysUntilDue)}d`
                         : 'N/A'}
                     </p>
-                    <p className="text-[10px] text-gray-500">Days Until Due</p>
+                    <p className="text-[10px] text-gray-400">Days Until Due</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-400">
                   Next: {String(actionResult.nextCalibration || 'Not set')}
                 </p>
               </div>
@@ -2043,13 +2043,13 @@ export default function ScienceLensPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">{String(actionResult.records)}</p>
-                  <p className="text-[10px] text-gray-500">Records Exported</p>
+                  <p className="text-[10px] text-gray-400">Records Exported</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan uppercase">
                     {String(actionResult.format)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Format</p>
+                  <p className="text-[10px] text-gray-400">Format</p>
                 </div>
               </div>
             )}
@@ -2061,19 +2061,19 @@ export default function ScienceLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {(actionResult.clusters as unknown[]).length}
                     </p>
-                    <p className="text-[10px] text-gray-500">Clusters</p>
+                    <p className="text-[10px] text-gray-400">Clusters</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.totalObservations)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Observations</p>
+                    <p className="text-[10px] text-gray-400">Observations</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.radiusKm)} km
                     </p>
-                    <p className="text-[10px] text-gray-500">Radius</p>
+                    <p className="text-[10px] text-gray-400">Radius</p>
                   </div>
                 </div>
               </div>
@@ -2084,12 +2084,11 @@ export default function ScienceLensPage() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
             <div
               className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')}
-              onClick={(e) => e.stopPropagation()}
-            >
+              onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>

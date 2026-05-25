@@ -172,7 +172,7 @@ export function WellnessSection() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <HeartPulse className="w-4 h-4 text-rose-400" />
         <span className="text-sm font-semibold text-gray-200">Wellness</span>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
         <nav className="ml-3 flex items-center gap-1">
           {([['today','Today',Activity],['habits','Habits',Flame],['mood','Mood',Smile],['workouts','Workouts',Dumbbell],['goals','Goals',Target]] as const).map(([id,label,Icon]) => (
             <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded', tab === id ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
@@ -199,13 +199,13 @@ export function WellnessSection() {
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
                         <span className="text-xl font-mono font-bold" style={{ color: recoveryColour }}>{recovery.score}</span>
-                        <span className="text-[8px] uppercase text-gray-500">recovery</span>
+                        <span className="text-[8px] uppercase text-gray-400">recovery</span>
                       </div>
                     </div>
                     <div className="min-w-0">
                       <div className="text-xs font-semibold capitalize" style={{ color: recoveryColour }}>{recovery.band}</div>
                       <div className="text-[11px] text-gray-400">{recovery.advice}</div>
-                      <div className="text-[10px] text-gray-500 mt-0.5">
+                      <div className="text-[10px] text-gray-400 mt-0.5">
                         {recovery.signals.sleepHours !== null && `${recovery.signals.sleepHours}h sleep · `}
                         {recovery.signals.hrvMs !== null && `HRV ${recovery.signals.hrvMs} · `}
                         {recovery.signals.restingHr !== null && `RHR ${recovery.signals.restingHr}`}
@@ -213,7 +213,7 @@ export function WellnessSection() {
                     </div>
                   </>
                 ) : (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-400">
                     <div className="font-semibold text-gray-400 mb-1">Recovery score</div>
                     Log today&apos;s sleep_hours, hrv_ms, or resting_hr to compute a Whoop-style recovery score.
                     <button onClick={logMetric} className="mt-1.5 block px-2 py-1 text-[11px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Log a metric</button>
@@ -234,14 +234,14 @@ export function WellnessSection() {
             {/* Metric trend chart */}
             <div className="rounded border border-white/10 bg-black/30 p-3">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Trend</span>
+                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Trend</span>
                 <select value={trendType} onChange={e => setTrendType(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
                   {TREND_METRICS.map(m => <option key={m.type} value={m.type}>{m.label}</option>)}
                 </select>
                 {trend && trend.latest !== null && (
                   <span className="text-xs text-gray-400 inline-flex items-center gap-1">
                     latest <span className="font-mono text-white">{trend.latest}</span> · avg <span className="font-mono text-white">{trend.average}</span>
-                    {trend.trend === 'rising' ? <TrendingUp className="w-3 h-3 text-emerald-400" /> : trend.trend === 'falling' ? <TrendingDown className="w-3 h-3 text-rose-400" /> : <Minus className="w-3 h-3 text-gray-500" />}
+                    {trend.trend === 'rising' ? <TrendingUp className="w-3 h-3 text-emerald-400" /> : trend.trend === 'falling' ? <TrendingDown className="w-3 h-3 text-rose-400" /> : <Minus className="w-3 h-3 text-gray-400" />}
                   </span>
                 )}
                 <button onClick={logMetric} className="ml-auto px-2 py-1 text-[11px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log metric</button>
@@ -265,7 +265,7 @@ export function WellnessSection() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="py-10 text-center text-xs text-gray-500">No data for this metric yet.</div>
+                <div className="py-10 text-center text-xs text-gray-400">No data for this metric yet.</div>
               )}
             </div>
           </div>
@@ -275,11 +275,11 @@ export function WellnessSection() {
         {tab === 'habits' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{habits.length} habit(s)</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{habits.length} habit(s)</span>
               <button onClick={addHabit} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New habit</button>
             </div>
             {habits.length === 0 ? (
-              <div className="py-10 text-center text-xs text-gray-500"><Flame className="w-6 h-6 mx-auto mb-2 opacity-30" />No habits yet.</div>
+              <div className="py-10 text-center text-xs text-gray-400"><Flame className="w-6 h-6 mx-auto mb-2 opacity-30" />No habits yet.</div>
             ) : (
               <ul className="space-y-1.5">
                 {habits.map(h => (
@@ -290,7 +290,7 @@ export function WellnessSection() {
                       </button>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white">{h.name}</div>
-                        <div className="text-[10px] text-gray-500">
+                        <div className="text-[10px] text-gray-400">
                           {h.unit ? `${h.todayValue}/${h.target} ${h.unit}` : (h.doneToday ? 'done today' : 'not yet')}
                         </div>
                       </div>
@@ -298,9 +298,9 @@ export function WellnessSection() {
                         <div className="text-xs font-mono inline-flex items-center gap-1" style={{ color: h.streak > 0 ? h.color : '#6b7280' }}>
                           <Flame className="w-3 h-3" />{h.streak}
                         </div>
-                        <div className="text-[9px] text-gray-600">best {h.longestStreak}</div>
+                        <div className="text-[9px] text-gray-400">best {h.longestStreak}</div>
                       </div>
-                      <button onClick={() => archiveHabit(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => archiveHabit(h.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
                     </div>
                     <div className="mt-1.5 flex items-center gap-1">
                       {h.last7.map(d => (
@@ -318,7 +318,7 @@ export function WellnessSection() {
         {tab === 'mood' && (
           <div className="space-y-3">
             <div className="rounded border border-white/10 bg-black/30 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2">How are you feeling?</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2">How are you feeling?</div>
               <div className="flex items-center gap-2">
                 {MOODS.map(m => (
                   <button key={m.id} onClick={() => logMood(m.id)} className="flex-1 py-2 rounded border border-white/10 hover:border-rose-500/40 hover:bg-rose-500/5 flex flex-col items-center gap-1">
@@ -330,12 +330,12 @@ export function WellnessSection() {
             </div>
             {correlations.length > 0 && (
               <div className="rounded border border-white/10 bg-black/30 p-3">
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-2 inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-rose-400" />What affects your mood</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-2 inline-flex items-center gap-1"><Sparkles className="w-3 h-3 text-rose-400" />What affects your mood</div>
                 <ul className="space-y-1">
                   {correlations.map(c => (
                     <li key={c.activity} className="flex items-center gap-2 text-xs">
                       <span className="text-white flex-1 truncate">{c.activity}</span>
-                      <span className="text-[10px] text-gray-500">{c.occurrences}×</span>
+                      <span className="text-[10px] text-gray-400">{c.occurrences}×</span>
                       <span className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded',
                         c.effect === 'lifts mood' ? 'bg-emerald-500/15 text-emerald-300' :
                         c.effect === 'lowers mood' ? 'bg-rose-500/15 text-rose-300' : 'bg-white/5 text-gray-400')}>
@@ -347,15 +347,15 @@ export function WellnessSection() {
               </div>
             )}
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Recent entries</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Recent entries</div>
               {moods.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">No mood entries yet.</div>
+                <div className="py-6 text-center text-xs text-gray-400">No mood entries yet.</div>
               ) : (
                 <ul className="space-y-1">
                   {moods.slice(0, 14).map(m => (
                     <li key={m.id} className="flex items-center gap-2 text-xs">
                       <span className="text-lg">{MOODS[m.moodScore]?.emoji}</span>
-                      <span className="text-[10px] text-gray-500 font-mono w-20">{m.date}</span>
+                      <span className="text-[10px] text-gray-400 font-mono w-20">{m.date}</span>
                       <span className="flex-1 text-gray-300 truncate">{m.activities.join(', ')}{m.note && ` — ${m.note}`}</span>
                     </li>
                   ))}
@@ -369,21 +369,21 @@ export function WellnessSection() {
         {tab === 'workouts' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{workouts.length} workout(s) · 30 days</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{workouts.length} workout(s) · 30 days</span>
               <button onClick={logWorkout} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log workout</button>
             </div>
             {workouts.length === 0 ? (
-              <div className="py-10 text-center text-xs text-gray-500"><Dumbbell className="w-6 h-6 mx-auto mb-2 opacity-30" />No workouts logged.</div>
+              <div className="py-10 text-center text-xs text-gray-400"><Dumbbell className="w-6 h-6 mx-auto mb-2 opacity-30" />No workouts logged.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {workouts.map(w => (
                   <li key={w.id} className="py-2 flex items-center gap-3 group">
                     <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-mono w-16 text-center">{w.kind}</span>
-                    <span className="text-[10px] text-gray-500 font-mono w-20">{w.date}</span>
+                    <span className="text-[10px] text-gray-400 font-mono w-20">{w.date}</span>
                     <div className="flex-1 text-xs text-white">
                       {w.durationMin} min
                       {w.distanceKm !== null && ` · ${w.distanceKm} km`}
-                      <span className="text-[10px] text-gray-500"> · {w.intensity}</span>
+                      <span className="text-[10px] text-gray-400"> · {w.intensity}</span>
                     </div>
                     <button onClick={() => delWorkout(w.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-300"><Trash2 className="w-3 h-3" /></button>
                   </li>
@@ -397,11 +397,11 @@ export function WellnessSection() {
         {tab === 'goals' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{goals.length} goal(s)</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{goals.length} goal(s)</span>
               <button onClick={addGoal} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New goal</button>
             </div>
             {goals.length === 0 ? (
-              <div className="py-10 text-center text-xs text-gray-500"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No goals set.</div>
+              <div className="py-10 text-center text-xs text-gray-400"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No goals set.</div>
             ) : (
               <ul className="space-y-1.5">
                 {goals.map(g => {
@@ -433,9 +433,9 @@ export function WellnessSection() {
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-lg font-mono text-white">{value}</div>
-      {sub && <div className="text-[10px] text-gray-500">{sub}</div>}
+      {sub && <div className="text-[10px] text-gray-400">{sub}</div>}
     </div>
   );
 }

@@ -131,7 +131,7 @@ function EmpiricalGatesPanel() {
               className="w-28 bg-lattice-deep border border-lattice-border rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-neon-purple/50"
             />
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-500 mb-2" />
+          <ArrowRight className="w-4 h-4 text-gray-400 mb-2" />
           <div>
             <label className="text-xs text-gray-400 block mb-1">To</label>
             <input
@@ -213,7 +213,7 @@ function EmpiricalGatesPanel() {
                     >
                       <span className="text-neon-cyan font-mono">{c.value}</span>
                       {c.unit && <span className="text-neon-purple">{c.unit}</span>}
-                      {c.context && <span className="text-gray-500 truncate">{c.context}</span>}
+                      {c.context && <span className="text-gray-400 truncate">{c.context}</span>}
                     </div>
                   )
                 )}
@@ -233,7 +233,7 @@ function EmpiricalGatesPanel() {
                       <span className="font-mono text-gray-300">{e.expression}</span>
                       {e.result !== undefined && (
                         <>
-                          <span className="text-gray-500">=</span>
+                          <span className="text-gray-400">=</span>
                           <span className="text-neon-green font-mono">{e.result}</span>
                         </>
                       )}
@@ -281,7 +281,7 @@ function EmpiricalGatesPanel() {
             {scanMutation.data.data.numericClaims?.length === 0 &&
               scanMutation.data.data.mathExpressions?.length === 0 &&
               scanMutation.data.data.constantReferences?.length === 0 && (
-                <p className="text-xs text-gray-500 italic">
+                <p className="text-xs text-gray-400 italic">
                   No empirical content detected in this text.
                 </p>
               )}

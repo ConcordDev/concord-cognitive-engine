@@ -627,7 +627,7 @@ export default function PaperLensPage() {
               {tab.label}
               <span className={cn(
                 'text-xs px-1.5 py-0.5 rounded-full',
-                isActive ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-500'
+                isActive ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'
               )}>
                 {activeTab === tab.key ? sortedItems.length : '--'}
               </span>
@@ -639,7 +639,7 @@ export default function PaperLensPage() {
       {/* ---- Search & Filters ---- */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[220px] relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             ref={searchInputRef}
             type="text"
@@ -750,7 +750,7 @@ export default function PaperLensPage() {
                       onClick={() => toggleSection(s)}
                       className={cn(
                         'text-xs px-2 py-0.5 rounded-full transition-colors',
-                        expandedSections.has(s) ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-500 hover:text-gray-300'
+                        expandedSections.has(s) ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
                       )}
                     >
                       {s}
@@ -864,12 +864,12 @@ export default function PaperLensPage() {
               <div>
                 <span className={ds.label}>Version History</span>
                 <div className="space-y-1 mt-1">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
                     <Clock className="w-3 h-3" />
                     <span>v{selectedItem.version} -- {new Date(selectedItem.updatedAt).toLocaleDateString()}</span>
                   </div>
                   {selectedItem.version > 1 && (
-                    <div className="flex items-center gap-2 text-xs text-gray-600">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
                       <Clock className="w-3 h-3" />
                       <span>v1 -- {new Date(selectedItem.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -903,7 +903,7 @@ export default function PaperLensPage() {
       {/* ---- Create Modal ---- */}
       {createModalOpen && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setCreateModalOpen(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setCreateModalOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg p-6 space-y-4')}>
               <div className="flex items-center justify-between">
@@ -1069,12 +1069,10 @@ export default function PaperLensPage() {
           onClick={() => setPaletteOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search"
-        >
+          aria-label="Quick search" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="bg-[#0d1117] border border-violet-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <Search className="w-4 h-4 text-violet-400" />
               <input
@@ -1315,7 +1313,7 @@ function PaperComposer({
     html = html.replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold text-white mt-6">$1</h1>');
     html = html.replace(/^&gt; (.+)$/gm, '<blockquote class="border-l-2 border-neon-cyan/50 pl-3 italic text-gray-400 my-2">$1</blockquote>');
     html = html.replace(/^- \[ \] (.+)$/gm, '<div class="flex items-start gap-2 my-1"><input type="checkbox" disabled class="mt-1" />$1</div>');
-    html = html.replace(/^- \[x\] (.+)$/gim, '<div class="flex items-start gap-2 my-1 line-through text-gray-500"><input type="checkbox" disabled checked class="mt-1" />$1</div>');
+    html = html.replace(/^- \[x\] (.+)$/gim, '<div class="flex items-start gap-2 my-1 line-through text-gray-400"><input type="checkbox" disabled checked class="mt-1" />$1</div>');
     html = html.replace(/^- (.+)$/gm, '<li class="ml-5 list-disc text-gray-200">$1</li>');
     html = html.replace(/^\d+\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-200">$1</li>');
     html = html.replace(/^---+$/gm, '<hr class="border-lattice-border my-4" />');
@@ -1344,7 +1342,7 @@ function PaperComposer({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1 text-[10px] text-gray-500 font-mono">
+        <div className="flex items-center gap-1 text-[10px] text-gray-400 font-mono">
           <span>/&nbsp;commands</span>
           <span>·</span>
           <span>[[wikilink]]</span>
@@ -1374,7 +1372,7 @@ function PaperComposer({
           />
           {popup && popup.kind === 'slash' && slashFiltered.length > 0 && (
             <div className="absolute z-30 w-56 bg-[#0d1117] border border-neon-cyan/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
-              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 border-b border-lattice-border bg-lattice-deep">block</div>
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 border-b border-lattice-border bg-lattice-deep">block</div>
               {slashFiltered.map((s, i) => (
                 <button
                   key={s.id}
@@ -1382,19 +1380,19 @@ function PaperComposer({
                   className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors', i === popup.idx ? 'bg-neon-cyan/15 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
                 >
                   <span>{s.label}</span>
-                  <code className="text-[10px] text-gray-500 font-mono">{s.hint}</code>
+                  <code className="text-[10px] text-gray-400 font-mono">{s.hint}</code>
                 </button>
               ))}
             </div>
           )}
           {popup && popup.kind === 'wiki' && (
             <div className="absolute z-30 w-72 bg-[#0d1117] border border-neon-purple/40 rounded-lg shadow-xl overflow-hidden" style={{ top: popupPos.top, left: popupPos.left }}>
-              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 border-b border-lattice-border bg-lattice-deep flex justify-between">
+              <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 border-b border-lattice-border bg-lattice-deep flex justify-between">
                 <span>link to…</span>
                 <span>{wikiFiltered.length} match{wikiFiltered.length === 1 ? '' : 'es'}</span>
               </div>
               {wikiFiltered.length === 0 && (
-                <div className="px-3 py-3 text-xs text-gray-500">
+                <div className="px-3 py-3 text-xs text-gray-400">
                   No match. Press <kbd className="text-[10px]">enter</kbd> to insert as a placeholder anyway.
                 </div>
               )}
@@ -1404,7 +1402,7 @@ function PaperComposer({
                   onMouseDown={(e) => { e.preventDefault(); applySuggestion({ kind: 'wiki', insertText: `[[${w.title}]]` }); }}
                   className={cn('w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors', i === popup.idx ? 'bg-neon-purple/20 text-white' : 'text-gray-300 hover:bg-lattice-elevated')}
                 >
-                  <span className="text-[9px] uppercase tracking-wider text-gray-500 font-mono w-14 flex-shrink-0">{w.kind}</span>
+                  <span className="text-[9px] uppercase tracking-wider text-gray-400 font-mono w-14 flex-shrink-0">{w.kind}</span>
                   <span className="truncate">{w.title}</span>
                 </button>
               ))}
@@ -1506,7 +1504,7 @@ function HypothesesList({ items, onSelect, allEvidence: _allEvidence }: { items:
         const linkedCount = (d.linkedEvidence || []).length;
         const statusColor = STATUS_COLORS[d.status || 'proposed'] || 'gray-400';
         return (
-          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)}>
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start gap-4">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-2">
@@ -1581,7 +1579,7 @@ function EvidenceBoard({ items, onSelect }: { items: LensItem[]; onSelect: (item
               const d = getData<EvidenceData>(item);
               const typeColor = STATUS_COLORS[d.type || 'empirical'];
               return (
-                <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)}>
+                <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <h4 className="text-sm font-medium text-white">{item.title}</h4>
                   {d.summary && <p className={cn(ds.textMuted, 'text-xs line-clamp-2')}>{d.summary}</p>}
                   <div className="flex items-center gap-2">
@@ -1595,7 +1593,7 @@ function EvidenceBoard({ items, onSelect }: { items: LensItem[]; onSelect: (item
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Link2 className="w-3 h-3 text-gray-500" />
+                    <Link2 className="w-3 h-3 text-gray-400" />
                     <span className={cn(ds.textMuted, 'text-xs')}>{(d.linkedHypotheses || []).length} hypotheses</span>
                   </div>
                 </div>
@@ -1621,7 +1619,7 @@ function ExperimentLog({ items, onSelect }: { items: LensItem[]; onSelect: (item
         const d = getData<ExperimentData>(item);
         const statusColor = STATUS_COLORS[d.status || 'planned'];
         return (
-          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)}>
+          <div key={item.id} className={cn(ds.panelHover)} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start gap-4">
               <div className={cn('p-2 rounded-lg', `bg-${statusColor}/20`)}>
                 <Beaker className={`w-5 h-5 text-${statusColor}`} />
@@ -1808,7 +1806,7 @@ function BibliographyManager({ items, onSelect, citationStyle, onStyleChange }: 
           const d = getData<CitationData>(item);
           const formatted = formatCitation({ ...d, title: item.title }, citationStyle);
           return (
-            <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)}>
+            <div key={item.id} className={cn(ds.panelHover, 'space-y-2')} onClick={() => onSelect(item)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start gap-3">
                 <Library className="w-5 h-5 text-neon-purple mt-0.5" />
                 <div className="flex-1 space-y-1">

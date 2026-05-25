@@ -73,7 +73,7 @@ export function RosterExplorer({
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400" />
         <input
           type="text"
           value={query}
@@ -127,13 +127,13 @@ export function RosterExplorer({
       </div>
 
       {data?.ok && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           {data.total} of {data.matchedOf} emergents{hasFilter ? ' match the filters' : ''}
         </p>
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Searching roster…
         </div>
       ) : !data?.ok ? (
@@ -141,7 +141,7 @@ export function RosterExplorer({
           Roster search failed ({data?.error || 'unknown error'}).
         </div>
       ) : roster.length === 0 ? (
-        <p className="text-xs text-zinc-600">No emergents match those filters.</p>
+        <p className="text-xs text-zinc-400">No emergents match those filters.</p>
       ) : (
         <div className="space-y-1.5">
           {roster.map((e) => {
@@ -165,11 +165,11 @@ export function RosterExplorer({
                     <span className="ml-auto h-2 w-2 flex-shrink-0 rounded-full bg-green-400" title="active" />
                   )}
                 </div>
-                {e.role && <p className="text-[11px] text-zinc-500">{e.role}</p>}
+                {e.role && <p className="text-[11px] text-zinc-400">{e.role}</p>}
                 {e.current_focus && (
                   <p className="mt-0.5 truncate text-[11px] text-zinc-400">↳ {e.current_focus}</p>
                 )}
-                <p className="mt-0.5 text-[10px] text-zinc-600">
+                <p className="mt-0.5 text-[10px] text-zinc-400">
                   <Clock className="mr-1 inline h-3 w-3" />
                   {rel(e.last_active_at)}
                 </p>

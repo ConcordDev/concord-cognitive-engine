@@ -57,12 +57,12 @@ export function EarningsLedger({ refreshKey }: { refreshKey: number }) {
   }, [refreshKey]);
 
   if (!ledger) {
-    return <div className="text-xs text-zinc-500 py-3">Loading earnings ledger…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Loading earnings ledger…</div>;
   }
 
   if (ledger.count === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 px-3 py-4 text-center text-xs italic text-zinc-400">
         No earnings activity yet. Open a stake to start the ledger.
       </div>
     );
@@ -90,13 +90,13 @@ export function EarningsLedger({ refreshKey }: { refreshKey: number }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded border border-emerald-800/50 bg-emerald-950/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Total yield earned</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Total yield earned</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">
             {ledger.totalYieldEarnedCc} CC
           </div>
         </div>
         <div className="rounded border border-rose-800/50 bg-rose-950/20 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Early-exit penalties</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Early-exit penalties</div>
           <div className="mt-0.5 font-mono text-lg text-rose-300">
             {ledger.totalPenaltiesCc} CC
           </div>

@@ -46,7 +46,7 @@ export function CmaBrowser() {
 
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="van gogh, cypresses, ukiyo-e…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -70,9 +70,9 @@ export function CmaBrowser() {
               </div>
               <div className="p-2 text-[11px]">
                 <div className="line-clamp-2 text-white">{w.title}</div>
-                {w.creators?.[0] && <div className="line-clamp-1 text-[10px] text-zinc-500">{w.creators[0]}</div>}
+                {w.creators?.[0] && <div className="line-clamp-1 text-[10px] text-zinc-400">{w.creators[0]}</div>}
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[9px] font-mono text-zinc-600">{w.creationDate || w.type}</span>
+                  <span className="text-[9px] font-mono text-zinc-400">{w.creationDate || w.type}</span>
                   <SaveAsDtuButton
                     compact
                     apiSource="cleveland-museum-of-art"

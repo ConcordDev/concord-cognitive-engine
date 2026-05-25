@@ -51,7 +51,7 @@ export function ResidueMap({
     <div className="rounded-lg border border-violet-700/30 bg-black/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-xs uppercase tracking-wide text-violet-400">Spectral plane</h3>
-        <span className="text-[10px] text-gray-500">{residues.length} residues mapped</span>
+        <span className="text-[10px] text-gray-400">{residues.length} residues mapped</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Spectral residue map">
         <rect x={0} y={0} width={W} height={H} fill="#0a0d15" />

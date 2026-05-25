@@ -149,7 +149,7 @@ export default function AllLensesPage() {
 
       <div className="panel p-4">
         <label className="relative block">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             ref={searchInputRef}
             value={q}
@@ -162,7 +162,7 @@ export default function AllLensesPage() {
             className="w-full bg-lattice-void border border-lattice-border rounded-lg pl-9 pr-3 py-2 text-sm"
           />
         </label>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-gray-400 mt-2">
           {total} lenses found · arrow keys navigate the grid · Enter opens
         </p>
       </div>
@@ -202,7 +202,7 @@ export default function AllLensesPage() {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); void togglePin(lens.id); }}
                         aria-label={`Pin ${lens.name}`}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-gray-500 hover:text-amber-400"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-gray-400 hover:text-amber-400"
                       >
                         <Star className="w-3.5 h-3.5" />
                       </button>
@@ -215,7 +215,7 @@ export default function AllLensesPage() {
           </section>
         ))}
         {total === 0 && (
-          <div className="panel p-8 text-center text-sm text-gray-500">No lenses match your search.</div>
+          <div className="panel p-8 text-center text-sm text-gray-400">No lenses match your search.</div>
         )}
       </div>
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">

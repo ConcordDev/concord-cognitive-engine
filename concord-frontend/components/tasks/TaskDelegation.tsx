@@ -82,7 +82,7 @@ function TaskDelegation({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Task Delegation</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {tasks.length > 0 ? `${tasks.filter(t => t.status === 'completed').length}/${tasks.length} tasks done` : 'Delegate tasks to brains'}
             </p>
           </div>
@@ -156,10 +156,10 @@ function TaskDelegation({ className }: { className?: string }) {
                           <div className="min-w-0">
                             <p className="text-xs text-gray-400 truncate">{step.description}</p>
                             {step.result && (
-                              <p className="text-[10px] text-gray-500 truncate mt-0.5">{step.result}</p>
+                              <p className="text-[10px] text-gray-400 truncate mt-0.5">{step.result}</p>
                             )}
                           </div>
-                          <span className="text-[10px] text-gray-600 flex-shrink-0">{step.assignedBrain}</span>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">{step.assignedBrain}</span>
                         </div>
                       );
                     })}

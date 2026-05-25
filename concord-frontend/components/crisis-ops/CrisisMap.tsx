@@ -78,7 +78,7 @@ export function CrisisMap() {
       </header>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Pulling live incident feeds…
         </div>
       )}

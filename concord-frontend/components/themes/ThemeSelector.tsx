@@ -189,7 +189,7 @@ export function ThemeSelector({
 
       {/* System preference */}
       <div className="px-4 py-3 border-b border-lattice-border">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">System Preference</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wider">System Preference</span>
         <div className="flex gap-2 mt-2">
           {[
             { id: 'light', icon: Sun, label: 'Light' },
@@ -218,7 +218,7 @@ export function ThemeSelector({
 
       {/* Theme grid */}
       <div className="flex-1 overflow-y-auto p-4">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">Built-in Themes</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wider">Built-in Themes</span>
         <div className="grid grid-cols-2 gap-3 mt-3">
           {BUILT_IN_THEMES.map(theme => (
             <ThemeCard
@@ -232,7 +232,7 @@ export function ThemeSelector({
 
         {customThemes.length > 0 && (
           <>
-            <span className="text-xs text-gray-500 uppercase tracking-wider block mt-6">
+            <span className="text-xs text-gray-400 uppercase tracking-wider block mt-6">
               Custom Themes
             </span>
             <div className="grid grid-cols-2 gap-3 mt-3">
@@ -251,7 +251,7 @@ export function ThemeSelector({
 
       {/* Preview */}
       <div className="p-4 border-t border-lattice-border">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">Preview</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wider">Preview</span>
         <div
           className="mt-3 p-4 rounded-lg border"
           style={{
@@ -339,7 +339,7 @@ function ThemeCard({
       <div className="text-left">
         <p className="text-sm text-white">{theme.name}</p>
         {theme.author && (
-          <p className="text-xs text-gray-500">by {theme.author}</p>
+          <p className="text-xs text-gray-400">by {theme.author}</p>
         )}
       </div>
 
@@ -353,7 +353,7 @@ function ThemeCard({
       {/* Built-in badge */}
       {theme.isBuiltIn && (
         <div className="absolute bottom-2 right-2">
-          <Sparkles className="w-3 h-3 text-gray-500" />
+          <Sparkles className="w-3 h-3 text-gray-400" />
         </div>
       )}
     </button>

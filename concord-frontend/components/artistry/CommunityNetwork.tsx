@@ -77,7 +77,7 @@ export function CommunityNetwork() {
           ].map((s) => (
             <div key={s.label} className="bg-white/5 rounded-lg p-2.5 text-center">
               <div className="text-lg font-bold text-neon-pink">{s.value}</div>
-              <div className="text-[9px] text-gray-500 uppercase tracking-wider">{s.label}</div>
+              <div className="text-[9px] text-gray-400 uppercase tracking-wider">{s.label}</div>
             </div>
           ))}
         </div>
@@ -93,7 +93,7 @@ export function CommunityNetwork() {
               <span key={u} className="flex items-center gap-1 text-[11px] px-2 py-1 bg-white/5 border border-white/10 rounded-full">
                 {graph.mutuals.includes(u) && <Heart className="w-2.5 h-2.5 fill-neon-pink text-neon-pink" />}
                 {u}
-                <button onClick={() => unfollow(u)} className="text-gray-500 hover:text-red-400" aria-label={`Unfollow ${u}`}>
+                <button onClick={() => unfollow(u)} className="text-gray-400 hover:text-red-400" aria-label={`Unfollow ${u}`}>
                   <UserMinus className="w-2.5 h-2.5" />
                 </button>
               </span>
@@ -111,11 +111,11 @@ export function CommunityNetwork() {
               : <><Rss className="w-4 h-4 text-neon-cyan" /> Following Feed</>}
           </h3>
           {feed?.mode === 'discovery' && (
-            <span className="text-[10px] text-gray-500">Follow artists to personalize this feed</span>
+            <span className="text-[10px] text-gray-400">Follow artists to personalize this feed</span>
           )}
         </div>
         {!feed || feed.items.length === 0 ? (
-          <div className="text-center py-12 text-gray-500 text-sm">No projects in your feed yet.</div>
+          <div className="text-center py-12 text-gray-400 text-sm">No projects in your feed yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {feed.items.map((p) => (
@@ -127,8 +127,8 @@ export function CommunityNetwork() {
                 </div>
                 <div className="p-3">
                   <h4 className="font-medium text-sm truncate">{p.title}</h4>
-                  <div className="text-[11px] text-gray-500">by {p.userId} · {p.discipline}</div>
-                  <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                  <div className="text-[11px] text-gray-400">by {p.userId} · {p.discipline}</div>
+                  <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <button onClick={() => appreciate(p.id)} className="flex items-center gap-1 hover:text-neon-pink">
                       <Heart className="w-3 h-3" />{p.appreciations}

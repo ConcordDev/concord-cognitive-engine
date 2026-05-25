@@ -69,7 +69,7 @@ export function PetCareSection() {
   if (loading) {
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 flex items-center justify-center py-12">
-        <Loader2 className="w-5 h-5 animate-spin text-zinc-500" />
+        <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function PetCareSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-teal-600/15 to-transparent">
         <PawPrint className="w-5 h-5 text-teal-400" />
         <h2 className="text-sm font-bold text-zinc-100">Pet Care</h2>
-        <span className="text-[11px] text-zinc-500">Health records, reminders &amp; sitter booking</span>
+        <span className="text-[11px] text-zinc-400">Health records, reminders &amp; sitter booking</span>
       </header>
 
       {/* Dashboard strip */}
@@ -132,7 +132,7 @@ export function PetCareSection() {
       {error && <div className="mx-4 mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {pets.length === 0 ? (
-        <div className="p-8 text-center text-zinc-500 text-sm italic">
+        <div className="p-8 text-center text-zinc-400 text-sm italic">
           No pets yet. Add your first pet to start tracking health records.
         </div>
       ) : (
@@ -178,7 +178,7 @@ function Stat({ label, value, alert }: { label: string; value: string | number; 
   return (
     <div className="text-center">
       <p className={cn('text-lg font-bold', alert ? 'text-rose-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

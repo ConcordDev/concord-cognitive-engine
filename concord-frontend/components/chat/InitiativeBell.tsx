@@ -110,12 +110,12 @@ export default function InitiativeBell() {
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-semibold text-zinc-100">Initiatives</h3>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1 rounded text-zinc-500 hover:text-zinc-200" aria-label="Close">
+            <button onClick={() => setOpen(false)} className="p-1 rounded text-zinc-400 hover:text-zinc-200" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </header>
           {pending.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-zinc-500">
+            <div className="px-4 py-8 text-center text-xs text-zinc-400">
               <p>No pending initiatives.</p>
               <p className="mt-1 text-zinc-600">
                 Concord reaches out proactively when there&apos;s something worth saying — a new
@@ -131,19 +131,19 @@ export default function InitiativeBell() {
                       <span className="text-[10px] uppercase tracking-wide text-amber-400 font-semibold">
                         {TRIGGER_LABELS[init.trigger] || init.trigger}
                       </span>
-                      <span className="text-[10px] text-zinc-500">{fmtAgo(init.created_at)} ago</span>
+                      <span className="text-[10px] text-zinc-400">{fmtAgo(init.created_at)} ago</span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => markRead(init.id)}
-                        className="p-1 rounded text-zinc-500 hover:text-emerald-400"
+                        className="p-1 rounded text-zinc-400 hover:text-emerald-400"
                         title="Mark read"
                       >
                         <Check className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => dismiss(init.id)}
-                        className="p-1 rounded text-zinc-500 hover:text-red-400"
+                        className="p-1 rounded text-zinc-400 hover:text-red-400"
                         title="Dismiss"
                       >
                         <X className="w-3.5 h-3.5" />

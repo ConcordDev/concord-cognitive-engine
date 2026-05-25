@@ -83,8 +83,8 @@ export function AcInventoryPanel() {
             return (
               <li key={it.id} className="flex items-center gap-2 text-xs bg-black/20 border border-white/10 rounded px-2 py-1.5">
                 {low && <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}
-                <span className="flex-1 text-gray-200">{it.name}{it.sku && <span className="text-gray-500"> · {it.sku}</span>}</span>
-                <span className="text-gray-500">${it.price} / cost ${it.cost}</span>
+                <span className="flex-1 text-gray-200">{it.name}{it.sku && <span className="text-gray-400"> · {it.sku}</span>}</span>
+                <span className="text-gray-400">${it.price} / cost ${it.cost}</span>
                 {it.type === 'inventory' && (
                   <>
                     <span className={low ? 'text-amber-400' : 'text-gray-400'}>{it.qtyOnHand} on hand</span>
@@ -107,13 +107,13 @@ export function AcInventoryPanel() {
 
 const inp = 'bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
 const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded';
-function Spin() { return <div className="flex items-center justify-center py-10 text-gray-500"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-500 italic">{text}</p>; }
+function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-gray-400 italic">{text}</p>; }
 function Stat({ label, value, alert }: { label: string; value: string | number; alert?: boolean }) {
   return (
     <div className="bg-black/30 border border-white/10 rounded-lg p-3 text-center">
       <p className={`text-xl font-bold ${alert ? 'text-amber-300' : 'text-gray-100'}`}>{value}</p>
-      <p className="text-[10px] text-gray-500 uppercase">{label}</p>
+      <p className="text-[10px] text-gray-400 uppercase">{label}</p>
     </div>
   );
 }

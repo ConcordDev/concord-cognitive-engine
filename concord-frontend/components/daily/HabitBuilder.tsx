@@ -92,7 +92,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
     onChange?.();
   }, [load, onChange]);
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const habits = data?.habits || [];
 
@@ -102,7 +102,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
         <Repeat className="w-4 h-4 text-rose-400" />
         <h3 className="text-sm font-bold text-zinc-100">Habits</h3>
         {data && data.count > 0 && (
-          <span className="text-[11px] text-zinc-500">{data.doneToday}/{data.dueToday} done today</span>
+          <span className="text-[11px] text-zinc-400">{data.doneToday}/{data.dueToday} done today</span>
         )}
         <button onClick={() => setShowForm((v) => !v)}
           className="ml-auto px-2 py-1 text-[11px] rounded bg-rose-600 hover:bg-rose-500 text-white inline-flex items-center gap-1">
@@ -143,7 +143,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
       )}
 
       {habits.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic text-center py-6">No habits yet — create one to start a streak.</p>
+        <p className="text-xs text-zinc-400 italic text-center py-6">No habits yet — create one to start a streak.</p>
       ) : (
         <div className="space-y-2">
           {habits.map((h) => (
@@ -157,7 +157,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-zinc-100 truncate">{h.name}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {FREQS.find((f) => f.v === h.frequency)?.label || h.frequency}
                     {h.cue ? ` · ${h.cue}` : ''}
                     {h.reminderTime ? ` · ⏰ ${h.reminderTime}` : ''}
@@ -168,7 +168,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
                   <span className={cn('text-[9px] px-1 rounded', STATUS_COLOR[h.status] || STATUS_COLOR.new)}>{h.status}</span>
                 </div>
                 <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100">
-                  <button onClick={() => archive(h.id)} aria-label="Archive habit" className="text-zinc-500 hover:text-zinc-300"><Archive className="w-3 h-3" /></button>
+                  <button onClick={() => archive(h.id)} aria-label="Archive habit" className="text-zinc-400 hover:text-zinc-300"><Archive className="w-3 h-3" /></button>
                   <button onClick={() => remove(h.id)} aria-label="Delete habit" className="text-rose-400 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
                 </div>
               </div>
@@ -176,7 +176,7 @@ export function HabitBuilder({ onChange }: { onChange?: () => void }) {
                 <div className="flex-1 bg-zinc-800 rounded-full h-1.5">
                   <div className="h-1.5 rounded-full bg-rose-500" style={{ width: `${h.weekProgress}%` }} />
                 </div>
-                <span className="text-[10px] text-zinc-500">{h.thisWeek}/{h.targetPerWeek} this week</span>
+                <span className="text-[10px] text-zinc-400">{h.thisWeek}/{h.targetPerWeek} this week</span>
               </div>
             </div>
           ))}

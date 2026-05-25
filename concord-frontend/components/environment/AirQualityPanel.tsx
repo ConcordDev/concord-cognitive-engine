@@ -67,7 +67,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
         <Wind className="w-4 h-4 text-sky-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">Air quality · ZIP {zip}</h3>
         <span className="text-[10px] text-emerald-400 font-mono">REAL data</span>
-        <button type="button" onClick={() => void fetchData(zip)} disabled={loading} className="p-1 text-zinc-500 hover:text-zinc-200" aria-label="Refresh">
+        <button type="button" onClick={() => void fetchData(zip)} disabled={loading} className="p-1 text-zinc-400 hover:text-zinc-200" aria-label="Refresh">
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
         </button>
       </header>
@@ -101,7 +101,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
       )}
 
       {data?.ok && (data.observations?.length ?? 0) === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No active monitors near that ZIP.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No active monitors near that ZIP.</div>
       )}
 
       {data?.ok && data.observations && data.observations.length > 0 && (
@@ -110,7 +110,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
             <li key={i} className="flex items-center justify-between text-xs">
               <div>
                 <div className="font-medium text-zinc-200">{o.parameter} · {o.reportingArea}</div>
-                <div className="text-[10px] text-zinc-500">{o.dateObserved} {o.hourObserved}:00</div>
+                <div className="text-[10px] text-zinc-400">{o.dateObserved} {o.hourObserved}:00</div>
               </div>
               <div className="text-right">
                 <div className={cn('text-xl font-bold tabular-nums', aqiTone(o.aqi))}>{o.aqi ?? '—'}</div>
@@ -121,7 +121,7 @@ export function AirQualityPanel({ className }: AirQualityPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: US EPA AirNow · airnowapi.org
       </footer>
     </section>

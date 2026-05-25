@@ -706,22 +706,22 @@ export default function LogisticsLensPage() {
 
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">Mileage</span>
+                  <span className="text-gray-400">Mileage</span>
                   <p className="font-medium">{formatNumber(Number(d.mileage))} mi</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Cost/Mile</span>
+                  <span className="text-gray-400">Cost/Mile</span>
                   <p className="font-medium">{formatCurrency(Number(d.costPerMile))}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Location</span>
+                  <span className="text-gray-400">Location</span>
                   <p className="font-medium flex items-center gap-1">
                     <MapPin className="w-3 h-3" />
                     {String(d.currentLocation)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Avg MPG</span>
+                  <span className="text-gray-400">Avg MPG</span>
                   <p className="font-medium">{String(d.avgMpg)}</p>
                 </div>
               </div>
@@ -879,8 +879,7 @@ export default function LogisticsLensPage() {
             <div
               key={item.id}
               className={cn(ds.panelHover, 'space-y-3')}
-              onClick={() => setDetailId(item.id)}
-            >
+              onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className={ds.heading3}>{item.title}</h3>
@@ -940,7 +939,7 @@ export default function LogisticsLensPage() {
               {/* Performance Metrics */}
               <div className="grid grid-cols-3 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">On-Time</span>
+                  <span className="text-gray-400">On-Time</span>
                   <p
                     className={cn(
                       'font-medium',
@@ -955,11 +954,11 @@ export default function LogisticsLensPage() {
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Fuel Eff.</span>
+                  <span className="text-gray-400">Fuel Eff.</span>
                   <p className="font-medium">{String(d.fuelEfficiency)} mpg</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Safety</span>
+                  <span className="text-gray-400">Safety</span>
                   <div className="flex items-center gap-1">
                     <p
                       className={cn(
@@ -995,7 +994,7 @@ export default function LogisticsLensPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-lattice-border">
+              <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-lattice-border">
                 <span>{formatNumber(Number(d.totalMiles))} lifetime miles</span>
                 <span>{Number(d.violations)} violations</span>
                 <div className="flex items-center gap-1">
@@ -1123,8 +1122,7 @@ export default function LogisticsLensPage() {
                         <div
                           key={item.id}
                           className={cn(ds.panelHover, 'text-sm space-y-2')}
-                          onClick={() => setDetailId(item.id)}
-                        >
+                          onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="flex items-center justify-between">
                             <span className="font-medium">{item.title}</span>
                             {col.key !== 'delivered' && (
@@ -1146,7 +1144,7 @@ export default function LogisticsLensPage() {
                             <ArrowRight className="w-3 h-3 shrink-0" />
                             <span className="truncate">{String(d.destination)}</span>
                           </div>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center justify-between text-xs text-gray-400">
                             <span>{formatNumber(Number(d.weight))} lbs</span>
                             <span>{String(d.pieces)} pcs</span>
                             <span>{String(d.carrier)}</span>
@@ -1182,8 +1180,7 @@ export default function LogisticsLensPage() {
                 <div
                   key={item.id}
                   className={cn(ds.panelHover, 'flex items-center gap-4')}
-                  onClick={() => setDetailId(item.id)}
-                >
+                  onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{item.title}</span>
@@ -1203,7 +1200,7 @@ export default function LogisticsLensPage() {
                   </div>
                   <div className="text-right text-xs shrink-0">
                     <p className="font-medium">{formatCurrency(Number(d.rate))}</p>
-                    <p className="text-gray-500">ETA: {String(d.eta)}</p>
+                    <p className="text-gray-400">ETA: {String(d.eta)}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {status !== 'delivered' && status !== 'exception' && (
@@ -1346,8 +1343,7 @@ export default function LogisticsLensPage() {
                 <div
                   key={item.id}
                   className={cn(ds.panelHover, 'space-y-3')}
-                  onClick={() => setDetailId(item.id)}
-                >
+                  onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className={ds.heading3}>{item.title}</h3>
@@ -1391,27 +1387,27 @@ export default function LogisticsLensPage() {
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-gray-500">Item Type</span>
+                      <span className="text-gray-400">Item Type</span>
                       <p>{String(d.itemType)}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Temperature</span>
+                      <span className="text-gray-400">Temperature</span>
                       <p className="flex items-center gap-1">
                         <ThermometerSun className="w-3 h-3" />
                         {String(d.temperature)}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Pick Rate</span>
+                      <span className="text-gray-400">Pick Rate</span>
                       <p>{String(d.pickRate)}/hr</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Recv Dock</span>
+                      <span className="text-gray-400">Recv Dock</span>
                       <p>{String(d.receivingDock)}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-lattice-border text-xs text-gray-500">
+                  <div className="flex items-center justify-between pt-2 border-t border-lattice-border text-xs text-gray-400">
                     <span>Last count: {String(d.lastCount)}</span>
                     <div className="flex items-center gap-1">
                       <button
@@ -1575,8 +1571,7 @@ export default function LogisticsLensPage() {
             {/* Route Header */}
             <div
               className="flex items-start justify-between cursor-pointer"
-              onClick={() => setRouteExpanded(expanded ? null : item.id)}
-            >
+              onClick={() => setRouteExpanded(expanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <button
                   className={ds.btnGhost}
@@ -1610,25 +1605,25 @@ export default function LogisticsLensPage() {
             {/* Route Summary Bar */}
             <div className="grid grid-cols-5 gap-3 text-sm">
               <div>
-                <span className="text-gray-500 text-xs">Stops</span>
+                <span className="text-gray-400 text-xs">Stops</span>
                 <p className="font-medium">
                   {completedStops}/{stops.length}
                 </p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Distance</span>
+                <span className="text-gray-400 text-xs">Distance</span>
                 <p className="font-medium">{formatNumber(Number(d.distance))} mi</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Est. Time</span>
+                <span className="text-gray-400 text-xs">Est. Time</span>
                 <p className="font-medium">{String(d.estimatedTime)}</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Fuel Cost</span>
+                <span className="text-gray-400 text-xs">Fuel Cost</span>
                 <p className="font-medium">{formatCurrency(Number(d.fuelCost))}</p>
               </div>
               <div>
-                <span className="text-gray-500 text-xs">Tolls</span>
+                <span className="text-gray-400 text-xs">Tolls</span>
                 <p className="font-medium">{formatCurrency(Number(d.tollCost))}</p>
               </div>
             </div>
@@ -1652,7 +1647,7 @@ export default function LogisticsLensPage() {
                       : stop.status === 'arrived'
                         ? 'text-neon-cyan'
                         : stop.status === 'skipped'
-                          ? 'text-gray-500'
+                          ? 'text-gray-400'
                           : 'text-gray-400';
                   const StopIcon =
                     stop.status === 'completed'
@@ -1682,7 +1677,7 @@ export default function LogisticsLensPage() {
                             {stop.status}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           Time window: {stop.timeWindow}
                         </span>
                       </div>
@@ -1829,8 +1824,7 @@ export default function LogisticsLensPage() {
                       'flex items-center gap-3 p-3 rounded-lg',
                       'bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     {result === 'pass' ? (
                       <CheckCircle className="w-4 h-4 text-green-400" />
                     ) : result === 'fail' ? (
@@ -1850,14 +1844,14 @@ export default function LogisticsLensPage() {
                         {String(d.violations)} violation(s)
                       </span>
                     )}
-                    <span className="text-xs text-gray-500">Next: {String(d.nextDue)}</span>
+                    <span className="text-xs text-gray-400">Next: {String(d.nextDue)}</span>
                   </div>
                 );
               })}
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
             <p>No inspections recorded yet. Add inspection records to track quality.</p>
           </div>
         )}
@@ -1879,8 +1873,7 @@ export default function LogisticsLensPage() {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <CheckCircle className="w-4 h-4 text-green-400" />
                     <div className="flex-1">
                       <span className="text-sm font-medium">{item.title}</span>
@@ -1918,8 +1911,7 @@ export default function LogisticsLensPage() {
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer'
                     )}
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     {String(d.result) === 'fail' ? (
                       <XCircle className="w-4 h-4 text-red-400" />
                     ) : (
@@ -1998,8 +1990,7 @@ export default function LogisticsLensPage() {
                   <div
                     key={item.id}
                     className="flex items-center gap-3 p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer"
-                    onClick={() => setDetailId(item.id)}
-                  >
+                    onClick={() => setDetailId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <FileText className="w-4 h-4 text-neon-purple" />
                     <div className="flex-1">
                       <span className="text-sm font-medium">{item.title}</span>
@@ -2033,7 +2024,7 @@ export default function LogisticsLensPage() {
         const status = item.meta?.status || 'active';
         const color = STATUS_COLORS[status] || 'gray-400';
         return (
-          <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+          <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between mb-2">
               <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
               <span className={ds.badge(color)}>{String(status).replace(/_/g, ' ')}</span>
@@ -2043,7 +2034,7 @@ export default function LogisticsLensPage() {
                 .slice(0, 4)
                 .map(([k, v]) => (
                   <p key={k} className={ds.textMuted}>
-                    <span className="text-gray-500">{k}:</span> {String(v)}
+                    <span className="text-gray-400">{k}:</span> {String(v)}
                   </p>
                 ))}
             </div>
@@ -2277,7 +2268,7 @@ export default function LogisticsLensPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -2286,7 +2277,7 @@ export default function LogisticsLensPage() {
           />
         </div>
         <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -2344,19 +2335,19 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.stopCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Stops</p>
+                    <p className="text-[10px] text-gray-400">Stops</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.totalDistanceMiles)} mi
                     </p>
-                    <p className="text-[10px] text-gray-500">Distance</p>
+                    <p className="text-[10px] text-gray-400">Distance</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.estimatedTotalMinutes)} min
                     </p>
-                    <p className="text-[10px] text-gray-500">Est. Time</p>
+                    <p className="text-[10px] text-gray-400">Est. Time</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.optimizedRoute) &&
@@ -2377,7 +2368,7 @@ export default function LogisticsLensPage() {
                           {stop.sequence}
                         </span>
                         <span className="text-gray-300 flex-1">{stop.name}</span>
-                        <span className="text-gray-500">{stop.distanceFromPrevious} mi</span>
+                        <span className="text-gray-400">{stop.distanceFromPrevious} mi</span>
                       </div>
                     ))}
               </div>
@@ -2390,7 +2381,7 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.driversChecked)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Drivers</p>
+                    <p className="text-[10px] text-gray-400">Drivers</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2398,7 +2389,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.violationCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Violations</p>
+                    <p className="text-[10px] text-gray-400">Violations</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2406,7 +2397,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.warningCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Warnings</p>
+                    <p className="text-[10px] text-gray-400">Warnings</p>
                   </div>
                 </div>
               </div>
@@ -2418,19 +2409,19 @@ export default function LogisticsLensPage() {
                   <p className="text-sm font-bold text-red-400">
                     {String(actionResult.overdueCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Overdue</p>
+                  <p className="text-[10px] text-gray-400">Overdue</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-amber-400">
                     {String(actionResult.upcomingCount)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Upcoming</p>
+                  <p className="text-[10px] text-gray-400">Upcoming</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">
                     {String(actionResult.totalVehicles)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Total</p>
+                  <p className="text-[10px] text-gray-400">Total</p>
                 </div>
               </div>
             )}
@@ -2442,7 +2433,7 @@ export default function LogisticsLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.accuracyRate)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Accuracy</p>
+                    <p className="text-[10px] text-gray-400">Accuracy</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2450,7 +2441,7 @@ export default function LogisticsLensPage() {
                     >
                       {String(actionResult.discrepancyCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Discrepancies</p>
+                    <p className="text-[10px] text-gray-400">Discrepancies</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p
@@ -2458,7 +2449,7 @@ export default function LogisticsLensPage() {
                     >
                       ${Number(actionResult.totalValueDiscrepancy).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Value Delta</p>
+                    <p className="text-[10px] text-gray-400">Value Delta</p>
                   </div>
                 </div>
               </div>
@@ -2478,7 +2469,7 @@ export default function LogisticsLensPage() {
           const d = item.data as Record<string, unknown>;
           return (
             <>
-              <div className={ds.modalBackdrop} onClick={() => setDetailId(null)} />
+              <div className={ds.modalBackdrop} onClick={() => setDetailId(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
               <div className={ds.modalContainer}>
                 <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[80vh] flex flex-col')}>
                   <div className="flex items-center justify-between p-4 border-b border-lattice-border shrink-0">
@@ -2543,9 +2534,9 @@ export default function LogisticsLensPage() {
                           d.stops as Array<{ address: string; timeWindow: string; status: string }>
                         ).map((stop, idx) => (
                           <div key={idx} className="flex items-center gap-2 py-1 text-sm">
-                            <Hash className="w-3 h-3 text-gray-500" />
+                            <Hash className="w-3 h-3 text-gray-400" />
                             <span className="font-medium">{stop.address}</span>
-                            <span className="text-gray-500">{stop.timeWindow}</span>
+                            <span className="text-gray-400">{stop.timeWindow}</span>
                             <span className={ds.badge(STATUS_COLORS[stop.status] || 'gray-400')}>
                               {stop.status}
                             </span>
@@ -2565,7 +2556,7 @@ export default function LogisticsLensPage() {
                         ))}
                       </div>
                     )}
-                    <div className="text-xs text-gray-500 pt-3 border-t border-lattice-border">
+                    <div className="text-xs text-gray-400 pt-3 border-t border-lattice-border">
                       <span>Created: {new Date(item.createdAt).toLocaleString()}</span>
                       <span className="mx-2">|</span>
                       <span>Updated: {new Date(item.updatedAt).toLocaleString()}</span>
@@ -2582,7 +2573,7 @@ export default function LogisticsLensPage() {
       {/* Editor modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -2750,7 +2741,7 @@ function TmsWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
             }
           >
             {t.label}

@@ -38,7 +38,7 @@ export function TagWatchPanel({ onChanged }: { onChanged?: () => void }) {
         <Eye className="w-4 h-4 text-orange-400" />
         <h4 className="text-sm font-semibold text-zinc-200">Watched tags</h4>
       </div>
-      <p className="text-[11px] text-zinc-500">Get notified when a new question is asked under a tag you watch.</p>
+      <p className="text-[11px] text-zinc-400">Get notified when a new question is asked under a tag you watch.</p>
 
       <div className="flex gap-1">
         <input
@@ -60,9 +60,9 @@ export function TagWatchPanel({ onChanged }: { onChanged?: () => void }) {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
       ) : watched.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-2">No data yet — you are not watching any tags.</p>
+        <p className="text-xs text-zinc-400 italic py-2">No data yet — you are not watching any tags.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {watched.map((t) => (

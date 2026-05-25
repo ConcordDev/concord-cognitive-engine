@@ -26,11 +26,11 @@ export function DetectionRules({
       <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
         <SlidersHorizontal className="h-4 w-4 text-rose-400" /> Detection rules
       </h2>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Each rule sets the σ threshold at which a signal scan files an alert, and the σ above which it escalates to critical.
       </p>
       {rules.length === 0 ? (
-        <p className="text-xs text-zinc-600 italic py-3">No rules loaded.</p>
+        <p className="text-xs text-zinc-400 italic py-3">No rules loaded.</p>
       ) : (
         <ul className="space-y-2">
           {rules.map((rule) => (
@@ -41,7 +41,7 @@ export function DetectionRules({
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-sm font-medium text-zinc-100">{rule.label}</p>
-                  <p className="font-mono text-[10px] text-zinc-500">{rule.signal}</p>
+                  <p className="font-mono text-[10px] text-zinc-400">{rule.signal}</p>
                 </div>
                 <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
                   <input

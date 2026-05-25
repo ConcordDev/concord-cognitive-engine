@@ -59,13 +59,13 @@ export function CivicAlerts() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Bell className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Civic alerts</span>
-        {coords && <span className="ml-auto text-[10px] text-gray-500 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {coords.lat.toFixed(2)}, {coords.lng.toFixed(2)}</span>}
+        {coords && <span className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1"><MapPin className="w-3 h-3" /> {coords.lat.toFixed(2)}, {coords.lng.toFixed(2)}</span>}
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading || !coords ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> {coords ? 'Loading alerts…' : 'Locating…'}</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> {coords ? 'Loading alerts…' : 'Locating…'}</div>
         ) : alerts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No active alerts for your area.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No active alerts for your area.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {alerts.map(a => (
@@ -76,7 +76,7 @@ export function CivicAlerts() {
                   <span className={cn('ml-auto text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border', sev[a.severity])}>{a.severity}</span>
                 </div>
                 <p className="text-xs text-gray-300 line-clamp-3">{a.summary}</p>
-                <div className="text-[10px] text-gray-500 mt-1">
+                <div className="text-[10px] text-gray-400 mt-1">
                   {a.area} · {a.source} · issued {new Date(a.issuedAt).toLocaleString()}
                   {a.expiresAt && <> · expires {new Date(a.expiresAt).toLocaleString()}</>}
                 </div>

@@ -49,7 +49,7 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
       <div className="flex items-center gap-2">
         <PenTool className="w-4 h-4 text-neon-green" />
         <h3 className="text-sm font-semibold text-white">Cryptographic E-Signature</h3>
-        <span className="text-[10px] text-gray-500">SHA-256 audit certificate</span>
+        <span className="text-[10px] text-gray-400">SHA-256 audit certificate</span>
       </div>
       <div className="space-y-1.5">
         <input value={party} onChange={(e) => setParty(e.target.value)} placeholder="Signing party name"
@@ -78,7 +78,7 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
               ? <><ShieldAlert className="w-3.5 h-3.5 text-rose-400" />Tampering detected</>
               : <><ShieldCheck className="w-3.5 h-3.5 text-neon-green" />All {verify.certifiedSignatures} certificate{verify.certifiedSignatures !== 1 ? 's' : ''} valid</>}
           </p>
-          <p className="text-[9px] text-gray-500 font-mono break-all mb-1">doc hash: {verify.currentDocumentHash}</p>
+          <p className="text-[9px] text-gray-400 font-mono break-all mb-1">doc hash: {verify.currentDocumentHash}</p>
           {verify.checks.map((c) => (
             <div key={c.certificateId} className="text-[10px] text-gray-400 flex items-center gap-1.5 py-0.5">
               <span className={cn('w-1.5 h-1.5 rounded-full', c.valid ? 'bg-neon-green' : 'bg-rose-400')} />

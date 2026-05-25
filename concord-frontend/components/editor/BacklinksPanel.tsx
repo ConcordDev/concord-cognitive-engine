@@ -167,7 +167,7 @@ export function BacklinksPanel({ dtuId, className, collapsed = false, onToggle }
       {/* Search */}
       <div className="px-3 py-2 border-b border-lattice-border">
         <div className="flex items-center gap-2 px-2 py-1.5 bg-lattice-bg rounded border border-lattice-border">
-          <Search className="w-3.5 h-3.5 text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={searchQuery}
@@ -218,7 +218,7 @@ export function BacklinksPanel({ dtuId, className, collapsed = false, onToggle }
 
       {/* Footer with stats */}
       <div className="px-3 py-2 border-t border-lattice-border bg-lattice-bg/50">
-        <div className="flex items-center justify-between text-xs text-gray-500">
+        <div className="flex items-center justify-between text-xs text-gray-400">
           <span>{backlinks.length} incoming</span>
           <span>{forwardLinks.length} outgoing</span>
         </div>
@@ -249,7 +249,7 @@ const BacklinkItem = React.memo(function BacklinkItem({ link, expanded, onToggle
           animate={{ rotate: expanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
         >
-          <ChevronRight className="w-3.5 h-3.5 text-gray-500 mt-0.5" />
+          <ChevronRight className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -258,7 +258,7 @@ const BacklinkItem = React.memo(function BacklinkItem({ link, expanded, onToggle
               {link.title || 'Untitled'}
             </span>
           </div>
-          <p className="text-xs text-gray-500 truncate mt-0.5">
+          <p className="text-xs text-gray-400 truncate mt-0.5">
             {link.excerpt || 'No preview available'}
           </p>
         </div>
@@ -325,7 +325,7 @@ export function UnlinkedMentions({ dtuId, className }: UnlinkedMentionsProps) {
       <div className="flex items-center gap-2 mb-3">
         <Brain className="w-4 h-4 text-neon-purple" />
         <span className="text-sm font-medium text-white">Potential Links</span>
-        <span className="text-xs text-gray-500">AI-suggested</span>
+        <span className="text-xs text-gray-400">AI-suggested</span>
       </div>
       <div className="space-y-2">
         {mentions.map((mention) => (
@@ -335,7 +335,7 @@ export function UnlinkedMentions({ dtuId, className }: UnlinkedMentionsProps) {
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm text-white truncate">{mention.title}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Mentions: "{mention.matchText}"
               </p>
             </div>

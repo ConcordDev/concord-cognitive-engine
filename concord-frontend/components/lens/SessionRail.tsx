@@ -47,7 +47,7 @@ const statusIcon = (s: SessionRow['status']) => {
   switch (s) {
     case 'open': return <Play className="w-3 h-3 text-emerald-400" />;
     case 'paused': return <Pause className="w-3 h-3 text-amber-400" />;
-    case 'completed': return <CheckCircle2 className="w-3 h-3 text-zinc-500" />;
+    case 'completed': return <CheckCircle2 className="w-3 h-3 text-zinc-400" />;
     case 'abandoned': return <XCircle className="w-3 h-3 text-rose-400" />;
   }
 };
@@ -108,13 +108,13 @@ export function SessionRail({ lensId, status, limit = 12, hideWhenEmpty = true, 
         <GitBranch className="w-4 h-4 text-indigo-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">
           {lensId ? `Open sessions · ${lensId}` : 'Open sessions'}
-          {combined.length > 0 && <span className="ml-2 text-[10px] text-zinc-500 font-mono">{combined.length}</span>}
+          {combined.length > 0 && <span className="ml-2 text-[10px] text-zinc-400 font-mono">{combined.length}</span>}
         </h3>
         <button
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -129,7 +129,7 @@ export function SessionRail({ lensId, status, limit = 12, hideWhenEmpty = true, 
       )}
 
       {!error && combined.length === 0 && !loading && (
-        <div className="px-3 py-4 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-4 text-xs text-zinc-400 italic text-center">
           No open sessions. Start one from any lens action bar.
         </div>
       )}
@@ -149,11 +149,11 @@ export function SessionRail({ lensId, status, limit = 12, hideWhenEmpty = true, 
                 {statusIcon(s.status)}
                 <div className="flex-1 min-w-0">
                   <div className="text-zinc-200 font-medium truncate">{s.title || `Untitled · ${s.lensId}`}</div>
-                  <div className="text-[10px] text-zinc-500 font-mono truncate">
+                  <div className="text-[10px] text-zinc-400 font-mono truncate">
                     {s.lensId} · step: {s.currentStep || '—'} · {s.stepCount} step{s.stepCount === 1 ? '' : 's'}
                   </div>
                 </div>
-                <div className="text-[10px] text-zinc-500 flex items-center gap-1 shrink-0">
+                <div className="text-[10px] text-zinc-400 flex items-center gap-1 shrink-0">
                   <Clock className="w-3 h-3" />
                   {timeAgo(s.updatedAt)}
                 </div>

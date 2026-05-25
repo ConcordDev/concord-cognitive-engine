@@ -129,7 +129,7 @@ export default function ComponentCreator({ materials, onPublish, onCancel }: Com
           ))}
         </select>
         {selectedMat && (
-          <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-gray-500">
+          <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-gray-400">
             <span>Tensile: {selectedMat.properties.tensileStrength} MPa</span>
             <span>Compressive: {selectedMat.properties.compressiveStrength} MPa</span>
             <span>Density: {selectedMat.properties.density} kg/m³</span>
@@ -219,11 +219,11 @@ export default function ComponentCreator({ materials, onPublish, onCancel }: Com
               const barColor = pct > 70 ? 'bg-green-500' : pct > 40 ? 'bg-yellow-500' : 'bg-red-500';
               return (
                 <div key={point.span} className="flex items-center gap-2 text-[9px]">
-                  <span className="w-8 text-right text-gray-500 tabular-nums">{point.span}m</span>
+                  <span className="w-8 text-right text-gray-400 tabular-nums">{point.span}m</span>
                   <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <span className="w-12 text-gray-500 tabular-nums">{point.capacity.toFixed(0)} kN</span>
+                  <span className="w-12 text-gray-400 tabular-nums">{point.capacity.toFixed(0)} kN</span>
                 </div>
               );
             })}

@@ -583,6 +583,7 @@ export default function registerAffectActions(registerLensAction) {
    * params: { mood (1..maxScale), note?, activities?:[string], promptId?, promptAnswer? }
    */
   registerLensAction("affect", "checkin", (ctx, artifact, params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -643,7 +644,8 @@ export default function registerAffectActions(registerLensAction) {
         daysLogged: days.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * checkinHistory
@@ -651,6 +653,7 @@ export default function registerAffectActions(registerLensAction) {
    * params: { limit?, sinceDays? }
    */
   registerLensAction("affect", "checkinHistory", (ctx, artifact, params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -682,7 +685,8 @@ export default function registerAffectActions(registerLensAction) {
         daysLogged: days.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * trends
@@ -691,6 +695,7 @@ export default function registerAffectActions(registerLensAction) {
    * params: { granularity?: 'week'|'month', sinceDays? }
    */
   registerLensAction("affect", "trends", (ctx, artifact, params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -764,7 +769,8 @@ export default function registerAffectActions(registerLensAction) {
         entryCount: list.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * activityCorrelation
@@ -773,6 +779,7 @@ export default function registerAffectActions(registerLensAction) {
    * params: { sinceDays?, minSamples? }
    */
   registerLensAction("affect", "activityCorrelation", (ctx, artifact, params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -816,7 +823,8 @@ export default function registerAffectActions(registerLensAction) {
         topDrain: [...correlations].reverse().find((c) => c.effect === "lowers") || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * journalPrompts
@@ -900,6 +908,7 @@ export default function registerAffectActions(registerLensAction) {
    * No mock data — every nudge is derived from the user's actual entries.
    */
   registerLensAction("affect", "nudges", (ctx, artifact, _params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -931,7 +940,8 @@ export default function registerAffectActions(registerLensAction) {
       ok: true,
       result: { reminders, due, checkedInToday: checkedToday, recentAvg: recentAvg != null ? Math.round(recentAvg * 100) / 100 : null },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * exportReport
@@ -940,6 +950,7 @@ export default function registerAffectActions(registerLensAction) {
    * Returns structured rows and a CSV string — caller downloads it client-side.
    */
   registerLensAction("affect", "exportReport", (ctx, artifact, params) => {
+  try {
     const s = getMoodState();
     if (!s) return { ok: false, error: "state unavailable" };
     const userId = moodActId(ctx);
@@ -977,7 +988,8 @@ export default function registerAffectActions(registerLensAction) {
       ok: true,
       result: { format: params.format === "json" ? "json" : "csv", rows, csv, summary },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * getScale / setScale

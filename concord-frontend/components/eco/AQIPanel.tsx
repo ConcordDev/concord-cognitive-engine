@@ -70,7 +70,7 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
 
   if (loading || !coords) {
     return (
-      <div className="bg-[#0d1117] border border-lattice-border rounded-lg p-6 flex items-center justify-center text-gray-500">
+      <div className="bg-[#0d1117] border border-lattice-border rounded-lg p-6 flex items-center justify-center text-gray-400">
         <Loader2 className="w-5 h-5 animate-spin mr-2" /> {coords ? 'Loading air quality…' : 'Locating…'}
       </div>
     );
@@ -91,7 +91,7 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Wind className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Air quality</span>
-        <span className="ml-auto text-[10px] text-gray-500 inline-flex items-center gap-1">
+        <span className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1">
           <MapPin className="w-3 h-3" /> {data.lat.toFixed(2)}, {data.lng.toFixed(2)}
         </span>
       </header>
@@ -110,7 +110,7 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
         <PolPill label="SO₂" value={data.so2} unit="µg/m³" />
         <PolPill label="CO" value={data.co} unit="mg/m³" />
       </div>
-      <footer className="px-4 py-1.5 border-t border-white/10 text-[10px] text-gray-500 flex items-center gap-2">
+      <footer className="px-4 py-1.5 border-t border-white/10 text-[10px] text-gray-400 flex items-center gap-2">
         <AlertCircle className="w-3 h-3" />
         Source: {data.source} · refresh every 5 min
       </footer>
@@ -121,8 +121,8 @@ export function AQIPanel({ lat, lng }: AQIPanelProps) {
 function PolPill({ label, value, unit }: { label: string; value: number; unit: string }) {
   return (
     <div className="bg-white/[0.03] rounded px-2 py-1.5">
-      <div className="text-[10px] text-gray-500">{label}</div>
-      <div className="text-sm text-white font-mono tabular-nums">{value?.toFixed(1) ?? '—'} <span className="text-[9px] text-gray-500">{unit}</span></div>
+      <div className="text-[10px] text-gray-400">{label}</div>
+      <div className="text-sm text-white font-mono tabular-nums">{value?.toFixed(1) ?? '—'} <span className="text-[9px] text-gray-400">{unit}</span></div>
     </div>
   );
 }

@@ -67,7 +67,7 @@ export function ProvenanceTrail({ dtuId, maxDepth = 6, className }: ProvenanceTr
 
   if (loading) {
     return (
-      <div className={cn('rounded border border-zinc-800 bg-zinc-950/80 p-3 text-xs text-zinc-500 flex items-center gap-2', className)}>
+      <div className={cn('rounded border border-zinc-800 bg-zinc-950/80 p-3 text-xs text-zinc-400 flex items-center gap-2', className)}>
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
         Tracing provenance...
       </div>
@@ -84,7 +84,7 @@ export function ProvenanceTrail({ dtuId, maxDepth = 6, className }: ProvenanceTr
 
   if (trail.length === 0) {
     return (
-      <div className={cn('rounded border border-zinc-800 bg-zinc-950/80 p-3 text-xs text-zinc-500 italic', className)}>
+      <div className={cn('rounded border border-zinc-800 bg-zinc-950/80 p-3 text-xs text-zinc-400 italic', className)}>
         No provenance trail.
       </div>
     );
@@ -96,7 +96,7 @@ export function ProvenanceTrail({ dtuId, maxDepth = 6, className }: ProvenanceTr
         <GitMerge className="w-4 h-4 text-amber-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">
           Provenance trail
-          <span className="ml-2 text-[10px] text-zinc-500 font-mono">{trail.length} node{trail.length === 1 ? '' : 's'}</span>
+          <span className="ml-2 text-[10px] text-zinc-400 font-mono">{trail.length} node{trail.length === 1 ? '' : 's'}</span>
         </h3>
       </header>
 
@@ -119,10 +119,10 @@ export function ProvenanceTrail({ dtuId, maxDepth = 6, className }: ProvenanceTr
                   <span className="text-[10px] text-amber-400 font-mono uppercase">leaf</span>
                 )}
                 {node.depth > 0 && (
-                  <span className="text-[10px] text-zinc-600 font-mono">+{node.depth}</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">+{node.depth}</span>
                 )}
               </div>
-              <div className="text-[10px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+              <div className="text-[10px] text-zinc-400 mt-0.5 flex items-center gap-2 flex-wrap">
                 {node.sourceLens && (
                   <Link
                     href={`/lenses/${node.sourceLens}`}
@@ -145,7 +145,7 @@ export function ProvenanceTrail({ dtuId, maxDepth = 6, className }: ProvenanceTr
       </ol>
 
       {trail.length > 1 && (
-        <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40 flex items-center gap-1">
+        <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40 flex items-center gap-1">
           <ChevronUp className="w-3 h-3" />
           Latest at top · oldest ancestor at bottom
         </footer>

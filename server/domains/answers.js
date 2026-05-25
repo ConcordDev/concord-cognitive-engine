@@ -519,6 +519,7 @@ export default function registerAnswersActions(registerLensAction) {
   });
 
   registerLensAction("answers", "revisions", (ctx, _a, params = {}) => {
+  try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const q = list(s, actor(ctx)).find((x) => x.id === params.questionId);
     if (!q) return { ok: false, error: "question not found" };
@@ -543,10 +544,12 @@ export default function registerAnswersActions(registerLensAction) {
       enriched.unshift(entry);
     }
     return { ok: true, result: { revisions: enriched, count: enriched.length, currentBody } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Duplicate-question detection + linking ──────────────────────────
   registerLensAction("answers", "find-duplicates", (ctx, _a, params = {}) => {
+  try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const qs = list(s, actor(ctx));
     let probeVec, excludeId = null;
@@ -574,7 +577,8 @@ export default function registerAnswersActions(registerLensAction) {
         similarity: Math.round(m.similarity * 1000) / 1000,
       }));
     return { ok: true, result: { matches, count: matches.length, threshold } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("answers", "link-duplicate", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -665,6 +669,7 @@ export default function registerAnswersActions(registerLensAction) {
 
   // ── Related questions sidebar ───────────────────────────────────────
   registerLensAction("answers", "related", (ctx, _a, params = {}) => {
+  try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const qs = list(s, actor(ctx));
     const q = qs.find((x) => x.id === params.questionId);
@@ -687,7 +692,8 @@ export default function registerAnswersActions(registerLensAction) {
         relevance: Math.round(r.score * 1000) / 1000,
       }));
     return { ok: true, result: { related, count: related.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Flags / close-votes / moderation queue ──────────────────────────
   const FLAG_REASONS = ["spam", "rude or abusive", "low quality", "not an answer", "needs improvement"];
@@ -695,6 +701,7 @@ export default function registerAnswersActions(registerLensAction) {
   const CLOSE_VOTE_THRESHOLD = 3;
 
   registerLensAction("answers", "flag", (ctx, _a, params = {}) => {
+  try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "flag")) return { ok: false, error: "need 25 reputation to flag posts" };
@@ -719,7 +726,8 @@ export default function registerAnswersActions(registerLensAction) {
     q.updatedAt = aNow();
     save();
     return { ok: true, result: { flag, flagReasons: FLAG_REASONS } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("answers", "close-vote", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -770,6 +778,7 @@ export default function registerAnswersActions(registerLensAction) {
   });
 
   registerLensAction("answers", "mod-queue", (ctx, _a, _params = {}) => {
+  try {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
     if (!hasPrivilege(s, userId, "moderate")) return { ok: false, error: "need 1000 reputation to access the moderation queue" };
@@ -797,7 +806,8 @@ export default function registerAnswersActions(registerLensAction) {
     }
     items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     return { ok: true, result: { queue: items, count: items.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("answers", "mod-resolve", (ctx, _a, params = {}) => {
     const s = getAnswersState(); if (!s) return { ok: false, error: "STATE unavailable" };

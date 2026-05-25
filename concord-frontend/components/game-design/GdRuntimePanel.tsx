@@ -329,11 +329,11 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (levels.length === 0) {
-    return <p className="text-[11px] text-zinc-500 italic py-6 text-center">Create a level in the Levels tab to play it.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-6 text-center">Create a level in the Levels tab to play it.</p>;
   }
 
   return (
@@ -398,7 +398,7 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
               className="w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
           </label>
           <div className="space-y-1">
-            <p className="text-[10px] text-zinc-500 uppercase">Solid tiles</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Solid tiles</p>
             <div className="flex flex-wrap gap-1">
               {tiles.map((t) => (
                 <button key={t.id} type="button"
@@ -411,7 +411,7 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] text-zinc-500 uppercase">Hazard tiles</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Hazard tiles</p>
             <div className="flex flex-wrap gap-1">
               {tiles.map((t) => (
                 <button key={t.id} type="button"
@@ -425,7 +425,7 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <p className="text-[10px] text-zinc-500 uppercase">Solid IntGrid values</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Solid IntGrid values</p>
               <div className="flex flex-wrap gap-1">
                 {Array.from({ length: 9 }, (_, i) => i + 1).map((v) => (
                   <button key={v} type="button"
@@ -438,7 +438,7 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] text-zinc-500 uppercase">Hazard IntGrid values</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Hazard IntGrid values</p>
               <div className="flex flex-wrap gap-1">
                 {Array.from({ length: 9 }, (_, i) => i + 1).map((v) => (
                   <button key={v} type="button"
@@ -462,11 +462,11 @@ export function GdRuntimePanel({ gameId, onChange }: { gameId: string; onChange:
           <div className="flex-1" />
           {report && (report.runs || 0) > 0 && (
             <button type="button" onClick={clearPlaytests}
-              className="text-[10px] text-zinc-500 hover:text-rose-400">clear runs</button>
+              className="text-[10px] text-zinc-400 hover:text-rose-400">clear runs</button>
           )}
         </div>
         {!report || report.message ? (
-          <p className="text-[11px] text-zinc-500 italic">{report?.message || 'No playtest runs recorded yet. Play a level to gather data.'}</p>
+          <p className="text-[11px] text-zinc-400 italic">{report?.message || 'No playtest runs recorded yet. Play a level to gather data.'}</p>
         ) : (
           <>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -497,7 +497,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="text-center bg-zinc-950/60 border border-zinc-800 rounded-lg py-1.5">
       <p className="text-sm font-bold text-zinc-100">{value}</p>
-      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

@@ -563,6 +563,7 @@ export default function registerCreativeActions(registerLensAction) {
   });
 
   registerLensAction("creative", "callsheet-add-row", (ctx, _a, params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const sheet = (s.callSheets.get(crAid(ctx)) || []).find((c) => c.id === params.id);
     if (!sheet) return { ok: false, error: "call sheet not found" };
@@ -610,7 +611,8 @@ export default function registerCreativeActions(registerLensAction) {
     sheet.updatedAt = crNow();
     saveCrState();
     return { ok: true, result: { sheet } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("creative", "callsheet-remove-row", (ctx, _a, params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -957,6 +959,7 @@ export default function registerCreativeActions(registerLensAction) {
   // land back in the owner's inbox without needing an account.
 
   registerLensAction("creative", "prooflink-create", (ctx, _a, params = {}) => {
+  try {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = crAid(ctx);
     const asset = (s.reviewAssets.get(userId) || []).find((a) => a.id === params.assetId);
@@ -975,7 +978,8 @@ export default function registerCreativeActions(registerLensAction) {
       ok: true,
       result: { link, shareUrl: `/proof/${token}` },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("creative", "prooflink-list", (ctx, _a, _params = {}) => {
     const s = getProdState(); if (!s) return { ok: false, error: "STATE unavailable" };

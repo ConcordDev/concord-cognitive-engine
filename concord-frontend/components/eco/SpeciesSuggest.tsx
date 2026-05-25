@@ -25,7 +25,7 @@ interface SuggestResult {
 function confidenceTone(c: number): string {
   if (c >= 0.75) return 'text-green-400';
   if (c >= 0.4) return 'text-amber-400';
-  return 'text-gray-500';
+  return 'text-gray-400';
 }
 
 function CandidateRow({ c, primary }: { c: Candidate; primary?: boolean }) {
@@ -49,7 +49,7 @@ function CandidateRow({ c, primary }: { c: Candidate; primary?: boolean }) {
           style={{ width: `${Math.max(2, pct)}%` }}
         />
       </div>
-      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-gray-500">
+      <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-gray-400">
         <span>{c.rank}</span>
         {c.kingdom && <span>{c.kingdom}</span>}
         {c.family && <span>{c.family}</span>}
@@ -116,7 +116,7 @@ export function SpeciesSuggest() {
         {error && <div className="text-xs text-red-400">{error}</div>}
 
         {!data && !loading && !error && (
-          <p className="py-8 text-center text-xs text-gray-500">
+          <p className="py-8 text-center text-xs text-gray-400">
             No data yet. Resolve a name against the GBIF taxonomic backbone to see the matched
             taxon and ranked alternatives.
           </p>
@@ -126,7 +126,7 @@ export function SpeciesSuggest() {
           <div className="space-y-3">
             {data.primary && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Best match
                 </p>
                 <CandidateRow c={data.primary} primary />
@@ -134,7 +134,7 @@ export function SpeciesSuggest() {
             )}
             {data.alternatives.length > 0 && (
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
                   Suggested alternatives
                 </p>
                 <div className="space-y-1.5">
@@ -145,11 +145,11 @@ export function SpeciesSuggest() {
               </div>
             )}
             {!data.primary && data.alternatives.length === 0 && (
-              <p className="py-4 text-center text-xs text-gray-500">
+              <p className="py-4 text-center text-xs text-gray-400">
                 No taxonomic match found for &ldquo;{data.query}&rdquo;.
               </p>
             )}
-            <p className="text-[10px] text-gray-600">Source: {data.source}</p>
+            <p className="text-[10px] text-gray-400">Source: {data.source}</p>
           </div>
         )}
       </div>

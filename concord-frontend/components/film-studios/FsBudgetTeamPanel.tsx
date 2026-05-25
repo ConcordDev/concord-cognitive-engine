@@ -103,7 +103,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
   const delCrew = async (id: string) => { await lensRun('film-studios', 'crew-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -113,7 +113,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Wallet className="w-3.5 h-3.5 text-fuchsia-400" /> Budget
           {budget && (
-            <span className="text-zinc-500 font-normal">
+            <span className="text-zinc-400 font-normal">
               · est ${budget.totalEstimated.toLocaleString()} · act ${budget.totalActual.toLocaleString()}
               {budget.variance !== 0 && (
                 <span className={budget.variance > 0 ? 'text-rose-400' : 'text-emerald-400'}>
@@ -147,7 +147,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
                 {cost.lines.map((l) => (
                   <li key={l.id} className="flex items-center gap-2 text-[11px]">
                     <span className="text-zinc-200 flex-1 truncate">{l.description}</span>
-                    <span className="font-mono text-zinc-500">${l.estimated.toLocaleString()} → ${l.actual.toLocaleString()}</span>
+                    <span className="font-mono text-zinc-400">${l.estimated.toLocaleString()} → ${l.actual.toLocaleString()}</span>
                     <span className={cn('font-mono w-24 text-right', STATUS_COLOR[l.status] || 'text-zinc-400')}>
                       {l.variance >= 0 ? '+' : ''}${l.variance.toLocaleString()}
                       {l.variancePct !== 0 && <span className="text-zinc-600"> ({l.variancePct}%)</span>}
@@ -180,11 +180,11 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
           <ul className="space-y-1">
             {budget.lines.map((l) => (
               <li key={l.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-[9px] uppercase text-zinc-500 w-20 shrink-0">{l.department.replace(/_/g, ' ')}</span>
+                <span className="text-[9px] uppercase text-zinc-400 w-20 shrink-0">{l.department.replace(/_/g, ' ')}</span>
                 <span className="text-xs text-zinc-200 flex-1 truncate">{l.description}</span>
-                <span className="text-[11px] text-zinc-500 font-mono">est ${l.estimated.toLocaleString()}</span>
+                <span className="text-[11px] text-zinc-400 font-mono">est ${l.estimated.toLocaleString()}</span>
                 <label className="flex items-center gap-1">
-                  <span className="text-[9px] text-zinc-600 uppercase">act</span>
+                  <span className="text-[9px] text-zinc-400 uppercase">act</span>
                   <input inputMode="numeric" defaultValue={String(l.actual)}
                     onBlur={(e) => { const v = Number(e.target.value); if (v !== l.actual) updateActual(l.id, v); }}
                     className={cn('w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] font-mono',
@@ -229,7 +229,7 @@ export function FsBudgetTeamPanel({ projectId, onChange }: { projectId: string; 
                   {c.name}{c.characterName && <span className="text-zinc-400"> as {c.characterName}</span>}
                 </span>
                 <span className="text-[9px] uppercase text-fuchsia-400">{c.role.replace(/_/g, ' ')}</span>
-                {c.dailyRate > 0 && <span className="text-[10px] text-zinc-500">${c.dailyRate}/day</span>}
+                {c.dailyRate > 0 && <span className="text-[10px] text-zinc-400">${c.dailyRate}/day</span>}
                 <button type="button" onClick={() => delCast(c.id)} className="text-zinc-600 hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -278,7 +278,7 @@ function CostStat({ label, value, accent }: { label: string; value: string | num
   return (
     <div className="bg-zinc-950/60 border border-zinc-800 rounded-lg p-1.5 text-center">
       <p className={cn('text-sm font-bold', accent || 'text-zinc-100')}>{value}</p>
-      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

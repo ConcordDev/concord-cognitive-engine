@@ -129,7 +129,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -168,7 +168,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
       <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
           <History className="w-3.5 h-3.5 text-fuchsia-400" /> Script revisions
-          <span className="text-zinc-500 font-normal">· {revisions.length} drafts</span>
+          <span className="text-zinc-400 font-normal">· {revisions.length} drafts</span>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <input placeholder="Revision label" value={revForm.label}
@@ -193,8 +193,8 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                 <div className="flex items-center gap-2">
                   <span className={cn('w-3 h-3 rounded-full border border-zinc-600', REV_SWATCH[rev.color] || 'bg-zinc-500')} />
                   <span className="text-xs font-semibold text-zinc-100">{rev.label}</span>
-                  <span className="text-[10px] text-zinc-500 capitalize">{rev.color} pages · {rev.author}</span>
-                  <span className="text-[10px] text-zinc-500 ml-auto">{rev.lockedPages.length} locked</span>
+                  <span className="text-[10px] text-zinc-400 capitalize">{rev.color} pages · {rev.author}</span>
+                  <span className="text-[10px] text-zinc-400 ml-auto">{rev.lockedPages.length} locked</span>
                   <button type="button" onClick={() => delRevision(rev.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -225,10 +225,10 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
       {/* Scenes */}
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">
-          Scenes <span className="text-zinc-500 font-normal">· {scenes.length} · {totalPages} pages</span>
+          Scenes <span className="text-zinc-400 font-normal">· {scenes.length} · {totalPages} pages</span>
         </h3>
         {scenes.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No scenes yet. Add your first slugline above.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No scenes yet. Add your first slugline above.</p>
         ) : (
           <ul className="space-y-2">
             {scenes.map((sc) => (
@@ -252,7 +252,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                     </div>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-zinc-500">{sc.pageEighths}/8 pg</span>
+                    <span className="text-[10px] text-zinc-400">{sc.pageEighths}/8 pg</span>
                     {sc.shootDayNumber != null && (
                       <span className="text-[10px] text-emerald-400">Day {sc.shootDayNumber}</span>
                     )}

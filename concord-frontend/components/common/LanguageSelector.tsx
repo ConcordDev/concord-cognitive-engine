@@ -256,7 +256,7 @@ function DropdownMenu({
             <span className="flex-1 text-start">
               <span className="font-medium">{info.name}</span>
               {showEnglishName && info.code !== 'en' && (
-                <span className="ms-1 text-gray-400 dark:text-gray-500">
+                <span className="ms-1 text-gray-400 dark:text-gray-400">
                   ({info.englishName})
                 </span>
               )}

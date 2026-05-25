@@ -82,7 +82,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -90,7 +90,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -107,11 +107,11 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
       )}
 
       {!error && !loading && works.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No CrossRef works for that query.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No CrossRef works for that query.</div>
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Search 130M+ scholarly works by DOI metadata.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Search 130M+ scholarly works by DOI metadata.</div>
       )}
 
       {works.length > 0 && (
@@ -119,7 +119,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
           {works.map((w) => (
             <li key={w.doi} className="px-3 py-2.5 text-xs">
               <div className="flex items-start gap-2">
-                <Quote className="w-3 h-3 text-zinc-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <Quote className="w-3 h-3 text-zinc-400 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1 min-w-0">
                   <a
                     href={w.url || `https://doi.org/${w.doi}`}
@@ -128,7 +128,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                   >
                     {w.title || w.doi}
                   </a>
-                  <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <div className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {w.publishedYear ? `${w.publishedYear} · ` : ''}
                     {w.containerTitle || w.publisher || ''}
                     {w.doi ? ` · DOI:${w.doi}` : ''}
@@ -141,14 +141,14 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
                     </div>
                   )}
                   {w.subjects.length > 0 && (
-                    <div className="text-[10px] text-zinc-500 mt-0.5 truncate">{w.subjects.slice(0, 3).join(' · ')}</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5 truncate">{w.subjects.slice(0, 3).join(' · ')}</div>
                   )}
                 </div>
                 {w.url && (
                   <a
                     href={w.url}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-zinc-500 hover:text-violet-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
+                    className="text-zinc-400 hover:text-violet-300 shrink-0 text-[10px] flex items-center gap-0.5 mt-0.5"
                     aria-label="Open work"
                   >
                     DOI<ExternalLink className="w-2.5 h-2.5" />
@@ -160,7 +160,7 @@ export function CrossRefPanel({ domain, className }: CrossRefPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: CrossRef · {total > 0 && `${total.toLocaleString()} total · `}{updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

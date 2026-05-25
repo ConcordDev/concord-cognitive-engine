@@ -63,10 +63,10 @@ export function PassesPanel() {
       </header>
       <div className="flex border-b border-white/10 text-[11px]">
         {(['planting', 'harvest'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={cn('px-4 py-1.5 transition inline-flex items-center gap-1.5', tab === t ? 'text-emerald-300 border-b-2 border-emerald-400' : 'text-gray-500 hover:text-gray-300')}>
+          <button key={t} onClick={() => setTab(t)} className={cn('px-4 py-1.5 transition inline-flex items-center gap-1.5', tab === t ? 'text-emerald-300 border-b-2 border-emerald-400' : 'text-gray-400 hover:text-gray-300')}>
             {t === 'planting' ? <Sprout className="w-3 h-3" /> : <Wheat className="w-3 h-3" />}
             {t === 'planting' ? 'Planting' : 'Harvest'}
-            <span className="text-[10px] text-gray-500">({t === 'planting' ? planting.length : harvest.length})</span>
+            <span className="text-[10px] text-gray-400">({t === 'planting' ? planting.length : harvest.length})</span>
           </button>
         ))}
       </div>
@@ -84,19 +84,19 @@ export function PassesPanel() {
           </div>
           <div className="max-h-72 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : planting.length === 0 ? (
-              <div className="px-3 py-10 text-center text-xs text-gray-500"><Sprout className="w-6 h-6 mx-auto mb-2 opacity-30" />No planting passes yet.</div>
+              <div className="px-3 py-10 text-center text-xs text-gray-400"><Sprout className="w-6 h-6 mx-auto mb-2 opacity-30" />No planting passes yet.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {planting.map(p => (
                   <li key={p.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                     <Sprout className="w-3.5 h-3.5 text-emerald-300" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-white">{p.crop} <span className="text-gray-500">{p.variety}</span></div>
-                      <div className="text-[10px] text-gray-500">Field {p.fieldId.slice(0, 10)} · {p.seedingRate.toLocaleString()} seeds/ac · {p.depthInches}" deep · {p.acresPlanted}ac</div>
+                      <div className="text-sm text-white">{p.crop} <span className="text-gray-400">{p.variety}</span></div>
+                      <div className="text-[10px] text-gray-400">Field {p.fieldId.slice(0, 10)} · {p.seedingRate.toLocaleString()} seeds/ac · {p.depthInches}" deep · {p.acresPlanted}ac</div>
                     </div>
-                    <span className="text-[10px] text-gray-500">{new Date(p.plantedAt).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-gray-400">{new Date(p.plantedAt).toLocaleDateString()}</span>
                   </li>
                 ))}
               </ul>
@@ -115,9 +115,9 @@ export function PassesPanel() {
           </div>
           <div className="max-h-72 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : harvest.length === 0 ? (
-              <div className="px-3 py-10 text-center text-xs text-gray-500"><Wheat className="w-6 h-6 mx-auto mb-2 opacity-30" />No harvest passes yet.</div>
+              <div className="px-3 py-10 text-center text-xs text-gray-400"><Wheat className="w-6 h-6 mx-auto mb-2 opacity-30" />No harvest passes yet.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {harvest.map(h => (
@@ -125,7 +125,7 @@ export function PassesPanel() {
                     <Wheat className="w-3.5 h-3.5 text-amber-300" />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white">{h.crop} <span className="text-[10px] text-amber-300 font-mono">{h.ticketNumber}</span></div>
-                      <div className="text-[10px] text-gray-500">Field {h.fieldId.slice(0, 10)} · {h.acresHarvested}ac · {h.yieldBushels.toLocaleString()}bu @ {h.moisturePct ?? '—'}% moisture</div>
+                      <div className="text-[10px] text-gray-400">Field {h.fieldId.slice(0, 10)} · {h.acresHarvested}ac · {h.yieldBushels.toLocaleString()}bu @ {h.moisturePct ?? '—'}% moisture</div>
                     </div>
                     <span className="font-mono text-sm tabular-nums text-amber-300">{h.yieldPerAcre} bu/ac</span>
                   </li>

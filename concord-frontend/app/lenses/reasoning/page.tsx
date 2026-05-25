@@ -417,7 +417,7 @@ function ArgumentTreeNode({
           </div>
           <p className="text-sm text-white leading-snug">{node.text}</p>
           {node.author && (
-            <p className="text-xs text-gray-500 mt-1">{node.author}</p>
+            <p className="text-xs text-gray-400 mt-1">{node.author}</p>
           )}
         </div>
 
@@ -1024,7 +1024,7 @@ export default function ReasoningLensPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               ref={searchInputRef}
               type="text"
@@ -1257,7 +1257,7 @@ export default function ReasoningLensPage() {
                     <span className="text-xs text-gray-400">Neutral</span>
                   </div>
                   <div className="flex items-center gap-3 ml-auto">
-                    <span className="text-xs text-gray-500">Strength:</span>
+                    <span className="text-xs text-gray-400">Strength:</span>
                     <StrengthBar value={3} />
                   </div>
                 </div>
@@ -1595,15 +1595,15 @@ export default function ReasoningLensPage() {
                   )}
                   <div className="flex items-center gap-4 mt-2">
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-500">Credibility:</span>
+                      <span className="text-xs text-gray-400">Credibility:</span>
                       <StrengthBar value={ev.credibility} />
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-500">Relevance:</span>
+                      <span className="text-xs text-gray-400">Relevance:</span>
                       <StrengthBar value={ev.relevance} />
                     </div>
                     <div className="flex items-center gap-1 ml-auto">
-                      <span className="text-xs text-gray-500">{ev.premiseIds.length} premise(s) linked</span>
+                      <span className="text-xs text-gray-400">{ev.premiseIds.length} premise(s) linked</span>
                     </div>
                   </div>
                   {ev.url && (
@@ -1718,7 +1718,7 @@ export default function ReasoningLensPage() {
                   title={FALLACY_DESCRIPTIONS[key]}
                 >
                   <p className="text-xs font-medium text-white">{label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{FALLACY_DESCRIPTIONS[key]}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{FALLACY_DESCRIPTIONS[key]}</p>
                 </div>
               ))}
             </div>
@@ -1756,7 +1756,7 @@ export default function ReasoningLensPage() {
                     )}>
                       {flag.severity}
                     </span>
-                    <span className="text-xs text-gray-500">{flag.flaggedBy === 'automated' ? 'Auto-detected' : 'Manually flagged'}</span>
+                    <span className="text-xs text-gray-400">{flag.flaggedBy === 'automated' ? 'Auto-detected' : 'Manually flagged'}</span>
                     {flag.resolved && (
                       <span className="text-xs bg-green-400/20 text-green-400 px-1.5 py-0.5 rounded">Resolved</span>
                     )}
@@ -1827,9 +1827,9 @@ export default function ReasoningLensPage() {
                   <p className="text-xs text-gray-400 mt-1">{template.description}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs text-neon-purple font-medium">{template.structure.length} steps</span>
-                    <span className="text-xs text-gray-600">|</span>
+                    <span className="text-xs text-gray-400">|</span>
                     {template.structure.map((s, i) => (
-                      <span key={i} className="text-xs text-gray-500">{s.role}{i < template.structure.length - 1 ? ' \u2192' : ''}</span>
+                      <span key={i} className="text-xs text-gray-400">{s.role}{i < template.structure.length - 1 ? ' \u2192' : ''}</span>
                     ))}
                   </div>
                 </motion.div>
@@ -1966,7 +1966,7 @@ export default function ReasoningLensPage() {
                       {totalFallacies === 0 ? 'No fallacies' : `${totalFallacies} fallacy issue(s)`}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500">An argument is valid if the conclusion follows logically from the premises, regardless of whether the premises are true.</p>
+                  <p className="text-xs text-gray-400">An argument is valid if the conclusion follows logically from the premises, regardless of whether the premises are true.</p>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
@@ -1982,7 +1982,7 @@ export default function ReasoningLensPage() {
                       {totalFallacies === 0 && premiseCoverage >= 80 ? 'Strong' : totalFallacies === 0 && premiseCoverage >= 50 ? 'Moderate' : 'Weak'}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500">An argument is sound if it is valid and all its premises are true (supported by evidence).</p>
+                  <p className="text-xs text-gray-400">An argument is sound if it is valid and all its premises are true (supported by evidence).</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className={ds.textMuted}>Fallacy count</span>
@@ -2464,7 +2464,7 @@ export default function ReasoningLensPage() {
                         <option key={key} value={key}>{label}</option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">{FALLACY_DESCRIPTIONS[flagFallacyType]}</p>
+                    <p className="text-xs text-gray-400 mt-1">{FALLACY_DESCRIPTIONS[flagFallacyType]}</p>
                   </div>
                   <div>
                     <label className={ds.label}>Severity</label>

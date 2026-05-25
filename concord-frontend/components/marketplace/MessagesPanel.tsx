@@ -194,11 +194,11 @@ export function MessagesPanel() {
         )}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-8 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : threads.length === 0 ? (
-            <div className="px-3 py-8 text-center text-xs text-gray-500">No conversations.</div>
+            <div className="px-3 py-8 text-center text-xs text-gray-400">No conversations.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {threads.map((t) => (
@@ -214,7 +214,7 @@ export function MessagesPanel() {
                       <span className="text-xs text-white truncate flex-1">{t.subject}</span>
                       {t.unread && <span className="w-2 h-2 rounded-full bg-orange-400" />}
                     </div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       {t.buyerName} · {t.messageCount} msg
                     </div>
                   </button>
@@ -231,13 +231,13 @@ export function MessagesPanel() {
           <>
             <header className="px-4 py-2.5 border-b border-white/10">
               <div className="text-sm font-semibold text-gray-200">{active.subject}</div>
-              <div className="text-[10px] text-gray-500">
+              <div className="text-[10px] text-gray-400">
                 {active.number} · {active.buyerName}
               </div>
             </header>
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
               {active.messages.length === 0 ? (
-                <div className="text-center text-xs text-gray-500 py-8">
+                <div className="text-center text-xs text-gray-400 py-8">
                   No messages yet — say hello.
                 </div>
               ) : (
@@ -255,7 +255,7 @@ export function MessagesPanel() {
                       )}
                     >
                       <div>{m.text}</div>
-                      <div className="text-[9px] text-gray-500 mt-0.5">
+                      <div className="text-[9px] text-gray-400 mt-0.5">
                         {m.from} · {new Date(m.at).toLocaleTimeString()}
                       </div>
                     </div>
@@ -292,7 +292,7 @@ export function MessagesPanel() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-xs text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-xs text-gray-400">
             <div className="text-center">
               <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-30" />
               Select a conversation or start a new one.

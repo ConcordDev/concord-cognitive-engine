@@ -224,22 +224,21 @@ export function WarPanel() {
 
       {tab === 'active' && (
         <div className="space-y-2 max-h-[24rem] overflow-auto">
-          {loading && <p className="text-xs text-zinc-500">Loading…</p>}
+          {loading && <p className="text-xs text-zinc-400">Loading…</p>}
           {!loading && campaigns.length === 0 && (
-            <p className="text-xs text-zinc-500 italic">No active campaigns in this world.</p>
+            <p className="text-xs text-zinc-400 italic">No active campaigns in this world.</p>
           )}
           {campaigns.map((c) => (
             <div
               key={c.id}
               data-campaign-id={c.id}
               className="p-2 rounded border bg-zinc-900/40 border-zinc-800 hover:bg-zinc-900 cursor-pointer"
-              onClick={() => fetchOne(c.id)}
-            >
+              onClick={() => fetchOne(c.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center justify-between mb-0.5">
                 <span className="font-medium text-zinc-100">{c.attacker_realm_id} → {c.defender_realm_id}</span>
                 <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${stateChip(c.state)}`}>{c.state}</span>
               </div>
-              <p className="text-[10px] text-zinc-500">target: <span className="font-mono text-amber-200">{c.target_territory}</span> · {c.casus_belli} · {fmtAgo(c.declared_at)}</p>
+              <p className="text-[10px] text-zinc-400">target: <span className="font-mono text-amber-200">{c.target_territory}</span> · {c.casus_belli} · {fmtAgo(c.declared_at)}</p>
               <p className="mt-1 text-[10px] font-mono text-zinc-400">
                 <span className={moraleTone(c.attacker_morale)}>A:{c.attacker_troops}t/{c.attacker_morale}m</span>
                 {' · '}
@@ -257,9 +256,9 @@ export function WarPanel() {
           )}
           {myRealm && (
             <>
-              <p className="text-[10px] text-zinc-500">Declaring on behalf of <span className="font-mono text-amber-200">{myRealm.name}</span>.</p>
+              <p className="text-[10px] text-zinc-400">Declaring on behalf of <span className="font-mono text-amber-200">{myRealm.name}</span>.</p>
               <label className="block">
-                <span className="block text-[10px] text-zinc-500 mb-0.5">Target realm id</span>
+                <span className="block text-[10px] text-zinc-400 mb-0.5">Target realm id</span>
                 <input
                   type="text" value={defenderRealmId}
                   onChange={(e) => setDefenderRealmId(e.target.value)}
@@ -269,7 +268,7 @@ export function WarPanel() {
                 />
               </label>
               <label className="block">
-                <span className="block text-[10px] text-zinc-500 mb-0.5">Target territory</span>
+                <span className="block text-[10px] text-zinc-400 mb-0.5">Target territory</span>
                 <input
                   type="text" value={targetTerritory}
                   onChange={(e) => setTargetTerritory(e.target.value)}
@@ -279,7 +278,7 @@ export function WarPanel() {
                 />
               </label>
               <label className="block">
-                <span className="block text-[10px] text-zinc-500 mb-0.5">Casus belli</span>
+                <span className="block text-[10px] text-zinc-400 mb-0.5">Casus belli</span>
                 <select
                   value={casusBelli} onChange={(e) => setCasusBelli(e.target.value)}
                   aria-label="Casus belli"
@@ -307,7 +306,7 @@ export function WarPanel() {
       {tab === 'manage' && (
         <div className="space-y-2 max-h-[24rem] overflow-auto">
           {!active && (
-            <p className="text-xs text-zinc-500 italic">Select an active campaign first.</p>
+            <p className="text-xs text-zinc-400 italic">Select an active campaign first.</p>
           )}
           {active && (
             <>
@@ -316,7 +315,7 @@ export function WarPanel() {
                   <span className="font-bold text-amber-200">{active.attacker_realm_id} → {active.defender_realm_id}</span>
                   <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${stateChip(active.state)}`}>{active.state}</span>
                 </div>
-                <p className="mt-1 text-[10px] text-zinc-500">target: <span className="font-mono text-amber-200">{active.target_territory}</span></p>
+                <p className="mt-1 text-[10px] text-zinc-400">target: <span className="font-mono text-amber-200">{active.target_territory}</span></p>
                 <p className="mt-1 text-[10px] font-mono">
                   <span className={moraleTone(active.attacker_morale)}>Attacker: {active.attacker_troops} troops / {active.attacker_morale} morale</span>
                 </p>
@@ -350,11 +349,11 @@ export function WarPanel() {
 
               {active.recentSkirmishes?.length > 0 && (
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Skirmishes</p>
+                  <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Skirmishes</p>
                   {active.recentSkirmishes.slice(0, 6).map((s) => (
                     <div key={s.id} className="text-[10px] text-zinc-300 mb-0.5">
-                      <span className="font-mono text-zinc-500">{fmtAgo(s.occurred_at)}</span> {s.summary}
-                      <span className="ml-1 font-mono text-zinc-500">(−{s.attacker_losses}/−{s.defender_losses})</span>
+                      <span className="font-mono text-zinc-400">{fmtAgo(s.occurred_at)}</span> {s.summary}
+                      <span className="ml-1 font-mono text-zinc-400">(−{s.attacker_losses}/−{s.defender_losses})</span>
                     </div>
                   ))}
                 </div>

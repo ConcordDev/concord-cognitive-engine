@@ -88,8 +88,8 @@ function StatCard({
   return (
     <div className="rounded-xl border border-lattice-border bg-lattice-surface p-5">
       <div className="mb-3 flex items-center gap-2">
-        <Icon className={`h-4 w-4 ${accent ? 'text-neon-cyan' : 'text-zinc-500'}`} />
-        <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+        <Icon className={`h-4 w-4 ${accent ? 'text-neon-cyan' : 'text-zinc-400'}`} />
+        <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">
           {label}
         </span>
       </div>
@@ -132,8 +132,8 @@ export default function TransparencyPage() {
       {/* Loading state */}
       {isLoading && (
         <div className="flex items-center justify-center py-24">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-500" />
-          <span className="ml-3 text-zinc-500">Loading report...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+          <span className="ml-3 text-zinc-400">Loading report...</span>
         </div>
       )}
 
@@ -156,7 +156,7 @@ export default function TransparencyPage() {
               {report.year}
             </span>
             {report.publishedAt && (
-              <span className="text-xs text-zinc-600">
+              <span className="text-xs text-zinc-400">
                 Published {report.publishedAt.split(' ')[0]}
               </span>
             )}
@@ -202,8 +202,8 @@ export default function TransparencyPage() {
                     className="rounded-xl border border-lattice-border bg-lattice-surface p-5"
                   >
                     <div className="mb-2 flex items-center gap-2">
-                      <meta.icon className="h-4 w-4 text-zinc-500" />
-                      <span className="text-xs font-medium text-zinc-500">{meta.label}</span>
+                      <meta.icon className="h-4 w-4 text-zinc-400" />
+                      <span className="text-xs font-medium text-zinc-400">{meta.label}</span>
                     </div>
                     <p className="text-xl font-bold text-white">{count}</p>
                   </div>
@@ -239,7 +239,7 @@ export default function TransparencyPage() {
                       </div>
                     </div>
                     <span className="w-12 text-right text-sm font-bold text-white">{count}</span>
-                    <span className="w-12 text-right text-xs text-zinc-500">{pct}%</span>
+                    <span className="w-12 text-right text-xs text-zinc-400">{pct}%</span>
                   </div>
                 );
               })}
@@ -249,7 +249,7 @@ export default function TransparencyPage() {
           {/* Concord Commitments */}
           <section className="mb-10">
             <h2 className="mb-4 text-lg font-semibold text-zinc-300">Our Commitments</h2>
-            <p className="mb-6 text-sm text-zinc-500">
+            <p className="mb-6 text-sm text-zinc-400">
               These are standing commitments Concord makes to every user, reaffirmed annually.
             </p>
             <div className="space-y-3">
@@ -270,7 +270,7 @@ export default function TransparencyPage() {
                     />
                     <div>
                       <p className="text-sm font-semibold text-white">{meta.label}</p>
-                      <p className="mt-1 text-xs text-zinc-500">{meta.description}</p>
+                      <p className="mt-1 text-xs text-zinc-400">{meta.description}</p>
                     </div>
                   </div>
                 );
@@ -279,7 +279,7 @@ export default function TransparencyPage() {
           </section>
 
           {/* Footer note */}
-          <footer className="rounded-xl border border-lattice-border bg-lattice-surface p-6 text-sm text-zinc-500">
+          <footer className="rounded-xl border border-lattice-border bg-lattice-surface p-6 text-sm text-zinc-400">
             <div className="flex items-start gap-3">
               <Eye className="mt-0.5 h-4 w-4 flex-shrink-0 text-zinc-600" />
               <div>

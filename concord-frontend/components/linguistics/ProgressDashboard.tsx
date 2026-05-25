@@ -54,13 +54,13 @@ export function ProgressDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-zinc-500">
+      <div className="flex items-center justify-center py-6 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
   }
   if (!stats) {
-    return <p className="text-xs text-zinc-500 italic">No progress data yet — review a word to begin.</p>;
+    return <p className="text-xs text-zinc-400 italic">No progress data yet — review a word to begin.</p>;
   }
 
   return (
@@ -75,17 +75,17 @@ export function ProgressDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-2 text-center">
           <Flame className={cn('w-4 h-4 mx-auto mb-0.5', stats.streak > 0 ? 'text-orange-400' : 'text-zinc-600')} />
           <p className="text-sm font-bold text-zinc-100">{stats.streak}</p>
-          <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Day streak</p>
+          <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Day streak</p>
         </div>
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-2 text-center">
           <Star className="w-4 h-4 mx-auto mb-0.5 text-amber-400" />
           <p className="text-sm font-bold text-zinc-100">{stats.points}</p>
-          <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Points</p>
+          <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Points</p>
         </div>
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-2 text-center">
-          <Flame className="w-4 h-4 mx-auto mb-0.5 text-zinc-500" />
+          <Flame className="w-4 h-4 mx-auto mb-0.5 text-zinc-400" />
           <p className="text-sm font-bold text-zinc-100">{stats.longestStreak}</p>
-          <p className="text-[9px] text-zinc-500 uppercase tracking-wide">Best streak</p>
+          <p className="text-[9px] text-zinc-400 uppercase tracking-wide">Best streak</p>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export function ProgressDashboard({ refreshKey = 0 }: { refreshKey?: number }) {
           ))}
         </div>
         {stats.nextBadge && (
-          <p className="text-[10px] text-zinc-500 mt-1.5">
+          <p className="text-[10px] text-zinc-400 mt-1.5">
             {stats.nextBadge.pointsNeeded} pts to <span className="text-zinc-300">{stats.nextBadge.label}</span>
           </p>
         )}

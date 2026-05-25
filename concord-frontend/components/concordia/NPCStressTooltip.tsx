@@ -45,7 +45,7 @@ function bucketFor(stress: number): Bucket {
   if (stress >= 60) return { label: 'breaking', glyph: '✸', intensity: 4, tone: 'text-orange-400' };
   if (stress >= 45) return { label: 'anxious', glyph: '✺', intensity: 3, tone: 'text-amber-300' };
   if (stress >= 35) return { label: 'unsettled', glyph: '✦', intensity: 2, tone: 'text-zinc-300' };
-  return { label: 'calm', glyph: '·', intensity: 1, tone: 'text-zinc-500' };
+  return { label: 'calm', glyph: '·', intensity: 1, tone: 'text-zinc-400' };
 }
 
 const COPING_LINE: Record<NonNullable<CopingTrait>, string> = {

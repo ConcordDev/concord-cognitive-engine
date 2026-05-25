@@ -33,16 +33,16 @@ export function RootMetrics() {
       </header>
       {m.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">/api/perf/metrics unreachable.</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Activity className="h-2.5 w-2.5" />Ticks</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.ticks?.toLocaleString() ?? '—'}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Tick (ms)</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.tickDurationMs ?? '—'}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Cpu className="h-2.5 w-2.5" />Memory</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.memoryMB ?? '—'} MB</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><HardDrive className="h-2.5 w-2.5" />DTUs</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.dtuCount?.toLocaleString() ?? '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Activity className="h-2.5 w-2.5" />Ticks</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.ticks?.toLocaleString() ?? '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Tick (ms)</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.tickDurationMs ?? '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Cpu className="h-2.5 w-2.5" />Memory</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.memoryMB ?? '—'} MB</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><HardDrive className="h-2.5 w-2.5" />DTUs</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{d.dtuCount?.toLocaleString() ?? '—'}</div></div>
       </div>
       <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded border border-emerald-500/15 bg-emerald-500/5 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Active users</div><div className="font-mono text-zinc-100">{d.activeUsers ?? '—'}</div></div>
-        <div className="rounded border border-emerald-500/15 bg-emerald-500/5 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Uptime</div><div className="font-mono text-zinc-100">{uptimeHrs}h</div></div>
+        <div className="rounded border border-emerald-500/15 bg-emerald-500/5 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Active users</div><div className="font-mono text-zinc-100">{d.activeUsers ?? '—'}</div></div>
+        <div className="rounded border border-emerald-500/15 bg-emerald-500/5 p-2"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Uptime</div><div className="font-mono text-zinc-100">{uptimeHrs}h</div></div>
       </div>
-      {m.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
+      {m.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
     </div>
   );
 }

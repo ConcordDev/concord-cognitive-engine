@@ -48,11 +48,11 @@ export function CwStatsPanel({ projectId }: { projectId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (!stats || !stats.hasData) {
     return (
-      <p className="text-[11px] text-zinc-500 italic py-8 text-center">
+      <p className="text-[11px] text-zinc-400 italic py-8 text-center">
         {stats?.message || 'No prose written yet. Write scene content to see manuscript statistics.'}
       </p>
     );
@@ -125,9 +125,9 @@ export function CwStatsPanel({ projectId }: { projectId: string }) {
             {stats.pacing.map((p) => (
               <li key={p.sceneId} className="flex items-center gap-2 text-[11px] bg-zinc-950/60 rounded-lg px-2.5 py-1.5">
                 <span className="flex-1 truncate text-zinc-200">{p.title}</span>
-                <span className="text-zinc-500">{p.wordCount}w</span>
-                <span className="text-zinc-500">{p.avgSentenceLength}w/sent</span>
-                <span className="text-zinc-500">{p.dialogueLines} dlg</span>
+                <span className="text-zinc-400">{p.wordCount}w</span>
+                <span className="text-zinc-400">{p.avgSentenceLength}w/sent</span>
+                <span className="text-zinc-400">{p.dialogueLines} dlg</span>
                 <span className={cn('uppercase font-semibold w-16 text-right', TEMPO_COLOR[p.tempo] || 'text-zinc-400')}>
                   {p.tempo}
                 </span>
@@ -144,7 +144,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5 text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide leading-tight">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide leading-tight">{label}</p>
     </div>
   );
 }

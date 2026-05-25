@@ -61,7 +61,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -72,17 +72,17 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Download className="w-3.5 h-3.5 text-violet-400" /> Downloaded
-          {downloads.length > 0 && <span className="text-[10px] text-zinc-500">· {fmt(totalSec)} total</span>}
+          {downloads.length > 0 && <span className="text-[10px] text-zinc-400">· {fmt(totalSec)} total</span>}
         </h3>
         {downloads.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No downloads. Download episodes from a show.</p>
+          <p className="text-[11px] text-zinc-400 italic">No downloads. Download episodes from a show.</p>
         ) : (
           <ul className="space-y-1">
             {downloads.map((e) => (
               <li key={e.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-xs text-zinc-200 truncate">{e.title}</p>
-                  <p className="text-[10px] text-zinc-500">{e.showTitle} · {fmt(e.durationSec)}</p>
+                  <p className="text-[10px] text-zinc-400">{e.showTitle} · {fmt(e.durationSec)}</p>
                 </div>
                 <button type="button" onClick={() => removeDownload(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {playlists.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No playlists.</p>
+          <p className="text-[11px] text-zinc-400 italic">No playlists.</p>
         ) : (
           <ul className="space-y-2">
             {playlists.map((pl) => (
@@ -116,7 +116,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-900">
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openPl === pl.id && 'rotate-90')} />
                   <span className="text-sm font-semibold text-zinc-100">{pl.name}</span>
-                  <span className="text-[11px] text-zinc-500">{pl.episodeCount} episodes</span>
+                  <span className="text-[11px] text-zinc-400">{pl.episodeCount} episodes</span>
                 </button>
                 {openPl === pl.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 space-y-2">
@@ -127,11 +127,11 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-[11px] text-zinc-500 italic">Empty playlist.</p>
+                      <p className="text-[11px] text-zinc-400 italic">Empty playlist.</p>
                     )}
                     {downloads.filter((e) => !plEpisodes.some((x) => x.id === e.id)).length > 0 && (
                       <div>
-                        <p className="text-[10px] text-zinc-600 uppercase tracking-wide mb-1">Add from downloads</p>
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">Add from downloads</p>
                         <div className="flex flex-wrap gap-1">
                           {downloads.filter((e) => !plEpisodes.some((x) => x.id === e.id)).map((e) => (
                             <button key={e.id} type="button" onClick={() => addDownloadToPlaylist(pl.id, e.id)}

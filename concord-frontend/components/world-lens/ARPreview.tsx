@@ -277,8 +277,7 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported = true 
                 onClick={() => setMeasurementMode(!measurementMode)}
                 className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${
                   measurementMode ? 'bg-cyan-500' : 'bg-white/20'
-                }`}
-              >
+                }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
                   measurementMode ? 'left-5' : 'left-0.5'
                 }`} />
@@ -291,8 +290,7 @@ export default function ARPreview({ dtuId, dtuData, onCapture, supported = true 
                 onClick={() => setValidationOverlay(!validationOverlay)}
                 className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${
                   validationOverlay ? 'bg-cyan-500' : 'bg-white/20'
-                }`}
-              >
+                }`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
                   validationOverlay ? 'left-5' : 'left-0.5'
                 }`} />

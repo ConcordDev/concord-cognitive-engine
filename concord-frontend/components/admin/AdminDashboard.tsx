@@ -187,7 +187,7 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
                   style={{ width: `${storagePercent}%` }}
                 />
               </div>
-              <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <div className="flex justify-between mt-2 text-xs text-gray-400">
                 <span>{stats.storage.attachments} attachments</span>
                 <span>{storagePercent.toFixed(1)}% used</span>
               </div>
@@ -215,7 +215,7 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
                         <span className="text-sm text-neon-cyan">{log.resource}</span>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500">{formatTime(log.timestamp)}</span>
+                    <span className="text-xs text-gray-400">{formatTime(log.timestamp)}</span>
                   </div>
                 ))}
               </div>
@@ -259,8 +259,8 @@ function AdminDashboard({ stats, auditLogs, onRefresh, className }: AdminDashboa
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-300">{log.resource}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{log.details || '-'}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{formatTime(log.timestamp)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-400">{log.details || '-'}</td>
+                    <td className="px-4 py-3 text-xs text-gray-400">{formatTime(log.timestamp)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -383,7 +383,7 @@ function StatCard({
         </div>
       </div>
       <div className="text-2xl font-bold text-white mb-1">{value}</div>
-      <div className="text-xs text-gray-500">{change}</div>
+      <div className="text-xs text-gray-400">{change}</div>
     </div>
   );
 }

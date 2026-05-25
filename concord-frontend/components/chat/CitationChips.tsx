@@ -55,7 +55,7 @@ export default function CitationChips({ dtuRefs, surfaceFromLens = 'chat' }: Cit
   if (!dtuRefs || dtuRefs.length === 0) return null;
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      <span className="text-[10px] uppercase tracking-wide text-gray-500 mr-1">Sources:</span>
+      <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-1">Sources:</span>
       {dtuRefs.map((ref) => {
         const colorCls = TIER_COLOR[ref.tier || 'regular'] || TIER_COLOR.regular;
         const label = ref.title || ref.id;

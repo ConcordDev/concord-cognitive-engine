@@ -221,18 +221,18 @@ export default function EFBMovingMap() {
           {chartLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400 self-center" />}
         </div>
         {activeLayer && (
-          <p className="text-[10px] text-gray-500 mt-2 font-mono">
+          <p className="text-[10px] text-gray-400 mt-2 font-mono">
             Active: {activeLayer.label} ({activeLayer.scale}) · FAA-published tiles via{' '}
             {activeLayer.wms.replace('https://', '')}
           </p>
         )}
         {editions.length > 0 && (
-          <p className="text-[10px] text-gray-600 mt-1">
+          <p className="text-[10px] text-gray-400 mt-1">
             {editions.length} current FAA chart editions on this cycle.
           </p>
         )}
         {chartLayers.length === 0 && !chartLoading && (
-          <p className="text-[10px] text-gray-600 mt-2">
+          <p className="text-[10px] text-gray-400 mt-2">
             Select a chart type to load the live FAA overlay catalog.
           </p>
         )}
@@ -297,7 +297,7 @@ export default function EFBMovingMap() {
       {/* Moving map canvas */}
       <div className="rounded-lg border border-white/10 bg-[#070b12] p-2">
         <div className="flex items-center justify-between mb-1 px-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">
             {activeLayer?.label || 'Moving map'}
           </span>
           <div className="flex items-center gap-3 text-[10px]">
@@ -382,7 +382,7 @@ export default function EFBMovingMap() {
       {/* Route legs table */}
       {routeLegs.length > 0 && (
         <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Leg breakdown</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Leg breakdown</p>
           <div className="space-y-1">
             {routeLegs.map((leg, i) => (
               <div key={i} className="flex items-center justify-between text-xs font-mono">
@@ -422,7 +422,7 @@ export default function EFBMovingMap() {
                   {w.windSpeed_kt != null ? `${Math.round(w.windSpeed_kt)} kt` : '---'}
                 </p>
                 {w.temp_c != null && (
-                  <p className="text-[10px] text-gray-500">{Math.round(w.temp_c)}°C</p>
+                  <p className="text-[10px] text-gray-400">{Math.round(w.temp_c)}°C</p>
                 )}
               </div>
             ))}
@@ -464,7 +464,7 @@ export default function EFBMovingMap() {
         </div>
       )}
       {showRadar && !radarLabel && (
-        <p className="text-[10px] text-gray-600">
+        <p className="text-[10px] text-gray-400">
           Plot a route to arm the NWS composite-reflectivity radar overlay for its midpoint.
         </p>
       )}

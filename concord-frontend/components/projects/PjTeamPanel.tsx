@@ -41,7 +41,7 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -60,7 +60,7 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
       </section>
 
       {members.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No team members yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No team members yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {members.map((m) => (
@@ -70,9 +70,9 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-100 flex items-center gap-1">
-                  <User className="w-3 h-3 text-zinc-500" />{m.name}
+                  <User className="w-3 h-3 text-zinc-400" />{m.name}
                 </p>
-                <p className="text-[10px] text-zinc-500 capitalize">{m.role}</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{m.role}</p>
               </div>
               <span className="text-[11px] text-zinc-400">{m.assigned} active</span>
               <button type="button" onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400">

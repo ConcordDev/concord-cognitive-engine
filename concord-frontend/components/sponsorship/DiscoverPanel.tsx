@@ -91,7 +91,7 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
       )}
 
       {creators.length === 0 ? (
-        <div className="text-center text-zinc-500 italic py-6 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
           No creators match your search.
         </div>
       ) : (
@@ -101,13 +101,13 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
               <div className="flex justify-between items-start gap-3">
                 <div>
                   <p className="text-zinc-100 font-medium">{c.name}</p>
-                  <p className="text-xs text-zinc-400">{c.craft} · <span className="text-zinc-500">{c.world}</span></p>
-                  <p className="text-xs text-zinc-500 mt-1">{c.blurb}</p>
+                  <p className="text-xs text-zinc-400">{c.craft} · <span className="text-zinc-400">{c.world}</span></p>
+                  <p className="text-xs text-zinc-400 mt-1">{c.blurb}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider">from</p>
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider">from</p>
                   <p className="text-amber-300 font-mono text-sm">{c.lowestTierCc} CC/mo</p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">{c.sponsorCount} sponsor{c.sponsorCount === 1 ? '' : 's'}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">{c.sponsorCount} sponsor{c.sponsorCount === 1 ? '' : 's'}</p>
                 </div>
               </div>
               <button
@@ -128,7 +128,7 @@ export function DiscoverPanel({ onSubscribed }: { onSubscribed: () => void }) {
                           <li key={b} className="text-[10px] text-zinc-400">· {b}</li>
                         ))}
                       </ul>
-                      <p className="text-[10px] text-zinc-600 mt-1">Dispatch every {t.dispatchFreqHours}h</p>
+                      <p className="text-[10px] text-zinc-400 mt-1">Dispatch every {t.dispatchFreqHours}h</p>
                       <button
                         type="button"
                         disabled={busy}

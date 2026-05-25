@@ -77,7 +77,7 @@ export function StravaGoalsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -107,7 +107,7 @@ export function StravaGoalsPanel() {
           </button>
         </div>
         {goals.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No goals set.</p>
+          <p className="text-[11px] text-zinc-400 italic">No goals set.</p>
         ) : (
           <ul className="space-y-2">
             {goals.map((g) => (
@@ -124,7 +124,7 @@ export function StravaGoalsPanel() {
                   <div className={cn('h-full rounded-full', g.progress.complete ? 'bg-emerald-500' : 'bg-orange-500')}
                     style={{ width: `${g.progress.pct}%` }} />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {g.progress.value} / {g.target} ({g.progress.pct}%)
                   {g.progress.complete ? ' · complete' : ` · ${g.progress.remaining} to go`}
                 </p>
@@ -140,14 +140,14 @@ export function StravaGoalsPanel() {
           <Award className="w-3.5 h-3.5 text-amber-400" /> Personal records
         </h3>
         {prs.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Log activities to surface your records.</p>
+          <p className="text-[11px] text-zinc-400 italic">Log activities to surface your records.</p>
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {prs.map((p) => (
               <div key={p.label} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5">
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{p.label}</p>
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{p.label}</p>
                 <p className="text-sm font-bold text-zinc-100">{p.display}</p>
-                {p.activityName && <p className="text-[10px] text-zinc-600 truncate">{p.activityName}</p>}
+                {p.activityName && <p className="text-[10px] text-zinc-400 truncate">{p.activityName}</p>}
               </div>
             ))}
           </div>
@@ -175,18 +175,18 @@ export function StravaGoalsPanel() {
           </button>
         </div>
         {gear.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No gear tracked.</p>
+          <p className="text-[11px] text-zinc-400 italic">No gear tracked.</p>
         ) : (
           <ul className="space-y-2">
             {gear.map((g) => (
               <li key={g.id} className={cn('bg-zinc-900/70 border rounded-xl p-3',
                 g.status === 'replace_now' ? 'border-rose-900/60' : 'border-zinc-800')}>
                 <div className="flex items-center justify-between">
-                  <span className={cn('text-xs', g.retired ? 'text-zinc-500 line-through' : 'text-zinc-200')}>
+                  <span className={cn('text-xs', g.retired ? 'text-zinc-400 line-through' : 'text-zinc-200')}>
                     {g.name} <span className="text-zinc-600 capitalize">· {g.kind}</span>
                   </span>
                   <button type="button" onClick={() => toggleRetire(g)}
-                    className="text-[10px] text-zinc-500 hover:text-zinc-300">
+                    className="text-[10px] text-zinc-400 hover:text-zinc-300">
                     {g.retired ? 'Reactivate' : 'Retire'}
                   </button>
                 </div>
@@ -195,7 +195,7 @@ export function StravaGoalsPanel() {
                     g.wearPct >= 100 ? 'bg-rose-500' : g.wearPct >= 85 ? 'bg-amber-500' : 'bg-emerald-500')}
                     style={{ width: `${Math.min(100, g.wearPct)}%` }} />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-zinc-400 mt-1">
                   {g.distanceKm} / {g.retireAtKm} km · {g.status.replace(/_/g, ' ')}
                 </p>
               </li>

@@ -150,7 +150,7 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
             'text-[10px] uppercase tracking-wider font-mono px-2 py-0.5 rounded border transition-colors',
             mode === 'post'
               ? 'text-indigo-200 bg-indigo-500/15 border-indigo-500/40'
-              : 'text-zinc-500 border-zinc-800 hover:text-zinc-300',
+              : 'text-zinc-400 border-zinc-800 hover:text-zinc-300',
           )}
         >
           <Send className="inline w-2.5 h-2.5 mr-0.5" /> Post
@@ -162,12 +162,12 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
             'text-[10px] uppercase tracking-wider font-mono px-2 py-0.5 rounded border transition-colors',
             mode === 'story'
               ? 'text-rose-200 bg-rose-500/15 border-rose-500/40'
-              : 'text-zinc-500 border-zinc-800 hover:text-zinc-300',
+              : 'text-zinc-400 border-zinc-800 hover:text-zinc-300',
           )}
         >
           <Sparkles className="inline w-2.5 h-2.5 mr-0.5" /> 24h Story
         </button>
-        <span className="ml-auto text-[10px] text-zinc-500 font-mono">
+        <span className="ml-auto text-[10px] text-zinc-400 font-mono">
           {currentUserId === 'current-user' ? '@you' : `@${currentUserId.slice(0, 12)}`}
         </span>
       </header>
@@ -189,7 +189,7 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
       />
 
       <div className="px-3 py-1.5 border-t border-zinc-800/40 flex items-center gap-2">
-        <Hash className="w-3 h-3 text-zinc-500 shrink-0" />
+        <Hash className="w-3 h-3 text-zinc-400 shrink-0" />
         <input
           type="text"
           value={tagsRaw}
@@ -210,7 +210,7 @@ export function QuickPostComposer({ currentUserId, onPosted, className }: QuickP
           <option value="followers">👥 Followers (federated)</option>
           <option value="public">🌐 Public (federated)</option>
         </select>
-        <span className={cn('text-[10px] font-mono tabular-nums', overLimit ? 'text-rose-400' : 'text-zinc-500')}>
+        <span className={cn('text-[10px] font-mono tabular-nums', overLimit ? 'text-rose-400' : 'text-zinc-400')}>
           {remaining}
         </span>
         <button

@@ -62,14 +62,14 @@ export function HUDSettingsPanel() {
 
   return (
     <div className="text-sm">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Expertise level</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Expertise level</h3>
       <div className="flex gap-1 mb-4">
         {LEVELS.map((lvl) => (
           <button key={lvl} type="button" onClick={() => setExpertise(lvl)} aria-label={`Set expertise ${lvl}`} aria-pressed={expertise === lvl} className={`text-[10px] px-2 py-1 rounded ${expertise === lvl ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}>{lvl}</button>
         ))}
       </div>
 
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Ambient signals</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Ambient signals</h3>
       <ul className="space-y-1 mb-3">
         {(Object.keys(settings) as Array<keyof HUDSettings>).filter((k) => k.startsWith('ambient_')).map((key) => (
           <li key={key} className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800 rounded px-2 py-1">
@@ -81,7 +81,7 @@ export function HUDSettingsPanel() {
         ))}
       </ul>
 
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Other</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Other</h3>
       <ul className="space-y-1 mb-3">
         <li className="flex items-center justify-between bg-zinc-900/40 border border-zinc-800 rounded px-2 py-1">
           <span className="text-xs text-zinc-300">Context prompts</span>
@@ -98,7 +98,7 @@ export function HUDSettingsPanel() {
       </button>
 
       {/* Phase P — language picker. 10 locales, dropdown variant. */}
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2 mt-4">Language</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2 mt-4">Language</h3>
       <LanguageSelector variant="dropdown" />
     </div>
   );

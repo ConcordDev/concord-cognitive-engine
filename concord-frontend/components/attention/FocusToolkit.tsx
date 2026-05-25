@@ -275,7 +275,7 @@ export function FocusToolkit() {
           <div className="flex flex-wrap items-center gap-6">
             <div className="text-center">
               <div className={`font-mono text-5xl font-bold ${timer.mode === 'focus' ? 'text-neon-cyan' : 'text-neon-green'}`}>{mmss}</div>
-              <div className="mt-1 text-xs uppercase tracking-wider text-gray-500">
+              <div className="mt-1 text-xs uppercase tracking-wider text-gray-400">
                 {timer.mode.replace('-', ' ')}{timer.taskName ? ` · ${timer.taskName}` : ''}
               </div>
             </div>
@@ -298,7 +298,7 @@ export function FocusToolkit() {
           </div>
         ) : (
           <div className="flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 text-xs text-gray-500">
+            <label className="flex flex-col gap-1 text-xs text-gray-400">
               Mode
               <select value={pomMode} onChange={(e) => setPomMode(e.target.value as typeof pomMode)} className="input-lattice">
                 <option value="focus">Focus (25m)</option>
@@ -306,11 +306,11 @@ export function FocusToolkit() {
                 <option value="long-break">Long break (15m)</option>
               </select>
             </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs text-gray-500" style={{ minWidth: 160 }}>
+            <label className="flex flex-1 flex-col gap-1 text-xs text-gray-400" style={{ minWidth: 160 }}>
               Task
               <input value={pomTaskName} onChange={(e) => setPomTaskName(e.target.value)} placeholder="What are you focusing on?" className="input-lattice" />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-gray-500">
+            <label className="flex flex-col gap-1 text-xs text-gray-400">
               End energy
               <select value={pomEnergy} onChange={(e) => setPomEnergy(e.target.value as typeof pomEnergy)} className="input-lattice">
                 <option value="low">Low</option>
@@ -335,7 +335,7 @@ export function FocusToolkit() {
         {/* energy tagging of recent untagged sessions */}
         {pomStats && pomStats.recentSessions.filter((s) => !s.energy).length > 0 && (
           <div className="mt-3 border-t border-zinc-800 pt-3">
-            <p className="mb-2 text-xs text-gray-500">Tag energy on recent sessions (find your peak hours)</p>
+            <p className="mb-2 text-xs text-gray-400">Tag energy on recent sessions (find your peak hours)</p>
             <div className="space-y-1">
               {pomStats.recentSessions.filter((s) => !s.energy).slice(0, 4).map((s) => (
                 <div key={s.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs">
@@ -361,7 +361,7 @@ export function FocusToolkit() {
             <CalendarDays className="h-4 w-4 text-neon-purple" /> Daily Attention Planner
           </h3>
           {plannerStats && (
-            <span className={`text-xs ${plannerStats.overbooked ? 'text-red-400' : 'text-gray-500'}`}>
+            <span className={`text-xs ${plannerStats.overbooked ? 'text-red-400' : 'text-gray-400'}`}>
               {Math.round(plannerStats.plannedMinutes / 60 * 10) / 10}h / {Math.round(plannerStats.capacityMinutes / 60)}h planned
               {plannerStats.overbooked && ' · overbooked'}
             </span>
@@ -369,11 +369,11 @@ export function FocusToolkit() {
         </div>
         <div className="mb-3 flex flex-wrap items-end gap-2">
           <input value={taskName} onChange={(e) => setTaskName(e.target.value)} placeholder="Task name" className="input-lattice flex-1" style={{ minWidth: 140 }} />
-          <label className="flex flex-col gap-1 text-[10px] text-gray-500">
+          <label className="flex flex-col gap-1 text-[10px] text-gray-400">
             Start
             <input type="time" value={minToHHMM(Number(taskStart))} onChange={(e) => { const [h, m] = e.target.value.split(':'); setTaskStart(String(Number(h) * 60 + Number(m))); }} className="input-lattice" />
           </label>
-          <label className="flex flex-col gap-1 text-[10px] text-gray-500">
+          <label className="flex flex-col gap-1 text-[10px] text-gray-400">
             Minutes
             <input type="number" min={5} max={720} value={taskDuration} onChange={(e) => setTaskDuration(e.target.value)} className="input-lattice w-20" />
           </label>
@@ -387,18 +387,18 @@ export function FocusToolkit() {
               <button onClick={() => toggleTaskDone(t)} className="flex-shrink-0" aria-label="Toggle done">
                 <CheckCircle2 className={`h-4 w-4 ${t.done ? 'text-neon-green' : 'text-gray-600'}`} />
               </button>
-              <span className="w-12 flex-shrink-0 font-mono text-xs text-gray-500">{minToHHMM(t.startMinute)}</span>
-              <span className={`flex-1 truncate text-sm ${t.done ? 'text-gray-500 line-through' : 'text-gray-200'}`}>{t.name}</span>
-              <span className="flex-shrink-0 text-xs text-gray-500">{t.durationMinutes}m</span>
-              <button onClick={() => shiftTask(t, -30)} className="rounded px-1 text-xs text-gray-500 hover:text-neon-cyan" title="-30m">&minus;</button>
-              <button onClick={() => shiftTask(t, 30)} className="rounded px-1 text-xs text-gray-500 hover:text-neon-cyan" title="+30m">+</button>
+              <span className="w-12 flex-shrink-0 font-mono text-xs text-gray-400">{minToHHMM(t.startMinute)}</span>
+              <span className={`flex-1 truncate text-sm ${t.done ? 'text-gray-400 line-through' : 'text-gray-200'}`}>{t.name}</span>
+              <span className="flex-shrink-0 text-xs text-gray-400">{t.durationMinutes}m</span>
+              <button onClick={() => shiftTask(t, -30)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="-30m">&minus;</button>
+              <button onClick={() => shiftTask(t, 30)} className="rounded px-1 text-xs text-gray-400 hover:text-neon-cyan" title="+30m">+</button>
               <button onClick={() => removePlannerTask(t.id)} className="flex-shrink-0 text-gray-600 hover:text-red-400" aria-label="Remove task">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
           {(!day || day.tasks.length === 0) && (
-            <p className="rounded border border-dashed border-zinc-800 py-4 text-center text-xs text-gray-600">No tasks timeboxed for today.</p>
+            <p className="rounded border border-dashed border-zinc-800 py-4 text-center text-xs text-gray-400">No tasks timeboxed for today.</p>
           )}
         </div>
       </section>
@@ -408,7 +408,7 @@ export function FocusToolkit() {
         {/* Focus Mode */}
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white">
-            {focusMode?.enabled ? <BellOff className="h-4 w-4 text-neon-green" /> : <Bell className="h-4 w-4 text-gray-500" />}
+            {focusMode?.enabled ? <BellOff className="h-4 w-4 text-neon-green" /> : <Bell className="h-4 w-4 text-gray-400" />}
             Do-Not-Disturb / Focus Mode
           </h3>
           <div className="flex items-center justify-between">
@@ -416,7 +416,7 @@ export function FocusToolkit() {
               <p className={`text-sm font-medium ${focusMode?.enabled ? 'text-neon-green' : 'text-gray-400'}`}>
                 {focusMode?.enabled ? (focusMode.label || 'Deep Work') : 'Notifications on'}
               </p>
-              <p className="mt-0.5 text-xs text-gray-600">
+              <p className="mt-0.5 text-xs text-gray-400">
                 {focusMode?.enabled
                   ? `Muting: ${focusMode.mutedChannels.join(', ') || 'none'}`
                   : 'Toggle to mute chat, world, marketplace & system notifications.'}
@@ -436,11 +436,11 @@ export function FocusToolkit() {
             <CalendarClock className="h-4 w-4 text-neon-blue" /> Reserved Focus Blocks
           </h3>
           <div className="mb-2 flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-1 text-[10px] text-gray-500">
+            <label className="flex flex-col gap-1 text-[10px] text-gray-400">
               Start
               <input type="time" value={minToHHMM(Number(calStart))} onChange={(e) => { const [h, m] = e.target.value.split(':'); setCalStart(String(Number(h) * 60 + Number(m))); }} className="input-lattice" />
             </label>
-            <label className="flex flex-col gap-1 text-[10px] text-gray-500">
+            <label className="flex flex-col gap-1 text-[10px] text-gray-400">
               Minutes
               <input type="number" min={15} max={480} value={calDuration} onChange={(e) => setCalDuration(e.target.value)} className="input-lattice w-20" />
             </label>
@@ -461,7 +461,7 @@ export function FocusToolkit() {
                 </button>
               </div>
             ))}
-            {calBlocks.length === 0 && <p className="rounded border border-dashed border-zinc-800 py-3 text-center text-xs text-gray-600">No focus blocks reserved today.</p>}
+            {calBlocks.length === 0 && <p className="rounded border border-dashed border-zinc-800 py-3 text-center text-xs text-gray-400">No focus blocks reserved today.</p>}
           </div>
         </section>
       </div>
@@ -473,7 +473,7 @@ export function FocusToolkit() {
             <AlertTriangle className="h-4 w-4 text-yellow-400" /> Distraction Log
           </h3>
           {distractions && (
-            <span className="text-xs text-gray-500">{distractions.todayCount} today · {Math.round(distractions.lostMinutes)}m lost</span>
+            <span className="text-xs text-gray-400">{distractions.todayCount} today · {Math.round(distractions.lostMinutes)}m lost</span>
           )}
         </div>
         <div className="mb-3 flex flex-wrap items-end gap-2">
@@ -485,7 +485,7 @@ export function FocusToolkit() {
             <option value="meeting">Meeting</option>
             <option value="other">Other</option>
           </select>
-          <label className="flex flex-col gap-1 text-[10px] text-gray-500">
+          <label className="flex flex-col gap-1 text-[10px] text-gray-400">
             Minutes lost
             <input type="number" min={0} max={480} value={dxDuration} onChange={(e) => setDxDuration(e.target.value)} className="input-lattice w-20" />
           </label>
@@ -496,23 +496,23 @@ export function FocusToolkit() {
         {distractions && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <p className="mb-1 text-xs text-gray-500">Top sources</p>
+              <p className="mb-1 text-xs text-gray-400">Top sources</p>
               <div className="space-y-1">
                 {distractions.topSources.length > 0 ? distractions.topSources.map((s) => (
                   <div key={s.source} className="flex items-center justify-between text-xs">
                     <span className="truncate text-gray-300">{s.source}</span>
                     <span className="font-mono text-yellow-400">{s.count}</span>
                   </div>
-                )) : <p className="text-xs text-gray-600">No distractions logged.</p>}
+                )) : <p className="text-xs text-gray-400">No distractions logged.</p>}
               </div>
             </div>
             <div>
-              <p className="mb-1 text-xs text-gray-500">By kind</p>
+              <p className="mb-1 text-xs text-gray-400">By kind</p>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(distractions.byKind).map(([k, n]) => (
                   <span key={k} className="rounded bg-zinc-800 px-2 py-0.5 text-[10px] capitalize text-gray-300">{k}: {n}</span>
                 ))}
-                {Object.keys(distractions.byKind).length === 0 && <span className="text-xs text-gray-600">—</span>}
+                {Object.keys(distractions.byKind).length === 0 && <span className="text-xs text-gray-400">—</span>}
               </div>
             </div>
           </div>
@@ -528,7 +528,7 @@ export function FocusToolkit() {
           {analytics && (
             <span className={`flex items-center gap-1 text-xs ${
               analytics.deepWorkTrend === 'improving' ? 'text-neon-green' :
-              analytics.deepWorkTrend === 'declining' ? 'text-red-400' : 'text-gray-500'
+              analytics.deepWorkTrend === 'declining' ? 'text-red-400' : 'text-gray-400'
             }`}>
               {analytics.deepWorkTrend === 'improving' ? <TrendingUp className="h-3.5 w-3.5" /> :
                analytics.deepWorkTrend === 'declining' ? <TrendingDown className="h-3.5 w-3.5" /> :
@@ -557,7 +557,7 @@ export function FocusToolkit() {
             />
           </>
         )}
-        {!analytics && <p className="py-6 text-center text-xs text-gray-600">Complete a focus session to build analytics.</p>}
+        {!analytics && <p className="py-6 text-center text-xs text-gray-400">Complete a focus session to build analytics.</p>}
       </section>
 
       {/* ── Peak Hours ── */}
@@ -583,7 +583,7 @@ export function FocusToolkit() {
             />
           </>
         ) : (
-          <p className="py-6 text-center text-xs text-gray-600">
+          <p className="py-6 text-center text-xs text-gray-400">
             Tag energy on completed focus sessions above to discover your peak hours.
           </p>
         )}
@@ -596,7 +596,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-center">
       <div className="font-mono text-lg text-neon-cyan">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
     </div>
   );
 }

@@ -96,7 +96,7 @@ export default function EFBPlates() {
             Load charts
           </button>
         </div>
-        <p className="text-[10px] text-gray-600 mt-2">
+        <p className="text-[10px] text-gray-400 mt-2">
           Live FAA d-TPP terminal procedures via aviationapi.com (keyless).
         </p>
         {error && <p className="text-xs text-rose-300 mt-2">{error}</p>}
@@ -123,7 +123,7 @@ export default function EFBPlates() {
                       <div className="min-w-0">
                         <p className="text-xs text-gray-200 truncate">{c.name}</p>
                         {c.cycle && (
-                          <p className="text-[10px] text-gray-600 font-mono">{c.cycle}</p>
+                          <p className="text-[10px] text-gray-400 font-mono">{c.cycle}</p>
                         )}
                       </div>
                       {c.pdfUrl ? (
@@ -136,7 +136,7 @@ export default function EFBPlates() {
                           <ExternalLink className="w-3 h-3" /> Open PDF
                         </a>
                       ) : (
-                        <span className="text-[10px] text-gray-600 flex-shrink-0">no PDF</span>
+                        <span className="text-[10px] text-gray-400 flex-shrink-0">no PDF</span>
                       )}
                     </div>
                   ))}

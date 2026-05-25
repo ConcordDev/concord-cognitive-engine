@@ -217,15 +217,18 @@ export default function registerHistoryActions(registerLensAction) {
   });
 
   registerLensAction("history", "timeline-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const timelines = hsList(s, hsActor(ctx)).map((t) => ({
       id: t.id, title: t.title, description: t.description,
       eventCount: t.events.length, eraCount: t.eras.length, createdAt: t.createdAt,
     }));
     return { ok: true, result: { timelines, count: timelines.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("history", "timeline-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const t = hsList(s, hsActor(ctx)).find((x) => x.id === params.id);
     if (!t) return { ok: false, error: "timeline not found" };
@@ -235,7 +238,8 @@ export default function registerHistoryActions(registerLensAction) {
       ? { from: events[0].year, to: events[events.length - 1].year }
       : null;
     return { ok: true, result: { timeline: { ...t, events, eras }, span } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("history", "timeline-delete", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -256,6 +260,7 @@ export default function registerHistoryActions(registerLensAction) {
   const hsTrack = (v) => hsClean(v, 60) || "main";
 
   registerLensAction("history", "event-add", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const t = findTimeline(s, ctx, params.timelineId);
     if (!t) return { ok: false, error: "timeline not found" };
@@ -280,7 +285,8 @@ export default function registerHistoryActions(registerLensAction) {
     t.events.push(event);
     saveHistory();
     return { ok: true, result: { event } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("history", "event-update", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -362,6 +368,7 @@ export default function registerHistoryActions(registerLensAction) {
 
   // map-points — every located event across all of a user's timelines.
   registerLensAction("history", "map-points", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = hsList(s, hsActor(ctx));
     const scope = params.timelineId ? list.filter((t) => t.id === params.timelineId) : list;
@@ -378,7 +385,8 @@ export default function registerHistoryActions(registerLensAction) {
       }
     }
     return { ok: true, result: { points, count: points.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Image / media attachments per event ─────────────────────────────
   registerLensAction("history", "event-add-media", (ctx, _a, params = {}) => {
@@ -419,6 +427,7 @@ export default function registerHistoryActions(registerLensAction) {
 
   // ─── Visual render — zoomable timeline data with range + era overlays ─
   registerLensAction("history", "timeline-render", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const t = findTimeline(s, ctx, params.timelineId);
     if (!t) return { ok: false, error: "timeline not found" };
@@ -462,10 +471,12 @@ export default function registerHistoryActions(registerLensAction) {
         totalEvents: events.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Multi-track / parallel timeline comparison ──────────────────────
   registerLensAction("history", "timeline-compare", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ids = Array.isArray(params.timelineIds) ? params.timelineIds.slice(0, 6) : [];
     if (ids.length < 2) return { ok: false, error: "provide at least 2 timelineIds to compare" };
@@ -501,7 +512,8 @@ export default function registerHistoryActions(registerLensAction) {
         trackCount: tracks.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Publish / share a timeline; public read-only fetch ──────────────
   function getPublicMap(s) {
@@ -510,6 +522,7 @@ export default function registerHistoryActions(registerLensAction) {
   }
 
   registerLensAction("history", "timeline-publish", (ctx, _a, params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const t = findTimeline(s, ctx, params.timelineId);
     if (!t) return { ok: false, error: "timeline not found" };
@@ -552,7 +565,8 @@ export default function registerHistoryActions(registerLensAction) {
         publishedAt: snapshot.publishedAt,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("history", "timeline-unpublish", (ctx, _a, params = {}) => {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -665,6 +679,7 @@ export default function registerHistoryActions(registerLensAction) {
   });
 
   registerLensAction("history", "history-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getHistoryState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const timelines = hsList(s, hsActor(ctx));
     const owner = hsActor(ctx);
@@ -687,7 +702,8 @@ export default function registerHistoryActions(registerLensAction) {
         mappedEvents,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest "on this day" historical events (Wikimedia) as DTUs.
   registerLensAction("history", "feed", async (ctx, _a, params = {}) => {

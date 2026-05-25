@@ -158,7 +158,7 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-bold text-white">Welcome to World Lens</h2>
           {!tutorial.mandatory && (
-            <button onClick={handleSkip} className="text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={handleSkip} className="text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           )}
@@ -241,7 +241,7 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
           </button>
         </div>
 
-        <p className="text-[10px] text-gray-600 text-center mt-3">
+        <p className="text-[10px] text-gray-400 text-center mt-3">
           Step {currentStep + 1} of {TUTORIALS.length}
         </p>
       </div>

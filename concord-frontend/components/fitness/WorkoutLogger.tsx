@@ -137,21 +137,21 @@ export function WorkoutLogger() {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Dumbbell className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Workouts</span>
-          <span className="ml-auto text-[10px] text-gray-500">{workouts.length} logged</span>
+          <span className="ml-auto text-[10px] text-gray-400">{workouts.length} logged</span>
           <button onClick={startWorkout} className="ml-2 px-3 py-1.5 text-xs rounded bg-cyan-500 text-black font-bold hover:bg-cyan-400">
             <Play className="w-3 h-3 inline mr-1" /> Start workout
           </button>
         </header>
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : workouts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Dumbbell className="w-6 h-6 mx-auto mb-2 opacity-30" /> No workouts yet. Hit Start workout to log one.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Dumbbell className="w-6 h-6 mx-auto mb-2 opacity-30" /> No workouts yet. Hit Start workout to log one.</div>
         ) : (
           <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
             {workouts.map(w => (
               <li key={w.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="text-sm text-white font-medium">{w.title}</div>
-                <div className="text-[10px] text-gray-500">{new Date(w.startedAt).toLocaleString()} · {w.exercises.length} exercise{w.exercises.length === 1 ? '' : 's'} · {w.exercises.reduce((s, e) => s + e.sets.length, 0)} sets</div>
+                <div className="text-[10px] text-gray-400">{new Date(w.startedAt).toLocaleString()} · {w.exercises.length} exercise{w.exercises.length === 1 ? '' : 's'} · {w.exercises.reduce((s, e) => s + e.sets.length, 0)} sets</div>
               </li>
             ))}
           </ul>
@@ -169,7 +169,7 @@ export function WorkoutLogger() {
           onChange={e => setActive({ ...active, title: e.target.value })}
           className="flex-1 bg-transparent text-sm font-bold text-white outline-none focus:bg-white/5 px-2 py-0.5 rounded"
         />
-        <span className="text-[10px] text-gray-500">Vol: {totalVolume.toLocaleString()}</span>
+        <span className="text-[10px] text-gray-400">Vol: {totalVolume.toLocaleString()}</span>
         <button onClick={() => setActive(null)} className="text-xs text-gray-400 hover:text-white">Cancel</button>
         <button onClick={finishWorkout} className="inline-flex items-center gap-1 px-3 py-1 text-xs rounded bg-green-500 text-black font-bold hover:bg-green-400">
           <Check className="w-3 h-3" /> Finish
@@ -189,17 +189,17 @@ export function WorkoutLogger() {
       )}
       <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
         {active.exercises.length === 0 ? (
-          <div className="text-center py-6 text-xs text-gray-500">No exercises yet. Hit + to add.</div>
+          <div className="text-center py-6 text-xs text-gray-400">No exercises yet. Hit + to add.</div>
         ) : (
           active.exercises.map(ex => (
             <div key={ex.id} className="bg-white/[0.02] border border-white/10 rounded">
               <div className="px-3 py-2 border-b border-white/5 flex items-center gap-2">
                 <span className="text-sm text-white font-medium">{ex.name}</span>
-                <span className="ml-auto text-[10px] text-gray-500">{ex.sets.filter(s => s.done).length}/{ex.sets.length} sets</span>
+                <span className="ml-auto text-[10px] text-gray-400">{ex.sets.filter(s => s.done).length}/{ex.sets.length} sets</span>
               </div>
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-gray-500">
+                  <tr className="text-[10px] uppercase tracking-wider text-gray-400">
                     <th className="w-8 px-2 py-1">#</th>
                     <th className="px-2 py-1 text-left">Reps</th>
                     <th className="px-2 py-1 text-left">Weight</th>
@@ -210,7 +210,7 @@ export function WorkoutLogger() {
                 <tbody>
                   {ex.sets.map((s, i) => (
                     <tr key={i} className={cn('border-t border-white/5', s.done && 'bg-green-500/[0.05]')}>
-                      <td className="px-2 py-1 text-gray-500">{i + 1}</td>
+                      <td className="px-2 py-1 text-gray-400">{i + 1}</td>
                       <td className="px-2 py-1">
                         <input type="number" value={s.reps} onChange={e => updateSet(ex.id, i, { reps: Number(e.target.value) || 0 })} className="w-12 px-1 bg-lattice-deep border border-white/10 rounded text-white tabular-nums" />
                       </td>
@@ -226,9 +226,9 @@ export function WorkoutLogger() {
                             ✓ Done
                           </button>
                         ) : (
-                          <button onClick={() => updateSet(ex.id, i, { done: false })} className="px-2 py-0.5 text-[10px] text-gray-500 hover:text-white">Undo</button>
+                          <button onClick={() => updateSet(ex.id, i, { done: false })} className="px-2 py-0.5 text-[10px] text-gray-400 hover:text-white">Undo</button>
                         )}
-                        <button onClick={() => deleteSet(ex.id, i)} className="ml-1 p-1 text-gray-500 hover:text-red-400" title="Remove">
+                        <button onClick={() => deleteSet(ex.id, i)} className="ml-1 p-1 text-gray-400 hover:text-red-400" title="Remove">
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </td>

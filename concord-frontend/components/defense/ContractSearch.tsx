@@ -79,7 +79,7 @@ export function ContractSearch() {
 
       <form onSubmit={submit} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="Keyword — F-35, Lockheed, missile defense…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none" />
         </div>
         <div className="flex gap-1">
@@ -108,7 +108,7 @@ export function ContractSearch() {
                       <span className="truncate text-sm font-medium text-white">{r.recipient}</span>
                     </div>
                     <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{r.description || '(no description)'}</p>
-                    <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-zinc-500">
+                    <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-zinc-400">
                       <span>{r.subAgency || r.agency}</span>
                       {r.naicsCode && <span>NAICS {r.naicsCode}</span>}
                       {r.pscCode && <span>PSC {r.pscCode}</span>}

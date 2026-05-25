@@ -141,11 +141,11 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading patients…
         </div>
       ) : patients.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <Heart className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No patients registered yet.
         </div>
@@ -159,12 +159,12 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   className="flex flex-1 items-center gap-3 text-left"
                 >
                   <ChevronRight
-                    className={`h-4 w-4 text-zinc-500 transition-transform ${expanded === p.id ? 'rotate-90' : ''}`}
+                    className={`h-4 w-4 text-zinc-400 transition-transform ${expanded === p.id ? 'rotate-90' : ''}`}
                   />
                   <span className="text-lg">{SPECIES_EMOJI[p.species] || '🐾'}</span>
                   <div>
                     <p className="text-sm font-semibold text-white">{p.name}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-zinc-400">
                       {p.breed} · {p.species} · {p.owner || 'no owner'}
                     </p>
                   </div>
@@ -179,7 +179,7 @@ export function PatientsPanel({ onChanged }: { onChanged?: () => void }) {
                   <button
                     onClick={() => removePatient(p.id)}
                     aria-label="Delete patient"
-                    className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                    className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -237,11 +237,11 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Visit history</p>
         <div className="max-h-32 space-y-1 overflow-y-auto">
-          {patient.visits.length === 0 && <p className="text-xs text-zinc-600">No visits.</p>}
+          {patient.visits.length === 0 && <p className="text-xs text-zinc-400">No visits.</p>}
           {patient.visits.map((v) => (
             <div key={v.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
               <span className="text-pink-400">{v.kind}</span> · {v.date} · ${v.cost}
-              {v.diagnosis && <span className="text-zinc-500"> — {v.diagnosis}</span>}
+              {v.diagnosis && <span className="text-zinc-400"> — {v.diagnosis}</span>}
             </div>
           ))}
         </div>
@@ -282,11 +282,11 @@ function PatientDetail({ patient, onChanged }: { patient: VetPatient; onChanged:
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Vaccinations</p>
         <div className="max-h-32 space-y-1 overflow-y-auto">
-          {patient.vaccinations.length === 0 && <p className="text-xs text-zinc-600">No vaccinations.</p>}
+          {patient.vaccinations.length === 0 && <p className="text-xs text-zinc-400">No vaccinations.</p>}
           {patient.vaccinations.map((v) => (
             <div key={v.id} className="rounded bg-zinc-950 px-2 py-1 text-xs text-zinc-300">
               <span className="text-emerald-400">{v.vaccine}</span> · {v.date}
-              {v.nextDue && <span className="text-zinc-500"> → due {v.nextDue}</span>}
+              {v.nextDue && <span className="text-zinc-400"> → due {v.nextDue}</span>}
             </div>
           ))}
         </div>

@@ -86,7 +86,7 @@ export function ForgettingPanel() {
           </div>
 
           {status.lastRun && (
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-400 flex items-center gap-1">
               <Clock className="w-3 h-3" />
               Last run: {new Date(status.lastRun).toLocaleString()}
             </p>
@@ -109,7 +109,7 @@ export function ForgettingPanel() {
           </div>
 
           {!showHistory ? (
-            <button onClick={loadHistory} className="text-xs text-gray-500 hover:text-gray-300">
+            <button onClick={loadHistory} className="text-xs text-gray-400 hover:text-gray-300">
               Show recent tombstones
             </button>
           ) : (
@@ -117,14 +117,14 @@ export function ForgettingPanel() {
               {tombstones.map((t) => (
                 <div key={t.id} className="bg-lattice-deep rounded p-2 text-xs">
                   <span className="text-gray-300">{t.title}</span>
-                  <span className="text-gray-500 ml-2 font-mono">{t.tier}</span>
+                  <span className="text-gray-400 ml-2 font-mono">{t.tier}</span>
                 </div>
               ))}
             </div>
           )}
         </>
       ) : (
-        <p className="text-xs text-gray-500">Loading...</p>
+        <p className="text-xs text-gray-400">Loading...</p>
       )}
     </div>
   );

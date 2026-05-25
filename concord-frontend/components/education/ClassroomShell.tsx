@@ -74,7 +74,7 @@ export function ClassroomShell({
       <section>
         <h2 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Continue learning</h2>
         {enrolledCourses.length === 0 ? (
-          <div className="text-center text-xs text-gray-500 py-8 border border-dashed border-white/10 rounded">
+          <div className="text-center text-xs text-gray-400 py-8 border border-dashed border-white/10 rounded">
             No courses in progress. Enroll from the catalog to start.
           </div>
         ) : (
@@ -90,11 +90,11 @@ export function ClassroomShell({
                 </div>
                 <div className="p-2.5">
                   <div className="text-sm font-medium text-white truncate">{c.title}</div>
-                  <div className="text-[10px] text-gray-500 truncate">{c.instructor || c.category}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{c.instructor || c.category}</div>
                   <div className="mt-1.5 h-1 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-cyan-400" style={{ width: `${c.progressPct}%` }} />
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-500">
+                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-400">
                     <span>{c.completedLessons}/{c.totalLessons} lessons</span>
                     <span className="text-cyan-300 font-mono">{c.progressPct}%</span>
                   </div>
@@ -125,7 +125,7 @@ export function ClassroomShell({
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="text-sm text-white truncate">{c.title}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{c.instructor || c.category}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{c.instructor || c.category}</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-gray-600" />
                 </button>
@@ -153,7 +153,7 @@ function HeroTile({ icon: Icon, label, value, caption, tone }: { icon: typeof Fl
         <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className={cn('text-3xl font-mono font-bold tabular-nums', t.text)}>{value}</div>
-      <div className="text-[10px] text-gray-500">{caption}</div>
+      <div className="text-[10px] text-gray-400">{caption}</div>
     </div>
   );
 }
@@ -164,10 +164,10 @@ function StatTile({ icon: Icon, label, value, sub, colour }: { icon: typeof Targ
     <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className={cn('w-3 h-3', colourClass)} />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className={cn('text-xl font-mono tabular-nums', colourClass)}>{value}</div>
-      <div className="text-[10px] text-gray-500">{sub}</div>
+      <div className="text-[10px] text-gray-400">{sub}</div>
     </div>
   );
 }

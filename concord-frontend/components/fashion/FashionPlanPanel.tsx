@@ -83,7 +83,7 @@ export function FashionPlanPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -98,14 +98,14 @@ export function FashionPlanPanel() {
           </h3>
           <div className="grid sm:grid-cols-2 gap-2">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-1">Most worn</p>
-              {insights.mostWorn.length === 0 ? <p className="text-[11px] text-zinc-600">—</p> :
+              <p className="text-[10px] text-zinc-400 uppercase mb-1">Most worn</p>
+              {insights.mostWorn.length === 0 ? <p className="text-[11px] text-zinc-400">—</p> :
                 insights.mostWorn.map((m) => (
                   <p key={m.name} className="text-[11px] text-zinc-300">{m.name} <span className="text-zinc-600">· {m.timesWorn}×</span></p>
                 ))}
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-              <p className="text-[10px] text-zinc-500 uppercase mb-1">Never worn ({insights.neverWorn.length})</p>
+              <p className="text-[10px] text-zinc-400 uppercase mb-1">Never worn ({insights.neverWorn.length})</p>
               {insights.neverWorn.length === 0 ? <p className="text-[11px] text-emerald-400">Everything earns its place</p> :
                 insights.neverWorn.slice(0, 4).map((m) => (
                   <p key={m.name} className="text-[11px] text-zinc-300">{m.name} <span className="text-zinc-600">· ${m.cost}</span></p>
@@ -129,7 +129,7 @@ export function FashionPlanPanel() {
           </button>
         </div>
         {packingLists.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No packing lists.</p>
+          <p className="text-[11px] text-zinc-400 italic">No packing lists.</p>
         ) : (
           <ul className="space-y-2">
             {packingLists.map((p) => (
@@ -138,11 +138,11 @@ export function FashionPlanPanel() {
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-900">
                   <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openPk === p.id && 'rotate-90')} />
                   <span className="text-sm font-semibold text-zinc-100">{p.name}</span>
-                  <span className="text-[11px] text-zinc-500">{p.itemCount} items</span>
+                  <span className="text-[11px] text-zinc-400">{p.itemCount} items</span>
                 </button>
                 {openPk === p.id && (
                   <div className="border-t border-zinc-800 p-3 bg-zinc-950/50 flex flex-wrap gap-1">
-                    {items.length === 0 ? <p className="text-[11px] text-zinc-500 italic">Add closet items first.</p> :
+                    {items.length === 0 ? <p className="text-[11px] text-zinc-400 italic">Add closet items first.</p> :
                       items.map((i) => {
                         const inList = pkItems.some((x) => x.id === i.id);
                         return (
@@ -175,12 +175,12 @@ export function FashionPlanPanel() {
           </button>
         </div>
         {lookbooks.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No lookbooks.</p>
+          <p className="text-[11px] text-zinc-400 italic">No lookbooks.</p>
         ) : (
           <ul className="space-y-2">
             {lookbooks.map((l) => (
               <li key={l.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-                <p className="text-sm font-semibold text-zinc-100">{l.name} <span className="text-[11px] text-zinc-500">· {l.outfitCount} outfits</span></p>
+                <p className="text-sm font-semibold text-zinc-100">{l.name} <span className="text-[11px] text-zinc-400">· {l.outfitCount} outfits</span></p>
                 {outfits.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {outfits.map((o) => (

@@ -116,11 +116,11 @@ export function MasteringPanel({
       <div className="flex items-center gap-2">
         <button
           onClick={() => onUpdateChain({ ...chain, enabled: !chain.enabled })}
-          className={cn('px-3 py-1 rounded text-xs font-medium', chain.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-500')}
+          className={cn('px-3 py-1 rounded text-xs font-medium', chain.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-400')}
         >
           {chain.enabled ? 'Enabled' : 'Bypassed'}
         </button>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-400">
           Target: {chain.loudnessTarget} LUFS
         </span>
         <input
@@ -141,7 +141,7 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">EQ</span>
             <button
               onClick={() => updateEffect('eq', { ...chain.eq, enabled: !chain.eq.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.eq.enabled ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/10 text-gray-500')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.eq.enabled ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/10 text-gray-400')}
             >
               {chain.eq.enabled ? 'On' : 'Off'}
             </button>
@@ -149,7 +149,7 @@ export function MasteringPanel({
           <div className="space-y-1">
             {['lowGain', 'midGain', 'highGain'].map(param => (
               <div key={param} className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-500 w-10 capitalize">{param.replace('Gain', '')}</span>
+                <span className="text-[9px] text-gray-400 w-10 capitalize">{param.replace('Gain', '')}</span>
                 <input
                   type="range"
                   min={-12}
@@ -171,7 +171,7 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">Multiband Comp</span>
             <button
               onClick={() => updateEffect('multibandCompressor', { ...chain.multibandCompressor, enabled: !chain.multibandCompressor.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.multibandCompressor.enabled ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/10 text-gray-500')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.multibandCompressor.enabled ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/10 text-gray-400')}
             >
               {chain.multibandCompressor.enabled ? 'On' : 'Off'}
             </button>
@@ -179,7 +179,7 @@ export function MasteringPanel({
           <div className="space-y-1">
             {['threshold', 'ratio', 'attack', 'release'].map(param => (
               <div key={param} className="flex items-center gap-2">
-                <span className="text-[9px] text-gray-500 w-10 capitalize">{param.slice(0, 5)}</span>
+                <span className="text-[9px] text-gray-400 w-10 capitalize">{param.slice(0, 5)}</span>
                 <input
                   type="range"
                   min={param === 'threshold' ? -60 : param === 'ratio' ? 1 : 0}
@@ -201,13 +201,13 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">Stereo Width</span>
             <button
               onClick={() => updateEffect('stereoWidener', { ...chain.stereoWidener, enabled: !chain.stereoWidener.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.stereoWidener.enabled ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/10 text-gray-500')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.stereoWidener.enabled ? 'bg-neon-pink/20 text-neon-pink' : 'bg-white/10 text-gray-400')}
             >
               {chain.stereoWidener.enabled ? 'On' : 'Off'}
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[9px] text-gray-500 w-10">Width</span>
+            <span className="text-[9px] text-gray-400 w-10">Width</span>
             <input
               type="range"
               min={0} max={2} step={0.01}
@@ -225,14 +225,14 @@ export function MasteringPanel({
             <span className="text-xs font-semibold text-gray-400">Limiter</span>
             <button
               onClick={() => updateEffect('limiter', { ...chain.limiter, enabled: !chain.limiter.enabled })}
-              className={cn('text-[10px] px-2 py-0.5 rounded', chain.limiter.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-500')}
+              className={cn('text-[10px] px-2 py-0.5 rounded', chain.limiter.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-white/10 text-gray-400')}
             >
               {chain.limiter.enabled ? 'On' : 'Off'}
             </button>
           </div>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-gray-500 w-10">Ceil</span>
+              <span className="text-[9px] text-gray-400 w-10">Ceil</span>
               <input
                 type="range"
                 min={-6} max={0} step={0.1}
@@ -243,7 +243,7 @@ export function MasteringPanel({
               <span className="text-[9px] text-gray-400 w-10 text-right font-mono">{Number(chain.limiter.params.ceiling || -1).toFixed(1)}dB</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] text-gray-500 w-10">Rel</span>
+              <span className="text-[9px] text-gray-400 w-10">Rel</span>
               <input
                 type="range"
                 min={0.01} max={1} step={0.01}
@@ -299,7 +299,7 @@ export function MasteringPanel({
               );
             })}
           </div>
-          <div className="flex justify-between text-[8px] text-gray-600 mt-1">
+          <div className="flex justify-between text-[8px] text-gray-400 mt-1">
             <span>20Hz</span>
             <span>200Hz</span>
             <span>2kHz</span>
@@ -315,13 +315,13 @@ export function MasteringPanel({
         </h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Format</label>
+            <label className="text-[10px] text-gray-400 block mb-1">Format</label>
             <div className="flex gap-1">
               {(['wav', 'mp3', 'flac', 'ogg'] as const).map(fmt => (
                 <button
                   key={fmt}
                   onClick={() => setExportFormat(fmt)}
-                  className={cn('px-2 py-1 rounded text-[10px] uppercase', exportFormat === fmt ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-500 hover:text-white')}
+                  className={cn('px-2 py-1 rounded text-[10px] uppercase', exportFormat === fmt ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400 hover:text-white')}
                 >
                   {fmt}
                 </button>
@@ -329,13 +329,13 @@ export function MasteringPanel({
             </div>
           </div>
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Sample Rate</label>
+            <label className="text-[10px] text-gray-400 block mb-1">Sample Rate</label>
             <div className="flex gap-1">
               {([44100, 48000, 96000] as const).map(sr => (
                 <button
                   key={sr}
                   onClick={() => setExportSampleRate(sr)}
-                  className={cn('px-2 py-1 rounded text-[10px]', exportSampleRate === sr ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-500 hover:text-white')}
+                  className={cn('px-2 py-1 rounded text-[10px]', exportSampleRate === sr ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400 hover:text-white')}
                 >
                   {sr / 1000}k
                 </button>
@@ -343,13 +343,13 @@ export function MasteringPanel({
             </div>
           </div>
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">Bit Depth</label>
+            <label className="text-[10px] text-gray-400 block mb-1">Bit Depth</label>
             <div className="flex gap-1">
               {([16, 24, 32] as const).map(bd => (
                 <button
                   key={bd}
                   onClick={() => setExportBitDepth(bd)}
-                  className={cn('px-2 py-1 rounded text-[10px]', exportBitDepth === bd ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-500 hover:text-white')}
+                  className={cn('px-2 py-1 rounded text-[10px]', exportBitDepth === bd ? 'bg-neon-cyan/20 text-neon-cyan' : 'bg-white/5 text-gray-400 hover:text-white')}
                 >
                   {bd}-bit
                 </button>

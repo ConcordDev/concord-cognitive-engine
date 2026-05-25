@@ -284,7 +284,7 @@ function TrendTab({ dtus }: { dtus: DtuCreti[] }) {
               valueClass={dirColor}
             />
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Direction</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Direction</div>
               <div className={cn('mt-0.5 flex items-center justify-center gap-1 font-mono text-sm capitalize', dirColor)}>
                 <DirIcon className="h-3.5 w-3.5" /> {trend.direction}
               </div>
@@ -328,7 +328,7 @@ function TrendTab({ dtus }: { dtus: DtuCreti[] }) {
           </div>
         </>
       ) : (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-zinc-400">
           Record at least two snapshots to chart trend movement over time.
         </p>
       )}
@@ -394,7 +394,7 @@ function RulesTab() {
   const wsum = CRETI_DIMS.reduce((a, d) => a + (weights[d] || 0), 0);
 
   if (!rules) {
-    return <p className="text-[11px] text-zinc-500">{busy ? 'Loading score rules…' : msg || 'No rules loaded.'}</p>;
+    return <p className="text-[11px] text-zinc-400">{busy ? 'Loading score rules…' : msg || 'No rules loaded.'}</p>;
   }
 
   return (
@@ -402,7 +402,7 @@ function RulesTab() {
       <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-semibold text-zinc-200">CRETI dimension weights</span>
-          <span className="font-mono text-[10px] text-zinc-500">Σ {wsum.toFixed(2)} (normalized on apply)</span>
+          <span className="font-mono text-[10px] text-zinc-400">Σ {wsum.toFixed(2)} (normalized on apply)</span>
         </div>
         <div className="space-y-2">
           {CRETI_DIMS.map((d) => (
@@ -564,7 +564,7 @@ function RemediateTab({ scored }: { scored: DtuCreti[] }) {
           Lowest-quality DTUs — select to batch-remediate
         </div>
         {candidates.length === 0 ? (
-          <p className="text-[11px] text-zinc-500">No scored DTUs available.</p>
+          <p className="text-[11px] text-zinc-400">No scored DTUs available.</p>
         ) : (
           <div className="max-h-52 space-y-1 overflow-y-auto">
             {candidates.map((d) => {
@@ -646,7 +646,7 @@ function RemediateTab({ scored }: { scored: DtuCreti[] }) {
                 <button
                   type="button"
                   onClick={() => clearFlag(f.dtuId)}
-                  className="text-zinc-500 hover:text-red-400"
+                  className="text-zinc-400 hover:text-red-400"
                   aria-label="Remove flag"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -710,7 +710,7 @@ function AlertsTab() {
         <span
           className={cn(
             'rounded px-2.5 py-1 font-mono text-[11px]',
-            unack > 0 ? 'bg-red-500/15 text-red-300' : 'bg-zinc-900 text-zinc-500 border border-zinc-800',
+            unack > 0 ? 'bg-red-500/15 text-red-300' : 'bg-zinc-900 text-zinc-400 border border-zinc-800',
           )}
         >
           {unack} unacknowledged
@@ -733,13 +733,13 @@ function AlertsTab() {
         </button>
       </div>
 
-      <p className="text-[10px] text-zinc-500">
+      <p className="text-[10px] text-zinc-400">
         Regression alerts are raised by a corpus snapshot when a DTU drops ≥10% below its baseline
         and falls under the warning threshold. Record a snapshot in the Trend tab to detect new ones.
       </p>
 
       {alerts.length === 0 ? (
-        <p className="text-[11px] text-zinc-500">No quality-regression alerts.</p>
+        <p className="text-[11px] text-zinc-400">No quality-regression alerts.</p>
       ) : (
         <div className="space-y-1.5">
           {alerts.map((a) => (
@@ -755,13 +755,13 @@ function AlertsTab() {
               <AlertTriangle className={cn('h-4 w-4 shrink-0', a.acknowledged ? 'text-zinc-600' : 'text-red-400')} />
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium text-zinc-200">{a.title}</div>
-                <div className="font-mono text-[10px] text-zinc-500">
+                <div className="font-mono text-[10px] text-zinc-400">
                   {(a.prev * 100).toFixed(0)}% → {(a.current * 100).toFixed(0)}%
                   <span className="ml-1 text-red-400">(−{(a.drop * 100).toFixed(0)}%)</span>
                 </div>
               </div>
               {a.acknowledged ? (
-                <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] uppercase text-zinc-500">acked</span>
+                <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] uppercase text-zinc-400">acked</span>
               ) : (
                 <button
                   type="button"
@@ -833,7 +833,7 @@ function RootCauseTab({ scored }: { scored: DtuCreti[] }) {
             <p className="mt-1 text-[11px] text-zinc-300">{result.verdict}</p>
             {result.primaryCause && (
               <p className="mt-1 text-[11px]">
-                <span className="text-zinc-500">Primary cause: </span>
+                <span className="text-zinc-400">Primary cause: </span>
                 <span className="font-medium capitalize text-red-300">{result.primaryCause}</span>
               </p>
             )}
@@ -855,7 +855,7 @@ function RootCauseTab({ scored }: { scored: DtuCreti[] }) {
                     <span className="w-12 text-right font-mono text-zinc-400">{(b.value * 100).toFixed(0)}%</span>
                   </div>
                   {b.weightedDrag > 0 && (
-                    <ul className="ml-24 mt-0.5 list-disc list-inside text-[10px] text-zinc-500">
+                    <ul className="ml-24 mt-0.5 list-disc list-inside text-[10px] text-zinc-400">
                       {b.fixes.slice(0, 1).map((f, i) => <li key={i}>{f}</li>)}
                     </ul>
                   )}
@@ -955,19 +955,19 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
         <div className="space-y-3">
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
-              <div className="truncate text-[10px] text-zinc-500">{result.a.title}</div>
+              <div className="truncate text-[10px] text-zinc-400">{result.a.title}</div>
               <div className={cn('mt-0.5 font-mono text-lg', result.overallWinner === 'a' ? 'text-emerald-300' : 'text-zinc-300')}>
                 {(result.a.composite * 100).toFixed(0)}%
               </div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Winner</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Winner</div>
               <div className="mt-0.5 font-mono text-sm text-cyan-300">
                 {result.overallWinner === 'tie' ? 'tie' : result.overallWinner === 'a' ? 'DTU A' : 'DTU B'}
               </div>
             </div>
             <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5">
-              <div className="truncate text-[10px] text-zinc-500">{result.b.title}</div>
+              <div className="truncate text-[10px] text-zinc-400">{result.b.title}</div>
               <div className={cn('mt-0.5 font-mono text-lg', result.overallWinner === 'b' ? 'text-emerald-300' : 'text-zinc-300')}>
                 {(result.b.composite * 100).toFixed(0)}%
               </div>
@@ -1001,7 +1001,7 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
                       'ml-auto rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase',
                       d.winner === 'a' ? 'bg-cyan-500/20 text-cyan-300'
                         : d.winner === 'b' ? 'bg-purple-500/20 text-purple-300'
-                          : 'bg-zinc-800 text-zinc-500',
+                          : 'bg-zinc-800 text-zinc-400',
                     )}
                   >
                     {d.winner === 'tie' ? 'tie' : d.winner === 'a' ? 'A' : 'B'} {d.delta >= 0 ? '+' : ''}
@@ -1011,7 +1011,7 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
               ))}
             </div>
             {result.biggestGap && (
-              <p className="mt-2 text-[10px] text-zinc-500">
+              <p className="mt-2 text-[10px] text-zinc-400">
                 Biggest gap: <span className="capitalize text-zinc-300">{result.biggestGap.dimension}</span>
                 {' '}({Math.abs(result.biggestGap.delta * 100).toFixed(0)}% apart)
               </p>
@@ -1028,7 +1028,7 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
 function Stat({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={cn('mt-0.5 font-mono text-lg', valueClass || 'text-cyan-300')}>{value}</div>
     </div>
   );

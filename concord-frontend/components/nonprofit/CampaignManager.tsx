@@ -56,7 +56,7 @@ export function CampaignManager() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
@@ -70,7 +70,7 @@ export function CampaignManager() {
           {([['Campaigns', dash.campaigns], ['Active', dash.active], ['Raised', `$${dash.totalRaised.toLocaleString()}`], ['Recurring', dash.recurringDonors]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -88,13 +88,13 @@ export function CampaignManager() {
       </div>
 
       <ul className="space-y-1">
-        {campaigns.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No campaigns yet.</li>}
+        {campaigns.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No campaigns yet.</li>}
         {campaigns.map(c => (
           <li key={c.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <button onClick={() => setActive(active === c.id ? null : c.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.name}</p>
-                <p className="text-[10px] text-zinc-500">${c.raised.toLocaleString()} raised · {c.progressPct}% of goal · {c.donorCount} donors · {c.status}</p>
+                <p className="text-[10px] text-zinc-400">${c.raised.toLocaleString()} raised · {c.progressPct}% of goal · {c.donorCount} donors · {c.status}</p>
                 {c.goal > 0 && (
                   <div className="mt-1 h-1 bg-zinc-800 rounded overflow-hidden">
                     <div className="h-full bg-rose-500" style={{ width: `${Math.min(100, c.progressPct)}%` }} />
@@ -113,7 +113,7 @@ export function CampaignManager() {
                     className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
                   <input value={donForm.donor} onChange={e => setDonForm({ ...donForm, donor: e.target.value })} placeholder="donor"
                     className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
-                  <label className="text-[10px] text-zinc-500 inline-flex items-center gap-1">
+                  <label className="text-[10px] text-zinc-400 inline-flex items-center gap-1">
                     <input type="checkbox" checked={donForm.recurring} onChange={e => setDonForm({ ...donForm, recurring: e.target.checked })} />recurring
                   </label>
                   <button onClick={() => logDonation(c.id)} className="px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 inline-flex items-center gap-1">

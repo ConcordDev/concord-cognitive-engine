@@ -23,7 +23,7 @@ export interface StaminaWheelProps {
 }
 
 const STATE_GLYPH: Record<string, { glyph: string; label: string; tone: string }> = {
-  rest:       { glyph: '◌', label: 'rest',       tone: 'text-zinc-500' },
+  rest:       { glyph: '◌', label: 'rest',       tone: 'text-zinc-400' },
   climbing:   { glyph: '↟', label: 'climbing',   tone: 'text-amber-300' },
   sprinting:  { glyph: '↠', label: 'sprinting',  tone: 'text-orange-300' },
   swimming:   { glyph: '≈', label: 'swimming',   tone: 'text-cyan-300' },

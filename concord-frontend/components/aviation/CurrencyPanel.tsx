@@ -63,7 +63,7 @@ export function CurrencyPanel() {
       </div>
       <div className="p-3">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !status ? null : (
           <ul className="space-y-2">
             <Row label="Flight review (BFR)" current={status.bfr.current} sub={status.bfr.lastDate ? `Last ${status.bfr.lastDate} · ${status.bfr.expiresInDays} days left` : 'Never logged'} />

@@ -67,7 +67,7 @@ export function TimelineExport() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {WINDOWS.map((w) => (
-              <button key={w.id} onClick={() => setLimit(w.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${limit === w.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{w.label}</button>
+              <button key={w.id} onClick={() => setLimit(w.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${limit === w.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{w.label}</button>
             ))}
           </div>
           {events.length > 0 && (
@@ -83,7 +83,7 @@ export function TimelineExport() {
         </div>
       </header>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading timeline…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading timeline…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Cell label="Turns" value={events.length.toString()} />
         <Cell label="Sessions" value={sessions.toString()} />
@@ -113,7 +113,7 @@ export function TimelineExport() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

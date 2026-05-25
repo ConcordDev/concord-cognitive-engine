@@ -54,7 +54,7 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const shown = filter ? notes.filter((n) => n.kind === filter) : notes;
@@ -86,7 +86,7 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No notes. Capture research and worldbuilding here.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No notes. Capture research and worldbuilding here.</p>
       ) : (
         <ul className="space-y-2">
           {shown.map((n) => (

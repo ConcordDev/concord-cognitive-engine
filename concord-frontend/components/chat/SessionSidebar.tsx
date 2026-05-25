@@ -128,8 +128,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
       {/* Backdrop (mobile) */}
       <div
         className="absolute inset-0 bg-black/50 lg:hidden"
-        onClick={onClose}
-      />
+        onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
       {/* Sidebar panel */}
       <div className="relative z-10 flex flex-col w-72 max-w-[85vw] h-full bg-lattice-void border-r border-white/10">
@@ -199,8 +198,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
                     onContextMenu={e => {
                       e.preventDefault();
                       setContextMenu({ id: session.id, x: e.clientX, y: e.clientY });
-                    }}
-                  >
+                    }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="px-3 py-2">
                       {editingId === session.id ? (
                         <input
@@ -272,8 +270,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
         <div
           className="fixed z-[100] bg-zinc-900 border border-white/20 rounded-lg shadow-xl py-1 min-w-[140px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={e => e.stopPropagation()}
-        >
+          onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {(() => {
             const s = sessions.find(s => s.id === contextMenu.id);
             if (!s) return null;

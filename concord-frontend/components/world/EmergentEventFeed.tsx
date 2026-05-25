@@ -182,7 +182,7 @@ export function EmergentEventFeed() {
                     className={`rounded px-1.5 py-0.5 text-[10px] ${
                       activeChannels.has(ch)
                         ? `${CHANNEL_COLORS[ch]} bg-white/5`
-                        : 'text-slate-500'
+                        : 'text-slate-400'
                     }`}
                   >
                     {ch}
@@ -202,7 +202,7 @@ export function EmergentEventFeed() {
 
             <div className="max-h-80 overflow-y-auto border-t border-emerald-500/20">
               {visible.length === 0 ? (
-                <div className="px-3 py-6 text-center text-[11px] text-slate-500">
+                <div className="px-3 py-6 text-center text-[11px] text-slate-400">
                   Watching for world events…
                 </div>
               ) : (
@@ -213,7 +213,7 @@ export function EmergentEventFeed() {
                         <span className={`font-medium ${CHANNEL_COLORS[item.channel]}`}>
                           {item.label}
                         </span>
-                        <span className="ml-auto text-[10px] tabular-nums text-slate-500">
+                        <span className="ml-auto text-[10px] tabular-nums text-slate-400">
                           {formatTime(item.ts)}
                         </span>
                       </div>

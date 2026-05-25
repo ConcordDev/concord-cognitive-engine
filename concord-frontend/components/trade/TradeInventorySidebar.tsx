@@ -84,7 +84,7 @@ export function TradeInventorySidebar({ onItemDrag }: { onItemDrag?: (item: Inve
       {loading && <div className="text-xs text-gray-400">Loading…</div>}
       {error && <div className="text-xs text-red-400">{error}</div>}
       {!loading && !error && items.length === 0 && (
-        <div className="text-xs text-gray-500 italic">No items to trade</div>
+        <div className="text-xs text-gray-400 italic">No items to trade</div>
       )}
       <ul className="space-y-1">
         {items.map((item) => (
@@ -95,7 +95,7 @@ export function TradeInventorySidebar({ onItemDrag }: { onItemDrag?: (item: Inve
             title={item.soulbound ? 'Soulbound — cannot trade' : 'Drag into your offer'}
             className={
               item.soulbound
-                ? 'flex justify-between text-xs px-2 py-1.5 rounded bg-gray-800/40 text-gray-500 cursor-not-allowed'
+                ? 'flex justify-between text-xs px-2 py-1.5 rounded bg-gray-800/40 text-gray-400 cursor-not-allowed'
                 : 'flex justify-between text-xs px-2 py-1.5 rounded bg-gray-800 text-gray-200 hover:bg-cyan-500/20 cursor-grab active:cursor-grabbing'
             }
           >

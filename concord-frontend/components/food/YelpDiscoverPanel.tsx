@@ -142,7 +142,7 @@ export function YelpDiscoverPanel() {
   };
 
   if (loading && businesses.length === 0) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Detail view ──
@@ -154,7 +154,7 @@ export function YelpDiscoverPanel() {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-              <p className="text-xs text-zinc-500 capitalize">
+              <p className="text-xs text-zinc-400 capitalize">
                 {selected.cuisine} · {priceLabel(selected.priceTier)}
                 {selected.neighborhood ? ` · ${selected.neighborhood}` : ''}
               </p>
@@ -204,14 +204,14 @@ export function YelpDiscoverPanel() {
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
           <h4 className="text-xs font-semibold text-zinc-300 mb-2">Reviews ({reviews.length})</h4>
           {reviews.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">No reviews yet — be the first.</p>
+            <p className="text-[11px] text-zinc-400 italic">No reviews yet — be the first.</p>
           ) : (
             <ul className="space-y-2">
               {reviews.map((rv) => (
                 <li key={rv.id} className="border-b border-zinc-800 pb-2 last:border-0">
                   <div className="flex items-center gap-2">
                     <Stars rating={rv.rating} />
-                    <span className="text-[10px] text-zinc-600 font-mono">{rv.userId.slice(0, 10)}</span>
+                    <span className="text-[10px] text-zinc-400 font-mono">{rv.userId.slice(0, 10)}</span>
                   </div>
                   {rv.text && <p className="text-xs text-zinc-300 mt-0.5">{rv.text}</p>}
                 </li>
@@ -258,7 +258,7 @@ export function YelpDiscoverPanel() {
     <div className="space-y-3">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="Search restaurants or cuisine…"
@@ -314,7 +314,7 @@ export function YelpDiscoverPanel() {
       {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {businesses.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No restaurants match. Add one to start the directory.
         </div>
       ) : (
@@ -326,7 +326,7 @@ export function YelpDiscoverPanel() {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{b.name}</p>
-                    <p className="text-[11px] text-zinc-500 capitalize">
+                    <p className="text-[11px] text-zinc-400 capitalize">
                       {b.cuisine} · {priceLabel(b.priceTier)}{b.neighborhood ? ` · ${b.neighborhood}` : ''}
                     </p>
                   </div>
@@ -338,7 +338,7 @@ export function YelpDiscoverPanel() {
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   <Stars rating={b.rating} />
-                  <span className="text-[11px] text-zinc-500">
+                  <span className="text-[11px] text-zinc-400">
                     {b.rating || 'New'} · {b.reviewCount} reviews
                     {b.checkinCount > 0 ? ` · ${b.checkinCount} check-ins` : ''}
                   </span>

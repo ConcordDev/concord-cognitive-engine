@@ -84,7 +84,7 @@ export function CrtPerformancePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const rows = result?.rows ?? [];
@@ -109,7 +109,7 @@ export function CrtPerformancePanel() {
           <TrendingUp className="w-3.5 h-3.5 text-red-400" /> Record performance
         </h3>
         {rows.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">
+          <p className="text-[11px] text-zinc-400 italic">
             Add content in the Pipeline tab first — then record its real platform metrics here.
           </p>
         ) : (
@@ -149,11 +149,11 @@ export function CrtPerformancePanel() {
 
       {/* Per-artifact analytics table. */}
       {rows.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No content performance data yet.</p>
+        <p className="text-[11px] text-zinc-400 italic">No content performance data yet.</p>
       ) : (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="text-zinc-500 uppercase tracking-wide text-[10px]">
+            <thead className="text-zinc-400 uppercase tracking-wide text-[10px]">
               <tr className="border-b border-zinc-800">
                 <th className="text-left px-3 py-2">Artifact</th>
                 <th className="text-right px-2 py-2">Views</th>
@@ -168,7 +168,7 @@ export function CrtPerformancePanel() {
                 <tr key={r.id} className="border-b border-zinc-800/60 last:border-0">
                   <td className="px-3 py-2">
                     <p className="text-zinc-100 truncate max-w-[180px]">{r.title}</p>
-                    <p className="text-[10px] text-zinc-500 capitalize">{r.format}{r.platform && ` · ${r.platform}`}</p>
+                    <p className="text-[10px] text-zinc-400 capitalize">{r.format}{r.platform && ` · ${r.platform}`}</p>
                   </td>
                   <td className="text-right px-2 py-2 text-zinc-300">{r.views.toLocaleString()}</td>
                   <td className="text-right px-2 py-2 text-sky-300">{r.clickRate}%</td>
@@ -189,7 +189,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
       <p className="text-lg font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase">{label}</p>
     </div>
   );
 }

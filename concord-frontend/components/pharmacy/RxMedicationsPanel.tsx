@@ -68,7 +68,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
   const archive = async (id: string) => { await lensRun('pharmacy', 'med-archive', { id }); await refresh(); onChange(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -79,10 +79,10 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
           <Clock className="w-3.5 h-3.5 text-amber-400" /> Today&apos;s doses
-          {adherence.overall != null && <span className="text-[10px] text-zinc-500">· {adherence.overall}% adherence (30d)</span>}
+          {adherence.overall != null && <span className="text-[10px] text-zinc-400">· {adherence.overall}% adherence (30d)</span>}
         </h3>
         {doses.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No doses scheduled today. Set a schedule on a medication below.</p>
+          <p className="text-[11px] text-zinc-400 italic">No doses scheduled today. Set a schedule on a medication below.</p>
         ) : (
           <ul className="space-y-1">
             {doses.map((d, i) => (
@@ -91,7 +91,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                   d.status === 'taken' ? 'border-emerald-900/50' : d.status === 'pending' ? 'border-zinc-800' : 'border-zinc-800 opacity-60')}>
                 <div>
                   <p className="text-xs text-zinc-200">{d.medName}</p>
-                  <p className="text-[10px] text-zinc-500">{d.time} · {d.doseAmount}</p>
+                  <p className="text-[10px] text-zinc-400">{d.time} · {d.doseAmount}</p>
                 </div>
                 {d.status === 'pending' ? (
                   <div className="flex gap-1">
@@ -105,7 +105,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                     </button>
                   </div>
                 ) : (
-                  <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-500')}>{d.status}</span>
+                  <span className={cn('text-[10px] capitalize', d.status === 'taken' ? 'text-emerald-400' : 'text-zinc-400')}>{d.status}</span>
                 )}
               </li>
             ))}
@@ -145,7 +145,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {meds.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No medications. Add one to start tracking doses.</p>
+          <p className="text-[11px] text-zinc-400 italic">No medications. Add one to start tracking doses.</p>
         ) : (
           <ul className="space-y-2">
             {meds.map((m) => {
@@ -155,9 +155,9 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-sm font-semibold text-zinc-100">
-                        {m.name} {m.strength && <span className="text-zinc-500 font-normal">{m.strength}</span>}
+                        {m.name} {m.strength && <span className="text-zinc-400 font-normal">{m.strength}</span>}
                       </p>
-                      <p className="text-[11px] text-zinc-500">
+                      <p className="text-[11px] text-zinc-400">
                         {m.quantity} {m.form}s on hand · {m.refillsRemaining} refills
                         {adh?.pct != null ? ` · ${adh.pct}% adherence` : ''}
                       </p>

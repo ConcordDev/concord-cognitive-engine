@@ -62,7 +62,7 @@ export function TimesheetsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Clock className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Timesheets</span>
-        <span className="ml-auto text-[10px] text-gray-500">{openByTech.size} clocked in</span>
+        <span className="ml-auto text-[10px] text-gray-400">{openByTech.size} clocked in</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
@@ -76,9 +76,9 @@ export function TimesheetsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : entries.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Clock className="w-6 h-6 mx-auto mb-2 opacity-30" />No time entries yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Clock className="w-6 h-6 mx-auto mb-2 opacity-30" />No time entries yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {entries.map(e => {
@@ -86,10 +86,10 @@ export function TimesheetsPanel() {
               const isOpen = !e.clockOut;
               return (
                 <li key={e.id} className={cn('px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3', isOpen && 'bg-emerald-500/5')}>
-                  <Clock className={cn('w-3.5 h-3.5', isOpen ? 'text-emerald-400' : 'text-gray-500')} />
+                  <Clock className={cn('w-3.5 h-3.5', isOpen ? 'text-emerald-400' : 'text-gray-400')} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-white">{tech?.name || e.technicianId}</div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-[10px] text-gray-400">
                       {new Date(e.clockIn).toLocaleString()} {e.clockOut ? `→ ${new Date(e.clockOut).toLocaleTimeString()}` : '(open)'}
                       {e.jobId && ` · job ${e.jobId.slice(0, 10)}`}
                     </div>

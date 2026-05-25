@@ -81,7 +81,7 @@ function CommentNode({
           </div>
           {replying && (
             <div className="flex gap-2 mt-1.5 ml-2">
-              <CornerDownRight className="w-4 h-4 text-gray-500 mt-1.5 flex-shrink-0" />
+              <CornerDownRight className="w-4 h-4 text-gray-400 mt-1.5 flex-shrink-0" />
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -161,7 +161,7 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500 py-2">
+        <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading comments…
         </div>
       ) : (

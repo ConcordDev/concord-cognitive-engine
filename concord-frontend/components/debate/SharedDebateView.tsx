@@ -57,7 +57,7 @@ export function SharedDebateView({ shareToken, onExit }: { shareToken: string; o
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500">
+      <div className="flex items-center justify-center py-12 text-gray-400">
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
@@ -101,7 +101,7 @@ export function SharedDebateView({ shareToken, onExit }: { shareToken: string; o
               <p className={cn('text-lg font-bold leading-none', VERDICT_COLOR[score.verdict] || 'text-gray-400')}>
                 {score.supportPct}%
               </p>
-              <p className="text-[9px] text-gray-500 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
+              <p className="text-[9px] text-gray-400 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
             </div>
           )}
         </div>
@@ -120,14 +120,14 @@ export function SharedDebateView({ shareToken, onExit }: { shareToken: string; o
             {debate.positions.map((p) => (
               <div key={p.id} className="text-xs">
                 <span className="font-semibold text-white">{p.label}</span>
-                {p.summary && <span className="text-gray-500"> — {p.summary}</span>}
+                {p.summary && <span className="text-gray-400"> — {p.summary}</span>}
               </div>
             ))}
           </div>
         )}
 
         {debate.claims.filter((c) => c.parentId === null).length === 0 ? (
-          <p className="text-[11px] text-gray-600 italic">No claims in this debate yet.</p>
+          <p className="text-[11px] text-gray-400 italic">No claims in this debate yet.</p>
         ) : (
           <ReadOnlyBranch claims={debate.claims} parentId={null} depth={0} />
         )}
@@ -157,7 +157,7 @@ function ReadOnlyBranch({ claims, parentId, depth }: { claims: Claim[]; parentId
                 </span>
                 <p className="text-xs text-gray-200 flex-1">{c.text}</p>
                 <span className="text-[10px] text-gray-400 font-mono shrink-0">{c.weight.toFixed(1)}</span>
-                {c.impact && <span className="text-[9px] text-gray-500 shrink-0">i{c.impact}</span>}
+                {c.impact && <span className="text-[9px] text-gray-400 shrink-0">i{c.impact}</span>}
               </div>
               {c.sources.length > 0 && (
                 <ul className="mt-1 pl-4 space-y-0.5">

@@ -118,7 +118,7 @@ export function IssLiveTracker() {
             { label: 'Velocity', value: `${(pos.velocityKmH / 1000).toFixed(2)} km/s` },
           ].map((s) => (
             <div key={s.label} className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
-              <p className="text-[11px] text-zinc-500">{s.label}</p>
+              <p className="text-[11px] text-zinc-400">{s.label}</p>
               <p className="text-sm font-mono font-semibold text-white tabular-nums">{s.value}</p>
             </div>
           ))}

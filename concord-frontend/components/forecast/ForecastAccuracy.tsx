@@ -49,11 +49,11 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return <p className="text-xs text-zinc-500">Scoring past forecasts…</p>;
+  if (loading) return <p className="text-xs text-zinc-400">Scoring past forecasts…</p>;
 
   if (!result || result.summary.sample_count === 0) {
     return (
-      <p className="py-8 text-center text-xs italic text-zinc-500">
+      <p className="py-8 text-center text-xs italic text-zinc-400">
         No data yet — accuracy needs at least two persisted forecasts spanning a 24h window.
         Compose forecasts over time to build the comparison set.
       </p>
@@ -66,17 +66,17 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
     <div className="space-y-3">
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Samples</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Samples</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-100">{summary.sample_count}</div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Kind hit-rate</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Kind hit-rate</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">
             {summary.kind_accuracy !== null ? `${(summary.kind_accuracy * 100).toFixed(0)}%` : '—'}
           </div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Mean temp error</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Mean temp error</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">
             {summary.mean_temp_error_c !== null ? `${summary.mean_temp_error_c}°C` : '—'}
           </div>
@@ -90,7 +90,7 @@ export function ForecastAccuracy({ worldId }: { worldId: string }) {
             className="rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-zinc-400">
                 {new Date(c.forecast_ts * 1000).toLocaleString()}
               </span>
               {c.kind_hit !== null && (

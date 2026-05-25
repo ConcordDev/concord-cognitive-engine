@@ -63,14 +63,14 @@ export function PhilosophyChannels() {
     await reload(); await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Library className="w-4 h-4 text-indigo-400" />
         <h3 className="text-sm font-bold text-zinc-100">Idea Channels</h3>
-        <span className="text-[11px] text-zinc-500">Are.na shape</span>
+        <span className="text-[11px] text-zinc-400">Are.na shape</span>
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -83,13 +83,13 @@ export function PhilosophyChannels() {
 
       <div className="grid sm:grid-cols-[200px_1fr] gap-3">
         <ul className="space-y-1">
-          {channels.length === 0 && <li className="text-[11px] text-zinc-600 italic">No channels yet.</li>}
+          {channels.length === 0 && <li className="text-[11px] text-zinc-400 italic">No channels yet.</li>}
           {channels.map(c => (
             <li key={c.id} className="group flex items-center gap-1">
               <button onClick={() => open(c.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.channel.id === c.id ? 'bg-indigo-600/15 border-indigo-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{c.title}</p>
-                <p className="text-[10px] text-zinc-500">{c.blockCount} blocks</p>
+                <p className="text-[10px] text-zinc-400">{c.blockCount} blocks</p>
               </button>
               <button onClick={() => deleteChannel(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -124,7 +124,7 @@ export function PhilosophyChannels() {
             </div>
 
             {active.blocks.length === 0 ? (
-              <p className="text-xs text-zinc-500 italic">No blocks yet — add ideas, quotes and links above.</p>
+              <p className="text-xs text-zinc-400 italic">No blocks yet — add ideas, quotes and links above.</p>
             ) : (
               <div className="grid sm:grid-cols-2 gap-2">
                 {active.blocks.map(b => {
@@ -133,12 +133,12 @@ export function PhilosophyChannels() {
                     <div key={b.id} className="group bg-zinc-950 border border-zinc-800 rounded-lg p-2">
                       <div className="flex items-center gap-1 mb-1">
                         <Icon className="w-3 h-3 text-indigo-400" />
-                        <span className="text-[9px] uppercase text-zinc-500">{b.kind}</span>
+                        <span className="text-[9px] uppercase text-zinc-400">{b.kind}</span>
                         {b.channelIds.length > 1 && <span className="text-[9px] text-indigo-400">· in {b.channelIds.length} channels</span>}
                         <button onClick={() => deleteBlock(b.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
                       </div>
                       <p className={cn('text-xs text-zinc-200', b.kind === 'quote' && 'italic')}>{b.content}</p>
-                      {b.source && <p className="text-[10px] text-zinc-500 mt-1">— {b.source}</p>}
+                      {b.source && <p className="text-[10px] text-zinc-400 mt-1">— {b.source}</p>}
                     </div>
                   );
                 })}
@@ -146,7 +146,7 @@ export function PhilosophyChannels() {
             )}
           </div>
         ) : (
-          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[140px]">
+          <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[140px]">
             Select or create a channel.
           </div>
         )}

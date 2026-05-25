@@ -132,7 +132,7 @@ export function StructuredArrayEditor<T extends object>({
           <label className={cn('text-[10px] uppercase tracking-wider font-semibold', accentText)}>{label}</label>
         )}
         <div className="flex items-center gap-1 ml-auto">
-          <span className="text-[9px] text-zinc-500 font-mono">{value.length}/{maxRows}</span>
+          <span className="text-[9px] text-zinc-400 font-mono">{value.length}/{maxRows}</span>
           {!rowsOnly && (
             <button
               type="button"
@@ -166,7 +166,7 @@ export function StructuredArrayEditor<T extends object>({
       ) : (
         <div className={cn('rounded border', accentBorder, accentBg, 'p-1.5 space-y-1')}>
           {value.length === 0 && (
-            <div className="text-[10px] text-zinc-500 italic py-1 text-center">No rows. Click + to add.</div>
+            <div className="text-[10px] text-zinc-400 italic py-1 text-center">No rows. Click + to add.</div>
           )}
           {value.map((row, i) => {
             const rowError = errors.get(i);
@@ -229,7 +229,7 @@ export function StructuredArrayEditor<T extends object>({
                   type="button"
                   onClick={() => removeRow(i)}
                   disabled={disabled}
-                  className="text-zinc-500 hover:text-red-300 px-1 self-center"
+                  className="text-zinc-400 hover:text-red-300 px-1 self-center"
                   title="Remove row"
                 >
                   <X className="w-3 h-3" />

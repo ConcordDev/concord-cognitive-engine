@@ -93,7 +93,7 @@ const RSVP_LABEL: Record<Attendee['rsvp'], { label: string; color: string }> = {
   yes: { label: 'Attending', color: 'text-green-400' },
   no: { label: 'Declined', color: 'text-red-400' },
   maybe: { label: 'Tentative', color: 'text-yellow-400' },
-  no_response: { label: 'No response', color: 'text-gray-500' },
+  no_response: { label: 'No response', color: 'text-gray-400' },
 };
 
 const RSVP_CYCLE: Attendee['rsvp'][] = ['no_response', 'yes', 'maybe', 'no'];
@@ -291,7 +291,7 @@ export function MeetingsWorkspace() {
               <p className={cn('text-sm font-medium', quorum.quorumMet ? 'text-green-400' : 'text-yellow-400')}>
                 {quorum.message}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 {quorum.present} present · {quorum.invited} invited · {quorum.required} required
               </p>
             </div>
@@ -309,7 +309,7 @@ export function MeetingsWorkspace() {
           <h3 className={cn(ds.heading3, 'flex items-center gap-2 mb-3')}>
             <ClipboardList className="w-4 h-4 text-neon-cyan" />
             Agenda ({selected.agenda.length})
-            <span className="ml-auto text-xs font-normal text-gray-500">
+            <span className="ml-auto text-xs font-normal text-gray-400">
               {selected.agenda.reduce((s, a) => s + a.durationMin, 0)} min total
             </span>
           </h3>
@@ -324,7 +324,7 @@ export function MeetingsWorkspace() {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{item.topic}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     {item.presenter ? `${item.presenter} · ` : ''}{item.durationMin} min
                   </p>
                 </div>
@@ -442,7 +442,7 @@ export function MeetingsWorkspace() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white truncate">{at.name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{at.role}</p>
+                  <p className="text-xs text-gray-400 capitalize">{at.role}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -524,7 +524,7 @@ export function MeetingsWorkspace() {
                   ) : (
                     <p className="text-sm text-white truncate">{doc.name}</p>
                   )}
-                  <p className="text-xs text-gray-500 capitalize">{doc.kind}</p>
+                  <p className="text-xs text-gray-400 capitalize">{doc.kind}</p>
                 </div>
                 <button
                   onClick={() => run('packet-remove', {
@@ -648,7 +648,7 @@ export function MeetingsWorkspace() {
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <h3 className={cn(ds.heading3, 'truncate')}>{m.title}</h3>
-                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-400">
                   <span className="flex items-center gap-1">
                     <CalendarClock className="w-3 h-3" /> {fmtDateTime(m.scheduledAt)}
                   </span>
@@ -678,9 +678,9 @@ export function MeetingsWorkspace() {
 
       {/* Schedule meeting modal */}
       {showCreate && (
-        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-lg')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center justify-between px-5 py-4 border-b border-lattice-border">
                 <h2 className={ds.heading2}>Schedule Meeting</h2>
                 <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white" aria-label="Close">
@@ -809,11 +809,11 @@ function MeetingActions({ meeting, actions, meetings, busy, draft, setDraft, run
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   'text-sm truncate',
-                  a.status === 'done' ? 'text-gray-500 line-through' : 'text-white',
+                  a.status === 'done' ? 'text-gray-400 line-through' : 'text-white',
                 )}>
                   {a.description}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {a.owner || 'unassigned'}
                   {a.dueDate && (
                     <span className={overdue ? 'text-red-400 ml-1' : 'ml-1'}>

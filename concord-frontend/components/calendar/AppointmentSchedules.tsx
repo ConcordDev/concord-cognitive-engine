@@ -86,7 +86,7 @@ export function AppointmentSchedules() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const activeSchedule = schedules.find(s => s.id === active);
 
@@ -95,7 +95,7 @@ export function AppointmentSchedules() {
       <div className="flex items-center gap-2 mb-3">
         <CalendarClock className="w-4 h-4 text-blue-400" />
         <h3 className="text-sm font-bold text-zinc-100">Appointment Schedules</h3>
-        <span className="text-[11px] text-zinc-500">booking pages</span>
+        <span className="text-[11px] text-zinc-400">booking pages</span>
         <button onClick={() => setShowNew(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-blue-600 hover:bg-blue-500 text-white inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />New
         </button>
@@ -130,7 +130,7 @@ export function AppointmentSchedules() {
       )}
 
       {schedules.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No appointment schedules yet — create one so others can book time with you.</p>
+        <p className="text-xs text-zinc-400 italic">No appointment schedules yet — create one so others can book time with you.</p>
       ) : (
         <div className="grid sm:grid-cols-[200px_1fr] gap-3">
           <ul className="space-y-1">
@@ -139,7 +139,7 @@ export function AppointmentSchedules() {
                 <button onClick={() => setActive(s.id)}
                   className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active === s.id ? 'bg-blue-600/15 border-blue-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                   <p className="text-xs font-semibold text-zinc-100 truncate">{s.title}</p>
-                  <p className="text-[10px] text-zinc-500">{s.durationMin}m · {s.bookingCount} booked</p>
+                  <p className="text-[10px] text-zinc-400">{s.durationMin}m · {s.bookingCount} booked</p>
                 </button>
                 <button onClick={() => del(s.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
@@ -156,7 +156,7 @@ export function AppointmentSchedules() {
                   className="ml-auto bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 mb-3">
-                {slots.length === 0 && <p className="col-span-full text-[11px] text-zinc-600 italic">No slots on this day.</p>}
+                {slots.length === 0 && <p className="col-span-full text-[11px] text-zinc-400 italic">No slots on this day.</p>}
                 {slots.map(s => (
                   <button key={s.slotStart} disabled={!s.available} onClick={() => book(s.slotStart)}
                     className={cn('px-2 py-1.5 text-xs rounded border',
@@ -167,11 +167,11 @@ export function AppointmentSchedules() {
               </div>
               {bookings.length > 0 && (
                 <div>
-                  <p className="text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Bookings</p>
+                  <p className="text-[11px] uppercase tracking-wide text-zinc-400 mb-1">Bookings</p>
                   {bookings.map(b => (
                     <div key={b.id} className="group flex items-center gap-2 text-xs text-zinc-300 py-0.5">
                       <Check className="w-3 h-3 text-blue-400" />
-                      <span className="font-mono text-zinc-500">{b.slotStart.slice(5, 16).replace('T', ' ')}</span>
+                      <span className="font-mono text-zinc-400">{b.slotStart.slice(5, 16).replace('T', ' ')}</span>
                       <span className="truncate flex-1">{b.bookerName}</span>
                       <button onClick={() => cancelBooking(b.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 text-[10px]">cancel</button>
                     </div>
@@ -180,7 +180,7 @@ export function AppointmentSchedules() {
               )}
             </div>
           ) : (
-            <div className="bg-zinc-900/30 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+            <div className="bg-zinc-900/30 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
               Select a schedule to view open slots.
             </div>
           )}

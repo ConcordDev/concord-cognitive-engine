@@ -127,7 +127,7 @@ export function AuditTrailPanel() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : (
@@ -143,7 +143,7 @@ export function AuditTrailPanel() {
                     key={st}
                     className="rounded border border-white/10 bg-white/[0.03] p-2"
                   >
-                    <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-gray-500">
+                    <div className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-gray-400">
                       <Icon className="w-3 h-3" /> {st.replace(/_/g, ' ')}
                     </div>
                     <div className="text-base font-mono tabular-nums text-white">
@@ -161,7 +161,7 @@ export function AuditTrailPanel() {
               Activities ({activities.length})
             </div>
             {activities.length === 0 ? (
-              <div className="px-3 py-8 text-center text-xs text-gray-500">
+              <div className="px-3 py-8 text-center text-xs text-gray-400">
                 <ShieldCheck className="w-6 h-6 mx-auto mb-2 opacity-30" />
                 No activities to verify yet.
               </div>
@@ -177,7 +177,7 @@ export function AuditTrailPanel() {
                           {a.factorKey.replace(/_/g, ' ')} ·{' '}
                           {a.amount.toLocaleString()} {a.unit}
                         </div>
-                        <div className="text-[10px] text-gray-500">
+                        <div className="text-[10px] text-gray-400">
                           {a.date} · S{a.scope} · {a.co2eTonnes.toFixed(2)} t
                           {a.verifier ? ` · by ${a.verifier}` : ''}
                         </div>
@@ -216,20 +216,20 @@ export function AuditTrailPanel() {
             <div className="px-3 py-1.5 bg-white/[0.03] text-[10px] uppercase tracking-wider text-cyan-300 flex items-center gap-1">
               <ClipboardList className="w-3 h-3" /> Audit log
               {audit && (
-                <span className="ml-auto text-gray-500 normal-case tracking-normal">
+                <span className="ml-auto text-gray-400 normal-case tracking-normal">
                   {audit.eventCount} event{audit.eventCount === 1 ? '' : 's'}
                 </span>
               )}
             </div>
             {!audit || audit.events.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs text-gray-500">
+              <div className="px-3 py-6 text-center text-xs text-gray-400">
                 No audit events yet.
               </div>
             ) : (
               <ul className="divide-y divide-white/5 max-h-72 overflow-y-auto">
                 {audit.events.map((e, i) => (
                   <li key={i} className="px-3 py-2 flex items-start gap-2">
-                    <div className="text-[10px] font-mono text-gray-600 w-32 shrink-0">
+                    <div className="text-[10px] font-mono text-gray-400 w-32 shrink-0">
                       {new Date(e.at).toLocaleString()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -240,14 +240,14 @@ export function AuditTrailPanel() {
                         {e.from ? (
                           <>
                             {' '}
-                            <span className="text-gray-500">{e.from}</span> →{' '}
+                            <span className="text-gray-400">{e.from}</span> →{' '}
                           </>
                         ) : (
                           ' → '
                         )}
                         <span className="text-emerald-300">{e.to}</span>
                       </div>
-                      <div className="text-[10px] text-gray-500 truncate">
+                      <div className="text-[10px] text-gray-400 truncate">
                         {e.detail}
                         {e.verifier ? ` · ${e.verifier}` : ''}
                         {e.note ? ` · ${e.note}` : ''}

@@ -71,7 +71,7 @@ export function SpotLog() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   const shown = active ? sessions.filter(s => s.spotId === active) : sessions;
 
@@ -80,7 +80,7 @@ export function SpotLog() {
       <div className="flex items-center gap-2 mb-3">
         <Waves className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Spot Log</h3>
-        {dash && <span className="ml-auto text-[10px] text-zinc-500">{dash.spots} spots · {dash.sessions} sessions{dash.avgRating != null ? ` · avg ${dash.avgRating}★` : ''}</span>}
+        {dash && <span className="ml-auto text-[10px] text-zinc-400">{dash.spots} spots · {dash.sessions} sessions{dash.avgRating != null ? ` · avg ${dash.avgRating}★` : ''}</span>}
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
@@ -113,7 +113,7 @@ export function SpotLog() {
               <button onClick={() => setActive(sp.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-1.5 border', active === sp.id ? 'bg-cyan-600/15 border-cyan-700/50' : 'bg-zinc-900/60 border-zinc-800 hover:border-zinc-700')}>
                 <p className="text-xs font-semibold text-zinc-100 truncate">{sp.name}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">
+                <p className="text-[10px] text-zinc-400 capitalize">
                   {sp.kind} · {sp.sessionCount} sessions{sp.lat != null && sp.lon != null ? ' · geo' : ''}
                 </p>
               </button>
@@ -140,10 +140,10 @@ export function SpotLog() {
           )}
           <ul className="space-y-1 max-h-72 overflow-y-auto">
             {shown.length === 0 ? (
-              <li className="text-xs text-zinc-500 italic py-4 text-center">{active ? 'No sessions at this spot.' : 'No sessions logged.'}</li>
+              <li className="text-xs text-zinc-400 italic py-4 text-center">{active ? 'No sessions at this spot.' : 'No sessions logged.'}</li>
             ) : shown.map(se => (
               <li key={se.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5">
-                <span className="text-[10px] font-mono text-zinc-500">{se.date}</span>
+                <span className="text-[10px] font-mono text-zinc-400">{se.date}</span>
                 <span className="text-xs text-zinc-200 truncate flex-1">{se.spotName}{se.conditions ? ` · ${se.conditions}` : ''}</span>
                 {se.waveHeightM != null && <span className="text-[10px] text-cyan-400">{se.waveHeightM}m</span>}
                 {se.rating != null && (

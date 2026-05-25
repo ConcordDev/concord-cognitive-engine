@@ -158,6 +158,7 @@ export default function registerByoKeysMacros(register) {
   }, { note: "Record one inference call's token usage; computes a list-price cost estimate." });
 
   register("byo_keys", "usage_summary", async (ctx, input = {}) => {
+  try {
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_actor" };
     const um = userMap("usage", userId);
@@ -201,7 +202,8 @@ export default function registerByoKeysMacros(register) {
         dailySeries: series,
       },
     };
-  }, { note: "Per-slot + aggregate token/spend summary with a daily cost series for charting." });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "Per-slot + aggregate token/spend summary with a daily cost series for charting." });
 
   // ── [S] Per-key rate limit / monthly budget cap ────────────────
 

@@ -193,6 +193,7 @@ export default function registerUnderstandingActions(registerLensAction) {
   // ── search — full-text across titles + bodies + tags ─────────────
 
   registerLensAction("understanding", "search", (ctx, _a, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const q = String(params.query || "").trim().toLowerCase();
@@ -224,11 +225,13 @@ export default function registerUnderstandingActions(registerLensAction) {
     }
     matches.sort((a, b) => b.score - a.score);
     return { ok: true, result: { matches, count: matches.length, query: q } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── link — manually relate two notes ──────────────────────────────
 
   registerLensAction("understanding", "link", (ctx, _a, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
@@ -254,7 +257,8 @@ export default function registerUnderstandingActions(registerLensAction) {
     links.push(link);
     save();
     return { ok: true, result: { link, created: true } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── unlink — remove a manual link ─────────────────────────────────
 
@@ -275,6 +279,7 @@ export default function registerUnderstandingActions(registerLensAction) {
   // Combines manual links AND [[wiki-link]] references by title.
 
   registerLensAction("understanding", "backlinks", (ctx, _a, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
@@ -337,11 +342,13 @@ export default function registerUnderstandingActions(registerLensAction) {
         outboundCount: outboundManual.length + outboundWiki.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── graph — interactive linked-knowledge graph (nodes + edges) ────
 
   registerLensAction("understanding", "graph", (ctx, _a, _params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
@@ -387,7 +394,8 @@ export default function registerUnderstandingActions(registerLensAction) {
         orphans,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── tags — all tags with counts (for tag-based filtering UI) ──────
 
@@ -408,6 +416,7 @@ export default function registerUnderstandingActions(registerLensAction) {
   // ── diff — line-level diff between two revisions of a note ───────
 
   registerLensAction("understanding", "diff", (ctx, _a, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const notes = notesFor(s, actor(ctx));
@@ -461,11 +470,13 @@ export default function registerUnderstandingActions(registerLensAction) {
         unchanged: lines.length - added - removed,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── export — markdown or DTU-pack JSON for one note ──────────────
 
   registerLensAction("understanding", "export", (ctx, _a, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
@@ -516,11 +527,13 @@ export default function registerUnderstandingActions(registerLensAction) {
       }
     }
     return { ok: true, result: { format: "markdown", filename: `${note.title || note.id}.md`, content: md } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── overview — counts for the stats strip ─────────────────────────
 
   registerLensAction("understanding", "overview", (ctx, _a, _params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actor(ctx);
@@ -543,5 +556,6 @@ export default function registerUnderstandingActions(registerLensAction) {
         tagCount: tagSet.size,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

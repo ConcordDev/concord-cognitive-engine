@@ -670,8 +670,8 @@ export default function CreativeLensPage() {
                 <div className="space-y-1">
                   {milestones.slice(0, 3).map((m, i) => (
                     <div key={i} className="flex items-center gap-2 text-xs">
-                      {m.done ? <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" /> : <CircleDot className="w-3 h-3 text-gray-500 shrink-0" />}
-                      <span className={cn(m.done ? 'text-gray-500 line-through' : 'text-gray-300')}>{m.name}</span>
+                      {m.done ? <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" /> : <CircleDot className="w-3 h-3 text-gray-400 shrink-0" />}
+                      <span className={cn(m.done ? 'text-gray-400 line-through' : 'text-gray-300')}>{m.name}</span>
                     </div>
                   ))}
                   {milestones.length > 3 && <p className={cn(ds.textMuted, 'text-xs')}>+{milestones.length - 3} more</p>}
@@ -731,7 +731,7 @@ export default function CreativeLensPage() {
           const d = item.data as Record<string, unknown>;
           const versions = parseSafe<{ v: number; date: string; note: string }[]>(d.versionHistory, []);
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               {/* Asset preview placeholder */}
               <div className="w-full h-28 rounded-lg bg-lattice-elevated/70 flex items-center justify-center mb-3 border border-lattice-border">
                 {categoryIcon(String(d.category))}
@@ -750,10 +750,10 @@ export default function CreativeLensPage() {
 
               {/* Metadata grid */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2 text-xs">
-                <div><span className="text-gray-500">Resolution:</span> <span className="text-gray-300">{String(d.resolution)}</span></div>
-                <div><span className="text-gray-500">Size:</span> <span className="text-gray-300">{String(d.fileSize)}</span></div>
-                <div><span className="text-gray-500">Color:</span> <span className="text-gray-300">{String(d.colorSpace)}</span></div>
-                <div><span className="text-gray-500">Version:</span> <span className="text-gray-300">v{String(d.version)}</span></div>
+                <div><span className="text-gray-400">Resolution:</span> <span className="text-gray-300">{String(d.resolution)}</span></div>
+                <div><span className="text-gray-400">Size:</span> <span className="text-gray-300">{String(d.fileSize)}</span></div>
+                <div><span className="text-gray-400">Color:</span> <span className="text-gray-300">{String(d.colorSpace)}</span></div>
+                <div><span className="text-gray-400">Version:</span> <span className="text-gray-300">v{String(d.version)}</span></div>
               </div>
 
               {/* Tags */}
@@ -828,7 +828,7 @@ export default function CreativeLensPage() {
                 const fs = String(d.feedbackStatus || 'pending') as FeedbackStatus;
                 const FsIcon = feedbackIcons[fs] || Clock;
                 return (
-                  <div key={item.id} className={cn('p-3 rounded-lg border transition-colors cursor-pointer', fs === 'addressed' ? 'bg-green-500/5 border-green-500/20' : fs === 'rejected' ? 'bg-red-500/5 border-red-500/20' : 'bg-lattice-elevated/30 border-lattice-border hover:border-neon-cyan/50')} onClick={() => openDetail(item)}>
+                  <div key={item.id} className={cn('p-3 rounded-lg border transition-colors cursor-pointer', fs === 'addressed' ? 'bg-green-500/5 border-green-500/20' : fs === 'rejected' ? 'bg-red-500/5 border-red-500/20' : 'bg-lattice-elevated/30 border-lattice-border hover:border-neon-cyan/50')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className={cn(ds.textMono, 'text-xs text-neon-blue')}>v{String(d.version)}</span>
@@ -888,7 +888,7 @@ export default function CreativeLensPage() {
                   {shots.map(item => {
                     const d = item.data as Record<string, unknown>;
                     return (
-                      <div key={item.id} className={cn(ds.panel, 'cursor-pointer hover:border-neon-cyan/50 transition-colors')} onClick={() => openDetail(item)}>
+                      <div key={item.id} className={cn(ds.panel, 'cursor-pointer hover:border-neon-cyan/50 transition-colors')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         <div className="flex items-center gap-2 mb-1">
                           <span className={cn(ds.textMono, 'text-xs text-neon-blue')}>#{String(d.shotNumber || '-')}</span>
                           <h4 className="text-sm font-medium text-white truncate">{item.title}</h4>
@@ -961,7 +961,7 @@ export default function CreativeLensPage() {
           const isApproved = d.approvalGate === true;
 
           return (
-            <div key={item.id} className={cn(ds.panelHover, isApproved && 'border-green-500/30')} onClick={() => openDetail(item)}>
+            <div key={item.id} className={cn(ds.panelHover, isApproved && 'border-green-500/30')} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-3">
                 <div className="min-w-0">
                   <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -976,10 +976,10 @@ export default function CreativeLensPage() {
 
               {/* Proof metadata */}
               <div className="grid grid-cols-2 gap-2 mb-3 text-xs">
-                <div><span className="text-gray-500">Client:</span> <span className="text-gray-300">{String(d.clientContact)}</span></div>
-                <div><span className="text-gray-500">Round:</span> <span className="text-gray-300">{String(d.proofRound)}</span></div>
-                <div><span className="text-gray-500">Sent:</span> <span className="text-gray-300">{String(d.sentDate)}</span></div>
-                <div><span className="text-gray-500">Revisions:</span> <span className={cn('text-gray-300', Number(d.revisionCount) > 3 && 'text-amber-400')}>{String(d.revisionCount)}</span></div>
+                <div><span className="text-gray-400">Client:</span> <span className="text-gray-300">{String(d.clientContact)}</span></div>
+                <div><span className="text-gray-400">Round:</span> <span className="text-gray-300">{String(d.proofRound)}</span></div>
+                <div><span className="text-gray-400">Sent:</span> <span className="text-gray-300">{String(d.sentDate)}</span></div>
+                <div><span className="text-gray-400">Revisions:</span> <span className={cn('text-gray-300', Number(d.revisionCount) > 3 && 'text-amber-400')}>{String(d.revisionCount)}</span></div>
               </div>
 
               {/* Approval gate */}
@@ -1108,7 +1108,7 @@ export default function CreativeLensPage() {
                       <div className={cn('h-3 rounded-full transition-all', pct > 1 ? 'bg-red-400' : pct > 0.8 ? 'bg-amber-400' : 'bg-neon-cyan')} style={{ width: `${Math.min(pct * 100, 100)}%` }} />
                     </div>
                     <span className="w-24 text-right text-sm text-gray-300">{fmtCurrency(pb.lineActual)}</span>
-                    <span className={cn('w-24 text-right text-xs text-gray-500')}>/ {fmtCurrency(pb.lineEstimated)}</span>
+                    <span className={cn('w-24 text-right text-xs text-gray-400')}>/ {fmtCurrency(pb.lineEstimated)}</span>
                   </div>
                 );
               })}
@@ -1239,7 +1239,7 @@ export default function CreativeLensPage() {
                         {done && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className={cn('text-sm font-medium', done ? 'text-gray-500 line-through' : 'text-white')}>{item.title}</p>
+                        <p className={cn('text-sm font-medium', done ? 'text-gray-400 line-through' : 'text-white')}>{item.title}</p>
                         <p className={cn(ds.textMuted, 'text-xs')}>{String(d.format)} &middot; {String(d.project)}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -1286,7 +1286,7 @@ export default function CreativeLensPage() {
 
     return (
       <>
-        <div className={ds.modalBackdrop} onClick={() => setShowDetail(false)} />
+        <div className={ds.modalBackdrop} onClick={() => setShowDetail(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
         <div className={ds.modalContainer}>
           <div className={cn(ds.modalPanel, 'max-w-2xl')}>
             <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1321,8 +1321,8 @@ export default function CreativeLensPage() {
                   <div className="space-y-1.5">
                     {parseSafe<{ name: string; date: string; done: boolean }[]>(d.milestones, []).map((m, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
-                        {m.done ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /> : <CircleDot className="w-4 h-4 text-gray-500 shrink-0" />}
-                        <span className={cn(m.done ? 'text-gray-500' : 'text-white')}>{m.name}</span>
+                        {m.done ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" /> : <CircleDot className="w-4 h-4 text-gray-400 shrink-0" />}
+                        <span className={cn(m.done ? 'text-gray-400' : 'text-white')}>{m.name}</span>
                         <span className={cn(ds.textMuted, 'ml-auto text-xs')}>{m.date}</span>
                       </div>
                     ))}
@@ -1505,11 +1505,11 @@ export default function CreativeLensPage() {
       {mode !== 'dashboard' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Search ${currentType.toLowerCase()}s...`} className={cn(ds.input, 'pl-10')} />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={cn(ds.select, 'pl-10 pr-8')}>
               <option value="all">All statuses</option>
               {mode === 'proofs'
@@ -1558,7 +1558,7 @@ export default function CreativeLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

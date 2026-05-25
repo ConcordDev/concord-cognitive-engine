@@ -32,18 +32,18 @@ export function FavouritesPanel({ onSelect }: { onSelect?: (l: Listing) => void 
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Heart className="w-4 h-4 text-rose-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Saved homes</span>
-        <span className="ml-auto text-[10px] text-gray-500">{favourites.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{favourites.length}</span>
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : favourites.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Heart className="w-6 h-6 mx-auto mb-2 opacity-30" />Heart a listing to save it here.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Heart className="w-6 h-6 mx-auto mb-2 opacity-30" />Heart a listing to save it here.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {favourites.map(l => (
               <li key={l.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
-                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="text-base font-mono font-semibold text-white">${l.price.toLocaleString()}</div>
                   <div className="text-xs text-gray-300 truncate">{l.address}</div>
                   <div className="mt-0.5 flex items-center gap-3 text-[11px] text-gray-400">

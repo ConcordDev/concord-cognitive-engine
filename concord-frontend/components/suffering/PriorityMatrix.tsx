@@ -55,7 +55,7 @@ export function PriorityMatrix({ refreshKey }: { refreshKey: number }) {
       </h3>
       {err && <p className="text-xs text-red-400 mb-2">{err}</p>}
       {data && data.points.length === 0 && (
-        <p className="text-gray-500 text-sm text-center py-6">
+        <p className="text-gray-400 text-sm text-center py-6">
           No open pain points to prioritize. Resolved items are excluded.
         </p>
       )}
@@ -69,8 +69,8 @@ export function PriorityMatrix({ refreshKey }: { refreshKey: number }) {
               <div className="border-r border-dashed border-white/10" />
               <div />
             </div>
-            <span className="absolute left-1/2 -translate-x-1/2 bottom-1 text-[10px] text-gray-600">Effort →</span>
-            <span className="absolute left-1 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-gray-600">Impact →</span>
+            <span className="absolute left-1/2 -translate-x-1/2 bottom-1 text-[10px] text-gray-400">Effort →</span>
+            <span className="absolute left-1 top-1/2 -translate-y-1/2 -rotate-90 text-[10px] text-gray-400">Impact →</span>
             {data.points.map((p) => {
               // impact 1..10 on Y (inverted), effort 1..10 on X.
               const x = ((p.effort - 1) / 9) * 88 + 6;
@@ -105,15 +105,15 @@ export function PriorityMatrix({ refreshKey }: { refreshKey: number }) {
                     <span className="text-sm font-medium">{q.label}</span>
                     <span className="text-xs text-gray-400">{items.length}</span>
                   </div>
-                  <p className="text-[10px] text-gray-500 mb-2">{q.sub}</p>
+                  <p className="text-[10px] text-gray-400 mb-2">{q.sub}</p>
                   {items.length === 0 ? (
-                    <p className="text-[11px] text-gray-600">—</p>
+                    <p className="text-[11px] text-gray-400">—</p>
                   ) : (
                     <ul className="space-y-1">
                       {items.map((p) => (
                         <li key={p.id} className="text-xs text-gray-300 flex justify-between">
                           <span className="truncate">{p.title}</span>
-                          <span className="text-gray-500 shrink-0 ml-2">I{p.impact}/E{p.effort}</span>
+                          <span className="text-gray-400 shrink-0 ml-2">I{p.impact}/E{p.effort}</span>
                         </li>
                       ))}
                     </ul>

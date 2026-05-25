@@ -54,7 +54,7 @@ export function PublicGistGallery() {
         </div>
       </header>
       {gists.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">GitHub gists unreachable.</div>}
-      {gists.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+      {gists.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {(gists.data || []).map((g) => {
           const files = Object.values(g.files);
@@ -64,7 +64,7 @@ export function PublicGistGallery() {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="line-clamp-1 text-[12px] text-white">{g.description || `Gist ${g.id.slice(0, 8)}`}</div>
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                     <span>{g.owner?.login || '?'}</span>
                     <span>{files.length} files · {(totalSize / 1024).toFixed(1)} KB</span>
                     <span>{g.comments} comments</span>
@@ -77,7 +77,7 @@ export function PublicGistGallery() {
                     ))}
                   </div>
                 </div>
-                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+                <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
               </div>
             </a>
           );

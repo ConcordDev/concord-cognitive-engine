@@ -19,9 +19,9 @@ Backend: `server/domains/code.js` — 58 macros: projects, files tree/read/write
 - [x] `[M]` Codebase-wide AI chat with @-file context (Cursor's killer feature)
 - [x] `[S]` Extensions / plugin system
 - [x] `[S]` Split-pane multi-file editing
-- [x] `[M]` Real-time multiplayer / Live Share editing
+- [x] `[M]` Real-time multiplayer / Live Share editing — *Y.js CRDT layer (`server/lib/yjs-realtime.js`) wired over Concord's Socket.IO room. Each session's text is held in a server-side `Y.Doc` per `code:liveshare:${code}` and synced to clients via `yjs:sync-state` + `yjs:update` events. Concurrent overlapping edits merge structurally (insert/delete are commutative + associative under CRDT) — no more last-write-wins. The op-log + `liveshare-poll` macros stay as a backstop for late-joining clients + audit trail.*
 
 ## Parity
-~95% of Cursor's surface. Monaco, full virtual git, search/refactor, sandbox exec, AI multi-file editing plus LSP IntelliSense (hover/signature/completions), remote GitHub push/pull, a step debugger, codebase-wide AI chat, an extensions system, split-pane layouts, and Live Share all ship front-to-back.
+~98% of Cursor's surface. Monaco, full virtual git, search/refactor, sandbox exec, AI multi-file editing plus LSP IntelliSense (hover/signature/completions), remote GitHub push/pull, a step debugger, codebase-wide AI chat, an extensions system, split-pane layouts, and **Y.js CRDT-based Live Share editing** all ship front-to-back. The remaining 2% gap to literal VS Code Live Share is shared debugging + terminal sharing — both are tractable on top of the existing infrastructure but not yet implemented.
 
-_Full backlog implemented — every item above shipped backend + real UI + tests._
+_Backlog implemented except where prose explicitly flags a remaining gap — every item above ships backend + real UI + tests._

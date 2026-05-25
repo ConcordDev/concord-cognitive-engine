@@ -56,7 +56,7 @@ export function TimelineView({
   if (sorted.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 text-xs text-zinc-600"
+        className="flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950/40 text-xs text-zinc-400"
         style={{ height }}
       >
         No events on the timeline yet.

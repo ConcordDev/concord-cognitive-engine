@@ -170,7 +170,7 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Star className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Reviews &amp; ratings</span>
-          <span className="text-[10px] text-gray-500">{reviews.length}</span>
+          <span className="text-[10px] text-gray-400">{reviews.length}</span>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value as typeof filter)}
@@ -188,7 +188,7 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
             <div className="text-center">
               <div className="text-2xl font-bold text-amber-300">{avg.toFixed(1)}</div>
               <Stars value={Math.round(avg)} />
-              <div className="text-[10px] text-gray-500 mt-0.5">{total} ratings</div>
+              <div className="text-[10px] text-gray-400 mt-0.5">{total} ratings</div>
             </div>
             <div className="flex-1 space-y-1">
               {[5, 4, 3, 2, 1].map((n) => {
@@ -196,11 +196,11 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
                 const pct = total > 0 ? (count / total) * 100 : 0;
                 return (
                   <div key={n} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-3 text-gray-500">{n}</span>
+                    <span className="w-3 text-gray-400">{n}</span>
                     <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                       <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-6 text-right text-gray-500">{count}</span>
+                    <span className="w-6 text-right text-gray-400">{count}</span>
                   </div>
                 );
               })}
@@ -273,11 +273,11 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
         {/* Review list */}
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
             </div>
           ) : reviews.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">
+            <div className="px-3 py-10 text-center text-xs text-gray-400">
               <Star className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No reviews yet.
             </div>
@@ -288,11 +288,11 @@ export function ReviewsPanel({ sellerId }: ReviewsPanelProps) {
                   <div className="flex items-center gap-2">
                     <Stars value={rv.rating} />
                     <span className="text-xs text-white font-medium">{rv.title || 'Review'}</span>
-                    <span className="text-[10px] text-gray-500 ml-auto">
+                    <span className="text-[10px] text-gray-400 ml-auto">
                       {rv.reviewerName} · {new Date(rv.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="text-[10px] uppercase text-gray-600 font-mono">
+                  <div className="text-[10px] uppercase text-gray-400 font-mono">
                     {rv.targetType} · {rv.number}
                   </div>
                   {rv.body && <p className="text-xs text-gray-300">{rv.body}</p>}

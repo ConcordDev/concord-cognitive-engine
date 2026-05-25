@@ -53,7 +53,7 @@ export function CwTargetsPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading || !progress) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -74,9 +74,9 @@ export function CwTargetsPanel({ projectId }: { projectId: string }) {
               style={{ width: `${Math.min(100, progress.projectProgressPct || 0)}%` }} />
           </div>
         ) : (
-          <p className="text-[10px] text-zinc-600">Set a project word target in the Manuscript Studio header.</p>
+          <p className="text-[10px] text-zinc-400">Set a project word target in the Manuscript Studio header.</p>
         )}
-        <p className="text-[10px] text-zinc-500 mt-1.5">
+        <p className="text-[10px] text-zinc-400 mt-1.5">
           {progress.docsMet} of {progress.docsWithTargets} scene targets met ·
           {' '}{progress.sceneTargetSum.toLocaleString()} words across scene targets
         </p>
@@ -84,7 +84,7 @@ export function CwTargetsPanel({ projectId }: { projectId: string }) {
 
       {/* Per-scene targets */}
       {progress.documents.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No scenes yet. Add scenes in the Binder.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No scenes yet. Add scenes in the Binder.</p>
       ) : (
         <ul className="space-y-1.5">
           {progress.documents.map((d) => {
@@ -94,7 +94,7 @@ export function CwTargetsPanel({ projectId }: { projectId: string }) {
                 <div className="flex items-center gap-2">
                   <span className="flex-1 truncate text-xs font-medium text-zinc-100">{d.title}</span>
                   {d.met === true && <Check className="w-3.5 h-3.5 text-emerald-400" />}
-                  <span className="text-[11px] text-zinc-500">{d.wordCount.toLocaleString()}w</span>
+                  <span className="text-[11px] text-zinc-400">{d.wordCount.toLocaleString()}w</span>
                   <input
                     inputMode="numeric"
                     placeholder="target"
@@ -113,7 +113,7 @@ export function CwTargetsPanel({ projectId }: { projectId: string }) {
                       style={{ width: `${Math.min(100, pct)}%` }} />
                   </div>
                 )}
-                {pct != null && <p className="text-[10px] text-zinc-600">{pct}% of {d.targetWords.toLocaleString()}-word target</p>}
+                {pct != null && <p className="text-[10px] text-zinc-400">{pct}% of {d.targetWords.toLocaleString()}-word target</p>}
               </li>
             );
           })}

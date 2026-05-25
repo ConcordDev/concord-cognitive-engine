@@ -167,7 +167,7 @@ export function VoiceActionPanel() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         <div className="md:col-span-2">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Transcript (use [Speaker X]: for diarization)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Transcript (use [Speaker X]: for diarization)</label>
           <textarea value={transcript} onChange={(e) => setTranscript(e.target.value)} rows={6} className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[11px] text-white font-mono mt-1" />
         </div>
         <div className="space-y-2">
@@ -191,7 +191,7 @@ export function VoiceActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -223,14 +223,14 @@ export function VoiceActionPanel() {
           <div className={cn('rounded-md border p-2.5', SENT_COLOR[sentimentResult.overallLabel] ?? SENT_COLOR.neutral)}>
             <div className="text-[10px] uppercase tracking-wider font-semibold">Sentiment · {sentimentResult.sentimentArc}</div>
             <div className="text-2xl font-bold capitalize">{sentimentResult.overallLabel} <span className="text-sm text-zinc-400">{sentimentResult.overallScore}</span></div>
-            <div className="text-[10px] text-zinc-500">+{sentimentResult.segmentBreakdown.positive} / -{sentimentResult.segmentBreakdown.negative} / ={sentimentResult.segmentBreakdown.neutral} of {sentimentResult.segmentBreakdown.total}</div>
+            <div className="text-[10px] text-zinc-400">+{sentimentResult.segmentBreakdown.positive} / -{sentimentResult.segmentBreakdown.negative} / ={sentimentResult.segmentBreakdown.neutral} of {sentimentResult.segmentBreakdown.total}</div>
           </div>
         )}
         {keywordResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Keywords · density {keywordResult.keywordDensity}</div>
             {keywordResult.topKeywords.slice(0, 6).map((k, i) => <div key={i} className="text-[11px] text-zinc-300 mt-0.5"><span className="font-mono text-purple-200">{k.keyword}</span> ×{k.count}</div>)}
-            {keywordResult.notFound.length > 0 && <div className="text-[10px] text-zinc-500 italic mt-1">not found: {keywordResult.notFound.join(', ')}</div>}
+            {keywordResult.notFound.length > 0 && <div className="text-[10px] text-zinc-400 italic mt-1">not found: {keywordResult.notFound.join(', ')}</div>}
           </div>
         )}
       </div>

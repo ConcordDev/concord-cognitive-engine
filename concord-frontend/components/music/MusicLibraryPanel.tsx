@@ -78,7 +78,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -106,7 +106,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                   className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-zinc-900">
                   <ChevronRight className={cn('w-3.5 h-3.5 text-zinc-600 transition-transform', openPl === p.id && 'rotate-90')} />
                   <span className="text-xs text-zinc-200">{p.name}</span>
-                  <span className="text-[10px] text-zinc-500">{p.trackCount} tracks · {dur(p.durationSec)}</span>
+                  <span className="text-[10px] text-zinc-400">{p.trackCount} tracks · {dur(p.durationSec)}</span>
                 </button>
                 {openPl === p.id && (
                   <div className="border-t border-zinc-800 p-2 bg-zinc-950/50">
@@ -160,7 +160,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
         )}
 
         {tracks.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
             No tracks. Add music to your library.
           </div>
         ) : (
@@ -172,7 +172,7 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-zinc-200 truncate">{t.title}</p>
-                  <p className="text-[10px] text-zinc-500 truncate">{t.artist}{t.album ? ` · ${t.album}` : ''} · {dur(t.durationSec)}{t.playCount > 0 ? ` · ${t.playCount} plays` : ''}</p>
+                  <p className="text-[10px] text-zinc-400 truncate">{t.artist}{t.album ? ` · ${t.album}` : ''} · {dur(t.durationSec)}{t.playCount > 0 ? ` · ${t.playCount} plays` : ''}</p>
                 </div>
                 <button type="button" onClick={() => like(t.id)}
                   className={cn('shrink-0', t.liked ? 'text-emerald-400' : 'text-zinc-600 hover:text-zinc-400')}>

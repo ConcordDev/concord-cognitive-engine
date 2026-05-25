@@ -71,35 +71,35 @@ export function MarketsPulse() {
       {(global.isError || top.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko unreachable.</div>}
       <div className="grid grid-cols-4 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><DollarSign className="h-2.5 w-2.5" />Total mcap</div>
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><DollarSign className="h-2.5 w-2.5" />Total mcap</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{totalMcap > 0 ? `$${(totalMcap / 1e12).toFixed(2)}T` : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">24h change</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">24h change</div>
           <div className={`mt-0.5 font-mono text-lg ${change24 >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{change24 >= 0 ? '+' : ''}{change24.toFixed(2)}%</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Activity className="h-2.5 w-2.5" />Volume 24h</div>
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Activity className="h-2.5 w-2.5" />Volume 24h</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{totalVol > 0 ? `$${(totalVol / 1e9).toFixed(1)}B` : '—'}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Bitcoin className="h-2.5 w-2.5" />BTC dom</div>
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Bitcoin className="h-2.5 w-2.5" />BTC dom</div>
           <div className="mt-0.5 font-mono text-lg text-amber-300">{btcDom.toFixed(1)}%</div>
         </div>
       </div>
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => (
           <a key={c.id} href={`https://www.coingecko.com/en/coins/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded border border-emerald-500/15 bg-emerald-500/5 p-2 text-[11px] hover:border-emerald-500/40">
-            <span className="w-6 shrink-0 font-mono text-[10px] text-zinc-500">#{c.market_cap_rank}</span>
+            <span className="w-6 shrink-0 font-mono text-[10px] text-zinc-400">#{c.market_cap_rank}</span>
             <span className="w-12 shrink-0 font-mono font-bold text-emerald-200">{c.symbol.toUpperCase()}</span>
             <span className="flex-1 truncate text-zinc-100">{c.name}</span>
             <span className="font-mono text-zinc-100">${c.current_price.toLocaleString(undefined, { maximumFractionDigits: c.current_price > 1 ? 2 : 6 })}</span>
             <span className={`font-mono ${c.price_change_percentage_24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{c.price_change_percentage_24h >= 0 ? '+' : ''}{c.price_change_percentage_24h.toFixed(2)}%</span>
-            <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+            <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
           </a>
         ))}
       </div>
-      {(global.isPending || top.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling CoinGecko…</div>}
+      {(global.isPending || top.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling CoinGecko…</div>}
     </div>
   );
 }

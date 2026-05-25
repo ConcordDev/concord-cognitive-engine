@@ -36,7 +36,7 @@ export default function TermsOfServicePage() {
       {/* Page title */}
       <header className="mb-10">
         <h1 className="text-3xl font-bold text-white">Terms of Service</h1>
-        <p className="mt-2 text-sm text-zinc-500">Effective Date: {EFFECTIVE_DATE}</p>
+        <p className="mt-2 text-sm text-zinc-400">Effective Date: {EFFECTIVE_DATE}</p>
         <p className="mt-4 text-zinc-400 leading-relaxed">
           Welcome to Concord Cognitive Engine (&quot;Concord,&quot; &quot;we,&quot; &quot;us,&quot;
           or &quot;our&quot;). These Terms of Service (&quot;Terms&quot;) govern your access to and
@@ -545,7 +545,7 @@ export default function TermsOfServicePage() {
         </div>
 
         {/* Closing */}
-        <div className="mt-12 border-t border-lattice-border pt-6 text-xs text-zinc-600">
+        <div className="mt-12 border-t border-lattice-border pt-6 text-xs text-zinc-400">
           <p>
             These Terms of Service were last updated on {EFFECTIVE_DATE}. Previous versions of these
             Terms are available upon request.

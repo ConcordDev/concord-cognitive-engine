@@ -58,7 +58,7 @@ export function TimezoneTools() {
               type="button"
               onClick={() => setTab(t)}
               className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                tab === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                tab === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               {t === 'tz' ? 'TZ Convert' : t === 'import' ? 'Import iCal' : 'Export iCal'}
@@ -93,17 +93,17 @@ function TzConverter() {
     <div className="space-y-3">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">Time (local-ish)</label>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">Time (local-ish)</label>
           <input type="datetime-local" value={iso} onChange={(e) => setIso(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white" />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">From TZ</label>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">From TZ</label>
           <select value={fromTz} onChange={(e) => setFromTz(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {COMMON_TZ.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">To TZ</label>
+          <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">To TZ</label>
           <select value={toTz} onChange={(e) => setToTz(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white">
             {COMMON_TZ.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
           </select>
@@ -119,12 +119,12 @@ function TzConverter() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 font-mono text-sm">
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{fromTz}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{fromTz}</div>
                 <div className="text-cyan-300">{result.inFromTz}</div>
               </div>
               <ArrowRight className="h-4 w-4 text-zinc-600" />
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">{toTz}</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">{toTz}</div>
                 <div className="text-emerald-300">{result.inToTz}</div>
               </div>
             </div>
@@ -172,11 +172,11 @@ function IcalImport() {
       {error && <div className="flex items-center gap-2 rounded border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-300"><AlertTriangle className="h-3 w-3" /> {error}</div>}
       {events.length > 0 && (
         <div className="space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Parsed {events.length} events</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Parsed {events.length} events</div>
           {events.slice(0, 30).map((ev) => (
             <div key={ev.uid} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
               <div className="font-medium text-white">{ev.summary}</div>
-              <div className="font-mono text-[10px] text-zinc-500">{ev.dtstart}{ev.dtend ? ` → ${ev.dtend}` : ''}{ev.location ? ` · ${ev.location}` : ''}</div>
+              <div className="font-mono text-[10px] text-zinc-400">{ev.dtstart}{ev.dtend ? ` → ${ev.dtend}` : ''}{ev.location ? ` · ${ev.location}` : ''}</div>
             </div>
           ))}
         </div>

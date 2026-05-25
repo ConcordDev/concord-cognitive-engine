@@ -44,7 +44,7 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = series.map((x) => ({ date: x.date.slice(5), hours: x.hoursSlept }));
@@ -57,11 +57,11 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold text-sky-300">{avgHours}h</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Avg sleep (14d)</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Avg sleep (14d)</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-center">
             <p className="text-2xl font-bold text-zinc-100">{avgQuality}/5</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Avg quality</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Avg quality</p>
           </div>
         </div>
       )}
@@ -96,7 +96,7 @@ export function MhSleepPanel({ onChange }: { onChange: () => void }) {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-8 text-center">Log your sleep to see the pattern.</p>
+          <p className="text-[11px] text-zinc-400 italic py-8 text-center">Log your sleep to see the pattern.</p>
         )}
       </div>
     </div>

@@ -91,10 +91,10 @@ export function CitationGraph({
 
   if (!result || result.nodes.length === 0) {
     return (
-      <div className="flex h-[420px] flex-col items-center justify-center rounded-lg border border-lattice-border bg-lattice-deep text-gray-500">
+      <div className="flex h-[420px] flex-col items-center justify-center rounded-lg border border-lattice-border bg-lattice-deep text-gray-400">
         <Network className="mb-2 h-8 w-8" />
         <p className="text-sm">No citation links in the current corpus.</p>
-        <p className="text-xs text-gray-600">Load DTUs with parents/cites to see the graph.</p>
+        <p className="text-xs text-gray-400">Load DTUs with parents/cites to see the graph.</p>
       </div>
     );
   }
@@ -207,7 +207,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded border border-lattice-border bg-lattice-surface p-2 text-center">
       <p className="text-sm font-bold text-white">{value}</p>
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[10px] text-gray-400">{label}</p>
     </div>
   );
 }

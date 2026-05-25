@@ -41,7 +41,7 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -60,7 +60,7 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
       </section>
 
       {categories.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No categories yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No categories yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {categories.map((c) => (
@@ -68,7 +68,7 @@ export function FmCategoriesPanel({ onChange }: { onChange: () => void }) {
               <FolderTree className="w-4 h-4 text-orange-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-zinc-100">{c.name}</p>
-                {c.description && <p className="text-[10px] text-zinc-500">{c.description}</p>}
+                {c.description && <p className="text-[10px] text-zinc-400">{c.description}</p>}
               </div>
               <span className="text-[11px] text-zinc-400">{c.topicCount} topics</span>
               <button type="button" onClick={() => del(c.id)} className="text-zinc-600 hover:text-rose-400">

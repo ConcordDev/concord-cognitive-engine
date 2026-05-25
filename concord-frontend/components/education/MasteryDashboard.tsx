@@ -48,7 +48,7 @@ export function MasteryDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-gray-500 py-8">
+      <div className="flex items-center gap-2 text-xs text-gray-400 py-8">
         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading mastery dashboard…
       </div>
     );
@@ -56,7 +56,7 @@ export function MasteryDashboard() {
 
   if (!report || report.totalSkills === 0) {
     return (
-      <div className="text-center py-12 text-sm text-gray-500">
+      <div className="text-center py-12 text-sm text-gray-400">
         No skill data yet. Create skills and practice them to build your knowledge state.
       </div>
     );
@@ -70,22 +70,22 @@ export function MasteryDashboard() {
         <div className="panel p-3 border border-white/10 rounded-lg">
           <Brain className="w-4 h-4 text-neon-cyan mb-1" />
           <p className="text-2xl font-bold text-white">{report.overallMastery}%</p>
-          <p className="text-[10px] text-gray-500">Overall mastery</p>
+          <p className="text-[10px] text-gray-400">Overall mastery</p>
         </div>
         <div className="panel p-3 border border-white/10 rounded-lg">
           <Flame className="w-4 h-4 text-amber-400 mb-1" />
           <p className="text-2xl font-bold text-white">{report.streak}</p>
-          <p className="text-[10px] text-gray-500">Day streak (best {report.bestStreak})</p>
+          <p className="text-[10px] text-gray-400">Day streak (best {report.bestStreak})</p>
         </div>
         <div className="panel p-3 border border-white/10 rounded-lg">
           <Trophy className="w-4 h-4 text-neon-green mb-1" />
           <p className="text-2xl font-bold text-white">{report.masteredSkills}</p>
-          <p className="text-[10px] text-gray-500">Skills mastered ({report.proficientSkills} proficient+)</p>
+          <p className="text-[10px] text-gray-400">Skills mastered ({report.proficientSkills} proficient+)</p>
         </div>
         <div className="panel p-3 border border-white/10 rounded-lg">
           <Video className="w-4 h-4 text-purple-400 mb-1" />
           <p className="text-2xl font-bold text-white">{report.videosCompleted}</p>
-          <p className="text-[10px] text-gray-500">Videos completed</p>
+          <p className="text-[10px] text-gray-400">Videos completed</p>
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export function MasteryDashboard() {
             <div key={sk.skillId} className="flex items-center gap-3 p-2 rounded border border-white/5 bg-white/[0.02]">
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-white truncate">{sk.name}</div>
-                <div className="text-[10px] text-gray-500">
+                <div className="text-[10px] text-gray-400">
                   {sk.subject} · {sk.attempts} attempt{sk.attempts !== 1 ? 's' : ''}
                   {sk.lastPracticedAt ? ` · last ${new Date(sk.lastPracticedAt).toLocaleDateString()}` : ''}
                 </div>

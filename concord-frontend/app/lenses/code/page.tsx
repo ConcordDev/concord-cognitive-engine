@@ -1700,7 +1700,7 @@ export default function CodeLensPage() {
                     <div className="flex-1 overflow-y-auto py-2">
                       {files.length === 0 ? (
                         <div className="px-3 py-4 text-center">
-                          <p className="text-xs text-gray-500 mb-2">No files yet</p>
+                          <p className="text-xs text-gray-400 mb-2">No files yet</p>
                           <button
                             onClick={() => setFiles(TEMPLATE_FILES)}
                             className="text-xs text-green-400 hover:text-green-300 underline"
@@ -1784,7 +1784,7 @@ export default function CodeLensPage() {
                     >
                       Plan multi-file edit (⌘⏎)
                     </button>
-                    <p className="text-[10px] text-gray-500">Reads from {tabs.length} open tab{tabs.length === 1 ? '' : 's'} + {savedScripts.length} saved scripts (max 12).</p>
+                    <p className="text-[10px] text-gray-400">Reads from {tabs.length} open tab{tabs.length === 1 ? '' : 's'} + {savedScripts.length} saved scripts (max 12).</p>
                   </div>
                 )}
                 {(activity === 'debug' || activity === 'extensions') && (
@@ -1792,12 +1792,12 @@ export default function CodeLensPage() {
                     <p className="text-gray-300 font-semibold">
                       {activity === 'debug' ? 'Step debugger' : 'Extensions'}
                     </p>
-                    <p className="text-gray-500">
+                    <p className="text-gray-400">
                       {activity === 'debug'
                         ? 'Set breakpoints, watch expressions and inspect the call stack.'
                         : 'Browse and install editor extensions: formatters, linters, language packs.'}
                     </p>
-                    <p className="text-gray-500">
+                    <p className="text-gray-400">
                       Open the <span className="text-cyan-400">Advanced IDE</span> panel above the editor —
                       it surfaces the debugger, extensions, remote git, codebase chat, split view and Live Share.
                     </p>
@@ -1832,8 +1832,7 @@ export default function CodeLensPage() {
                   onClick={() => {
                     setActiveTabId(tab.id);
                     if (tab.scriptType) setActiveScriptType(tab.scriptType);
-                  }}
-                >
+                  }} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <FileCode className="w-4 h-4 text-neon-blue" />
                   <span className="text-sm">{tab.name}</span>
                   {tab.isDirty && <span className="w-2 h-2 bg-neon-blue rounded-full" />}
@@ -1990,7 +1989,7 @@ export default function CodeLensPage() {
                           <button
                             onClick={() => setOutputTab('output')}
                             className={`flex items-center gap-2 px-3 py-1 rounded-t text-sm transition-colors ${
-                              outputTab === 'output' ? 'text-neon-blue bg-lattice-deep' : 'text-gray-500 hover:text-gray-300'
+                              outputTab === 'output' ? 'text-neon-blue bg-lattice-deep' : 'text-gray-400 hover:text-gray-300'
                             }`}
                           >
                             <Play className="w-3.5 h-3.5" />
@@ -1999,7 +1998,7 @@ export default function CodeLensPage() {
                           <button
                             onClick={() => setOutputTab('console')}
                             className={`flex items-center gap-2 px-3 py-1 rounded-t text-sm transition-colors ${
-                              outputTab === 'console' ? 'text-neon-blue bg-lattice-deep' : 'text-gray-500 hover:text-gray-300'
+                              outputTab === 'console' ? 'text-neon-blue bg-lattice-deep' : 'text-gray-400 hover:text-gray-300'
                             }`}
                           >
                             <Terminal className="w-3.5 h-3.5" />
@@ -2066,10 +2065,10 @@ export default function CodeLensPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
                               <Terminal className="w-12 h-12 mb-4 opacity-30" />
                               <p className="text-sm">Click &quot;Run&quot; to execute</p>
-                              <p className="text-xs mt-1 text-gray-600">Output will appear here</p>
+                              <p className="text-xs mt-1 text-gray-400">Output will appear here</p>
                             </div>
                           )
                         ) : (
@@ -2080,10 +2079,10 @@ export default function CodeLensPage() {
                                 <div key={idx} className="font-mono text-xs text-gray-400">{line}</div>
                               ))
                             ) : (
-                              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                              <div className="flex flex-col items-center justify-center h-full text-gray-400">
                                 <Terminal className="w-12 h-12 mb-4 opacity-30" />
                                 <p className="text-sm">Script console output</p>
-                                <p className="text-xs mt-1 text-gray-600">Log messages will appear here</p>
+                                <p className="text-xs mt-1 text-gray-400">Log messages will appear here</p>
                               </div>
                             )}
                           </div>
@@ -2108,7 +2107,7 @@ export default function CodeLensPage() {
           />
 
           {/* Status Bar */}
-          <div className="flex items-center justify-between px-3 py-1 bg-lattice-deep border-t border-lattice-border text-xs text-gray-500">
+          <div className="flex items-center justify-between px-3 py-1 bg-lattice-deep border-t border-lattice-border text-xs text-gray-400">
             <div className="flex items-center gap-4">
               <span>Ln 1, Col 1</span>
               <span>Spaces: {settings.editor.tabSize}</span>
@@ -2181,15 +2180,13 @@ export default function CodeLensPage() {
     {paletteOpen && (
       <div
         className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center z-[100] pt-[14vh]"
-        onClick={() => setPaletteOpen(false)}
-      >
+        onClick={() => setPaletteOpen(false)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div
           className="bg-[#0d1117] border border-cyan-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"
-          aria-label="Command palette"
-        >
+          aria-label="Command palette" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-cyan-400">
               <circle cx="11" cy="11" r="8" />
@@ -2276,10 +2273,10 @@ export default function CodeLensPage() {
             </div>
             <div className="max-h-96 overflow-y-auto">
               {findQuery.trim().length < 2 && (
-                <div className="px-4 py-8 text-center text-xs text-gray-500">Type at least 2 characters</div>
+                <div className="px-4 py-8 text-center text-xs text-gray-400">Type at least 2 characters</div>
               )}
               {findQuery.trim().length >= 2 && findHits.length === 0 && (
-                <div className="px-4 py-8 text-center text-xs text-gray-500">
+                <div className="px-4 py-8 text-center text-xs text-gray-400">
                   No matches in {tabs.length} tab{tabs.length === 1 ? '' : 's'} or {savedScripts.length} saved script{savedScripts.length === 1 ? '' : 's'}
                 </div>
               )}
@@ -2295,7 +2292,7 @@ export default function CodeLensPage() {
                     onClick={() => jumpToFindHit(hit)}
                     className="w-full text-left px-4 py-2 border-b border-lattice-border hover:bg-lattice-elevated transition-colors group"
                   >
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">
                       <span className={hit.source === 'tab' ? 'text-neon-cyan' : 'text-neon-purple'}>{hit.source}</span>
                       <span>·</span>
                       <span className="font-mono text-gray-400">{hit.sourceName}</span>
@@ -2312,7 +2309,7 @@ export default function CodeLensPage() {
               })}
             </div>
             {findHits.length > 0 && (
-              <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-500 flex justify-between">
+              <div className="px-4 py-2 border-t border-lattice-border text-[10px] text-gray-400 flex justify-between">
                 <span>{findHits.length} match{findHits.length === 1 ? '' : 'es'}{findHits.length === 200 ? ' (capped)' : ''}</span>
                 <span>{tabs.length} tab{tabs.length === 1 ? '' : 's'} · {savedScripts.length} saved</span>
               </div>
@@ -2379,7 +2376,7 @@ export default function CodeLensPage() {
                 </div>
               )}
               <div className="flex items-center justify-between gap-2 pt-1">
-                <div className="text-[11px] text-gray-500">
+                <div className="text-[11px] text-gray-400">
                   {aiEditResult ? '⏎ apply · ⎋ cancel' : '⏎ generate · ⎋ cancel'}
                 </div>
                 <div className="flex items-center gap-2">
@@ -2458,7 +2455,7 @@ export default function CodeLensPage() {
             )}
             <button
               onClick={() => setAiChatHistory([])}
-              className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-gray-500 hover:text-white hover:border-white/30"
+              className="text-[10px] px-2 py-0.5 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/30"
               title="Clear thread"
             >clear</button>
             <button onClick={() => setAiChatOpen(false)} className="p-1 rounded hover:bg-lattice-elevated text-gray-400" title="Close (⌘L)">
@@ -2467,10 +2464,10 @@ export default function CodeLensPage() {
           </header>
           <div ref={aiChatScrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {aiChatHistory.length === 0 && (
-              <div className="text-center py-8 text-xs text-gray-500 space-y-2">
+              <div className="text-center py-8 text-xs text-gray-400 space-y-2">
                 <Sparkles className="w-6 h-6 text-neon-purple/40 mx-auto" />
                 <p>Ask anything about <span className="text-neon-cyan">{activeTab.name}</span>.</p>
-                <p className="text-[10px] text-gray-600">Try: &quot;explain this&quot; · &quot;refactor for readability&quot; · &quot;write a test for the main function&quot;</p>
+                <p className="text-[10px] text-gray-400">Try: &quot;explain this&quot; · &quot;refactor for readability&quot; · &quot;write a test for the main function&quot;</p>
               </div>
             )}
             {aiChatHistory.map((m, i) => {
@@ -2478,7 +2475,7 @@ export default function CodeLensPage() {
               const codeBlocks = isUser ? [] : Array.from(m.content.matchAll(/```[a-zA-Z]*\n([\s\S]*?)```/g)).map((mm) => mm[1].trim());
               return (
                 <div key={i} className={cn('flex flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
-                  <div className="text-[9px] uppercase tracking-wider text-gray-600">{isUser ? 'you' : 'pair'}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-400">{isUser ? 'you' : 'pair'}</div>
                   <div className={cn(
                     'max-w-[90%] px-3 py-2 rounded-lg text-xs whitespace-pre-wrap break-words',
                     isUser ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-gray-100' : 'bg-lattice-deep border border-lattice-border text-gray-200',
@@ -2505,7 +2502,7 @@ export default function CodeLensPage() {
               );
             })}
             {aiChatPending && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 <span>thinking… {aiChatElapsed.toFixed(1)}s</span>
                 <button
@@ -2532,7 +2529,7 @@ export default function CodeLensPage() {
               disabled={aiChatPending}
               className="w-full px-3 py-2 bg-lattice-deep border border-lattice-border rounded text-xs text-white placeholder-gray-500 focus:outline-none focus:border-neon-purple/60 resize-none"
             />
-            <div className="flex items-center justify-between text-[10px] text-gray-500">
+            <div className="flex items-center justify-between text-[10px] text-gray-400">
               <span>{aiChatHistory.length} message{aiChatHistory.length === 1 ? '' : 's'}</span>
               {aiChatPending ? (
                 <button

@@ -87,7 +87,7 @@ export function AlbumView({ album, onArtistClick, onPurchase, onBack }: AlbumVie
 
       {/* Track list */}
       <div>
-        <div className="flex items-center gap-4 px-3 py-2 text-[10px] text-gray-500 uppercase border-b border-white/5">
+        <div className="flex items-center gap-4 px-3 py-2 text-[10px] text-gray-400 uppercase border-b border-white/5">
           <span className="w-8 text-center">#</span>
           <span className="flex-1">Title</span>
           <span className="w-20 text-right">Plays</span>

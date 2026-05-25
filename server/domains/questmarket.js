@@ -112,6 +112,7 @@ export default function registerQuestmarketActions(registerLensAction) {
    * artifact.data: { difficulty, reward, completionCriteria, maxParticipants, deadline, completionRate }
    */
   registerLensAction("questmarket", "balanceDifficulty", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const difficulty = (data.difficulty || "medium").toLowerCase();
     const reward = parseFloat(data.reward) || 0;
@@ -163,7 +164,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         overallBalance: adjustments.length === 0 ? "Well balanced" : `${adjustments.length} adjustment(s) recommended`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * leaderboardRank
@@ -171,6 +173,7 @@ export default function registerQuestmarketActions(registerLensAction) {
    * artifact.data: { participants: [{ name, xp, questsCompleted, streak, achievements }] }
    */
   registerLensAction("questmarket", "leaderboardRank", (ctx, artifact, _params) => {
+  try {
     const participants = artifact.data?.participants || [];
     if (participants.length === 0) {
       return { ok: true, result: { message: "No participants to rank. Add quest completions to generate leaderboard." } };
@@ -225,7 +228,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         tierDistribution: ranked.reduce((acc, p) => { acc[p.tier] = (acc[p.tier] || 0) + 1; return acc; }, {}),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * achievementUnlock
@@ -233,6 +237,7 @@ export default function registerQuestmarketActions(registerLensAction) {
    * artifact.data: { playerStats: { questsCompleted, totalXP, streakDays, uniqueCategories }, achievements: [existing] }
    */
   registerLensAction("questmarket", "achievementUnlock", (ctx, artifact, _params) => {
+  try {
     const stats = artifact.data?.playerStats || {};
     const existing = (artifact.data?.achievements || []).map(a => a.id || a.name || a);
 
@@ -272,7 +277,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         nextUp: locked.slice(0, 3).map(a => ({ name: a.name, rarity: a.rarity, desc: a.desc })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * guildScore
@@ -280,6 +286,7 @@ export default function registerQuestmarketActions(registerLensAction) {
    * artifact.data: { guildName, members: [{ name, xp, questsCompleted }], guildQuests }
    */
   registerLensAction("questmarket", "guildScore", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const members = data.members || [];
     const guildQuests = parseInt(data.guildQuests) || 0;
@@ -323,7 +330,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         topContributors,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rewardEconomics
@@ -331,6 +339,7 @@ export default function registerQuestmarketActions(registerLensAction) {
    * artifact.data: { quests: [{ reward, difficulty, status, completedAt }] }
    */
   registerLensAction("questmarket", "rewardEconomics", (ctx, artifact, _params) => {
+  try {
     const quests = artifact.data?.quests || [];
     if (quests.length === 0) {
       return { ok: true, result: { message: "No quest data. Create quests to analyze reward economics." } };
@@ -375,7 +384,8 @@ export default function registerQuestmarketActions(registerLensAction) {
           : "Reward economy is sustainable",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ────────────────────────────────────────────────────────────
   //  Transactional lifecycle layer (real per-user persistent data)
@@ -404,6 +414,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   // reward 0 escrows nothing.
 
   registerLensAction("questmarket", "postQuest", (ctx, _artifact, params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = qmActor(ctx);
@@ -443,7 +454,8 @@ export default function registerQuestmarketActions(registerLensAction) {
     evaluateAchievements(s, userId);
     qmSave();
     return { ok: true, result: { quest, walletBalance: w.balance, escrowed: w.escrowed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("questmarket", "cancelQuest", (ctx, _artifact, params = {}) => {
     const s = qmState();
@@ -474,6 +486,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   // ── Discovery + filtering ──
 
   registerLensAction("questmarket", "listQuests", (ctx, _artifact, params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = qmActor(ctx);
@@ -523,7 +536,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         allTags: Array.from(new Set(Array.from(s.quests.values()).flatMap((q) => q.tags))).sort(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Accept → submit → verify lifecycle ──
 
@@ -731,6 +745,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   // ── Reputation / rank progression ──
 
   registerLensAction("questmarket", "myReputation", (ctx, _artifact, _params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = qmActor(ctx);
@@ -750,11 +765,13 @@ export default function registerQuestmarketActions(registerLensAction) {
         ranks: RANKS,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Reputation leaderboard (live, from real claim history) ──
 
   registerLensAction("questmarket", "reputationBoard", (ctx, _artifact, params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const limit = Math.max(1, Math.min(100, Math.round(Number(params.limit) || 25)));
@@ -780,11 +797,13 @@ export default function registerQuestmarketActions(registerLensAction) {
         myPosition: board.find((r) => r.userId === me)?.position || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Achievement showcase ──
 
   registerLensAction("questmarket", "achievementShowcase", (ctx, _artifact, params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = params.userId ? String(params.userId) : qmActor(ctx);
@@ -814,7 +833,8 @@ export default function registerQuestmarketActions(registerLensAction) {
         xp: rep.xp,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Guild membership + shared quests ──
 
@@ -898,6 +918,7 @@ export default function registerQuestmarketActions(registerLensAction) {
   });
 
   registerLensAction("questmarket", "guildDetail", (ctx, _artifact, params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const guild = s.guilds.get(String(params.guildId || ""));
@@ -921,11 +942,13 @@ export default function registerQuestmarketActions(registerLensAction) {
         sharedQuestCount: sharedQuests.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Marketplace overview (real aggregate stats) ──
 
   registerLensAction("questmarket", "marketStats", (ctx, _artifact, _params = {}) => {
+  try {
     const s = qmState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const quests = Array.from(s.quests.values());
@@ -954,5 +977,6 @@ export default function registerQuestmarketActions(registerLensAction) {
         recentLedger: s.ledger.slice(-15).reverse(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

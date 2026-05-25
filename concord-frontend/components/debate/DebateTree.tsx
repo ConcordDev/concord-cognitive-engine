@@ -65,14 +65,14 @@ export function DebateTree() {
     await reload(); await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Scale className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-white">Argument Trees</h3>
-        <span className="text-[11px] text-gray-500">Kialo shape</span>
+        <span className="text-[11px] text-gray-400">Kialo shape</span>
       </div>
 
       <div className="flex gap-1.5 mb-3">
@@ -85,13 +85,13 @@ export function DebateTree() {
 
       <div className="grid sm:grid-cols-[220px_1fr] gap-3">
         <ul className="space-y-1">
-          {debates.length === 0 && <li className="text-[11px] text-gray-600 italic">No debates yet.</li>}
+          {debates.length === 0 && <li className="text-[11px] text-gray-400 italic">No debates yet.</li>}
           {debates.map(d => (
             <li key={d.id} className="group flex items-center gap-1">
               <button onClick={() => open(d.id)}
                 className={cn('flex-1 text-left rounded-lg px-2.5 py-2 border', active?.id === d.id ? 'bg-cyan-600/15 border-cyan-700/50' : 'bg-black/30 border-white/10 hover:border-white/20')}>
                 <p className="text-xs font-semibold text-white line-clamp-2">{d.thesis}</p>
-                <p className="text-[10px] text-gray-500">{d.claimCount} claims · {d.score.supportPct}% for</p>
+                <p className="text-[10px] text-gray-400">{d.claimCount} claims · {d.score.supportPct}% for</p>
               </button>
               <button onClick={() => del(d.id)} className="opacity-0 group-hover:opacity-100 p-1 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -108,7 +108,7 @@ export function DebateTree() {
                     score.supportPct >= 65 ? 'text-emerald-400' : score.supportPct >= 50 ? 'text-cyan-400' : score.supportPct >= 35 ? 'text-amber-400' : 'text-rose-400')}>
                     {score.supportPct}%
                   </p>
-                  <p className="text-[9px] text-gray-500 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
+                  <p className="text-[9px] text-gray-400 capitalize">{score.verdict.replace(/-/g, ' ')}</p>
                 </div>
               )}
             </div>
@@ -121,7 +121,7 @@ export function DebateTree() {
             <ClaimChildren claims={active.claims} parentId={null} depth={0} onAdd={addClaim} onVote={vote} onDelete={deleteClaim} />
           </div>
         ) : (
-          <div className="bg-black/20 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-xs text-gray-500 min-h-[160px]">
+          <div className="bg-black/20 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-xs text-gray-400 min-h-[160px]">
             Select or create a debate.
           </div>
         )}
@@ -150,7 +150,7 @@ function ClaimChildren({ claims, parentId, depth, onAdd, onVote, onDelete }: {
                 {c.stance}
               </span>
               <p className="text-xs text-gray-200 flex-1">{c.text}</p>
-              <span className="text-[10px] text-gray-500 shrink-0">{c.weight.toFixed(1)}</span>
+              <span className="text-[10px] text-gray-400 shrink-0">{c.weight.toFixed(1)}</span>
               <button onClick={() => onVote(c.id, 5)} className="text-gray-600 hover:text-emerald-400"><ThumbsUp className="w-3 h-3" /></button>
               <button onClick={() => onVote(c.id, 1)} className="text-gray-600 hover:text-rose-400"><ThumbsDown className="w-3 h-3" /></button>
               <button onClick={() => onDelete(c.id)} className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>

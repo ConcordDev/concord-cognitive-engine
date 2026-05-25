@@ -186,21 +186,21 @@ function FieldsTab({
           />
           <div className="grid grid-cols-3 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase text-gray-500">Acreage</span>
+              <span className="text-[10px] uppercase text-gray-400">Acreage</span>
               <input type="number" min="0" step="0.1"
                 value={draft.acreage}
                 onChange={(e) => setDraft({ ...draft, acreage: Number(e.target.value) })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase text-gray-500">Latitude</span>
+              <span className="text-[10px] uppercase text-gray-400">Latitude</span>
               <input type="number" min="-90" max="90" step="0.0001"
                 value={draft.lat}
                 onChange={(e) => setDraft({ ...draft, lat: Number(e.target.value) })}
                 className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] uppercase text-gray-500">Longitude</span>
+              <span className="text-[10px] uppercase text-gray-400">Longitude</span>
               <input type="number" min="-180" max="180" step="0.0001"
                 value={draft.lng}
                 onChange={(e) => setDraft({ ...draft, lng: Number(e.target.value) })}
@@ -226,14 +226,14 @@ function FieldsTab({
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : fields.length === 0 ? (
         <div className="text-center py-8 px-4">
           <Sprout className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-          <p className="text-xs text-gray-500">No fields yet</p>
-          <p className="text-[10px] text-gray-600 mt-1">Add your first field with lat/lng to unlock weather + soil data.</p>
+          <p className="text-xs text-gray-400">No fields yet</p>
+          <p className="text-[10px] text-gray-400 mt-1">Add your first field with lat/lng to unlock weather + soil data.</p>
         </div>
       ) : (
         fields.map((f) => (
@@ -244,15 +244,14 @@ function FieldsTab({
                 ? 'border-emerald-500/50 bg-emerald-500/10'
                 : 'border-white/10 bg-black/20 hover:bg-white/5',
             )}
-            onClick={() => onSelect(f)}
-          >
+            onClick={() => onSelect(f)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-100">{f.name}</p>
-                <p className="text-[11px] text-gray-500 mt-0.5">
+                <p className="text-[11px] text-gray-400 mt-0.5">
                   {f.acreage}ac · {f.soilType}{f.currentCrop && ` · ${f.currentCrop}`}
                 </p>
-                <p className="text-[10px] text-gray-600 font-mono mt-0.5">
+                <p className="text-[10px] text-gray-400 font-mono mt-0.5">
                   {f.lat.toFixed(4)}, {f.lng.toFixed(4)}
                 </p>
               </div>
@@ -307,7 +306,7 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
   if (!field) {
     return (
       <div className="p-4">
-        <p className="text-xs text-gray-500 mb-2">Pick a field to view weather + soil data.</p>
+        <p className="text-xs text-gray-400 mb-2">Pick a field to view weather + soil data.</p>
         {fields.map((f) => (
           <button key={f.id} type="button" onClick={() => onSelect(f)}
             className="block w-full text-left px-2 py-1.5 text-sm text-gray-300 hover:bg-white/5 rounded">
@@ -322,11 +321,11 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
     <div className="p-3 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-gray-200">{field.name}</h3>
-        <span className="text-[10px] text-gray-500 font-mono">{field.lat.toFixed(3)}, {field.lng.toFixed(3)}</span>
+        <span className="text-[10px] text-gray-400 font-mono">{field.lat.toFixed(3)}, {field.lng.toFixed(3)}</span>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading weather…
         </div>
       ) : error ? (
@@ -335,7 +334,7 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
         <>
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded border border-white/10 bg-black/20 p-3">
-              <p className="text-[10px] uppercase text-gray-500 mb-1 flex items-center gap-1">
+              <p className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1">
                 <ThermometerSun className="w-3 h-3" /> Today
               </p>
               <p className="text-sm text-gray-100">
@@ -348,7 +347,7 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
               )}
             </div>
             <div className="rounded border border-white/10 bg-black/20 p-3">
-              <p className="text-[10px] uppercase text-gray-500 mb-1 flex items-center gap-1">
+              <p className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1">
                 <Droplets className="w-3 h-3" /> Soil
               </p>
               {weather.currentSoilMoisture != null && (
@@ -371,12 +370,12 @@ function WeatherTab({ field, fields, onSelect }: { field: Field | null; fields: 
                 <span className="text-gray-400 font-mono">{d.date.slice(5)}</span>
                 <span className="text-gray-200">{d.tempMin?.toFixed(0)}–{d.tempMax?.toFixed(0)}°</span>
                 <span className="text-cyan-300">{d.precip?.toFixed(1) || '0.0'} mm</span>
-                <span className="text-gray-500 text-right">ET₀ {d.et0?.toFixed(1) || '–'}</span>
+                <span className="text-gray-400 text-right">ET₀ {d.et0?.toFixed(1) || '–'}</span>
               </div>
             ))}
           </div>
 
-          <p className="text-[10px] text-gray-600 italic">Source: {weather.source}</p>
+          <p className="text-[10px] text-gray-400 italic">Source: {weather.source}</p>
         </>
       ) : null}
     </div>
@@ -434,7 +433,7 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
   if (!field) {
     return (
       <div className="p-4">
-        <p className="text-xs text-gray-500 mb-2">Pick a field to view its scouting log.</p>
+        <p className="text-xs text-gray-400 mb-2">Pick a field to view its scouting log.</p>
         {fields.map((f) => (
           <button key={f.id} type="button" onClick={() => onSelect(f)}
             className="block w-full text-left px-2 py-1.5 text-sm text-gray-300 hover:bg-white/5 rounded">
@@ -490,11 +489,11 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : pins.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-8">No observations yet.</p>
+        <p className="text-center text-xs text-gray-400 py-8">No observations yet.</p>
       ) : (
         pins.map((p) => (
           <div key={p.id} className="rounded-md border border-white/10 bg-black/20 p-3 hover:bg-white/5 group">
@@ -504,8 +503,8 @@ function ScoutTab({ field, fields, onSelect }: { field: Field | null; fields: Fi
                   <span className={cn('text-[10px] px-1.5 py-0.5 rounded uppercase', SEVERITY_COLOR[p.severity])}>
                     {p.severity}
                   </span>
-                  <span className="text-[10px] text-gray-500 uppercase">{p.category}</span>
-                  <span className="text-[10px] text-gray-600 ml-auto">{new Date(p.createdAt).toLocaleDateString()}</span>
+                  <span className="text-[10px] text-gray-400 uppercase">{p.category}</span>
+                  <span className="text-[10px] text-gray-400 ml-auto">{new Date(p.createdAt).toLocaleDateString()}</span>
                 </div>
                 <p className="text-xs text-gray-200">{p.note}</p>
               </div>

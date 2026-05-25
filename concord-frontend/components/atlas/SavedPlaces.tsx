@@ -153,7 +153,7 @@ export function SavedPlaces() {
           <div className="grid gap-2 sm:grid-cols-[1fr_140px]">
             <input
               autoFocus
-              className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-rose-500/40 focus:outline-none"
+              className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-rose-500/40 focus:outline-none"
               placeholder="Address or place name (e.g. 1600 Pennsylvania Ave)"
               value={newQuery}
               onChange={(e) => setNewQuery(e.target.value)}
@@ -163,7 +163,7 @@ export function SavedPlaces() {
             </select>
           </div>
           <input
-            className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-rose-500/40 focus:outline-none"
+            className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-rose-500/40 focus:outline-none"
             placeholder="Notes (optional)"
             value={newNotes}
             onChange={(e) => setNewNotes(e.target.value)}
@@ -173,7 +173,7 @@ export function SavedPlaces() {
               {add.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               Save place
             </button>
-            <button type="button" onClick={() => { setAdding(false); setNewQuery(''); setNewNotes(''); }} className="text-[11px] text-zinc-500 hover:text-zinc-200">Cancel</button>
+            <button type="button" onClick={() => { setAdding(false); setNewQuery(''); setNewNotes(''); }} className="text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
             {add.isError && <span className="text-[11px] text-rose-300">{(add.error as Error)?.message || 'Geocoding failed'}</span>}
           </div>
         </div>
@@ -181,17 +181,17 @@ export function SavedPlaces() {
 
       {/* Place list */}
       <div className="max-h-[500px] overflow-y-auto p-3">
-        {isLoading && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Loading your places…</div>}
+        {isLoading && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading your places…</div>}
         {!isLoading && items.length === 0 && !adding && (
           <div className="rounded border border-dashed border-zinc-800 p-8 text-center">
             <MapPin className="mx-auto h-6 w-6 text-zinc-600" />
             <div className="mt-2 text-[12px] text-zinc-400">No saved places yet.</div>
-            <div className="mt-1 text-[11px] text-zinc-500">Tap "Add place" to save your first address. Place data persists across sessions as <code className="text-zinc-400">atlas/place</code> DTUs.</div>
+            <div className="mt-1 text-[11px] text-zinc-400">Tap "Add place" to save your first address. Place data persists across sessions as <code className="text-zinc-400">atlas/place</code> DTUs.</div>
             <button type="button" onClick={() => setAdding(true)} className="mt-3 inline-flex items-center gap-1 rounded bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400"><Plus className="h-3 w-3" />Add your first place</button>
           </div>
         )}
         {!isLoading && filtered.length === 0 && items.length > 0 && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No places in this category. Switch filters above.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No places in this category. Switch filters above.</div>
         )}
         <div className="space-y-1.5">
           {filtered.map((item) => {
@@ -210,7 +210,7 @@ export function SavedPlaces() {
                     {d.displayName && <div className="truncate text-[10px] text-zinc-400">{d.displayName}</div>}
                     {d.notes && <div className="mt-0.5 text-[10px] text-zinc-300">{d.notes}</div>}
                     {d.latitude != null && d.longitude != null && (
-                      <div className="font-mono text-[9px] text-zinc-500">{d.latitude.toFixed(4)}, {d.longitude.toFixed(4)}</div>
+                      <div className="font-mono text-[9px] text-zinc-400">{d.latitude.toFixed(4)}, {d.longitude.toFixed(4)}</div>
                     )}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 transition group-hover:opacity-100">

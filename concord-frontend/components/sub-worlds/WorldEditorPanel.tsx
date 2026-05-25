@@ -108,9 +108,9 @@ export function WorldEditorPanel({
         <header className="flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-fuchsia-300">In-Place World Editor</h2>
-            <p className="text-[11px] text-zinc-500">{world.name} — author blocks without leaving the lens</p>
+            <p className="text-[11px] text-zinc-400">{world.name} — author blocks without leaving the lens</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-200">
+          <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-200">
             <X className="h-5 w-5" />
           </button>
         </header>
@@ -122,7 +122,7 @@ export function WorldEditorPanel({
         )}
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
-          <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Add Block</h3>
+          <h3 className="text-[11px] uppercase tracking-wider text-zinc-400">Add Block</h3>
           <div className="grid grid-cols-2 gap-2">
             <select
               value={form.type}
@@ -161,11 +161,11 @@ export function WorldEditorPanel({
         </section>
 
         <section className="space-y-2">
-          <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">
+          <h3 className="text-[11px] uppercase tracking-wider text-zinc-400">
             Blocks ({blocks.length}/500)
           </h3>
           {blocks.length === 0 ? (
-            <p className="text-xs text-zinc-600 italic">No blocks yet — author your world above.</p>
+            <p className="text-xs text-zinc-400 italic">No blocks yet — author your world above.</p>
           ) : (
             <ul className="space-y-1">
               {blocks.map((b) => {
@@ -179,7 +179,7 @@ export function WorldEditorPanel({
                       <Icon className="h-4 w-4 text-fuchsia-400" />
                       <div>
                         <p className="text-sm text-zinc-100">{b.label}</p>
-                        <p className="text-[10px] text-zinc-500 font-mono">
+                        <p className="text-[10px] text-zinc-400 font-mono">
                           {b.type} · ({b.x}, {b.y}, {b.z})
                         </p>
                       </div>
@@ -201,10 +201,10 @@ export function WorldEditorPanel({
 
         {log.length > 0 && (
           <section className="space-y-1">
-            <h3 className="text-[11px] uppercase tracking-wider text-zinc-500">Recent Edits</h3>
+            <h3 className="text-[11px] uppercase tracking-wider text-zinc-400">Recent Edits</h3>
             <ul className="space-y-0.5 max-h-32 overflow-y-auto">
               {log.slice().reverse().map((e, i) => (
-                <li key={`${e.blockId}-${e.at}-${i}`} className="text-[10px] text-zinc-500 font-mono">
+                <li key={`${e.blockId}-${e.at}-${i}`} className="text-[10px] text-zinc-400 font-mono">
                   {e.action} {e.type || ''} · {e.by.slice(0, 8)} · {new Date(e.at).toLocaleTimeString()}
                 </li>
               ))}

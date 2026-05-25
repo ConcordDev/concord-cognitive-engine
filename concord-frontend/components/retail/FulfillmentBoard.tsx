@@ -67,7 +67,7 @@ export function FulfillmentBoard() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <PackageCheck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Order fulfillment</span>
-        <span className="ml-auto text-[10px] text-gray-500">{queue.length} in queue</span>
+        <span className="ml-auto text-[10px] text-gray-400">{queue.length} in queue</span>
       </header>
 
       {/* Stage counts */}
@@ -83,16 +83,16 @@ export function FulfillmentBoard() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : queue.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><PackageCheck className="w-6 h-6 mx-auto mb-2 opacity-30" />No orders awaiting fulfillment.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><PackageCheck className="w-6 h-6 mx-auto mb-2 opacity-30" />No orders awaiting fulfillment.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {queue.map(o => (
               <li key={o.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-mono">{o.number}</p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-gray-400">
                     {o.buyerName || o.channel} · {o.itemCount} items · ${o.total.toFixed(2)}
                     {o.trackingNumber && ` · ${o.trackingNumber}`}
                   </p>
@@ -114,7 +114,7 @@ export function FulfillmentBoard() {
       {/* Notifications */}
       {notifications.length > 0 && (
         <div className="border-t border-white/10 px-3 py-2">
-          <p className="text-[10px] uppercase text-gray-500 mb-1 flex items-center gap-1"><Bell className="w-3 h-3" /> Buyer notifications</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-1 flex items-center gap-1"><Bell className="w-3 h-3" /> Buyer notifications</p>
           <ul className="space-y-1 max-h-28 overflow-y-auto">
             {notifications.slice(0, 8).map(n => (
               <li key={n.id} className="text-[11px] text-gray-400">

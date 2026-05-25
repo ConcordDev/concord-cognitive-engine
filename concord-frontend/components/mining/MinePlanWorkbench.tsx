@@ -117,15 +117,15 @@ export function MinePlanWorkbench() {
                 <Stat label="Ore t" value={pit.oreTonnage.toLocaleString()} accent="#22c55e" />
                 <Stat label="Waste t" value={pit.wasteTonnage.toLocaleString()} accent="#a16207" />
               </div>
-              <div className="text-[10px] text-zinc-500">
+              <div className="text-[10px] text-zinc-400">
                 {pit.designClass} · pit bottom RL {pit.pitBottomRL}m · strip ratio {pit.stripRatio}:1
               </div>
               <ChartKit kind="bar" data={pit.benches as unknown as Array<Record<string, unknown>>} xKey="bench"
                 series={[{ key: 'tonnage', label: 'Tonnage per bench', color: '#f97316' }]} height={180} showLegend={false} />
-              <div className="text-[9px] text-zinc-600">X = bench number (1 = top). Volume widens upward by slope run.</div>
+              <div className="text-[9px] text-zinc-400">X = bench number (1 = top). Volume widens upward by slope run.</div>
               <div className="max-h-40 overflow-y-auto">
                 <table className="w-full text-[10px]">
-                  <thead className="text-zinc-500"><tr>
+                  <thead className="text-zinc-400"><tr>
                     <th className="text-left py-0.5">Bench</th><th className="text-right">RL m</th>
                     <th className="text-right">Width m</th><th className="text-right">Volume m³</th><th className="text-right">Tonnage</th>
                   </tr></thead>
@@ -154,7 +154,7 @@ export function MinePlanWorkbench() {
             <Field label="Recovery %" value={recovery} onChange={setRecovery} />
             <Field label="Metal $/t" value={metalPrice} onChange={setMetalPrice} />
             <div>
-              <label className="text-[9px] text-zinc-500 block mb-0.5">Code</label>
+              <label className="text-[9px] text-zinc-400 block mb-0.5">Code</label>
               <select value={code} onChange={(e) => setCode(e.target.value as 'jorc' | 'ni43-101')}
                 className="w-full bg-zinc-900 border border-zinc-800 rounded px-1 py-1 text-[11px] text-white">
                 <option value="jorc">JORC 2012</option>
@@ -171,10 +171,10 @@ export function MinePlanWorkbench() {
             <div className="rounded-lg border border-amber-500/20 bg-zinc-900/40 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-amber-300">{report.code} resource categories</span>
-                <span className="text-[9px] text-zinc-500">confidence: {report.confidenceClass}</span>
+                <span className="text-[9px] text-zinc-400">confidence: {report.confidenceClass}</span>
               </div>
               <table className="w-full text-[10px]">
-                <thead className="text-zinc-500"><tr>
+                <thead className="text-zinc-400"><tr>
                   <th className="text-left py-0.5">Category</th><th className="text-right">Conf %</th>
                   <th className="text-right">Tonnage</th><th className="text-right">Metal t</th><th className="text-right">Recoverable</th>
                 </tr></thead>
@@ -194,7 +194,7 @@ export function MinePlanWorkbench() {
                 <Stat label={report.reserves.probable.category} value={report.reserves.probable.tonnage.toLocaleString()} accent="#06b6d4" />
                 <Stat label="In-situ value" value={`$${report.inSituValue.toLocaleString()}`} accent="#f59e0b" />
               </div>
-              <div className="text-[9px] text-zinc-600">
+              <div className="text-[9px] text-zinc-400">
                 Reserve = Proved + Probable ({report.reserves.totalReserveTonnes.toLocaleString()} t, {report.reserves.recoverableMetal.toLocaleString()} t recoverable metal). Inferred resource is excluded from reserves.
               </div>
             </div>
@@ -208,7 +208,7 @@ export function MinePlanWorkbench() {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="text-[9px] text-zinc-500 block mb-0.5">{label}</label>
+      <label className="text-[9px] text-zinc-400 block mb-0.5">{label}</label>
       <input value={value} onChange={(e) => onChange(e.target.value.replace(/[^\d.-]/g, ''))}
         className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white font-mono" />
     </div>
@@ -218,7 +218,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 function Stat({ label, value, accent = '#e4e4e7' }: { label: string; value: string; accent?: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1.5">
-      <div className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</div>
       <div className="text-[13px] font-bold truncate" style={{ color: accent }}>{value}</div>
     </div>
   );

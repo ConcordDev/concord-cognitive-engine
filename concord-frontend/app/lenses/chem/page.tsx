@@ -194,7 +194,7 @@ export default function ChemLensPage() {
         ]).map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors flex-1 justify-center ${
-              activeTab === tab.key ? 'bg-teal-500/20 text-teal-400' : 'text-gray-500 hover:text-white'
+              activeTab === tab.key ? 'bg-teal-500/20 text-teal-400' : 'text-gray-400 hover:text-white'
             }`}>
             <tab.icon className="w-4 h-4" /> {tab.label}
           </button>
@@ -244,9 +244,9 @@ export default function ChemLensPage() {
                   <motion.div key={el.sym} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02 }}
                     className={`p-1.5 rounded border text-center cursor-pointer hover:scale-105 transition-transform ${catColors[el.cat] || ''}`}
                     title={el.name}>
-                    <span className="text-[10px] text-gray-500">{el.num}</span>
+                    <span className="text-[10px] text-gray-400">{el.num}</span>
                     <p className="text-sm font-bold">{el.sym}</p>
-                    <p className="text-[9px] text-gray-500 truncate">{el.name}</p>
+                    <p className="text-[9px] text-gray-400 truncate">{el.name}</p>
                   </motion.div>
                 );
               })}
@@ -278,7 +278,7 @@ export default function ChemLensPage() {
                   className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-white/5">
                   <div>
                     <p className="font-mono text-sm text-neon-cyan">{rxn.eq}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{rxn.name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{rxn.name}</p>
                   </div>
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{rxn.type}</span>
                 </motion.div>
@@ -355,7 +355,7 @@ export default function ChemLensPage() {
                 </div>
                 <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
                 <div className="mt-2 flex items-center gap-2">
-                  <span className="text-xs text-gray-500">Stability:</span>
+                  <span className="text-xs text-gray-400">Stability:</span>
                   <div className="flex-1 h-1 bg-lattice-deep rounded">
                     <div
                       className={`h-full rounded ${
@@ -383,7 +383,7 @@ export default function ChemLensPage() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {reactions?.length === 0 ? (
-            <p className="col-span-full text-center py-8 text-gray-500">
+            <p className="col-span-full text-center py-8 text-gray-400">
               No reactions yet. Try the reaction chamber!
             </p>
           ) : (
@@ -421,7 +421,7 @@ export default function ChemLensPage() {
             </h3>
             <div className="space-y-2 max-h-[500px] overflow-auto">
               {compounds?.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No compounds in library. Add via reactions or import.</p>
+                <p className="text-gray-400 text-center py-8">No compounds in library. Add via reactions or import.</p>
               ) : compounds?.map((compound: Compound, i: number) => (
                 <motion.button
                   key={compound.id}
@@ -437,7 +437,7 @@ export default function ChemLensPage() {
                   </div>
                   <p className="font-mono text-sm text-gray-400">{compound.formula}</p>
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Stability:</span>
+                    <span className="text-xs text-gray-400">Stability:</span>
                     <div className="flex-1 h-1 bg-lattice-deep rounded">
                       <motion.div initial={{ width: 0 }} animate={{ width: `${compound.stability * 100}%` }}
                         className={`h-full rounded ${compound.stability > 0.7 ? 'bg-neon-green' : compound.stability > 0.4 ? 'bg-neon-blue' : 'bg-neon-pink'}`}
@@ -519,19 +519,19 @@ export default function ChemLensPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-green">{actionResult.totalAtoms as number}</p>
-                    <p className="text-[10px] text-gray-500">Total Atoms</p>
+                    <p className="text-[10px] text-gray-400">Total Atoms</p>
                   </div>
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-blue">{actionResult.empiricalFormula as string}</p>
-                    <p className="text-[10px] text-gray-500">Empirical Formula</p>
+                    <p className="text-[10px] text-gray-400">Empirical Formula</p>
                   </div>
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-purple">{actionResult.formulaToEmpiricalRatio as number}×</p>
-                    <p className="text-[10px] text-gray-500">Formula Ratio</p>
+                    <p className="text-[10px] text-gray-400">Formula Ratio</p>
                   </div>
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{actionResult.molesPerGram as number}</p>
-                    <p className="text-[10px] text-gray-500">mol/g</p>
+                    <p className="text-[10px] text-gray-400">mol/g</p>
                   </div>
                 </div>
                 {(actionResult.elements as Array<{ element: string; count: number; massPercent: number }>)?.length > 0 && (
@@ -543,7 +543,7 @@ export default function ChemLensPage() {
                           <div className="h-full bg-neon-cyan rounded" style={{ width: `${el.massPercent}%` }} />
                         </div>
                         <span className="text-gray-400 w-10 text-right">{el.massPercent}%</span>
-                        <span className="text-gray-500 w-8 text-right">×{el.count}</span>
+                        <span className="text-gray-400 w-8 text-right">×{el.count}</span>
                       </div>
                     ))}
                   </div>
@@ -562,7 +562,7 @@ export default function ChemLensPage() {
                 <p className="font-mono text-sm text-neon-cyan p-2 bg-black/30 rounded">{actionResult.equation as string}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Reactants</p>
+                    <p className="text-xs text-gray-400 mb-1">Reactants</p>
                     {(actionResult.reactants as Array<{ formula: string; coefficient: number }>)?.map(r => (
                       <div key={r.formula} className="flex items-center gap-2 text-xs py-0.5">
                         <span className="font-bold text-neon-blue w-6">{r.coefficient}</span>
@@ -571,7 +571,7 @@ export default function ChemLensPage() {
                     ))}
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Products</p>
+                    <p className="text-xs text-gray-400 mb-1">Products</p>
                     {(actionResult.products as Array<{ formula: string; coefficient: number }>)?.map(p => (
                       <div key={p.formula} className="flex items-center gap-2 text-xs py-0.5">
                         <span className="font-bold text-neon-green w-6">{p.coefficient}</span>
@@ -602,11 +602,11 @@ export default function ChemLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-green">{actionResult.pOH as number}</p>
-                    <p className="text-[10px] text-gray-500">pOH</p>
+                    <p className="text-[10px] text-gray-400">pOH</p>
                   </div>
                   <div className="p-2 bg-lattice-bg rounded text-center">
                     <p className="text-sm font-bold text-neon-blue">{actionResult.hydrogenIonConc as number}</p>
-                    <p className="text-[10px] text-gray-500">[H⁺] mol/L</p>
+                    <p className="text-[10px] text-gray-400">[H⁺] mol/L</p>
                   </div>
                 </div>
               </div>

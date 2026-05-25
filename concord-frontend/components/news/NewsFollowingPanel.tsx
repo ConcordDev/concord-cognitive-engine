@@ -46,7 +46,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -57,7 +57,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
           <Rss className="w-3.5 h-3.5 text-rose-400" /> Channels
         </h3>
         {channels.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No sources yet — add stories in the Today tab.</p>
+          <p className="text-[11px] text-zinc-400 italic">No sources yet — add stories in the Today tab.</p>
         ) : (
           <ul className="space-y-1">
             {channels.map((c) => (
@@ -81,7 +81,7 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
           <Hash className="w-3.5 h-3.5 text-rose-400" /> Topics
         </h3>
         {topics.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No topics yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No topics yet.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {topics.map((t) => (
@@ -101,13 +101,13 @@ export function NewsFollowingPanel({ onChange }: { onChange: () => void }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
             <TrendingUp className="w-3.5 h-3.5 text-rose-400" /> Your interests
           </h3>
-          <p className="text-[11px] text-zinc-500 mb-2">
+          <p className="text-[11px] text-zinc-400 mb-2">
             Inferred from follows, reads and reactions — these drive recommendations.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {interests.topics.filter((w) => w.weight !== 0).slice(0, 10).map((w) => (
               <span key={w.name} className={cn('text-[11px] px-2 py-0.5 rounded-full border capitalize',
-                w.weight > 0 ? 'border-emerald-800/50 text-emerald-300' : 'border-zinc-700 text-zinc-500')}>
+                w.weight > 0 ? 'border-emerald-800/50 text-emerald-300' : 'border-zinc-700 text-zinc-400')}>
                 {w.name} {w.weight > 0 ? '+' : ''}{w.weight}
               </span>
             ))}

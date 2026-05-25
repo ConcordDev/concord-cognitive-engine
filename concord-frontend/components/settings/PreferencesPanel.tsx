@@ -145,14 +145,14 @@ export function PreferencesPanel() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search settings…"
             aria-label="Search settings"
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="w-full pl-8 pr-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
         </div>
         {syncedAt && (
@@ -169,7 +169,7 @@ export function PreferencesPanel() {
       )}
 
       {filteredSections.length === 0 && (
-        <p className="text-xs text-gray-500 italic">No settings match &ldquo;{query}&rdquo;.</p>
+        <p className="text-xs text-gray-400 italic">No settings match &ldquo;{query}&rdquo;.</p>
       )}
 
       {filteredSections.map(({ section, items }) => (
@@ -290,7 +290,7 @@ function PrefRow({
           disabled={saving}
           aria-label={`Reset ${def.label} to default`}
           title="Reset to default"
-          className="text-gray-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+          className="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>

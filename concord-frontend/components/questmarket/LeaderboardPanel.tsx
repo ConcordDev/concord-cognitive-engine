@@ -43,7 +43,7 @@ export function LeaderboardPanel({ refreshKey }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading leaderboard…
       </div>
     );
@@ -57,7 +57,7 @@ export function LeaderboardPanel({ refreshKey }: { refreshKey?: number }) {
   }
   if (board.length === 0) {
     return (
-      <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">
+      <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">
         No adventurers ranked yet. Complete a verified quest to enter the leaderboard.
       </div>
     );
@@ -81,7 +81,7 @@ export function LeaderboardPanel({ refreshKey }: { refreshKey?: number }) {
       </div>
 
       <div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Top 10 by XP</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Top 10 by XP</p>
         <ChartKit
           kind="bar"
           data={chartData}
@@ -105,7 +105,7 @@ export function LeaderboardPanel({ refreshKey }: { refreshKey?: number }) {
               </span>
               <div>
                 <p className="text-xs font-medium text-white">{r.userId}</p>
-                <p className="text-[10px] text-zinc-500">{r.rank}</p>
+                <p className="text-[10px] text-zinc-400">{r.rank}</p>
               </div>
             </div>
             <div className="flex items-center gap-4 text-[10px] text-zinc-400">

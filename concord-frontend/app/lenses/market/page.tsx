@@ -343,28 +343,28 @@ export default function MarketLensPage() {
           <Store className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{totalListings}</p>
-            <p className="text-xs text-gray-500">Listings</p>
+            <p className="text-xs text-gray-400">Listings</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <DollarSign className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{totalVolume} CC</p>
-            <p className="text-xs text-gray-500">Volume</p>
+            <p className="text-xs text-gray-400">Volume</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <BarChart3 className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{totalTransactions}</p>
-            <p className="text-xs text-gray-500">Transactions</p>
+            <p className="text-xs text-gray-400">Transactions</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <TrendingUp className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{filteredListings.length > 0 ? `${((filteredListings.reduce((a, l) => a + (l.price || 0), 0) / filteredListings.length) || 0).toFixed(0)} CC` : '--'}</p>
-            <p className="text-xs text-gray-500">Avg Price</p>
+            <p className="text-xs text-gray-400">Avg Price</p>
           </div>
         </motion.div>
       </div>
@@ -381,7 +381,7 @@ export default function MarketLensPage() {
       <div className="panel p-4">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               className="w-full pl-10 pr-8 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-purple outline-none"
               placeholder="Search listings by title, description, or tag..."
@@ -391,7 +391,7 @@ export default function MarketLensPage() {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
@@ -445,13 +445,13 @@ export default function MarketLensPage() {
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-neon-green" />
           Active Listings
-          <span className="text-xs text-gray-500 font-normal">({filteredListings.length})</span>
+          <span className="text-xs text-gray-400 font-normal">({filteredListings.length})</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredListings.length === 0 ? (
             <div className="col-span-full text-center py-12">
               <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-              <p className="text-gray-500 mb-2">
+              <p className="text-gray-400 mb-2">
                 {searchQuery || filterType !== 'all'
                   ? 'No listings match your filters'
                   : 'No listings yet. Create the first marketplace listing!'}
@@ -516,7 +516,7 @@ export default function MarketLensPage() {
                 </div>
                 {'signals' in actionResult && Array.isArray(actionResult.signals) && actionResult.signals.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Signals</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Signals</p>
                     {(actionResult.signals as Array<Record<string, unknown>>).map((s, i) => (
                       <div key={i} className={`text-xs px-2 py-1 rounded ${s.sentiment === 'bullish' ? 'bg-neon-green/10 text-neon-green' : 'bg-red-400/10 text-red-400'}`}>
                         {String(s.type)}: {String(s.detail || s.value || '')}
@@ -528,7 +528,7 @@ export default function MarketLensPage() {
             )}
             {'matrix' in actionResult && Array.isArray(actionResult.matrix) && (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Competitors ({String((actionResult.matrix as unknown[]).length)})</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider">Competitors ({String((actionResult.matrix as unknown[]).length)})</p>
                 {(actionResult.matrix as Array<Record<string, unknown>>).map((c, i) => (
                   <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                     <span className="text-gray-300">{String(c.name)}</span>
@@ -537,7 +537,7 @@ export default function MarketLensPage() {
                 ))}
                 {'competitiveGaps' in actionResult && Array.isArray(actionResult.competitiveGaps) && (
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Competitive Gaps</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Competitive Gaps</p>
                     {(actionResult.competitiveGaps as Array<Record<string, unknown>>).filter(g => (g.gaps as unknown[]).length > 0).map((g, i) => (
                       <div key={i} className="text-xs text-yellow-400">
                         {String(g.name)}: {((g.gaps as Array<Record<string, unknown>>).map(gap => String(gap.feature))).join(', ')}
@@ -552,7 +552,7 @@ export default function MarketLensPage() {
                 <span className="text-gray-400">Elasticity: <span className="text-neon-cyan font-bold">{String(actionResult.primaryElasticity)}</span></span>
                 <span className="ml-3 text-xs text-gray-400">({String(actionResult.classification)})</span>
                 {'loglogRegression' in actionResult && actionResult.loglogRegression !== null && typeof actionResult.loglogRegression === 'object' && (
-                  <div className="text-xs text-gray-500 mt-1">R²: {String((actionResult.loglogRegression as Record<string, unknown>).rSquared)}</div>
+                  <div className="text-xs text-gray-400 mt-1">R²: {String((actionResult.loglogRegression as Record<string, unknown>).rSquared)}</div>
                 )}
               </div>
             )}

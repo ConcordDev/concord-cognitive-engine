@@ -47,9 +47,9 @@ export function SalesAnalytics() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !summary ? (
-        <div className="p-10 text-center text-xs text-gray-500">No data yet</div>
+        <div className="p-10 text-center text-xs text-gray-400">No data yet</div>
       ) : (
         <div className="p-3 space-y-3">
           <div className="grid grid-cols-4 gap-2">
@@ -60,7 +60,7 @@ export function SalesAnalytics() {
           </div>
 
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Revenue · last 30 days</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Revenue · last 30 days</div>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
@@ -84,9 +84,9 @@ export function SalesAnalytics() {
           </div>
 
           <div className="rounded-md border border-white/10 bg-white/[0.03] p-3">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1.5">Top products · last 30 days</div>
+            <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1.5">Top products · last 30 days</div>
             {top.length === 0 ? (
-              <div className="py-3 text-center text-xs text-gray-500">No sales yet</div>
+              <div className="py-3 text-center text-xs text-gray-400">No sales yet</div>
             ) : (
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
@@ -115,10 +115,10 @@ function Tile({ icon: Icon, label, value, sub }: { icon: typeof DollarSign; labe
     <div className="rounded-md border border-white/10 bg-white/[0.03] p-2.5">
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3 text-emerald-300" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-base font-mono tabular-nums text-white">{value}</div>
-      <div className="text-[10px] text-gray-500">{sub}</div>
+      <div className="text-[10px] text-gray-400">{sub}</div>
     </div>
   );
 }

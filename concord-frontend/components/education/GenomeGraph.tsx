@@ -309,7 +309,7 @@ export function GenomeGraph({
         ))}
       </div>
       {nodes.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
           No genome data. Start learning to populate your knowledge graph.
         </div>
       )}

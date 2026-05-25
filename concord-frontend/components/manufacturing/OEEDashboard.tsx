@@ -38,10 +38,10 @@ export function OEEDashboard() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Activity className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">OEE dashboard</span>
-        <span className="ml-auto text-[10px] text-gray-500">{machines.length} machines · world-class &gt;85%</span>
+        <span className="ml-auto text-[10px] text-gray-400">{machines.length} machines · world-class &gt;85%</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <>
           <div className="p-4 grid grid-cols-4 gap-3">
@@ -53,12 +53,12 @@ export function OEEDashboard() {
           <table className="w-full text-xs">
             <thead className="border-y border-white/5">
               <tr>
-                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-500">Machine</th>
-                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-500">Status</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">Avail %</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">Perf %</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">Qual %</th>
-                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-500">OEE</th>
+                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-400">Machine</th>
+                <th className="px-3 py-1.5 text-left text-[10px] uppercase text-gray-400">Status</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Avail %</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Perf %</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">Qual %</th>
+                <th className="px-3 py-1.5 text-right text-[10px] uppercase text-gray-400">OEE</th>
               </tr>
             </thead>
             <tbody>
@@ -94,7 +94,7 @@ function Stat({ label, value, color = 'cyan', big }: { label: string; value: str
   return (
     <div className="p-3 bg-white/[0.02] rounded text-center">
       <div className={cn('font-bold tabular-nums', big ? 'text-4xl' : 'text-2xl', palette[color])}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
     </div>
   );
 }

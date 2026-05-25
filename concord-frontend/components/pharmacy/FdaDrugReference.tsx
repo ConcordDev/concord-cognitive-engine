@@ -208,7 +208,7 @@ export function FdaDrugReference() {
           <button
             type="button"
             onClick={reset}
-            className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             New search
           </button>
@@ -217,7 +217,7 @@ export function FdaDrugReference() {
 
       <form onSubmit={submitSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             ref={inputRef}
             type="text"
@@ -244,7 +244,7 @@ export function FdaDrugReference() {
       )}
 
       {!label && !labelQuery.isPending && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Search any FDA-approved drug to pull the label, post-market adverse events,
           and interaction signals — all live from the FDA OpenFDA API.
         </div>
@@ -277,7 +277,7 @@ export function FdaDrugReference() {
                     Generic: <span className="font-mono">{label.genericName}</span>
                   </p>
                 )}
-                <p className="mt-0.5 text-[11px] text-zinc-500">
+                <p className="mt-0.5 text-[11px] text-zinc-400">
                   {label.manufacturer && <>Mfg: {label.manufacturer}</>}
                   {label.manufacturer && label.route && <> · </>}
                   {label.route && <>Route: {label.route}</>}
@@ -427,7 +427,7 @@ function FdaSection({ label, body, defaultOpen, tone }: { label: string; body: s
           {tone === 'caution' && <AlertTriangle className="h-3 w-3" />}
           {label}
         </span>
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-500" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-500" />}
+        {open ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -453,7 +453,7 @@ function FdaSection({ label, body, defaultOpen, tone }: { label: string; body: s
 function AdverseEventsPanel({ drug, data, isLoading, reload }: { drug: string; data: AdverseEvents | null; isLoading: boolean; reload: () => void }) {
   if (isLoading) {
     return (
-      <div className="flex h-32 items-center justify-center text-xs text-zinc-500">
+      <div className="flex h-32 items-center justify-center text-xs text-zinc-400">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         Loading FAERS reports…
       </div>
@@ -461,7 +461,7 @@ function AdverseEventsPanel({ drug, data, isLoading, reload }: { drug: string; d
   }
   if (!data || (data.reportCount === 0 && (!data.topReactions || data.topReactions.length === 0))) {
     return (
-      <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+      <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
         No FAERS adverse-event reports indexed for &quot;{drug}&quot;.
         <button onClick={reload} className="ml-2 text-cyan-400 hover:underline">Retry</button>
       </div>
@@ -522,7 +522,7 @@ function AdverseEventsPanel({ drug, data, isLoading, reload }: { drug: string; d
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <p className="mt-2 text-[10px] italic text-zinc-500">
+        <p className="mt-2 text-[10px] italic text-zinc-400">
           {data.disclaimer}
         </p>
       </div>
@@ -556,7 +556,7 @@ function InteractionsPanel({
           <span className="flex items-center gap-1 rounded bg-cyan-500/15 px-2 py-1 font-mono text-cyan-300">
             <Pill className="h-3 w-3" /> {drug}
           </span>
-          <Plus className="h-3 w-3 text-zinc-500" />
+          <Plus className="h-3 w-3 text-zinc-400" />
           <input
             type="text"
             value={secondDrugInput}
@@ -591,7 +591,7 @@ function InteractionsPanel({
       </div>
 
       {!result && (
-        <p className="text-center text-xs text-zinc-500">
+        <p className="text-center text-xs text-zinc-400">
           Add a second drug above and press <kbd className="rounded bg-zinc-800 px-1 py-0.5 font-mono">Check</kbd> — Concord cross-scans both
           FDA SPL labels for known interaction mentions.
         </p>
@@ -604,7 +604,7 @@ function InteractionsPanel({
             No interaction mentions found between <span className="font-mono">{drug}</span> and{' '}
             <span className="font-mono">{secondDrugInput}</span> in their FDA labels.
           </div>
-          <span className="text-[10px] text-zinc-500">absence of data is not proof of safety</span>
+          <span className="text-[10px] text-zinc-400">absence of data is not proof of safety</span>
         </div>
       )}
 
@@ -646,7 +646,7 @@ function InteractionCard({ ix }: { ix: { drug1: string; drug2: string; severity:
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-mono text-white">{ix.drug1}</span>
-          <X className="h-3 w-3 text-zinc-500" />
+          <X className="h-3 w-3 text-zinc-400" />
           <span className="font-mono text-white">{ix.drug2}</span>
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${sevTextColor}`}>
             {sev}

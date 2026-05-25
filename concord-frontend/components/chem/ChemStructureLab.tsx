@@ -71,7 +71,7 @@ export default function ChemStructureLab() {
       <div className="flex items-center gap-2">
         <PenTool className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-semibold text-gray-200">Structure Lab</h3>
-        <span className="text-[10px] text-gray-500">draw · render · resolve · analyze</span>
+        <span className="text-[10px] text-gray-400">draw · render · resolve · analyze</span>
       </div>
 
       <nav className="flex items-center gap-1 flex-wrap border-b border-white/10 pb-2">
@@ -152,7 +152,7 @@ function StructureEditorTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Type a SMILES string — the backend lays out skeletal 2D coordinates and derives the formula. Try <code className="text-violet-300">CCO</code>, <code className="text-violet-300">c1ccccc1</code>, <code className="text-violet-300">CC(=O)O</code>.
       </p>
       <div className="flex gap-2">
@@ -179,7 +179,7 @@ function StructureEditorTab() {
           ].map((s) => (
             <div key={s.l} className="rounded border border-violet-500/20 bg-violet-500/5 p-2 text-center">
               <p className="text-sm font-mono text-violet-300">{s.v}</p>
-              <p className="text-[10px] text-gray-500">{s.l}</p>
+              <p className="text-[10px] text-gray-400">{s.l}</p>
             </div>
           ))}
         </div>
@@ -187,7 +187,7 @@ function StructureEditorTab() {
 
       <div className="flex gap-2 items-end pt-2 border-t border-white/10">
         <label className="flex flex-col gap-1 flex-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">Structure name</span>
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">Structure name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
         </label>
         <button type="button" onClick={save} disabled={!smiles} className={btnCls}>
@@ -198,7 +198,7 @@ function StructureEditorTab() {
 
       {saved.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500">Saved structures ({saved.length})</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400">Saved structures ({saved.length})</p>
           {saved.map((s) => (
             <div key={s.id} className="flex items-center gap-2 text-xs rounded border border-white/10 bg-black/30 px-2 py-1.5">
               <span className="text-gray-200">{s.name}</span>
@@ -260,7 +260,7 @@ function StructureCanvas({ layout }: { layout: StructureLayout }) {
           </g>
         ))}
       </svg>
-      <p className="text-[10px] text-gray-500 text-center mt-1">
+      <p className="text-[10px] text-gray-400 text-center mt-1">
         {layout.formula} · {layout.atoms.length} heavy atoms · {layout.bonds.length} bonds
       </p>
     </div>
@@ -322,7 +322,7 @@ function Viewer3DTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Look up a compound by name on PubChem and render its free 3D conformer record. Auto-rotates.
       </p>
       <div className="flex gap-2">
@@ -360,7 +360,7 @@ function Viewer3DTab() {
                 );
               })}
           </svg>
-          <p className="text-[10px] text-gray-500 text-center mt-1">
+          <p className="text-[10px] text-gray-400 text-center mt-1">
             CID {cid} · {atoms.length} atoms · {bonds.length} bonds (PubChem 3D conformer)
           </p>
         </div>
@@ -393,7 +393,7 @@ function ResolveTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Resolve a compound name or SMILES to canonical SMILES, InChI, InChIKey and IUPAC name via PubChem PUG-REST.
       </p>
       <div className="flex gap-2 items-center">
@@ -424,7 +424,7 @@ function ResolveTab() {
             ['InChIKey', res.inchiKey],
           ] as [string, string | null][]).map(([k, v]) => (
             <div key={k} className="flex gap-2">
-              <span className="text-gray-500 w-32 shrink-0">{k}</span>
+              <span className="text-gray-400 w-32 shrink-0">{k}</span>
               <span className="font-mono text-gray-200 break-all">{v || '—'}</span>
             </div>
           ))}
@@ -473,20 +473,20 @@ function StoichTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-gray-400">
         Balanced equation + reactant amounts → limiting reagent, theoretical yield, leftovers and percent yield.
       </p>
       <label className="flex flex-col gap-1">
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">Balanced equation</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">Balanced equation</span>
         <input value={equation} onChange={(e) => setEquation(e.target.value)} className={inputCls} />
       </label>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">Amounts (formula:grams)</span>
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">Amounts (formula:grams)</span>
           <input value={amounts} onChange={(e) => setAmounts(e.target.value)} className={inputCls} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">Actual yield (optional)</span>
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">Actual yield (optional)</span>
           <input value={actual} onChange={(e) => setActual(e.target.value)} className={inputCls} />
         </label>
       </div>
@@ -512,7 +512,7 @@ function StoichTab() {
             )}
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Theoretical product yield</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Theoretical product yield</p>
             {res.products.map((p) => (
               <div key={p.formula} className="flex justify-between rounded border border-white/10 bg-black/30 px-2 py-1">
                 <span className="font-mono text-gray-200">{p.coefficient} {p.formula}</span>
@@ -524,7 +524,7 @@ function StoichTab() {
           </div>
           {res.leftoverReactants.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Leftover reactants</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Leftover reactants</p>
               {res.leftoverReactants.map((l) => (
                 <div key={l.formula} className="flex justify-between rounded border border-white/10 bg-black/30 px-2 py-1">
                   <span className="font-mono text-gray-200">{l.formula}</span>
@@ -559,7 +559,7 @@ function SpectroTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">Characteristic peak reference tables for IR, ¹H/¹³C NMR and MS.</p>
+      <p className="text-[11px] text-gray-400">Characteristic peak reference tables for IR, ¹H/¹³C NMR and MS.</p>
       <div className="flex gap-2">
         <select value={technique}
           onChange={(e) => { setTechnique(e.target.value); load(e.target.value, filter); }}
@@ -587,10 +587,10 @@ function SpectroTab() {
               <div key={p.group} className="grid grid-cols-[1fr_auto] gap-2 text-xs rounded border border-white/10 bg-black/30 px-2 py-1.5">
                 <span className="text-gray-200">{p.group}</span>
                 <span className="font-mono text-violet-300">{p.range} {res.unit}</span>
-                <span className="text-[10px] text-gray-500 col-span-2">{p.intensity !== '—' ? `${p.intensity} — ` : ''}{p.note}</span>
+                <span className="text-[10px] text-gray-400 col-span-2">{p.intensity !== '—' ? `${p.intensity} — ` : ''}{p.note}</span>
               </div>
             ))}
-            {res.peaks.length === 0 && <p className="text-xs text-gray-500">No peaks match that filter.</p>}
+            {res.peaks.length === 0 && <p className="text-xs text-gray-400">No peaks match that filter.</p>}
           </div>
         </div>
       )}
@@ -625,7 +625,7 @@ function MechanismTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">Electron-pushing / curved-arrow step outlines for named reaction mechanisms.</p>
+      <p className="text-[11px] text-gray-400">Electron-pushing / curved-arrow step outlines for named reaction mechanisms.</p>
       <div className="flex flex-wrap gap-1">
         {available.map((m) => (
           <button key={m.key} type="button" onClick={() => { setType(m.key); load(m.key); }}
@@ -657,7 +657,7 @@ function MechanismTab() {
                 <p className="text-[11px] text-gray-400 mt-1.5">{s.description}</p>
                 {s.arrows.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500">Curved arrows</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400">Curved arrows</p>
                     {s.arrows.map((a, i) => (
                       <p key={i} className="text-[11px] text-cyan-300 font-mono">↪ {a}</p>
                     ))}
@@ -720,7 +720,7 @@ function NotebookTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-gray-500">Log reactions: equation, procedure, observations, yield and tags.</p>
+      <p className="text-[11px] text-gray-400">Log reactions: equation, procedure, observations, yield and tags.</p>
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Reaction title *" className={inputCls} />
         <input value={equation} onChange={(e) => setEquation(e.target.value)} placeholder="Equation (optional)" className={inputCls} />
@@ -749,8 +749,8 @@ function NotebookTab() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500">{entries.length} entries</p>
-        {entries.length === 0 && <p className="text-xs text-gray-500">No entries yet.</p>}
+        <p className="text-[10px] uppercase tracking-wider text-gray-400">{entries.length} entries</p>
+        {entries.length === 0 && <p className="text-xs text-gray-400">No entries yet.</p>}
         {entries.map((e) => (
           <div key={e.id} className="rounded border border-white/10 bg-black/30 p-3">
             <div className="flex items-center gap-2">
@@ -758,14 +758,14 @@ function NotebookTab() {
               {e.yieldPercent != null && (
                 <span className="text-[10px] rounded bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5">{e.yieldPercent}% yield</span>
               )}
-              <span className="ml-auto text-[10px] text-gray-500">{new Date(e.createdAt).toLocaleDateString()}</span>
+              <span className="ml-auto text-[10px] text-gray-400">{new Date(e.createdAt).toLocaleDateString()}</span>
               <button type="button" onClick={() => del(e.id)} className="text-rose-400 hover:text-rose-300" aria-label="Delete entry">
                 <Trash2 className="w-3 h-3" />
               </button>
             </div>
             {e.equation && <p className="text-[11px] font-mono text-violet-300 mt-1">{e.equation}</p>}
             {e.procedure && <p className="text-[11px] text-gray-400 mt-1">{e.procedure}</p>}
-            {e.observations && <p className="text-[11px] text-gray-500 mt-1 italic">{e.observations}</p>}
+            {e.observations && <p className="text-[11px] text-gray-400 mt-1 italic">{e.observations}</p>}
             {e.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {e.tags.map((t) => (

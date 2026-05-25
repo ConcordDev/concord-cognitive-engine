@@ -57,9 +57,9 @@ export function ProjectSwitcher({ value, onChange, onCreated }: { value: string 
         </div>
       )}
       {loading ? (
-        <div className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</div>
+        <div className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</div>
       ) : list.length === 0 ? (
-        <div className="text-xs text-gray-500 italic">No projects.</div>
+        <div className="text-xs text-gray-400 italic">No projects.</div>
       ) : (
         <select value={value || ''} onChange={e => onChange(e.target.value)} className="w-full px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">— Select project —</option>

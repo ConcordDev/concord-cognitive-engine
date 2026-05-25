@@ -113,15 +113,15 @@ function MetricsTab() {
         <div className={cardCls}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Metrics ({metrics.length})</span>
-            <button onClick={refresh} className="text-zinc-500 hover:text-zinc-200"><RefreshCw className="w-3 h-3" /></button>
+            <button onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3 h-3" /></button>
           </div>
           <div className="space-y-1 max-h-72 overflow-y-auto">
-            {metrics.length === 0 && <div className="text-[11px] text-zinc-600">No metrics yet.</div>}
+            {metrics.length === 0 && <div className="text-[11px] text-zinc-400">No metrics yet.</div>}
             {metrics.map((m) => (
               <button key={m.name} onClick={() => query(m.name)}
                 className={`w-full text-left px-2 py-1 rounded text-[11px] flex justify-between ${sel === m.name ? 'bg-cyan-500/15 text-cyan-200' : 'bg-zinc-900 text-zinc-300 hover:bg-zinc-800'}`}>
                 <span className="font-mono truncate">{m.name}</span>
-                <span className="text-zinc-500">{m.points}pt</span>
+                <span className="text-zinc-400">{m.points}pt</span>
               </button>
             ))}
           </div>
@@ -149,7 +149,7 @@ function MetricsTab() {
                 </div>
               )}
             </>
-          ) : <div className="text-[11px] text-zinc-600 py-8 text-center">Pick a metric to chart its time-series.</div>}
+          ) : <div className="text-[11px] text-zinc-400 py-8 text-center">Pick a metric to chart its time-series.</div>}
         </div>
       </div>
     </div>
@@ -217,11 +217,11 @@ function DashboardsTab() {
         <div className={cardCls}>
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Saved ({dashboards.length})</div>
           <div className="space-y-1">
-            {dashboards.length === 0 && <div className="text-[11px] text-zinc-600">No dashboards yet.</div>}
+            {dashboards.length === 0 && <div className="text-[11px] text-zinc-400">No dashboards yet.</div>}
             {dashboards.map((d) => (
               <div key={d.id} className={`flex items-center gap-1 px-2 py-1 rounded ${active?.id === d.id ? 'bg-cyan-500/15' : 'bg-zinc-900'}`}>
                 <button onClick={() => setActive(d)} className="flex-1 text-left text-[11px] text-zinc-200 truncate">{d.title}</button>
-                <span className="text-[10px] text-zinc-500">{d.widgets?.length || 0}w</span>
+                <span className="text-[10px] text-zinc-400">{d.widgets?.length || 0}w</span>
                 <button onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
@@ -238,19 +238,19 @@ function DashboardsTab() {
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {(active.widgets || []).length === 0 && <div className="text-[11px] text-zinc-600 col-span-2 py-6 text-center">Empty layout — add widgets above.</div>}
+                {(active.widgets || []).length === 0 && <div className="text-[11px] text-zinc-400 col-span-2 py-6 text-center">Empty layout — add widgets above.</div>}
                 {(active.widgets || []).map((w: any) => (
                   <div key={w.id} className="rounded border border-zinc-800 bg-zinc-900/60 p-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-zinc-200">{w.title}</span>
                       <button onClick={() => removeWidget(w.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5">{w.kind}{w.metric ? ` · ${w.metric} (${w.agg})` : ''}</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">{w.kind}{w.metric ? ` · ${w.metric} (${w.agg})` : ''}</div>
                   </div>
                 ))}
               </div>
             </>
-          ) : <div className="text-[11px] text-zinc-600 py-10 text-center">Create or select a dashboard to compose widgets.</div>}
+          ) : <div className="text-[11px] text-zinc-400 py-10 text-center">Create or select a dashboard to compose widgets.</div>}
         </div>
       </div>
     </div>
@@ -312,7 +312,7 @@ function LogsTab() {
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Facets · {matched} hits</div>
             {facets && ['level', 'service'].map((f) => (
               <div key={f} className="mb-2">
-                <div className="text-[10px] text-zinc-500">{f}</div>
+                <div className="text-[10px] text-zinc-400">{f}</div>
                 {(facets[f] || []).slice(0, 6).map((x: any) => (
                   <button key={x.value} onClick={() => search(`${f}:${x.value}`)}
                     className="block w-full text-left text-[11px] text-zinc-300 hover:text-cyan-300">
@@ -323,10 +323,10 @@ function LogsTab() {
             ))}
           </div>
           <div className="md:col-span-3 max-h-80 overflow-y-auto space-y-0.5">
-            {results.length === 0 && <div className="text-[11px] text-zinc-600">No matching logs.</div>}
+            {results.length === 0 && <div className="text-[11px] text-zinc-400">No matching logs.</div>}
             {results.map((r) => (
               <div key={r.id} className="flex gap-2 text-[11px] font-mono px-2 py-1 rounded bg-zinc-900/60">
-                <span className={`uppercase ${r.level === 'error' ? 'text-rose-400' : r.level === 'warn' ? 'text-amber-400' : 'text-zinc-500'}`}>{r.level}</span>
+                <span className={`uppercase ${r.level === 'error' ? 'text-rose-400' : r.level === 'warn' ? 'text-amber-400' : 'text-zinc-400'}`}>{r.level}</span>
                 <span className="text-cyan-400">{r.service}</span>
                 <span className="text-zinc-300 truncate flex-1">{r.message}</span>
               </div>
@@ -380,7 +380,7 @@ function TracesTab() {
       <div className={cardCls}>
         <div className="flex items-center gap-2">
           <button className={btnCls} disabled={busy} onClick={seedSample}><Plus className="w-3 h-3" /> Record sample trace</button>
-          <button onClick={refresh} className="text-zinc-500 hover:text-zinc-200"><RefreshCw className="w-3.5 h-3.5" /></button>
+          <button onClick={refresh} className="text-zinc-400 hover:text-zinc-200"><RefreshCw className="w-3.5 h-3.5" /></button>
         </div>
         <Notice n={notice} />
       </div>
@@ -388,7 +388,7 @@ function TracesTab() {
         <div className={cardCls}>
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Traces ({traces.length})</div>
           <div className="space-y-1 max-h-80 overflow-y-auto">
-            {traces.length === 0 && <div className="text-[11px] text-zinc-600">No traces yet.</div>}
+            {traces.length === 0 && <div className="text-[11px] text-zinc-400">No traces yet.</div>}
             {traces.map((t) => (
               <button key={t.id} onClick={() => openTrace(t.id)}
                 className={`w-full text-left px-2 py-1 rounded text-[11px] ${detail?.id === t.id ? 'bg-cyan-500/15' : 'bg-zinc-900 hover:bg-zinc-800'}`}>
@@ -396,7 +396,7 @@ function TracesTab() {
                   <span className="text-zinc-200 truncate">{t.rootService} · {t.rootName}</span>
                   <span className={t.hasError ? 'text-rose-400' : 'text-emerald-400'}>{t.totalMs}ms</span>
                 </div>
-                <div className="text-[10px] text-zinc-500">{t.spanCount} spans</div>
+                <div className="text-[10px] text-zinc-400">{t.spanCount} spans</div>
               </button>
             ))}
           </div>
@@ -420,7 +420,7 @@ function TracesTab() {
                 ))}
               </div>
             </>
-          ) : <div className="text-[11px] text-zinc-600 py-6 text-center">Select a trace to view its span waterfall.</div>}
+          ) : <div className="text-[11px] text-zinc-400 py-6 text-center">Select a trace to view its span waterfall.</div>}
           {map && map.nodes.length > 0 && (
             <div className="mt-3 border-t border-zinc-800 pt-2">
               <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Service map</div>
@@ -431,7 +431,7 @@ function TracesTab() {
                   </span>
                 ))}
               </div>
-              <div className="text-[10px] text-zinc-500 mt-1">
+              <div className="text-[10px] text-zinc-400 mt-1">
                 {map.edges.map((e) => `${e.from}→${e.to} (${e.count})`).join('  ')}
               </div>
             </div>
@@ -513,7 +513,7 @@ function MonitorsTab() {
       <div className={cardCls}>
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Monitors ({monitors.length})</div>
         <div className="space-y-1">
-          {monitors.length === 0 && <div className="text-[11px] text-zinc-600">No monitors yet.</div>}
+          {monitors.length === 0 && <div className="text-[11px] text-zinc-400">No monitors yet.</div>}
           {monitors.map((m) => {
             const ev = evals.find((e) => e.id === m.id);
             const state = ev?.state || m.state;
@@ -521,7 +521,7 @@ function MonitorsTab() {
               <div key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-zinc-900/60">
                 <span className={`w-2 h-2 rounded-full ${state === 'alert' ? 'bg-rose-500' : state === 'no_data' ? 'bg-zinc-600' : 'bg-emerald-500'}`} />
                 <span className="text-[11px] text-zinc-200 flex-1 truncate">{m.name}</span>
-                <span className="text-[10px] text-zinc-500">{m.type} · {m.severity}</span>
+                <span className="text-[10px] text-zinc-400">{m.type} · {m.severity}</span>
                 {ev && <span className={`text-[10px] ${ev.breached ? 'text-rose-400' : 'text-emerald-400'}`}>{ev.reason}</span>}
                 <button onClick={() => del(m.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
@@ -582,12 +582,12 @@ function SyntheticsTab() {
       <div className={cardCls}>
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Checks ({checks.length})</div>
         <div className="space-y-1">
-          {checks.length === 0 && <div className="text-[11px] text-zinc-600">No synthetic checks yet.</div>}
+          {checks.length === 0 && <div className="text-[11px] text-zinc-400">No synthetic checks yet.</div>}
           {checks.map((c) => (
             <div key={c.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-zinc-900/60">
               <span className={`w-2 h-2 rounded-full ${c.status === 'up' ? 'bg-emerald-500' : c.status === 'down' ? 'bg-rose-500' : 'bg-zinc-600'}`} />
               <span className="text-[11px] text-zinc-200 truncate flex-1">{c.name}</span>
-              <span className="text-[10px] text-zinc-500">{c.method} · every {c.intervalMinutes}m</span>
+              <span className="text-[10px] text-zinc-400">{c.method} · every {c.intervalMinutes}m</span>
               {c.uptimePct != null && <span className="text-[10px] text-cyan-400">{c.uptimePct}% up</span>}
               <button onClick={() => runCheck(c.id)} disabled={busy === c.id} className="text-cyan-400 hover:text-cyan-300">
                 {busy === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
@@ -703,7 +703,7 @@ function OnCallTab() {
       <Notice n={notice} />
       <div className={cardCls}>
         <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-2">Page timeline</div>
-        {pageEvents.length > 0 ? <TimelineView events={pageEvents} height={90} /> : <div className="text-[11px] text-zinc-600">No pages yet.</div>}
+        {pageEvents.length > 0 ? <TimelineView events={pageEvents} height={90} /> : <div className="text-[11px] text-zinc-400">No pages yet.</div>}
         <div className="mt-2 space-y-1">
           {(status?.recentPages || []).filter((p: any) => !p.ackedBy).map((p: any) => (
             <div key={p.id} className="flex items-center gap-2 px-2 py-1 rounded bg-rose-500/10">

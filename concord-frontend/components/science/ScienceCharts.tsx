@@ -87,13 +87,13 @@ export function ScienceCharts() {
       </h3>
 
       {datasets.length === 0 ? (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           No datasets yet. Create a dataset in the Data Grid tab to plot charts.
         </p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[10px] text-gray-500 uppercase">
+            <label className="text-[10px] text-gray-400 uppercase">
               Dataset
               <select
                 value={datasetId}
@@ -106,7 +106,7 @@ export function ScienceCharts() {
                 ))}
               </select>
             </label>
-            <label className="text-[10px] text-gray-500 uppercase">
+            <label className="text-[10px] text-gray-400 uppercase">
               Chart Type
               <select
                 value={kind}
@@ -123,7 +123,7 @@ export function ScienceCharts() {
           {selected && (
             <div className="grid grid-cols-2 gap-2">
               {kind !== 'histogram' && kind !== 'box' && (
-                <label className="text-[10px] text-gray-500 uppercase">
+                <label className="text-[10px] text-gray-400 uppercase">
                   {kind === 'pie' ? 'Category Column' : 'X Column'}
                   <select
                     value={xColumn}
@@ -135,7 +135,7 @@ export function ScienceCharts() {
                 </label>
               )}
               {kind !== 'pie' && (
-                <label className="text-[10px] text-gray-500 uppercase">
+                <label className="text-[10px] text-gray-400 uppercase">
                   {kind === 'histogram' || kind === 'box' ? 'Value Column' : 'Y Column'}
                   <select
                     value={yColumn}
@@ -170,7 +170,7 @@ function ChartResultView({ result }: { result: ChartResult }) {
     }));
     return (
       <div className="rounded border border-teal-500/20 bg-teal-500/5 p-2">
-        <p className="text-[10px] text-gray-500 uppercase mb-1">
+        <p className="text-[10px] text-gray-400 uppercase mb-1">
           {result.valueColumn} — {result.n} values, {result.bins} bins
         </p>
         <ChartKit kind="bar" data={data} xKey="bin" series={[{ key: 'count', label: 'Frequency' }]} />
@@ -185,13 +185,13 @@ function ChartResultView({ result }: { result: ChartResult }) {
     ];
     return (
       <div className="rounded border border-teal-500/20 bg-teal-500/5 p-3 text-xs">
-        <p className="text-[10px] text-gray-500 uppercase mb-2">
+        <p className="text-[10px] text-gray-400 uppercase mb-2">
           Box plot — {result.valueColumn} ({result.n} values)
         </p>
         <div className="grid grid-cols-4 gap-2">
           {cells.map(([k, v]) => (
             <div key={k}>
-              <span className="text-gray-500 text-[10px]">{k}</span>
+              <span className="text-gray-400 text-[10px]">{k}</span>
               <p className="font-mono text-gray-100">{v}</p>
             </div>
           ))}
@@ -205,7 +205,7 @@ function ChartResultView({ result }: { result: ChartResult }) {
   if (result.kind === 'pie') {
     return (
       <div className="rounded border border-teal-500/20 bg-teal-500/5 p-3 text-xs">
-        <p className="text-[10px] text-gray-500 uppercase mb-2">
+        <p className="text-[10px] text-gray-400 uppercase mb-2">
           {result.categoryColumn} — {result.total} rows
         </p>
         <ul className="space-y-1">
@@ -235,7 +235,7 @@ function ChartResultView({ result }: { result: ChartResult }) {
     : result.kind === 'line' ? 'line' : 'bar';
   return (
     <div className="rounded border border-teal-500/20 bg-teal-500/5 p-2">
-      <p className="text-[10px] text-gray-500 uppercase mb-1">{result.n} points</p>
+      <p className="text-[10px] text-gray-400 uppercase mb-1">{result.n} points</p>
       <ChartKit
         kind={chartKind}
         data={result.points}

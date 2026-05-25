@@ -346,8 +346,7 @@ export function MediaUpload({
               isDragOver
                 ? 'border-neon-cyan bg-neon-cyan/5'
                 : 'border-lattice-border hover:border-gray-500 hover:bg-lattice-deep/50'
-            )}
-          >
+            )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <input
               ref={fileInputRef}
               type="file"
@@ -360,7 +359,7 @@ export function MediaUpload({
               animate={isDragOver ? { scale: 1.05, y: -5 } : { scale: 1, y: 0 }}
               className="space-y-3"
             >
-              <Upload className={cn('w-10 h-10 mx-auto', isDragOver ? 'text-neon-cyan' : 'text-gray-500')} />
+              <Upload className={cn('w-10 h-10 mx-auto', isDragOver ? 'text-neon-cyan' : 'text-gray-400')} />
               <div>
                 <p className="text-white font-medium">
                   {isDragOver ? 'Drop to upload' : 'Drag and drop your file here'}
@@ -418,7 +417,7 @@ export function MediaUpload({
                     {uploadFile.mediaType}
                   </span>
                   <span className="text-xs text-gray-400">{formatBytes(uploadFile.size)}</span>
-                  <span className="text-xs text-gray-500">{uploadFile.type}</span>
+                  <span className="text-xs text-gray-400">{uploadFile.type}</span>
                 </div>
               </div>
 
@@ -568,7 +567,7 @@ export function MediaUpload({
                           <opt.icon className="w-4 h-4" />
                           <div>
                             <div className="font-medium">{opt.label}</div>
-                            <div className="text-xs text-gray-500">{opt.desc}</div>
+                            <div className="text-xs text-gray-400">{opt.desc}</div>
                           </div>
                         </button>
                       ))}
@@ -664,7 +663,7 @@ export function MediaUpload({
                 'flex items-center gap-2 px-5 py-2 rounded-lg font-medium transition-all',
                 uploadFile && title.trim()
                   ? 'bg-neon-cyan/20 text-neon-cyan hover:bg-neon-cyan/30 border border-neon-cyan/30'
-                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                  : 'bg-gray-800 text-gray-400 cursor-not-allowed'
               )}
             >
               {(uploadStatus === 'uploading' || uploadStatus === 'processing' || uploadStatus === 'validating') ? (

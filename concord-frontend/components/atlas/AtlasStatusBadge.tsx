@@ -64,7 +64,7 @@ export function EpistemicClassBadge({ epistemicClass, showDescription = false }:
     <span className={`inline-flex items-center gap-1 text-xs ${config.color}`}>
       <span className="font-medium">{config.label}</span>
       {showDescription && (
-        <span className="text-gray-500">({config.description})</span>
+        <span className="text-gray-400">({config.description})</span>
       )}
     </span>
   );
@@ -139,7 +139,7 @@ export function ConfidenceBadge({ score, verified = false, disputed = false }: C
     ? 'text-blue-400 bg-blue-500/10'
     : pct >= 50
     ? 'text-gray-300 bg-gray-500/10'
-    : 'text-gray-500 bg-gray-500/10';
+    : 'text-gray-400 bg-gray-500/10';
 
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${color}`}>

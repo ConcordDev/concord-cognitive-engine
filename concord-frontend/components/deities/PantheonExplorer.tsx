@@ -75,7 +75,7 @@ export function PantheonExplorer() {
         ))}
       </div>
       {summary.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
-      {summary.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling summary…</div>}
+      {summary.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling summary…</div>}
       {s && (
         <article className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-white">

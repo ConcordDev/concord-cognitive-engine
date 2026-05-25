@@ -26,7 +26,7 @@ const TIER_CONFIG: Record<string, { icon: typeof Zap; color: string; label: stri
   regular: { icon: Zap, color: 'text-gray-400', label: 'Regular' },
   mega: { icon: Star, color: 'text-neon-cyan', label: 'Mega' },
   hyper: { icon: Sparkles, color: 'text-neon-purple', label: 'Hyper' },
-  shadow: { icon: Ghost, color: 'text-gray-500', label: 'Shadow' },
+  shadow: { icon: Ghost, color: 'text-gray-400', label: 'Shadow' },
 };
 
 function formatTimeAgo(dateStr: string): string {
@@ -143,14 +143,14 @@ function LiveDTUFeed({
           <Zap className="w-4 h-4 text-neon-blue" />
           Live DTU Birth Feed
         </h2>
-        <span className="text-xs text-gray-500">{liveDtus.length} recent</span>
+        <span className="text-xs text-gray-400">{liveDtus.length} recent</span>
       </div>
 
       <div ref={feedRef} className="space-y-1 max-h-[320px] overflow-y-auto no-scrollbar">
         {liveDtus.length === 0 ? (
           <div className="text-center py-6">
             <Zap className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-            <p className="text-xs text-gray-500">Waiting for new DTUs...</p>
+            <p className="text-xs text-gray-400">Waiting for new DTUs...</p>
           </div>
         ) : (
           liveDtus.map((dtu) => {
@@ -186,7 +186,7 @@ function LiveDTUFeed({
                     )}
                     {dtu.source && (
                       <span
-                        className="text-[10px] text-gray-500 truncate max-w-[80px]"
+                        className="text-[10px] text-gray-400 truncate max-w-[80px]"
                         title={dtu.source}
                       >
                         via {dtu.source}
@@ -197,18 +197,18 @@ function LiveDTUFeed({
                     <div className="flex items-center gap-1 mt-0.5">
                       <Tag className="w-2.5 h-2.5 text-gray-600" />
                       {dtu.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="text-[10px] text-gray-500">
+                        <span key={tag} className="text-[10px] text-gray-400">
                           #{tag}
                         </span>
                       ))}
                       {dtu.tags.length > 3 && (
-                        <span className="text-[10px] text-gray-600">+{dtu.tags.length - 3}</span>
+                        <span className="text-[10px] text-gray-400">+{dtu.tags.length - 3}</span>
                       )}
                     </div>
                   )}
                 </div>
                 <span
-                  className="text-[10px] text-gray-600 flex-shrink-0"
+                  className="text-[10px] text-gray-400 flex-shrink-0"
                   title={new Date(dtu.timestamp).toLocaleString()}
                 >
                   {formatTimeAgo(dtu.timestamp)}

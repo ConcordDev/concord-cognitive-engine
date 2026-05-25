@@ -143,7 +143,7 @@ export default function MarketplacePalette({
 
       {/* Search */}
       <div className="relative">
-        <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -177,7 +177,7 @@ export default function MarketplacePalette({
       {/* Component list */}
       <div className="space-y-1.5 max-h-96 overflow-y-auto">
         {filtered.length === 0 && (
-          <p className="text-[10px] text-gray-600 text-center py-4">No components found</p>
+          <p className="text-[10px] text-gray-400 text-center py-4">No components found</p>
         )}
         {filtered.map(entry => (
           <button
@@ -193,14 +193,14 @@ export default function MarketplacePalette({
               </span>
               <ShieldCheck className="w-3 h-3 text-green-400 flex-shrink-0" />
             </div>
-            <div className="flex items-center gap-2 text-[9px] text-gray-500">
+            <div className="flex items-center gap-2 text-[9px] text-gray-400">
               <span className="text-cyan-500">{entry.creator}</span>
               <span className="flex items-center gap-0.5">
                 <Quote className="w-2.5 h-2.5" /> {entry.citationCount}
               </span>
             </div>
             {Object.keys(entry.performanceSpecs).length > 0 && (
-              <div className="flex gap-2 mt-0.5 text-[9px] text-gray-600">
+              <div className="flex gap-2 mt-0.5 text-[9px] text-gray-400">
                 {Object.entries(entry.performanceSpecs).slice(0, 2).map(([k, v]) => (
                   <span key={k}>{k}: {v}</span>
                 ))}

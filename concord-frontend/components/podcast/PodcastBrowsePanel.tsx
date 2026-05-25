@@ -102,7 +102,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Show detail ──
@@ -115,11 +115,11 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
         </button>
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-4">
           <h3 className="text-base font-bold text-zinc-100">{selected.title}</h3>
-          <p className="text-xs text-zinc-500">{selected.author} · {selected.category}</p>
+          <p className="text-xs text-zinc-400">{selected.author} · {selected.category}</p>
           {selected.description && <p className="text-[11px] text-zinc-400 mt-1">{selected.description}</p>}
           <div className="flex items-center gap-2 mt-2">
             <Stars rating={selected.rating} />
-            <span className="text-[11px] text-zinc-500">{selected.rating || 'unrated'} · {selected.reviewCount} reviews</span>
+            <span className="text-[11px] text-zinc-400">{selected.rating || 'unrated'} · {selected.reviewCount} reviews</span>
             <button type="button" onClick={() => subscribe(selected)}
               className={cn('ml-auto text-[11px] px-2.5 py-1 rounded-lg border',
                 selected.subscribed ? 'border-zinc-700 text-zinc-400' : 'border-violet-700/50 bg-violet-950/40 text-violet-300')}>
@@ -144,14 +144,14 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
 
         {/* Episodes */}
         {episodes.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No episodes yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No episodes yet.</p>
         ) : (
           <ul className="space-y-1">
             {episodes.map((e) => (
               <li key={e.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div className="min-w-0">
                   <p className="text-xs text-zinc-200 truncate">{e.title}</p>
-                  <p className="text-[10px] text-zinc-500">{fmt(e.durationSec)} · {e.publishDate}{e.played ? ' · played' : ''}</p>
+                  <p className="text-[10px] text-zinc-400">{fmt(e.durationSec)} · {e.publishDate}{e.played ? ' · played' : ''}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => queueEp(e.id)}
@@ -226,7 +226,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
       )}
 
       {shows.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No shows yet. Add a podcast to the directory.
         </div>
       ) : (
@@ -235,7 +235,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
             <li key={sh.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <button type="button" onClick={() => openShow(sh)} className="text-left min-w-0">
                 <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
-                <p className="text-[11px] text-zinc-500 truncate">
+                <p className="text-[11px] text-zinc-400 truncate">
                   {sh.author} · {sh.category} · {sh.episodeCount} episodes
                 </p>
               </button>

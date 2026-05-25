@@ -182,7 +182,7 @@ export default function LegacyLensPage() {
             <Calendar className="w-4 h-4 text-neon-purple" />
             400-Year Timeline
             {statusFilter !== 'all' && (
-              <span className="text-xs text-gray-500 font-normal">
+              <span className="text-xs text-gray-400 font-normal">
                 ({visibleMilestones.length} of {milestones.length})
               </span>
             )}
@@ -210,7 +210,7 @@ export default function LegacyLensPage() {
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-lattice-border" />
           <div className="space-y-6">
             {visibleMilestones.length === 0 && milestones.length > 0 && (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-400 text-center py-4">
                 No <span className="text-neon-purple">{statusFilter}</span> milestones in this timeline.
               </p>
             )}
@@ -245,7 +245,7 @@ export default function LegacyLensPage() {
                   </div>
                   <p className="text-sm text-gray-400 mb-2">{milestone.description}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Confidence:</span>
+                    <span className="text-xs text-gray-400">Confidence:</span>
                     <div className="flex-1 h-1.5 bg-lattice-deep rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-neon-green to-neon-blue"
@@ -321,7 +321,7 @@ export default function LegacyLensPage() {
                 )}
                 {'topDebtSources' in actionResult && Array.isArray(actionResult.topDebtSources) && actionResult.topDebtSources.length > 0 && (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider">Top Debt Sources</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider">Top Debt Sources</p>
                     {(actionResult.topDebtSources as Array<Record<string, unknown>>).map((m, i) => (
                       <div key={i} className="flex justify-between text-xs bg-lattice-surface rounded px-2 py-1">
                         <span className="text-gray-300">{String(m.name || m.module)}</span>
@@ -343,7 +343,7 @@ export default function LegacyLensPage() {
                 )}
                 {'migrationOrder' in actionResult && Array.isArray(actionResult.migrationOrder) && (
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Migration Order</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">Migration Order</p>
                     <div className="flex flex-wrap gap-1">
                       {(actionResult.migrationOrder as Array<{phase: number; module: string; readiness: number}>).map((m, i) => (
                         <span key={i} className="text-xs bg-neon-cyan/10 border border-neon-cyan/20 rounded px-2 py-0.5 text-neon-cyan">{m.phase}. {m.module}</span>

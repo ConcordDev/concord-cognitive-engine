@@ -28,10 +28,10 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
+    return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…</div>;
   }
   if (!data) {
-    return <div className="p-10 text-center text-xs text-gray-500">No dashboard data yet.</div>;
+    return <div className="p-10 text-center text-xs text-gray-400">No dashboard data yet.</div>;
   }
 
   return (
@@ -65,7 +65,7 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
           <div className="text-2xl font-mono text-emerald-300">{data.customerCount}</div>
           <div>
             <div className="text-xs text-white">Customers</div>
-            <div className="text-[10px] text-gray-500">Manage → bills, invoices</div>
+            <div className="text-[10px] text-gray-400">Manage → bills, invoices</div>
           </div>
         </button>
         <button
@@ -75,7 +75,7 @@ export function AccountingDashboard({ onJumpTo }: { onJumpTo?: (nav: string) => 
           <div className="text-2xl font-mono text-amber-300">{data.vendorCount}</div>
           <div>
             <div className="text-xs text-white">Vendors</div>
-            <div className="text-[10px] text-gray-500">Including 1099 contractors</div>
+            <div className="text-[10px] text-gray-400">Including 1099 contractors</div>
           </div>
         </button>
       </div>
@@ -104,11 +104,11 @@ function Tile({
       )}
     >
       <div className="flex items-center gap-1.5 mb-1">
-        <Icon className="w-3 h-3 text-gray-500" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <Icon className="w-3 h-3 text-gray-400" />
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className={cn('text-2xl font-mono tabular-nums', tone === 'positive' ? 'text-emerald-300' : 'text-rose-300', bold && 'font-bold')}>{value}</div>
-      {sub && <div className="text-[10px] text-gray-500 mt-0.5">{sub}</div>}
+      {sub && <div className="text-[10px] text-gray-400 mt-0.5">{sub}</div>}
     </button>
   );
 }

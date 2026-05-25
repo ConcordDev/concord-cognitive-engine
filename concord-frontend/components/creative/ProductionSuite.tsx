@@ -93,7 +93,7 @@ const INPUT = 'w-full rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 te
 const BTN = 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
 const BTN_PRIMARY = `${BTN} bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40`;
 const BTN_SECONDARY = `${BTN} bg-zinc-800 hover:bg-zinc-700 text-zinc-200`;
-const BTN_GHOST = 'p-1 rounded text-zinc-500 hover:text-zinc-200 transition-colors';
+const BTN_GHOST = 'p-1 rounded text-zinc-400 hover:text-zinc-200 transition-colors';
 
 function fmtTime(sec: number | null): string {
   if (sec == null) return '--:--';
@@ -113,7 +113,7 @@ export function ProductionSuite() {
       <div className="flex items-center gap-2">
         <Clapperboard className="w-5 h-5 text-violet-400" />
         <h2 className="text-base font-semibold text-zinc-100">Production Suite</h2>
-        <span className="text-xs text-zinc-500">StudioBinder + Frame.io parity</span>
+        <span className="text-xs text-zinc-400">StudioBinder + Frame.io parity</span>
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b border-zinc-800 pb-2">
@@ -257,27 +257,26 @@ function ReviewTab() {
           </div>
         )}
         {assets.length === 0 && !showNew && (
-          <p className="text-xs text-zinc-600">No review assets yet. Upload a video or image to start a review.</p>
+          <p className="text-xs text-zinc-400">No review assets yet. Upload a video or image to start a review.</p>
         )}
         {assets.map((a) => (
           <div
             key={a.id}
             onClick={() => setSelected(a.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`}
-          >
+            className={`${PANEL} cursor-pointer transition-colors ${selected === a.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 {a.kind === 'video' ? <Film className="w-4 h-4 text-violet-400 shrink-0" /> : <ImageIcon className="w-4 h-4 text-cyan-400 shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-zinc-100 truncate">{a.name}</p>
-                  <p className="text-xs text-zinc-500">{a.project || 'No project'}{a.kind === 'video' ? ` · ${fmtTime(a.durationSec)}` : ''}</p>
+                  <p className="text-xs text-zinc-400">{a.project || 'No project'}{a.kind === 'video' ? ` · ${fmtTime(a.durationSec)}` : ''}</p>
                 </div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); deleteAsset(a.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete asset">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
+            <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
               <span><MessageSquare className="w-3 h-3 inline mr-1" />{a.commentCount} comment{a.commentCount !== 1 ? 's' : ''}</span>
               {a.openCount > 0 && <span className="text-amber-400">{a.openCount} open</span>}
             </div>
@@ -290,13 +289,13 @@ function ReviewTab() {
         {!activeAsset ? (
           <div className={`${PANEL} text-center py-12`}>
             <Film className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm text-zinc-500">Select a review asset to see frame-accurate comments.</p>
+            <p className="text-sm text-zinc-400">Select a review asset to see frame-accurate comments.</p>
           </div>
         ) : (
           <>
             <div className={PANEL}>
               <h3 className="text-sm font-semibold text-zinc-100 mb-1">{activeAsset.name}</h3>
-              <p className="text-xs text-zinc-500 mb-3">
+              <p className="text-xs text-zinc-400 mb-3">
                 {activeAsset.kind === 'video' ? `Video · ${fmtTime(activeAsset.durationSec)}` : 'Image'} · {comments.length} comment{comments.length !== 1 ? 's' : ''}
               </p>
               {activeAsset.src && (
@@ -330,7 +329,7 @@ function ReviewTab() {
             </div>
 
             <div className="space-y-2">
-              {comments.length === 0 && <p className="text-xs text-zinc-600">No comments yet. Be the first to annotate this asset.</p>}
+              {comments.length === 0 && <p className="text-xs text-zinc-400">No comments yet. Be the first to annotate this asset.</p>}
               {comments.map((c) => (
                 <div key={c.id} className={`${PANEL} ${c.resolved ? 'opacity-60' : ''}`}>
                   <div className="flex items-start justify-between">
@@ -456,23 +455,22 @@ function CallSheetTab() {
             <button onClick={createSheet} disabled={busy || !project.trim()} className={BTN_PRIMARY}>Create call sheet</button>
           </div>
         )}
-        {sheets.length === 0 && !showNew && <p className="text-xs text-zinc-600">No call sheets. Create one per shoot day.</p>}
+        {sheets.length === 0 && !showNew && <p className="text-xs text-zinc-400">No call sheets. Create one per shoot day.</p>}
         {sheets.map((cs) => (
           <div
             key={cs.id}
             onClick={() => loadSheet(cs.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`}
-          >
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === cs.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{cs.project}</p>
-                <p className="text-xs text-zinc-500">Day {cs.dayNumber} · {cs.shootDate} · call {cs.generalCall}</p>
+                <p className="text-xs text-zinc-400">Day {cs.dayNumber} · {cs.shootDate} · call {cs.generalCall}</p>
               </div>
               <button onClick={(e) => { e.stopPropagation(); deleteSheet(cs.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="flex gap-3 mt-2 text-xs text-zinc-500">
+            <div className="flex gap-3 mt-2 text-xs text-zinc-400">
               <span>{cs.castCount ?? cs.cast?.length ?? 0} cast</span>
               <span>{cs.crewCount ?? cs.crew?.length ?? 0} crew</span>
               <span>{cs.locationCount ?? cs.locations?.length ?? 0} loc</span>
@@ -486,13 +484,13 @@ function CallSheetTab() {
         {!active ? (
           <div className={`${PANEL} text-center py-12`}>
             <ClipboardList className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm text-zinc-500">Select a call sheet to manage cast, crew, locations and schedule.</p>
+            <p className="text-sm text-zinc-400">Select a call sheet to manage cast, crew, locations and schedule.</p>
           </div>
         ) : (
           <>
             <div className={PANEL}>
               <h3 className="text-sm font-semibold text-zinc-100">{active.project} — Day {active.dayNumber}</h3>
-              <p className="text-xs text-zinc-500">Shoot date {active.shootDate} · General crew call {active.generalCall}</p>
+              <p className="text-xs text-zinc-400">Shoot date {active.shootDate} · General crew call {active.generalCall}</p>
             </div>
 
             {/* Row composer */}
@@ -532,7 +530,7 @@ function CallSheetTab() {
                     <SecIcon className="w-3.5 h-3.5 text-violet-400" /> {sec.label} ({rows.length})
                   </h4>
                   {rows.length === 0 ? (
-                    <p className="text-xs text-zinc-600">No {sec.label.toLowerCase()} rows.</p>
+                    <p className="text-xs text-zinc-400">No {sec.label.toLowerCase()} rows.</p>
                   ) : (
                     <div className="space-y-1">
                       {rows.map((row) => (
@@ -641,17 +639,16 @@ function BreakdownTab() {
             <button onClick={createBreakdown} disabled={busy || !title.trim()} className={BTN_PRIMARY}>Create + auto-scan</button>
           </div>
         )}
-        {list.length === 0 && !showNew && <p className="text-xs text-zinc-600">No breakdowns yet.</p>}
+        {list.length === 0 && !showNew && <p className="text-xs text-zinc-400">No breakdowns yet.</p>}
         {list.map((b) => (
           <div
             key={b.id}
             onClick={() => loadOne(b.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`}
-          >
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === b.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{b.title}</p>
-                <p className="text-xs text-zinc-500">{b.project || 'No project'} · {b.tagCount ?? 0} tags · {b.scriptLength ?? 0} chars</p>
+                <p className="text-xs text-zinc-400">{b.project || 'No project'} · {b.tagCount ?? 0} tags · {b.scriptLength ?? 0} chars</p>
               </div>
               <button onClick={(e) => { e.stopPropagation(); deleteBreakdown(b.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -665,7 +662,7 @@ function BreakdownTab() {
         {!active ? (
           <div className={`${PANEL} text-center py-12`}>
             <Tag className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm text-zinc-500">Select a breakdown to tag props, cast, locations and more.</p>
+            <p className="text-sm text-zinc-400">Select a breakdown to tag props, cast, locations and more.</p>
           </div>
         ) : (
           <>
@@ -678,7 +675,7 @@ function BreakdownTab() {
                 <div className="mt-3 space-y-2">
                   {suggestions.cast.length > 0 && (
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">Detected cast — click to tag</p>
+                      <p className="text-xs text-zinc-400 mb-1">Detected cast — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.cast.map((s) => (
                           <button key={s} onClick={() => tag('cast', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
@@ -690,7 +687,7 @@ function BreakdownTab() {
                   )}
                   {suggestions.locations.length > 0 && (
                     <div>
-                      <p className="text-xs text-zinc-500 mb-1">Detected locations — click to tag</p>
+                      <p className="text-xs text-zinc-400 mb-1">Detected locations — click to tag</p>
                       <div className="flex flex-wrap gap-1">
                         {suggestions.locations.map((s) => (
                           <button key={s} onClick={() => tag('locations', s)} className="rounded-full bg-zinc-800 hover:bg-violet-500/30 px-2 py-0.5 text-xs text-zinc-300">
@@ -721,7 +718,7 @@ function BreakdownTab() {
                   <div key={cat} className={PANEL}>
                     <h4 className="text-xs font-semibold text-zinc-300 capitalize mb-2">{cat} ({tags.length})</h4>
                     {tags.length === 0 ? (
-                      <p className="text-xs text-zinc-600">None tagged.</p>
+                      <p className="text-xs text-zinc-400">None tagged.</p>
                     ) : (
                       <div className="flex flex-wrap gap-1">
                         {tags.map((t) => (
@@ -846,17 +843,16 @@ function DeliverableTab() {
             <button onClick={create} disabled={busy || !name.trim()} className={BTN_PRIMARY}>Create deliverable</button>
           </div>
         )}
-        {list.length === 0 && !showNew && <p className="text-xs text-zinc-600">No deliverables yet.</p>}
+        {list.length === 0 && !showNew && <p className="text-xs text-zinc-400">No deliverables yet.</p>}
         {list.map((d) => (
           <div
             key={d.id}
             onClick={() => loadOne(d.id)}
-            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`}
-          >
+            className={`${PANEL} cursor-pointer transition-colors ${active?.id === d.id ? 'border-violet-500/60' : 'hover:border-zinc-700'}`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-zinc-100">{d.name}</p>
-                <p className="text-xs text-zinc-500">{d.project || 'No project'} · v{d.currentVersion} of {d.versionCount ?? d.versions?.length ?? 1}</p>
+                <p className="text-xs text-zinc-400">{d.project || 'No project'} · v{d.currentVersion} of {d.versionCount ?? d.versions?.length ?? 1}</p>
               </div>
               <button onClick={(e) => { e.stopPropagation(); del(d.id); }} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
@@ -873,7 +869,7 @@ function DeliverableTab() {
         {!active ? (
           <div className={`${PANEL} text-center py-12`}>
             <Layers className="w-8 h-8 text-zinc-700 mx-auto mb-2" />
-            <p className="text-sm text-zinc-500">Select a deliverable to stack versions and route approvals.</p>
+            <p className="text-sm text-zinc-400">Select a deliverable to stack versions and route approvals.</p>
           </div>
         ) : (
           <>
@@ -884,7 +880,7 @@ function DeliverableTab() {
                   {active.status.replace(/_/g, ' ')}
                 </span>
               </div>
-              <p className="text-xs text-zinc-500 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Current v{active.currentVersion}{active.reviewer ? ` · reviewer ${active.reviewer}` : ''}
               </p>
               {active.decisionNote && (
@@ -943,7 +939,7 @@ function DeliverableTab() {
                     <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs font-mono text-zinc-300">v{v.version}</span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-zinc-200 truncate">{v.note}</p>
-                      <p className="text-xs text-zinc-500">{v.uploadedBy} · {new Date(v.uploadedAt).toLocaleString()}</p>
+                      <p className="text-xs text-zinc-400">{v.uploadedBy} · {new Date(v.uploadedAt).toLocaleString()}</p>
                     </div>
                     {v.version === active.currentVersion ? (
                       <span className="text-xs text-violet-300 flex items-center gap-1"><Check className="w-3 h-3" /> current</span>
@@ -1021,11 +1017,11 @@ function CalendarTab() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className={PANEL}><p className="text-xs text-zinc-500">Total Events</p><p className="text-2xl font-bold text-zinc-100">{events.length}</p></div>
-        <div className={PANEL}><p className="text-xs text-zinc-500">Upcoming</p><p className="text-2xl font-bold text-emerald-400">{summary.upcoming}</p></div>
-        <div className={PANEL}><p className="text-xs text-zinc-500">Overdue</p><p className="text-2xl font-bold text-rose-400">{summary.overdue}</p></div>
+        <div className={PANEL}><p className="text-xs text-zinc-400">Total Events</p><p className="text-2xl font-bold text-zinc-100">{events.length}</p></div>
+        <div className={PANEL}><p className="text-xs text-zinc-400">Upcoming</p><p className="text-2xl font-bold text-emerald-400">{summary.upcoming}</p></div>
+        <div className={PANEL}><p className="text-xs text-zinc-400">Overdue</p><p className="text-2xl font-bold text-rose-400">{summary.overdue}</p></div>
         <div className={PANEL}>
-          <p className="text-xs text-zinc-500 mb-1">Filter</p>
+          <p className="text-xs text-zinc-400 mb-1">Filter</p>
           <select className={INPUT} value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
             <option value="all">All kinds</option>
             {CAL_KINDS.map((k) => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
@@ -1058,7 +1054,7 @@ function CalendarTab() {
       )}
 
       <div className="space-y-2">
-        {events.length === 0 && <p className="text-xs text-zinc-600">No production events. Add shoot days, milestones and due dates.</p>}
+        {events.length === 0 && <p className="text-xs text-zinc-400">No production events. Add shoot days, milestones and due dates.</p>}
         {events.map((ev) => {
           const overdue = !ev.done && ev.date < today;
           return (
@@ -1071,8 +1067,8 @@ function CalendarTab() {
                 {ev.done && <Check className="w-3 h-3 text-emerald-400" />}
               </button>
               <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium ${ev.done ? 'text-zinc-500 line-through' : 'text-zinc-100'}`}>{ev.title}</p>
-                <p className="text-xs text-zinc-500">
+                <p className={`text-sm font-medium ${ev.done ? 'text-zinc-400 line-through' : 'text-zinc-100'}`}>{ev.title}</p>
+                <p className="text-xs text-zinc-400">
                   {ev.date} · {ev.kind.replace(/_/g, ' ')}{ev.project ? ` · ${ev.project}` : ''}
                   {overdue && <span className="text-rose-400 ml-1">overdue</span>}
                 </p>
@@ -1157,7 +1153,7 @@ function ProofLinkTab() {
         <div className={`${PANEL} space-y-2`}>
           <h3 className="text-sm font-semibold text-zinc-300">New Shareable Proof Link</h3>
           {assets.length === 0 ? (
-            <p className="text-xs text-zinc-600">Create a review asset first (Review tab) — proof links wrap a review asset.</p>
+            <p className="text-xs text-zinc-400">Create a review asset first (Review tab) — proof links wrap a review asset.</p>
           ) : (
             <>
               <select className={INPUT} value={assetId} onChange={(e) => setAssetId(e.target.value)}>
@@ -1177,13 +1173,13 @@ function ProofLinkTab() {
         </div>
 
         <div className="space-y-2">
-          {links.length === 0 && <p className="text-xs text-zinc-600">No proof links yet.</p>}
+          {links.length === 0 && <p className="text-xs text-zinc-400">No proof links yet.</p>}
           {links.map((l) => (
             <div key={l.id} className={PANEL}>
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-zinc-100 truncate">{l.label}</p>
-                  <p className="text-xs font-mono text-zinc-500 truncate">{l.shareUrl}</p>
+                  <p className="text-xs font-mono text-zinc-400 truncate">{l.shareUrl}</p>
                 </div>
                 <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs ${l.active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700 text-zinc-400'}`}>
                   {l.active ? 'active' : 'disabled'}
@@ -1199,7 +1195,7 @@ function ProofLinkTab() {
                 <button onClick={() => del(l.id)} className={`${BTN_GHOST} hover:text-rose-400`} aria-label="Delete link">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
-                <span className="ml-auto text-xs text-zinc-500">
+                <span className="ml-auto text-xs text-zinc-400">
                   <MessageSquare className="w-3 h-3 inline mr-1" />{l.externalCommentCount} external
                 </span>
               </div>
@@ -1214,7 +1210,7 @@ function ProofLinkTab() {
           <MessageSquare className="w-4 h-4 text-violet-400" /> External Inbox
         </h3>
         {inbox.length === 0 ? (
-          <p className="text-xs text-zinc-600">No external comments captured yet. Share a proof link to collect client feedback.</p>
+          <p className="text-xs text-zinc-400">No external comments captured yet. Share a proof link to collect client feedback.</p>
         ) : (
           inbox.map((c) => (
             <div key={c.id} className={PANEL}>
@@ -1226,7 +1222,7 @@ function ProofLinkTab() {
                 )}
               </div>
               <p className="text-sm text-zinc-300 mt-1">{c.body}</p>
-              <p className="text-xs text-zinc-600 mt-1">{new Date(c.createdAt).toLocaleString()}</p>
+              <p className="text-xs text-zinc-400 mt-1">{new Date(c.createdAt).toLocaleString()}</p>
             </div>
           ))
         )}

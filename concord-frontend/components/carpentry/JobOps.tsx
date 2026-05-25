@@ -86,17 +86,17 @@ function CutListOptimizer() {
       </header>
       <div className="space-y-2 p-4">
         <div className="grid grid-cols-3 gap-2">
-          <label className="text-[10px] text-zinc-500">Stock length (in)
+          <label className="text-[10px] text-zinc-400">Stock length (in)
             <input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={stockLength} onChange={(e) => setStockLength(e.target.value)} />
           </label>
-          <label className="text-[10px] text-zinc-500">Saw kerf (in)
+          <label className="text-[10px] text-zinc-400">Saw kerf (in)
             <input className={`${inp} mt-0.5 w-full font-mono`} type="number" step="0.001" value={kerf} onChange={(e) => setKerf(e.target.value)} />
           </label>
-          <label className="text-[10px] text-zinc-500">$ / board
+          <label className="text-[10px] text-zinc-400">$ / board
             <input className={`${inp} mt-0.5 w-full font-mono`} type="number" step="0.01" value={stockCost} onChange={(e) => setStockCost(e.target.value)} />
           </label>
         </div>
-        <div className="grid grid-cols-[1fr_80px_60px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_80px_60px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Label</span><span>Length</span><span>Qty</span><span></span>
         </div>
         {cuts.map((c, i) => (
@@ -104,7 +104,7 @@ function CutListOptimizer() {
             <input className={inp} value={c.label} placeholder="cut" onChange={(e) => setCuts((cs) => cs.map((x, idx) => idx === i ? { ...x, label: e.target.value } : x))} />
             <input className={`${inp} font-mono`} type="number" placeholder="24" value={c.length} onChange={(e) => setCuts((cs) => cs.map((x, idx) => idx === i ? { ...x, length: e.target.value } : x))} />
             <input className={`${inp} font-mono`} type="number" placeholder="1" value={c.quantity} onChange={(e) => setCuts((cs) => cs.map((x, idx) => idx === i ? { ...x, quantity: e.target.value } : x))} />
-            <button type="button" onClick={() => setCuts((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" aria-label="Remove cut"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setCuts((cs) => cs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" aria-label="Remove cut"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <div className="flex items-center justify-between">
@@ -124,7 +124,7 @@ function CutListOptimizer() {
             <div className="space-y-1">
               {result.layout.map((b) => (
                 <div key={b.board} className="rounded border border-zinc-800 bg-zinc-950/40 p-2">
-                  <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-500">
+                  <div className="mb-1 flex items-center justify-between text-[10px] text-zinc-400">
                     <span className="text-zinc-300">Board {b.board}</span>
                     <span>used {b.usedLength}&quot; · offcut {b.offcut}&quot;</span>
                   </div>
@@ -194,7 +194,7 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
       </header>
       <div className="space-y-2 p-4">
         <input className={`${inp} w-full`} placeholder="Project name" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-        <div className="grid grid-cols-[1fr_70px_56px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-500">
+        <div className="grid grid-cols-[1fr_70px_56px_70px_30px] gap-1.5 text-[9px] uppercase tracking-wider text-zinc-400">
           <span>Item</span><span>Qty</span><span>Unit</span><span>$/unit</span><span></span>
         </div>
         {items.map((it, i) => (
@@ -203,15 +203,15 @@ function MaterialTakeoff({ onEstimate }: { onEstimate: (e: TakeoffResult) => voi
             <input className={`${inp} font-mono`} type="number" placeholder="40" value={it.quantity} onChange={(e) => setItems((xs) => xs.map((x, idx) => idx === i ? { ...x, quantity: e.target.value } : x))} />
             <input className={inp} value={it.unit} onChange={(e) => setItems((xs) => xs.map((x, idx) => idx === i ? { ...x, unit: e.target.value } : x))} />
             <input className={`${inp} font-mono`} type="number" step="0.01" placeholder="4.50" value={it.unitCost} onChange={(e) => setItems((xs) => xs.map((x, idx) => idx === i ? { ...x, unitCost: e.target.value } : x))} />
-            <button type="button" onClick={() => setItems((xs) => xs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-500 hover:text-rose-300" aria-label="Remove item"><Trash2 className="mx-auto h-3 w-3" /></button>
+            <button type="button" onClick={() => setItems((xs) => xs.filter((_, idx) => idx !== i))} className="rounded border border-zinc-800 text-zinc-400 hover:text-rose-300" aria-label="Remove item"><Trash2 className="mx-auto h-3 w-3" /></button>
           </div>
         ))}
         <button type="button" className={ghostBtn} onClick={() => setItems((xs) => [...xs, { name: '', quantity: '', unit: 'ea', unitCost: '' }])}><Plus className="h-3 w-3" />Add line item</button>
         <div className="grid grid-cols-4 gap-2">
-          <label className="text-[10px] text-zinc-500">Labor hrs<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} /></label>
-          <label className="text-[10px] text-zinc-500">$ / hr<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} /></label>
-          <label className="text-[10px] text-zinc-500">Waste %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={wastePct} onChange={(e) => setWastePct(e.target.value)} /></label>
-          <label className="text-[10px] text-zinc-500">Margin %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={marginPct} onChange={(e) => setMarginPct(e.target.value)} /></label>
+          <label className="text-[10px] text-zinc-400">Labor hrs<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborHours} onChange={(e) => setLaborHours(e.target.value)} /></label>
+          <label className="text-[10px] text-zinc-400">$ / hr<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={laborRate} onChange={(e) => setLaborRate(e.target.value)} /></label>
+          <label className="text-[10px] text-zinc-400">Waste %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={wastePct} onChange={(e) => setWastePct(e.target.value)} /></label>
+          <label className="text-[10px] text-zinc-400">Margin %<input className={`${inp} mt-0.5 w-full font-mono`} type="number" value={marginPct} onChange={(e) => setMarginPct(e.target.value)} /></label>
         </div>
         <button type="button" className={`${btn} w-full justify-center`} disabled={busy || items.filter((it) => it.quantity).length === 0} onClick={compute}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Build estimate'}
@@ -313,10 +313,10 @@ function CrewSchedule() {
       <div className="grid gap-3 p-4 md:grid-cols-[260px_1fr]">
         <div className="space-y-3">
           <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2 space-y-1.5">
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><UserPlus className="h-3 w-3" />Crew roster</div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><UserPlus className="h-3 w-3" />Crew roster</div>
             {crew.map((m) => (
               <div key={m.id} className="flex items-center justify-between rounded bg-zinc-900/60 px-2 py-1 text-[11px]">
-                <span className="text-white">{m.name} <span className="text-zinc-500">· {m.role}</span></span>
+                <span className="text-white">{m.name} <span className="text-zinc-400">· {m.role}</span></span>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-emerald-300">${m.hourlyRate}/h</span>
                   <button onClick={() => removeCrew(m.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Remove crew"><Trash2 className="h-3 w-3" /></button>
@@ -331,7 +331,7 @@ function CrewSchedule() {
             <button type="button" className={`${btn} w-full justify-center`} disabled={busy || !cName.trim()} onClick={addCrew}><Plus className="h-3 w-3" />Add crew</button>
           </div>
           <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Schedule a job</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Schedule a job</div>
             <input className={`${inp} w-full`} placeholder="Job title" value={sTitle} onChange={(e) => setSTitle(e.target.value)} />
             <input className={`${inp} w-full`} placeholder="Address" value={sAddress} onChange={(e) => setSAddress(e.target.value)} />
             <input className={`${inp} w-full font-mono`} type="date" value={sDate} onChange={(e) => setSDate(e.target.value)} />
@@ -355,7 +355,7 @@ function CrewSchedule() {
         </div>
         <div className="space-y-2">
           {sched.length === 0
-            ? <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No jobs scheduled. Add one to populate the dispatch calendar.</div>
+            ? <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No jobs scheduled. Add one to populate the dispatch calendar.</div>
             : (
               <>
                 <TimelineView events={timelineEvents} height={110} />
@@ -364,7 +364,7 @@ function CrewSchedule() {
                     <div key={e.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-950/40 px-2 py-1.5">
                       <div>
                         <div className="text-[12px] text-white">{e.title}</div>
-                        <div className="text-[10px] text-zinc-500">{e.date} · {e.startTime}–{e.endTime}{e.address ? ` · ${e.address}` : ''}{e.crewNames.length ? ` · ${e.crewNames.join(', ')}` : ''}</div>
+                        <div className="text-[10px] text-zinc-400">{e.date} · {e.startTime}–{e.endTime}{e.address ? ` · ${e.address}` : ''}{e.crewNames.length ? ` · ${e.crewNames.join(', ')}` : ''}</div>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <button onClick={() => cycleStatus(e)}
@@ -461,7 +461,7 @@ function TimeTracking() {
         )}
         {data && data.byJob.length > 0 && (
           <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2">
-            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Labor cost by job</div>
+            <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Labor cost by job</div>
             {data.byJob.map((j) => (
               <div key={j.jobId} className="flex items-center justify-between py-0.5 text-[11px]">
                 <span className="text-zinc-300">{j.jobName}</span>
@@ -541,7 +541,7 @@ function PhotoJobLog() {
         </div>
         <button type="button" className={`${btn} w-full justify-center`} disabled={busy || !jobId.trim() || !imageUrl.trim()} onClick={add}><Plus className="h-3 w-3" />Add photo</button>
         {entries.length === 0
-          ? <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No job photos yet.</div>
+          ? <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No job photos yet.</div>
           : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {entries.map((e) => (
@@ -554,7 +554,7 @@ function PhotoJobLog() {
                       <button onClick={() => remove(e.id)} className="text-zinc-600 hover:text-rose-300" aria-label="Delete photo"><Trash2 className="h-3 w-3" /></button>
                     </div>
                     <div className="mt-1 truncate text-[10px] text-zinc-400">{e.jobName}</div>
-                    {e.caption && <div className="truncate text-[10px] text-zinc-500">{e.caption}</div>}
+                    {e.caption && <div className="truncate text-[10px] text-zinc-400">{e.caption}</div>}
                   </div>
                 </div>
               ))}
@@ -655,7 +655,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
       <div className="grid gap-3 p-4 md:grid-cols-2">
         <div className="space-y-2">
           <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">Estimate → invoice</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">Estimate → invoice</div>
             <div className="grid grid-cols-2 gap-1.5">
               <input className={inp} placeholder="Estimate ID" value={estimateId} onChange={(e) => setEstimateId(e.target.value)} />
               <input className={inp} placeholder="Client" value={client} onChange={(e) => setClient(e.target.value)} />
@@ -680,7 +680,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                     <span className="font-mono text-[12px] text-emerald-300">${iv.total.toLocaleString()}</span>
                   </div>
                   <div className="mt-0.5 flex items-center justify-between text-[10px]">
-                    <span className="text-zinc-500">
+                    <span className="text-zinc-400">
                       {iv.signature ? <span className="text-emerald-400"><Check className="mr-0.5 inline h-2.5 w-2.5" />signed by {iv.signature.signedBy}</span> : 'unsigned'}
                     </span>
                     {iv.status === 'paid'
@@ -694,7 +694,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
         </div>
         <div className="space-y-2">
           <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2 space-y-1.5">
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Link2 className="h-3 w-3" />Client portal</div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Link2 className="h-3 w-3" />Client portal</div>
             <div className="grid grid-cols-2 gap-1.5">
               <input className={inp} placeholder="Client name" value={pClient} onChange={(e) => setPClient(e.target.value)} />
               <input className={inp} placeholder="Job name" value={pJobName} onChange={(e) => setPJobName(e.target.value)} />
@@ -705,19 +705,19 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
             </div>
           </div>
           {portals.length === 0
-            ? <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No client portals yet.</div>
+            ? <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No client portals yet.</div>
             : portals.map((p) => (
               <div key={p.token} className="rounded border border-zinc-800 bg-zinc-950/40 p-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[12px] text-white">{p.client}{p.jobName ? ` · ${p.jobName}` : ''}</span>
                   <span className={`rounded px-1.5 py-0.5 text-[10px] ${p.status === 'approved' ? 'bg-emerald-500/20 text-emerald-200' : p.status === 'declined' ? 'bg-rose-500/20 text-rose-200' : 'bg-zinc-700 text-zinc-300'}`}>{p.status}</span>
                 </div>
-                <div className="mt-1 font-mono text-[10px] text-zinc-500">{p.token}</div>
+                <div className="mt-1 font-mono text-[10px] text-zinc-400">{p.token}</div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-800">
                   <div className="h-full bg-amber-500" style={{ width: `${p.progressPct}%` }} />
                 </div>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500">{p.progressPct}% complete</span>
+                  <span className="text-[10px] text-zinc-400">{p.progressPct}% complete</span>
                   <div className="flex gap-1">
                     {[25, 50, 75, 100].map((v) => (
                       <button key={v} onClick={() => bumpProgress(p.token, v)} disabled={busy}
@@ -760,7 +760,7 @@ export function JobOps() {
       <div className="flex items-center gap-2">
         <PenLine className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-white">Trade job management</h3>
-        <span className="text-[11px] text-zinc-500">cut lists · takeoffs · dispatch · time · photos · invoicing</span>
+        <span className="text-[11px] text-zinc-400">cut lists · takeoffs · dispatch · time · photos · invoicing</span>
       </div>
       <nav className="flex flex-wrap gap-1.5">
         {SUB_TABS.map((t) => (

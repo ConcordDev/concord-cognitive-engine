@@ -60,7 +60,7 @@ export function PayoutHistory({
       </div>
 
       {timeline.length === 0 ? (
-        <p className="text-xs italic text-zinc-500">No pacts have fired yet.</p>
+        <p className="text-xs italic text-zinc-400">No pacts have fired yet.</p>
       ) : (
         <TimelineView events={timeline} />
       )}
@@ -76,7 +76,7 @@ export function PayoutHistory({
                 <ArrowDownToLine className="h-3.5 w-3.5" />
                 {p.mySparks} ⚡ from {(p.insuredUserId || '').slice(0, 14)}
               </span>
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-zinc-400">
                 {p.cause} · {fmtDate(p.firedAt)}
               </span>
             </li>

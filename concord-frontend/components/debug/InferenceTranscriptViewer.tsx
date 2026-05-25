@@ -68,8 +68,7 @@ function SpanRow({ span }: { span: Span }) {
     <div className={`border rounded p-2 text-xs ${typeStyle}`}>
       <div
         className="flex items-center gap-2 cursor-pointer select-none"
-        onClick={() => hasDetails && setExpanded((e) => !e)}
-      >
+        onClick={() => hasDetails && setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {hasDetails ? (
           expanded ? (
             <ChevronDown className="w-3 h-3" />
@@ -118,8 +117,7 @@ function TraceCard({ trace }: { trace: InferenceTrace }) {
     <div className="border border-white/10 rounded-lg overflow-hidden">
       <div
         className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-white/5 transition-colors ${failed ? 'border-b border-red-500/20' : ''}`}
-        onClick={() => setExpanded((e) => !e)}
-      >
+        onClick={() => setExpanded((e) => !e)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {expanded ? (
           <ChevronDown className="w-4 h-4 text-white/40" />
         ) : (

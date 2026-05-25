@@ -67,7 +67,7 @@ export function NotificationsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Bell className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Customer reminders</span>
-        <span className="ml-auto text-[10px] text-gray-500">{items.length} sent</span>
+        <span className="ml-auto text-[10px] text-gray-400">{items.length} sent</span>
       </header>
 
       <div className="p-3 border-b border-white/10 space-y-2">
@@ -92,9 +92,9 @@ export function NotificationsPanel() {
 
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : items.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No reminders sent yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No reminders sent yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {items.map(n => (

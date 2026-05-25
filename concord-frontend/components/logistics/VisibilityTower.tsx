@@ -151,7 +151,7 @@ const BTN =
 
 function Empty({ icon: Icon, text }: { icon: typeof Satellite; text: string }) {
   return (
-    <div className="px-3 py-10 text-center text-xs text-gray-500">
+    <div className="px-3 py-10 text-center text-xs text-gray-400">
       <Icon className="w-6 h-6 mx-auto mb-2 opacity-30" />
       {text}
     </div>
@@ -305,7 +305,7 @@ function GpsPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading tracks…
         </div>
       ) : tracks.length === 0 ? (
@@ -320,7 +320,7 @@ function GpsPanel() {
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">
                   {t.status.replace(/_/g, ' ')}
                 </span>
-                <span className="ml-auto text-[10px] text-gray-500">{t.pings.length} pings</span>
+                <span className="ml-auto text-[10px] text-gray-400">{t.pings.length} pings</span>
               </div>
               <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div
@@ -386,7 +386,7 @@ function RiskPanel() {
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className={`text-3xl font-bold ${tierColor(result.riskTier)}`}>{result.riskScore}</p>
-              <p className="text-[10px] uppercase text-gray-500">risk score</p>
+              <p className="text-[10px] uppercase text-gray-400">risk score</p>
             </div>
             <div>
               <p className={`text-sm font-semibold uppercase ${tierColor(result.riskTier)}`}>
@@ -486,7 +486,7 @@ function VrpPanel() {
             <button
               onClick={() => setStops((prev) => prev.filter((_, x) => x !== i))}
               disabled={stops.length === 1}
-              className="p-1.5 text-gray-500 hover:text-rose-400 disabled:opacity-30"
+              className="p-1.5 text-gray-400 hover:text-rose-400 disabled:opacity-30"
               aria-label="Remove stop"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -519,7 +519,7 @@ function VrpPanel() {
             ].map((k) => (
               <div key={k.label} className="p-2 bg-lattice-deep/40 border border-white/10 rounded text-center">
                 <p className="text-lg font-bold text-cyan-300">{k.value}</p>
-                <p className="text-[10px] uppercase text-gray-500">{k.label}</p>
+                <p className="text-[10px] uppercase text-gray-400">{k.label}</p>
               </div>
             ))}
           </div>
@@ -531,7 +531,7 @@ function VrpPanel() {
               <div className="flex items-center gap-2 text-xs">
                 <Navigation className="w-3.5 h-3.5 text-cyan-400" />
                 <span className="text-white font-semibold">Vehicle {rt.vehicleIndex}</span>
-                <span className="text-gray-500">
+                <span className="text-gray-400">
                   {rt.stopCount} stops · {rt.routeDistanceMi} mi · {rt.estimatedMinutes} min
                 </span>
                 {rt.utilizationPct != null && (
@@ -661,7 +661,7 @@ function ScorecardPanel() {
       {err && <ErrLine msg={err} />}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading scorecards…
         </div>
       ) : cards.length === 0 ? (
@@ -676,7 +676,7 @@ function ScorecardPanel() {
                 </span>
                 <div>
                   <p className="text-sm text-white">{c.carrierName}</p>
-                  <p className="text-[10px] text-gray-500 font-mono">
+                  <p className="text-[10px] text-gray-400 font-mono">
                     {c.carrierCode} · grade {c.grade}/100 · {c.shipmentCount} shipments
                   </p>
                 </div>
@@ -705,7 +705,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="text-center">
       <p className="text-white font-semibold">{value}</p>
-      <p className="text-[9px] uppercase text-gray-500">{label}</p>
+      <p className="text-[9px] uppercase text-gray-400">{label}</p>
     </div>
   );
 }
@@ -802,7 +802,7 @@ function GeofencePanel() {
       {err && <ErrLine msg={err} />}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : (
@@ -817,12 +817,12 @@ function GeofencePanel() {
                   <li key={g.id} className="group flex items-center gap-2 px-2 py-1.5 bg-lattice-deep/40 border border-white/10 rounded text-[11px]">
                     <MapPin className="w-3 h-3 text-cyan-400" />
                     <span className="text-white">{g.name}</span>
-                    <span className="text-gray-500">
+                    <span className="text-gray-400">
                       {g.kind} · {g.radiusMi} mi
                     </span>
                     <button
                       onClick={() => removeFence(g.id)}
-                      className="ml-auto opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400"
+                      className="ml-auto opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-400"
                       aria-label="Delete geofence"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -853,11 +853,11 @@ function GeofencePanel() {
                         {m.kind}
                       </span>
                       <span className="text-white">{m.geofenceName}</span>
-                      <span className="ml-auto text-gray-500">
+                      <span className="ml-auto text-gray-400">
                         {new Date(m.at).toLocaleTimeString()}
                       </span>
                     </div>
-                    <p className="text-gray-500 mt-0.5">
+                    <p className="text-gray-400 mt-0.5">
                       {m.shipmentId}
                       {m.dwellMinutes != null ? ` · dwell ${m.dwellMinutes} min` : ''}
                     </p>
@@ -949,7 +949,7 @@ function FreightPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading invoices…
         </div>
       ) : invoices.length === 0 ? (
@@ -971,7 +971,7 @@ function FreightPanel() {
                 >
                   {inv.status}
                 </span>
-                <span className="ml-auto text-gray-500">
+                <span className="ml-auto text-gray-400">
                   quoted ${inv.quotedAmountUsd} → invoiced ${inv.invoicedAmountUsd}
                 </span>
               </div>
@@ -1014,7 +1014,7 @@ function SumStat({ icon: Icon, label, value }: { icon: typeof Receipt; label: st
     <div className="p-2 bg-lattice-deep/40 border border-white/10 rounded text-center">
       <Icon className="w-3.5 h-3.5 text-cyan-400 mx-auto mb-0.5" />
       <p className="text-sm font-bold text-white">{value}</p>
-      <p className="text-[9px] uppercase text-gray-500">{label}</p>
+      <p className="text-[9px] uppercase text-gray-400">{label}</p>
     </div>
   );
 }
@@ -1098,7 +1098,7 @@ function ExceptionsPanel() {
       {err && <ErrLine msg={err} />}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading dashboard…
         </div>
       ) : !dash || dash.totalExceptions === 0 ? (
@@ -1123,8 +1123,8 @@ function ExceptionsPanel() {
                       {e.severity}
                     </span>
                     <span className="text-white">{e.kind.replace(/_/g, ' ')}</span>
-                    <span className="text-gray-500 font-mono">{e.shipmentId}</span>
-                    <span className="ml-auto text-[10px] text-gray-500">{e.status}</span>
+                    <span className="text-gray-400 font-mono">{e.shipmentId}</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{e.status}</span>
                   </div>
                   {e.description && (
                     <p className="mt-1 text-[11px] text-gray-400">{e.description}</p>
@@ -1187,7 +1187,7 @@ export function VisibilityTower() {
                 'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition inline-flex items-center gap-1.5 ' +
                 (tab === t.id
                   ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/20'
-                  : 'text-gray-500 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
+                  : 'text-gray-400 hover:text-cyan-300 hover:bg-cyan-900/10 border border-transparent')
               }
             >
               <Icon className="w-3.5 h-3.5" />

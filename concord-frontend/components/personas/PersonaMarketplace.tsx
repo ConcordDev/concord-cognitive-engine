@@ -127,14 +127,14 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
       )}
 
       {loading ? (
-        <div className="text-zinc-500 py-6 text-center">Loading marketplace…</div>
+        <div className="text-zinc-400 py-6 text-center">Loading marketplace…</div>
       ) : rows.length === 0 ? (
-        <div className="text-center text-zinc-500 italic py-8 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl">
           No published personas match. Author one and publish it to seed the marketplace.
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-zinc-500">{total} persona{total === 1 ? '' : 's'}</p>
+          <p className="text-[11px] text-zinc-400">{total} persona{total === 1 ? '' : 's'}</p>
           <ul className="grid gap-2 sm:grid-cols-2">
             {rows.map((p) => (
               <li key={p.id}>
@@ -146,8 +146,8 @@ export function PersonaMarketplace({ onOpen }: { onOpen: (personaId: string) => 
                   <img src={p.portrait} alt={p.name} className="h-14 w-14 rounded-lg flex-shrink-0" />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-zinc-100 truncate">{p.name}</div>
-                    <div className="text-[11px] text-zinc-500 truncate">{p.tagline || p.category}</div>
-                    <div className="text-[10px] text-zinc-600 mt-0.5">
+                    <div className="text-[11px] text-zinc-400 truncate">{p.tagline || p.category}</div>
+                    <div className="text-[10px] text-zinc-400 mt-0.5">
                       ★ {p.rating || '—'} · {p.installCount} installs · {p.chatCount} chats
                     </div>
                   </div>

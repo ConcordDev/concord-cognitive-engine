@@ -105,7 +105,7 @@ export function GroupCard({ group, onNavigate, className }: GroupCardProps) {
           {group.name}
         </h3>
 
-        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
           {group.description}
         </p>
 
@@ -122,7 +122,7 @@ export function GroupCard({ group, onNavigate, className }: GroupCardProps) {
               </span>
             ))}
             {group.tags.length > 3 && (
-              <span className="text-[10px] text-gray-600">
+              <span className="text-[10px] text-gray-400">
                 +{group.tags.length - 3}
               </span>
             )}
@@ -131,7 +131,7 @@ export function GroupCard({ group, onNavigate, className }: GroupCardProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
-          <span className="text-xs text-gray-500 flex items-center gap-1">
+          <span className="text-xs text-gray-400 flex items-center gap-1">
             <Users className="w-3 h-3" />
             {formatNumber(group.memberCount)} members
           </span>

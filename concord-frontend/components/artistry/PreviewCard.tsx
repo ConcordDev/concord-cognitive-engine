@@ -64,7 +64,7 @@ export function PreviewCard({ post, onViewInLens }: PreviewCardProps) {
               {post.creatorAvatarUrl ? (
                 <NextImage src={post.creatorAvatarUrl} alt={post.creatorName || 'Creator avatar'} fill className="object-cover" unoptimized />
               ) : (
-                <User className="w-3 h-3 m-1 text-gray-500" />
+                <User className="w-3 h-3 m-1 text-gray-400" />
               )}
             </div>
             <span className="text-xs text-gray-400 truncate">{post.creatorName}</span>
@@ -73,14 +73,14 @@ export function PreviewCard({ post, onViewInLens }: PreviewCardProps) {
 
         {/* Description */}
         {post.description && (
-          <p className="text-xs text-gray-500 line-clamp-2">{post.description}</p>
+          <p className="text-xs text-gray-400 line-clamp-2">{post.description}</p>
         )}
 
         {/* Tags */}
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {post.tags.slice(0, 4).map(tag => (
-              <span key={tag} className="px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] text-gray-500">
+              <span key={tag} className="px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] text-gray-400">
                 {tag}
               </span>
             ))}
@@ -89,7 +89,7 @@ export function PreviewCard({ post, onViewInLens }: PreviewCardProps) {
 
         {/* Footer: source lens + time + view button */}
         <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <div className="flex items-center gap-2 text-[10px] text-gray-400">
             <ContentIcon className={cn('w-3 h-3', lensColor)} />
             <span className={cn('capitalize', lensColor)}>{post.sourceLens}</span>
             <span className="flex items-center gap-0.5">
@@ -225,8 +225,7 @@ function ImagePreviewRender({ preview }: { preview: ImagePreview }) {
   return (
     <div
       className={cn('relative overflow-hidden cursor-pointer', zoomed ? 'max-h-[600px]' : 'aspect-square')}
-      onClick={() => setZoomed(!zoomed)}
-    >
+      onClick={() => setZoomed(!zoomed)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <NextImage
         src={preview.imageUrl}
         alt="Image preview"

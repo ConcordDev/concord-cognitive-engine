@@ -193,7 +193,7 @@ export function CreativeActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -204,7 +204,7 @@ export function CreativeActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Shots · ~{shotsResult.estimatedRuntime}min</div>
             <div className="text-2xl font-bold text-purple-300">{shotsResult.totalShots}</div>
-            <div className="text-[10px] text-zinc-500">equipment: {shotsResult.equipmentList.slice(0, 3).join(', ')}</div>
+            <div className="text-[10px] text-zinc-400">equipment: {shotsResult.equipmentList.slice(0, 3).join(', ')}</div>
             {shotsResult.shots.slice(0, 5).map((s, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><span className="font-mono text-purple-200">#{s.shotNumber}</span> {s.type} · {s.duration}s</div>)}
           </div>
         )}
@@ -220,7 +220,7 @@ export function CreativeActionPanel() {
           <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', budgetResult.overBudget ? 'border-red-500/30 bg-red-500/5' : 'border-emerald-500/30 bg-emerald-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Budget</div>
             <div className={cn('text-2xl font-bold', budgetResult.overBudget ? 'text-red-300' : 'text-emerald-300')}>${budgetResult.totalActual.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">of ${budgetResult.totalBudgeted.toLocaleString()} · var {budgetResult.totalVariance >= 0 ? '+' : ''}${budgetResult.totalVariance.toLocaleString()}</div>
+            <div className="text-[10px] text-zinc-400">of ${budgetResult.totalBudgeted.toLocaleString()} · var {budgetResult.totalVariance >= 0 ? '+' : ''}${budgetResult.totalVariance.toLocaleString()}</div>
             {budgetResult.lines.slice(0, 4).map((l, i) => <div key={i} className={cn('text-[10px] mt-0.5', l.status === 'over' ? 'text-red-300' : 'text-zinc-300')}><span className="font-mono">{l.category}</span> ${l.actual.toLocaleString()}/${l.budgeted.toLocaleString()}</div>)}
           </div>
         )}
@@ -228,7 +228,7 @@ export function CreativeActionPanel() {
           <div className={cn('rounded-md border p-2.5 max-h-44 overflow-y-auto', distResult.percent >= 90 ? 'border-emerald-500/30 bg-emerald-500/5' : distResult.percent >= 60 ? 'border-amber-500/30 bg-amber-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{distResult.platform}</div>
             <div className={cn('text-2xl font-bold', distResult.percent >= 90 ? 'text-emerald-300' : distResult.percent >= 60 ? 'text-amber-300' : 'text-red-300')}>{distResult.percent}%</div>
-            <div className="text-[10px] text-zinc-500">{distResult.readyCount}/{distResult.total} · deliver {distResult.deliveryDate}</div>
+            <div className="text-[10px] text-zinc-400">{distResult.readyCount}/{distResult.total} · deliver {distResult.deliveryDate}</div>
             {distResult.checklist.filter(c => !c.ready).slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-red-300">✗ {c.item}</div>)}
           </div>
         )}

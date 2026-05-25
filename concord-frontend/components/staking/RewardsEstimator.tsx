@@ -71,7 +71,7 @@ export function RewardsEstimator({
     );
   }
   if (!est) {
-    return <div className="text-xs text-zinc-500 py-3">Calculating estimate…</div>;
+    return <div className="text-xs text-zinc-400 py-3">Calculating estimate…</div>;
   }
 
   const chartData: Array<Record<string, unknown>> = est.monthly.map((m) => ({
@@ -110,7 +110,7 @@ export function RewardsEstimator({
 function Metric({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-sm ${tone}`}>{value}</div>
     </div>
   );

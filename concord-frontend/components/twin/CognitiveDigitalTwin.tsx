@@ -82,7 +82,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">Cognitive Digital Twin</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {twin.lastUpdated
                 ? `Updated ${new Date(twin.lastUpdated).toLocaleDateString()}`
                 : 'Your thinking model'
@@ -112,12 +112,12 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
       <div className="p-4 grid grid-cols-3 gap-3">
         {/* Top domains */}
         <div>
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> Top Domains</p>
+          <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> Top Domains</p>
           <div className="space-y-1">
             {(domains.slice(0, 3) as [string, { count: number }][]).map(([domain, data]) => (
               <div key={domain} className="flex items-center justify-between">
                 <span className="text-xs text-white truncate">{domain}</span>
-                <span className="text-[10px] text-gray-500">{data.count} DTUs</span>
+                <span className="text-[10px] text-gray-400">{data.count} DTUs</span>
               </div>
             ))}
           </div>
@@ -125,7 +125,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
 
         {/* Peak hours */}
         <div>
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Peak Hours</p>
+          <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Peak Hours</p>
           <div className="space-y-1">
             {peakHours.map(ph => (
               <div key={ph.hour} className="flex items-center gap-1">
@@ -135,7 +135,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                   <Moon className="w-3 h-3 text-blue-400" />
                 )}
                 <span className="text-xs text-white">{ph.hour}:00</span>
-                <span className="text-[10px] text-gray-500">{ph.count} DTUs</span>
+                <span className="text-[10px] text-gray-400">{ph.count} DTUs</span>
               </div>
             ))}
           </div>
@@ -143,7 +143,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
 
         {/* Bias fingerprint */}
         <div>
-          <p className="text-xs text-gray-500 mb-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Biases</p>
+          <p className="text-xs text-gray-400 mb-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Biases</p>
           <div className="space-y-1">
             {Object.entries(biases)
               .filter(([, v]) => (v as number) > 0.05)
@@ -154,7 +154,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                 return (
                   <div key={bias} className="flex items-center justify-between">
                     <span className={cn('text-xs', conf.color)}>{conf.label}</span>
-                    <span className="text-[10px] text-gray-500">{Math.round((value as number) * 100)}%</span>
+                    <span className="text-[10px] text-gray-400">{Math.round((value as number) * 100)}%</span>
                   </div>
                 );
               })}
@@ -163,7 +163,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
       </div>
 
       {/* Communication style */}
-      <div className="px-4 pb-3 flex items-center gap-4 text-xs text-gray-500">
+      <div className="px-4 pb-3 flex items-center gap-4 text-xs text-gray-400">
         <span>Style: <span className="text-white capitalize">{twin.communicationStyle?.verbosity || 'moderate'}</span></span>
         <span>Avg length: <span className="text-white">{twin.communicationStyle?.preferredLength || 0} chars</span></span>
       </div>
@@ -210,7 +210,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                     <div key={i} className="p-3 bg-lattice-deep rounded-lg">
                       <p className="text-xs font-medium text-neon-cyan">{sim.path}</p>
                       <p className="text-sm text-gray-300 mt-1">{sim.scenario}</p>
-                      <p className="text-[10px] text-gray-500 mt-1">{Math.round(sim.confidence * 100)}% confidence</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{Math.round(sim.confidence * 100)}% confidence</p>
                     </div>
                   ))}
                 </div>
@@ -249,10 +249,10 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                   <p className="text-sm text-gray-300">{cloneResult.response}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-[10px] text-neon-purple">{cloneResult.source}</span>
-                    <span className="text-[10px] text-gray-500">{Math.round((cloneResult.confidence || 0) * 100)}% conf</span>
+                    <span className="text-[10px] text-gray-400">{Math.round((cloneResult.confidence || 0) * 100)}% conf</span>
                   </div>
                   {cloneResult.disclaimer && (
-                    <p className="text-[10px] text-gray-600 mt-1 italic">{cloneResult.disclaimer}</p>
+                    <p className="text-[10px] text-gray-400 mt-1 italic">{cloneResult.disclaimer}</p>
                   )}
                 </div>
               )}
@@ -279,7 +279,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                           backgroundColor: `rgba(34, 211, 238, ${Math.max(0.1, intensity)})`,
                         }}
                       />
-                      {h % 4 === 0 && <span className="text-[8px] text-gray-600">{h}</span>}
+                      {h % 4 === 0 && <span className="text-[8px] text-gray-400">{h}</span>}
                     </div>
                   );
                 })}

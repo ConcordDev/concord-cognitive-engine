@@ -53,7 +53,7 @@ export function RunPanel({
     await refresh();
   }
 
-  if (!projectId) return <div className="p-3 text-xs text-gray-500 italic">Open a project to manage run configs.</div>;
+  if (!projectId) return <div className="p-3 text-xs text-gray-400 italic">Open a project to manage run configs.</div>;
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -63,7 +63,7 @@ export function RunPanel({
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
         ) : (
           <>
             <div className="p-2 border-b border-white/10 space-y-1.5">
@@ -78,30 +78,30 @@ export function RunPanel({
               </div>
             </div>
 
-            <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-semibold bg-white/[0.02]">
+            <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold bg-white/[0.02]">
               Run configurations · {configs.length}
             </div>
             {configs.length === 0 ? (
-              <div className="px-3 py-2 text-[11px] text-gray-600 italic">No run configurations yet.</div>
+              <div className="px-3 py-2 text-[11px] text-gray-400 italic">No run configurations yet.</div>
             ) : configs.map((c) => (
               <div key={c.id} className="px-3 py-1.5 flex items-center gap-2 hover:bg-white/[0.03] group">
                 <Play className="w-3 h-3 text-emerald-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="text-[11px] text-white truncate">{c.name}</div>
-                  <div className="text-[10px] text-gray-500 font-mono truncate">{c.command}</div>
+                  <div className="text-[10px] text-gray-400 font-mono truncate">{c.command}</div>
                 </div>
                 <button type="button" onClick={() => delConfig(c.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-300">
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             ))}
 
-            <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-semibold bg-white/[0.02]">
+            <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold bg-white/[0.02]">
               Bookmarks · {bookmarks.length}
             </div>
             {bookmarks.length === 0 ? (
-              <div className="px-3 py-2 text-[11px] text-gray-600 italic">No bookmarks. Add them from the editor gutter.</div>
+              <div className="px-3 py-2 text-[11px] text-gray-400 italic">No bookmarks. Add them from the editor gutter.</div>
             ) : bookmarks.map((b) => (
               <div key={b.id} className="px-3 py-1.5 flex items-center gap-2 hover:bg-white/[0.03] group">
                 <Bookmark className="w-3 h-3 text-amber-400 shrink-0" />
@@ -110,7 +110,7 @@ export function RunPanel({
                   <div className="text-[10px] text-blue-300 font-mono truncate">{b.path}:{b.line}</div>
                 </button>
                 <button type="button" onClick={() => delBookmark(b.id)}
-                  className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-300">
+                  className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>

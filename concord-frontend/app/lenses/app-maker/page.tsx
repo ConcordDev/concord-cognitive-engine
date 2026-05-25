@@ -189,7 +189,7 @@ export default function AppMakerLens() {
       case 'published': return 'text-blue-400';
       case 'marketplace': return 'text-yellow-400';
       case 'global': return 'text-green-400';
-      default: return 'text-gray-500';
+      default: return 'text-gray-400';
     }
   };
 
@@ -285,10 +285,10 @@ export default function AppMakerLens() {
             {actionResult.routes !== undefined && actionResult.fileStructure !== undefined && (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.routes as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-500">Routes</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalComponents as number}</p><p className="text-[10px] text-gray-500">Components</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-green-400">{(actionResult.fileStructure as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-500">Files</p></div>
-                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.deepestNesting as number}</p><p className="text-[10px] text-gray-500">Max Depth</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-cyan">{(actionResult.routes as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-400">Routes</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalComponents as number}</p><p className="text-[10px] text-gray-400">Components</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-green-400">{(actionResult.fileStructure as unknown[])?.length || 0}</p><p className="text-[10px] text-gray-400">Files</p></div>
+                  <div className="p-2 bg-lattice-surface rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.deepestNesting as number}</p><p className="text-[10px] text-gray-400">Max Depth</p></div>
                 </div>
                 {(actionResult.routes as Array<{ name: string; path: string; componentCount: number; dynamic: boolean }>)?.map((r, i) => (
                   <div key={i} className="flex items-center gap-3 p-2 bg-lattice-surface rounded text-xs">
@@ -323,7 +323,7 @@ export default function AppMakerLens() {
                   <div className="grid grid-cols-2 gap-2">
                     {Object.entries(actionResult.metrics as Record<string, number>).map(([key, val]) => (
                       <div key={key} className="p-2 bg-lattice-surface rounded">
-                        <p className="text-[10px] text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                        <p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                         <p className="text-sm font-bold text-white">{val}</p>
                       </div>
                     ))}
@@ -349,7 +349,7 @@ export default function AppMakerLens() {
                   <div key={i} className="flex items-center gap-2 text-xs p-1.5 rounded bg-lattice-surface">
                     {c.passed ? <CheckCircle className="w-3 h-3 text-green-400" /> : <XCircle className="w-3 h-3 text-red-400" />}
                     <span className="text-white">{c.name}</span>
-                    {c.detail && <span className="text-gray-500 ml-auto">{c.detail}</span>}
+                    {c.detail && <span className="text-gray-400 ml-auto">{c.detail}</span>}
                   </div>
                 ))}
               </div>
@@ -390,7 +390,7 @@ export default function AppMakerLens() {
           <h3 className="text-sm font-semibold">
             Your Apps
             {(appSearch || appStatusFilter !== 'all') && (
-              <span className="text-xs text-gray-500 font-normal ml-2">
+              <span className="text-xs text-gray-400 font-normal ml-2">
                 ({apps.filter((a) => {
                   const q = appSearch.trim().toLowerCase();
                   if (q && !((a.name || '').toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q))) return false;
@@ -427,9 +427,9 @@ export default function AppMakerLens() {
           )}
         </div>
         {loading ? (
-          <p className="text-sm text-gray-500">Loading...</p>
+          <p className="text-sm text-gray-400">Loading...</p>
         ) : apps.length === 0 ? (
-          <p className="text-sm text-gray-500">No apps yet. Create your first one above.</p>
+          <p className="text-sm text-gray-400">No apps yet. Create your first one above.</p>
         ) : (() => {
           const visible = apps.filter((a) => {
             const q = appSearch.trim().toLowerCase();
@@ -438,7 +438,7 @@ export default function AppMakerLens() {
             return true;
           });
           if (visible.length === 0) {
-            return <p className="text-sm text-gray-500">No apps match the current filters.</p>;
+            return <p className="text-sm text-gray-400">No apps match the current filters.</p>;
           }
           return (
           <div className="space-y-3">
@@ -450,9 +450,9 @@ export default function AppMakerLens() {
                     <span className={`text-xs px-2 py-0.5 rounded ${statusColor(app.status)} bg-opacity-20`}>
                       {app.status}
                     </span>
-                    <span className="text-xs text-gray-500">v{app.version}</span>
+                    <span className="text-xs text-gray-400">v{app.version}</span>
                   </div>
-                  <span className="text-xs text-gray-500 font-mono">{app.id}</span>
+                  <span className="text-xs text-gray-400 font-mono">{app.id}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -478,7 +478,7 @@ export default function AppMakerLens() {
       </div>
 
       {/* Invariant Reminder */}
-      <div className="text-xs text-gray-500 text-center">
+      <div className="text-xs text-gray-400 text-center">
         All fields map to Identity, Artifact, Execution, Governance, Memory, or Economy primitives. No new core objects.
 
       {/* Real-time Data Panel */}
@@ -544,7 +544,7 @@ export default function AppMakerLens() {
                       <CheckCircle className="w-4 h-4 text-neon-purple ml-auto" />
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed pl-12">
+                  <p className="text-xs text-gray-400 leading-relaxed pl-12">
                     {tpl.description}
                   </p>
                 </button>
@@ -565,11 +565,11 @@ export default function AppMakerLens() {
             {['Dashboard', 'Data View', 'Settings'].map((panel) => (
               <div key={panel} className="bg-white/5 rounded p-2 text-center">
                 <div className="h-8 bg-neon-cyan/5 rounded mb-1" />
-                <span className="text-[10px] text-gray-500">{panel}</span>
+                <span className="text-[10px] text-gray-400">{panel}</span>
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+          <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
             <Layers className="w-3 h-3" />
             <span>Includes: Artifact schema, execution macros, governance rules, UI panels</span>
           </div>

@@ -74,9 +74,9 @@ export function EntryHeatmap({ refreshKey = 0 }: { refreshKey?: number }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : !data || cells.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic text-center py-6">No journaling activity yet.</p>
+        <p className="text-xs text-zinc-400 italic text-center py-6">No journaling activity yet.</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2 mb-3">
@@ -104,10 +104,10 @@ export function EntryHeatmap({ refreshKey = 0 }: { refreshKey?: number }) {
             </div>
           </div>
           <div className="flex items-center justify-between mt-2">
-            <p className="text-[11px] text-zinc-500 h-4">
+            <p className="text-[11px] text-zinc-400 h-4">
               {hover ? `${hover.date} — ${hover.count} entr${hover.count === 1 ? 'y' : 'ies'}${hover.avgMood != null ? ` · mood ${hover.avgMood}` : ''}` : ''}
             </p>
-            <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+            <div className="flex items-center gap-1 text-[10px] text-zinc-400">
               <span>Less</span>
               {INTENSITY_BG.map((bg, i) => <span key={i} className={cn('w-[10px] h-[10px] rounded-[2px]', bg)} />)}
               <span>More</span>
@@ -125,7 +125,7 @@ function Stat({ label, value, flame }: { label: string; value: number | string; 
       <p className="text-base font-bold text-zinc-100 inline-flex items-center gap-1">
         {flame && <Flame className="w-3.5 h-3.5 text-orange-400" />}{value}
       </p>
-      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

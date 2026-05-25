@@ -47,12 +47,12 @@ export function FinanceAssistant() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Finance assistant</span>
-        <span className="ml-auto text-[10px] text-gray-500">grounded in your numbers · conscious brain</span>
+        <span className="ml-auto text-[10px] text-gray-400">grounded in your numbers · conscious brain</span>
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="text-center text-xs text-gray-500 py-8">
+          <div className="text-center text-xs text-gray-400 py-8">
             <Sparkles className="w-8 h-8 mx-auto mb-3 text-violet-400/40" />
             <p className="mb-3">Ask anything about your finances.</p>
             <div className="space-y-1.5 max-w-md mx-auto">
@@ -74,7 +74,7 @@ export function FinanceAssistant() {
             <div className={`max-w-[80%] rounded-lg px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${m.role === 'user' ? 'bg-cyan-500/15 text-cyan-100 border border-cyan-500/20' : 'bg-white/[0.03] text-gray-100 border border-white/5'}`}>
               {m.text}
               {m.source && m.role === 'assistant' && (
-                <div className="mt-1.5 text-[9px] text-gray-500 uppercase tracking-wider">{m.source}</div>
+                <div className="mt-1.5 text-[9px] text-gray-400 uppercase tracking-wider">{m.source}</div>
               )}
             </div>
             {m.role === 'user' && (

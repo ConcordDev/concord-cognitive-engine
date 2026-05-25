@@ -126,7 +126,7 @@ export function CommentThread({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-sm font-medium text-white">{user.name}</span>
-                <span className="text-xs text-gray-500">{formatTime(comment.createdAt)}</span>
+                <span className="text-xs text-gray-400">{formatTime(comment.createdAt)}</span>
                 {comment.resolved && (
                   <span className="flex items-center gap-1 text-xs text-green-400">
                     <Check className="w-3 h-3" />
@@ -269,7 +269,7 @@ export function CommentThread({
       <div className="flex items-center gap-2 px-4 py-3 border-b border-lattice-border">
         <MessageSquare className="w-4 h-4 text-neon-cyan" />
         <span className="font-medium text-white">Comments</span>
-        <span className="text-xs text-gray-500">({comments.length})</span>
+        <span className="text-xs text-gray-400">({comments.length})</span>
       </div>
 
       {/* Comment list */}
@@ -278,7 +278,7 @@ export function CommentThread({
           <div className="text-center py-8">
             <MessageSquare className="w-10 h-10 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400">No comments yet</p>
-            <p className="text-xs text-gray-600 mt-1">Start the conversation!</p>
+            <p className="text-xs text-gray-400 mt-1">Start the conversation!</p>
           </div>
         ) : (
           comments.map(comment => (

@@ -139,7 +139,7 @@ export default function SocialProofFeed({
                   {playerCounts.online.toLocaleString()} online
                 </span>
               </div>
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-gray-400">
                 {playerCounts.building} building
               </span>
             </div>
@@ -161,7 +161,7 @@ export default function SocialProofFeed({
                 </span>
               ))}
               {recentFeed.length === 0 && (
-                <span className="text-[10px] text-gray-600">Waiting for activity...</span>
+                <span className="text-[10px] text-gray-400">Waiting for activity...</span>
               )}
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function SocialProofFeed({
           {/* Expand toggle */}
           <button
             onClick={() => setShowExpanded((prev) => !prev)}
-            className="text-[10px] text-gray-500 hover:text-white flex-shrink-0 transition-colors"
+            className="text-[10px] text-gray-400 hover:text-white flex-shrink-0 transition-colors"
           >
             {showExpanded ? 'Collapse' : 'Expand'}
           </button>
@@ -186,10 +186,10 @@ export default function SocialProofFeed({
               <div className="space-y-1.5">
                 {trending.slice(0, 5).map((dtu, i) => (
                   <div key={dtu.id} className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-600 w-4">{i + 1}</span>
+                    <span className="text-[10px] font-bold text-gray-400 w-4">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-white truncate">{dtu.name}</p>
-                      <p className="text-[8px] text-gray-500">by @{dtu.creator} · {dtu.district}</p>
+                      <p className="text-[8px] text-gray-400">by @{dtu.creator} · {dtu.district}</p>
                     </div>
                     <span className="text-[9px] text-cyan-400 flex-shrink-0">
                       {dtu.citationsThisWeek} cited
@@ -198,7 +198,7 @@ export default function SocialProofFeed({
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-gray-600">No trending data yet.</p>
+              <p className="text-[10px] text-gray-400">No trending data yet.</p>
             )}
           </div>
 
@@ -211,11 +211,11 @@ export default function SocialProofFeed({
                   <div key={comp.id} className="p-2 rounded bg-white/[0.03] border border-white/5">
                     <p className="text-[10px] font-medium text-white">{comp.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[8px] text-gray-500">{comp.entries} entries</span>
-                      <span className="text-[8px] text-gray-500">{comp.spectators.toLocaleString()} spectators</span>
+                      <span className="text-[8px] text-gray-400">{comp.entries} entries</span>
+                      <span className="text-[8px] text-gray-400">{comp.spectators.toLocaleString()} spectators</span>
                     </div>
                     <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-[8px] text-gray-600">Ends {comp.endsAt}</span>
+                      <span className="text-[8px] text-gray-400">Ends {comp.endsAt}</span>
                       {onNavigate && (
                         <button
                           onClick={() => onNavigate(comp.district)}
@@ -229,7 +229,7 @@ export default function SocialProofFeed({
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-gray-600">No active competitions.</p>
+              <p className="text-[10px] text-gray-400">No active competitions.</p>
             )}
           </div>
 
@@ -241,7 +241,7 @@ export default function SocialProofFeed({
                 <div key={da.districtId} className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${getActivityColor(da.activityLevel)}`} />
                   <span className="text-[10px] text-gray-400 flex-1">{da.districtName}</span>
-                  <span className="text-[8px] text-gray-600">{da.activePlayers} active</span>
+                  <span className="text-[8px] text-gray-400">{da.activePlayers} active</span>
                   {onNavigate && da.activityLevel > 0.5 && (
                     <button
                       onClick={() => onNavigate(da.districtId)}
@@ -254,7 +254,7 @@ export default function SocialProofFeed({
               ))}
             </div>
             {districtActivity.length === 0 && (
-              <p className="text-[10px] text-gray-600">No activity data.</p>
+              <p className="text-[10px] text-gray-400">No activity data.</p>
             )}
           </div>
 
@@ -268,7 +268,7 @@ export default function SocialProofFeed({
                     <span className="text-[10px]">🎯</span>
                     <div>
                       <p className="text-[10px] text-white">{r.message}</p>
-                      <span className="text-[8px] text-gray-600">{formatTime(r.timestamp)}</span>
+                      <span className="text-[8px] text-gray-400">{formatTime(r.timestamp)}</span>
                     </div>
                   </div>
                 ))}
@@ -286,7 +286,7 @@ export default function SocialProofFeed({
                     <span className="text-[10px]">🏆</span>
                     <div>
                       <p className="text-[10px] text-gray-300">{m.message}</p>
-                      <span className="text-[8px] text-gray-600">{formatTime(m.timestamp)}</span>
+                      <span className="text-[8px] text-gray-400">{formatTime(m.timestamp)}</span>
                     </div>
                   </div>
                 ))}
@@ -300,23 +300,23 @@ export default function SocialProofFeed({
               <h4 className="text-[10px] font-semibold text-gray-300 mb-2">This Week in Concordia</h4>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Total Builds</span>
+                  <span className="text-gray-400">Total Builds</span>
                   <span className="text-white font-medium">{weeklySummary.totalBuilds.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Citations</span>
+                  <span className="text-gray-400">Citations</span>
                   <span className="text-cyan-400 font-medium">{weeklySummary.totalCitations.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Top Creator</span>
+                  <span className="text-gray-400">Top Creator</span>
                   <span className="text-yellow-400">@{weeklySummary.topCreator}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">Top Event</span>
+                  <span className="text-gray-400">Top Event</span>
                   <span className="text-white">{weeklySummary.topEvent}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-gray-500">New Players</span>
+                  <span className="text-gray-400">New Players</span>
                   <span className="text-green-400">+{weeklySummary.newPlayers.toLocaleString()}</span>
                 </div>
               </div>

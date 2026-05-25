@@ -86,7 +86,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
     else { setReviewQueue(null); await refresh(); onChange?.(); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   // ── Review mode ──
   if (reviewQueue) {
@@ -102,14 +102,14 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
     const w = reviewQueue[reviewIdx];
     return (
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4 text-center">
-        <p className="text-[10px] text-zinc-500 mb-2">{reviewIdx + 1} / {reviewQueue.length}</p>
+        <p className="text-[10px] text-zinc-400 mb-2">{reviewIdx + 1} / {reviewQueue.length}</p>
         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-3">
           <p className="text-xl font-bold text-zinc-100">{w.word}</p>
           {revealed && (
             <div className="mt-3 pt-3 border-t border-zinc-800">
-              {w.partOfSpeech && <p className="text-[11px] italic text-zinc-500">{w.partOfSpeech}</p>}
+              {w.partOfSpeech && <p className="text-[11px] italic text-zinc-400">{w.partOfSpeech}</p>}
               <p className="text-sm text-emerald-300">{w.definition || '(no definition)'}</p>
-              {w.example && <p className="text-xs text-zinc-500 mt-1">&ldquo;{w.example}&rdquo;</p>}
+              {w.example && <p className="text-xs text-zinc-400 mt-1">&ldquo;{w.example}&rdquo;</p>}
             </div>
           )}
         </div>
@@ -142,7 +142,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
           {([['Words', dash.totalWords], ['Mastered', dash.mastered], ['Learning', dash.learning], ['Due', dash.dueNow]] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-zinc-100">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -165,7 +165,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
       </div>
 
       {words.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No words yet — add one above or save a word from the lookup.</p>
+        <p className="text-xs text-zinc-400 italic">No words yet — add one above or save a word from the lookup.</p>
       ) : (
         <ul className="space-y-1 max-h-72 overflow-y-auto">
           {words.map(w => (
@@ -176,7 +176,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
                 ))}
               </div>
               <span className="text-xs font-semibold text-zinc-100">{w.word}</span>
-              <span className="text-[11px] text-zinc-500 truncate flex-1">{w.definition}</span>
+              <span className="text-[11px] text-zinc-400 truncate flex-1">{w.definition}</span>
               <button onClick={() => del(w.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
             </li>
           ))}

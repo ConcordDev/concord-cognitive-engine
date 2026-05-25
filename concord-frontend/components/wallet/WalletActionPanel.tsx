@@ -197,7 +197,7 @@ export function WalletActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -229,7 +229,7 @@ export function WalletActionPanel() {
           <div className={cn('rounded-md border p-2.5', trendResult.direction === 'rising' ? 'border-rose-500/40 bg-rose-500/5' : trendResult.direction === 'falling' ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-purple-500/30 bg-purple-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Trend</div>
             <div className={cn('text-lg font-bold capitalize', trendResult.direction === 'rising' ? 'text-rose-300' : trendResult.direction === 'falling' ? 'text-emerald-300' : 'text-zinc-100')}>{trendResult.direction} {trendResult.changePct ? `(${trendResult.changePct >= 0 ? '+' : ''}${trendResult.changePct}%)` : ''}</div>
-            {trendResult.topGrowing && <div className="text-[10px] text-zinc-500">Growing: {trendResult.topGrowing.join(', ')}</div>}
+            {trendResult.topGrowing && <div className="text-[10px] text-zinc-400">Growing: {trendResult.topGrowing.join(', ')}</div>}
           </div>
         )}
       </div>

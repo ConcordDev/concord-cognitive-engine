@@ -58,9 +58,9 @@ export function MyDevotionPanel({
 
   useEffect(() => { void load(); }, [load, refreshKey]);
 
-  if (loading) return <div className="text-xs text-zinc-500 italic">Loading devotion…</div>;
+  if (loading) return <div className="text-xs text-zinc-400 italic">Loading devotion…</div>;
   if (!devotion || devotion.patronCount === 0) {
-    return <p className="text-xs italic text-zinc-500">No patron deities yet. Make a pilgrimage to begin.</p>;
+    return <p className="text-xs italic text-zinc-400">No patron deities yet. Make a pilgrimage to begin.</p>;
   }
 
   return (
@@ -68,15 +68,15 @@ export function MyDevotionPanel({
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-center">
           <div className="text-xl font-bold text-purple-300">{devotion.patronCount}</div>
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">patrons</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">patrons</div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-center">
           <div className="text-xl font-bold text-purple-300">{devotion.totalPilgrimages}</div>
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">pilgrimages</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">pilgrimages</div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3 text-center">
           <div className="text-xl font-bold text-amber-300">{blessings.length}</div>
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">blessings</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">blessings</div>
         </div>
       </div>
 
@@ -97,13 +97,13 @@ export function MyDevotionPanel({
             >
               <div>
                 <p className="text-sm font-medium text-zinc-100">{e.deityName}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {e.pilgrimages} pilgrimages · {e.communeCount} communes · {e.blessingsClaimed} blessings
                 </p>
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold text-emerald-300">{e.alignment.toFixed(2)}</div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">alignment</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">alignment</div>
               </div>
             </button>
           </li>
@@ -116,7 +116,7 @@ export function MyDevotionPanel({
           <ul className="space-y-1">
             {blessings.map((b) => (
               <li key={b.id} className="flex items-center justify-between rounded border border-emerald-700/30 bg-emerald-500/5 px-2.5 py-1.5 text-[11px]">
-                <span className="text-emerald-100">{b.tierLabel} <span className="text-zinc-500">· {b.deityName}</span></span>
+                <span className="text-emerald-100">{b.tierLabel} <span className="text-zinc-400">· {b.deityName}</span></span>
                 <span className="font-mono text-emerald-300">+{b.effect.magnitude} {b.effect.stat}</span>
               </li>
             ))}

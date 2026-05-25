@@ -190,6 +190,7 @@ export default function registerCraftingActions(registerLensAction) {
    * params: { name, cells: [{ slot:0..8, material, quantity }], output?:{name,type} }
    */
   registerLensAction("crafting", "grid_save", (ctx, _artifact, params = {}) => {
+  try {
     const uid = userIdOf(ctx);
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
@@ -225,7 +226,8 @@ export default function registerCraftingActions(registerLensAction) {
     grids.push(grid);
     persist();
     return { ok: true, result: { grid, updated: false } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * grid_list — list the caller's saved assembly grids.
@@ -263,6 +265,7 @@ export default function registerCraftingActions(registerLensAction) {
    * recipe outline the user can promote to an authored recipe.
    */
   registerLensAction("crafting", "discovery_combine", (ctx, _artifact, params = {}) => {
+  try {
     const uid = userIdOf(ctx);
     const matsIn = Array.isArray(params.materials) ? params.materials : [];
     const mats = matsIn
@@ -311,7 +314,8 @@ export default function registerCraftingActions(registerLensAction) {
     discoveries.set(fingerprint, record);
     persist();
     return { ok: true, result: { discovered: true, recipe: record, fingerprint } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * discovery_list — list all combinations the caller has discovered.
@@ -393,6 +397,7 @@ export default function registerCraftingActions(registerLensAction) {
    * params: { seed? } — optional deterministic seed for the quality roll.
    */
   registerLensAction("crafting", "queue_craft_all", (ctx, _artifact, params = {}) => {
+  try {
     const uid = userIdOf(ctx);
     const queue = userList("craftingQueue", uid);
     const history = userList("craftingHistory", uid);
@@ -450,7 +455,8 @@ export default function registerCraftingActions(registerLensAction) {
         totalUnits,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ══ Backlog: "Craftable now" filter ════════════════════════════════
   // Given the caller's recipes (with resource_requirements) and a live
@@ -561,6 +567,7 @@ export default function registerCraftingActions(registerLensAction) {
    * }
    */
   registerLensAction("crafting", "gather_plan", (_ctx, _artifact, params = {}) => {
+  try {
     const recipes = Array.isArray(params.recipes) ? params.recipes : [];
     const inventory = Array.isArray(params.inventory) ? params.inventory : [];
     const nodeHints = params.nodeHints && typeof params.nodeHints === "object" ? params.nodeHints : {};
@@ -605,7 +612,8 @@ export default function registerCraftingActions(registerLensAction) {
         totalUnitsToGather: outstanding.reduce((s, l) => s + l.stillNeed, 0),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ══ Backlog: Recipe favorites + crafting history log ═══════════════
 

@@ -66,7 +66,7 @@ export function PoetryDbSearch() {
             <pre className="mt-2 max-h-72 overflow-y-auto whitespace-pre-wrap font-serif text-xs leading-relaxed text-zinc-200">
               {p.lines.join('\n')}
             </pre>
-            <div className="mt-1 text-[10px] text-zinc-500">{p.lineCount} lines</div>
+            <div className="mt-1 text-[10px] text-zinc-400">{p.lineCount} lines</div>
           </motion.div>
         ))}
       </div>

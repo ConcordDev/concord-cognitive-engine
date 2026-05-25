@@ -243,6 +243,7 @@ export default function registerSrsActions(registerLensAction) {
   }
 
   registerLensAction("srs", "card-add", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
@@ -342,7 +343,8 @@ export default function registerSrsActions(registerLensAction) {
     cardsArr.push(card);
     saveSrs();
     return { ok: true, result: { card } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("srs", "card-list", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -408,6 +410,7 @@ export default function registerSrsActions(registerLensAction) {
   // study-next — the next card to study from a deck: due review cards
   // first, then up to the deck's newPerDay limit of new cards.
   registerLensAction("srs", "study-next", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
@@ -425,7 +428,8 @@ export default function registerSrsActions(registerLensAction) {
       return { ok: true, result: { card: fresh[0], remaining: Math.min(newCap, fresh.length) } };
     }
     return { ok: true, result: { card: null, remaining: 0 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── FSRS (Free Spaced Repetition Scheduler) — Anki's modern default ──
   // Compact FSRS-4.5-shape model: tracks per-card stability + difficulty
@@ -497,6 +501,7 @@ export default function registerSrsActions(registerLensAction) {
 
   // study-answer — apply the deck-configured scheduler (FSRS or SM-2).
   registerLensAction("srs", "study-answer", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     const card = srsList(s.cards, userId).find((c) => c.id === params.cardId);
@@ -547,9 +552,11 @@ export default function registerSrsActions(registerLensAction) {
     srsList(s.reviewLog, userId).push({ cardId: card.id, deckId: card.deckId, rating, scheduler, at: srsNow() });
     saveSrs();
     return { ok: true, result: { card, nextReviewInDays: interval, scheduler } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("srs", "study-stats", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     let log = srsList(s.reviewLog, userId);
@@ -580,7 +587,8 @@ export default function registerSrsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("srs", "srs-dashboard", (ctx, _a, _params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -804,6 +812,7 @@ export default function registerSrsActions(registerLensAction) {
 
   // ─── [M] Deck import / export (.apkg-shape JSON bundle) ───────────
   registerLensAction("srs", "deck-export", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     const deck = srsList(s.decks, userId).find((d) => d.id === params.deckId);
@@ -823,7 +832,8 @@ export default function registerSrsActions(registerLensAction) {
       cardCount: cards.length,
     };
     return { ok: true, result: { bundle, filename: `${deck.name.replace(/[^\w-]+/g, "_")}.apkg.json` } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("srs", "deck-import", (ctx, _a, params = {}) => {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -872,6 +882,7 @@ export default function registerSrsActions(registerLensAction) {
 
   // ─── [S] Review heatmap / streak calendar + forecast graph ────────
   registerLensAction("srs", "review-heatmap", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     let log = srsList(s.reviewLog, userId);
@@ -908,9 +919,11 @@ export default function registerSrsActions(registerLensAction) {
         busiestDay: calendar.reduce((m, d) => (d.count > (m?.count || 0) ? d : m), null),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("srs", "review-forecast", (ctx, _a, params = {}) => {
+  try {
     const s = getSrsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = srsActor(ctx);
     let cards = srsList(s.cards, userId);
@@ -939,5 +952,6 @@ export default function registerSrsActions(registerLensAction) {
         peakDay: forecast.reduce((m, f) => (f.count > (m?.count || 0) ? f : m), null),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

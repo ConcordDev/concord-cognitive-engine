@@ -37,7 +37,7 @@ export function WhiteboardCollabPanel({ boardId, shapes }: { boardId: string | n
   const [tab, setTab] = useState<CollabTab>('frames');
 
   if (!boardId) {
-    return <div className="text-xs text-gray-500 italic p-3">Open a board to use frames, connectors, embeds and live collaboration.</div>;
+    return <div className="text-xs text-gray-400 italic p-3">Open a board to use frames, connectors, embeds and live collaboration.</div>;
   }
 
   return (
@@ -144,9 +144,9 @@ function FramesTab({ boardId }: { boardId: string }) {
         </button>
       </div>
       {loading ? (
-        <div className="text-gray-500"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading frames…</div>
+        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading frames…</div>
       ) : frames.length === 0 ? (
-        <div className="text-gray-500 italic">No frames yet.</div>
+        <div className="text-gray-400 italic">No frames yet.</div>
       ) : (
         <ul className="space-y-1">
           {frames.map(f => (
@@ -154,7 +154,7 @@ function FramesTab({ boardId }: { boardId: string }) {
               <Frame className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="truncate text-white">{f.label}</div>
-                <div className="text-[10px] text-gray-500 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
+                <div className="text-[10px] text-gray-400 font-mono">{f.memberIds.length} member{f.memberIds.length === 1 ? '' : 's'} · {Math.round(f.w)}×{Math.round(f.h)}</div>
               </div>
               <button onClick={() => deleteFrame(f.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -208,7 +208,7 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
     <div className="space-y-2">
       <p className="text-gray-400">Bind two shapes — the server auto-routes an orthogonal (elbow) path between their nearest edges.</p>
       {shapes.length < 2 ? (
-        <div className="text-gray-500 italic">Need at least 2 shapes on the board to connect.</div>
+        <div className="text-gray-400 italic">Need at least 2 shapes on the board to connect.</div>
       ) : (
         <div className="space-y-1">
           <div className="flex items-center gap-1">
@@ -233,9 +233,9 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
       )}
       {error && <div className="text-rose-300 text-[11px]">{error}</div>}
       {loading ? (
-        <div className="text-gray-500"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading connectors…</div>
+        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading connectors…</div>
       ) : connectors.length === 0 ? (
-        <div className="text-gray-500 italic">No connectors yet.</div>
+        <div className="text-gray-400 italic">No connectors yet.</div>
       ) : (
         <ul className="space-y-1">
           {connectors.map(c => (
@@ -243,7 +243,7 @@ function ConnectorsTab({ boardId, shapes }: { boardId: string; shapes: Shape[] }
               <Link2 className="w-3.5 h-3.5 flex-shrink-0" style={{ color: c.color }} />
               <div className="flex-1 min-w-0">
                 <div className="truncate text-white">{shapeLabel(c.fromId)} → {shapeLabel(c.toId)}</div>
-                <div className="text-[10px] text-gray-500 font-mono">
+                <div className="text-[10px] text-gray-400 font-mono">
                   {c.label && <span className="text-sky-300">{c.label} · </span>}
                   {c.unresolved ? <span className="text-amber-300">endpoint missing</span> : `route ${c.route?.length ?? 0}px · ${c.route?.waypoints.length ?? 0} waypoints`}
                 </div>
@@ -305,9 +305,9 @@ function EmbedsTab({ boardId }: { boardId: string }) {
       </div>
       {error && <div className="text-rose-300 text-[11px]">{error}</div>}
       {loading ? (
-        <div className="text-gray-500"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading embeds…</div>
+        <div className="text-gray-400"><Loader2 className="w-3 h-3 inline animate-spin mr-1" />Loading embeds…</div>
       ) : embeds.length === 0 ? (
-        <div className="text-gray-500 italic">No embeds yet.</div>
+        <div className="text-gray-400 italic">No embeds yet.</div>
       ) : (
         <ul className="space-y-1">
           {embeds.map(e => {
@@ -317,8 +317,8 @@ function EmbedsTab({ boardId }: { boardId: string }) {
                 <Icon className="w-3.5 h-3.5 text-sky-300 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <a href={e.url} target="_blank" rel="noreferrer" className="truncate text-white hover:text-sky-300 block">{e.title || e.url}</a>
-                  {e.description && <div className="text-[10px] text-gray-500 truncate">{e.description}</div>}
-                  <div className="text-[10px] text-gray-600 font-mono uppercase">{e.kind}</div>
+                  {e.description && <div className="text-[10px] text-gray-400 truncate">{e.description}</div>}
+                  <div className="text-[10px] text-gray-400 font-mono uppercase">{e.kind}</div>
                 </div>
                 <button onClick={() => deleteEmbed(e.id)} className="p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
               </li>
@@ -368,7 +368,7 @@ function ExportTab({ boardId }: { boardId: string }) {
         className="w-full px-3 py-1.5 text-xs rounded bg-sky-500 text-white font-bold hover:bg-sky-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}Compute export plan
       </button>
-      {plan?.empty && <div className="text-gray-500 italic">{plan.message}</div>}
+      {plan?.empty && <div className="text-gray-400 italic">{plan.message}</div>}
       {plan && !plan.empty && plan.bounds && plan.pixelDimensions && (
         <div className="rounded border border-sky-500/30 bg-sky-500/[0.04] p-2 space-y-1 font-mono text-[11px] text-sky-100">
           <div>format: <span className="text-sky-300">{plan.format.toUpperCase()}</span> @ {plan.scale}×</div>
@@ -422,19 +422,19 @@ function LiveTab({ boardId }: { boardId: string }) {
             </button>
           ))}
         </div>
-        {lastReaction && <div className="text-[10px] text-gray-500 mt-1">Sent {lastReaction}</div>}
+        {lastReaction && <div className="text-[10px] text-gray-400 mt-1">Sent {lastReaction}</div>}
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-wider text-sky-300 mb-1 flex items-center gap-1"><Users className="w-3 h-3" />Live cursors</div>
         {presence.length === 0 ? (
-          <div className="text-gray-500 italic">No active collaborators yet.</div>
+          <div className="text-gray-400 italic">No active collaborators yet.</div>
         ) : (
           <ul className="space-y-1">
             {presence.map(p => (
               <li key={p.userId} className="rounded border border-white/10 bg-black/30 px-2 py-1.5 flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                <span className="flex-1 truncate text-white">{p.name}{p.userId === selfId && <span className="text-gray-500"> (you)</span>}</span>
-                <span className="text-[10px] text-gray-500 font-mono">{Math.round(p.x)}, {Math.round(p.y)}</span>
+                <span className="flex-1 truncate text-white">{p.name}{p.userId === selfId && <span className="text-gray-400"> (you)</span>}</span>
+                <span className="text-[10px] text-gray-400 font-mono">{Math.round(p.x)}, {Math.round(p.y)}</span>
               </li>
             ))}
           </ul>

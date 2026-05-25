@@ -201,7 +201,7 @@ function MorningBrief({ compact = false, className }: MorningBriefProps) {
                 <div className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed prose prose-invert prose-sm max-w-none">
                   {brief.content}
                 </div>
-                <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
                   <span>Generated {new Date(brief.generatedAt).toLocaleString()}</span>
                   <span>via {brief.source}</span>
                   {brief.model && <span>({brief.model})</span>}
@@ -211,7 +211,7 @@ function MorningBrief({ compact = false, className }: MorningBriefProps) {
                     </span>
                   )}
                   {!briefData && offlineSource === 'offline' && (
-                    <span className="text-gray-500">(offline)</span>
+                    <span className="text-gray-400">(offline)</span>
                   )}
                 </div>
               </div>
@@ -222,7 +222,7 @@ function MorningBrief({ compact = false, className }: MorningBriefProps) {
         <div className="text-center py-8">
           <Sun className="w-10 h-10 text-gray-600 mx-auto mb-3" />
           <p className="text-gray-400 mb-2">No brief generated yet</p>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-400 mb-4">
             Generate an AI-powered summary of your recent cognitive activity
           </p>
           <button onClick={handleGenerate} disabled={isLoading} className={cn(ds.btnPrimary)}>

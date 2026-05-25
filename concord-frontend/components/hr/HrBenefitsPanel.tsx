@@ -87,7 +87,7 @@ export function HrBenefitsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -121,7 +121,7 @@ export function HrBenefitsPanel() {
           <ul className="flex flex-wrap gap-1.5 mt-2">
             {plans.map((p) => (
               <li key={p.id} className="text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-300">
-                {p.name} <span className="text-zinc-500">· {p.category} · {usd(p.monthlyCost)}/mo · {p.employerContribution}% employer</span>
+                {p.name} <span className="text-zinc-400">· {p.category} · {usd(p.monthlyCost)}/mo · {p.employerContribution}% employer</span>
               </li>
             ))}
           </ul>
@@ -157,29 +157,29 @@ export function HrBenefitsPanel() {
       <section>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-zinc-300">Enrollments</h3>
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             EE {usd(totals.employee)}/mo · ER {usd(totals.employer)}/mo
           </span>
         </div>
         {enrollments.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No enrollments yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No enrollments yet.</p>
         ) : (
           <ul className="space-y-1">
             {enrollments.map((en) => (
               <li key={en.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{en.employeeName} · {en.planName}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     {en.coverageTier.replace(/_/g, ' ')} · EE {usd(en.employeeMonthlyCost)} · ER {usd(en.employerMonthlyCost)}
                   </p>
                 </div>
                 {en.status === 'enrolled' ? (
                   <button type="button" onClick={() => waive(en.id)}
-                    className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-rose-400">
+                    className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-rose-400">
                     <X className="w-3 h-3" /> Waive
                   </button>
                 ) : (
-                  <span className={cn('text-[10px] capitalize', 'text-zinc-500')}>{en.status}</span>
+                  <span className={cn('text-[10px] capitalize', 'text-zinc-400')}>{en.status}</span>
                 )}
               </li>
             ))}

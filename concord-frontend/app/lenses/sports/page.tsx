@@ -329,7 +329,7 @@ export default function SportsLensPage() {
               {daysUntilNext === 0 ? 'TODAY' : daysUntilNext}
             </p>
             {daysUntilNext > 0 && (
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">days away</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">days away</p>
             )}
           </div>
         </motion.div>
@@ -502,7 +502,7 @@ export default function SportsLensPage() {
       {tab === 'games' && (
         <>
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -597,7 +597,7 @@ export default function SportsLensPage() {
                       <button
                         onClick={() => remove(g.id)}
                         disabled={deleteMut.isPending}
-                        className="text-gray-500 hover:text-red-400 p-1"
+                        className="text-gray-400 hover:text-red-400 p-1"
                       >
                         {deleteMut.isPending ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -826,7 +826,7 @@ export default function SportsLensPage() {
                       </div>
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500">{log.date}</span>
+                  <span className="text-xs text-gray-400">{log.date}</span>
                 </motion.div>
               ))}
             </div>
@@ -923,7 +923,7 @@ export default function SportsLensPage() {
                       }[]
                     ).map((s) => (
                       <div key={s.day} className="flex gap-2">
-                        <span className="text-gray-500 w-8">Day {s.day}</span>
+                        <span className="text-gray-400 w-8">Day {s.day}</span>
                         <span className="text-gray-200">{s.workout}</span>
                         <span
                           className={`ml-auto ${s.intensity === 'high' ? 'text-red-400' : s.intensity === 'low' ? 'text-green-400' : 'text-yellow-400'}`}
@@ -935,7 +935,7 @@ export default function SportsLensPage() {
                   </div>
                 )}
                 {!!sportsActionResult.principle && (
-                  <p className="text-gray-500 italic">{String(sportsActionResult.principle)}</p>
+                  <p className="text-gray-400 italic">{String(sportsActionResult.principle)}</p>
                 )}
               </div>
             )}

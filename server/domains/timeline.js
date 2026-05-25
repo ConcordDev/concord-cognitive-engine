@@ -10,6 +10,7 @@ export default function registerTimelineActions(registerLensAction) {
    * Duration in any consistent unit (days, hours, etc.)
    */
   registerLensAction("timeline", "criticalPath", (ctx, artifact, _params) => {
+  try {
     const tasks = artifact.data?.tasks || [];
     if (tasks.length === 0) return { ok: false, error: "No tasks defined." };
 
@@ -97,7 +98,8 @@ export default function registerTimelineActions(registerLensAction) {
         averageSlack: result.length > 0 ? Math.round(result.reduce((s, t) => s + t.slack, 0) / result.length * 100) / 100 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * ganttSchedule
@@ -106,6 +108,7 @@ export default function registerTimelineActions(registerLensAction) {
    * params.maxParallel (resource constraint, default: unlimited)
    */
   registerLensAction("timeline", "ganttSchedule", (ctx, artifact, params) => {
+  try {
     const tasks = artifact.data?.tasks || [];
     if (tasks.length === 0) return { ok: false, error: "No tasks defined." };
 
@@ -206,7 +209,8 @@ export default function registerTimelineActions(registerLensAction) {
           : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * temporalClustering
@@ -215,6 +219,7 @@ export default function registerTimelineActions(registerLensAction) {
    * params.gapThreshold (minimum gap between clusters, in ms)
    */
   registerLensAction("timeline", "temporalClustering", (ctx, artifact, params) => {
+  try {
     const events = artifact.data?.events || [];
     if (events.length === 0) return { ok: true, result: { message: "No events." } };
 
@@ -310,7 +315,8 @@ export default function registerTimelineActions(registerLensAction) {
         largestCluster: analyzed.sort((a, b) => b.eventCount - a.eventCount)[0]?.cluster,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * trendAnalysis
@@ -319,6 +325,7 @@ export default function registerTimelineActions(registerLensAction) {
    * params.windowSize (for moving average, default: auto)
    */
   registerLensAction("timeline", "trendAnalysis", (ctx, artifact, _params) => {
+  try {
     const series = artifact.data?.series || [];
     if (series.length < 3) return { ok: false, error: "Need at least 3 data points." };
 
@@ -427,7 +434,8 @@ export default function registerTimelineActions(registerLensAction) {
         maxAcceleration: r(maxAcceleration),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ──────────────────────────────────────────────────────────────────────
   // Personal-feed substrate — Facebook-style timeline features.
@@ -491,6 +499,7 @@ export default function registerTimelineActions(registerLensAction) {
   // Privacy controls per post (public / friends / only-me). Posts are the
   // canonical timeline feed object; reactions/comments hang off post.id.
   registerLensAction("timeline", "post-create", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const content = tlClean(params.content, 5000);
@@ -522,12 +531,14 @@ export default function registerTimelineActions(registerLensAction) {
     }
     saveTlState();
     return { ok: true, result: { post } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Feed listing (privacy-aware) ───────────────────────────────────────
   // viewerId sees: own posts (all privacy), friends' posts marked
   // public|friends, everyone else's public posts only.
   registerLensAction("timeline", "feed-list", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const viewerId = tlAid(ctx);
@@ -566,10 +577,12 @@ export default function registerTimelineActions(registerLensAction) {
       ok: true,
       result: { posts: all.slice(offset, offset + limit), total: all.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Comments with nested replies ───────────────────────────────────────
   registerLensAction("timeline", "comment-add", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
@@ -595,7 +608,8 @@ export default function registerTimelineActions(registerLensAction) {
     }
     saveTlState();
     return { ok: true, result: { comment, total: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // List comments for a post as a nested thread tree.
   registerLensAction("timeline", "comment-list", (_ctx, _a, params = {}) => {
@@ -635,6 +649,7 @@ export default function registerTimelineActions(registerLensAction) {
   // Idempotent per (user, post): re-reacting changes the kind; reacting with
   // the same kind toggles it off.
   registerLensAction("timeline", "react", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const postId = tlClean(params.postId, 64);
@@ -669,7 +684,8 @@ export default function registerTimelineActions(registerLensAction) {
       ok: true,
       result: { action, kind, counts, total: list.length, userReaction: action === "removed" ? null : kind },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Full "who reacted" breakdown for a post.
   registerLensAction("timeline", "reactions-breakdown", (_ctx, _a, params = {}) => {
@@ -843,6 +859,7 @@ export default function registerTimelineActions(registerLensAction) {
   // Surfaces past posts whose month+day match the requested day (default
   // today) but from a prior year — the Facebook Memories experience.
   registerLensAction("timeline", "memories", (ctx, _a, params = {}) => {
+  try {
     const s = getTlState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = tlAid(ctx);
@@ -874,7 +891,8 @@ export default function registerTimelineActions(registerLensAction) {
         onThisDay: `${ref.toLocaleString("en-US", { month: "long" })} ${refDay}`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Notifications ──────────────────────────────────────────────────────
   registerLensAction("timeline", "notifications-list", (ctx, _a, params = {}) => {

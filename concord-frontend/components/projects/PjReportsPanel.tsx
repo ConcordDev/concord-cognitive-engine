@@ -41,7 +41,7 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -73,7 +73,7 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
               <Bar dataKey="completed" fill="#818cf8" radius={[2, 2, 0, 0]} name="Completed" />
             </BarChart>
           </ResponsiveContainer>
-        ) : <p className="text-[11px] text-zinc-500 italic py-6 text-center">Complete a sprint to see velocity.</p>}
+        ) : <p className="text-[11px] text-zinc-400 italic py-6 text-center">Complete a sprint to see velocity.</p>}
       </div>
 
       {/* Cumulative flow */}
@@ -94,7 +94,7 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
               <Line type="monotone" dataKey="completed" stroke="#34d399" strokeWidth={2} dot={false} name="Completed" />
             </LineChart>
           </ResponsiveContainer>
-        ) : <p className="text-[11px] text-zinc-500 italic py-6 text-center">No flow data yet.</p>}
+        ) : <p className="text-[11px] text-zinc-400 italic py-6 text-center">No flow data yet.</p>}
       </div>
 
       {/* Forecast detail */}
@@ -102,12 +102,12 @@ export function PjReportsPanel({ projectId }: { projectId: string }) {
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300">
           <h3 className="text-xs font-semibold text-zinc-300 mb-1">Forecast</h3>
           {forecast.basis === 0 ? (
-            <p className="text-zinc-500 italic">Complete at least one sprint for a velocity-based forecast.</p>
+            <p className="text-zinc-400 italic">Complete at least one sprint for a velocity-based forecast.</p>
           ) : (
             <p>
               {forecast.remainingPoints} points remaining at {forecast.avgVelocity} pts/sprint →
               <span className="text-indigo-300 font-semibold"> ~{forecast.projectedSprints} sprints</span> to completion
-              <span className="text-zinc-500"> (based on {forecast.basis} completed sprint{forecast.basis === 1 ? '' : 's'})</span>.
+              <span className="text-zinc-400"> (based on {forecast.basis} completed sprint{forecast.basis === 1 ? '' : 's'})</span>.
             </p>
           )}
         </div>
@@ -124,7 +124,7 @@ function Kpi({ icon: Icon, label, value, suffix }: { icon: typeof Gauge; label: 
       <p className="flex items-center justify-center gap-1 text-lg font-bold text-zinc-100">
         <Icon className="w-4 h-4 text-indigo-400" />{value}{suffix}
       </p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

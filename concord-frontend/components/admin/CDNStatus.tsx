@@ -183,7 +183,7 @@ function CDNStatus({ className }: CDNStatusProps) {
       >
         <div className="flex items-center gap-3 animate-pulse">
           <Globe className="w-5 h-5 text-gray-600" />
-          <span className="text-gray-500">Loading CDN status...</span>
+          <span className="text-gray-400">Loading CDN status...</span>
         </div>
       </div>
     );
@@ -261,26 +261,26 @@ function CDNStatus({ className }: CDNStatusProps) {
         {/* Provider Info */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-lattice-bg rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Provider</div>
+            <div className="text-xs text-gray-400 mb-1">Provider</div>
             <div className="text-sm font-medium text-white capitalize">
               {provider?.provider || 'local'}
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-gray-400 mt-0.5">
               {provider?.description || 'Local origin serving'}
             </div>
           </div>
           <div className="bg-lattice-bg rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Base URL</div>
+            <div className="text-xs text-gray-400 mb-1">Base URL</div>
             <div className="text-sm font-medium text-white truncate">
               {provider?.baseUrl || 'Direct origin'}
             </div>
           </div>
           <div className="bg-lattice-bg rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Uptime</div>
+            <div className="text-xs text-gray-400 mb-1">Uptime</div>
             <div className="text-sm font-medium text-white">
               {stats ? formatUptime(stats.uptime) : '--'}
             </div>
-            <div className="text-xs text-gray-500 mt-0.5">
+            <div className="text-xs text-gray-400 mt-0.5">
               Since {stats?.startedAt ? new Date(stats.startedAt).toLocaleString() : '--'}
             </div>
           </div>
@@ -342,7 +342,7 @@ function CDNStatus({ className }: CDNStatusProps) {
           {/* Purge by hash */}
           <div className="space-y-3">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Purge by Artifact Hash</label>
+              <label className="text-xs text-gray-400 mb-1 block">Purge by Artifact Hash</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -415,7 +415,7 @@ function CDNStatus({ className }: CDNStatusProps) {
           </div>
           {testResult && (
             <div className="p-3 bg-lattice-bg rounded border border-lattice-border/50">
-              <div className="text-xs text-gray-500 mb-1">Signed URL</div>
+              <div className="text-xs text-gray-400 mb-1">Signed URL</div>
               <div className="text-sm text-neon-cyan font-mono break-all select-all">
                 {testResult}
               </div>
@@ -450,7 +450,7 @@ function StatCard({
   return (
     <div className="bg-lattice-bg rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-500">{label}</span>
+        <span className="text-xs text-gray-400">{label}</span>
         <div className={cn('p-1.5 rounded', colors[color])}>
           <Icon className="w-3.5 h-3.5" />
         </div>

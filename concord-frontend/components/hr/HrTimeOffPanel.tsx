@@ -68,7 +68,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -108,7 +108,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
             {balances.map((b) => (
               <div key={b.kind} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                 <p className="text-sm font-bold text-zinc-100">{b.remaining}</p>
-                <p className="text-[10px] text-zinc-500 capitalize">{b.kind} left ({b.used}/{b.accrued})</p>
+                <p className="text-[10px] text-zinc-400 capitalize">{b.kind} left ({b.used}/{b.accrued})</p>
               </div>
             ))}
           </div>
@@ -119,14 +119,14 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Requests</h3>
         {requests.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No time-off requests.</p>
+          <p className="text-[11px] text-zinc-400 italic">No time-off requests.</p>
         ) : (
           <ul className="space-y-1">
             {requests.map((r) => (
               <li key={r.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{r.employeeName} · <span className="capitalize">{r.kind}</span></p>
-                  <p className="text-[10px] text-zinc-500">{r.days} days from {r.startDate}</p>
+                  <p className="text-[10px] text-zinc-400">{r.days} days from {r.startDate}</p>
                 </div>
                 {r.status === 'pending' ? (
                   <div className="flex gap-1">

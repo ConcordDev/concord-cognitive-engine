@@ -127,11 +127,11 @@ export function PreApprovalFlow() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ShieldCheck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Mortgage pre-approval</span>
-        <span className="ml-auto text-[10px] text-gray-500">lender connect · 28/36 DTI</span>
+        <span className="ml-auto text-[10px] text-gray-400">lender connect · 28/36 DTI</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="p-3 space-y-4">
           {/* Lenders */}
@@ -153,13 +153,13 @@ export function PreApprovalFlow() {
               </div>
             )}
             {lenders.length === 0 ? (
-              <p className="text-[11px] text-gray-500 py-1">No lenders yet. Add one to request a pre-approval.</p>
+              <p className="text-[11px] text-gray-400 py-1">No lenders yet. Add one to request a pre-approval.</p>
             ) : (
               <ul className="grid grid-cols-2 gap-2">
                 {lenders.map((l) => (
                   <li key={l.id} className="rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs">
                     <div className="font-semibold text-white">{l.name}</div>
-                    <div className="text-[10px] text-gray-500">{l.loanType}{l.quotedRate > 0 ? ` · ${l.quotedRate}%` : ''}{l.nmlsId ? ` · NMLS ${l.nmlsId}` : ''}</div>
+                    <div className="text-[10px] text-gray-400">{l.loanType}{l.quotedRate > 0 ? ` · ${l.quotedRate}%` : ''}{l.nmlsId ? ` · NMLS ${l.nmlsId}` : ''}</div>
                   </li>
                 ))}
               </ul>
@@ -192,7 +192,7 @@ export function PreApprovalFlow() {
           <section className="border-t border-white/10 pt-3">
             <span className="text-[10px] uppercase tracking-wider text-gray-400">Pre-approval letters</span>
             {preapprovals.length === 0 ? (
-              <p className="text-[11px] text-gray-500 py-1">No pre-approvals yet.</p>
+              <p className="text-[11px] text-gray-400 py-1">No pre-approvals yet.</p>
             ) : (
               <ul className="space-y-2 mt-1.5">
                 {preapprovals.map((p) => (
@@ -200,13 +200,13 @@ export function PreApprovalFlow() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-white">{p.lenderName}</span>
                       <span className={cn('text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border', STATUS_STYLE[p.status] || 'bg-white/5 text-gray-400 border-white/10')}>{p.status}</span>
-                      <span className="ml-auto text-[10px] text-gray-500">expires {p.expiresAt}</span>
+                      <span className="ml-auto text-[10px] text-gray-400">expires {p.expiresAt}</span>
                     </div>
                     <div className="mt-1.5 grid grid-cols-4 gap-2 text-center">
-                      <div><div className="text-[9px] uppercase text-gray-500">Max price</div><div className="font-mono tabular-nums text-cyan-300">${p.maxHomePrice.toLocaleString()}</div></div>
-                      <div><div className="text-[9px] uppercase text-gray-500">Max loan</div><div className="font-mono tabular-nums text-white">${p.maxLoanAmount.toLocaleString()}</div></div>
-                      <div><div className="text-[9px] uppercase text-gray-500">Max PITI</div><div className="font-mono tabular-nums text-white">${p.maxMonthlyPayment.toLocaleString()}/mo</div></div>
-                      <div><div className="text-[9px] uppercase text-gray-500">Credit</div><div className="font-mono tabular-nums text-white capitalize">{p.creditTier} ({p.creditScore})</div></div>
+                      <div><div className="text-[9px] uppercase text-gray-400">Max price</div><div className="font-mono tabular-nums text-cyan-300">${p.maxHomePrice.toLocaleString()}</div></div>
+                      <div><div className="text-[9px] uppercase text-gray-400">Max loan</div><div className="font-mono tabular-nums text-white">${p.maxLoanAmount.toLocaleString()}</div></div>
+                      <div><div className="text-[9px] uppercase text-gray-400">Max PITI</div><div className="font-mono tabular-nums text-white">${p.maxMonthlyPayment.toLocaleString()}/mo</div></div>
+                      <div><div className="text-[9px] uppercase text-gray-400">Credit</div><div className="font-mono tabular-nums text-white capitalize">{p.creditTier} ({p.creditScore})</div></div>
                     </div>
                   </li>
                 ))}

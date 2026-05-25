@@ -75,12 +75,12 @@ export function ChoreRotation() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Chores ({chores.length})</div>
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Chores ({chores.length})</div>
           <div className="space-y-1">
             {chores.map((c, i) => (
               <div key={`${c}-${i}`} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-zinc-200">{c}</span>
-                <button type="button" onClick={() => removeItem(i, chores, setChores)} className="text-zinc-500 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
+                <button type="button" onClick={() => removeItem(i, chores, setChores)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
               </div>
             ))}
             <form onSubmit={(e) => { e.preventDefault(); addItem(newChore, chores, setChores, setNewChore); }} className="flex gap-1">
@@ -90,12 +90,12 @@ export function ChoreRotation() {
           </div>
         </div>
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Members ({members.length})</div>
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Members ({members.length})</div>
           <div className="space-y-1">
             {members.map((m, i) => (
               <div key={`${m}-${i}`} className="flex items-center gap-2 text-xs">
                 <span className="flex-1 truncate text-zinc-200">{m}</span>
-                <button type="button" onClick={() => removeItem(i, members, setMembers)} className="text-zinc-500 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
+                <button type="button" onClick={() => removeItem(i, members, setMembers)} className="text-zinc-400 hover:text-rose-400"><Trash2 className="h-3 w-3" /></button>
               </div>
             ))}
             <form onSubmit={(e) => { e.preventDefault(); addItem(newMember, members, setMembers, setNewMember); }} className="flex gap-1">
@@ -108,13 +108,13 @@ export function ChoreRotation() {
 
       <div className="flex items-end gap-2">
         <label className="block flex-1">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Strategy</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Strategy</span>
           <select value={strategy} onChange={(e) => setStrategy(e.target.value as typeof STRATEGIES[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
             {STRATEGIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <label className="block w-24">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Weeks</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Weeks</span>
           <input type="number" min={1} max={12} value={weeks} onChange={(e) => setWeeks(Math.max(1, Math.min(12, Number(e.target.value) || 4)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
         </label>
         <button type="button" onClick={() => rotate.mutate()} disabled={rotate.isPending || chores.length === 0 || members.length === 0} className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-mono text-emerald-200 hover:bg-emerald-500/25 disabled:opacity-50">
@@ -128,7 +128,7 @@ export function ChoreRotation() {
 
       {assignments.length > 0 && (
         <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Rotation ({assignments.length} assignments)</div>
+          <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Rotation ({assignments.length} assignments)</div>
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             {assignments.map((a, i) => (
               <div key={i} className="flex items-center justify-between rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1.5 text-xs">

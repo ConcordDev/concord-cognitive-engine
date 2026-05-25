@@ -245,7 +245,7 @@ export default function GeologyLensPage() {
           >
             <stat.icon className={`w-4 h-4 mb-1 ${stat.color}`} />
             <div className="text-xl font-bold">{stat.value}</div>
-            <div className="text-[10px] text-gray-500 uppercase">{stat.label}</div>
+            <div className="text-[10px] text-gray-400 uppercase">{stat.label}</div>
           </motion.div>
         ))}
       </div>
@@ -257,7 +257,7 @@ export default function GeologyLensPage() {
         transition={{ delay: 0.35 }}
         className="flex items-center gap-2"
       >
-        <span className="text-[10px] text-gray-500 shrink-0">Rock Types</span>
+        <span className="text-[10px] text-gray-400 shrink-0">Rock Types</span>
         <div className="flex-1 h-3 rounded-full overflow-hidden flex bg-white/5">
           {samples.length > 0 ? (
             <>
@@ -287,7 +287,7 @@ export default function GeologyLensPage() {
             <div className="bg-white/10 h-full w-full" />
           )}
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 shrink-0">
+        <div className="flex items-center gap-2 text-[10px] text-gray-400 shrink-0">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-red-500/60" />
             Ign
@@ -366,7 +366,7 @@ export default function GeologyLensPage() {
 
           <div className="space-y-2">
             {samples.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No samples collected yet.</p>
+              <p className="text-gray-400 text-sm text-center py-4">No samples collected yet.</p>
             ) : (
               samples
                 .filter(
@@ -398,7 +398,7 @@ export default function GeologyLensPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleAction(sample.id)}
-                        className="text-gray-500 hover:text-neon-cyan"
+                        className="text-gray-400 hover:text-neon-cyan"
                         title="Run AI analysis"
                       >
                         <Zap className="w-4 h-4" />
@@ -412,14 +412,14 @@ export default function GeologyLensPage() {
                             } as unknown as Partial<Record<string, unknown>>,
                           })
                         }
-                        className="text-gray-500 hover:text-yellow-400"
+                        className="text-gray-400 hover:text-yellow-400"
                         title="Update"
                       >
                         <Gem className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => remove(sample.id)}
-                        className="text-gray-500 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400"
                       aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -483,7 +483,7 @@ export default function GeologyLensPage() {
                   </div>
                   <button
                     onClick={() => removeSite(site.id)}
-                    className="text-gray-500 hover:text-red-400"
+                    className="text-gray-400 hover:text-red-400"
                   aria-label="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>

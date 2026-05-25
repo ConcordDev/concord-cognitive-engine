@@ -32,7 +32,7 @@ export function FocusMode({
           {/* Exit button */}
           <button
             onClick={onToggle}
-            className="fixed top-4 right-4 z-50 p-2 text-gray-500 hover:text-white transition-colors opacity-30 hover:opacity-100"
+            className="fixed top-4 right-4 z-50 p-2 text-gray-400 hover:text-white transition-colors opacity-30 hover:opacity-100"
             title="Exit focus mode (Esc)"
           >
             <X className="w-6 h-6" />
@@ -187,7 +187,7 @@ export function PomodoroTimer({
       </div>
 
       {/* Sessions count */}
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-gray-400">
         {sessions} sessions
       </div>
     </div>

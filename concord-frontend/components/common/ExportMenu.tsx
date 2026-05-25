@@ -112,7 +112,7 @@ export function ExportMenu({ domain }: ExportMenuProps) {
                   <opt.icon className="w-4 h-4 text-gray-400" />
                   <div>
                     <p className="text-gray-200">{opt.label}</p>
-                    <p className="text-xs text-gray-500">{opt.desc}</p>
+                    <p className="text-xs text-gray-400">{opt.desc}</p>
                   </div>
                   {exporting === opt.id && (
                     <div className="ml-auto w-4 h-4 border-2 border-neon-cyan border-t-transparent rounded-full animate-spin" />

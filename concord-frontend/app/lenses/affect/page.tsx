@@ -918,7 +918,7 @@ export default function AffectLensPage() {
                       </div>
                       <span className={`text-xs font-medium ${statusColor}`}>{status}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">{dim.description}</p>
+                    <p className="text-xs text-gray-400 mb-2">{dim.description}</p>
                     <div className="flex items-center gap-3">
                       <div className="h-2.5 flex-1 bg-lattice-deep rounded-full overflow-hidden">
                         <div
@@ -1014,7 +1014,7 @@ export default function AffectLensPage() {
                 <span className="text-sm text-gray-400">Filters:</span>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Event Type</label>
+                <label className="text-xs text-gray-400 block mb-1">Event Type</label>
                 <select
                   value={eventFilter}
                   onChange={(e) => setEventFilter(e.target.value)}
@@ -1029,7 +1029,7 @@ export default function AffectLensPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Dimension</label>
+                <label className="text-xs text-gray-400 block mb-1">Dimension</label>
                 <select
                   value={eventDimFilter}
                   onChange={(e) => setEventDimFilter(e.target.value)}
@@ -1043,7 +1043,7 @@ export default function AffectLensPage() {
                   ))}
                 </select>
               </div>
-              <div className="ml-auto text-xs text-gray-500">
+              <div className="ml-auto text-xs text-gray-400">
                 Showing {filteredEvents.length} of {eventList.length} events
               </div>
             </div>
@@ -1066,8 +1066,7 @@ export default function AffectLensPage() {
                       <div key={i} className="lens-card text-sm">
                         <div
                           className="flex items-center gap-3 cursor-pointer"
-                          onClick={() => setExpandedEvent(isExpanded ? null : i)}
-                        >
+                          onClick={() => setExpandedEvent(isExpanded ? null : i)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div className="w-1 h-8 rounded-full bg-gray-700 shrink-0 relative">
                             <div
                               className={`absolute inset-0 rounded-full ${
@@ -1091,7 +1090,7 @@ export default function AffectLensPage() {
                               >
                                 {String(evt.type)}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-400">
                                 i={typeof evt.intensity === 'number' ? evt.intensity.toFixed(2) : '--'}{' '}
                                 p={typeof evt.polarity === 'number' ? evt.polarity.toFixed(2) : '--'}
                               </span>
@@ -1102,13 +1101,13 @@ export default function AffectLensPage() {
                               </p>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500 shrink-0">
+                          <span className="text-xs text-gray-400 shrink-0">
                             {formatTimeShort(evt.timestamp || evt.created_at || evt.time)}
                           </span>
                           {isExpanded ? (
-                            <ChevronUp className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                            <ChevronUp className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                            <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                           )}
                         </div>
                         {isExpanded && (
@@ -1119,7 +1118,7 @@ export default function AffectLensPage() {
                               )
                               .map(([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-gray-500">{k.replace(/_/g, ' ')}</span>
+                                  <span className="text-gray-400">{k.replace(/_/g, ' ')}</span>
                                   <span className="font-mono text-gray-400 max-w-[60%] text-right truncate">
                                     {typeof v === 'number'
                                       ? v.toFixed(3)
@@ -1136,7 +1135,7 @@ export default function AffectLensPage() {
                   })}
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 {eventList.length === 0
                   ? 'No events recorded yet. Emit an event to see the timeline.'
                   : 'No events match the current filters.'}
@@ -1170,7 +1169,7 @@ export default function AffectLensPage() {
                           {category.replace(/_/g, ' ')}
                         </h3>
                         {isObj && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             {Object.keys(values as object).length} settings
                           </span>
                         )}
@@ -1202,11 +1201,11 @@ export default function AffectLensPage() {
                                         {val ? (
                                           <ToggleRight className="w-5 h-5 text-green-400" />
                                         ) : (
-                                          <ToggleLeft className="w-5 h-5 text-gray-500" />
+                                          <ToggleLeft className="w-5 h-5 text-gray-400" />
                                         )}
                                         <span
                                           className={`text-xs font-medium ${
-                                            val ? 'text-green-400' : 'text-gray-500'
+                                            val ? 'text-green-400' : 'text-gray-400'
                                           }`}
                                         >
                                           {val ? 'ON' : 'OFF'}
@@ -1250,7 +1249,7 @@ export default function AffectLensPage() {
                                 : typeof item === 'object' && item !== null
                                   ? Object.entries(item as Record<string, unknown>).map(([k, v]) => (
                                       <span key={k} className="mr-3">
-                                        <span className="text-gray-500">{k}: </span>
+                                        <span className="text-gray-400">{k}: </span>
                                         <span className="font-mono text-neon-cyan">
                                           {typeof v === 'boolean'
                                             ? v
@@ -1279,7 +1278,7 @@ export default function AffectLensPage() {
                 })}
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 No affect policies configured for this session. Policies will appear as the system initializes.
               </p>
             )}
@@ -1339,7 +1338,7 @@ export default function AffectLensPage() {
                       >
                         {(overallScore * 100).toFixed(0)}%
                       </span>
-                      <span className="text-xs text-gray-500">Health</span>
+                      <span className="text-xs text-gray-400">Health</span>
                     </div>
                   </div>
                   <div className="flex-1 space-y-2">
@@ -1376,7 +1375,7 @@ export default function AffectLensPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 Health score will be computed once dimensional data is available.
               </p>
             )}
@@ -1411,7 +1410,7 @@ export default function AffectLensPage() {
                     />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-gray-300">{w.message}</p>
-                      <p className="text-xs text-gray-500">Dimension: {w.dimension}</p>
+                      <p className="text-xs text-gray-400">Dimension: {w.dimension}</p>
                     </div>
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${
@@ -1429,7 +1428,7 @@ export default function AffectLensPage() {
               <div className="text-center py-6">
                 <Shield className="w-8 h-8 text-green-400 mx-auto mb-2" />
                 <p className="text-sm text-green-400 font-medium">All Clear</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   All dimensions are within acceptable ranges.
                 </p>
               </div>
@@ -1457,7 +1456,7 @@ export default function AffectLensPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 No recovery actions needed. Emotional state is healthy.
               </p>
             )}
@@ -1565,7 +1564,7 @@ export default function AffectLensPage() {
                   {isRunning === 'sentimentAnalysis' ? 'Analyzing...' : 'Analyze Sentiment'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Multi-dimensional VAD (Valence-Arousal-Dominance) sentiment scoring with sarcasm detection and emotion classification.
               </p>
 
@@ -1582,7 +1581,7 @@ export default function AffectLensPage() {
                     }`}>
                       {String(sentimentResult.sentimentLabel)}
                     </span>
-                    <span className="text-xs text-gray-500">Primary:</span>
+                    <span className="text-xs text-gray-400">Primary:</span>
                     <span className="text-sm font-medium text-neon-cyan capitalize">
                       {String(sentimentResult.primaryEmotion)}
                     </span>
@@ -1595,7 +1594,7 @@ export default function AffectLensPage() {
 
                   {/* VAD Scores */}
                   <div className="space-y-2">
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">VAD Model Scores</p>
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">VAD Model Scores</p>
                     {(() => {
                       const vad = sentimentResult.vad as Record<string, number> | undefined;
                       if (!vad) return null;
@@ -1626,15 +1625,15 @@ export default function AffectLensPage() {
                   {/* Stats Row */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Tokens</p>
+                      <p className="text-xs text-gray-400">Tokens</p>
                       <p className="text-sm font-mono font-bold">{String(sentimentResult.tokenCount)}</p>
                     </div>
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Matched</p>
+                      <p className="text-xs text-gray-400">Matched</p>
                       <p className="text-sm font-mono font-bold">{String(sentimentResult.matchedTokens)}</p>
                     </div>
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Coverage</p>
+                      <p className="text-xs text-gray-400">Coverage</p>
                       <p className="text-sm font-mono font-bold">{String(sentimentResult.coverage)}%</p>
                     </div>
                   </div>
@@ -1642,7 +1641,7 @@ export default function AffectLensPage() {
                   {/* Emotion Keywords */}
                   {Array.isArray(sentimentResult.emotionHits) && (sentimentResult.emotionHits as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Detected Emotion Words</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Detected Emotion Words</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(sentimentResult.emotionHits as Array<Record<string, unknown>>).slice(0, 20).map((hit, i) => (
                           <span
@@ -1679,7 +1678,7 @@ export default function AffectLensPage() {
                   )}
                 </div>
               ) : sentimentResult && 'message' in sentimentResult ? (
-                <p className="text-sm text-gray-500 py-4 text-center">{String(sentimentResult.message)}</p>
+                <p className="text-sm text-gray-400 py-4 text-center">{String(sentimentResult.message)}</p>
               ) : (
                 <div className="text-center py-6 text-gray-600">
                   <Heart className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -1713,7 +1712,7 @@ export default function AffectLensPage() {
                   {isRunning === 'emotionTimeline' ? 'Tracking...' : 'Build Timeline'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Track emotional valence changes over time. Detects emotional arcs (rags-to-riches, tragedy, etc.) and turning points.
               </p>
 
@@ -1724,10 +1723,10 @@ export default function AffectLensPage() {
                     <span className="text-sm font-bold uppercase px-3 py-1 rounded-full bg-neon-green/20 text-neon-green">
                       {String(timelineResult.arcType).replace(/-/g, ' ')}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">
                       {String(timelineResult.entryCount)} entries analyzed
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">
                       Volatility: <span className="font-mono text-gray-300">{String(timelineResult.volatility)}</span>
                     </span>
                   </div>
@@ -1735,7 +1734,7 @@ export default function AffectLensPage() {
                   {/* Mini Timeline Chart */}
                   {Array.isArray(timelineResult.smoothedValence) && (timelineResult.smoothedValence as number[]).length > 1 && (
                     <div className="bg-lattice-deep rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-2">Smoothed Valence Over Time</p>
+                      <p className="text-xs text-gray-400 mb-2">Smoothed Valence Over Time</p>
                       <div className="h-24 flex items-end gap-[2px]">
                         {(timelineResult.smoothedValence as number[]).map((val, i) => {
                           const normalized = (val + 1) / 2; // -1..1 -> 0..1
@@ -1758,8 +1757,8 @@ export default function AffectLensPage() {
                         })}
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-[10px] text-gray-600">Start</span>
-                        <span className="text-[10px] text-gray-600">End</span>
+                        <span className="text-[10px] text-gray-400">Start</span>
+                        <span className="text-[10px] text-gray-400">End</span>
                       </div>
                     </div>
                   )}
@@ -1775,7 +1774,7 @@ export default function AffectLensPage() {
                             : <ArrowRight className="w-3.5 h-3.5 text-gray-400" />;
                         return (
                           <div key={seg} className="lens-card text-center">
-                            <p className="text-xs text-gray-500 capitalize">{seg}</p>
+                            <p className="text-xs text-gray-400 capitalize">{seg}</p>
                             <div className="flex items-center justify-center gap-1">
                               {arrow}
                               <span className={`text-sm font-mono font-bold ${
@@ -1793,7 +1792,7 @@ export default function AffectLensPage() {
                   {/* Turning Points */}
                   {Array.isArray(timelineResult.turningPoints) && (timelineResult.turningPoints as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Turning Points</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Turning Points</p>
                       <div className="space-y-1">
                         {(timelineResult.turningPoints as Array<Record<string, unknown>>).map((tp, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
@@ -1822,7 +1821,7 @@ export default function AffectLensPage() {
                   {/* Overall Stats */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Overall Valence</p>
+                      <p className="text-xs text-gray-400">Overall Valence</p>
                       <p className={`text-sm font-mono font-bold ${
                         (timelineResult.overallValence as number) > 0.1
                           ? 'text-green-400'
@@ -1834,7 +1833,7 @@ export default function AffectLensPage() {
                       </p>
                     </div>
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Overall Intensity</p>
+                      <p className="text-xs text-gray-400">Overall Intensity</p>
                       <p className="text-sm font-mono font-bold text-orange-400">
                         {String(timelineResult.overallIntensity)}
                       </p>
@@ -1842,7 +1841,7 @@ export default function AffectLensPage() {
                   </div>
                 </div>
               ) : timelineResult && 'message' in timelineResult ? (
-                <p className="text-sm text-gray-500 py-4 text-center">{String(timelineResult.message)}</p>
+                <p className="text-sm text-gray-400 py-4 text-center">{String(timelineResult.message)}</p>
               ) : (
                 <div className="text-center py-6 text-gray-600">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -1876,14 +1875,14 @@ export default function AffectLensPage() {
                   {isRunning === 'empathyMap' ? 'Mapping...' : 'Build Empathy Map'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Categorize feedback into Think/Feel/Say/Do quadrants. Identifies pain points, gains, and recurring themes.
               </p>
 
               {empathyResult && !('message' in empathyResult) ? (
                 <div className="space-y-4">
                   {/* Feedback Summary */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span>{String(empathyResult.totalFeedback)} feedback items analyzed</span>
                     {!!empathyResult.analyzedAt && (
                       <span className="text-gray-600">{new Date(String(empathyResult.analyzedAt)).toLocaleTimeString()}</span>
@@ -1906,7 +1905,7 @@ export default function AffectLensPage() {
                             <div className={`flex items-center gap-1.5 mb-2 ${q.color}`}>
                               {q.icon}
                               <span className="text-xs font-bold uppercase tracking-wider">{q.label}</span>
-                              <span className="ml-auto text-xs text-gray-500">{String(qData?.count || 0)}</span>
+                              <span className="ml-auto text-xs text-gray-400">{String(qData?.count || 0)}</span>
                             </div>
                             {items.length > 0 ? (
                               <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -1916,11 +1915,11 @@ export default function AffectLensPage() {
                                   </p>
                                 ))}
                                 {items.length > 5 && (
-                                  <p className="text-xs text-gray-600">+{items.length - 5} more</p>
+                                  <p className="text-xs text-gray-400">+{items.length - 5} more</p>
                                 )}
                               </div>
                             ) : (
-                              <p className="text-xs text-gray-600 italic">No items</p>
+                              <p className="text-xs text-gray-400 italic">No items</p>
                             )}
                           </div>
                         );
@@ -1951,7 +1950,7 @@ export default function AffectLensPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-600 italic">None detected</p>
+                        <p className="text-xs text-gray-400 italic">None detected</p>
                       )}
                     </div>
                     <div>
@@ -1975,7 +1974,7 @@ export default function AffectLensPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-600 italic">None detected</p>
+                        <p className="text-xs text-gray-400 italic">None detected</p>
                       )}
                     </div>
                   </div>
@@ -1983,7 +1982,7 @@ export default function AffectLensPage() {
                   {/* Top Themes */}
                   {Array.isArray(empathyResult.topThemes) && (empathyResult.topThemes as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Top Themes</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Top Themes</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(empathyResult.topThemes as Array<Record<string, unknown>>).map((theme, i) => (
                           <span key={i} className="text-xs bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full">
@@ -1998,7 +1997,7 @@ export default function AffectLensPage() {
                   {!!empathyResult.summary && (
                     <div className="flex items-center gap-4 p-3 bg-lattice-deep rounded-lg text-xs">
                       <div className="text-center">
-                        <p className="text-gray-500">Balance</p>
+                        <p className="text-gray-400">Balance</p>
                         <p className={`font-mono font-bold ${
                           ((empathyResult.summary as Record<string, unknown>).sentimentBalance as number) > 0
                             ? 'text-green-400'
@@ -2011,13 +2010,13 @@ export default function AffectLensPage() {
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-gray-500">Avg Pain</p>
+                        <p className="text-gray-400">Avg Pain</p>
                         <p className="font-mono font-bold text-red-400">
                           {String((empathyResult.summary as Record<string, unknown>).avgPainScore)}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-gray-500">Avg Gain</p>
+                        <p className="text-gray-400">Avg Gain</p>
                         <p className="font-mono font-bold text-green-400">
                           {String((empathyResult.summary as Record<string, unknown>).avgGainScore)}
                         </p>
@@ -2026,7 +2025,7 @@ export default function AffectLensPage() {
                   )}
                 </div>
               ) : empathyResult && 'message' in empathyResult ? (
-                <p className="text-sm text-gray-500 py-4 text-center">{String(empathyResult.message)}</p>
+                <p className="text-sm text-gray-400 py-4 text-center">{String(empathyResult.message)}</p>
               ) : (
                 <div className="text-center py-6 text-gray-600">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -2060,7 +2059,7 @@ export default function AffectLensPage() {
                   {isRunning === 'detect-patterns' ? 'Detecting...' : 'Detect Patterns'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Identify emotional triggers, cycles, and correlations across affect data using the brain analysis engine.
               </p>
 
@@ -2084,12 +2083,12 @@ export default function AffectLensPage() {
                                 {String(pattern.name || pattern.label || pattern.type || `Pattern ${i + 1}`)}
                               </p>
                               {!!(pattern.description || pattern.detail) && (
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-xs text-gray-400 mt-0.5">
                                   {String(pattern.description || pattern.detail)}
                                 </p>
                               )}
                               {!!pattern.frequency && (
-                                <span className="text-[10px] text-gray-600 mt-1 block">
+                                <span className="text-[10px] text-gray-400 mt-1 block">
                                   Frequency: {String(pattern.frequency)}
                                 </span>
                               )}
@@ -2112,7 +2111,7 @@ export default function AffectLensPage() {
                   {/* Triggers */}
                   {Array.isArray(patternResult.triggers) && (patternResult.triggers as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Emotional Triggers</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Emotional Triggers</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(patternResult.triggers as Array<Record<string, unknown>>).map((trigger, i) => (
                           <span key={i} className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">
@@ -2126,7 +2125,7 @@ export default function AffectLensPage() {
                   {/* Cycles */}
                   {Array.isArray(patternResult.cycles) && (patternResult.cycles as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Emotional Cycles</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Emotional Cycles</p>
                       <div className="space-y-1.5">
                         {(patternResult.cycles as Array<Record<string, unknown>>).map((cycle, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs p-2 bg-purple-500/5 rounded border border-purple-500/10">
@@ -2144,7 +2143,7 @@ export default function AffectLensPage() {
                   {/* Correlations */}
                   {Array.isArray(patternResult.correlations) && (patternResult.correlations as Array<Record<string, unknown>>).length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-500 font-medium mb-2">Correlations</p>
+                      <p className="text-xs text-gray-400 font-medium mb-2">Correlations</p>
                       <div className="space-y-1">
                         {(patternResult.correlations as Array<Record<string, unknown>>).map((corr, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
@@ -2177,7 +2176,7 @@ export default function AffectLensPage() {
                         .filter(([k]) => k !== 'analyzedAt')
                         .map(([key, val]) => (
                           <div key={key} className="flex items-start justify-between gap-3 text-xs py-1 border-b border-gray-700/20 last:border-0">
-                            <span className="text-gray-500 capitalize">{key.replace(/[_-]/g, ' ')}</span>
+                            <span className="text-gray-400 capitalize">{key.replace(/[_-]/g, ' ')}</span>
                             <span className="text-gray-300 font-mono text-right max-w-[60%] break-words">
                               {typeof val === 'number'
                                 ? val.toFixed(3)
@@ -2193,7 +2192,7 @@ export default function AffectLensPage() {
                   )}
                 </div>
               ) : patternResult && 'message' in patternResult ? (
-                <p className="text-sm text-gray-500 py-4 text-center">{String(patternResult.message)}</p>
+                <p className="text-sm text-gray-400 py-4 text-center">{String(patternResult.message)}</p>
               ) : (
                 <div className="text-center py-6 text-gray-600">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />

@@ -67,7 +67,7 @@ export function CrtDemographicsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const segments = data?.segments ?? {};
@@ -114,7 +114,7 @@ export function CrtDemographicsPanel() {
       </section>
 
       {!hasAny ? (
-        <p className="text-[11px] text-zinc-500 italic">
+        <p className="text-[11px] text-zinc-400 italic">
           No demographics logged yet. Add real audience segment counts above to see who buys and cites your work.
         </p>
       ) : (
@@ -125,7 +125,7 @@ export function CrtDemographicsPanel() {
               <div key={s.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold text-zinc-200">{s.label}</h4>
-                  <span className="text-[10px] text-zinc-500">{seg.total.toLocaleString()} total</span>
+                  <span className="text-[10px] text-zinc-400">{seg.total.toLocaleString()} total</span>
                 </div>
                 <ul className="space-y-1.5">
                   {seg.breakdown.map((row, i) => (

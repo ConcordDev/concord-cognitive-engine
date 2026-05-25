@@ -107,7 +107,7 @@ export function MarketingEmailPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -125,7 +125,7 @@ export function MarketingEmailPanel() {
       </div>
 
       {emails.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No emails yet. Build one with content blocks, then send.</p>
+        <p className="text-[11px] text-zinc-400 italic">No emails yet. Build one with content blocks, then send.</p>
       ) : (
         <ul className="space-y-2">
           {emails.map((e) => (
@@ -133,7 +133,7 @@ export function MarketingEmailPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{e.name}</p>
-                  <p className="text-[11px] text-zinc-500 truncate">{e.subject} · {e.blockCount} blocks · {e.status}</p>
+                  <p className="text-[11px] text-zinc-400 truncate">{e.subject} · {e.blockCount} blocks · {e.status}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => openEdit(e)}
@@ -160,9 +160,9 @@ export function MarketingEmailPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} email</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -186,7 +186,7 @@ export function MarketingEmailPanel() {
                 ))}
               </div>
               {fBlocks.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 italic">Add content blocks to build the email body.</p>
+                <p className="text-[11px] text-zinc-400 italic">Add content blocks to build the email body.</p>
               ) : (
                 <ul className="space-y-1.5">
                   {fBlocks.map((b, i) => (
@@ -195,9 +195,9 @@ export function MarketingEmailPanel() {
                         <span className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold">{b.type}</span>
                         <div className="flex items-center gap-1">
                           <button type="button" onClick={() => moveBlock(i, -1)} aria-label="Move up"
-                            className="text-zinc-500 hover:text-white"><ChevronUp className="w-3.5 h-3.5" /></button>
+                            className="text-zinc-400 hover:text-white"><ChevronUp className="w-3.5 h-3.5" /></button>
                           <button type="button" onClick={() => moveBlock(i, 1)} aria-label="Move down"
-                            className="text-zinc-500 hover:text-white"><ChevronDown className="w-3.5 h-3.5" /></button>
+                            className="text-zinc-400 hover:text-white"><ChevronDown className="w-3.5 h-3.5" /></button>
                           <button type="button" onClick={() => removeBlock(i)} aria-label="Remove block"
                             className="text-rose-400 hover:text-rose-300"><Trash2 className="w-3 h-3" /></button>
                         </div>
@@ -228,11 +228,11 @@ export function MarketingEmailPanel() {
 
       {/* Send modal */}
       {sendTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSendTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSendTarget(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-semibold text-white">Send email</h4>
-            <p className="text-[11px] text-zinc-500">One recipient per line (or comma-separated).</p>
+            <p className="text-[11px] text-zinc-400">One recipient per line (or comma-separated).</p>
             <textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} rows={5}
               placeholder="recipient@example.com" className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 font-mono" />
             <div className="flex justify-end gap-2">

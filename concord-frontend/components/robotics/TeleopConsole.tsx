@@ -35,7 +35,7 @@ export function TeleopConsole({ robot }: { robot: RobotRow | null }) {
   }, [robot, step]);
 
   if (!robot) {
-    return <p className="text-gray-500 text-sm text-center py-6">Select a robot to enable teleoperation.</p>;
+    return <p className="text-gray-400 text-sm text-center py-6">Select a robot to enable teleoperation.</p>;
   }
 
   // Top-down trail viz — map x,y trail to a 200x200 SVG centered on origin.
@@ -65,7 +65,7 @@ export function TeleopConsole({ robot }: { robot: RobotRow | null }) {
             <label className="text-[11px] text-gray-400 uppercase tracking-wide">Jog step</label>
             <input value={step} onChange={e => setStep(e.target.value)} type="number" step="0.1" min="0.01" max="10"
               className="bg-black/30 border border-white/10 rounded px-2 py-1 text-xs font-mono w-20" />
-            <span className="text-[11px] text-gray-500">units</span>
+            <span className="text-[11px] text-gray-400">units</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 w-44 mx-auto">
             <div /><Btn cmd="forward" icon={ArrowUp} label="Forward" /><div />
@@ -83,7 +83,7 @@ export function TeleopConsole({ robot }: { robot: RobotRow | null }) {
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             {(['x', 'y', 'z'] as const).map(axis => (
               <div key={axis} className="p-2 rounded bg-black/30">
-                <p className="text-gray-500 uppercase">{axis}</p>
+                <p className="text-gray-400 uppercase">{axis}</p>
                 <p className="font-mono text-neon-cyan">{pose[axis]}</p>
               </div>
             ))}

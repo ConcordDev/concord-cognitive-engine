@@ -33,8 +33,7 @@ function Knob({ value, min, max, label, onChange, color = 'neon-cyan' }: {
         onClick={() => {
           const next = normalized + 0.1 > 1 ? 0 : normalized + 0.1;
           onChange(min + next * (max - min));
-        }}
-      >
+        }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div
           className={`absolute w-0.5 h-3 bg-${color} rounded-full left-1/2 -translate-x-1/2 origin-bottom`}
           style={{ bottom: '50%', transform: `translateX(-50%) rotate(${angle}deg)` }}
@@ -54,7 +53,7 @@ function Knob({ value, min, max, label, onChange, color = 'neon-cyan' }: {
         </svg>
       </div>
       <span className="text-[8px] text-gray-400">{label}</span>
-      <span className="text-[8px] text-gray-500 font-mono">{typeof value === 'number' ? (value > 100 ? Math.round(value) : value.toFixed(2)) : value}</span>
+      <span className="text-[8px] text-gray-400 font-mono">{typeof value === 'number' ? (value > 100 ? Math.round(value) : value.toFixed(2)) : value}</span>
     </div>
   );
 }
@@ -155,10 +154,10 @@ export function SynthPanel({
                       <Waves className="w-4 h-4 text-neon-purple" />
                       <span className="text-sm font-medium">{preset.name}</span>
                     </div>
-                    <p className="text-[10px] text-gray-500 capitalize">{preset.type} &middot; {preset.oscillators.length} osc</p>
+                    <p className="text-[10px] text-gray-400 capitalize">{preset.type} &middot; {preset.oscillators.length} osc</p>
                     <div className="mt-1 flex gap-1">
                       {preset.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[8px] text-gray-500">{tag}</span>
+                        <span key={tag} className="px-1 py-0.5 bg-white/5 rounded text-[8px] text-gray-400">{tag}</span>
                       ))}
                     </div>
                     <div className="mt-2 opacity-0 group-hover:opacity-100 flex gap-2">
@@ -205,13 +204,13 @@ export function SynthPanel({
         <h3 className="text-xs font-semibold text-gray-400 uppercase">Oscillators</h3>
         {activePreset.oscillators.map((osc, i) => (
           <div key={i} className="flex items-center gap-3 bg-black/20 rounded-lg p-2">
-            <span className="text-[10px] text-gray-500 w-6">OSC{i + 1}</span>
+            <span className="text-[10px] text-gray-400 w-6">OSC{i + 1}</span>
             <div className="flex gap-1">
               {OSCILLATOR_SHAPES.map(shape => (
                 <button
                   key={shape}
                   onClick={() => updateOsc(i, { shape })}
-                  className={cn('px-1.5 py-0.5 rounded text-[9px] capitalize', osc.shape === shape ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-500 hover:text-white')}
+                  className={cn('px-1.5 py-0.5 rounded text-[9px] capitalize', osc.shape === shape ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}
                 >
                   {shape.slice(0, 3)}
                 </button>
@@ -232,7 +231,7 @@ export function SynthPanel({
             <button
               key={ft}
               onClick={() => onUpdatePreset({ ...activePreset, filter: { ...activePreset.filter, type: ft } })}
-              className={cn('px-2 py-0.5 rounded text-[10px] capitalize', activePreset.filter.type === ft ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-500 hover:text-white')}
+              className={cn('px-2 py-0.5 rounded text-[10px] capitalize', activePreset.filter.type === ft ? 'bg-neon-cyan/20 text-neon-cyan' : 'text-gray-400 hover:text-white')}
             >
               {ft}
             </button>

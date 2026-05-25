@@ -133,7 +133,7 @@ export function EditorPane({
       {active ? (
         <>
           <div className="px-3 py-1 border-b border-white/10 flex items-center gap-2 bg-[#0a0c10] text-[11px]">
-            <span className="font-mono text-gray-500 truncate flex-1">{active.path}</span>
+            <span className="font-mono text-gray-400 truncate flex-1">{active.path}</span>
             {selection.trim() && (
               <button onClick={() => setShowInlineEdit(v => !v)} className="px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 inline-flex items-center gap-1" title="Inline edit selection (⌘K)">
                 <Wand2 className="w-3 h-3" /> ⌘K
@@ -162,7 +162,7 @@ export function EditorPane({
             </div>
           )}
           {loadingFile ? (
-            <div className="flex-1 flex items-center justify-center text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+            <div className="flex-1 flex items-center justify-center text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
           ) : (
             <div className="flex-1 overflow-hidden">
               <MonacoWrapper
@@ -179,7 +179,7 @@ export function EditorPane({
           )}
         </>
       ) : (
-        <div className="flex-1 flex items-center justify-center text-xs text-gray-500">
+        <div className="flex-1 flex items-center justify-center text-xs text-gray-400">
           {projectId ? 'Open a file from the Explorer to start editing.' : 'Pick or create a project to begin.'}
         </div>
       )}

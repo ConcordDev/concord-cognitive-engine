@@ -77,18 +77,18 @@ export function FieldTrackingPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Navigation className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Field tracking &amp; GPS</span>
-        <span className="ml-auto text-[10px] text-gray-500">{markers.length} techs located</span>
+        <span className="ml-auto text-[10px] text-gray-400">{markers.length} techs located</span>
         <button onClick={refresh} className="p-1 rounded hover:bg-white/5 text-gray-400" aria-label="Refresh"><RefreshCw className="w-3.5 h-3.5" /></button>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading field data…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading field data…</div>
       ) : (
         <div className="p-3 space-y-3">
           {markers.length > 0 ? (
             <MapView markers={markers} height={220} />
           ) : (
-            <div className="rounded border border-dashed border-white/10 py-8 text-center text-xs text-gray-500">
+            <div className="rounded border border-dashed border-white/10 py-8 text-center text-xs text-gray-400">
               No technician locations yet — push a GPS fix below.
             </div>
           )}
@@ -99,7 +99,7 @@ export function FieldTrackingPanel() {
                 <li key={t.id} className="rounded border border-white/10 bg-black/20 px-2 py-1.5 flex items-center gap-2">
                   <Radio className={cn('w-3 h-3', t.status === 'available' ? 'text-emerald-400' : t.status === 'on_site' ? 'text-amber-400' : 'text-cyan-400')} />
                   <span className="text-xs text-white flex-1">{t.name}</span>
-                  <span className="text-[10px] font-mono text-gray-500">{t.lat.toFixed(3)}, {t.lng.toFixed(3)}</span>
+                  <span className="text-[10px] font-mono text-gray-400">{t.lat.toFixed(3)}, {t.lng.toFixed(3)}</span>
                   <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{t.status.replace('_', ' ')}</span>
                 </li>
               ))}

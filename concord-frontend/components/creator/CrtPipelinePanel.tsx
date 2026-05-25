@@ -59,7 +59,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -93,7 +93,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                 {stageItems.map((c) => (
                   <li key={c.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                     <p className="text-xs text-zinc-100">{c.title}</p>
-                    <p className="text-[10px] text-zinc-500 capitalize">{c.format}{c.platform && ` · ${c.platform}`}</p>
+                    <p className="text-[10px] text-zinc-400 capitalize">{c.format}{c.platform && ` · ${c.platform}`}</p>
                     <div className="flex items-center gap-1 mt-1.5">
                       {stage.id !== 'published' && (
                         <button type="button" onClick={() => advance(c.id)}
@@ -108,7 +108,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
                     </div>
                   </li>
                 ))}
-                {stageItems.length === 0 && <li className="text-[10px] text-zinc-600 italic px-1">Empty</li>}
+                {stageItems.length === 0 && <li className="text-[10px] text-zinc-400 italic px-1">Empty</li>}
               </ul>
             </div>
           );

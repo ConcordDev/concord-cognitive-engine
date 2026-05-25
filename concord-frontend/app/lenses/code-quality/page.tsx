@@ -318,7 +318,7 @@ export default function CodeQualityLensPage() {
                 <span className="text-gray-400">Actionable only</span>
               </label>
               {findings.length > 0 && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   {visible.length} of {findings.length} finding
                   {findings.length === 1 ? '' : 's'}
                 </span>
@@ -364,7 +364,7 @@ export default function CodeQualityLensPage() {
                     >
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-mono text-sm text-gray-100">{d.label}</span>
-                        {r && <span className="text-xs text-gray-500">{r.durationMs}ms</span>}
+                        {r && <span className="text-xs text-gray-400">{r.durationMs}ms</span>}
                       </div>
                       <p className="text-xs text-gray-400 line-clamp-2">{d.description}</p>
                       {r && (
@@ -382,7 +382,7 @@ export default function CodeQualityLensPage() {
                           )}
                         </div>
                       )}
-                      <div className="mt-2 text-[10px] text-gray-500 uppercase tracking-wider">
+                      <div className="mt-2 text-[10px] text-gray-400 uppercase tracking-wider">
                         {d.consumers.join(' · ')}
                       </div>
                     </button>
@@ -398,11 +398,11 @@ export default function CodeQualityLensPage() {
                   <span className="text-neon-blue">· {activeDetector}</span>
                 )}
                 {visible.length > 0 && (
-                  <span className="text-gray-500 ml-2">({visible.length})</span>
+                  <span className="text-gray-400 ml-2">({visible.length})</span>
                 )}
               </h2>
               {visible.length === 0 ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-400">
                   {summary
                     ? 'No findings at the selected severity.'
                     : 'Click "Run sweep" to populate findings.'}
@@ -421,7 +421,7 @@ export default function CodeQualityLensPage() {
                         <span className="font-mono text-gray-300">{f.detector}</span>
                         <span className="font-mono text-gray-400">{f.id}</span>
                         {f.location && (
-                          <span className="font-mono text-gray-500 text-[11px]">
+                          <span className="font-mono text-gray-400 text-[11px]">
                             {f.location}
                           </span>
                         )}
@@ -435,7 +435,7 @@ export default function CodeQualityLensPage() {
                     </div>
                   ))}
                   {visible.length > 200 && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       …and {visible.length - 200} more (refine the filter to narrow).
                     </p>
                   )}

@@ -39,16 +39,16 @@ export function OutlinePanel({
 
   return (
     <div className="border-t border-white/10 flex flex-col" style={{ maxHeight: '40%' }}>
-      <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-semibold bg-white/[0.02]">
+      <div className="px-2 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold bg-white/[0.02]">
         Outline {symbols.length > 0 && `· ${symbols.length}`}
       </div>
       <div className="overflow-y-auto">
         {loading ? (
-          <div className="p-2 text-[11px] text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Parsing…</div>
+          <div className="p-2 text-[11px] text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Parsing…</div>
         ) : !path ? (
-          <div className="p-2 text-[11px] text-gray-600 italic">Open a file to see its outline.</div>
+          <div className="p-2 text-[11px] text-gray-400 italic">Open a file to see its outline.</div>
         ) : symbols.length === 0 ? (
-          <div className="p-2 text-[11px] text-gray-600 italic">No symbols found.</div>
+          <div className="p-2 text-[11px] text-gray-400 italic">No symbols found.</div>
         ) : (
           <ul>
             {symbols.map((s, i) => {
@@ -58,7 +58,7 @@ export function OutlinePanel({
                   className="px-2 py-0.5 flex items-center gap-1.5 cursor-pointer hover:bg-white/[0.04]">
                   <Icon className={`w-3 h-3 shrink-0 ${KIND_COLOR[s.kind] || 'text-gray-400'}`} />
                   <span className="text-[11px] text-white truncate flex-1 font-mono">{s.name}</span>
-                  <span className="text-[9px] text-gray-600">{s.line}</span>
+                  <span className="text-[9px] text-gray-400">{s.line}</span>
                 </li>
               );
             })}

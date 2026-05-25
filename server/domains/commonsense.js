@@ -120,6 +120,7 @@ export default function registerCommonsenseActions(registerLensAction) {
    * artifact.data.constraints = [{ type: "temporal"|"spatial"|"causal"|"physical"|"social", rule, entities? }]
    */
   registerLensAction("commonsense", "plausibilityCheck", (ctx, artifact, _params) => {
+  try {
     const statement = artifact.data?.statement || {};
     const constraints = artifact.data?.constraints || [];
     const events = statement.events || [];
@@ -269,7 +270,8 @@ export default function registerCommonsenseActions(registerLensAction) {
         eventsAnalyzed: events.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * analogyMapping
@@ -279,6 +281,7 @@ export default function registerCommonsenseActions(registerLensAction) {
    * artifact.data.target = { domain, entities: [{ name, type }], relations: [{ type, from, to, properties?: {} }] }
    */
   registerLensAction("commonsense", "analogyMapping", (ctx, artifact, _params) => {
+  try {
     const source = artifact.data?.source || {};
     const target = artifact.data?.target || {};
     const srcEntities = source.entities || [];
@@ -458,7 +461,8 @@ export default function registerCommonsenseActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * defaultReasoning
@@ -468,6 +472,7 @@ export default function registerCommonsenseActions(registerLensAction) {
    * artifact.data.instance = { class, properties?: { key: value } }
    */
   registerLensAction("commonsense", "defaultReasoning", (ctx, artifact, _params) => {
+  try {
     const classes = artifact.data?.classes || [];
     const instance = artifact.data?.instance || {};
 
@@ -645,7 +650,8 @@ export default function registerCommonsenseActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * conceptnet-edges — Real ConceptNet edges for a concept. Returns

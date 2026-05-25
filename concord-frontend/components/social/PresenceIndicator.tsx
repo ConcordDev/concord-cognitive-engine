@@ -171,7 +171,7 @@ export function PresenceIndicator({
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm text-white truncate">{user.name}</p>
                     {user.location && (
-                      <p className="text-xs text-gray-500 truncate flex items-center gap-1">
+                      <p className="text-xs text-gray-400 truncate flex items-center gap-1">
                         <Eye className="w-3 h-3" />
                         {user.location}
                       </p>
@@ -313,7 +313,7 @@ export function ActivityFeed({ activities, onActivityClick, className }: Activit
               {' '}{actionLabels[activity.action]}{' '}
               <span className="text-neon-cyan">{activity.target}</span>
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-400 mt-0.5">
               {formatRelativeTime(activity.timestamp)}
             </p>
           </div>

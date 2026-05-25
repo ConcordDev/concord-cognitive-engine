@@ -11,6 +11,7 @@ export default function registerCryptoActions(registerLensAction) {
    * and diversification score.
    */
   registerLensAction("crypto", "portfolioAnalysis", (ctx, artifact, _params) => {
+  try {
     const holdings = artifact.data?.holdings || [];
     if (holdings.length === 0) {
       return { ok: true, result: { holdings: [], totalValue: 0, message: "No holdings to analyze." } };
@@ -76,7 +77,8 @@ export default function registerCryptoActions(registerLensAction) {
         holdingCount: holdings.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * verifyTransaction
@@ -85,6 +87,7 @@ export default function registerCryptoActions(registerLensAction) {
    * artifact.data.transaction = { from, to, value, gasLimit, gasPrice, nonce, chainId, data? }
    */
   registerLensAction("crypto", "verifyTransaction", (ctx, artifact, params) => {
+  try {
     const tx = params.transaction || artifact.data?.transaction || {};
     const checks = [];
 
@@ -132,7 +135,8 @@ export default function registerCryptoActions(registerLensAction) {
         network: knownChains[chainId] || "unknown",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * estimateGas
@@ -141,6 +145,7 @@ export default function registerCryptoActions(registerLensAction) {
    * Returns slow/standard/fast recommendations using EIP-1559 logic.
    */
   registerLensAction("crypto", "estimateGas", (ctx, artifact, params) => {
+  try {
     const blocks = artifact.data?.recentBlocks || [];
     const txType = params.txType || "transfer"; // transfer, swap, deploy, nft
 
@@ -200,7 +205,8 @@ export default function registerCryptoActions(registerLensAction) {
         source: "block_analysis",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * detectPatterns
@@ -209,6 +215,7 @@ export default function registerCryptoActions(registerLensAction) {
    * artifact.data.transactions = [{ from, to, value, timestamp, hash? }]
    */
   registerLensAction("crypto", "detectPatterns", (ctx, artifact, _params) => {
+  try {
     const txs = artifact.data?.transactions || [];
     if (txs.length < 2) {
       return { ok: true, result: { patterns: [], message: "Need at least 2 transactions for pattern detection." } };
@@ -305,7 +312,8 @@ export default function registerCryptoActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros: TradingView / Coinbase / MetaMask ─────────
 
@@ -807,6 +815,7 @@ export default function registerCryptoActions(registerLensAction) {
   // ── Holdings (FIFO cost-basis lots) ───────────────────────────
 
   registerLensAction("crypto", "holdings-add", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const symbol = String(params.symbol || params.coingeckoId || "").trim().toLowerCase();
@@ -850,7 +859,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.transactions, userId).push(tx);
     saveCrypto();
     return { ok: true, result: { lot, transaction: tx } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("crypto", "holdings-list", async (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -897,6 +907,7 @@ export default function registerCryptoActions(registerLensAction) {
 
   // FIFO sell — closes oldest lots first; emits realized G/L on the transaction.
   registerLensAction("crypto", "holdings-sell", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const symbol = String(params.symbol || "").toLowerCase();
@@ -940,7 +951,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.transactions, userId).push(tx);
     saveCrypto();
     return { ok: true, result: { transaction: tx, totalCostOfSold: Math.round(costOfSold * 100) / 100 } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("crypto", "portfolio-summary", async (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -998,6 +1010,7 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   registerLensAction("crypto", "transactions-record", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const kind = TX_KINDS.includes(params.kind) ? params.kind : null;
@@ -1026,7 +1039,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.transactions, userId).push(tx);
     saveCrypto();
     return { ok: true, result: { transaction: tx } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Recurring buys (DCA) ─────────────────────────────────────
 
@@ -1036,6 +1050,7 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   registerLensAction("crypto", "recurring-buys-create", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const symbol = String(params.symbol || '').toLowerCase();
@@ -1063,7 +1078,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.recurringBuys, userId).push(rb);
     saveCrypto();
     return { ok: true, result: { recurringBuy: rb } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("crypto", "recurring-buys-toggle", (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1133,6 +1149,7 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   registerLensAction("crypto", "staking-stake", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const symbol = String(params.symbol || '').toLowerCase();
@@ -1172,7 +1189,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.transactions, userId).push(tx);
     saveCrypto();
     return { ok: true, result: { position: pos, transaction: tx } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("crypto", "staking-unstake", (ctx, _a, params = {}) => {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1306,6 +1324,7 @@ export default function registerCryptoActions(registerLensAction) {
   // ── Tax report (calendar-year realized + staking income) ─────
 
   registerLensAction("crypto", "tax-report", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const year = Number(params.year) || new Date().getFullYear();
@@ -1357,7 +1376,8 @@ export default function registerCryptoActions(registerLensAction) {
         form: '1099-DA + 1099-MISC (US reporting)',
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AI portfolio insight (natural-language summary) ──────────
 
@@ -1484,6 +1504,7 @@ export default function registerCryptoActions(registerLensAction) {
   }
 
   registerLensAction("crypto", "send", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const symbol = String(params.symbol || "").trim().toLowerCase();
@@ -1515,7 +1536,8 @@ export default function registerCryptoActions(registerLensAction) {
     listCr(s.transactions, userId).push(tx);
     saveCrypto();
     return { ok: true, result: { transaction: tx } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Limit orders (Coinbase Advanced Trade) ────────────────────
 
@@ -1657,6 +1679,7 @@ export default function registerCryptoActions(registerLensAction) {
   });
 
   registerLensAction("crypto", "portfolio-history", (ctx, _a, _p = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const series = listCr(s.valueSnapshots, aidCr(ctx)).slice().sort((a, b) => a.date.localeCompare(b.date));
     if (series.length < 2) {
@@ -1680,7 +1703,8 @@ export default function registerCryptoActions(registerLensAction) {
         bestDay, worstDay,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Market overview (CoinGecko trending / gainers / losers) ───
 
@@ -2079,6 +2103,7 @@ export default function registerCryptoActions(registerLensAction) {
   }
 
   registerLensAction("crypto", "import-csv", (ctx, _a, params = {}) => {
+  try {
     const s = getCryptoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCr(ctx);
     const csv = String(params.csv || '');
@@ -2199,7 +2224,8 @@ export default function registerCryptoActions(registerLensAction) {
         detectedColumns: { type: cType >= 0, symbol: cSym >= 0, qty: cQty >= 0, price: cPrice >= 0, total: cTotal >= 0, fee: cFee >= 0 },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Push price-alert delivery ─────────────────────────────────
   // alert-deliver runs the existing price-alerts-check, then turns

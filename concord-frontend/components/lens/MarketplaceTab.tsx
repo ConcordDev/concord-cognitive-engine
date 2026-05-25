@@ -54,7 +54,7 @@ function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
 
   if (isLoading) {
     return (
-      <div className={cn('p-6 text-center text-gray-500', className)}>
+      <div className={cn('p-6 text-center text-gray-400', className)}>
         <Package className="w-8 h-8 mx-auto mb-2 animate-pulse" />
         Loading marketplace...
       </div>
@@ -66,7 +66,7 @@ function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
       <div className={cn('p-8 text-center', className)}>
         <Store className="w-10 h-10 mx-auto mb-3 text-gray-600" />
         <p className="text-gray-400 text-sm">No marketplace items in this domain yet.</p>
-        <p className="text-gray-500 text-xs mt-1">
+        <p className="text-gray-400 text-xs mt-1">
           Create artifacts and they&apos;ll appear here once approved.
         </p>
       </div>
@@ -79,7 +79,7 @@ function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
         <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
           <Store className="w-4 h-4 text-neon-purple" />
           Marketplace
-          <span className="text-xs text-gray-500">({artifacts.length} items)</span>
+          <span className="text-xs text-gray-400">({artifacts.length} items)</span>
         </h3>
       </div>
 
@@ -103,11 +103,11 @@ function MarketplaceTab({ domain, className }: MarketplaceTabProps) {
               />
             </div>
 
-            <p className="text-xs text-gray-500 mb-2 truncate">
+            <p className="text-xs text-gray-400 mb-2 truncate">
               {artifact.type?.replace(/-/g, ' ')}
             </p>
 
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs text-gray-400">
               <div className="flex items-center gap-3">
                 {artifact.meta?.createdBy && (
                   <span className="flex items-center gap-1">

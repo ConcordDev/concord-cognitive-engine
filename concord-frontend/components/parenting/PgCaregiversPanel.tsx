@@ -57,7 +57,7 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -111,16 +111,16 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
           <Users className="w-3.5 h-3.5 text-rose-400" /> Shared caregivers
         </h3>
         {caregivers.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No caregivers have joined yet.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No caregivers have joined yet.</p>
         ) : (
           <ul className="space-y-1">
             {caregivers.map((c) => (
               <li key={c.caregiverId} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <Users className="w-3.5 h-3.5 text-zinc-500" />
+                <Users className="w-3.5 h-3.5 text-zinc-400" />
                 <span className="text-xs text-zinc-200 capitalize">{c.role}</span>
-                <span className="text-[10px] text-zinc-500">joined {c.joinedAt.slice(0, 10)} · via {c.via}</span>
+                <span className="text-[10px] text-zinc-400">joined {c.joinedAt.slice(0, 10)} · via {c.via}</span>
                 <button type="button" onClick={() => remove(c.caregiverId)}
-                  className="ml-auto text-zinc-500 hover:text-rose-300" aria-label="Remove caregiver">
+                  className="ml-auto text-zinc-400 hover:text-rose-300" aria-label="Remove caregiver">
                   <UserMinus className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -128,7 +128,7 @@ export function PgCaregiversPanel({ childId }: { childId: string }) {
           </ul>
         )}
       </section>
-      <p className="text-[10px] text-zinc-500">Everyone with access reads and writes one canonical baby log in real time.</p>
+      <p className="text-[10px] text-zinc-400">Everyone with access reads and writes one canonical baby log in real time.</p>
     </div>
   );
 }

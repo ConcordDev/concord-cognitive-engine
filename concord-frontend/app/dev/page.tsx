@@ -449,7 +449,7 @@ export default function DevConsolePage() {
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800/50 bg-[#0d0d14]">
         <div className="flex items-center gap-3">
           <span className="text-purple-400 font-bold text-sm">◆ SOVEREIGN</span>
-          <span className="text-gray-500 text-xs">dev console</span>
+          <span className="text-gray-400 text-xs">dev console</span>
         </div>
         <div className="flex items-center gap-4 text-xs">
           {pulse?.dtus?.total !== undefined && (
@@ -488,7 +488,7 @@ export default function DevConsolePage() {
       >
         <span className="text-purple-400 font-bold select-none">sovereign &gt;</span>
         {executing ? (
-          <span className="text-gray-500 animate-pulse">⟳ executing</span>
+          <span className="text-gray-400 animate-pulse">⟳ executing</span>
         ) : (
           <input
             ref={inputRef}

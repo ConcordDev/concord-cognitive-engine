@@ -94,7 +94,7 @@ export function Collections() {
           {boardCollection.description && <p className="text-sm text-gray-400 mt-1">{boardCollection.description}</p>}
         </div>
         {boardItems.length === 0 ? (
-          <div className="text-center py-10 text-gray-500 text-sm">No projects saved to this board yet.</div>
+          <div className="text-center py-10 text-gray-400 text-sm">No projects saved to this board yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {boardItems.map((p) => (
@@ -107,7 +107,7 @@ export function Collections() {
                 <div className="p-3 flex items-center justify-between">
                   <div className="min-w-0">
                     <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                    <div className="text-[11px] text-gray-500 capitalize">{p.discipline}</div>
+                    <div className="text-[11px] text-gray-400 capitalize">{p.discipline}</div>
                   </div>
                 </div>
               </div>
@@ -154,7 +154,7 @@ export function Collections() {
       </div>
 
       {collections.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">No collections yet. Create a board to save projects.</div>
+        <div className="text-center py-12 text-gray-400 text-sm">No collections yet. Create a board to save projects.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {collections.map((c) => (
@@ -164,16 +164,16 @@ export function Collections() {
                 <h3 className="font-medium text-sm truncate flex-1">{c.name}</h3>
                 {c.isPrivate && <Lock className="w-3 h-3 text-yellow-500" />}
               </div>
-              {c.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2">{c.description}</p>}
-              <div className="text-[11px] text-gray-500 mt-2">{c.itemCount} {c.itemCount === 1 ? 'project' : 'projects'}</div>
+              {c.description && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{c.description}</p>}
+              <div className="text-[11px] text-gray-400 mt-2">{c.itemCount} {c.itemCount === 1 ? 'project' : 'projects'}</div>
             </button>
           ))}
         </div>
       )}
 
       {showCreate && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">New Collection</h3>
               <button onClick={() => setShowCreate(false)} aria-label="Close"><X className="w-4 h-4" /></button>

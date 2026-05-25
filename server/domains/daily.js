@@ -132,6 +132,7 @@ export default function registerDailyActions(registerLensAction) {
   });
 
   registerLensAction("daily", "entry-create", (ctx, _a, params = {}) => {
+  try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     const body = dyClean(params.body, 20000);
@@ -166,7 +167,8 @@ export default function registerDailyActions(registerLensAction) {
     dyList(s.entries, userId).push(entry);
     saveDaily();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("daily", "entry-list", (ctx, _a, params = {}) => {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -258,6 +260,7 @@ export default function registerDailyActions(registerLensAction) {
   });
 
   registerLensAction("daily", "daily-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     const entries = dyList(s.entries, userId);
@@ -282,7 +285,8 @@ export default function registerDailyActions(registerLensAction) {
         wroteToday: dates.has(dyToday()),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Entry templates (gratitude, daily reflection, goals) ───────────────
 
@@ -351,6 +355,7 @@ export default function registerDailyActions(registerLensAction) {
   // ─── Calendar / heatmap view of entries (streak grid) ───────────────────
 
   registerLensAction("daily", "entry-heatmap", (ctx, _a, params = {}) => {
+  try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const entries = dyList(s.entries, dyActor(ctx));
     const days = Math.max(7, Math.min(366, Math.round(muNumDy(params.days, 365))));
@@ -377,7 +382,8 @@ export default function registerDailyActions(registerLensAction) {
     let longest = 0, run = 0;
     for (const c of cells) { if (c.count > 0) { run += 1; longest = Math.max(longest, run); } else run = 0; }
     return { ok: true, result: { cells, days, writtenDays, longestStreak: longest, coverage: Math.round((writtenDays / days) * 100) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Habit builder + scheduled check-ins ────────────────────────────────
 
@@ -415,6 +421,7 @@ export default function registerDailyActions(registerLensAction) {
   });
 
   registerLensAction("daily", "habit-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     const habits = dyList(s.habits, userId).filter((h) => !h.archived);
@@ -454,7 +461,8 @@ export default function registerDailyActions(registerLensAction) {
         doneToday: enriched.filter((h) => h.doneToday).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("daily", "habit-checkin", (ctx, _a, params = {}) => {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -547,6 +555,7 @@ export default function registerDailyActions(registerLensAction) {
   // ─── Export journal to Markdown archive ─────────────────────────────────
 
   registerLensAction("daily", "export-archive", (ctx, _a, params = {}) => {
+  try {
     const s = getDailyState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = dyActor(ctx);
     let entries = [...dyList(s.entries, userId)];
@@ -592,7 +601,8 @@ export default function registerDailyActions(registerLensAction) {
         bytes: Buffer.byteLength(markdown, "utf8"),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest inspirational quotes (ZenQuotes) as visible DTUs.
   registerLensAction("daily", "feed", async (ctx, _a, params = {}) => {

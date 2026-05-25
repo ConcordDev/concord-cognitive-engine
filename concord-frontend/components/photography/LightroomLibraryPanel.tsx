@@ -71,7 +71,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -109,7 +109,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {photos.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No photos in the catalog. Import one to begin.
         </div>
       ) : (
@@ -121,7 +121,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                   {p.colorLabel && <span className="w-2.5 h-2.5 rounded-full" style={{ background: COLOR_HEX[p.colorLabel] }} />}
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{p.title}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono">
+                    <p className="text-[10px] text-zinc-400 font-mono">
                       {p.filename}{p.camera ? ` · ${p.camera}` : ''}{p.iso ? ` · ISO ${p.iso}` : ''}
                       {Object.keys(p.develop).length > 0 ? ' · edited' : ''}
                     </p>
@@ -176,7 +176,7 @@ export function LightroomLibraryPanel({ onChange }: { onChange: () => void }) {
                     className="w-24 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
                 ) : (
                   <button type="button" onClick={() => setKwInput({ id: p.id, value: '' })}
-                    className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300">
+                    className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-300">
                     + keyword
                   </button>
                 )}

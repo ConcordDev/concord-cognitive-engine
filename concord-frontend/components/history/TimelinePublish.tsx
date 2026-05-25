@@ -66,7 +66,7 @@ export function TimelinePublish({ timelineId, title }: { timelineId: string; tit
             {new Date(pub.publishedAt).toLocaleString()}
           </p>
           <div>
-            <p className="text-[10px] text-zinc-500 mb-0.5">Share link</p>
+            <p className="text-[10px] text-zinc-400 mb-0.5">Share link</p>
             <div className="flex gap-1">
               <input readOnly value={pub.shareUrl}
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[10px] text-zinc-300 font-mono" />
@@ -77,7 +77,7 @@ export function TimelinePublish({ timelineId, title }: { timelineId: string; tit
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-zinc-500 mb-0.5">Embed code</p>
+            <p className="text-[10px] text-zinc-400 mb-0.5">Embed code</p>
             <div className="flex gap-1">
               <textarea readOnly value={pub.embedCode} rows={2}
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[10px] text-zinc-300 font-mono resize-none" />

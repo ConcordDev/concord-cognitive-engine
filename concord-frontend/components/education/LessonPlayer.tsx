@@ -131,9 +131,9 @@ export function LessonPlayer() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : enrollments.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">
+        <div className="px-3 py-10 text-center text-xs text-gray-400">
           <GraduationCapEmpty />
           Enroll in a course to start watching lessons.
         </div>
@@ -142,7 +142,7 @@ export function LessonPlayer() {
           {/* Lesson list (left rail) */}
           <aside className="border-r border-white/10 max-h-[28rem] overflow-y-auto">
             {lessons.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[11px] text-gray-500">No lessons in this course yet.</div>
+              <div className="px-3 py-6 text-center text-[11px] text-gray-400">No lessons in this course yet.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {lessons.map(l => {
@@ -158,10 +158,10 @@ export function LessonPlayer() {
                         active && 'bg-cyan-500/10 border-l-2 border-cyan-400',
                       )}
                     >
-                      {done ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5" /> : <Icon className="w-3.5 h-3.5 text-gray-500 mt-0.5" />}
+                      {done ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 mt-0.5" /> : <Icon className="w-3.5 h-3.5 text-gray-400 mt-0.5" />}
                       <div className="flex-1 min-w-0">
                         <div className={cn('text-xs truncate', done ? 'text-gray-400 line-through' : 'text-white')}>{l.order}. {l.title}</div>
-                        <div className="text-[10px] text-gray-500 flex items-center gap-1.5"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'} min · {l.kind}</div>
+                        <div className="text-[10px] text-gray-400 flex items-center gap-1.5"><Clock className="w-2.5 h-2.5" />{l.durationMin || '—'} min · {l.kind}</div>
                       </div>
                     </li>
                   );
@@ -186,7 +186,7 @@ export function LessonPlayer() {
                       className="w-full h-full"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-500 text-xs">
+                    <div className="flex flex-col items-center justify-center h-full text-gray-400 text-xs">
                       <FileText className="w-8 h-8 mb-2 opacity-30" />
                       <div>{activeLesson.kind === 'video' ? 'No video URL set for this lesson.' : `This is a ${activeLesson.kind} lesson.`}</div>
                       <button
@@ -213,7 +213,7 @@ export function LessonPlayer() {
                   </button>
                 </div>
                 {activeEnrollment && (
-                  <div className="text-[10px] text-gray-500 flex items-center gap-2">
+                  <div className="text-[10px] text-gray-400 flex items-center gap-2">
                     <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                       <div className="h-full bg-cyan-400 transition-all" style={{ width: `${activeEnrollment.progressPct}%` }} />
                     </div>
@@ -221,11 +221,11 @@ export function LessonPlayer() {
                   </div>
                 )}
                 {activeLesson.videoUrl && position > 0 && (
-                  <div className="text-[10px] text-gray-500 font-mono">@ {Math.floor(position / 60)}:{String(Math.floor(position % 60)).padStart(2, '0')}</div>
+                  <div className="text-[10px] text-gray-400 font-mono">@ {Math.floor(position / 60)}:{String(Math.floor(position % 60)).padStart(2, '0')}</div>
                 )}
               </>
             ) : (
-              <div className="flex items-center justify-center py-16 text-xs text-gray-500">Pick a lesson to start.</div>
+              <div className="flex items-center justify-center py-16 text-xs text-gray-400">Pick a lesson to start.</div>
             )}
           </main>
         </div>

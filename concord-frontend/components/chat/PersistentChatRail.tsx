@@ -181,7 +181,7 @@ const TIER_BADGE_STYLES: Record<string, string> = {
   mega: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
   regular: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
   shadow: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  archive: 'bg-zinc-600/20 text-zinc-500 border-zinc-600/30',
+  archive: 'bg-zinc-600/20 text-zinc-400 border-zinc-600/30',
 };
 
 function DTUSourcesSection({ sources }: { sources: DTUSource[] }) {
@@ -225,14 +225,14 @@ function DTUSourcesSection({ sources }: { sources: DTUSource[] }) {
                   </span>
                   <span className="text-zinc-300 truncate flex-1">{src.title || src.id}</span>
                   {src.score != null && (
-                    <span className="text-zinc-500 font-mono shrink-0">{(src.score * 100).toFixed(0)}%</span>
+                    <span className="text-zinc-400 font-mono shrink-0">{(src.score * 100).toFixed(0)}%</span>
                   )}
                 </div>
                 {/* Activation sources and tier boost — why this DTU was selected */}
                 {(s || boost) && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {boost && (
-                      <span className="px-1 py-0.5 rounded bg-zinc-700/50 text-zinc-500 text-[9px]">{boost}</span>
+                      <span className="px-1 py-0.5 rounded bg-zinc-700/50 text-zinc-400 text-[9px]">{boost}</span>
                     )}
                     {s?.queryMatch && (
                       <span className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[9px]">query</span>
@@ -792,7 +792,7 @@ export function PersistentChatRail({
           <MessageSquare className="w-4 h-4 text-neon-cyan" />
           <span className="text-sm font-medium text-white">Concord Chat</span>
           {currentLens && (
-            <span className="text-xs text-zinc-500 px-2 py-0.5 rounded-full bg-zinc-800">
+            <span className="text-xs text-zinc-400 px-2 py-0.5 rounded-full bg-zinc-800">
               {currentLens}
             </span>
           )}
@@ -935,7 +935,7 @@ export function PersistentChatRail({
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Brain className="w-10 h-10 text-zinc-600 mb-3" />
             <p className="text-sm text-zinc-400 mb-1">Chat with Concord</p>
-            <p className="text-xs text-zinc-600 max-w-[240px]">
+            <p className="text-xs text-zinc-400 max-w-[240px]">
               Your conversation follows you across all lenses. Context is never lost.
             </p>
           </div>
@@ -951,7 +951,7 @@ export function PersistentChatRail({
               {showTransition && (
                 <div className="flex items-center gap-3 py-2">
                   <div className="flex-1 h-px bg-zinc-700" />
-                  <span className="text-[10px] text-zinc-500 flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[10px] text-zinc-400 flex items-center gap-1.5 whitespace-nowrap">
                     <ArrowRight className="w-3 h-3" />
                     Moved to {msg.lens} lens
                   </span>
@@ -1142,7 +1142,7 @@ export function PersistentChatRail({
               </span>
             </div>
             {lastDtuCount > 0 && (
-              <div className="flex items-center gap-2 text-[10px] text-zinc-500 px-2">
+              <div className="flex items-center gap-2 text-[10px] text-zinc-400 px-2">
                 <Database className="w-3 h-3 animate-pulse text-neon-green/50" />
                 Harvesting context from {lastDtuCount} DTUs...
               </div>
@@ -1160,7 +1160,7 @@ export function PersistentChatRail({
         {webResults.length > 0 && (
           <div className="px-2 py-1 space-y-1">
             {webResults.map((r, i) => (
-              <div key={i} className="text-[10px] text-zinc-500 flex items-center gap-1">
+              <div key={i} className="text-[10px] text-zinc-400 flex items-center gap-1">
                 <ExternalLink className="w-2.5 h-2.5" />
                 {r.source}: {r.title}
               </div>
@@ -1194,11 +1194,11 @@ export function PersistentChatRail({
             </div>
             <p className="text-sm text-zinc-300 mb-3">{pipelinePrompt.message}</p>
             <div className="mb-3 space-y-1">
-              <p className="text-xs text-zinc-500">Steps:</p>
+              <p className="text-xs text-zinc-400">Steps:</p>
               {pipelinePrompt.steps.map((s, i) => (
                 <div key={i} className="text-xs text-zinc-400 flex items-center gap-2">
                   <span className="text-zinc-600">{s.order}.</span>
-                  <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{s.lens}</span>
+                  <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{s.lens}</span>
                   {s.action.replace(/-/g, ' ')}
                 </div>
               ))}
@@ -1271,7 +1271,7 @@ export function PersistentChatRail({
             placeholder={getPlaceholder()}
             rows={1}
             className="flex-1 resize-none bg-lattice-deep border border-lattice-border rounded-lg
-              px-3 py-2 text-sm text-white placeholder:text-zinc-500
+              px-3 py-2 text-sm text-white placeholder:text-zinc-400
               outline-none focus:border-neon-blue/50 transition-colors
               max-h-32 overflow-y-auto"
           />

@@ -153,18 +153,18 @@ export function OfflineAreas() {
           placeholder="Area name (e.g. Downtown trip)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-3 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none"
+          className="mt-3 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-indigo-500/40 focus:outline-none"
         />
         <div className="mt-2 grid grid-cols-4 gap-2">
-          <input type="number" step="any" placeholder="South" value={south} onChange={(e) => setSouth(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="West" value={west} onChange={(e) => setWest(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="North" value={north} onChange={(e) => setNorth(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="East" value={east} onChange={(e) => setEast(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-indigo-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="South" value={south} onChange={(e) => setSouth(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-indigo-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="West" value={west} onChange={(e) => setWest(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-indigo-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="North" value={north} onChange={(e) => setNorth(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-indigo-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="East" value={east} onChange={(e) => setEast(e.target.value)} className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-indigo-500/40 focus:outline-none" />
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <label className="text-[10px] text-zinc-500">Zoom</label>
+          <label className="text-[10px] text-zinc-400">Zoom</label>
           <input type="number" min={0} max={18} value={minZoom} onChange={(e) => setMinZoom(e.target.value)} className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white focus:border-indigo-500/40 focus:outline-none" />
-          <span className="text-[10px] text-zinc-600">to</span>
+          <span className="text-[10px] text-zinc-400">to</span>
           <input type="number" min={0} max={19} value={maxZoom} onChange={(e) => setMaxZoom(e.target.value)} className="w-16 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white focus:border-indigo-500/40 focus:outline-none" />
           <button
             type="button"
@@ -183,7 +183,7 @@ export function OfflineAreas() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {areas.length === 0 && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Define a bounding box above to save a map area for offline use.
           </div>
         )}
@@ -195,22 +195,22 @@ export function OfflineAreas() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[12px] font-semibold text-white">{area.name}</p>
-                  <p className="font-mono text-[10px] text-zinc-500">{area.number}</p>
+                  <p className="font-mono text-[10px] text-zinc-400">{area.number}</p>
                 </div>
                 <span className={`rounded border px-1.5 py-0.5 text-[9px] uppercase ${style}`}>{area.status}</span>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 <div className="text-center">
                   <p className="font-mono text-sm text-white">{area.tileCount.toLocaleString()}</p>
-                  <p className="text-[9px] text-zinc-500">Tiles</p>
+                  <p className="text-[9px] text-zinc-400">Tiles</p>
                 </div>
                 <div className="text-center">
                   <p className="font-mono text-sm text-white">{area.estimatedSizeMB} MB</p>
-                  <p className="text-[9px] text-zinc-500">Est. size</p>
+                  <p className="text-[9px] text-zinc-400">Est. size</p>
                 </div>
                 <div className="text-center">
                   <p className="font-mono text-sm text-white">z{area.minZoom}–{area.maxZoom}</p>
-                  <p className="text-[9px] text-zinc-500">Zoom range</p>
+                  <p className="text-[9px] text-zinc-400">Zoom range</p>
                 </div>
               </div>
               {area.status === 'ready' && area.cachedTiles != null && (

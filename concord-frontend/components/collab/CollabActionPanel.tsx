@@ -265,7 +265,7 @@ export function CollabActionPanel() {
           <div className="flex items-end justify-between gap-2">
             <div className="flex items-center gap-2">
               <label className="text-[10px] uppercase tracking-wider text-blue-400 font-semibold">Session</label>
-              <label className="text-[10px] text-zinc-500 flex items-center gap-1">duration
+              <label className="text-[10px] text-zinc-400 flex items-center gap-1">duration
                 <input type="number" min={1} value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value) || 1)} className="w-12 bg-zinc-900 border border-zinc-800 rounded px-1 py-0.5 text-[10px] text-white font-mono" />
                 <span>min</span>
               </label>
@@ -357,7 +357,7 @@ export function CollabActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -368,14 +368,14 @@ export function CollabActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Session · {sessionResult.balanceRating}</div>
             <div className={cn('text-2xl font-bold', BALANCE_COLOR[sessionResult.balanceRating])}>{sessionResult.totalMessages}<span className="text-xs text-zinc-400"> msgs</span></div>
-            <div className="text-[10px] text-zinc-500">Gini {sessionResult.participationBalance} · {sessionResult.messagesPerMinute}/min</div>
+            <div className="text-[10px] text-zinc-400">Gini {sessionResult.participationBalance} · {sessionResult.messagesPerMinute}/min</div>
             {sessionResult.participantStats.slice(0, 4).map((p, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-12">{p.name}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-blue-400" style={{ width: `${p.sharePercent}%` }} /></div><span className="font-mono text-blue-200">{p.sharePercent}%</span></div>)}
           </div>
         )}
         {contribResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Contribution · top: {contribResult.topContributor}</div>
-            <div className="text-[10px] text-zinc-500">{contribResult.totalContributions} contributions</div>
+            <div className="text-[10px] text-zinc-400">{contribResult.totalContributions} contributions</div>
             {contribResult.rankings.slice(0, 5).map((r, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5">{i + 1}. <strong>{r.name}</strong> · <span className="font-mono text-amber-200">{r.totalScore}</span> pts ({r.contributions})</div>)}
           </div>
         )}
@@ -384,7 +384,7 @@ export function CollabActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Vote · {consResult.status}</div>
             <div className={cn('text-2xl font-bold', consResult.hasSupermajority ? 'text-emerald-300' : consResult.hasConsensus ? 'text-blue-300' : 'text-amber-300')}>{consResult.consensusPercent}%</div>
             <div className="text-[10px] text-zinc-200">{consResult.leadingPosition}</div>
-            {(consResult.dissenting ?? []).slice(0, 3).map((d, i) => <div key={i} className="text-[10px] text-zinc-500 mt-0.5">{d.position}: {d.count} ({d.percent}%)</div>)}
+            {(consResult.dissenting ?? []).slice(0, 3).map((d, i) => <div key={i} className="text-[10px] text-zinc-400 mt-0.5">{d.position}: {d.count} ({d.percent}%)</div>)}
           </div>
         )}
         {loadResult && (

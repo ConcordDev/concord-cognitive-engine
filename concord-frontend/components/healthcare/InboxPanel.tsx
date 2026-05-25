@@ -88,9 +88,9 @@ export function InboxPanel() {
 
       <div className="max-h-[32rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Inbox className="w-6 h-6 mx-auto mb-2 opacity-30" />Inbox empty.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Inbox className="w-6 h-6 mx-auto mb-2 opacity-30" />Inbox empty.</div>
         ) : (
           <>
             {unread.length > 0 && (
@@ -101,7 +101,7 @@ export function InboxPanel() {
             )}
             {others.length > 0 && (
               <>
-                <div className="px-4 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-500 font-semibold">All messages</div>
+                <div className="px-4 py-1 bg-white/[0.02] text-[10px] uppercase tracking-wider text-gray-400 font-semibold">All messages</div>
                 <MessageList list={others} nameFor={nameFor} onMarkRead={markRead} />
               </>
             )}
@@ -117,7 +117,7 @@ function MessageList({ list, nameFor, onMarkRead }: { list: Message[]; nameFor: 
     <ul className="divide-y divide-white/5">
       {list.map(m => (
         <li key={m.id} className={cn('px-4 py-2.5 hover:bg-white/[0.02] flex items-start gap-3', !m.readAt && m.direction === 'from_patient' && 'bg-rose-500/[0.04]')}>
-          <Mail className={cn('w-3.5 h-3.5 mt-0.5', m.direction === 'from_patient' ? (m.readAt ? 'text-gray-500' : 'text-rose-400') : 'text-cyan-400')} />
+          <Mail className={cn('w-3.5 h-3.5 mt-0.5', m.direction === 'from_patient' ? (m.readAt ? 'text-gray-400' : 'text-rose-400') : 'text-cyan-400')} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400 font-mono">{m.direction === 'from_patient' ? 'IN' : 'OUT'}</span>
@@ -125,7 +125,7 @@ function MessageList({ list, nameFor, onMarkRead }: { list: Message[]; nameFor: 
               {m.subject && <span className="text-[11px] text-gray-400">· {m.subject}</span>}
             </div>
             <div className="text-[11px] text-gray-300 truncate mt-0.5">{m.body}</div>
-            <div className="text-[10px] text-gray-500 mt-0.5">{m.sentAt.slice(0, 16).replace('T', ' ')}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">{m.sentAt.slice(0, 16).replace('T', ' ')}</div>
           </div>
           {!m.readAt && m.direction === 'from_patient' && (
             <button onClick={() => onMarkRead(m.id)} className="text-[10px] text-cyan-300 hover:text-cyan-200">Mark read</button>

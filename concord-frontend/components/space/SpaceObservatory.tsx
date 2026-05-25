@@ -53,7 +53,7 @@ export function SpaceObservatory() {
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">
           <Satellite className="w-4 h-4 text-indigo-400" /> Live Observatory
         </h2>
-        <p className="text-[11px] text-zinc-500 mt-0.5">
+        <p className="text-[11px] text-zinc-400 mt-0.5">
           Real-time tracking, pass prediction, orbit visualization &amp; NASA imagery
         </p>
       </div>
@@ -65,7 +65,7 @@ export function SpaceObservatory() {
             onClick={() => setTab(key)}
             className={cn(
               'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors',
-              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300',
+              tab === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300',
             )}
           >
             <Icon className="w-3.5 h-3.5" /> {label}

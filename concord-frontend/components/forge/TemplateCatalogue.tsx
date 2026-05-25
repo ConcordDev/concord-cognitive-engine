@@ -44,9 +44,9 @@ export function TemplateCatalogue() {
       </header>
       {templates.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">forge.list macro unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Templates</div><div className="mt-0.5 font-mono text-lg text-orange-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Languages</div><div className="mt-0.5 font-mono text-lg text-orange-300">{langs}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Categories</div><div className="mt-0.5 font-mono text-lg text-orange-300">{cats}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Templates</div><div className="mt-0.5 font-mono text-lg text-orange-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Languages</div><div className="mt-0.5 font-mono text-lg text-orange-300">{langs}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Categories</div><div className="mt-0.5 font-mono text-lg text-orange-300">{cats}</div></div>
       </div>
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((t) => (
@@ -59,15 +59,15 @@ export function TemplateCatalogue() {
               {t.sections != null && <span className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">{t.sections} sections</span>}
             </div>
             {t.description && <p className="mt-0.5 line-clamp-2 text-[10px] text-zinc-400">{t.description}</p>}
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[9px] text-zinc-500">
+            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[9px] text-zinc-400">
               {t.language && <span className="rounded bg-zinc-800 px-1 font-mono">{t.language}</span>}
               {t.category && <span className="rounded bg-orange-500/20 px-1 font-mono text-orange-200">{t.category}</span>}
             </div>
           </div>
         ))}
-        {list.length === 0 && !templates.isPending && !templates.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No templates returned.</div>}
+        {list.length === 0 && !templates.isPending && !templates.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No templates returned.</div>}
       </div>
-      {templates.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling forge…</div>}
+      {templates.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling forge…</div>}
     </div>
   );
 }

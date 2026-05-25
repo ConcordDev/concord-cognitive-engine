@@ -114,9 +114,9 @@ export function CommentsPanel({ page, onChanged }: {
 
       {/* list */}
       {loading ? (
-        <div className="flex items-center justify-center py-4 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : comments.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 italic">No {openOnly ? 'open ' : ''}comments.</p>
+        <p className="text-[11px] text-zinc-400 italic">No {openOnly ? 'open ' : ''}comments.</p>
       ) : (
         <div className="space-y-1.5">
           {comments.map(c => (
@@ -127,7 +127,7 @@ export function CommentsPanel({ page, onChanged }: {
                   c.kind === 'suggestion' ? 'bg-emerald-900/50 text-emerald-200' : 'bg-zinc-800 text-zinc-400')}>
                   {c.kind}
                 </span>
-                <span className="text-[10px] text-zinc-500 truncate flex-1">{blockLabel(c.blockId)}</span>
+                <span className="text-[10px] text-zinc-400 truncate flex-1">{blockLabel(c.blockId)}</span>
                 {c.resolved && <span className="text-[9px] text-emerald-400">resolved</span>}
               </div>
               <p className="text-xs text-zinc-200">{c.text}</p>

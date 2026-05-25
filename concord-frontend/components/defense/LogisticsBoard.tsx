@@ -155,7 +155,7 @@ export function LogisticsBoard() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-12 text-zinc-500">
+        <div className="flex items-center justify-center py-12 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -173,9 +173,9 @@ export function LogisticsBoard() {
                   <span className="text-xs text-white truncate">
                     {r.quantity}× {r.item}
                   </span>
-                  <span className="text-[10px] text-zinc-500 shrink-0">{r.category}</span>
+                  <span className="text-[10px] text-zinc-400 shrink-0">{r.category}</span>
                   {r.destination && (
-                    <span className="text-[10px] text-zinc-500 shrink-0">→ {r.destination}</span>
+                    <span className="text-[10px] text-zinc-400 shrink-0">→ {r.destination}</span>
                   )}
                   <span className={`text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 shrink-0 ${STATUS_COLOR[r.status]}`}>
                     {r.status}
@@ -188,7 +188,7 @@ export function LogisticsBoard() {
                         onClick={() => advance(r.id)}
                         disabled={busy}
                         title="Advance status"
-                        className="p-1 text-zinc-500 hover:text-green-400 disabled:opacity-50"
+                        className="p-1 text-zinc-400 hover:text-green-400 disabled:opacity-50"
                       >
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
@@ -196,7 +196,7 @@ export function LogisticsBoard() {
                         onClick={() => cancel(r.id)}
                         disabled={busy}
                         aria-label="Cancel request"
-                        className="p-1 text-zinc-500 hover:text-amber-400 disabled:opacity-50"
+                        className="p-1 text-zinc-400 hover:text-amber-400 disabled:opacity-50"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
@@ -206,19 +206,19 @@ export function LogisticsBoard() {
                     onClick={() => remove(r.id)}
                     disabled={busy}
                     aria-label="Delete request"
-                    className="p-1 text-zinc-500 hover:text-red-400 disabled:opacity-50"
+                    className="p-1 text-zinc-400 hover:text-red-400 disabled:opacity-50"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
               {r.requestedBy && (
-                <p className="text-[10px] text-zinc-600 mt-0.5">requested by {r.requestedBy}</p>
+                <p className="text-[10px] text-zinc-400 mt-0.5">requested by {r.requestedBy}</p>
               )}
             </div>
           ))}
           {requests.length === 0 && (
-            <div className="text-center py-6 text-xs text-zinc-500">
+            <div className="text-center py-6 text-xs text-zinc-400">
               <Truck className="w-6 h-6 mx-auto mb-2 opacity-30" />
               No resupply requests. Create one below.
             </div>
@@ -231,7 +231,7 @@ export function LogisticsBoard() {
         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-white">New Resupply Request</span>
-            <button onClick={() => setShowForm(false)} aria-label="Close form" className="text-zinc-500 hover:text-white">
+            <button onClick={() => setShowForm(false)} aria-label="Close form" className="text-zinc-400 hover:text-white">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>

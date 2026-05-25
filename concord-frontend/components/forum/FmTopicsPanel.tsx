@@ -196,7 +196,7 @@ export function FmTopicsPanel({
   }, [subforums]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   // ── Thread view ──────────────────────────────────────────────────────
@@ -217,7 +217,7 @@ export function FmTopicsPanel({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               {openTopic.pinned && <Pin className="w-3.5 h-3.5 text-orange-400" />}
-              {openTopic.locked && <Lock className="w-3.5 h-3.5 text-zinc-500" />}
+              {openTopic.locked && <Lock className="w-3.5 h-3.5 text-zinc-400" />}
               <h3 className="text-sm font-bold text-zinc-100">{openTopic.title}</h3>
               {(openTopic.awards || []).map((a) => (
                 <span key={a.id} title={a.name} className="text-sm">{a.icon}</span>
@@ -239,25 +239,25 @@ export function FmTopicsPanel({
               {openTopic.tags.map((t) => <span key={t} className="text-[10px] text-orange-400">#{t}</span>)}
               <div className="flex-1" />
               <button type="button" onClick={toggleSubscribe}
-                className={cn('flex items-center gap-0.5 text-[10px]', subscribed ? 'text-orange-400' : 'text-zinc-500 hover:text-orange-300')}>
+                className={cn('flex items-center gap-0.5 text-[10px]', subscribed ? 'text-orange-400' : 'text-zinc-400 hover:text-orange-300')}>
                 {subscribed ? <BellRing className="w-3 h-3" /> : <Bell className="w-3 h-3" />}
                 {subscribed ? 'Subscribed' : 'Subscribe'}
               </button>
               <button type="button" onClick={() => toggleSave('topic', openTopic.id)}
-                className={cn('flex items-center gap-0.5 text-[10px]', savedIds.has(openTopic.id) ? 'text-orange-400' : 'text-zinc-500 hover:text-orange-300')}>
+                className={cn('flex items-center gap-0.5 text-[10px]', savedIds.has(openTopic.id) ? 'text-orange-400' : 'text-zinc-400 hover:text-orange-300')}>
                 <Bookmark className="w-3 h-3" /> {savedIds.has(openTopic.id) ? 'Saved' : 'Save'}
               </button>
               <button type="button" onClick={() => setAwardTarget({ type: 'topic', id: openTopic.id })}
-                className="flex items-center gap-0.5 text-[10px] text-zinc-500 hover:text-amber-300">
+                className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-amber-300">
                 <Award className="w-3 h-3" /> Award
               </button>
-              <button type="button" onClick={togglePin} className="text-[10px] text-zinc-500 hover:text-orange-300">
+              <button type="button" onClick={togglePin} className="text-[10px] text-zinc-400 hover:text-orange-300">
                 {openTopic.pinned ? 'Unpin' : 'Pin'}
               </button>
-              <button type="button" onClick={toggleLock} className="text-[10px] text-zinc-500 hover:text-orange-300">
+              <button type="button" onClick={toggleLock} className="text-[10px] text-zinc-400 hover:text-orange-300">
                 {openTopic.locked ? 'Unlock' : 'Lock'}
               </button>
-              <button type="button" onClick={flagTopic} className="flex items-center gap-0.5 text-[10px] text-zinc-500 hover:text-rose-300">
+              <button type="button" onClick={flagTopic} className="flex items-center gap-0.5 text-[10px] text-zinc-400 hover:text-rose-300">
                 <Flag className="w-3 h-3" /> Flag
               </button>
               <button type="button" onClick={delTopic} className="text-zinc-600 hover:text-rose-400" aria-label="Delete topic">
@@ -281,7 +281,7 @@ export function FmTopicsPanel({
           </div>
         )}
         {openTopic.locked && (
-          <p className="text-[11px] text-zinc-500 italic">This thread is locked — replies disabled.</p>
+          <p className="text-[11px] text-zinc-400 italic">This thread is locked — replies disabled.</p>
         )}
 
         <FmCommentTree nodes={tree} locked={openTopic.locked} savedIds={savedIds}
@@ -322,7 +322,7 @@ export function FmTopicsPanel({
             </button>
           </div>
           <button type="button" onClick={() => { setComposeOpen(false); setError(null); }}
-            className="text-[11px] text-zinc-500 hover:text-zinc-300">Cancel</button>
+            className="text-[11px] text-zinc-400 hover:text-zinc-300">Cancel</button>
         </section>
       ) : (
         <button type="button" onClick={() => setComposeOpen(true)}
@@ -353,7 +353,7 @@ export function FmTopicsPanel({
       </div>
 
       {topics.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No topics yet. Start a discussion above.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No topics yet. Start a discussion above.</p>
       ) : (
         <ul className="space-y-1.5">
           {topics.map((t) => (
@@ -362,11 +362,11 @@ export function FmTopicsPanel({
               <button type="button" onClick={() => openThread(t.id)} className="flex-1 text-left min-w-0">
                 <p className="text-xs text-zinc-100 flex items-center gap-1 flex-wrap">
                   {t.pinned && <Pin className="w-3 h-3 text-orange-400" />}
-                  {t.locked && <Lock className="w-3 h-3 text-zinc-500" />}
+                  {t.locked && <Lock className="w-3 h-3 text-zinc-400" />}
                   {t.title}
                   {(t.awards || []).map((a) => <span key={a.id} className="text-[11px]">{a.icon}</span>)}
                 </p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {t.replyCount || 0} replies
                   {t.subforumId && subforumName[t.subforumId] && (
                     <span className="text-orange-400/70"> · {subforumName[t.subforumId]}</span>
@@ -385,11 +385,11 @@ export function FmTopicsPanel({
 function Voter({ score, onUp, onDown }: { score: number; onUp: () => void; onDown: () => void }) {
   return (
     <div className="flex flex-col items-center shrink-0">
-      <button type="button" onClick={onUp} className="text-zinc-500 hover:text-orange-400" aria-label="Upvote">
+      <button type="button" onClick={onUp} className="text-zinc-400 hover:text-orange-400" aria-label="Upvote">
         <ChevronUp className="w-4 h-4" />
       </button>
       <span className="text-xs font-bold text-zinc-200">{score}</span>
-      <button type="button" onClick={onDown} className="text-zinc-500 hover:text-sky-400" aria-label="Downvote">
+      <button type="button" onClick={onDown} className="text-zinc-400 hover:text-sky-400" aria-label="Downvote">
         <ChevronDown className="w-4 h-4" />
       </button>
     </div>

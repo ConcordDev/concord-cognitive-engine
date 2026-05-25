@@ -81,7 +81,7 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="space-y-3">
@@ -89,14 +89,14 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
         {([['Outstanding', totals.outstanding, 'text-amber-400'], ['Overdue', totals.overdue, 'text-rose-400'], ['Collected', totals.collected, 'text-emerald-400']] as const).map(([l, v, c]) => (
           <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-center">
             <p className={`text-base font-bold ${c}`}>${v.toLocaleString()}</p>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{l}</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{l}</p>
           </div>
         ))}
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 flex flex-wrap items-end gap-2">
         <div className="flex-1 min-w-[160px]">
-          <label className="block text-[10px] text-zinc-500 mb-1 uppercase">Engagement</label>
+          <label className="block text-[10px] text-zinc-400 mb-1 uppercase">Engagement</label>
           <select value={engId} onChange={e => setEngId(e.target.value)}
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
             <option value="">Select engagement…</option>
@@ -104,12 +104,12 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
           </select>
         </div>
         <div className="w-20">
-          <label className="block text-[10px] text-zinc-500 mb-1 uppercase">Tax %</label>
+          <label className="block text-[10px] text-zinc-400 mb-1 uppercase">Tax %</label>
           <input value={taxRate} onChange={e => setTaxRate(e.target.value)} placeholder="0"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         </div>
         <div className="w-24">
-          <label className="block text-[10px] text-zinc-500 mb-1 uppercase">Net days</label>
+          <label className="block text-[10px] text-zinc-400 mb-1 uppercase">Net days</label>
           <input value={dueInDays} onChange={e => setDueInDays(e.target.value)} placeholder="30"
             className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         </div>
@@ -121,20 +121,20 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
       {error && <p className="text-[11px] text-rose-400">{error}</p>}
 
       <ul className="space-y-1.5">
-        {invoices.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No invoices yet — log time on an engagement, then generate.</li>}
+        {invoices.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No invoices yet — log time on an engagement, then generate.</li>}
         {invoices.map(inv => (
           <li key={inv.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
             <div className="group flex items-center gap-2">
               <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{inv.number} · {inv.client}</p>
-                <p className="text-[10px] text-zinc-500">{inv.engagementName} · {inv.lineItems.length} items · issued {inv.issuedAt} · due {inv.dueDate}</p>
+                <p className="text-[10px] text-zinc-400">{inv.engagementName} · {inv.lineItems.length} items · issued {inv.issuedAt} · due {inv.dueDate}</p>
               </div>
               <span className="text-sm font-bold text-zinc-100">${inv.total.toLocaleString()}</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLOR[inv.status] || 'text-zinc-400 bg-zinc-800'}`}>{inv.status}</span>
-              <button onClick={() => exportInvoice(inv)} aria-label="Export" className="text-zinc-500 hover:text-indigo-400"><Download className="w-3.5 h-3.5" /></button>
+              <button onClick={() => exportInvoice(inv)} aria-label="Export" className="text-zinc-400 hover:text-indigo-400"><Download className="w-3.5 h-3.5" /></button>
               {inv.status !== 'paid' && (
-                <button onClick={() => markPaid(inv.id)} aria-label="Mark paid" className="text-zinc-500 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+                <button onClick={() => markPaid(inv.id)} aria-label="Mark paid" className="text-zinc-400 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
               )}
               <button onClick={() => del(inv.id)} aria-label="Delete" className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
@@ -143,8 +143,8 @@ export function InvoiceManager({ engagements }: { engagements: EngagementOption[
       </ul>
 
       {exportDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setExportDoc(null)}>
-          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setExportDoc(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-xl p-4" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-bold text-zinc-100">{exportDoc.number}</h4>
               <button onClick={downloadDoc} className="px-2 py-1 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white inline-flex items-center gap-1">

@@ -93,7 +93,7 @@ function MortgageTab() {
           ['hoa', 'HOA ($/mo)'],
         ] as const).map(([k, label]) => (
           <label key={k} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label}</span>
             <input type="number" value={vals[k]}
               onChange={(e) => setVals({ ...vals, [k]: Number(e.target.value) })}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -109,12 +109,12 @@ function MortgageTab() {
             Monthly total: <span className="font-mono text-2xl text-orange-300">${result.monthly.total.toLocaleString()}</span>
           </p>
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <p><span className="text-gray-500">P&I</span><br /><span className="font-mono text-gray-200">${result.monthly.principalAndInterest}</span></p>
-            <p><span className="text-gray-500">Tax</span><br /><span className="font-mono text-gray-200">${result.monthly.tax}</span></p>
-            <p><span className="text-gray-500">Insurance</span><br /><span className="font-mono text-gray-200">${result.monthly.insurance}</span></p>
-            <p><span className="text-gray-500">PMI</span><br /><span className="font-mono text-gray-200">${result.monthly.pmi}</span></p>
-            <p><span className="text-gray-500">HOA</span><br /><span className="font-mono text-gray-200">${result.monthly.hoa}</span></p>
-            <p><span className="text-gray-500">LTV</span><br /><span className="font-mono text-gray-200">{result.ltvPercent}%</span></p>
+            <p><span className="text-gray-400">P&I</span><br /><span className="font-mono text-gray-200">${result.monthly.principalAndInterest}</span></p>
+            <p><span className="text-gray-400">Tax</span><br /><span className="font-mono text-gray-200">${result.monthly.tax}</span></p>
+            <p><span className="text-gray-400">Insurance</span><br /><span className="font-mono text-gray-200">${result.monthly.insurance}</span></p>
+            <p><span className="text-gray-400">PMI</span><br /><span className="font-mono text-gray-200">${result.monthly.pmi}</span></p>
+            <p><span className="text-gray-400">HOA</span><br /><span className="font-mono text-gray-200">${result.monthly.hoa}</span></p>
+            <p><span className="text-gray-400">LTV</span><br /><span className="font-mono text-gray-200">{result.ltvPercent}%</span></p>
           </div>
           <div className="border-t border-white/10 pt-2 text-xs">
             <p>Total interest over term: <span className="font-mono text-rose-300">${result.totalInterest.toLocaleString()}</span></p>
@@ -151,7 +151,7 @@ function AffordTab() {
           ['rate', 'Rate (%)'],
         ] as const).map(([k, label]) => (
           <label key={k} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label}</span>
             <input type="number" value={vals[k]}
               onChange={(e) => setVals({ ...vals, [k]: Number(e.target.value) })}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -173,7 +173,7 @@ function AffordTab() {
               : result.band === 'stretching' ? 'bg-amber-500/20 text-amber-300'
               : 'bg-rose-500/20 text-rose-300',
           )}>{result.band}</p>
-          <p className="text-[10px] text-gray-500 mt-2">Based on 28% front-end / 36% back-end DTI rule.</p>
+          <p className="text-[10px] text-gray-400 mt-2">Based on 28% front-end / 36% back-end DTI rule.</p>
         </div>
       )}
     </div>
@@ -208,7 +208,7 @@ function RentBuyTab() {
           ['appreciation', 'Appreciation %/yr'],
         ] as const).map(([k, label]) => (
           <label key={k} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label}</span>
             <input type="number" value={vals[k]}
               onChange={(e) => setVals({ ...vals, [k]: Number(e.target.value) })}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -222,10 +222,10 @@ function RentBuyTab() {
         <div className="rounded border border-orange-500/20 bg-orange-500/5 p-3">
           <p className="text-sm">{result.verdict}</p>
           {result.breakEvenYear && (
-            <p className="text-[11px] text-gray-500 mt-1">Break-even: year {result.breakEvenYear}</p>
+            <p className="text-[11px] text-gray-400 mt-1">Break-even: year {result.breakEvenYear}</p>
           )}
           <div className="mt-3 border-t border-white/10 pt-2">
-            <div className="grid grid-cols-3 text-[10px] uppercase tracking-wider text-gray-500">
+            <div className="grid grid-cols-3 text-[10px] uppercase tracking-wider text-gray-400">
               <span>Year</span><span className="text-right">Buy net</span><span className="text-right">Rent net</span>
             </div>
             {result.chartPoints.map((p) => (
@@ -295,13 +295,13 @@ function SearchesTab() {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        searches.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No saved searches.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        searches.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No saved searches.</p> :
         searches.map((s) => (
           <div key={s.id} className="rounded border border-white/10 bg-black/20 p-3 group flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-100">{s.name}</p>
-              <p className="text-[10px] text-gray-500">{s.alertCadence} alerts · {new Date(s.createdAt).toLocaleDateString()}</p>
+              <p className="text-[10px] text-gray-400">{s.alertCadence} alerts · {new Date(s.createdAt).toLocaleDateString()}</p>
             </div>
             <button type="button" onClick={() => remove(s.id)}
               className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>

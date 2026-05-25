@@ -159,11 +159,11 @@ export function LabPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading results…
         </div>
       ) : results.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <FlaskConical className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No lab/imaging results attached.
         </div>
@@ -181,7 +181,7 @@ export function LabPanel() {
                       {r.flag}
                     </span>
                   </p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-zinc-400">
                     {r.patientName} · {r.kind} · {r.date}
                   </p>
                 </div>
@@ -191,7 +191,7 @@ export function LabPanel() {
                       href={r.attachmentUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-cyan-400"
+                      className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-cyan-400"
                       aria-label="Open attachment"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ export function LabPanel() {
                   <button
                     onClick={() => del(r.id)}
                     aria-label="Delete result"
-                    className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                    className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

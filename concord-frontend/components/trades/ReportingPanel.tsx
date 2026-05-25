@@ -34,14 +34,14 @@ export function ReportingPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Reporting dashboard</span>
-        {data && <span className="ml-auto text-[10px] text-gray-500">as of {new Date(data.generatedAt).toLocaleString()}</span>}
+        {data && <span className="ml-auto text-[10px] text-gray-400">as of {new Date(data.generatedAt).toLocaleString()}</span>}
         <button onClick={refresh} className="p-1 rounded hover:bg-white/5 text-gray-400" aria-label="Refresh"><RefreshCw className="w-3.5 h-3.5" /></button>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Crunching numbers…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Crunching numbers…</div>
       ) : !data ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No report data yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No report data yet.</div>
       ) : (
         <div className="p-3 space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -102,10 +102,10 @@ function Kpi({ icon: Icon, label, value, caption, tone }: { icon: typeof DollarS
     <div className={`rounded-lg border bg-white/[0.02] p-2.5 ${TONES[tone]}`}>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3" />
-        <span className="text-[9px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[9px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-lg font-mono font-bold tabular-nums text-white">{value}</div>
-      <div className="text-[9px] text-gray-500">{caption}</div>
+      <div className="text-[9px] text-gray-400">{caption}</div>
     </div>
   );
 }
@@ -113,7 +113,7 @@ function Kpi({ icon: Icon, label, value, caption, tone }: { icon: typeof DollarS
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/20 px-2 py-1.5">
-      <div className="text-[9px] uppercase text-gray-600">{label}</div>
+      <div className="text-[9px] uppercase text-gray-400">{label}</div>
       <div className="font-mono text-gray-200">{value}</div>
     </div>
   );

@@ -234,7 +234,7 @@ function VoiceTab() {
       />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">TTS voice</span>
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">TTS voice</span>
           <select
             value={prefs.ttsVoice}
             onChange={(e) => patch({ ttsVoice: e.target.value })}
@@ -246,7 +246,7 @@ function VoiceTab() {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-500">Speech-in language</span>
+          <span className="text-[10px] uppercase tracking-wider text-gray-400">Speech-in language</span>
           <input
             type="text"
             value={prefs.sttLang}
@@ -274,7 +274,7 @@ function VoiceTab() {
         onCommit={(v) => patch({ ttsPitch: v })}
       />
       <div className="rounded-md border border-white/10 bg-black/20 p-3 space-y-2">
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">Test the voice</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">Test the voice</span>
         <textarea
           value={testText}
           onChange={(e) => setTestText(e.target.value)}
@@ -291,12 +291,12 @@ function VoiceTab() {
           <Volume2 className="w-3 h-3" /> Speak
         </button>
       </div>
-      <div className="text-[10px] text-gray-500 space-y-0.5">
+      <div className="text-[10px] text-gray-400 space-y-0.5">
         <p>Speech-in {sttSupported ? 'supported' : 'not supported'} in this browser.</p>
         <p>Text-to-speech {ttsSupported ? 'supported' : 'not supported'} in this browser.</p>
         {prefs.updatedAt && <p>Last saved {fmtTime(prefs.updatedAt)}.</p>}
       </div>
-      {saving && <p className="text-[11px] text-gray-500">Saving…</p>}
+      {saving && <p className="text-[11px] text-gray-400">Saving…</p>}
       {error && <p className="text-[11px] text-rose-300">{error}</p>}
     </div>
   );
@@ -416,7 +416,7 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
             className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-violet-500/50 focus:outline-none resize-none"
           />
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500">Default mode</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">Default mode</span>
             <select
               value={draft.model}
               onChange={(e) => setDraft({ ...draft, model: e.target.value })}
@@ -458,10 +458,10 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
                 <span className="text-[9px] uppercase tracking-wider text-violet-300/70 mt-1 inline-block">{a.model}</span>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button type="button" onClick={() => startEdit(a)} className="p-1 text-gray-500 hover:text-violet-300" aria-label="Edit GPT">
+                <button type="button" onClick={() => startEdit(a)} className="p-1 text-gray-400 hover:text-violet-300" aria-label="Edit GPT">
                   <Save className="w-3 h-3" />
                 </button>
-                <button type="button" onClick={() => remove(a.id)} className="p-1 text-gray-500 hover:text-rose-300" aria-label="Delete GPT">
+                <button type="button" onClick={() => remove(a.id)} className="p-1 text-gray-400 hover:text-rose-300" aria-label="Delete GPT">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -572,7 +572,7 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
           <button type="button" onClick={() => setActive(null)} className="text-[11px] text-gray-400 hover:text-gray-200">
             ‹ All documents
           </button>
-          <span className="text-[10px] text-gray-500">{draftContent.length} chars</span>
+          <span className="text-[10px] text-gray-400">{draftContent.length} chars</span>
         </div>
         <p className="text-sm font-medium text-gray-100">{active.title}</p>
         <textarea
@@ -615,13 +615,13 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
         </div>
         {active.revisions.length > 0 && (
           <details className="mt-2">
-            <summary className="text-[10px] uppercase tracking-wider text-gray-600 cursor-pointer hover:text-gray-400">
+            <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-400">
               {active.revisions.length} revision{active.revisions.length === 1 ? '' : 's'}
             </summary>
             <div className="mt-1.5 space-y-1">
               {active.revisions.map((rev, i) => (
                 <div key={`${rev.savedAt}-${i}`} className="flex items-center justify-between gap-2 rounded border border-white/5 bg-black/10 px-2 py-1">
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-[10px] text-gray-400">
                     {rev.editedBy === 'ai' ? 'AI' : 'You'} · {fmtTime(rev.savedAt)} · {rev.content.length} chars
                   </span>
                   <button
@@ -685,7 +685,7 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
               {d.kind === 'code' ? <FileCode className="w-3.5 h-3.5 text-emerald-400" /> : <FileCode className="w-3.5 h-3.5 text-cyan-400" />}
               <span className="text-sm text-gray-100 truncate">{d.title}</span>
             </div>
-            <div className="mt-1 text-[10px] text-gray-500 flex items-center gap-2">
+            <div className="mt-1 text-[10px] text-gray-400 flex items-center gap-2">
               <span>{d.kind}{d.language ? ` · ${d.language}` : ''}</span>
               <span>·</span>
               <span>{d.charCount} chars</span>
@@ -788,7 +788,7 @@ function MemoryTab() {
         <TabEmpty icon={Brain} text="No memories yet" sub="Saved facts are injected into every chat's system prompt." />
       ) : (
         <>
-          <div className="flex items-center justify-between text-[10px] text-gray-500">
+          <div className="flex items-center justify-between text-[10px] text-gray-400">
             <span>{active} of {items.length} active</span>
             <button type="button" onClick={clearAll} className="text-rose-400 hover:brightness-110">Forget all</button>
           </div>
@@ -802,8 +802,8 @@ function MemoryTab() {
                 aria-label="Toggle memory active"
               />
               <div className="flex-1 min-w-0">
-                <p className={cn('text-sm', m.active ? 'text-gray-100' : 'text-gray-500 line-through')}>{m.fact}</p>
-                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-500">
+                <p className={cn('text-sm', m.active ? 'text-gray-100' : 'text-gray-400 line-through')}>{m.fact}</p>
+                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-400">
                   <span className="uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300">{m.category}</span>
                   <span>{m.source === 'ai' ? 'AI-extracted' : 'You'}</span>
                   <span>·</span>
@@ -813,7 +813,7 @@ function MemoryTab() {
               <button
                 type="button"
                 onClick={() => remove(m.id)}
-                className="p-1 text-gray-500 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition"
+                className="p-1 text-gray-400 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition"
                 aria-label="Delete memory"
               >
                 <Trash2 className="w-3 h-3" />
@@ -877,14 +877,14 @@ function CodeTab() {
             {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
             Run
           </button>
-          <span className="text-[10px] text-gray-500">1.5s wall budget · CPU only</span>
+          <span className="text-[10px] text-gray-400">1.5s wall budget · CPU only</span>
         </div>
         {error && <p className="text-[11px] text-rose-300">{error}</p>}
       </div>
       {current && <RunResult run={current} />}
       {history.length > 0 && (
         <details>
-          <summary className="text-[10px] uppercase tracking-wider text-gray-600 cursor-pointer hover:text-gray-400 flex items-center gap-1">
+          <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-400 flex items-center gap-1">
             <History className="w-3 h-3" /> Run history ({history.length})
           </summary>
           <div className="mt-2 space-y-1.5">
@@ -914,7 +914,7 @@ function RunResult({ run }: { run: CodeRun }) {
       'rounded-md border p-3 space-y-1.5',
       run.error ? 'border-rose-500/30 bg-rose-500/5' : 'border-emerald-500/20 bg-black/20',
     )}>
-      <div className="flex items-center justify-between text-[10px] text-gray-500">
+      <div className="flex items-center justify-between text-[10px] text-gray-400">
         <span>{run.error ? 'Errored' : 'Completed'} in {run.durationMs}ms{run.timedOut ? ' (timed out)' : ''}</span>
         <span>{fmtTime(run.ranAt)}</span>
       </div>
@@ -925,13 +925,13 @@ function RunResult({ run }: { run: CodeRun }) {
       )}
       {run.returnValue !== null && (
         <div className="text-[11px]">
-          <span className="text-gray-500">returns </span>
+          <span className="text-gray-400">returns </span>
           <span className="font-mono text-cyan-300">{run.returnValue}</span>
         </div>
       )}
       {run.error && <p className="font-mono text-[11px] text-rose-300">{run.error}</p>}
       {run.logs.length === 0 && run.returnValue === null && !run.error && (
-        <p className="text-[11px] text-gray-500">No output. Use console.log() to print.</p>
+        <p className="text-[11px] text-gray-400">No output. Use console.log() to print.</p>
       )}
     </div>
   );
@@ -1000,7 +1000,7 @@ function ShareTab({ threadId, messages }: { threadId?: string | null; messages?:
         Share current conversation
       </button>
       {!canShare && (
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-gray-400">
           Open a conversation with at least one message to create a public read-only link.
         </p>
       )}
@@ -1013,8 +1013,8 @@ function ShareTab({ threadId, messages }: { threadId?: string | null; messages?:
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm text-gray-100 truncate">{l.title}</p>
-                <p className="text-[10px] text-gray-500 mt-0.5 truncate">{l.url}</p>
-                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-500">
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{l.url}</p>
+                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-400">
                   <span>{l.messageCount} msgs</span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-0.5"><Eye className="w-2.5 h-2.5" /> {l.viewCount}</span>
@@ -1026,10 +1026,10 @@ function ShareTab({ threadId, messages }: { threadId?: string | null; messages?:
               <div className="flex items-center gap-1">
                 {!l.revoked && (
                   <>
-                    <button type="button" onClick={() => copy(l.url)} className="p-1 text-gray-500 hover:text-sky-300" aria-label="Copy share URL">
+                    <button type="button" onClick={() => copy(l.url)} className="p-1 text-gray-400 hover:text-sky-300" aria-label="Copy share URL">
                       {copied === l.url ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     </button>
-                    <button type="button" onClick={() => revoke(l.token)} className="p-1 text-gray-500 hover:text-rose-300" aria-label="Revoke share link">
+                    <button type="button" onClick={() => revoke(l.token)} className="p-1 text-gray-400 hover:text-rose-300" aria-label="Revoke share link">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </>
@@ -1126,7 +1126,7 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
               <div className="p-2">
                 <p className="text-[10px] text-gray-300 line-clamp-2">{img.prompt}</p>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[9px] text-gray-500">{img.width}×{img.height}</span>
+                  <span className="text-[9px] text-gray-400">{img.width}×{img.height}</span>
                   <div className="flex items-center gap-1">
                     {onInsert && (
                       <button
@@ -1140,7 +1140,7 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
                     <button
                       type="button"
                       onClick={() => remove(img.id)}
-                      className="text-gray-500 hover:text-rose-300"
+                      className="text-gray-400 hover:text-rose-300"
                       aria-label="Delete image"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1160,7 +1160,7 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
 
 function TabLoading() {
   return (
-    <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+    <div className="flex items-center justify-center py-10 text-xs text-gray-400">
       <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
     </div>
   );
@@ -1170,8 +1170,8 @@ function TabEmpty({ icon: Icon, text, sub }: { icon: typeof Mic; text: string; s
   return (
     <div className="text-center py-10 px-4">
       <Icon className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-      <p className="text-xs text-gray-500">{text}</p>
-      {sub && <p className="text-[10px] text-gray-600 mt-1">{sub}</p>}
+      <p className="text-xs text-gray-400">{text}</p>
+      {sub && <p className="text-[10px] text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -1181,7 +1181,7 @@ function ToggleRow({ label, sub, checked, onChange }: { label: string; sub: stri
     <label className="flex items-start justify-between gap-3 cursor-pointer">
       <div>
         <p className="text-sm text-gray-100">{label}</p>
-        <p className="text-[10px] text-gray-500 mt-0.5">{sub}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
       </div>
       <button
         type="button"
@@ -1206,7 +1206,7 @@ function RangeRow({ label, value, min, max, step, onCommit }: {
   useEffect(() => { setLocal(value); }, [value]);
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-gray-500 flex justify-between">
+      <span className="text-[10px] uppercase tracking-wider text-gray-400 flex justify-between">
         <span>{label}</span>
         <span className="text-cyan-300">{local.toFixed(2)}×</span>
       </span>

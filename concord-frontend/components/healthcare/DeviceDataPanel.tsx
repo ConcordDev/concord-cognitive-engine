@@ -84,7 +84,7 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Watch className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Wearable / home device data</span>
-        <span className="text-[10px] text-gray-500">{readings.length}</span>
+        <span className="text-[10px] text-gray-400">{readings.length}</span>
         <select value={metricFilter} onChange={e => setMetricFilter(e.target.value)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All metrics</option>
           {METRICS.map(m => <option key={m} value={m}>{m.replace('_', ' ')}</option>)}
@@ -103,24 +103,24 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : readings.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><Watch className="w-6 h-6 mx-auto mb-2 opacity-30" />No device readings yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><Watch className="w-6 h-6 mx-auto mb-2 opacity-30" />No device readings yet.</div>
       ) : (
         <>
           {/* Per-metric summary tiles */}
           <div className="p-3 grid grid-cols-2 sm:grid-cols-4 gap-2 border-b border-white/10">
             {summary.map(s => (
               <div key={s.metric} className="bg-lattice-deep/50 border border-white/5 rounded p-2">
-                <div className="text-[9px] uppercase text-gray-500 tracking-wider">{s.metric.replace('_', ' ')}</div>
+                <div className="text-[9px] uppercase text-gray-400 tracking-wider">{s.metric.replace('_', ' ')}</div>
                 <div className="flex items-center gap-1">
                   <span className={cn('text-base font-bold', FLAG_STYLE[s.latestFlag])}>{s.latest}</span>
-                  <span className="text-[10px] text-gray-500">{s.unit}</span>
+                  <span className="text-[10px] text-gray-400">{s.unit}</span>
                   {s.trend === 'up' && <ArrowUp className="w-3 h-3 text-rose-400" />}
                   {s.trend === 'down' && <ArrowDown className="w-3 h-3 text-cyan-400" />}
-                  {s.trend === 'stable' && <Minus className="w-3 h-3 text-gray-500" />}
+                  {s.trend === 'stable' && <Minus className="w-3 h-3 text-gray-400" />}
                 </div>
-                <div className="text-[9px] text-gray-600">{s.count} reading{s.count === 1 ? '' : 's'}</div>
+                <div className="text-[9px] text-gray-400">{s.count} reading{s.count === 1 ? '' : 's'}</div>
               </div>
             ))}
           </div>
@@ -128,7 +128,7 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
           {/* Trend chart for the active metric */}
           {chartData.length > 1 && (
             <div className="p-3 border-b border-white/10">
-              <div className="text-[10px] uppercase text-gray-500 tracking-wider mb-1">{chartMetric.replace('_', ' ')} trend</div>
+              <div className="text-[10px] uppercase text-gray-400 tracking-wider mb-1">{chartMetric.replace('_', ' ')} trend</div>
               <ChartKit kind="line" data={chartData} xKey="t" series={[{ key: 'value', label: chartMetric.replace('_', ' ') }]} height={180} showLegend={false} />
             </div>
           )}
@@ -137,9 +137,9 @@ export function DeviceDataPanel({ patientId }: { patientId: string }) {
           <ul className="max-h-72 overflow-y-auto divide-y divide-white/5">
             {readings.map(r => (
               <li key={r.id} className="px-4 py-2 hover:bg-white/[0.02] flex items-center gap-3">
-                <span className="text-[9px] uppercase text-gray-500 font-mono w-20">{r.metric.replace('_', ' ')}</span>
-                <span className={cn('text-sm font-semibold', FLAG_STYLE[r.flag])}>{r.value} <span className="text-[10px] text-gray-500">{r.unit}</span></span>
-                <span className="text-[10px] text-gray-500 ml-auto truncate">{r.device} · {r.recordedAt.slice(0, 16).replace('T', ' ')}</span>
+                <span className="text-[9px] uppercase text-gray-400 font-mono w-20">{r.metric.replace('_', ' ')}</span>
+                <span className={cn('text-sm font-semibold', FLAG_STYLE[r.flag])}>{r.value} <span className="text-[10px] text-gray-400">{r.unit}</span></span>
+                <span className="text-[10px] text-gray-400 ml-auto truncate">{r.device} · {r.recordedAt.slice(0, 16).replace('T', ' ')}</span>
               </li>
             ))}
           </ul>

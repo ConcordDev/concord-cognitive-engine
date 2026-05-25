@@ -324,7 +324,7 @@ export default function InferenceLensPage() {
 
       {/* Confidence Distribution Bar */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="flex items-center gap-3 px-1">
-        <span className="text-[10px] text-gray-500 shrink-0">Confidence</span>
+        <span className="text-[10px] text-gray-400 shrink-0">Confidence</span>
         <div className="flex-1 h-2 rounded-full overflow-hidden flex bg-lattice-deep">
           {inferenceHistory.length > 0 ? (
             <>
@@ -336,7 +336,7 @@ export default function InferenceLensPage() {
             <div className="bg-white/5 h-full w-full" />
           )}
         </div>
-        <span className="text-[10px] text-gray-500">{inferenceHistory.length} runs</span>
+        <span className="text-[10px] text-gray-400">{inferenceHistory.length} runs</span>
       </motion.div>
 
       {/* Model Selector */}
@@ -356,7 +356,7 @@ export default function InferenceLensPage() {
               }`}
             >
               <p className="text-sm font-medium">{m.label}</p>
-              <p className="text-xs text-gray-500 mt-1">{m.description}</p>
+              <p className="text-xs text-gray-400 mt-1">{m.description}</p>
             </button>
           ))}
         </div>
@@ -418,7 +418,7 @@ export default function InferenceLensPage() {
                   if (e.key === 'Enter' && queryInput && !runQuery.isPending) runQuery.mutate();
                 }}
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 Using model: <span className="text-neon-cyan">{MODEL_OPTIONS.find(m => m.id === selectedModel)?.label}</span>
               </p>
               <button
@@ -470,11 +470,11 @@ export default function InferenceLensPage() {
               </p>
               <div className="lens-card text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Current facts</span>
+                  <span className="text-gray-400">Current facts</span>
                   <span className="text-gray-300">{statusInfo.factCount || 0}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Active rules</span>
+                  <span className="text-gray-400">Active rules</span>
                   <span className="text-gray-300">{statusInfo.ruleCount || 0}</span>
                 </div>
               </div>
@@ -534,7 +534,7 @@ export default function InferenceLensPage() {
               </pre>
             </div>
           ) : (
-            <p className="text-center py-12 text-gray-500">
+            <p className="text-center py-12 text-gray-400">
               Run a query or operation to see results
             </p>
           )}
@@ -549,7 +549,7 @@ export default function InferenceLensPage() {
         >
           <span className="flex items-center gap-2">
             <ListOrdered className="w-4 h-4 text-neon-purple" /> Inference History
-            <span className="text-xs text-gray-500 font-normal">({inferenceHistory.length} entries)</span>
+            <span className="text-xs text-gray-400 font-normal">({inferenceHistory.length} entries)</span>
           </span>
           {showHistory ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </button>
@@ -560,8 +560,7 @@ export default function InferenceLensPage() {
               <div
                 key={entry.id}
                 className="lens-card cursor-pointer hover:bg-lattice-border/30 transition-colors"
-                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))}
-              >
+                onClick={() => setExpandedHistoryId(expandedHistoryId === entry.id ? null : (entry.id ?? null))} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {entry.status === 'completed' ? (
@@ -572,7 +571,7 @@ export default function InferenceLensPage() {
                     <div>
                       <span className="text-sm font-medium capitalize">{entry.type.replace('-', ' ')}</span>
                       {entry.query && (
-                        <p className="text-xs text-gray-500 truncate max-w-xs">{entry.query}</p>
+                        <p className="text-xs text-gray-400 truncate max-w-xs">{entry.query}</p>
                       )}
                     </div>
                   </div>
@@ -586,7 +585,7 @@ export default function InferenceLensPage() {
                       </span>
                     )}
                     {entry.latencyMs != null && (
-                      <span className="text-gray-500 flex items-center gap-1">
+                      <span className="text-gray-400 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {entry.latencyMs}ms
                       </span>
@@ -607,7 +606,7 @@ export default function InferenceLensPage() {
                 )}
               </div>
             )) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 No inference history yet -- run queries to build history
               </p>
             )}
@@ -691,7 +690,7 @@ export default function InferenceLensPage() {
                 )}
                 {(d.rulesApplied || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="text-xs text-gray-500 mr-1">Rules applied:</span>
+                    <span className="text-xs text-gray-400 mr-1">Rules applied:</span>
                     {d.rulesApplied.slice(0, 5).map((r, i) => (
                       <span key={i} className="text-xs px-1.5 py-0.5 bg-lattice-surface rounded text-gray-400">{r}</span>
                     ))}
@@ -766,7 +765,7 @@ export default function InferenceLensPage() {
                     <p className="text-xs text-gray-400 mb-2">MGU Bindings ({d.bindingCount})</p>
                     <div className="space-y-1">
                       {Object.entries(d.mgu).slice(0, 5).map(([k, v]) => (
-                        <p key={k} className="text-xs font-mono"><span className="text-neon-cyan">{k}</span><span className="text-gray-500"> → </span><span className="text-white">{v}</span></p>
+                        <p key={k} className="text-xs font-mono"><span className="text-neon-cyan">{k}</span><span className="text-gray-400"> → </span><span className="text-white">{v}</span></p>
                       ))}
                     </div>
                   </div>

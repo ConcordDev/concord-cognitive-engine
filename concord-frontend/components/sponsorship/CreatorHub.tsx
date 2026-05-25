@@ -125,7 +125,7 @@ export function CreatorHub() {
       <section>
         <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Creator feed (your access)</h3>
         {feed.length === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No posts from this creator yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No posts from this creator yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {feed.map((p) => (
@@ -133,18 +133,18 @@ export function CreatorHub() {
                 <div className="flex justify-between items-baseline">
                   <p className="text-[12px] text-zinc-200 font-medium">
                     {p.title}
-                    <span className="ml-1.5 text-[9px] uppercase text-zinc-500">{p.kind}</span>
+                    <span className="ml-1.5 text-[9px] uppercase text-zinc-400">{p.kind}</span>
                   </p>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded ${p.locked ? 'bg-rose-900/60 text-rose-300' : 'bg-emerald-900/60 text-emerald-300'}`}>
                     {p.locked ? `locked · ${p.minTier}+` : p.minTier}
                   </span>
                 </div>
                 {p.locked ? (
-                  <p className="text-[11px] text-zinc-600 italic mt-0.5">Subscribe at {p.minTier}+ to unlock this content.</p>
+                  <p className="text-[11px] text-zinc-400 italic mt-0.5">Subscribe at {p.minTier}+ to unlock this content.</p>
                 ) : (
                   p.body && <p className="text-[11px] text-zinc-400 mt-0.5">{p.body}</p>
                 )}
-                <p className="text-[9px] text-zinc-600 mt-0.5">{new Date(p.publishedAt * 1000).toLocaleString()}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">{new Date(p.publishedAt * 1000).toLocaleString()}</p>
               </li>
             ))}
           </ul>
@@ -154,12 +154,12 @@ export function CreatorHub() {
       <section>
         <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1.5">Sponsor leaderboard</h3>
         {board.length === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No sponsors yet for this creator.</p>
+          <p className="text-[11px] text-zinc-400 italic">No sponsors yet for this creator.</p>
         ) : (
           <ul className="space-y-1">
             {board.map((s) => (
               <li key={`${s.userId}-${s.rank}`} className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-[12px] flex items-center gap-2">
-                <span className="font-mono text-zinc-500 w-6">#{s.rank}</span>
+                <span className="font-mono text-zinc-400 w-6">#{s.rank}</span>
                 <span className="text-zinc-200 flex-1 truncate">{s.userId}</span>
                 <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase ${BADGE_COLOR[s.badge] || BADGE_COLOR.bronze}`}>{s.badge}</span>
                 <span className="font-mono text-amber-300 text-[11px]">{s.totalContributed} CC</span>

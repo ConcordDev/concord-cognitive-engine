@@ -216,7 +216,7 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
         >
           <RotateCcw className="w-3 h-3" /> Clear
         </button>
-        <span className="ml-auto text-[10px] text-gray-500">{xtermReady ? 'xterm.js' : 'fallback renderer'}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{xtermReady ? 'xterm.js' : 'fallback renderer'}</span>
         <button
           onClick={() => setMaximised(v => !v)}
           title={maximised ? 'Restore' : 'Maximise'}
@@ -244,7 +244,7 @@ export function TerminalPanel({ open, onClose, activeCode, activeLanguage, activ
             {lines.map((ln, i) => (
               <div key={i} className={lineClass(ln.kind)}>
                 {ln.kind === 'cmd' && <span className="text-cyan-400">{ln.text}</span>}
-                {ln.kind === 'system' && <span className="text-gray-500 italic">{ln.text}</span>}
+                {ln.kind === 'system' && <span className="text-gray-400 italic">{ln.text}</span>}
                 {ln.kind === 'stdout' && <span className="whitespace-pre-wrap">{ln.text}</span>}
                 {ln.kind === 'stderr' && <span className="text-red-400 whitespace-pre-wrap">{ln.text}</span>}
                 {ln.kind === 'result' && <span className="text-green-400">{ln.text}</span>}

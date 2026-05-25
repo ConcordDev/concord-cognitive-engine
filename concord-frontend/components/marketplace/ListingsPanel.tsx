@@ -118,7 +118,7 @@ export function ListingsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Tag className="w-4 h-4 text-orange-400" />
           <span className="text-sm font-semibold text-gray-200">Listings</span>
-          <span className="text-[10px] text-gray-500">{list.length}</span>
+          <span className="text-[10px] text-gray-400">{list.length}</span>
           <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="all">All</option>
             <option value="published">Published</option>
@@ -147,9 +147,9 @@ export function ListingsPanel() {
 
         <div className="max-h-[32rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : list.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings yet.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Tag className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings yet.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {list.map(l => {
@@ -165,14 +165,14 @@ export function ListingsPanel() {
                         {l.images?.[0]
                           // eslint-disable-next-line @next/next/no-img-element
                           ? <img src={l.images[0]} alt="" className="w-full h-full object-cover" />
-                          : <Tag className="w-5 h-5 m-auto text-gray-500 mt-3.5" />}
+                          : <Tag className="w-5 h-5 m-auto text-gray-400 mt-3.5" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm text-white truncate flex items-center gap-2">
-                          <span className="font-mono text-[10px] text-gray-500">{l.number}</span>
+                          <span className="font-mono text-[10px] text-gray-400">{l.number}</span>
                           {l.title}
                         </div>
-                        <div className="text-[10px] text-gray-500 truncate">
+                        <div className="text-[10px] text-gray-400 truncate">
                           {l.kind.replace(/_/g, ' ')} · {l.stockQty === null ? '∞ stock' : `${l.stockQty} in stock`} · {l.tags.length} tags
                         </div>
                       </div>
@@ -225,7 +225,7 @@ export function ListingsPanel() {
                                 </ul>
                               </div>
                             )}
-                            <div className="text-[10px] text-gray-500 italic">source: {aiResult.source}</div>
+                            <div className="text-[10px] text-gray-400 italic">source: {aiResult.source}</div>
                           </div>
                         )}
                         {priceResult && (
@@ -255,7 +255,7 @@ export function ListingsPanel() {
                         )}
                         {l.description && (
                           <details className="text-[11px] text-gray-400">
-                            <summary className="cursor-pointer text-gray-500">Description preview</summary>
+                            <summary className="cursor-pointer text-gray-400">Description preview</summary>
                             <div className="mt-1 whitespace-pre-wrap">{l.description}</div>
                           </details>
                         )}

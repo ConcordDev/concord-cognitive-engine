@@ -174,7 +174,7 @@ export function RecipeBoxSection() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <ChefHat className="w-4 h-4 text-orange-400" />
         <span className="text-sm font-semibold text-gray-200">Recipe box</span>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-500" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
         <nav className="ml-3 flex items-center gap-1">
           {([['recipes','Recipes',BookOpen],['plan','Meal plan',CalendarDays],['shopping','Shopping',ShoppingCart],['pantry','Pantry',Package]] as const).map(([id,label,Icon]) => (
             <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded', tab === id ? 'bg-orange-500/15 text-orange-300 border border-orange-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
@@ -194,13 +194,13 @@ export function RecipeBoxSection() {
         {tab === 'recipes' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{recipes.length} recipe(s)</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{recipes.length} recipe(s)</span>
               <button onClick={openNewRecipe} className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1">
                 <Plus className="w-3 h-3" />New recipe
               </button>
             </div>
             {recipes.length === 0 ? (
-              <div className="py-10 text-center text-xs text-gray-500"><ChefHat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recipes yet.</div>
+              <div className="py-10 text-center text-xs text-gray-400"><ChefHat className="w-6 h-6 mx-auto mb-2 opacity-30" />No recipes yet.</div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                 {recipes.map(r => (
@@ -213,7 +213,7 @@ export function RecipeBoxSection() {
                     </div>
                     <div className="p-2.5">
                       <div className="text-sm text-white font-medium truncate">{r.title}</div>
-                      <div className="text-[10px] text-gray-500">{r.servings} servings · {r.prepMin + r.cookMin} min · {r.ingredients.length} ingredients</div>
+                      <div className="text-[10px] text-gray-400">{r.servings} servings · {r.prepMin + r.cookMin} min · {r.ingredients.length} ingredients</div>
                       {r.tags.length > 0 && <div className="mt-1 flex flex-wrap gap-1">{r.tags.slice(0, 3).map(t => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300">{t}</span>)}</div>}
                       <div className="mt-2 flex items-center gap-1">
                         <button onClick={() => openScale(r)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05] inline-flex items-center gap-1"><Scaling className="w-3 h-3" />Scale</button>
@@ -232,7 +232,7 @@ export function RecipeBoxSection() {
         {tab === 'plan' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Week of {dates[0]}</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Week of {dates[0]}</span>
               <button onClick={generateShopping} className="ml-auto px-2.5 py-1 text-xs rounded bg-orange-500 text-black font-semibold hover:bg-orange-400 inline-flex items-center gap-1">
                 <ShoppingCart className="w-3 h-3" />Generate shopping list
               </button>
@@ -241,8 +241,8 @@ export function RecipeBoxSection() {
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left p-1.5 text-[10px] uppercase text-gray-500"></th>
-                    {dates.map(d => <th key={d} className="text-left p-1.5 text-[10px] uppercase text-gray-500">{new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</th>)}
+                    <th className="text-left p-1.5 text-[10px] uppercase text-gray-400"></th>
+                    {dates.map(d => <th key={d} className="text-left p-1.5 text-[10px] uppercase text-gray-400">{new Date(d + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' })}</th>)}
                   </tr>
                 </thead>
                 <tbody>
@@ -276,12 +276,12 @@ export function RecipeBoxSection() {
         {tab === 'shopping' && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{shopping.length} items · {shopping.filter(i => i.checked).length} checked</span>
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{shopping.length} items · {shopping.filter(i => i.checked).length} checked</span>
               <button onClick={generateShopping} className="ml-auto px-2 py-1 text-[11px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Regenerate</button>
               <button onClick={clearChecked} className="px-2 py-1 text-[11px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Clear checked</button>
             </div>
             {shopping.length === 0 ? (
-              <div className="py-10 text-center text-xs text-gray-500"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />Empty. Plan meals then "Generate shopping list".</div>
+              <div className="py-10 text-center text-xs text-gray-400"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />Empty. Plan meals then "Generate shopping list".</div>
             ) : (
               <div className="space-y-3">
                 {AISLE_ORDER.filter(a => shopByAisle[a]).map(aisle => (
@@ -293,8 +293,8 @@ export function RecipeBoxSection() {
                           <button onClick={() => toggleShopItem(it.id)} className={cn('w-4 h-4 rounded border flex items-center justify-center', it.checked ? 'bg-orange-500 border-orange-500' : 'border-white/20')}>
                             {it.checked && <Check className="w-3 h-3 text-black" />}
                           </button>
-                          <span className={cn('flex-1', it.checked ? 'text-gray-500 line-through' : 'text-white')}>{it.name}</span>
-                          {it.qty !== null && <span className="text-[10px] text-gray-500 font-mono">{it.qty} {it.unit}</span>}
+                          <span className={cn('flex-1', it.checked ? 'text-gray-400 line-through' : 'text-white')}>{it.name}</span>
+                          {it.qty !== null && <span className="text-[10px] text-gray-400 font-mono">{it.qty} {it.unit}</span>}
                         </li>
                       ))}
                     </ul>
@@ -310,18 +310,18 @@ export function RecipeBoxSection() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Pantry · {pantry.length}</span>
+                <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Pantry · {pantry.length}</span>
                 <button onClick={addPantry} className="ml-auto px-2 py-0.5 text-[11px] rounded bg-orange-500 text-black font-bold hover:bg-orange-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
               </div>
               {pantry.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">Empty pantry.</div>
+                <div className="py-6 text-center text-xs text-gray-400">Empty pantry.</div>
               ) : (
                 <ul className="divide-y divide-white/5">
                   {pantry.map(p => (
                     <li key={p.id} className="py-1.5 flex items-center gap-2 text-xs group">
-                      <Package className="w-3 h-3 text-gray-500" />
+                      <Package className="w-3 h-3 text-gray-400" />
                       <span className="flex-1 text-white">{p.name}</span>
-                      <span className="text-[10px] text-gray-500">{p.aisle}</span>
+                      <span className="text-[10px] text-gray-400">{p.aisle}</span>
                       <button onClick={() => delPantry(p.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
@@ -329,9 +329,9 @@ export function RecipeBoxSection() {
               )}
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1.5">What can I cook?</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">What can I cook?</div>
               {suggestions.length === 0 ? (
-                <div className="py-6 text-center text-xs text-gray-500">Add pantry items to see cookable recipes.</div>
+                <div className="py-6 text-center text-xs text-gray-400">Add pantry items to see cookable recipes.</div>
               ) : (
                 <ul className="space-y-1.5">
                   {suggestions.map(sg => (
@@ -343,7 +343,7 @@ export function RecipeBoxSection() {
                       <div className="mt-0.5 h-1 bg-white/10 rounded-full overflow-hidden">
                         <div className="h-full bg-orange-400" style={{ width: `${sg.coveragePct}%` }} />
                       </div>
-                      {sg.missing.length > 0 && <div className="text-[10px] text-gray-500 mt-0.5">missing: {sg.missing.slice(0, 4).join(', ')}{sg.missing.length > 4 ? '…' : ''}</div>}
+                      {sg.missing.length > 0 && <div className="text-[10px] text-gray-400 mt-0.5">missing: {sg.missing.slice(0, 4).join(', ')}{sg.missing.length > 4 ? '…' : ''}</div>}
                     </li>
                   ))}
                 </ul>
@@ -355,8 +355,8 @@ export function RecipeBoxSection() {
 
       {/* Recipe editor modal */}
       {editRecipe && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setEditRecipe(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-lg max-h-[85vh] overflow-y-auto" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2 sticky top-0 bg-[#0d1117]">
               <ChefHat className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">{editRecipe._new ? 'New recipe' : 'Edit recipe'}</span>
@@ -365,12 +365,12 @@ export function RecipeBoxSection() {
             <div className="p-4 space-y-2">
               <input value={editRecipe.title || ''} onChange={e => setEditRecipe({ ...editRecipe, title: e.target.value })} placeholder="Recipe title *" className="w-full px-2 py-1.5 text-sm bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="grid grid-cols-3 gap-2">
-                <label className="text-[10px] text-gray-500">Servings<input type="number" min={1} value={editRecipe.servings || 4} onChange={e => setEditRecipe({ ...editRecipe, servings: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
-                <label className="text-[10px] text-gray-500">Prep min<input type="number" min={0} value={editRecipe.prepMin || 0} onChange={e => setEditRecipe({ ...editRecipe, prepMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
-                <label className="text-[10px] text-gray-500">Cook min<input type="number" min={0} value={editRecipe.cookMin || 0} onChange={e => setEditRecipe({ ...editRecipe, cookMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
+                <label className="text-[10px] text-gray-400">Servings<input type="number" min={1} value={editRecipe.servings || 4} onChange={e => setEditRecipe({ ...editRecipe, servings: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
+                <label className="text-[10px] text-gray-400">Prep min<input type="number" min={0} value={editRecipe.prepMin || 0} onChange={e => setEditRecipe({ ...editRecipe, prepMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
+                <label className="text-[10px] text-gray-400">Cook min<input type="number" min={0} value={editRecipe.cookMin || 0} onChange={e => setEditRecipe({ ...editRecipe, cookMin: Number(e.target.value) })} className="w-full mt-0.5 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" /></label>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Ingredients</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Ingredients</div>
                 {(editRecipe.ingredients || []).map((ing, i) => (
                   <div key={i} className="flex items-center gap-1 mb-1">
                     <input value={ing.qty ?? ''} onChange={e => { const ings = [...(editRecipe.ingredients || [])]; ings[i] = { ...ing, qty: e.target.value === '' ? null : Number(e.target.value) }; setEditRecipe({ ...editRecipe, ingredients: ings }); }} placeholder="Qty" className="w-14 px-1.5 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
@@ -382,10 +382,10 @@ export function RecipeBoxSection() {
                 <button onClick={() => setEditRecipe({ ...editRecipe, ingredients: [...(editRecipe.ingredients || []), { name: '', qty: null, unit: '' }] })} className="text-[11px] text-orange-300 hover:text-orange-200">+ Add ingredient</button>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Steps</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Steps</div>
                 {(editRecipe.steps || []).map((step, i) => (
                   <div key={i} className="flex items-center gap-1 mb-1">
-                    <span className="text-[10px] text-gray-500 font-mono w-4">{i + 1}.</span>
+                    <span className="text-[10px] text-gray-400 font-mono w-4">{i + 1}.</span>
                     <input value={step} onChange={e => { const steps = [...(editRecipe.steps || [])]; steps[i] = e.target.value; setEditRecipe({ ...editRecipe, steps }); }} placeholder="Step" className="flex-1 px-1.5 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
                     <button onClick={() => { const steps = (editRecipe.steps || []).filter((_, j) => j !== i); setEditRecipe({ ...editRecipe, steps }); }} className="text-rose-300"><X className="w-3 h-3" /></button>
                   </div>
@@ -400,8 +400,8 @@ export function RecipeBoxSection() {
 
       {/* Scale modal */}
       {scaleFor && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)}>
-          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm">
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setScaleFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div onClick={e => e.stopPropagation()} className="bg-[#0d1117] border border-orange-500/30 rounded-lg w-full max-w-sm" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <header className="px-4 py-3 border-b border-white/10 flex items-center gap-2">
               <Scaling className="w-4 h-4 text-orange-400" />
               <span className="text-sm font-semibold text-gray-200 flex-1">Scale: {scaleFor.recipe.title}</span>
@@ -411,7 +411,7 @@ export function RecipeBoxSection() {
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400">Servings:</span>
                 <input type="number" min={1} value={scaleFor.target} onChange={e => rescale(Math.max(1, Number(e.target.value)))} className="w-20 px-2 py-1 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-                <span className="text-[10px] text-gray-500">(base {scaleFor.recipe.servings})</span>
+                <span className="text-[10px] text-gray-400">(base {scaleFor.recipe.servings})</span>
               </div>
               <ul className="text-xs space-y-0.5">
                 {scaleFor.scaled.map((ing, i) => (

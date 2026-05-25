@@ -304,14 +304,14 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
             >
               {/* Search input */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-lattice-border">
-                <Search className="w-5 h-5 text-gray-500 shrink-0" />
+                <Search className="w-5 h-5 text-gray-400 shrink-0" />
                 <input
                   ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search lenses..."
-                  className="flex-1 bg-transparent text-white text-sm placeholder:text-gray-500 outline-none"
+                  className="flex-1 bg-transparent text-white text-sm placeholder:text-gray-400 outline-none"
                   aria-label="Search lenses"
                   aria-activedescendant={
                     flatResults[selectedIndex]
@@ -323,7 +323,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
                   aria-controls="command-palette-list"
                   aria-haspopup="listbox"
                 />
-                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-gray-500 bg-lattice-elevated border border-lattice-border rounded">
+                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-gray-400 bg-lattice-elevated border border-lattice-border rounded">
                   ESC
                 </kbd>
               </div>
@@ -337,7 +337,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
               >
                 {flatResults.length === 0 ? (
                   <div className="px-4 py-8 text-center">
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-400">
                       No lenses matching &ldquo;{query}&rdquo;
                     </p>
                   </div>
@@ -395,7 +395,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
                               <div className="text-sm font-medium truncate">
                                 {lens.name}
                               </div>
-                              <div className="text-xs text-gray-500 truncate">
+                              <div className="text-xs text-gray-400 truncate">
                                 {lens.description}
                               </div>
                             </div>
@@ -413,7 +413,7 @@ export function CommandPalette({ isOpen: isOpenProp, onClose }: CommandPalettePr
               </div>
 
               {/* Footer hints */}
-              <div className="flex items-center gap-4 px-4 py-2 border-t border-lattice-border text-[11px] text-gray-500">
+              <div className="flex items-center gap-4 px-4 py-2 border-t border-lattice-border text-[11px] text-gray-400">
                 <span className="inline-flex items-center gap-1">
                   <ArrowUp className="w-3 h-3" />
                   <ArrowDown className="w-3 h-3" />

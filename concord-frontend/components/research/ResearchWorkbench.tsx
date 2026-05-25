@@ -146,14 +146,14 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
           </button>
         </div>
       )}
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        notes.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No notes yet.</p> :
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        notes.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No notes yet.</p> :
         notes.map((n) => (
           <div key={n.id} className="rounded border border-white/10 bg-black/20 p-3 group hover:bg-white/5">
             <div className="flex items-start justify-between gap-2">
               <button type="button" onClick={() => onOpen(n.id)} className="flex-1 text-left min-w-0">
                 <p className="text-sm font-medium text-gray-100 truncate">{n.title}</p>
-                <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{n.preview}</p>
+                <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{n.preview}</p>
                 {n.tags.length > 0 && (
                   <div className="flex gap-1 mt-1.5">
                     {n.tags.map((t) => <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{t}</span>)}
@@ -302,7 +302,7 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
     } catch (e) { console.error(e); }
   };
 
-  if (!note) return <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+  if (!note) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
 
   return (
     <div className="p-3 space-y-3">
@@ -325,7 +325,7 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
       {showHistory && (
         <div className="rounded border border-white/10 bg-black/20 p-2 space-y-1">
           {snapshots.length === 0 ? (
-            <p className="text-[11px] text-gray-500">No snapshots yet — saving an edit creates one.</p>
+            <p className="text-[11px] text-gray-400">No snapshots yet — saving an edit creates one.</p>
           ) : snapshots.map((sn) => (
             <div key={sn.id} className="flex items-center justify-between text-[11px]">
               <span className="text-gray-400 truncate">
@@ -361,12 +361,12 @@ function NoteEditor({ noteId, onBack, onOpenNote }: { noteId: string; onBack: ()
 
       {backlinks.length > 0 && (
         <div className="border-t border-white/10 pt-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Backlinks ({backlinks.length})</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Backlinks ({backlinks.length})</p>
           {backlinks.map((b) => (
             <button key={b.noteId} type="button" onClick={() => onOpenNote(b.noteId)}
               className="w-full text-left rounded border border-white/10 bg-black/20 p-2 mb-1 hover:bg-white/5">
               <p className="text-xs text-fuchsia-300">{b.noteTitle}</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">…{b.context}…</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">…{b.context}…</p>
             </button>
           ))}
         </div>
@@ -389,12 +389,12 @@ function DailyTab() {
     })();
   }, []);
 
-  if (loading) return <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
-  if (!note) return <p className="text-xs text-gray-500 p-4">Could not load daily note.</p>;
+  if (loading) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+  if (!note) return <p className="text-xs text-gray-400 p-4">Could not load daily note.</p>;
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[10px] text-gray-500">Auto-created daily note. Edit via Notes tab.</p>
+      <p className="text-[10px] text-gray-400">Auto-created daily note. Edit via Notes tab.</p>
       <h3 className="text-lg font-semibold text-gray-100">{note.title}</h3>
       <pre className="text-xs text-gray-200 whitespace-pre-wrap font-mono border border-white/10 rounded p-3 bg-black/20">{note.body}</pre>
     </div>
@@ -427,7 +427,7 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
         <button key={h.id} type="button" onClick={() => onOpen(h.id)}
           className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5">
           <p className="text-sm font-medium text-gray-100">{h.title}</p>
-          <p className="text-[11px] text-gray-500 line-clamp-2">{h.preview}</p>
+          <p className="text-[11px] text-gray-400 line-clamp-2">{h.preview}</p>
         </button>
       ))}
     </div>
@@ -458,12 +458,12 @@ function TemplatesTab() {
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[11px] text-gray-500">Click a template to create a new note from it.</p>
+      <p className="text-[11px] text-gray-400">Click a template to create a new note from it.</p>
       {templates.map((t) => (
         <button key={t.id} type="button" onClick={() => apply(t.id)}
           className="w-full text-left rounded border border-white/10 bg-black/20 p-3 hover:bg-white/5">
           <p className="text-sm font-medium text-gray-100">{t.title}</p>
-          <pre className="text-[10px] text-gray-500 line-clamp-3 whitespace-pre-wrap font-mono mt-1">{t.body}</pre>
+          <pre className="text-[10px] text-gray-400 line-clamp-3 whitespace-pre-wrap font-mono mt-1">{t.body}</pre>
         </button>
       ))}
     </div>

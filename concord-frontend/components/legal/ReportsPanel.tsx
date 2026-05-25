@@ -189,7 +189,7 @@ export function ReportsPanel() {
           <span className="text-sm font-semibold text-gray-200">Firm Realization Rollup</span>
         </header>
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : (
@@ -204,7 +204,7 @@ export function ReportsPanel() {
               ].map((kpi) => (
                 <div key={kpi.label} className="bg-[#0d1117] px-3 py-2.5 text-center">
                   <div className="text-base font-bold text-white">{kpi.value}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-gray-500">{kpi.label}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-400">{kpi.label}</div>
                 </div>
               ))}
             </div>
@@ -215,14 +215,14 @@ export function ReportsPanel() {
             )}
             <div className="max-h-64 overflow-y-auto">
               {rollup.length === 0 ? (
-                <div className="px-3 py-8 text-center text-xs text-gray-500">
+                <div className="px-3 py-8 text-center text-xs text-gray-400">
                   <BarChart3 className="w-6 h-6 mx-auto mb-2 opacity-30" />
                   No matters yet. Open a matter and log time to see realization data.
                 </div>
               ) : (
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-white/5">
+                    <tr className="text-left text-gray-400 border-b border-white/5">
                       <th className="px-3 py-1.5 font-medium">Matter</th>
                       <th className="px-3 py-1.5 font-medium text-right">Worked</th>
                       <th className="px-3 py-1.5 font-medium text-right">Billed</th>
@@ -276,11 +276,11 @@ export function ReportsPanel() {
         </header>
 
         {!selectedId ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">
+          <div className="px-3 py-8 text-center text-xs text-gray-400">
             Select a matter to set a budget and view its realization report.
           </div>
         ) : reportLoading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading report…
           </div>
         ) : report ? (
@@ -288,7 +288,7 @@ export function ReportsPanel() {
             {/* Budget editor */}
             <div className="grid grid-cols-12 gap-2 items-end">
               <div className="col-span-3">
-                <label className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">Budget ($)</label>
+                <label className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold">Budget ($)</label>
                 <input
                   type="number" value={budgetAmount} onChange={(e) => setBudgetAmount(e.target.value)}
                   placeholder="0"
@@ -296,7 +296,7 @@ export function ReportsPanel() {
                 />
               </div>
               <div className="col-span-3">
-                <label className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">Budget (hrs)</label>
+                <label className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold">Budget (hrs)</label>
                 <input
                   type="number" value={budgetHours} onChange={(e) => setBudgetHours(e.target.value)}
                   placeholder="0"
@@ -304,7 +304,7 @@ export function ReportsPanel() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">Alert at (%)</label>
+                <label className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold">Alert at (%)</label>
                 <input
                   type="number" value={alertThreshold} onChange={(e) => setAlertThreshold(e.target.value)}
                   placeholder="80"
@@ -312,7 +312,7 @@ export function ReportsPanel() {
                 />
               </div>
               <div className="col-span-4">
-                <label className="text-[9px] uppercase tracking-wider text-gray-500 font-semibold">Note</label>
+                <label className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold">Note</label>
                 <input
                   value={budgetNote} onChange={(e) => setBudgetNote(e.target.value)}
                   placeholder="Optional"
@@ -380,16 +380,16 @@ export function ReportsPanel() {
               ].map((kpi) => (
                 <div key={kpi.label} className="bg-[#0d1117] px-2 py-2 text-center">
                   <div className="text-sm font-bold text-white">{kpi.value}</div>
-                  <div className="text-[9px] uppercase tracking-wider text-gray-500">{kpi.label}</div>
+                  <div className="text-[9px] uppercase tracking-wider text-gray-400">{kpi.label}</div>
                 </div>
               ))}
             </div>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-gray-400">
               Realization = billed ÷ worked. Collection = collected ÷ billed. Utilization = billable hours ÷ total hours.
             </p>
           </div>
         ) : (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No report available.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No report available.</div>
         )}
       </div>
     </div>

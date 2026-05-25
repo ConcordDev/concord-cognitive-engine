@@ -244,7 +244,7 @@ export function CrisisActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -262,7 +262,7 @@ export function CrisisActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold flex items-center gap-1.5"><Clock className="w-3 h-3" /> Response phases</div>
             <ol className="text-[11px] text-zinc-300 list-decimal list-inside mt-1 space-y-0.5">
-              {timelineResult.phases.map((p, i) => <li key={i}><strong className="text-cyan-200">{p.phase}</strong> <span className="text-zinc-500">({p.window})</span></li>)}
+              {timelineResult.phases.map((p, i) => <li key={i}><strong className="text-cyan-200">{p.phase}</strong> <span className="text-zinc-400">({p.window})</span></li>)}
             </ol>
           </div>
         )}
@@ -270,7 +270,7 @@ export function CrisisActionPanel() {
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold flex items-center gap-1.5"><Users className="w-3 h-3" /> Stakeholder impact</div>
             {impactResult.stakeholders.map((s, i) => (
-              <div key={i} className="text-[11px] text-zinc-300"><strong className="text-orange-200 capitalize">{s.group}:</strong> {s.impact} {s.priority && <span className="text-[10px] text-zinc-500">({s.priority})</span>}</div>
+              <div key={i} className="text-[11px] text-zinc-300"><strong className="text-orange-200 capitalize">{s.group}:</strong> {s.impact} {s.priority && <span className="text-[10px] text-zinc-400">({s.priority})</span>}</div>
             ))}
           </div>
         )}

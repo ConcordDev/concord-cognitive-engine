@@ -51,9 +51,9 @@ export function ActiveHunts({
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
-  if (loading) return <p className="text-xs text-gray-500">Loading hunts…</p>;
+  if (loading) return <p className="text-xs text-gray-400">Loading hunts…</p>;
   if (hunts.length === 0) {
-    return <p className="text-xs text-gray-500">No hunts in progress. Investigate a residue to begin one.</p>;
+    return <p className="text-xs text-gray-400">No hunts in progress. Investigate a residue to begin one.</p>;
   }
 
   return (

@@ -46,7 +46,7 @@ export function MarketingCalendarPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const timelineEvents: TimelineEvent[] = entries.map((e) => ({
@@ -77,7 +77,7 @@ export function MarketingCalendarPanel() {
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">
+        <p className="text-[11px] text-zinc-400 italic">
           No scheduled items. Campaigns, content, social posts and sent emails appear here.
         </p>
       ) : (
@@ -96,7 +96,7 @@ export function MarketingCalendarPanel() {
                       <li key={`${e.kind}-${e.id}-${e.marker}`} className="flex items-center gap-2 text-[11px] text-zinc-300">
                         <Icon className="w-3.5 h-3.5 text-orange-400 shrink-0" />
                         <span className="truncate">{e.title}</span>
-                        <span className="text-zinc-500 ml-auto shrink-0">{e.channel} · {e.marker}</span>
+                        <span className="text-zinc-400 ml-auto shrink-0">{e.channel} · {e.marker}</span>
                       </li>
                     );
                   })}

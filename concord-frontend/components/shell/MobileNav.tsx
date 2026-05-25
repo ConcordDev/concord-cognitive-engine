@@ -62,13 +62,13 @@ export function MobileNav() {
                 'flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-[10px] font-medium transition-colors',
                 active
                   ? 'text-neon-cyan'
-                  : 'text-gray-500 active:text-gray-300',
+                  : 'text-gray-400 active:text-gray-300',
               )}
             >
               <Icon
                 className={cn(
                   'w-5 h-5 transition-colors',
-                  active ? 'text-neon-cyan' : 'text-gray-500',
+                  active ? 'text-neon-cyan' : 'text-gray-400',
                 )}
                 strokeWidth={active ? 2.25 : 1.75}
               />

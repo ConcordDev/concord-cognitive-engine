@@ -82,8 +82,8 @@ export default function AtlasSignalView({ data, loading }: AtlasSignalViewProps)
     return (
       <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4">
         <div className="flex items-center gap-2">
-          <Radio size={16} className="text-zinc-500" />
-          <span className="text-sm text-zinc-500">
+          <Radio size={16} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">
             {data?.error || 'No signal cortex data available'}
           </span>
         </div>
@@ -109,7 +109,7 @@ function TaxonomyView({ data }: { data: NonNullable<SignalViewData['taxonomy']> 
           <Radio size={16} className="text-blue-400" />
           <span className="text-sm font-medium text-zinc-200">Signal Taxonomy</span>
         </div>
-        <span className="text-xs text-zinc-500">{data.totalClassified} classified</span>
+        <span className="text-xs text-zinc-400">{data.totalClassified} classified</span>
       </div>
       <div className="space-y-1">
         {data.signals.slice(0, 10).map((sig) => (
@@ -119,7 +119,7 @@ function TaxonomyView({ data }: { data: NonNullable<SignalViewData['taxonomy']> 
             </span>
             <span className="text-zinc-400">{sig.frequency} MHz</span>
             <span className="text-zinc-600">{sig.purpose}</span>
-            <span className={adjustColors[sig.adjustability] || 'text-zinc-500'}>
+            <span className={adjustColors[sig.adjustability] || 'text-zinc-400'}>
               {sig.adjustability === 'ADJUST_FORBIDDEN' ? '⛔' :
                sig.adjustability === 'ADJUST_RESTRICTED' ? '⚠' :
                sig.adjustability === 'OBSERVE_ONLY' ? '👁' : '✓'}
@@ -141,15 +141,15 @@ function UnknownView({ data }: { data: NonNullable<SignalViewData['unknown']> })
           <AlertTriangle size={16} className="text-yellow-400" />
           <span className="text-sm font-medium text-zinc-200">Unclassified Signals</span>
         </div>
-        <span className="text-xs text-zinc-500">{data.total} total</span>
+        <span className="text-xs text-zinc-400">{data.total} total</span>
       </div>
       {data.count === 0 ? (
-        <p className="text-xs text-zinc-500">No unclassified signals in queue</p>
+        <p className="text-xs text-zinc-400">No unclassified signals in queue</p>
       ) : (
         <div className="space-y-1">
           {data.signals.slice(0, 8).map((sig) => (
             <div key={sig.id} className="flex items-center gap-2 text-xs">
-              <span className="text-zinc-500 font-mono">{sig.id.slice(0, 12)}...</span>
+              <span className="text-zinc-400 font-mono">{sig.id.slice(0, 12)}...</span>
               <span className="text-zinc-400">{sig.frequency} MHz</span>
               <span className="text-zinc-600">{sig.classified_at?.slice(0, 10)}</span>
             </div>
@@ -173,7 +173,7 @@ function AnomalyView({ data }: { data: NonNullable<SignalViewData['anomalies']> 
         <span className="text-xs text-red-400">{data.count} detected</span>
       </div>
       {data.count === 0 ? (
-        <p className="text-xs text-zinc-500">No anomalies detected</p>
+        <p className="text-xs text-zinc-400">No anomalies detected</p>
       ) : (
         <div className="space-y-1">
           {data.signals.slice(0, 8).map((sig) => (
@@ -204,14 +204,14 @@ function SpectrumView({ data }: { data: NonNullable<SignalViewData['spectrum']> 
           <Shield size={16} className="text-purple-400" />
           <span className="text-sm font-medium text-zinc-200">Spectral Occupancy</span>
         </div>
-        <span className="text-xs text-zinc-500">{data.totalSignals} signals</span>
+        <span className="text-xs text-zinc-400">{data.totalSignals} signals</span>
       </div>
       <div className="space-y-2">
         {bands.map(([band, count]) => (
           <div key={band} className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-zinc-400">{band}</span>
-              <span className="text-zinc-500">{count}</span>
+              <span className="text-zinc-400">{count}</span>
             </div>
             <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
               <div

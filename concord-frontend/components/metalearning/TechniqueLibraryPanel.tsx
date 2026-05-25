@@ -42,12 +42,12 @@ export function TechniqueLibraryPanel() {
     <div className="space-y-3">
       <h3 className="font-semibold flex items-center gap-2 text-sm">
         <BookOpen className="w-4 h-4 text-neon-cyan" /> Technique Library
-        <span className="text-xs text-gray-500 font-normal">{techniques.length}</span>
+        <span className="text-xs text-gray-400 font-normal">{techniques.length}</span>
       </h3>
 
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
           <input value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') load(query); }}
@@ -62,7 +62,7 @@ export function TechniqueLibraryPanel() {
 
       {err && <p className="text-xs text-red-400">{err}</p>}
       {techniques.length === 0 && !loading && (
-        <p className="text-center py-4 text-gray-500 text-sm">No techniques match.</p>
+        <p className="text-center py-4 text-gray-400 text-sm">No techniques match.</p>
       )}
 
       <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -72,13 +72,13 @@ export function TechniqueLibraryPanel() {
               className="w-full flex items-center justify-between p-3 text-left">
               <div className="min-w-0">
                 <p className="text-sm font-medium">{t.name}</p>
-                <p className="text-xs text-gray-500 truncate">{t.summary}</p>
+                <p className="text-xs text-gray-400 truncate">{t.summary}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-green/15 text-neon-green">
                   {(t.strength * 100).toFixed(0)}% evidence
                 </span>
-                <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${expanded === t.id ? 'rotate-90' : ''}`} />
+                <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform ${expanded === t.id ? 'rotate-90' : ''}`} />
               </div>
             </button>
             {expanded === t.id && (
@@ -90,7 +90,7 @@ export function TechniqueLibraryPanel() {
                     {t.steps.map((s, i) => <li key={i}>{s}</li>)}
                   </ol>
                 </div>
-                <p className="text-gray-500 italic">{t.evidence}</p>
+                <p className="text-gray-400 italic">{t.evidence}</p>
               </div>
             )}
           </div>

@@ -87,13 +87,13 @@ export function BillsPanel() {
       {/* Aging summary */}
       {aging && aging.totalOpen > 0 && (
         <div className="bg-[#0d1117] border border-emerald-500/15 rounded-lg p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">A/P aging · ${aging.totalOpen.toFixed(0)} open</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">A/P aging · ${aging.totalOpen.toFixed(0)} open</div>
           <div className="grid grid-cols-4 gap-2">
             {aging.buckets.map(b => (
               <div key={b.key} className="rounded border border-white/10 bg-black/30 p-2">
-                <div className="text-[10px] text-gray-500">{b.label}</div>
+                <div className="text-[10px] text-gray-400">{b.label}</div>
                 <div className="text-lg font-mono text-amber-200 mt-0.5">${b.total.toFixed(0)}</div>
-                <div className="text-[9px] text-gray-500">{b.bills.length} bill{b.bills.length === 1 ? '' : 's'}</div>
+                <div className="text-[9px] text-gray-400">{b.bills.length} bill{b.bills.length === 1 ? '' : 's'}</div>
               </div>
             ))}
           </div>
@@ -104,7 +104,7 @@ export function BillsPanel() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Receipt className="w-4 h-4 text-emerald-400" />
           <span className="text-sm font-semibold text-gray-200">Bills</span>
-          <span className="text-[10px] text-gray-500">{bills.length}</span>
+          <span className="text-[10px] text-gray-400">{bills.length}</span>
           <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
             <option value="open">Open</option>
             <option value="paid">Paid</option>
@@ -138,9 +138,9 @@ export function BillsPanel() {
 
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : bills.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No bills in this view.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Receipt className="w-6 h-6 mx-auto mb-2 opacity-30" />No bills in this view.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {bills.map(b => {
@@ -151,12 +151,12 @@ export function BillsPanel() {
                     <Receipt className={cn('w-3.5 h-3.5 flex-shrink-0', b.status === 'paid' ? 'text-emerald-400' : overdue ? 'text-rose-400' : 'text-amber-400')} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-gray-500">{b.number}</span>
+                        <span className="font-mono text-[10px] text-gray-400">{b.number}</span>
                         <span>{b.vendorName}</span>
                         {overdue && <span className="inline-flex items-center gap-0.5 text-[9px] uppercase text-rose-300"><AlertCircle className="w-2.5 h-2.5" />Overdue</span>}
                       </div>
                       {b.memo && <div className="text-[11px] text-gray-400 truncate">{b.memo}</div>}
-                      <div className="text-[10px] text-gray-500 flex items-center gap-3">
+                      <div className="text-[10px] text-gray-400 flex items-center gap-3">
                         <span>Issued {b.issuedAt}</span>
                         <span>Due {b.dueAt}</span>
                         {b.paidAt && <span className="text-emerald-300">Paid {b.paidAt}</span>}

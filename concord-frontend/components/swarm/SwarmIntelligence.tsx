@@ -61,7 +61,7 @@ function SwarmIntelligence({ className }: { className?: string }) {
           </div>
           <div>
             <h3 className="font-medium text-white">DTU Swarms</h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {swarms.length > 0 ? `${swarms.length} self-organized clusters` : 'Self-organizing knowledge'}
             </p>
           </div>
@@ -87,7 +87,7 @@ function SwarmIntelligence({ className }: { className?: string }) {
       {/* Swarm visualization */}
       <div className="p-4">
         {swarms.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">No swarms detected yet. Click Detect to find clusters.</p>
+          <p className="text-sm text-gray-400 text-center py-4">No swarms detected yet. Click Detect to find clusters.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {swarms.slice(0, expanded ? 20 : 6).map(swarm => (
@@ -106,7 +106,7 @@ function SwarmIntelligence({ className }: { className?: string }) {
                   <span className="text-sm text-white font-medium">{swarm.name}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] text-gray-500">{swarm.size} DTUs</span>
+                  <span className="text-[10px] text-gray-400">{swarm.size} DTUs</span>
                   {swarm.topTags?.slice(0, 2).map(t => (
                     <span key={t} className="text-[10px] text-amber-400/60">#{t}</span>
                   ))}

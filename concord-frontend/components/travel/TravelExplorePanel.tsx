@@ -81,7 +81,7 @@ export function TravelExplorePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (selected) {
@@ -95,7 +95,7 @@ export function TravelExplorePanel() {
           <div className="flex items-start justify-between">
             <div>
               <h3 className="text-base font-bold text-zinc-100">{selected.name}</h3>
-              <p className="text-xs text-zinc-500 capitalize">
+              <p className="text-xs text-zinc-400 capitalize">
                 {selected.kind}{selected.destination ? ` · ${selected.destination}` : ''}
                 {selected.priceLevel > 0 ? ` · ${'$'.repeat(selected.priceLevel)}` : ''}
               </p>
@@ -107,7 +107,7 @@ export function TravelExplorePanel() {
           </div>
           <div className="flex items-center gap-2 mt-1">
             <Stars rating={selected.rating} />
-            <span className="text-[11px] text-zinc-500">{selected.rating || 'unrated'} · {selected.reviewCount} reviews</span>
+            <span className="text-[11px] text-zinc-400">{selected.rating || 'unrated'} · {selected.reviewCount} reviews</span>
           </div>
         </div>
 
@@ -184,7 +184,7 @@ export function TravelExplorePanel() {
       )}
 
       {places.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No places yet. Add hotels, attractions and restaurants to explore.
         </div>
       ) : (
@@ -193,13 +193,13 @@ export function TravelExplorePanel() {
             <li key={p.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <button type="button" onClick={() => open(p)} className="text-left">
                 <p className="text-sm font-semibold text-zinc-100">{p.name}</p>
-                <p className="text-[11px] text-zinc-500 capitalize">
+                <p className="text-[11px] text-zinc-400 capitalize">
                   {p.kind}{p.destination ? ` · ${p.destination}` : ''}
                   {p.priceLevel > 0 ? ` · ${'$'.repeat(p.priceLevel)}` : ''}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
                   <Stars rating={p.rating} />
-                  <span className="text-[10px] text-zinc-500">{p.reviewCount} reviews</span>
+                  <span className="text-[10px] text-zinc-400">{p.reviewCount} reviews</span>
                 </div>
               </button>
               <button type="button" onClick={() => save(p)}

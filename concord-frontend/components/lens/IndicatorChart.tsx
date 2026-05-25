@@ -79,7 +79,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
   if (indicators.length === 0) {
     return (
       <section className={`rounded-xl border border-white/10 bg-zinc-900/40 backdrop-blur-sm p-6 ${className}`}>
-        <div className="text-xs text-zinc-500">World Bank economic indicators connecting…</div>
+        <div className="text-xs text-zinc-400">World Bank economic indicators connecting…</div>
       </section>
     );
   }
@@ -89,7 +89,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
   const yoyDelta = (latest && prior) ? latest.value - prior.value : null;
   const yoyPct = (yoyDelta != null && prior && prior.value !== 0) ? (yoyDelta / Math.abs(prior.value)) * 100 : null;
   const TrendIcon = yoyDelta == null ? Minus : (yoyDelta > 0 ? TrendingUp : (yoyDelta < 0 ? TrendingDown : Minus));
-  const trendColor = yoyDelta == null ? 'text-zinc-500' : (yoyDelta > 0 ? 'text-emerald-400' : (yoyDelta < 0 ? 'text-rose-400' : 'text-zinc-400'));
+  const trendColor = yoyDelta == null ? 'text-zinc-400' : (yoyDelta > 0 ? 'text-emerald-400' : (yoyDelta < 0 ? 'text-rose-400' : 'text-zinc-400'));
 
   const lineColor = COLORS[indicators.findIndex(i => i.code === (selected?.code ?? '')) % COLORS.length] || COLORS[0];
 
@@ -103,12 +103,12 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
               <Wifi className="w-3 h-3 animate-pulse" /><span>live</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
               <WifiOff className="w-3 h-3" /><span>offline</span>
             </span>
           )}
         </div>
-        <span className="text-[10px] text-zinc-500">World Bank</span>
+        <span className="text-[10px] text-zinc-400">World Bank</span>
       </header>
 
       <div className="p-4 grid grid-cols-1 md:grid-cols-[180px_1fr] gap-4">
@@ -131,7 +131,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
                   <span className="w-2 h-2 rounded-full" style={{ background: color }} />
                   <span className="truncate">{ind.indicator}</span>
                 </div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">{ind.code}</div>
+                <div className="text-[10px] text-zinc-400 font-mono mt-0.5">{ind.code}</div>
               </button>
             );
           })}
@@ -148,7 +148,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
                 </span>
               )}
               {latest && (
-                <span className="text-xs text-zinc-500">({latest.year})</span>
+                <span className="text-xs text-zinc-400">({latest.year})</span>
               )}
               {yoyPct != null && (
                 <span className={`inline-flex items-center gap-1 text-xs ${trendColor}`}>
@@ -186,7 +186,7 @@ export default function IndicatorChart({ data, isLive, className = '' }: Indicat
               ))}
             </svg>
           ) : (
-            <div className="text-xs text-zinc-500">Not enough data points for a chart.</div>
+            <div className="text-xs text-zinc-400">Not enough data points for a chart.</div>
           )}
         </div>
       </div>

@@ -105,7 +105,7 @@ export function ArtistProfile({ artist, tracks, albums, onAlbumClick, onBack }: 
               />
             ))}
             {tracks.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-400">
                 <Music className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No tracks published yet</p>
               </div>
@@ -139,7 +139,7 @@ export function ArtistProfile({ artist, tracks, albums, onAlbumClick, onBack }: 
               </button>
             ))}
             {albums.length === 0 && (
-              <div className="col-span-full text-center py-12 text-gray-500">
+              <div className="col-span-full text-center py-12 text-gray-400">
                 <Disc3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No albums yet</p>
               </div>
@@ -200,13 +200,13 @@ export function ArtistProfile({ artist, tracks, albums, onAlbumClick, onBack }: 
                   <div key={stat.label} className="p-3 rounded-lg bg-white/5 border border-white/5">
                     <stat.icon className="w-4 h-4 text-neon-green mb-1" />
                     <p className="text-lg font-semibold">${stat.value.toFixed(2)}</p>
-                    <p className="text-[10px] text-gray-500">{stat.label}</p>
+                    <p className="text-[10px] text-gray-400">{stat.label}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <p className="text-[10px] text-gray-600 pt-4">
+            <p className="text-[10px] text-gray-400 pt-4">
               Joined {new Date(artist.joinedAt).toLocaleDateString()}
             </p>
           </div>

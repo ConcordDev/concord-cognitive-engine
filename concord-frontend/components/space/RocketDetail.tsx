@@ -100,7 +100,7 @@ export function RocketDetail() {
             )}
           >
             {f.name}
-            {!f.active && <span className="ml-1.5 text-[10px] text-zinc-500">retired</span>}
+            {!f.active && <span className="ml-1.5 text-[10px] text-zinc-400">retired</span>}
           </button>
         ))}
       </div>
@@ -116,7 +116,7 @@ export function RocketDetail() {
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-base font-semibold text-white">{spec.name}</p>
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {[spec.company, spec.country, spec.firstFlight].filter(Boolean).join(' · ')}
               </p>
             </div>
@@ -158,7 +158,7 @@ export function RocketDetail() {
               { l: 'Type', v: spec.type || '—' },
             ].map((s) => (
               <div key={s.l} className="p-2 bg-zinc-950 rounded-lg border border-zinc-800">
-                <p className="text-[11px] text-zinc-500">{s.l}</p>
+                <p className="text-[11px] text-zinc-400">{s.l}</p>
                 <p className="text-sm font-mono font-semibold text-white">{s.v}</p>
               </div>
             ))}
@@ -166,7 +166,7 @@ export function RocketDetail() {
 
           {spec.payloadWeights && spec.payloadWeights.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[11px] text-zinc-500 uppercase tracking-wide">Payload capacity</p>
+              <p className="text-[11px] text-zinc-400 uppercase tracking-wide">Payload capacity</p>
               {spec.payloadWeights.map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400">{p.name}</span>
@@ -190,7 +190,7 @@ export function RocketDetail() {
       )}
 
       {!loading && fleet.length === 0 && !spec && !error && (
-        <p className="text-xs text-zinc-500 text-center py-4">No vehicles available.</p>
+        <p className="text-xs text-zinc-400 text-center py-4">No vehicles available.</p>
       )}
     </div>
   );

@@ -114,14 +114,14 @@ export function CruisePanel() {
           ] as const).map(([label, st]) => (
             <div key={label} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-amber-300">{st.mean.toLocaleString()}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
-              <p className="text-[9px] text-zinc-600">±{st.ciPercent}% CI</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
+              <p className="text-[9px] text-zinc-400">±{st.ciPercent}% CI</p>
             </div>
           ))}
         </div>
       )}
       {summary && summary.plots > 0 && (
-        <p className="mt-2 text-[10px] text-zinc-500">
+        <p className="mt-2 text-[10px] text-zinc-400">
           Statistical summary over {summary.plots} sample plot{summary.plots === 1 ? '' : 's'}.
         </p>
       )}
@@ -133,16 +133,16 @@ export function CruisePanel() {
               <p className="text-xs font-semibold text-zinc-100">
                 {p.method === 'prism_baf' ? 'Prism' : 'Fixed-radius'} plot · {p.treeCount} tree{p.treeCount === 1 ? '' : 's'}
               </p>
-              <p className="text-[10px] text-zinc-500">expansion factor {p.expansionFactor}</p>
+              <p className="text-[10px] text-zinc-400">expansion factor {p.expansionFactor}</p>
             </div>
             <button onClick={() => del(p.id)} aria-label="Delete plot"
-              className="p-1 text-zinc-500 hover:text-rose-400">
+              className="p-1 text-zinc-400 hover:text-rose-400">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
-        {plots.length === 0 && standId.trim() && <p className="text-xs text-zinc-500 italic">No cruise plots for this stand yet.</p>}
-        {!standId.trim() && <p className="text-xs text-zinc-500 italic">Enter a stand id to view its cruise plots.</p>}
+        {plots.length === 0 && standId.trim() && <p className="text-xs text-zinc-400 italic">No cruise plots for this stand yet.</p>}
+        {!standId.trim() && <p className="text-xs text-zinc-400 italic">Enter a stand id to view its cruise plots.</p>}
       </div>
     </div>
   );

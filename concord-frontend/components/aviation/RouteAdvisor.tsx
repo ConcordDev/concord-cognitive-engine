@@ -37,7 +37,7 @@ export function RouteAdvisor() {
       </form>
       <div className="max-h-72 overflow-y-auto p-3">
         {suggestions.length === 0 ? (
-          <div className="text-center text-xs text-gray-500 py-6">Enter from/to ICAO codes to see Direct + prior-flown route options from your logbook.</div>
+          <div className="text-center text-xs text-gray-400 py-6">Enter from/to ICAO codes to see Direct + prior-flown route options from your logbook.</div>
         ) : (
           <ul className="space-y-2">
             {suggestions.map((s, i) => (
@@ -46,7 +46,7 @@ export function RouteAdvisor() {
                   {s.route.map((p, j) => (
                     <span key={j} className="inline-flex items-center gap-1">
                       <span className="font-mono text-xs text-cyan-300">{p}</span>
-                      {j < s.route.length - 1 && <ArrowRight className="w-3 h-3 text-gray-500" />}
+                      {j < s.route.length - 1 && <ArrowRight className="w-3 h-3 text-gray-400" />}
                     </span>
                   ))}
                   <span className="ml-auto text-[10px] text-gray-400 font-mono">{s.altitudeFt}ft</span>

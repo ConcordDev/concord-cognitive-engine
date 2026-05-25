@@ -73,7 +73,7 @@ export function CodeWorkbenchSection() {
           {nav === 'git'      && <GitPanel projectId={projectId} onChanged={refreshStatus} />}
           {nav === 'agent'    && <AgentComposerPanel projectId={projectId} />}
           {nav === 'debug'    && <RunPanel projectId={projectId} onOpen={openFile} />}
-          {nav === 'settings' && <div className="p-3 text-xs text-gray-500 italic">BYOK model selector lives in /settings — Cmd-, opens it.</div>}
+          {nav === 'settings' && <div className="p-3 text-xs text-gray-400 italic">BYOK model selector lives in /settings — Cmd-, opens it.</div>}
         </>
       }
       editor={

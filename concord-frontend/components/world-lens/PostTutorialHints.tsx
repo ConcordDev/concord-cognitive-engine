@@ -96,20 +96,20 @@ export default function PostTutorialHints() {
           <button
             type="button"
             onClick={dismissCurrent}
-            className="text-gray-500 hover:text-white"
+            className="text-gray-400 hover:text-white"
             aria-label="Dismiss this hint"
           >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-gray-500 font-mono">
+          <span className="text-[10px] text-gray-400 font-mono">
             {currentIdx + 1} / {remaining.length}
           </span>
           <button
             type="button"
             onClick={dismissAll}
-            className="text-[10px] text-gray-500 hover:text-rose-300"
+            className="text-[10px] text-gray-400 hover:text-rose-300"
           >
             stop tips
           </button>

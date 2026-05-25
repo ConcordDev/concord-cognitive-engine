@@ -121,7 +121,7 @@ const STATUS_COLORS: Record<string, string> = {
   planning: 'text-blue-400 bg-blue-400/10', active: 'text-green-400 bg-green-400/10',
   completed: 'text-gray-400 bg-gray-400/10', suspended: 'text-red-400 bg-red-400/10',
   operational: 'text-green-400 bg-green-400/10', maintenance: 'text-orange-400 bg-orange-400/10',
-  deployed: 'text-cyan-400 bg-cyan-400/10', decommissioned: 'text-gray-500 bg-gray-500/10',
+  deployed: 'text-cyan-400 bg-cyan-400/10', decommissioned: 'text-gray-400 bg-gray-500/10',
   garrison: 'text-blue-400 bg-blue-400/10', transit: 'text-yellow-400 bg-yellow-400/10',
   leave: 'text-purple-400 bg-purple-400/10',
 };
@@ -257,7 +257,7 @@ export default function DefenseLensPage() {
         {MODE_TABS.map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setActiveMode(key)}
             className={cn('flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300')}>
+              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300')}>
             <Icon className="w-4 h-4" /> {label}
           </button>
         ))}
@@ -286,7 +286,7 @@ export default function DefenseLensPage() {
       {/* Search */}
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${currentType.toLowerCase()}s...`}
@@ -361,27 +361,27 @@ export default function DefenseLensPage() {
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button onClick={() => handleAction(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-cyan-400" title="Run AI analysis">
+                <button onClick={() => handleAction(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-cyan-400" title="Run AI analysis">
                   <Zap className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => handleUpdate(item.id, item.data as ArtifactDataUnion)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-blue-400" title="Update">
+                <button onClick={() => handleUpdate(item.id, item.data as ArtifactDataUnion)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-blue-400" title="Update">
                   <Eye className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400" aria-label="Delete">
+                <button onClick={() => remove(item.id)} className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-red-400" aria-label="Delete">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
             {!!(item.data as Record<string, unknown>).objective && (
-              <p className="text-xs text-gray-500 mt-2">{String((item.data as Record<string, unknown>).objective)}</p>
+              <p className="text-xs text-gray-400 mt-2">{String((item.data as Record<string, unknown>).objective)}</p>
             )}
             {!!(item.data as Record<string, unknown>).summary && (
-              <p className="text-xs text-gray-500 mt-2">{String((item.data as Record<string, unknown>).summary)}</p>
+              <p className="text-xs text-gray-400 mt-2">{String((item.data as Record<string, unknown>).summary)}</p>
             )}
           </motion.div>
         ))}
         {items.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-400">
             <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p>No {currentType.toLowerCase()}s found</p>
             <p className="text-xs mt-1">Create your first {currentType.toLowerCase()} to get started</p>
@@ -427,7 +427,7 @@ function StatCard({ label, value, total, color }: { label: string; value: number
     <div data-lens-theme="defense" className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
       <p className={`text-2xl font-bold text-${color}-400`}>{value}</p>
       <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-xs text-gray-600">of {total} total</p>
+      <p className="text-xs text-gray-400">of {total} total</p>
     </div>
   );
 }

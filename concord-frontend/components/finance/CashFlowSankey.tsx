@@ -86,11 +86,11 @@ export function CashFlowSankey() {
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : !sankey || (sankey.income === 0 && sankey.totalSpend === 0) ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">
+        <div className="px-3 py-10 text-center text-xs text-gray-400">
           <Workflow className="w-6 h-6 mx-auto mb-2 opacity-30" />
           No cash-flow data yet. Add transactions in the feed to see your money flow.
         </div>
@@ -155,10 +155,10 @@ export function CashFlowSankey() {
           {trend && trend.series.length >= 1 && (
             <div className="px-3 py-3">
               <div className="flex items-center justify-between mb-2 px-1">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500">
+                <span className="text-[10px] uppercase tracking-wider text-gray-400">
                   Month-over-month trend
                 </span>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-400">
                   avg net ${trend.avgNet.toLocaleString()}/mo
                 </span>
               </div>

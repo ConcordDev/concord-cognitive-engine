@@ -116,17 +116,17 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
   }, [selectedIdx]);
 
   if (loading) {
-    return <p className="text-xs text-zinc-500 py-6 text-center">Rendering timeline…</p>;
+    return <p className="text-xs text-zinc-400 py-6 text-center">Rendering timeline…</p>;
   }
   if (!data) {
-    return <p className="text-xs text-zinc-500 py-6 text-center">No data yet — select a timeline.</p>;
+    return <p className="text-xs text-zinc-400 py-6 text-center">No data yet — select a timeline.</p>;
   }
 
   return (
     <div className="space-y-3">
       {/* range + track controls */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] text-zinc-500">Range</span>
+        <span className="text-[11px] text-zinc-400">Range</span>
         <input
           value={fromYear} onChange={(e) => setFromYear(e.target.value)}
           placeholder="from yr" inputMode="numeric"
@@ -149,7 +149,7 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
         <div className="ml-auto flex items-center gap-1">
           <button onClick={() => setZoom((z) => Math.max(1, z - 0.5))} title="Zoom out"
             className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><ZoomOut className="w-3.5 h-3.5" /></button>
-          <span className="text-[10px] text-zinc-500 w-8 text-center">{zoom.toFixed(1)}×</span>
+          <span className="text-[10px] text-zinc-400 w-8 text-center">{zoom.toFixed(1)}×</span>
           <button onClick={() => setZoom((z) => Math.min(8, z + 0.5))} title="Zoom in"
             className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300"><ZoomIn className="w-3.5 h-3.5" /></button>
           <button onClick={() => { setZoom(1); setFromYear(''); setToYear(''); setTrackFilter(''); }}
@@ -158,7 +158,7 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
       </div>
 
       {positioned.length === 0 ? (
-        <div className="border border-dashed border-zinc-800 rounded-lg py-10 text-center text-xs text-zinc-500">
+        <div className="border border-dashed border-zinc-800 rounded-lg py-10 text-center text-xs text-zinc-400">
           No dated events in this range yet.
         </div>
       ) : (
@@ -203,7 +203,7 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
                   <span className={cn(
                     'absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px]',
                     i % 2 === 0 ? 'bottom-3' : 'top-3',
-                    i === selectedIdx ? 'text-amber-300 font-semibold' : 'text-zinc-500 group-hover:text-zinc-200',
+                    i === selectedIdx ? 'text-amber-300 font-semibold' : 'text-zinc-400 group-hover:text-zinc-200',
                   )}>
                     {e.dateLabel}
                   </span>
@@ -226,7 +226,7 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
                   className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
               </div>
               {selected.place && (
-                <p className="text-[11px] text-zinc-500 flex items-center gap-1 mb-1">
+                <p className="text-[11px] text-zinc-400 flex items-center gap-1 mb-1">
                   <MapPin className="w-3 h-3" /> {selected.place}
                   {selected.lat != null && selected.lng != null && (
                     <span className="font-mono text-zinc-600"> ({selected.lat.toFixed(2)}, {selected.lng.toFixed(2)})</span>
@@ -251,7 +251,7 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
                         </a>
                       )}
                       {(m.caption || m.credit) && (
-                        <figcaption className="px-1.5 py-1 text-[9px] text-zinc-500">
+                        <figcaption className="px-1.5 py-1 text-[9px] text-zinc-400">
                           {m.caption}{m.credit ? ` · ${m.credit}` : ''}
                         </figcaption>
                       )}
@@ -259,11 +259,11 @@ export function VisualTimeline({ timelineId }: { timelineId: string }) {
                   ))}
                 </div>
               ) : (
-                <p className="text-[10px] text-zinc-600 italic">No media attached to this event.</p>
+                <p className="text-[10px] text-zinc-400 italic">No media attached to this event.</p>
               )}
             </div>
           )}
-          <p className="text-[10px] text-zinc-600 text-center">
+          <p className="text-[10px] text-zinc-400 text-center">
             {positioned.length} event{positioned.length !== 1 ? 's' : ''}
             {span ? ` · ${span.minYear} → ${span.maxYear}` : ''}
           </p>

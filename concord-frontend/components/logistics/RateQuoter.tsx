@@ -49,7 +49,7 @@ export function RateQuoter() {
       <div className="max-h-80 overflow-y-auto">
         {error && <div className="px-3 py-4 text-center text-xs text-rose-300">{error}</div>}
         {!loading && !error && quotes.length === 0 && (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><DollarSign className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter origin + destination above to compare carriers.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><DollarSign className="w-6 h-6 mx-auto mb-2 opacity-30" />Enter origin + destination above to compare carriers.</div>
         )}
         {quotes.length > 0 && (
           <ul className="divide-y divide-white/5">
@@ -64,7 +64,7 @@ export function RateQuoter() {
                       {q.guaranteed && <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 inline-flex items-center gap-0.5"><Shield className="w-2.5 h-2.5" />Guaranteed</span>}
                       {i === 0 && <span className="text-[10px] uppercase tracking-wider text-emerald-300">Best price</span>}
                     </div>
-                    <div className="text-[11px] text-gray-500 inline-flex items-center gap-2 mt-0.5">
+                    <div className="text-[11px] text-gray-400 inline-flex items-center gap-2 mt-0.5">
                       <Clock className="w-3 h-3" />
                       <span>{q.transitDays} day{q.transitDays === 1 ? '' : 's'} transit</span>
                     </div>

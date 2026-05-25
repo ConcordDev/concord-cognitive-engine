@@ -43,7 +43,7 @@ export function BeneficiaryPactCard({ pact, onChanged }: BeneficiaryPactCardProp
             <Gift className="h-3.5 w-3.5 text-amber-400" />
             {myPayout} ⚡ ← {pact.insuredUserId.slice(0, 16)}
           </p>
-          <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+          <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
             {mine ? `${mine.sharePct}% of ${pact.payoutSparks} ⚡` : ''} · expires{' '}
             {fmtDate(pact.expiresAt)} · {pact.status}
           </p>

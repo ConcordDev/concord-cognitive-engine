@@ -35,10 +35,10 @@ const btn = 'inline-flex items-center justify-center gap-1 bg-emerald-600 hover:
 const btnGhost = 'inline-flex items-center gap-1 px-2.5 py-1 rounded border border-white/10 text-xs text-gray-300 hover:text-white hover:bg-white/5';
 
 function Spin() {
-  return <div className="flex items-center justify-center py-8 text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  return <div className="flex items-center justify-center py-8 text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 }
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-gray-500 italic py-2">{text}</p>;
+  return <p className="text-[11px] text-gray-400 italic py-2">{text}</p>;
 }
 function Err({ text }: { text: string }) {
   return <p className="text-[11px] text-rose-300 flex items-start gap-1 py-1"><AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />{text}</p>;
@@ -175,7 +175,7 @@ function BankFeedTab() {
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <p className="text-[10px] text-gray-500 mt-0.5">
+              <p className="text-[10px] text-gray-400 mt-0.5">
                 {i.lastSyncAt
                   ? `Last sync ${i.lastSyncAt.slice(0, 10)} · ${i.lastSyncCount} txn(s)`
                   : 'Never synced'}
@@ -306,7 +306,7 @@ function CurrencyTab() {
             {reval.lines.map((l, i) => (
               <div key={i} className="flex items-center gap-2 text-[11px] bg-black/30 rounded px-2 py-1">
                 <span className="text-gray-300 flex-1 truncate">{l.label} ({l.currency})</span>
-                <span className="text-gray-500 font-mono">{money(l.bookedValue)} → {money(l.currentValue)}</span>
+                <span className="text-gray-400 font-mono">{money(l.bookedValue)} → {money(l.currentValue)}</span>
                 <span className={l.gainLoss >= 0 ? 'text-emerald-400 font-mono' : 'text-rose-400 font-mono'}>
                   {l.gainLoss >= 0 ? '+' : ''}{money(l.gainLoss)}
                 </span>
@@ -390,7 +390,7 @@ function DimensionsTab() {
         <ul className="grid grid-cols-2 gap-1.5">
           {dims.map((d) => (
             <li key={d.id} className="flex items-center gap-1.5 bg-black/20 border border-white/10 rounded px-2 py-1">
-              <span className="text-[9px] uppercase text-gray-500 bg-black/40 rounded px-1">{d.kind}</span>
+              <span className="text-[9px] uppercase text-gray-400 bg-black/40 rounded px-1">{d.kind}</span>
               <span className="text-xs text-gray-200 flex-1 truncate">{d.name}</span>
               <button type="button" onClick={() => del(d.id)} className="text-gray-600 hover:text-rose-400">
                 <Trash2 className="w-3 h-3" />
@@ -413,7 +413,7 @@ function DimensionsTab() {
         {segments && (segments.length === 0 ? <Empty text="No journal activity in this period." /> : (
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="text-gray-500 uppercase text-[9px] tracking-wider">
+              <tr className="text-gray-400 uppercase text-[9px] tracking-wider">
                 <th className="text-left pb-1">Segment</th>
                 <th className="text-right pb-1">Revenue</th>
                 <th className="text-right pb-1">Gross</th>
@@ -556,7 +556,7 @@ function PayrollTaxTab() {
 function Row({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-gray-500">{k}</span>
+      <span className="text-gray-400">{k}</span>
       <span className={strong ? 'font-mono font-semibold text-gray-100' : 'font-mono text-gray-300'}>{v}</span>
     </div>
   );
@@ -665,7 +665,7 @@ function RecurringBillsTab() {
                 {b.active ? 'active' : 'paused'}
               </span>
               <span className="text-xs text-gray-200 flex-1 truncate">{b.vendorName}</span>
-              <span className="text-[10px] text-gray-500">{b.cadence} · next {b.nextRunAt}</span>
+              <span className="text-[10px] text-gray-400">{b.cadence} · next {b.nextRunAt}</span>
               <span className="text-xs font-mono text-gray-300">{money(b.total)}</span>
               <button type="button" onClick={() => toggle(b.id)} className="text-[10px] text-gray-400 hover:text-gray-200">
                 {b.active ? 'Pause' : 'Resume'}
@@ -730,7 +730,7 @@ function ReceiptTab() {
         <h3 className="text-xs font-semibold text-gray-300 flex items-center gap-1">
           <ScanLine className="w-3.5 h-3.5" /> Receipt OCR text
         </h3>
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-gray-400">
           Paste the raw text from the mobile receipt scan (on-device OCR). Concord parses the real text — it never invents amounts.
         </p>
         <textarea
@@ -810,12 +810,12 @@ function AuditLogTab() {
           {entries.map((e) => (
             <li key={e.id} className="bg-black/20 border border-white/10 rounded p-2">
               <div className="flex items-center gap-2">
-                <History className="w-3 h-3 text-gray-500 shrink-0" />
+                <History className="w-3 h-3 text-gray-400 shrink-0" />
                 <span className="text-[10px] font-mono text-emerald-400">{e.action}</span>
-                <span className="text-[10px] text-gray-500 ml-auto">{e.at.replace('T', ' ').slice(0, 19)}</span>
+                <span className="text-[10px] text-gray-400 ml-auto">{e.at.replace('T', ' ').slice(0, 19)}</span>
               </div>
               <p className="text-[11px] text-gray-200 mt-0.5">{e.summary}</p>
-              <p className="text-[9px] text-gray-600">by {e.actor} · {e.entityType}</p>
+              <p className="text-[9px] text-gray-400">by {e.actor} · {e.entityType}</p>
             </li>
           ))}
         </ul>
@@ -877,7 +877,7 @@ function EfilingTab() {
           <button type="button" onClick={() => { setMode('w2'); setResult(null); }}
             className={mode === 'w2' ? btn : btnGhost}>W-2</button>
         </div>
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-gray-400">
           {mode === '1099'
             ? 'Builds an IRS FIRE-format file (Pub. 1220) from paid 1099 vendors.'
             : 'Builds an SSA EFW2-format file (Pub. 42-007) from this year\'s payroll.'}

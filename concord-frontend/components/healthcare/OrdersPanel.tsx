@@ -28,7 +28,7 @@ const KIND_ICON: Record<string, typeof Pill> = {
 };
 const STATUS_COLOR: Record<string, string> = {
   placed: 'text-sky-300', active: 'text-emerald-300', 'in-progress': 'text-amber-300',
-  completed: 'text-gray-400', resulted: 'text-cyan-300', discontinued: 'text-gray-500', cancelled: 'text-rose-400',
+  completed: 'text-gray-400', resulted: 'text-cyan-300', discontinued: 'text-gray-400', cancelled: 'text-rose-400',
 };
 
 export function OrdersPanel({ patientId }: { patientId: string }) {
@@ -138,7 +138,7 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
                       {i.severity}
                     </span>
                     <span className="text-white">{i.a} ↔ {i.b}</span>
-                    <span className="text-[10px] text-gray-500 ml-1">({i.type})</span>
+                    <span className="text-[10px] text-gray-400 ml-1">({i.type})</span>
                     <div className="text-gray-400 mt-0.5">{i.note}</div>
                   </li>
                 ))}
@@ -153,12 +153,12 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ClipboardListIcon />
           <span className="text-sm font-semibold text-gray-200">Orders</span>
-          <span className="text-[10px] text-gray-500">{orders.length}</span>
+          <span className="text-[10px] text-gray-400">{orders.length}</span>
         </header>
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : orders.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No orders for this patient yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No orders for this patient yet.</div>
         ) : (
           <div className="divide-y divide-white/5">
             {orders.map((o) => {
@@ -172,14 +172,14 @@ export function OrdersPanel({ patientId }: { patientId: string }) {
                   {o.priority !== 'routine' && (
                     <span className="text-[9px] uppercase font-bold px-1 rounded bg-rose-500/20 text-rose-300">{o.priority}</span>
                   )}
-                  <span className="text-[10px] text-gray-600 font-mono">{o.number}</span>
+                  <span className="text-[10px] text-gray-400 font-mono">{o.number}</span>
                   <div className="flex-1" />
                   <select value={o.status} onChange={(e) => setStatus(o.id, e.target.value)} disabled={closed}
                     className={cn('text-[10px] bg-transparent border border-white/10 rounded px-1 py-0.5 disabled:opacity-50', STATUS_COLOR[o.status])}>
                     {STATUSES.map((st) => <option key={st} value={st} className="bg-[#0d1117]">{st}</option>)}
                   </select>
                   {!closed && (
-                    <button type="button" onClick={() => cancel(o.id)} className="text-gray-500 hover:text-rose-300">
+                    <button type="button" onClick={() => cancel(o.id)} className="text-gray-400 hover:text-rose-300">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   )}

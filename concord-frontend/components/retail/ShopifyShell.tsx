@@ -68,7 +68,7 @@ export function ShopifyShell({
       {/* Left rail (Shopify admin nav) */}
       <aside className="w-48 bg-[#1a1a1a] text-gray-200 flex-shrink-0 flex flex-col">
         <div className="px-4 py-3 border-b border-white/10">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Store</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Store</div>
           <div className="text-sm font-semibold text-white truncate">{storeName}</div>
         </div>
         <nav className="flex-1 py-2">
@@ -103,7 +103,7 @@ export function ShopifyShell({
         <section className="rounded-lg border border-gray-200 p-4">
           <header className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-900">Sales · last 7 days</h3>
-            <span className="text-xs text-gray-500">{fmtMoney(revenue7dSeries.reduce((s, v) => s + v, 0))}</span>
+            <span className="text-xs text-gray-400">{fmtMoney(revenue7dSeries.reduce((s, v) => s + v, 0))}</span>
           </header>
           <RevenueChart series={revenue7dSeries} />
         </section>
@@ -115,10 +115,10 @@ export function ShopifyShell({
             <span className="text-xs text-emerald-700 hover:text-emerald-800 cursor-pointer">View all →</span>
           </header>
           {recentOrders.length === 0 ? (
-            <div className="p-6 text-center text-sm text-gray-500">No orders yet</div>
+            <div className="p-6 text-center text-sm text-gray-400">No orders yet</div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs text-gray-600">
+              <thead className="bg-gray-50 text-xs text-gray-400">
                 <tr><th className="text-left px-4 py-1.5">Order</th><th className="text-left">Customer</th><th className="text-right">Items</th><th className="text-right">Total</th><th className="text-right pr-4">Status</th></tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -152,13 +152,13 @@ function MetricCard({ icon: Icon, label, value, caption, tone }: { icon: typeof 
   return (
     <div className="rounded-lg border border-gray-200 p-3 bg-white">
       <div className="flex items-center gap-2 mb-1">
-        <Icon className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
-        <span className="text-xs text-gray-600">{label}</span>
+        <Icon className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
+        <span className="text-xs text-gray-400">{label}</span>
         {tone === 'positive' && <ArrowUpRight className="w-3 h-3 text-emerald-600 ml-auto" />}
         {tone === 'negative' && <ArrowDownRight className="w-3 h-3 text-rose-600 ml-auto" />}
       </div>
       <div className="text-xl font-semibold text-gray-900 tabular-nums">{value}</div>
-      <div className="text-[10px] text-gray-500 uppercase tracking-wider">{caption}</div>
+      <div className="text-[10px] text-gray-400 uppercase tracking-wider">{caption}</div>
     </div>
   );
 }

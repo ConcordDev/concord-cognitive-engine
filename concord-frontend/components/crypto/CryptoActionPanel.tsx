@@ -203,7 +203,7 @@ export function CryptoActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -214,7 +214,7 @@ export function CryptoActionPanel() {
           <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Portfolio</div>
             <div className="text-2xl font-bold text-emerald-300">${portfolioResult.totalUsd?.toLocaleString()}</div>
-            <div className="text-[10px] text-zinc-500">top: {portfolioResult.topAllocation} · diversification {portfolioResult.diversificationScore} · risk {portfolioResult.concentrationRisk}</div>
+            <div className="text-[10px] text-zinc-400">top: {portfolioResult.topAllocation} · diversification {portfolioResult.diversificationScore} · risk {portfolioResult.concentrationRisk}</div>
           </div>
         )}
         {tokens.length > 0 && (
@@ -227,14 +227,14 @@ export function CryptoActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Swap quote</div>
             <div className="text-sm font-mono text-purple-200">{swapResult.fromAmount} {fromToken} → <span className="text-emerald-300">{swapResult.toAmount?.toFixed(6)} {toToken}</span></div>
-            {swapResult.priceImpact != null && <div className="text-[10px] text-zinc-500">price impact {swapResult.priceImpact}% · route {swapResult.route?.join(' → ')}</div>}
+            {swapResult.priceImpact != null && <div className="text-[10px] text-zinc-400">price impact {swapResult.priceImpact}% · route {swapResult.route?.join(' → ')}</div>}
           </div>
         )}
         {gasResult && (
           <div className={cn('rounded-md border p-2.5', gasResult.congestion === 'high' ? 'border-rose-500/40 bg-rose-500/5' : gasResult.congestion === 'medium' ? 'border-amber-500/40 bg-amber-500/5' : 'border-emerald-500/40 bg-emerald-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">{gasNetwork} gas · {gasResult.congestion}</div>
             <div className="text-2xl font-bold text-orange-300">{gasResult.gwei} <span className="text-xs text-zinc-400">gwei</span></div>
-            {gasResult.usdCost != null && <div className="text-[10px] text-zinc-500">~${gasResult.usdCost.toFixed(2)} per swap</div>}
+            {gasResult.usdCost != null && <div className="text-[10px] text-zinc-400">~${gasResult.usdCost.toFixed(2)} per swap</div>}
           </div>
         )}
       </div>

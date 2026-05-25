@@ -79,7 +79,7 @@ export function BillTracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Bill tracker · 119th Congress</span>
-        <span className="ml-auto text-[10px] text-gray-500">{watched.length} watching</span>
+        <span className="ml-auto text-[10px] text-gray-400">{watched.length} watching</span>
       </header>
       <div className="px-3 py-2 border-b border-white/10 flex items-center gap-2 flex-wrap text-xs">
         <input
@@ -105,15 +105,15 @@ export function BillTracker() {
       </div>
       <div className="max-h-[600px] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading bills…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading bills…</div>
         ) : visible.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">No bills match.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400">No bills match.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {visible.map(b => (
               <li key={b.id} className="px-3 py-3 hover:bg-white/[0.03]">
                 <div className="flex items-start gap-3">
-                  <button onClick={() => toggleWatch(b.id)} className="mt-1 text-gray-500 hover:text-yellow-400" title={watched.includes(b.id) ? 'Unwatch' : 'Watch'}>
+                  <button onClick={() => toggleWatch(b.id)} className="mt-1 text-gray-400 hover:text-yellow-400" title={watched.includes(b.id) ? 'Unwatch' : 'Watch'}>
                     {watched.includes(b.id) ? <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" /> : <StarOff className="w-4 h-4" />}
                   </button>
                   <div className="flex-1 min-w-0">
@@ -128,7 +128,7 @@ export function BillTracker() {
                     </div>
                     <div className="text-sm text-white">{b.title}</div>
                     {b.summary && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{b.summary}</p>}
-                    <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-3 mt-1 text-[10px] text-gray-400">
                       {b.sponsor && <span>{b.sponsor.name} ({b.sponsor.party}-{b.sponsor.state})</span>}
                       {b.cosponsors != null && <span>{b.cosponsors} co-sponsors</span>}
                       {b.latestActionDate && <span>Last action {new Date(b.latestActionDate).toLocaleDateString()}</span>}

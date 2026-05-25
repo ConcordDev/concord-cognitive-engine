@@ -207,7 +207,7 @@ export function PhotographyActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -218,8 +218,8 @@ export function PhotographyActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Exposure · EV {expResult.ev}</div>
             <div className="text-2xl font-bold text-amber-300">{expResult.shutterSpeed}</div>
-            <div className="text-[10px] text-zinc-500">ISO {expResult.iso} · {expResult.aperture}</div>
-            <div className="text-[10px] text-zinc-500">DoF: {expResult.depthOfField} · {expResult.motionBlur}</div>
+            <div className="text-[10px] text-zinc-400">ISO {expResult.iso} · {expResult.aperture}</div>
+            <div className="text-[10px] text-zinc-400">DoF: {expResult.depthOfField} · {expResult.motionBlur}</div>
             <div className="text-[10px] text-amber-200">handheld: {expResult.handheld}</div>
           </div>
         )}
@@ -227,7 +227,7 @@ export function PhotographyActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Composition · {compResult.strength}</div>
             <div className="text-2xl font-bold text-green-300">{compResult.score}<span className="text-xs text-zinc-400">/100</span></div>
-            <div className="text-[10px] text-zinc-500">applied {compResult.rulesApplied.length}</div>
+            <div className="text-[10px] text-zinc-400">applied {compResult.rulesApplied.length}</div>
             <div className="text-[10px] text-green-200">suggest: {compResult.suggestions.join(', ')}</div>
           </div>
         )}
@@ -244,7 +244,7 @@ export function PhotographyActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Print · {printResult.quality}</div>
             <div className="text-2xl font-bold text-purple-300">{printResult.megapixels} <span className="text-xs text-zinc-400">MP</span></div>
-            <div className="text-[10px] text-zinc-500">res {printResult.resolution}</div>
+            <div className="text-[10px] text-zinc-400">res {printResult.resolution}</div>
             <div className="text-[10px] text-purple-200">@300dpi: {printResult.maxPrintAt300DPI}</div>
             <div className="text-[10px] text-purple-200">@150dpi: {printResult.maxPrintAt150DPI}</div>
           </div>

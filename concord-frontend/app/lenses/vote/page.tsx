@@ -250,28 +250,28 @@ export default function VoteLensPage() {
           <Scale className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{stats.active}</p>
-            <p className="text-xs text-gray-500">Active Proposals</p>
+            <p className="text-xs text-gray-400">Active Proposals</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <TrendingUp className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{stats.totalVotes}</p>
-            <p className="text-xs text-gray-500">Votes Cast</p>
+            <p className="text-xs text-gray-400">Votes Cast</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Percent className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{stats.passRate}%</p>
-            <p className="text-xs text-gray-500">Pass Rate</p>
+            <p className="text-xs text-gray-400">Pass Rate</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <Users className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{stats.avgParticipation}</p>
-            <p className="text-xs text-gray-500">Avg Participation</p>
+            <p className="text-xs text-gray-400">Avg Participation</p>
           </div>
         </motion.div>
       </div>
@@ -341,9 +341,9 @@ export default function VoteLensPage() {
           <div className="space-y-4">
             {filteredProposals.length === 0 && (
               <div className="panel p-8 text-center">
-                <Scale className="w-8 h-8 text-gray-500 mx-auto mb-3" />
+                <Scale className="w-8 h-8 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-400">No proposals found.</p>
-                <p className="text-sm text-gray-500 mt-1">Create the first proposal to get started.</p>
+                <p className="text-sm text-gray-400 mt-1">Create the first proposal to get started.</p>
               </div>
             )}
             {filteredProposals.map((proposal, index) => {
@@ -366,7 +366,7 @@ export default function VoteLensPage() {
                         </span>
                       </div>
                       <p className="text-sm text-gray-400 line-clamp-2">{proposal.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                         <span>By {proposal.proposer}</span>
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -411,7 +411,7 @@ export default function VoteLensPage() {
                       )}
                     </div>
                     {proposal.votesAbstain > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">{proposal.votesAbstain} abstained</p>
+                      <p className="text-xs text-gray-400 mt-1">{proposal.votesAbstain} abstained</p>
                     )}
                   </div>
 
@@ -438,7 +438,7 @@ export default function VoteLensPage() {
                       </div>
                     )}
                     {!quorumMet && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-xs text-gray-400 whitespace-nowrap">
                         <AlertCircle className="w-3 h-3" />
                         Need {proposal.threshold - totalVotes} more
                       </div>
@@ -648,7 +648,7 @@ function CreateProposalModal({
             onChange={(e) => setTitle(e.target.value)}
             maxLength={120}
           />
-          <p className="text-xs text-gray-500 mt-1">{title.length}/120</p>
+          <p className="text-xs text-gray-400 mt-1">{title.length}/120</p>
         </div>
 
         <div>
@@ -660,7 +660,7 @@ function CreateProposalModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <p className="text-xs text-gray-500 mt-1">{description.length} characters (min 20)</p>
+          <p className="text-xs text-gray-400 mt-1">{description.length} characters (min 20)</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -773,19 +773,19 @@ function DiscussionThread({
       <div className="py-3">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-medium">{comment.author || 'Anonymous'}</span>
-          <span className="text-xs text-gray-500">{formatDate(comment.createdAt)}</span>
+          <span className="text-xs text-gray-400">{formatDate(comment.createdAt)}</span>
         </div>
         <p className="text-sm text-gray-300">{comment.text}</p>
         <div className="flex items-center gap-3 mt-2">
-          <button onClick={() => reactComment.mutate({ commentId: comment.id, reaction: 'upvote' })} disabled={reactComment.isPending} className="flex items-center gap-1 text-xs text-gray-500 hover:text-neon-green transition-colors disabled:opacity-50">
+          <button onClick={() => reactComment.mutate({ commentId: comment.id, reaction: 'upvote' })} disabled={reactComment.isPending} className="flex items-center gap-1 text-xs text-gray-400 hover:text-neon-green transition-colors disabled:opacity-50">
             <ThumbsUp className="w-3 h-3" /> {comment.upvotes || 0}
           </button>
-          <button onClick={() => reactComment.mutate({ commentId: comment.id, reaction: 'downvote' })} disabled={reactComment.isPending} className="flex items-center gap-1 text-xs text-gray-500 hover:text-neon-pink transition-colors disabled:opacity-50">
+          <button onClick={() => reactComment.mutate({ commentId: comment.id, reaction: 'downvote' })} disabled={reactComment.isPending} className="flex items-center gap-1 text-xs text-gray-400 hover:text-neon-pink transition-colors disabled:opacity-50">
             <ThumbsDown className="w-3 h-3" /> {comment.downvotes || 0}
           </button>
           <button
             onClick={() => setReplyTo(comment.id)}
-            className="text-xs text-gray-500 hover:text-neon-blue transition-colors"
+            className="text-xs text-gray-400 hover:text-neon-blue transition-colors"
           >
             Reply
           </button>
@@ -798,7 +798,7 @@ function DiscussionThread({
   return (
     <div className="mt-4 pt-4 border-t border-lattice-border space-y-2">
       {displayComments.length === 0 && (
-        <p className="text-sm text-gray-500 text-center py-4">No comments yet. Start the discussion.</p>
+        <p className="text-sm text-gray-400 text-center py-4">No comments yet. Start the discussion.</p>
       )}
       {displayComments.map((c) => renderComment(c))}
 
@@ -938,7 +938,7 @@ function ResultsDashboard({
             Recent Decisions
           </h3>
           {recentDecisions.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">No decisions yet.</p>
+            <p className="text-sm text-gray-400 text-center py-4">No decisions yet.</p>
           ) : (
             <div className="space-y-3">
               {recentDecisions.map((d) => (
@@ -946,7 +946,7 @@ function ResultsDashboard({
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${d.status === 'passed' ? 'bg-neon-green' : 'bg-neon-pink'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{d.title}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {formatDate(d.createdAt)} &middot; {d.votesFor} for, {d.votesAgainst} against
                     </p>
                   </div>
@@ -968,7 +968,7 @@ function ResultsDashboard({
             Top Contributors
           </h3>
           {contributorMap.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">No contributors yet.</p>
+            <p className="text-sm text-gray-400 text-center py-4">No contributors yet.</p>
           ) : (
             <div className="space-y-3">
               {contributorMap.map(([name, count], i) => (

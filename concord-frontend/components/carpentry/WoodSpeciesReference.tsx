@@ -59,7 +59,7 @@ export function WoodSpeciesReference() {
         ))}
       </div>
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Looking up {busy}…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Looking up {busy}…</div>}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {all.map(([k, v]) => (
           <a key={k} href={v.content_urls?.desktop?.page} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3 hover:border-cyan-500/40">
@@ -71,7 +71,7 @@ export function WoodSpeciesReference() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-white">{v.title}</h3>
-                  <ExternalLink className="h-3 w-3 text-zinc-500" />
+                  <ExternalLink className="h-3 w-3 text-zinc-400" />
                 </div>
                 {v.description && <p className="text-[10px] uppercase tracking-wider text-cyan-300/80">{v.description}</p>}
                 <p className="mt-1 line-clamp-4 text-[11px] text-zinc-300">{v.extract}</p>
@@ -80,7 +80,7 @@ export function WoodSpeciesReference() {
           </a>
         ))}
         {all.length === 0 && !load.isPending && (
-          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Pick a species above to load real reference data.</div>
+          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Pick a species above to load real reference data.</div>
         )}
       </div>
     </div>

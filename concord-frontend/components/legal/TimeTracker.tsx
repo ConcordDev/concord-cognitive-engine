@@ -108,7 +108,7 @@ export function TimeTracker() {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <Timer className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Timers</span>
-          <span className="text-[10px] text-gray-500">{timers.length} running</span>
+          <span className="text-[10px] text-gray-400">{timers.length} running</span>
         </header>
         <div className="p-3 grid grid-cols-12 gap-2 border-b border-white/10">
           <select value={draft.matterId} onChange={e => setDraft({ ...draft, matterId: e.target.value })} className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
@@ -127,7 +127,7 @@ export function TimeTracker() {
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{t.matterName}</div>
-                  <div className="text-[10px] text-gray-500 truncate">{t.description || 'No description'}</div>
+                  <div className="text-[10px] text-gray-400 truncate">{t.description || 'No description'}</div>
                 </div>
                 <div className="text-base font-mono tabular-nums text-emerald-300">{fmtElapsed(t.elapsedSec)}</div>
                 <button onClick={() => stopTimer(t.id)} className="px-2 py-1 text-[10px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1">
@@ -167,9 +167,9 @@ export function TimeTracker() {
 
         <div className="max-h-[28rem] overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+            <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
           ) : entries.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">No time entries.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400">No time entries.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {entries.slice(0, 100).map(e => (
@@ -178,10 +178,10 @@ export function TimeTracker() {
                     'text-[9px] uppercase px-1.5 py-0.5 rounded font-mono w-16 text-center',
                     e.status === 'billed' ? 'bg-gray-500/20 text-gray-300' : e.status === 'non_billable' ? 'bg-white/5 text-gray-400' : 'bg-amber-500/20 text-amber-300',
                   )}>{e.status === 'non_billable' ? 'NB' : e.status}</span>
-                  <span className="text-[10px] font-mono text-gray-500 w-20">{e.date}</span>
+                  <span className="text-[10px] font-mono text-gray-400 w-20">{e.date}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs text-white truncate">{e.description || <span className="text-gray-500 italic">(no description)</span>}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{e.matterName}</div>
+                    <div className="text-xs text-white truncate">{e.description || <span className="text-gray-400 italic">(no description)</span>}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{e.matterName}</div>
                   </div>
                   <span className="text-xs font-mono text-gray-400">{e.hours.toFixed(2)}h × ${e.rate}</span>
                   <span className="text-sm font-mono tabular-nums text-white w-20 text-right">${e.amount.toFixed(2)}</span>

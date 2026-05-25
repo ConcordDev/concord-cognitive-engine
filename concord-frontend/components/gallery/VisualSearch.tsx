@@ -70,7 +70,7 @@ export function VisualSearch() {
 
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Colour</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400">Colour</span>
           {SWATCHES.map((c) => (
             <button
               key={c} type="button"
@@ -90,7 +90,7 @@ export function VisualSearch() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Style</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400">Style</span>
           {styles.map((s) => (
             <button
               key={s} type="button"
@@ -126,7 +126,7 @@ export function VisualSearch() {
       )}
 
       {searched && !loading && !error && works.length === 0 && (
-        <div className="py-6 text-center text-[12px] text-zinc-500 italic">No matching artworks yet. Try a different colour or style.</div>
+        <div className="py-6 text-center text-[12px] text-zinc-400 italic">No matching artworks yet. Try a different colour or style.</div>
       )}
 
       {works.length > 0 && (
@@ -143,7 +143,7 @@ export function VisualSearch() {
                 <div className="w-full h-28 bg-zinc-950 rounded flex items-center justify-center"><Frame className="w-6 h-6 text-zinc-700" /></div>
               )}
               <div className="text-[10px] text-zinc-200 mt-1 line-clamp-2">{w.title}</div>
-              <div className="text-[9px] text-zinc-500">{w.artist}{w.date ? ` · ${w.date}` : ''}</div>
+              <div className="text-[9px] text-zinc-400">{w.artist}{w.date ? ` · ${w.date}` : ''}</div>
             </a>
           ))}
         </div>

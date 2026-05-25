@@ -86,7 +86,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
     <div className={cn('flex flex-col bg-[#0d1117] border border-lattice-border rounded overflow-hidden', className)}>
       <form onSubmit={onSearch} className="p-2 border-b border-white/10 flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
@@ -98,7 +98,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
           Search
         </button>
       </form>
-      <div className="grid grid-cols-12 px-3 py-1.5 border-b border-white/5 text-[10px] uppercase tracking-wider text-gray-500">
+      <div className="grid grid-cols-12 px-3 py-1.5 border-b border-white/5 text-[10px] uppercase tracking-wider text-gray-400">
         <span className="col-span-1">#</span>
         <span className="col-span-4">Token</span>
         <span className="col-span-3 text-right">Price</span>
@@ -107,13 +107,13 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
       </div>
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading market data…
           </div>
         ) : error ? (
           <div className="px-3 py-6 text-xs text-red-400 text-center">{error}</div>
         ) : visible.length === 0 ? (
-          <div className="px-3 py-10 text-xs text-gray-500 text-center">No tokens match.</div>
+          <div className="px-3 py-10 text-xs text-gray-400 text-center">No tokens match.</div>
         ) : (
           <ul>
             {visible.map(t => {
@@ -121,7 +121,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
               const up = t.change24h >= 0;
               return (
                 <li key={t.id} className="grid grid-cols-12 px-3 py-1.5 items-center hover:bg-white/[0.03] text-xs border-b border-white/5">
-                  <span className="col-span-1 text-gray-500">{t.rank ?? '·'}</span>
+                  <span className="col-span-1 text-gray-400">{t.rank ?? '·'}</span>
                   <button
                     onClick={() => onSelect?.(t)}
                     className="col-span-4 flex items-center gap-2 text-left hover:text-cyan-300"
@@ -134,7 +134,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
                     )}
                     <div className="min-w-0">
                       <div className="text-white truncate">{t.name}</div>
-                      <div className="text-[9px] text-gray-500 uppercase">{t.symbol}</div>
+                      <div className="text-[9px] text-gray-400 uppercase">{t.symbol}</div>
                     </div>
                   </button>
                   <span className="col-span-3 text-right text-white tabular-nums">${t.priceUsd?.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
@@ -148,7 +148,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
                     title={watched ? 'Remove from watchlist' : 'Add to watchlist'}
                     aria-label={watched ? 'Remove from watchlist' : 'Add to watchlist'}
                   >
-                    {watched ? <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> : <StarOff className="w-3.5 h-3.5 text-gray-500 hover:text-yellow-300" />}
+                    {watched ? <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> : <StarOff className="w-3.5 h-3.5 text-gray-400 hover:text-yellow-300" />}
                   </button>
                 </li>
               );
@@ -156,7 +156,7 @@ export function TokenSearch({ watchlist = [], onToggleWatch, onSelect, className
           </ul>
         )}
       </div>
-      <footer className="px-3 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-500">
+      <footer className="px-3 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-400">
         <span>Page {page} · {visible.length} shown</span>
         <div className="flex items-center gap-2">
           <button

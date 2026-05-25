@@ -52,25 +52,25 @@ export function RecentLensesStrip({ refreshKey }: { refreshKey: number }) {
           <button
             type="button"
             onClick={() => setMode('recent')}
-            className={`px-2 py-1 rounded ${mode === 'recent' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-500 hover:text-white'}`}
+            className={`px-2 py-1 rounded ${mode === 'recent' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-400 hover:text-white'}`}
           >
             <Clock className="w-3 h-3 inline mr-1" />Recent
           </button>
           <button
             type="button"
             onClick={() => setMode('frequent')}
-            className={`px-2 py-1 rounded ${mode === 'frequent' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-500 hover:text-white'}`}
+            className={`px-2 py-1 rounded ${mode === 'frequent' ? 'bg-neon-cyan/15 text-neon-cyan' : 'text-gray-400 hover:text-white'}`}
           >
             <TrendingUp className="w-3 h-3 inline mr-1" />Most used
           </button>
         </div>
       </div>
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading usage history…
         </div>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-gray-500">No lens history yet. Open a lens and it will appear here.</p>
+        <p className="text-xs text-gray-400">No lens history yet. Open a lens and it will appear here.</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {rows.map((row) => {
@@ -84,7 +84,7 @@ export function RecentLensesStrip({ refreshKey }: { refreshKey: number }) {
               >
                 {Icon ? <Icon className="w-3.5 h-3.5 text-neon-cyan" /> : null}
                 <span className="truncate max-w-[10rem]">{lens?.name || row.lensId}</span>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-400">
                   {mode === 'frequent' ? `${row.count}×` : relTime(row.lastAt)}
                 </span>
               </Link>

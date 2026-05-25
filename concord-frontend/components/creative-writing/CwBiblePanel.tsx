@@ -82,7 +82,7 @@ export function CwBiblePanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const shown = filter ? entries.filter((e) => e.kind === filter) : entries;
@@ -121,7 +121,7 @@ export function CwBiblePanel({ projectId }: { projectId: string }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">
           No setting entries. Build your world bible — locations, lore and items linked into scenes.
         </p>
       ) : (
@@ -135,7 +135,7 @@ export function CwBiblePanel({ projectId }: { projectId: string }) {
                   {e.title}
                   <span className={cn('ml-2 text-[9px] uppercase', KIND_COLOR[e.kind])}>{e.kind}</span>
                   {e.linkedCount > 0 && (
-                    <span className="ml-2 text-[9px] text-zinc-500">
+                    <span className="ml-2 text-[9px] text-zinc-400">
                       <Link2 className="w-2.5 h-2.5 inline mr-0.5" />{e.linkedCount} scene{e.linkedCount === 1 ? '' : 's'}
                     </span>
                   )}
@@ -154,9 +154,9 @@ export function CwBiblePanel({ projectId }: { projectId: string }) {
                     <Save className="w-3 h-3" /> {draft === e.body ? 'Saved' : 'Save'}
                   </button>
                   <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase mb-1">Appears in scenes</p>
+                    <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1">Appears in scenes</p>
                     {scenes.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 italic">No scenes to link yet.</p>
+                      <p className="text-[10px] text-zinc-400 italic">No scenes to link yet.</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {scenes.map((sc) => {

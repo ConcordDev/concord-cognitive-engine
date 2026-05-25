@@ -159,7 +159,7 @@ function WeatherTab() {
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Fetch'}
         </button>
       </div>
-      <p className="text-[10px] text-gray-600">Live data from aviationweather.gov (free, no key).</p>
+      <p className="text-[10px] text-gray-400">Live data from aviationweather.gov (free, no key).</p>
 
       {error && <p className="text-xs text-rose-300">{error}</p>}
 
@@ -171,26 +171,26 @@ function WeatherTab() {
               {r.flightCategory}
             </span>
           </div>
-          <p className="text-[10px] text-gray-500 font-mono break-all">{r.rawText}</p>
+          <p className="text-[10px] text-gray-400 font-mono break-all">{r.rawText}</p>
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div>
-              <span className="text-gray-500">Wind</span>
+              <span className="text-gray-400">Wind</span>
               <p className="text-gray-200">
                 <Wind className="w-3 h-3 inline mr-1 text-cyan-400" />
                 {r.windDir}° @ {r.windSpd}kt{r.windGust ? `G${r.windGust}` : ''}
               </p>
             </div>
             <div>
-              <span className="text-gray-500">Vis</span>
+              <span className="text-gray-400">Vis</span>
               <p className="text-gray-200">{r.visibilityMi}mi</p>
             </div>
             <div>
-              <span className="text-gray-500">Temp / Dew</span>
+              <span className="text-gray-400">Temp / Dew</span>
               <p className="text-gray-200">{r.tempC}° / {r.dewpC}°C</p>
             </div>
           </div>
           {r.clouds.length > 0 && (
-            <p className="text-[11px] text-gray-500">
+            <p className="text-[11px] text-gray-400">
               Clouds: {r.clouds.map((c) => `${c.cover} ${c.base ? `@${c.base}ft` : ''}`).join(', ')}
             </p>
           )}
@@ -247,10 +247,10 @@ function AirportsTab() {
         </button>
       </div>
 
-      <p className="text-[10px] text-gray-600">Live FAA NASR data via aviationapi.com — covers all ~20,000 US public-use airports.</p>
+      <p className="text-[10px] text-gray-400">Live FAA NASR data via aviationapi.com — covers all ~20,000 US public-use airports.</p>
 
       {available.length > 0 && !airport && (
-        <div className="text-[11px] text-gray-500">
+        <div className="text-[11px] text-gray-400">
           Suggested: {available.map((i) => (
             <button key={i} type="button" onClick={() => { setIdent(i); lookup(i); }}
               className="inline-block mr-1 mb-1 px-1.5 py-0.5 rounded border border-white/10 hover:border-sky-500/30 text-gray-300 font-mono">
@@ -266,10 +266,10 @@ function AirportsTab() {
         <div className="rounded border border-white/10 bg-black/20 p-4 space-y-3">
           <div>
             <p className="text-sm font-semibold text-gray-100">{airport.name}</p>
-            <p className="text-[11px] text-gray-500">{airport.ident} · {airport.city} · {airport.elev_ft}ft elev</p>
+            <p className="text-[11px] text-gray-400">{airport.ident} · {airport.city} · {airport.elev_ft}ft elev</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Runways</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Runways</p>
             {airport.runways.map((rw) => (
               <p key={rw.id} className="text-xs text-gray-300 font-mono">
                 {rw.id} · {rw.length.toLocaleString()}ft · {rw.surface}
@@ -277,7 +277,7 @@ function AirportsTab() {
             ))}
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Frequencies</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Frequencies</p>
             <div className="grid grid-cols-2 gap-1 text-xs font-mono text-gray-300">
               {airport.frequencies.tower && <p>TWR <span className="text-cyan-300">{airport.frequencies.tower}</span></p>}
               {airport.frequencies.ground && <p>GND <span className="text-cyan-300">{airport.frequencies.ground}</span></p>}
@@ -287,7 +287,7 @@ function AirportsTab() {
             </div>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Fuel</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Fuel</p>
             <p className="text-xs text-gray-300">{airport.fuel.join(' · ') || 'None listed'}</p>
           </div>
         </div>
@@ -327,7 +327,7 @@ function PerfTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[10px] text-gray-500">Simplified Cessna 172 performance model. Always consult POH for actual operations.</p>
+      <p className="text-[10px] text-gray-400">Simplified Cessna 172 performance model. Always consult POH for actual operations.</p>
 
       <div className="grid grid-cols-2 gap-2">
         {([
@@ -338,13 +338,13 @@ function PerfTab() {
           ['slope',       'Slope (%)',         '+ = uphill'],
         ] as const).map(([key, label, hint]) => (
           <label key={key} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
             <input type="number"
               value={inputs[key]}
               onChange={(e) => setInputs({ ...inputs, [key]: Number(e.target.value) })}
               className="px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 font-mono"
             />
-            <span className="text-[9px] text-gray-600">{hint}</span>
+            <span className="text-[9px] text-gray-400">{hint}</span>
           </label>
         ))}
       </div>
@@ -456,11 +456,11 @@ function PlansTab() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : plans.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-8">No flight plans yet.</p>
+        <p className="text-center text-xs text-gray-400 py-8">No flight plans yet.</p>
       ) : (
         plans.map((p) => (
           <div key={p.id} className="rounded border border-white/10 bg-black/20 p-3 group">
@@ -470,7 +470,7 @@ function PlansTab() {
                   {p.from} → {p.to}
                   {p.distance_nm != null && <span className="text-cyan-300 ml-2">{p.distance_nm}nm</span>}
                 </p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-400">
                   FL{(p.altitude / 100).toFixed(0)} · {p.tas}kt TAS · {p.fuelGallons}gal
                 </p>
                 {p.ete_minutes && (

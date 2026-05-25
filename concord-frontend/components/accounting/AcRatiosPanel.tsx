@@ -26,7 +26,7 @@ export function AcRatiosPanel() {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
-  if (loading || !r) return <div className="flex items-center justify-center py-10 text-gray-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+  if (loading || !r) return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
 
   const fmt = (v: number | null) => (v == null ? '—' : v.toString());
   const fmtPct = (v: number | null) => (v == null ? '—' : `${v}%`);
@@ -52,7 +52,7 @@ export function AcRatiosPanel() {
           <li>Revenue: <span className="text-gray-200">${r.totals.revenue.toLocaleString()}</span></li>
           <li>Net income: <span className="text-gray-200">${r.totals.netIncome.toLocaleString()}</span></li>
         </ul>
-        <p className="text-[10px] text-gray-600 mt-2">{r.note}</p>
+        <p className="text-[10px] text-gray-400 mt-2">{r.note}</p>
       </div>
     </div>
   );
@@ -63,7 +63,7 @@ function Card({ label, value, hint }: { label: string; value: string; hint: stri
     <div className="bg-black/30 border border-white/10 rounded-lg p-3">
       <p className="text-xl font-bold text-emerald-300">{value}</p>
       <p className="text-[11px] text-gray-300">{label}</p>
-      <p className="text-[9px] text-gray-600 mt-0.5">{hint}</p>
+      <p className="text-[9px] text-gray-400 mt-0.5">{hint}</p>
     </div>
   );
 }

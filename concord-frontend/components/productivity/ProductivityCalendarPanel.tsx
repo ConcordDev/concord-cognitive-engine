@@ -89,7 +89,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const dayMap = new Map<string, DayCell>((cal?.days || []).map((d) => [d.date, d]));
@@ -110,7 +110,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
         </button>
         <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
           <CalendarDays className="w-4 h-4 text-red-400" />
-          {cal?.month} <span className="text-[11px] font-normal text-zinc-500">· {cal?.totalScheduled} scheduled</span>
+          {cal?.month} <span className="text-[11px] font-normal text-zinc-400">· {cal?.totalScheduled} scheduled</span>
         </div>
         <button type="button" onClick={() => setAnchor((a) => shiftMonth(a, 1))}
           className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Next month">
@@ -121,7 +121,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
       {/* Grid */}
       <div className="grid grid-cols-7 gap-1">
         {WEEKDAYS.map((w) => (
-          <div key={w} className="text-[10px] text-center text-zinc-500 uppercase tracking-wide py-1">{w}</div>
+          <div key={w} className="text-[10px] text-center text-zinc-400 uppercase tracking-wide py-1">{w}</div>
         ))}
         {cells.map((c, i) => {
           if (!c) return <div key={`pad-${i}`} />;
@@ -141,7 +141,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
                 ))}
                 {c.reminders.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
               </div>
-              {items > 4 && <span className="text-[8px] text-zinc-600">+{items - 4}</span>}
+              {items > 4 && <span className="text-[8px] text-zinc-400">+{items - 4}</span>}
             </button>
           );
         })}
@@ -152,13 +152,13 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-zinc-200">{selectedCell.date}</p>
           {selectedCell.tasks.length === 0 && selectedCell.reminders.length === 0 && (
-            <p className="text-[11px] text-zinc-600 italic">Nothing scheduled.</p>
+            <p className="text-[11px] text-zinc-400 italic">Nothing scheduled.</p>
           )}
           {selectedCell.tasks.map((t) => (
             <p key={t.id} className="text-[11px] text-zinc-300 flex items-center gap-1.5">
               <span className={cn('w-1.5 h-1.5 rounded-full', PRIORITY_DOT[t.priority])} />
               <span className={cn(t.done && 'line-through text-zinc-600')}>{t.content}</span>
-              {t.dueTime && <span className="text-zinc-500">{t.dueTime}</span>}
+              {t.dueTime && <span className="text-zinc-400">{t.dueTime}</span>}
             </p>
           ))}
           {selectedCell.reminders.map((r) => (
@@ -169,7 +169,7 @@ export function ProductivityCalendarPanel({ onChange }: { onChange: () => void }
 
       {/* ICS sync */}
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Calendar sync (ICS)</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Calendar sync (ICS)</p>
         <button type="button" onClick={exportIcs} disabled={busy}
           className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 text-zinc-200 rounded-lg">
           <Download className="w-3.5 h-3.5" /> Export tasks as .ics

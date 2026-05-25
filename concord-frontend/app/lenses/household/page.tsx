@@ -653,9 +653,9 @@ export default function HouseholdLensPage() {
                       )} onClick={() => {
                         setFormData({ day, mealType: mealType.toLowerCase() });
                         openNew();
-                      }}>
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         {meals.length > 0 ? meals.map(m => (
-                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }}>
+                          <div key={m.id} className="text-xs p-1 rounded bg-neon-cyan/10 text-neon-cyan mb-1 truncate" onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             {m.title}
                           </div>
                         )) : (
@@ -748,11 +748,11 @@ export default function HouseholdLensPage() {
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1">Points</p>
+                      <p className="text-xs text-gray-400 mb-1">Points</p>
                       {renderProgressBar(stats.points, maxPoints, 'yellow-400')}
                     </div>
                     <div className="flex-1">
-                      <p className="text-xs text-gray-500 mb-1">Hours</p>
+                      <p className="text-xs text-gray-400 mb-1">Hours</p>
                       {renderProgressBar(stats.hours, maxHours, 'neon-blue')}
                     </div>
                   </div>
@@ -761,7 +761,7 @@ export default function HouseholdLensPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+          <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
             <p>No chore assignments yet. Assign chores to see point distribution.</p>
           </div>
         )}
@@ -802,7 +802,7 @@ export default function HouseholdLensPage() {
                     </div>
                     {Boolean(d.rotationOrder) && d.rotationOrder.length > 0 && (
                       <div className="mt-2">
-                        <p className="text-xs text-gray-500">Rotation: {d.rotationOrder.join(' -> ')}</p>
+                        <p className="text-xs text-gray-400">Rotation: {d.rotationOrder.join(' -> ')}</p>
                       </div>
                     )}
                   </div>
@@ -862,7 +862,7 @@ export default function HouseholdLensPage() {
                 return d.season === season && i.meta.status === 'overdue';
               }).length;
               return (
-                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)}>
+                <div key={season} className={cn(ds.panelHover, 'text-center')} onClick={() => setMaintenanceSeason(season)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <SeasonIcon className={cn('w-8 h-8 mx-auto mb-2', season === maintenanceSeason ? 'text-neon-cyan' : 'text-gray-400')} />
                   <p className="text-sm font-medium text-white">{season}</p>
                   <p className={ds.textMuted}>{count} task{count !== 1 ? 's' : ''}</p>
@@ -908,13 +908,13 @@ export default function HouseholdLensPage() {
                         </div>
                         {Boolean(d.warrantyExpiry) && (
                           <div className="mt-1">
-                            <span className={cn('text-xs', warrantyDays <= 30 ? 'text-yellow-400' : 'text-gray-500')}>
+                            <span className={cn('text-xs', warrantyDays <= 30 ? 'text-yellow-400' : 'text-gray-400')}>
                               Warranty: {d.warrantyExpiry} {warrantyDays <= 30 && warrantyDays > 0 ? '(expiring soon!)' : warrantyDays <= 0 ? '(expired)' : ''}
                             </span>
                           </div>
                         )}
                         {Boolean(d.serviceHistory) && d.serviceHistory.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">Last service: {d.serviceHistory[d.serviceHistory.length - 1]}</p>
+                          <p className="text-xs text-gray-400 mt-1">Last service: {d.serviceHistory[d.serviceHistory.length - 1]}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-1 ml-2">
@@ -1013,7 +1013,7 @@ export default function HouseholdLensPage() {
               <h3 className={cn(ds.heading3, 'mb-3 text-center')}>{monthName}</h3>
               <div className="grid grid-cols-7 gap-1">
                 {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-                  <div key={d} className="p-2 text-center text-xs text-gray-500 font-medium">{d}</div>
+                  <div key={d} className="p-2 text-center text-xs text-gray-400 font-medium">{d}</div>
                 ))}
                 {days.map((day, idx) => {
                   const dayEvents = eventsByDate[day.date] || [];
@@ -1024,19 +1024,19 @@ export default function HouseholdLensPage() {
                       !day.isCurrentMonth && 'opacity-40',
                       isToday && 'border-neon-cyan/50 bg-neon-cyan/5',
                       'hover:border-neon-cyan/30 transition-colors cursor-pointer'
-                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }}>
+                    )} onClick={() => { setFormData({ date: day.date }); openNew(); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <p className={cn('text-xs font-medium mb-1', isToday ? 'text-neon-cyan' : 'text-gray-400')}>{day.day}</p>
                       {dayEvents.slice(0, 3).map(ev => {
                         const evd = ev.data as unknown as CalendarEvent;
                         return (
                           <div key={ev.id} className="text-xs p-0.5 rounded mb-0.5 truncate cursor-pointer"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6' }}
-                            onClick={e => { e.stopPropagation(); openEdit(ev); }}>
+                            onClick={e => { e.stopPropagation(); openEdit(ev); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             {ev.title}
                           </div>
                         );
                       })}
-                      {dayEvents.length > 3 && <p className="text-xs text-gray-500">+{dayEvents.length - 3}</p>}
+                      {dayEvents.length > 3 && <p className="text-xs text-gray-400">+{dayEvents.length - 3}</p>}
                     </div>
                   );
                 })}
@@ -1055,14 +1055,14 @@ export default function HouseholdLensPage() {
                     isToday && 'border-neon-cyan/50 bg-neon-cyan/5'
                   )}>
                     <p className={cn('text-sm font-medium mb-2', isToday ? 'text-neon-cyan' : 'text-white')}>{day.slice(0, 3)}</p>
-                    <p className="text-xs text-gray-500 mb-3">{date.slice(5)}</p>
+                    <p className="text-xs text-gray-400 mb-3">{date.slice(5)}</p>
                     <div className="space-y-1.5">
                       {dayEvents.map(ev => {
                         const evd = ev.data as unknown as CalendarEvent;
                         return (
                           <div key={ev.id} className="p-1.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
                             style={{ backgroundColor: `${evd.color || '#3B82F6'}20`, color: evd.color || '#3B82F6', borderLeft: `3px solid ${evd.color || '#3B82F6'}` }}
-                            onClick={() => openEdit(ev)}>
+                            onClick={() => openEdit(ev)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             <p className="font-medium truncate">{ev.title}</p>
                             {evd.time && <p className="opacity-70">{evd.time}</p>}
                             {evd.isShared && <span className="opacity-60">Shared</span>}
@@ -1070,7 +1070,7 @@ export default function HouseholdLensPage() {
                         );
                       })}
                     </div>
-                    <button className="mt-2 w-full p-1 rounded text-xs text-gray-500 hover:text-neon-cyan hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    <button className="mt-2 w-full p-1 rounded text-xs text-gray-400 hover:text-neon-cyan hover:bg-lattice-elevated transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
                       onClick={() => { setFormData({ date }); openNew(); }} aria-label="Add">
                       <Plus className="w-3 h-3 mx-auto" />
                     </button>
@@ -1112,7 +1112,7 @@ export default function HouseholdLensPage() {
           <div className={cn(ds.panel, 'border-l-4 border-l-red-400')}>
             <p className={ds.textMuted}>Total Spent</p>
             <p className={cn(ds.heading2, 'text-red-400')}>{formatCurrency(totalSpent)}</p>
-            <p className="text-xs text-gray-500 mt-1">{formatCurrency(totalBudgeted)} budgeted</p>
+            <p className="text-xs text-gray-400 mt-1">{formatCurrency(totalBudgeted)} budgeted</p>
           </div>
           <div className={cn(ds.panel, 'border-l-4 border-l-neon-cyan')}>
             <p className={ds.textMuted}>Remaining</p>
@@ -1166,7 +1166,7 @@ export default function HouseholdLensPage() {
                     </div>
                     <p className={ds.textMuted}>Due: {d.dueDate} {daysLeft >= 0 ? `(${daysLeft}d)` : '(overdue)'}</p>
                     {Boolean(d.splitAmong) && d.splitAmong.length > 1 && (
-                      <p className="text-xs text-gray-500">Split: {d.splitAmong.join(', ')}</p>
+                      <p className="text-xs text-gray-400">Split: {d.splitAmong.join(', ')}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -1234,7 +1234,7 @@ export default function HouseholdLensPage() {
                 {Boolean(d.email) && <p className="text-xs text-gray-400">{d.email}</p>}
                 {Boolean(d.policyNumber) && <p className={cn(ds.textMono, 'text-gray-400')}>Policy: {d.policyNumber}</p>}
                 {Boolean(d.accountNumber) && <p className={cn(ds.textMono, 'text-gray-400')}>Account: {d.accountNumber}</p>}
-                {Boolean(d.notes) && <p className="text-xs text-gray-500 mt-1">{d.notes}</p>}
+                {Boolean(d.notes) && <p className="text-xs text-gray-400 mt-1">{d.notes}</p>}
               </div>
               <div className="flex items-center gap-1">
                 <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)} aria-label="Edit"><Edit3 className="w-3.5 h-3.5" /></button>
@@ -1299,23 +1299,23 @@ export default function HouseholdLensPage() {
                   </div>
                   <div className={ds.grid3}>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Blood Type</p>
+                      <p className="text-xs text-gray-400 mb-1">Blood Type</p>
                       <p className="text-sm text-white">{d.bloodType || 'Not set'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Allergies</p>
+                      <p className="text-xs text-gray-400 mb-1">Allergies</p>
                       <div className="flex flex-wrap gap-1">
                         {(d.allergies || []).length > 0 ? d.allergies.map(a => (
                           <span key={a} className={ds.badge('red-400')}>{a}</span>
-                        )) : <span className="text-sm text-gray-500">None</span>}
+                        )) : <span className="text-sm text-gray-400">None</span>}
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Medications</p>
+                      <p className="text-xs text-gray-400 mb-1">Medications</p>
                       <div className="flex flex-wrap gap-1">
                         {(d.medications || []).length > 0 ? d.medications.map(m => (
                           <span key={m} className={ds.badge('neon-blue')}><Pill className="w-3 h-3" /> {m}</span>
-                        )) : <span className="text-sm text-gray-500">None</span>}
+                        )) : <span className="text-sm text-gray-400">None</span>}
                       </div>
                     </div>
                   </div>
@@ -1340,15 +1340,15 @@ export default function HouseholdLensPage() {
                       </div>
                       <div className={ds.grid2}>
                         <div>
-                          <p className="text-xs text-gray-500">Vet: {d.vetName || 'Not set'}</p>
+                          <p className="text-xs text-gray-400">Vet: {d.vetName || 'Not set'}</p>
                           {Boolean(d.vetPhone) && <p className="text-xs text-neon-cyan">{d.vetPhone}</p>}
-                          <p className="text-xs text-gray-500">Next visit: {d.vetDate || 'Not scheduled'}</p>
+                          <p className="text-xs text-gray-400">Next visit: {d.vetDate || 'Not scheduled'}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-500">Medications</p>
+                          <p className="text-xs text-gray-400">Medications</p>
                           {(d.medications || []).length > 0 ? d.medications.map(m => (
                             <span key={m} className={cn(ds.badge('orange-400'), 'mr-1')}>{m}</span>
-                          )) : <p className="text-xs text-gray-500">None</p>}
+                          )) : <p className="text-xs text-gray-400">None</p>}
                         </div>
                       </div>
                     </div>
@@ -1356,7 +1356,7 @@ export default function HouseholdLensPage() {
                 })}
               </>
             ) : (
-              <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+              <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                 <p>No pets registered yet. Add your pets to track care schedules.</p>
               </div>
             )}
@@ -1737,15 +1737,15 @@ export default function HouseholdLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.uniqueItems)}</p>
-                    <p className="text-[10px] text-gray-500">Items Needed</p>
+                    <p className="text-[10px] text-gray-400">Items Needed</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.mealsPlanned)}</p>
-                    <p className="text-[10px] text-gray-500">Meals Planned</p>
+                    <p className="text-[10px] text-gray-400">Meals Planned</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.pantryItemsSubtracted)}</p>
-                    <p className="text-[10px] text-gray-500">From Pantry</p>
+                    <p className="text-[10px] text-gray-400">From Pantry</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.list) && (actionResult.list as {name:string;quantity:number;unit:string;category:string}[]).slice(0,6).map((item, i) => (
@@ -1761,15 +1761,15 @@ export default function HouseholdLensPage() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-red-400">{String(actionResult.overdueCount)}</p>
-                  <p className="text-[10px] text-gray-500">Overdue</p>
+                  <p className="text-[10px] text-gray-400">Overdue</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-amber-400">{String(actionResult.upcomingCount)}</p>
-                  <p className="text-[10px] text-gray-500">Upcoming</p>
+                  <p className="text-[10px] text-gray-400">Upcoming</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-green-400">{String(actionResult.currentCount)}</p>
-                  <p className="text-[10px] text-gray-500">Current</p>
+                  <p className="text-[10px] text-gray-400">Current</p>
                 </div>
                 {Array.isArray(actionResult.overdue) && (actionResult.overdue as {name:string;daysOverdue:number}[]).slice(0,3).map((item, i) => (
                   <div key={i} className="col-span-3 flex items-center justify-between p-2 bg-red-500/10 rounded">
@@ -1807,9 +1807,9 @@ export default function HouseholdLensPage() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

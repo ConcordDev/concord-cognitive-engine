@@ -82,7 +82,7 @@ export function OpenLibrarySearch() {
 
       <form onSubmit={submit} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Title, author, ISBN — 'fahrenheit 451', 'clean code'…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none" />
         </div>
         <button type="submit" disabled={!query.trim() || searchMutation.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20 disabled:opacity-50">
@@ -92,7 +92,7 @@ export function OpenLibrarySearch() {
       </form>
 
       <div className="flex flex-wrap gap-1.5">
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">Subjects:</span>
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400">Subjects:</span>
         {POPULAR_SUBJECTS.map((s) => (
           <button key={s} type="button" onClick={() => { setFocus(null); subjectMutation.mutate(s); }} className="rounded-full border border-zinc-800 bg-zinc-900/60 px-2 py-0.5 text-[10px] text-zinc-400 transition-colors hover:border-cyan-500/30 hover:text-cyan-200">
             {s.replace(/_/g, ' ')}
@@ -114,8 +114,8 @@ export function OpenLibrarySearch() {
               </div>
               <div className="space-y-0.5 p-2">
                 <div className="line-clamp-2 text-[11px] text-white">{w.title}</div>
-                {w.authors?.[0] && <div className="line-clamp-1 text-[10px] text-zinc-500">{w.authors[0]}</div>}
-                {w.firstPublishYear && <div className="text-[9px] font-mono text-zinc-600">{w.firstPublishYear}</div>}
+                {w.authors?.[0] && <div className="line-clamp-1 text-[10px] text-zinc-400">{w.authors[0]}</div>}
+                {w.firstPublishYear && <div className="text-[9px] font-mono text-zinc-400">{w.firstPublishYear}</div>}
               </div>
             </button>
           ))}
@@ -139,7 +139,7 @@ export function OpenLibrarySearch() {
                 <div>
                   <h3 className="text-xl font-semibold text-white">{focus.title}</h3>
                   {focus.authors && <p className="text-sm text-cyan-300/90">{focus.authors.join(', ')}</p>}
-                  {focus.firstPublishYear && <p className="text-[11px] text-zinc-500">First published {focus.firstPublishYear} · {focus.editionCount || 0} editions</p>}
+                  {focus.firstPublishYear && <p className="text-[11px] text-zinc-400">First published {focus.firstPublishYear} · {focus.editionCount || 0} editions</p>}
                 </div>
                 <SaveAsDtuButton
                   apiSource="open-library"

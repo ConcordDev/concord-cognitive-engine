@@ -90,13 +90,13 @@ export function ChannelTrends({
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 py-4 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 py-4 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Computing trends…
         </div>
       )}
 
       {!loading && series.length === 0 && (
-        <p className="py-4 text-center text-xs text-zinc-600">
+        <p className="py-4 text-center text-xs text-zinc-400">
           No events in this window yet.
         </p>
       )}

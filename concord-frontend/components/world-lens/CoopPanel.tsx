@@ -226,9 +226,9 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
 
       {tab === 'party' && (
         <div>
-          <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">Members ({members.length})</div>
+          <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Members ({members.length})</div>
           {members.length === 0 ? (
-            <div className="text-gray-500 italic text-sm">No members yet.</div>
+            <div className="text-gray-400 italic text-sm">No members yet.</div>
           ) : (
             <ul className="space-y-1 mb-3">
               {members.map((m) => (
@@ -258,7 +258,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
       {tab === 'stash' && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs text-gray-500 uppercase tracking-wider">Shared stash</div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider">Shared stash</div>
             {isLeader && (
               <select
                 value={stashPerm}
@@ -272,13 +272,13 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
             )}
           </div>
           {stash.length === 0 ? (
-            <div className="text-gray-500 italic text-sm">Empty.</div>
+            <div className="text-gray-400 italic text-sm">Empty.</div>
           ) : (
             <ul className="space-y-1 max-h-[260px] overflow-y-auto">
               {stash.map((it) => (
                 <li key={it.id} className="flex items-center gap-2 text-sm border-b border-white/5 py-1">
                   <span className="flex-1 truncate text-gray-200">{it.name}</span>
-                  <span className="text-[9px] text-gray-500">{it.kind}</span>
+                  <span className="text-[9px] text-gray-400">{it.kind}</span>
                   <button
                     onClick={() => withdraw(it.id)}
                     className="text-[10px] bg-violet-700/40 hover:bg-violet-600/50 px-2 py-0.5 rounded text-violet-200"
@@ -303,7 +303,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
                   style={{ width: `${Math.round((activeRaid.progress / activeRaid.threshold) * 100)}%` }}
                 />
               </div>
-              <div className="text-xs text-gray-500 mb-3">
+              <div className="text-xs text-gray-400 mb-3">
                 {activeRaid.progress} / {activeRaid.threshold} · {activeRaid.contributors?.length ?? 0} contributors · {activeRaid.state}
               </div>
               {activeRaid.state === 'active' && (
@@ -328,7 +328,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
               </button>
             </div>
           ) : (
-            <div className="text-gray-500 italic text-sm">No active raid. Leader can start one.</div>
+            <div className="text-gray-400 italic text-sm">No active raid. Leader can start one.</div>
           )}
         </div>
       )}

@@ -154,7 +154,7 @@ function StatCard({
         {value}
         {suffix && <span className="text-sm ml-0.5">{suffix}</span>}
       </div>
-      <div className="text-xs text-gray-500 mt-1">{label}</div>
+      <div className="text-xs text-gray-400 mt-1">{label}</div>
     </div>
   );
 }
@@ -185,7 +185,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
     return (
       <div className={cn('text-center py-16', className)}>
         <BarChart3 className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-        <p className="text-sm text-gray-500">Unable to load analytics</p>
+        <p className="text-sm text-gray-400">Unable to load analytics</p>
       </div>
     );
   }
@@ -242,7 +242,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
 
             return (
               <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                <div className="text-[10px] text-gray-500">{total}</div>
+                <div className="text-[10px] text-gray-400">{total}</div>
                 <div
                   className="w-full flex flex-col-reverse rounded-t overflow-hidden"
                   style={{ height: '120px' }}
@@ -269,13 +269,13 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                     title={`${day.shares} shares`}
                   />
                 </div>
-                <div className="text-[10px] text-gray-500">{dayLabel}</div>
+                <div className="text-[10px] text-gray-400">{dayLabel}</div>
               </div>
             );
           })}
         </div>
         {/* Legend */}
-        <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
+        <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm bg-neon-cyan/60" /> Reactions
           </span>
@@ -299,14 +299,14 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
               <span
                 className={cn(
                   'text-sm font-bold w-6 text-center',
-                  idx < 3 ? 'text-neon-cyan' : 'text-gray-500'
+                  idx < 3 ? 'text-neon-cyan' : 'text-gray-400'
                 )}
               >
                 {idx + 1}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white truncate">{post.title}</p>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+                <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
                   <span className="flex items-center gap-0.5">
                     <Heart className="w-3 h-3" /> {post.reactions}
                   </span>
@@ -320,7 +320,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="text-sm font-bold text-neon-cyan">{post.engagementScore}</div>
-                <div className="text-[10px] text-gray-600">score</div>
+                <div className="text-[10px] text-gray-400">score</div>
               </div>
             </div>
           ))}
@@ -350,7 +350,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                   )}
                 />
                 {hour.hour % 4 === 0 && (
-                  <span className="text-[8px] text-gray-600 mt-1">
+                  <span className="text-[8px] text-gray-400 mt-1">
                     {hour.hour.toString().padStart(2, '0')}
                   </span>
                 )}
@@ -358,7 +358,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
             );
           })}
         </div>
-        <div className="text-[10px] text-gray-600 text-center mt-2">Hour of day (UTC)</div>
+        <div className="text-[10px] text-gray-400 text-center mt-2">Hour of day (UTC)</div>
       </Section>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -415,13 +415,13 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                 <div className="text-lg font-bold text-green-400">
                   +{formatNumber(data.followerGrowth.gained)}
                 </div>
-                <div className="text-[10px] text-gray-500">Gained</div>
+                <div className="text-[10px] text-gray-400">Gained</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-bold text-red-400">
                   -{formatNumber(data.followerGrowth.lost)}
                 </div>
-                <div className="text-[10px] text-gray-500">Lost</div>
+                <div className="text-[10px] text-gray-400">Lost</div>
               </div>
               <div className="text-center">
                 <div
@@ -433,7 +433,7 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
                   {data.followerGrowth.net >= 0 ? '+' : ''}
                   {formatNumber(data.followerGrowth.net)}
                 </div>
-                <div className="text-[10px] text-gray-500">Net</div>
+                <div className="text-[10px] text-gray-400">Net</div>
               </div>
             </div>
           </Section>
@@ -442,20 +442,20 @@ function CreatorAnalytics({ userId, className }: CreatorAnalyticsProps) {
           <Section title="Earnings" icon={Coins}>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Total Earned</span>
+                <span className="text-xs text-gray-400">Total Earned</span>
                 <span className="text-lg font-bold text-neon-green">
                   {formatNumber(data.earnings.totalCC)} CC
                 </span>
               </div>
               <div className="h-px bg-lattice-border" />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">This Week</span>
+                <span className="text-xs text-gray-400">This Week</span>
                 <span className="text-sm font-medium text-white">
                   {formatNumber(data.earnings.thisWeek)} CC
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">This Month</span>
+                <span className="text-xs text-gray-400">This Month</span>
                 <span className="text-sm font-medium text-white">
                   {formatNumber(data.earnings.thisMonth)} CC
                 </span>

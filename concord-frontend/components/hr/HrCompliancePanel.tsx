@@ -75,7 +75,7 @@ export function HrCompliancePanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -84,7 +84,7 @@ export function HrCompliancePanel() {
 
       <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
         <p className={cn('text-lg font-bold', orgPct >= 100 ? 'text-emerald-400' : orgPct >= 70 ? 'text-amber-400' : 'text-rose-400')}>{orgPct}%</p>
-        <p className="text-[10px] text-zinc-500 uppercase tracking-wide">Org-wide acknowledgement</p>
+        <p className="text-[10px] text-zinc-400 uppercase tracking-wide">Org-wide acknowledgement</p>
       </div>
 
       {/* Publish doc */}
@@ -113,7 +113,7 @@ export function HrCompliancePanel() {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Documents</h3>
         {docs.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No compliance documents published yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No compliance documents published yet.</p>
         ) : (
           <ul className="space-y-1">
             {docs.map((d) => (
@@ -121,13 +121,13 @@ export function HrCompliancePanel() {
                 <div className="flex items-center gap-2">
                   <FileCheck className="w-3.5 h-3.5 text-emerald-400" />
                   <div>
-                    <p className="text-xs text-zinc-100">{d.title} <span className="text-zinc-500">v{d.version}</span></p>
-                    <p className="text-[10px] text-zinc-500">{d.category}{d.dueDate ? ` · due ${d.dueDate}` : ''}</p>
+                    <p className="text-xs text-zinc-100">{d.title} <span className="text-zinc-400">v{d.version}</span></p>
+                    <p className="text-[10px] text-zinc-400">{d.category}{d.dueDate ? ` · due ${d.dueDate}` : ''}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-zinc-200">{d.acknowledgedCount} acked</p>
-                  <p className="text-[10px] text-zinc-500">{d.pendingCount} pending · {d.acknowledgedRate}%</p>
+                  <p className="text-[10px] text-zinc-400">{d.pendingCount} pending · {d.acknowledgedRate}%</p>
                 </div>
               </li>
             ))}
@@ -141,7 +141,7 @@ export function HrCompliancePanel() {
           <h3 className="text-xs font-semibold text-zinc-300">Acknowledge as employee</h3>
           {statusFor && (
             <button type="button" onClick={() => loadStatus('')}
-              className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300">
+              className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-300">
               <ChevronLeft className="w-3 h-3" /> Clear
             </button>
           )}
@@ -153,14 +153,14 @@ export function HrCompliancePanel() {
         </select>
         {statusFor && (
           statusRows.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic mt-2">No documents to acknowledge.</p>
+            <p className="text-[11px] text-zinc-400 italic mt-2">No documents to acknowledge.</p>
           ) : (
             <ul className="space-y-1 mt-2">
               {statusRows.map((row) => (
                 <li key={`${row.docId}-${row.version}`}
                   className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                   <div>
-                    <p className="text-xs text-zinc-200">{row.title} <span className="text-zinc-500">v{row.version}</span></p>
+                    <p className="text-xs text-zinc-200">{row.title} <span className="text-zinc-400">v{row.version}</span></p>
                     {row.acknowledged && <p className="text-[10px] text-emerald-400">Acknowledged {row.acknowledgedAt?.slice(0, 10)}</p>}
                   </div>
                   {row.acknowledged ? (

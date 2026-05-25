@@ -2404,8 +2404,7 @@ export default function EnvironmentLensPage() {
       <div
         key={item.id}
         className={cn(ds.panelHover, 'group relative')}
-        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)}
-      >
+        onClick={() => setDetailItem(detailItem === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'truncate pr-2')}>{item.title}</h3>
           <div className="flex items-center gap-2 shrink-0">
@@ -2437,7 +2436,7 @@ export default function EnvironmentLensPage() {
                     Schedule: {(d.samplingSchedule as string) || 'N/A'}
                   </p>
                   {Boolean(d.lat) && Boolean(d.lon) && (
-                    <p className={cn(ds.textMono, 'text-gray-500 text-xs')}>
+                    <p className={cn(ds.textMono, 'text-gray-400 text-xs')}>
                       {(d.lat as number).toFixed(6)}, {(d.lon as number).toFixed(6)}
                     </p>
                   )}
@@ -2465,12 +2464,12 @@ export default function EnvironmentLensPage() {
                 <p className={ds.textMuted}>Behavior: {d.behavior as string}</p>
               )}
               {Boolean(d.observationDate) && (
-                <p className={cn(ds.textMono, 'text-gray-500 text-xs')}>
+                <p className={cn(ds.textMono, 'text-gray-400 text-xs')}>
                   Observed: {d.observationDate as string}
                 </p>
               )}
               {Boolean(d.photoLogRef) && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-gray-400">
                   <Camera className="w-3 h-3" />
                   <span>{d.photoLogRef as string}</span>
                 </div>
@@ -2480,7 +2479,7 @@ export default function EnvironmentLensPage() {
 
           {currentType === 'EnvironmentalSample' && (
             <>
-              <p className={cn(ds.textMono, 'text-gray-500 text-xs')}>{d.sampleId as string}</p>
+              <p className={cn(ds.textMono, 'text-gray-400 text-xs')}>{d.sampleId as string}</p>
               <div className="flex items-center gap-2">
                 <span className={ds.badge('emerald-500')}>{d.medium as string}</span>
                 <span className={ds.textMuted}>{d.parameter as string}</span>
@@ -2495,7 +2494,7 @@ export default function EnvironmentLensPage() {
               </p>
               {renderExceedance(d as unknown as EnvironmentalSample)}
               {Boolean(d.chainOfCustody) && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs text-gray-400">
                   <Clipboard className="w-3 h-3" />
                   <span>COC: {d.chainOfCustody as string}</span>
                 </div>
@@ -2532,7 +2531,7 @@ export default function EnvironmentLensPage() {
               )}
               {Boolean(d.workOrderId) && (
                 <div className="flex items-center gap-2">
-                  <span className={cn(ds.textMono, 'text-xs text-gray-500')}>
+                  <span className={cn(ds.textMono, 'text-xs text-gray-400')}>
                     {d.workOrderId as string}
                   </span>
                   {Boolean(d.workOrderStatus) && (
@@ -2586,7 +2585,7 @@ export default function EnvironmentLensPage() {
                   <p className={cn(ds.textMuted, 'text-xs')}>Monthly Tonnage</p>
                   <p className={ds.heading3}>
                     {(d.tonnageMonthly as number) || 0}{' '}
-                    <span className="text-xs text-gray-500">tons</span>
+                    <span className="text-xs text-gray-400">tons</span>
                   </p>
                 </div>
                 <div>
@@ -2624,7 +2623,7 @@ export default function EnvironmentLensPage() {
               return (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className={cn(ds.textMono, 'text-xs text-gray-500')}>
+                    <span className={cn(ds.textMono, 'text-xs text-gray-400')}>
                       {d.permitNumber as string}
                     </span>
                     {Boolean(d.permitType) && (
@@ -2692,7 +2691,7 @@ export default function EnvironmentLensPage() {
                   <p className={cn(ds.textMuted, 'text-xs')}>Emissions</p>
                   <p className={ds.heading3}>
                     {((d.emissionsTonsCO2e as number) || 0).toLocaleString()}{' '}
-                    <span className="text-xs text-gray-500">tCO2e</span>
+                    <span className="text-xs text-gray-400">tCO2e</span>
                   </p>
                 </div>
                 {(d.reductionTarget as number) > 0 && (
@@ -2760,7 +2759,7 @@ export default function EnvironmentLensPage() {
                   <p className={cn(ds.textMuted, 'text-xs')}>Current Value</p>
                   <p className={ds.heading3}>
                     {((d.value as number) || 0).toLocaleString()}{' '}
-                    <span className="text-xs text-gray-500">{d.unit as string}</span>
+                    <span className="text-xs text-gray-400">{d.unit as string}</span>
                   </p>
                 </div>
                 {(d.target as number) > 0 && (
@@ -2768,7 +2767,7 @@ export default function EnvironmentLensPage() {
                     <p className={cn(ds.textMuted, 'text-xs')}>Target</p>
                     <p className={cn(ds.heading3, 'text-neon-cyan')}>
                       {(d.target as number).toLocaleString()}{' '}
-                      <span className="text-xs text-gray-500">{d.unit as string}</span>
+                      <span className="text-xs text-gray-400">{d.unit as string}</span>
                     </p>
                   </div>
                 )}
@@ -2858,8 +2857,7 @@ export default function EnvironmentLensPage() {
         {detailItem === item.id && (
           <div
             className="mt-3 pt-3 border-t border-lattice-border space-y-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             {Boolean(d.notes) && (
               <div>
                 <p className={cn(ds.label, 'mb-0.5')}>Notes</p>
@@ -2878,7 +2876,7 @@ export default function EnvironmentLensPage() {
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3 flex items-center gap-2" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(item)}>
             <Edit3 className="w-3.5 h-3.5" /> Edit
           </button>
@@ -3243,7 +3241,7 @@ export default function EnvironmentLensPage() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>
             No compliance items tracked yet. Add compliance records to monitor environmental
             regulations.
@@ -3522,7 +3520,7 @@ export default function EnvironmentLensPage() {
           </div>
         </motion.div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>
             No carbon tracking data yet. Add carbon footprint records to see emissions analysis.
           </p>
@@ -3548,7 +3546,7 @@ export default function EnvironmentLensPage() {
               />
               {searchQuery && (
                 <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                   onClick={() => setSearchQuery('')}
                 aria-label="Close">
                   <X className="w-4 h-4" />
@@ -3627,9 +3625,9 @@ export default function EnvironmentLensPage() {
 
       {/* ---- Editor Modal ---- */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>
@@ -3800,7 +3798,7 @@ function CarbonWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition ' +
               (active === t.id
                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
+                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent')
             }
           >
             {t.label}

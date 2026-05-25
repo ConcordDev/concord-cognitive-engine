@@ -13,12 +13,12 @@ export function QuarantineLog({ log }: { log: QuarantineLogEntry[] }) {
       <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
         <ScrollText className="h-4 w-4 text-rose-400" /> Quarantine audit log
       </h2>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Every quarantine and audited release, newest first. A release cannot be
         recorded without a reason.
       </p>
       {log.length === 0 ? (
-        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-5 text-center text-xs italic text-zinc-600">
+        <p className="rounded-lg border border-zinc-800 bg-zinc-950/40 py-5 text-center text-xs italic text-zinc-400">
           No quarantine actions yet.
         </p>
       ) : (
@@ -42,7 +42,7 @@ export function QuarantineLog({ log }: { log: QuarantineLogEntry[] }) {
                   <span className="font-semibold uppercase">{e.action}</span> · {e.entityId}
                 </p>
                 <p className="text-zinc-400">{e.reason}</p>
-                <p className="font-mono text-[9px] text-zinc-600">
+                <p className="font-mono text-[9px] text-zinc-400">
                   {new Date(e.at).toLocaleString()} · {e.by}
                 </p>
               </div>

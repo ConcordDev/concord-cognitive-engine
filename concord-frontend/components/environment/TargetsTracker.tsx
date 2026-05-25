@@ -60,7 +60,7 @@ export function TargetsTracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Decarbonisation targets · SBTi-shape</span>
-        <span className="ml-auto text-[10px] text-gray-500">{targets.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{targets.length}</span>
       </header>
       <div className="p-3 border-b border-white/10 space-y-2">
         <div className="grid grid-cols-6 gap-2">
@@ -76,7 +76,7 @@ export function TargetsTracker() {
             <option value="custom">Custom</option>
           </select>
           <div className="col-span-2 flex items-center gap-1 text-[11px]">
-            <span className="text-gray-500">Scopes:</span>
+            <span className="text-gray-400">Scopes:</span>
             {[1, 2, 3].map(s => (
               <button key={s} onClick={() => toggleScope(s)} className={cn('px-1.5 py-0.5 rounded', form.scopes.includes(s) ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/5 text-gray-400')}>S{s}</button>
             ))}
@@ -86,9 +86,9 @@ export function TargetsTracker() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : targets.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No targets yet. SBTi recommends a 1.5°C-aligned target by 2030.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No targets yet. SBTi recommends a 1.5°C-aligned target by 2030.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {targets.map(t => {
@@ -109,7 +109,7 @@ export function TargetsTracker() {
                     <div className="absolute top-0 h-full w-px bg-cyan-300" style={{ left: `${Math.min(100, Math.max(0, expected))}%` }} title={`Expected pace: ${expected.toFixed(1)}%`} />
                   </div>
                   {p && (
-                    <div className="mt-1 flex justify-between text-[10px] text-gray-500">
+                    <div className="mt-1 flex justify-between text-[10px] text-gray-400">
                       <span>{achieved.toFixed(1)}% achieved · expected {expected.toFixed(1)}%</span>
                       <span className={p.onTrack ? 'text-emerald-300' : 'text-amber-300'}>{p.onTrack ? 'on track' : `gap ${p.gapToTarget.toFixed(0)}t`}</span>
                     </div>

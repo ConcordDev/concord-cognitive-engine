@@ -158,6 +158,7 @@ export default function registerWorldActions(registerLensAction) {
   // ── Share link primitive (copy-world-spot, UEFN-style island codes) ──
 
   registerLensAction("world", "share-link-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getWorldLensState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = worldActorId(ctx);
@@ -183,7 +184,8 @@ export default function registerWorldActions(registerLensAction) {
     s.shareCache.get(userId).set(link.id, link);
     saveWorldLensState();
     return { ok: true, result: { link } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "share-links-list", (ctx, _artifact, _params = {}) => {
     const s = getWorldLensState();
@@ -200,6 +202,7 @@ export default function registerWorldActions(registerLensAction) {
   // ── Quest summary (grouped by chain + pin state) ──
 
   registerLensAction("world", "quest-summary", (ctx, _artifact, params = {}) => {
+  try {
     const s = getWorldLensState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = worldActorId(ctx);
@@ -229,7 +232,8 @@ export default function registerWorldActions(registerLensAction) {
       if (q.status === "completed") chains[cid].completedCount++;
     }
     return { ok: true, result: { worldId, chains: Object.values(chains), pinnedCount: pinnedSet.size } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "quest-pin-toggle", (ctx, _artifact, params = {}) => {
     const s = getWorldLensState();
@@ -249,6 +253,7 @@ export default function registerWorldActions(registerLensAction) {
   // ── Marketplace summary (in-world commerce surface) ──
 
   registerLensAction("world", "marketplace-summary", (_ctx, _artifact, params = {}) => {
+  try {
     const worldId = String(params.worldId || "concordia-hub");
     const kind = String(params.kind || "all");
     const STATE = globalThis._concordSTATE;
@@ -310,7 +315,8 @@ export default function registerWorldActions(registerLensAction) {
           : undefined,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Overlay preferences (per-user) ──
 
@@ -564,6 +570,7 @@ export default function registerWorldActions(registerLensAction) {
   ]);
 
   registerLensAction("world", "placement-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getKitState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = worldActorId(ctx);
@@ -591,7 +598,8 @@ export default function registerWorldActions(registerLensAction) {
     s.placements.get(userId).set(placement.id, placement);
     saveWorldLensState();
     return { ok: true, result: { placement } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "placement-update", (ctx, _artifact, params = {}) => {
     const s = getKitState();
@@ -824,6 +832,7 @@ export default function registerWorldActions(registerLensAction) {
   const MARKER_KINDS = ["waypoint", "town", "dungeon", "vendor", "resource", "danger", "home", "portal"];
 
   registerLensAction("world", "marker-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getKitState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = worldActorId(ctx);
@@ -845,7 +854,8 @@ export default function registerWorldActions(registerLensAction) {
     s.mapMarkers.get(userId).set(marker.id, marker);
     saveWorldLensState();
     return { ok: true, result: { marker } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "marker-delete", (ctx, _artifact, params = {}) => {
     const s = getKitState();
@@ -900,6 +910,7 @@ export default function registerWorldActions(registerLensAction) {
   }
 
   registerLensAction("world", "mount-add", (ctx, _artifact, params = {}) => {
+  try {
     const s = getKitState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const m = ensureMounts(s, worldActorId(ctx));
@@ -917,7 +928,8 @@ export default function registerWorldActions(registerLensAction) {
     m.roster.push(mount);
     saveWorldLensState();
     return { ok: true, result: { mount } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "mount-remove", (ctx, _artifact, params = {}) => {
     const s = getKitState();
@@ -988,6 +1000,7 @@ export default function registerWorldActions(registerLensAction) {
   }
 
   registerLensAction("world", "combat-prefs-get", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getKitState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const cp = ensureCombatPrefs(s, worldActorId(ctx));
@@ -999,7 +1012,8 @@ export default function registerWorldActions(registerLensAction) {
         abilities: cp.abilities.map((a) => abilityView(a, now)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "combat-prefs-set", (ctx, _artifact, params = {}) => {
     const s = getKitState();
@@ -1013,6 +1027,7 @@ export default function registerWorldActions(registerLensAction) {
   });
 
   registerLensAction("world", "combat-ability-add", (ctx, _artifact, params = {}) => {
+  try {
     const s = getKitState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const cp = ensureCombatPrefs(s, worldActorId(ctx));
@@ -1032,7 +1047,8 @@ export default function registerWorldActions(registerLensAction) {
     cp.abilities.sort((a, b) => a.slot - b.slot);
     saveWorldLensState();
     return { ok: true, result: { ability: abilityView(ability, Date.now()) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("world", "combat-ability-remove", (ctx, _artifact, params = {}) => {
     const s = getKitState();

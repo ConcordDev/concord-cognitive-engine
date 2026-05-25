@@ -201,7 +201,7 @@ export function ForumActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -212,7 +212,7 @@ export function ForumActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Thread · {threadResult.health}</div>
             <div className="text-2xl font-bold text-blue-300">{threadResult.totalPosts}<span className="text-xs text-zinc-400"> posts</span></div>
-            <div className="text-[10px] text-zinc-500">{threadResult.uniqueAuthors} authors · avg {threadResult.avgPostLength} chars</div>
+            <div className="text-[10px] text-zinc-400">{threadResult.uniqueAuthors} authors · avg {threadResult.avgPostLength} chars</div>
             {threadResult.topContributors.map((c, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5">{c.name}: {c.posts}</div>)}
           </div>
         )}
@@ -220,7 +220,7 @@ export function ForumActionPanel() {
           <div className={cn('rounded-md border p-2.5', modResult.urgency === 'high' ? 'border-red-500/30 bg-red-500/5' : modResult.urgency === 'medium' ? 'border-amber-500/30 bg-amber-500/5' : 'border-emerald-500/30 bg-emerald-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">Mod queue · {modResult.urgency}</div>
             <div className={cn('text-2xl font-bold', URGENCY_COLOR[modResult.urgency])}>{modResult.pending}<span className="text-xs text-zinc-400"> pending</span></div>
-            <div className="text-[10px] text-zinc-500">{modResult.resolved} resolved / {modResult.totalReports} total</div>
+            <div className="text-[10px] text-zinc-400">{modResult.resolved} resolved / {modResult.totalReports} total</div>
             {Object.entries(modResult.byReason).map(([k, v]) => <div key={k} className="text-[10px] text-zinc-300">{k}: {v}</div>)}
           </div>
         )}
@@ -228,15 +228,15 @@ export function ForumActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Health · {healthResult.health}</div>
             <div className={cn('text-2xl font-bold', HEALTH_COLOR[healthResult.health])}>{healthResult.activityRate}%</div>
-            <div className="text-[10px] text-zinc-500">{healthResult.activeUsers}/{healthResult.totalUsers} active · {healthResult.postsThisWeek}/wk</div>
-            <div className="text-[10px] text-zinc-500">growth {healthResult.growthRate >= 0 ? '+' : ''}{healthResult.growthRate}%</div>
+            <div className="text-[10px] text-zinc-400">{healthResult.activeUsers}/{healthResult.totalUsers} active · {healthResult.postsThisWeek}/wk</div>
+            <div className="text-[10px] text-zinc-400">growth {healthResult.growthRate >= 0 ? '+' : ''}{healthResult.growthRate}%</div>
             {healthResult.recommendations.map((r, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5">→ {r}</div>)}
           </div>
         )}
         {topicResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Topics · top {topicResult.topTopic}</div>
-            <div className="text-[10px] text-zinc-500">{topicResult.totalThreads} threads · {topicResult.uncategorized} uncategorized</div>
+            <div className="text-[10px] text-zinc-400">{topicResult.totalThreads} threads · {topicResult.uncategorized} uncategorized</div>
             {topicResult.clusters.slice(0, 6).map((c, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-16 truncate">#{c.topic}</span><div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-purple-400" style={{ width: `${c.share}%` }} /></div><span className="text-purple-200 font-mono">{c.threads}</span></div>)}
           </div>
         )}

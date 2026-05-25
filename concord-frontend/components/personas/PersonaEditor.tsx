@@ -172,7 +172,7 @@ export function PersonaEditor({
           >+ Add example</button>
         </div>
         {dialogue.length === 0 && (
-          <p className="text-[11px] text-zinc-600 italic">
+          <p className="text-[11px] text-zinc-400 italic">
             Example exchanges teach the persona how to reply. The chat preview surfaces an exact authored response when the user echoes a prompt.
           </p>
         )}

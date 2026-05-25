@@ -180,7 +180,7 @@ function NaturalQueryPanel() {
             </div>
           )}
           {res.bounds && (
-            <div className="text-[10px] text-zinc-500">
+            <div className="text-[10px] text-zinc-400">
               bounds [{res.bounds[0]}, {res.bounds[1]}] · {res.closedForm ? 'closed form' : 'numeric'}
             </div>
           )}
@@ -237,17 +237,17 @@ function SymbolicPanel() {
       <input className={inputCls} value={expr} onChange={(e) => setExpr(e.target.value)} placeholder="expression, e.g. exp(x)*cos(x)" />
       <div className="flex gap-2">
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Variable</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Variable</label>
           <input className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
         </div>
         {op === 'integral' && (
           <>
             <div className="w-24">
-              <label className="text-[10px] uppercase tracking-wider text-zinc-500">Lower</label>
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Lower</label>
               <input className={inputCls} value={lower} onChange={(e) => setLower(e.target.value)} placeholder="opt." />
             </div>
             <div className="w-24">
-              <label className="text-[10px] uppercase tracking-wider text-zinc-500">Upper</label>
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400">Upper</label>
               <input className={inputCls} value={upper} onChange={(e) => setUpper(e.target.value)} placeholder="opt." />
             </div>
           </>
@@ -272,7 +272,7 @@ function SymbolicPanel() {
               {res.definite != null && (
                 <div className="font-mono text-lg text-emerald-300">
                   definite = {res.definite}
-                  <span className="text-[10px] text-zinc-500 ml-2">{res.closedForm ? 'exact' : res.method}</span>
+                  <span className="text-[10px] text-zinc-400 ml-2">{res.closedForm ? 'exact' : res.method}</span>
                 </div>
               )}
             </>
@@ -316,12 +316,12 @@ function SolvePanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <input className={inputCls} value={left} onChange={(e) => setLeft(e.target.value)} placeholder="left side" />
-        <span className="text-zinc-500 font-mono">=</span>
+        <span className="text-zinc-400 font-mono">=</span>
         <input className={`${inputCls} w-32`} value={right} onChange={(e) => setRight(e.target.value)} placeholder="right" />
       </div>
       <div className="flex items-center gap-2">
         <div className="w-24">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Variable</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Variable</label>
           <input className={inputCls} value={variable} onChange={(e) => setVariable(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Solve" />
@@ -337,7 +337,7 @@ function SolvePanel() {
           </div>
           {Array.isArray(res.steps) && res.steps.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-black/30 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2">Step-by-step working</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-2">Step-by-step working</div>
               <ol className="space-y-1.5">
                 {res.steps.map((s: string, i: number) => (
                   <li key={i} className="flex items-start gap-2 text-[11px]">
@@ -391,11 +391,11 @@ function PlotPanel() {
       />
       <div className="flex items-end gap-2">
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">x min</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">x min</label>
           <input className={inputCls} value={xMin} onChange={(e) => setXMin(e.target.value)} />
         </div>
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">x max</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">x max</label>
           <input className={inputCls} value={xMax} onChange={(e) => setXMax(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Plot" />
@@ -414,7 +414,7 @@ function PlotPanel() {
             {res.series.map((s: any) => (
               <div key={s.key} className="rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1.5">
                 <div className="font-mono text-[11px] text-indigo-300 truncate">{s.label}</div>
-                <div className="text-[10px] text-zinc-500">
+                <div className="text-[10px] text-zinc-400">
                   y ∈ [{s.yMin ?? '—'}, {s.yMax ?? '—'}] · {s.definedPoints} pts
                 </div>
               </div>
@@ -455,16 +455,16 @@ function UnitsPanel() {
     <div className="space-y-3">
       <div className="flex items-end gap-2 flex-wrap">
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Value</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Value</label>
           <input className={inputCls} value={value} onChange={(e) => setValue(e.target.value)} />
         </div>
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">From</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">From</label>
           <input className={inputCls} value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
-        <span className="pb-2 text-zinc-500">→</span>
+        <span className="pb-2 text-zinc-400">→</span>
         <div className="w-28">
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">To</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">To</label>
           <input className={inputCls} value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
         <RunBtn busy={busy} onClick={run} label="Convert" />
@@ -489,7 +489,7 @@ function UnitsPanel() {
             {res.value} {res.from} = {res.converted} {res.to}
           </div>
           {res.rate != null && (
-            <div className="text-[10px] text-zinc-500">1 {res.from} = {res.rate} {res.to}</div>
+            <div className="text-[10px] text-zinc-400">1 {res.from} = {res.rate} {res.to}</div>
           )}
         </div>
       )}
@@ -541,25 +541,25 @@ function NumberTheoryPanel() {
       <div className="flex flex-wrap items-end gap-2">
         {needsN && (
           <div className="w-28">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">n</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">n</label>
             <input className={inputCls} value={n} onChange={(e) => setN(e.target.value)} />
           </div>
         )}
         {needsM && (
           <div className="w-28">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">m</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">m</label>
             <input className={inputCls} value={m} onChange={(e) => setM(e.target.value)} />
           </div>
         )}
         {needsK && (
           <div className="w-28">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">k</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">k</label>
             <input className={inputCls} value={k} onChange={(e) => setK(e.target.value)} />
           </div>
         )}
         {needsCount && (
           <div className="w-28">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">count</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">count</label>
             <input className={inputCls} value={count} onChange={(e) => setCount(e.target.value)} />
           </div>
         )}
@@ -654,7 +654,7 @@ function HistoryPanel({ active }: { active: boolean }) {
       </div>
       {err && <ErrBanner text={err} />}
       {entries.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-6 text-center text-[11px] text-zinc-600">
+        <div className="rounded border border-dashed border-zinc-800 py-6 text-center text-[11px] text-zinc-400">
           No computations yet — run a symbolic, solve, or ask query above.
         </div>
       ) : (
@@ -666,7 +666,7 @@ function HistoryPanel({ active }: { active: boolean }) {
                   {e.kind || 'compute'}
                 </span>
                 {e.at && (
-                  <span className="text-[9px] text-zinc-600">{new Date(e.at).toLocaleString()}</span>
+                  <span className="text-[9px] text-zinc-400">{new Date(e.at).toLocaleString()}</span>
                 )}
               </div>
               <div className="mt-1 font-mono text-[11px] text-zinc-300 truncate">{e.input}</div>

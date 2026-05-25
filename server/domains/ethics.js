@@ -10,6 +10,7 @@ export default function registerEthicsActions(registerLensAction) {
    * artifact.data.context = { domain?, urgency?, reversibility?, scope? }
    */
   registerLensAction("ethics", "frameworkAnalysis", (ctx, artifact, _params) => {
+  try {
     const action = artifact.data?.action || {};
     const context = artifact.data?.context || {};
     const consequences = action.consequences || [];
@@ -146,7 +147,8 @@ export default function registerEthicsActions(registerLensAction) {
             : "Significant ethical concerns — reconsider approach",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * stakeholderImpact
@@ -156,6 +158,7 @@ export default function registerEthicsActions(registerLensAction) {
    * artifact.data.action = { description }
    */
   registerLensAction("ethics", "stakeholderImpact", (ctx, artifact, _params) => {
+  try {
     const stakeholders = artifact.data?.stakeholders || [];
     if (stakeholders.length === 0) return { ok: true, result: { message: "No stakeholders defined." } };
 
@@ -242,7 +245,8 @@ export default function registerEthicsActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * biasDetection
@@ -252,6 +256,7 @@ export default function registerEthicsActions(registerLensAction) {
    * attributes with significant outcome disparities.
    */
   registerLensAction("ethics", "biasDetection", (ctx, artifact, _params) => {
+  try {
     const decisions = artifact.data?.decisions || [];
     if (decisions.length < 10) return { ok: false, error: "Need at least 10 decisions for meaningful bias analysis." };
 
@@ -338,7 +343,8 @@ export default function registerEthicsActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Ethics decision-toolkit features. Persistent per-user state in

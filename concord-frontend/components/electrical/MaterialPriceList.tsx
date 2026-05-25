@@ -67,7 +67,7 @@ export function MaterialPriceList() {
         <Tags className="h-4 w-4 text-lime-400" />
         <span className="text-sm font-semibold text-white">Material price list</span>
         <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">electrical.priceList*</span>
-        {source && <span className="ml-auto text-[10px] text-zinc-500">{source === 'default-catalog' ? 'seeded from default catalog' : 'your catalog'} · {materials.length} items</span>}
+        {source && <span className="ml-auto text-[10px] text-zinc-400">{source === 'default-catalog' ? 'seeded from default catalog' : 'your catalog'} · {materials.length} items</span>}
       </header>
 
       <div className="p-4 space-y-2">
@@ -84,7 +84,7 @@ export function MaterialPriceList() {
           </button>
         </div>
 
-        {materials.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Loading catalog…</div>}
+        {materials.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Loading catalog…</div>}
 
         <div className="space-y-1">
           {materials.map((m) => {
@@ -92,9 +92,9 @@ export function MaterialPriceList() {
             return (
               <div key={m.id} className="grid grid-cols-[1fr_72px_92px_80px_28px] items-center gap-1.5 rounded border border-lime-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
                 <span className="truncate text-zinc-100">{m.name}</span>
-                <span className="font-mono text-zinc-500">per {m.unit}</span>
+                <span className="font-mono text-zinc-400">per {m.unit}</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-zinc-500">$</span>
+                  <span className="text-zinc-400">$</span>
                   <input
                     type="number"
                     value={editing ? editing.price : String(m.price)}

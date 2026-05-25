@@ -236,8 +236,8 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Material actions</div>
-            <h3 className="text-sm font-semibold text-white">{material.formula} <span className="text-zinc-500 font-mono ml-2">{material.materialId}</span></h3>
-            <div className="text-[11px] text-zinc-500 mt-0.5">
+            <h3 className="text-sm font-semibold text-white">{material.formula} <span className="text-zinc-400 font-mono ml-2">{material.materialId}</span></h3>
+            <div className="text-[11px] text-zinc-400 mt-0.5">
               {[
                 material.crystalSystem,
                 material.density != null ? `${material.density} g/cm³` : null,
@@ -262,7 +262,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
                 onClick={() => { setPane(p.id); setFeedback(null); }}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap',
-                  active ? '' : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                  active ? '' : 'border-transparent text-zinc-400 hover:text-zinc-200',
                 )}
                 style={active ? { borderBottomColor: p.accent, color: p.accent } : {}}
               >

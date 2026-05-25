@@ -576,7 +576,7 @@ export default function CollabLensPage() {
                 ))}
               </div>
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search sessions..."
@@ -672,8 +672,7 @@ export default function CollabLensPage() {
                 <div
                   key={inv.id}
                   onClick={() => setInviteSessionId(inv.id)}
-                  className="cursor-pointer"
-                >
+                  className="cursor-pointer" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <InvitationCard invitation={inv} />
                 </div>
               ))
@@ -734,7 +733,7 @@ export default function CollabLensPage() {
                       {collab.name ?? collab.id}
                     </p>
                     {collab.description && (
-                      <p className="text-xs text-gray-500 truncate">{collab.description}</p>
+                      <p className="text-xs text-gray-400 truncate">{collab.description}</p>
                     )}
                     {collab.domains && (
                       <div className="flex gap-1 mt-1">
@@ -805,7 +804,7 @@ export default function CollabLensPage() {
               <span className="text-xs text-gray-400">Result</span>
               <button
                 onClick={() => setActionResult(null)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-400 hover:text-white transition-colors"
               aria-label="Xcircle">
                 <XCircle className="w-3.5 h-3.5" />
               </button>
@@ -829,27 +828,27 @@ export default function CollabLensPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-blue">{sa.totalMessages}</p>
-                          <p className="text-[10px] text-gray-500">Messages</p>
+                          <p className="text-[10px] text-gray-400">Messages</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-blue">{sa.totalParticipants}</p>
-                          <p className="text-[10px] text-gray-500">Participants</p>
+                          <p className="text-[10px] text-gray-400">Participants</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-blue">
                             {sa.messagesPerMinute}/m
                           </p>
-                          <p className="text-[10px] text-gray-500">Msg/Min</p>
+                          <p className="text-[10px] text-gray-400">Msg/Min</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Balance:</span>
+                        <span className="text-gray-400">Balance:</span>
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${sa.balanceRating === 'well-balanced' ? 'bg-neon-green/20 text-neon-green' : sa.balanceRating === 'slightly-uneven' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}`}
                         >
                           {sa.balanceRating}
                         </span>
-                        <span className="text-gray-500 ml-auto">
+                        <span className="text-gray-400 ml-auto">
                           Gini: {sa.participationBalance}
                         </span>
                       </div>
@@ -864,7 +863,7 @@ export default function CollabLensPage() {
                                   style={{ width: `${p.sharePercent}%` }}
                                 />
                               </div>
-                              <span className="text-gray-500 w-10 text-right">
+                              <span className="text-gray-400 w-10 text-right">
                                 {p.sharePercent}%
                               </span>
                             </div>
@@ -886,7 +885,7 @@ export default function CollabLensPage() {
                         <span className="text-neon-green font-medium">
                           {cs.topContributor ?? '—'}
                         </span>
-                        <span className="ml-auto text-gray-500">{cs.totalContributions} total</span>
+                        <span className="ml-auto text-gray-400">{cs.totalContributions} total</span>
                       </div>
                       <div className="space-y-1">
                         {cs.rankings.map((r: ContributionRanking, i: number) => (
@@ -894,10 +893,10 @@ export default function CollabLensPage() {
                             key={r.name}
                             className="flex items-center gap-2 p-1.5 bg-lattice-bg rounded"
                           >
-                            <span className="text-gray-500 w-4">{i + 1}.</span>
+                            <span className="text-gray-400 w-4">{i + 1}.</span>
                             <span className="text-gray-200 flex-1">{r.name}</span>
                             <span className="text-neon-blue font-bold">{r.totalScore}</span>
-                            <span className="text-gray-500 text-[10px]">
+                            <span className="text-gray-400 text-[10px]">
                               {r.contributions} contribs
                             </span>
                           </div>
@@ -923,7 +922,7 @@ export default function CollabLensPage() {
                       </div>
                       <div className="p-2 bg-lattice-bg rounded text-center">
                         <p className="text-xl font-bold text-neon-blue">{cr.consensusPercent}%</p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-gray-400">
                           for &quot;{cr.leadingPosition}&quot;
                         </p>
                       </div>
@@ -935,7 +934,7 @@ export default function CollabLensPage() {
                       </div>
                       {(cr.dissenting || []).length > 0 && (
                         <div className="space-y-1">
-                          <p className="text-[10px] text-gray-500 uppercase">Dissenting</p>
+                          <p className="text-[10px] text-gray-400 uppercase">Dissenting</p>
                           {cr.dissenting.map((d: DissentingEntry) => (
                             <div
                               key={d.position}
@@ -962,15 +961,15 @@ export default function CollabLensPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-blue">{wb.avgUtilization}%</p>
-                          <p className="text-[10px] text-gray-500">Avg Load</p>
+                          <p className="text-[10px] text-gray-400">Avg Load</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-red-400">{wb.overloadedMembers}</p>
-                          <p className="text-[10px] text-gray-500">Overloaded</p>
+                          <p className="text-[10px] text-gray-400">Overloaded</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-yellow-400">{wb.unassignedTasks}</p>
-                          <p className="text-[10px] text-gray-500">Unassigned</p>
+                          <p className="text-[10px] text-gray-400">Unassigned</p>
                         </div>
                       </div>
                       <div className="space-y-1">
@@ -990,7 +989,7 @@ export default function CollabLensPage() {
                                 style={{ width: `${Math.min(m.utilization, 100)}%` }}
                               />
                             </div>
-                            <p className="text-[10px] text-gray-500">
+                            <p className="text-[10px] text-gray-400">
                               {m.totalHours}h / {m.capacity}h · {m.assignedTasks} tasks
                             </p>
                           </div>
@@ -1081,7 +1080,7 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
             <h3 className="font-semibold text-sm truncate group-hover:text-neon-blue transition-colors">
               {session.name}
             </h3>
-            <p className="text-[11px] text-gray-500 capitalize">{session.projectType}</p>
+            <p className="text-[11px] text-gray-400 capitalize">{session.projectType}</p>
           </div>
         </div>
         <span
@@ -1149,10 +1148,10 @@ function SessionCard({ session, onJoin }: { session: CollabSession; onJoin: () =
               </div>
             )}
           </div>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-gray-400">
             {session.participants.length}/{session.maxCapacity}
           </span>
-          <div className="flex items-center gap-1 text-[11px] text-gray-500">
+          <div className="flex items-center gap-1 text-[11px] text-gray-400">
             <Timer className="w-3 h-3" />
             {formatDuration(elapsed)}
           </div>
@@ -1453,7 +1452,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
           </div>
           <div>
             <h2 className="font-semibold text-sm">{session.name}</h2>
-            <div className="flex items-center gap-3 text-[11px] text-gray-500">
+            <div className="flex items-center gap-3 text-[11px] text-gray-400">
               <span className="flex items-center gap-1">
                 <Timer className="w-3 h-3" />
                 {formatDuration(elapsed)}
@@ -1489,7 +1488,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
       <div className="flex flex-1 overflow-hidden">
         {/* Left panel: participants */}
         <div className="w-56 border-r border-lattice-border bg-lattice-surface/30 p-3 flex flex-col gap-1 overflow-y-auto shrink-0">
-          <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2 px-1">
+          <h3 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
             Participants ({session.participants.length})
           </h3>
           {session.participants.map((p) => (
@@ -1563,7 +1562,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
                 {['Planning', 'Research', 'Design', 'Development', 'Review', 'Delivery'].map(
                   (section, i) => (
                     <div key={section} className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-500 w-12 text-right">
+                      <span className="text-[10px] text-gray-400 w-12 text-right">
                         {i * 8 + 1}-{(i + 1) * 8}
                       </span>
                       <div
@@ -1597,7 +1596,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
                   </span>
                 )}
                 {!notesSaving && notesItem && (
-                  <span className="text-[10px] text-gray-600">Auto-saved</span>
+                  <span className="text-[10px] text-gray-400">Auto-saved</span>
                 )}
               </div>
               <textarea
@@ -1615,11 +1614,11 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Shared Files
                 </h3>
-                <span className="text-[10px] text-gray-600">{sharedFiles.length} uploaded</span>
+                <span className="text-[10px] text-gray-400">{sharedFiles.length} uploaded</span>
               </div>
               <div className="space-y-1.5">
                 {sharedFiles.length === 0 ? (
-                  <p className="text-xs text-gray-600 text-center py-3">
+                  <p className="text-xs text-gray-400 text-center py-3">
                     No files uploaded yet. Use the Upload File button below.
                   </p>
                 ) : (
@@ -1632,7 +1631,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
                         <Paperclip className="w-3.5 h-3.5 text-neon-cyan" />
                         <span className="text-xs font-medium">{f.name}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                      <div className="flex items-center gap-3 text-[11px] text-gray-400">
                         <span>{f.size}</span>
                         <span>{f.by}</span>
                         {f.uploadedAt && <span>{formatTimeAgo(f.uploadedAt)}</span>}
@@ -1725,7 +1724,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
             {messages.map((msg) => (
               <div key={msg.id}>
                 {msg.isSystem ? (
-                  <p className="text-[10px] text-gray-600 text-center italic py-1">{msg.text}</p>
+                  <p className="text-[10px] text-gray-400 text-center italic py-1">{msg.text}</p>
                 ) : (
                   <div className="flex gap-2">
                     <div
@@ -1741,7 +1740,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
                         <span className="text-[11px] font-semibold text-gray-300">
                           {msg.senderName}
                         </span>
-                        <span className="text-[9px] text-gray-600">
+                        <span className="text-[9px] text-gray-400">
                           {formatTimestamp(msg.timestamp)}
                         </span>
                       </div>
@@ -1759,7 +1758,7 @@ function ActiveSessionView({ session, onLeave }: { session: CollabSession; onLea
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 text-gray-500 hover:text-gray-300 transition-colors"
+                className="p-1.5 text-gray-400 hover:text-gray-300 transition-colors"
                 title="Attach file"
               >
                 <Paperclip className="w-3.5 h-3.5" />
@@ -1801,7 +1800,7 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
         animate={{ opacity: 0.5 }}
         className="panel p-4 flex items-center justify-between"
       >
-        <span className="text-sm text-gray-500">
+        <span className="text-sm text-gray-400">
           {responded === 'accepted' ? 'Accepted' : 'Declined'}: {invitation.sessionName}
         </span>
         <span
@@ -1837,16 +1836,16 @@ function InvitationCard({ invitation }: { invitation: Invitation }) {
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">
             <span className="text-gray-200">{invitation.fromName}</span>
-            <span className="text-gray-500"> invited you to </span>
+            <span className="text-gray-400"> invited you to </span>
             <span className="text-neon-blue">{invitation.sessionName}</span>
           </p>
           <div className="flex items-center gap-2 mt-0.5">
             <TypeIcon className={cn('w-3 h-3', TYPE_COLORS[invitation.projectType])} />
-            <span className="text-[11px] text-gray-500 capitalize">{invitation.projectType}</span>
-            <span className="text-[11px] text-gray-600">|</span>
-            <span className="text-[11px] text-gray-500">{invitation.genre}</span>
-            <span className="text-[11px] text-gray-600">|</span>
-            <span className="text-[11px] text-gray-500">{formatTimeAgo(invitation.sentAt)}</span>
+            <span className="text-[11px] text-gray-400 capitalize">{invitation.projectType}</span>
+            <span className="text-[11px] text-gray-400">|</span>
+            <span className="text-[11px] text-gray-400">{invitation.genre}</span>
+            <span className="text-[11px] text-gray-400">|</span>
+            <span className="text-[11px] text-gray-400">{formatTimeAgo(invitation.sentAt)}</span>
           </div>
         </div>
       </div>
@@ -1909,10 +1908,10 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
         </div>
         <div className="min-w-0">
           <h3 className="text-sm font-medium truncate">{entry.sessionName}</h3>
-          <p className="text-[11px] text-gray-500 capitalize">{entry.projectType} session</p>
+          <p className="text-[11px] text-gray-400 capitalize">{entry.projectType} session</p>
         </div>
       </div>
-      <div className="flex items-center gap-5 text-[11px] text-gray-500 shrink-0">
+      <div className="flex items-center gap-5 text-[11px] text-gray-400 shrink-0">
         <div className="flex items-center gap-1" title="Duration">
           <Clock className="w-3 h-3" />
           {formatDuration(entry.duration)}
@@ -2006,7 +2005,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-bold">Create Session</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+            className="p-1 text-gray-400 hover:text-gray-300 transition-colors"
           aria-label="Close">
             <X className="w-5 h-5" />
           </button>
@@ -2114,7 +2113,7 @@ function CreateSessionModal({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Privacy indicator */}
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
           {form.privacy === 'public' && (
             <>
               <Globe className="w-3.5 h-3.5 text-emerald-400" /> Anyone can join this session

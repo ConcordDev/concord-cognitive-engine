@@ -66,7 +66,7 @@ export function RecipeLedger() {
                   <span className="text-white">{x.name || x.id}</span>
                   {x.tier != null && <span className="rounded bg-amber-500/20 px-1 font-mono text-[9px] text-amber-300">T{x.tier}</span>}
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-zinc-500">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-zinc-400">
                   {x.kind && <span>{x.kind}</span>}
                   {x.difficulty != null && <span>diff {x.difficulty}</span>}
                   {x.xpReward != null && <span>+{x.xpReward} xp</span>}
@@ -74,7 +74,7 @@ export function RecipeLedger() {
                 </div>
               </div>
             ))}
-            {r.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No recipes available.</div>}
+            {r.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No recipes available.</div>}
           </div>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
@@ -93,15 +93,15 @@ export function RecipeLedger() {
                       <div className="h-full rounded-full bg-cyan-500/60" style={{ width: `${Math.min(100, pct)}%` }} />
                     </div>
                   )}
-                  <div className="mt-0.5 font-mono text-[10px] text-zinc-500">{x.xp ?? '-'} / {x.nextThreshold ?? '-'} xp</div>
+                  <div className="mt-0.5 font-mono text-[10px] text-zinc-400">{x.xp ?? '-'} / {x.nextThreshold ?? '-'} xp</div>
                 </div>
               );
             })}
-            {s.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No skills tracked.</div>}
+            {s.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No skills tracked.</div>}
           </div>
         </div>
       </div>
-      {(recipes.isPending || skills.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
+      {(recipes.isPending || skills.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling…</div>}
     </div>
   );
 }

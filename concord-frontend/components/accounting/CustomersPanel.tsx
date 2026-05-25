@@ -49,7 +49,7 @@ export function CustomersPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Customers</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <button
           onClick={() => setCreating(v => !v)}
           className="ml-auto px-2.5 py-1 text-xs rounded bg-emerald-500 text-black font-semibold hover:bg-emerald-400 inline-flex items-center gap-1"
@@ -72,9 +72,9 @@ export function CustomersPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No customers yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No customers yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(c => (
@@ -83,8 +83,8 @@ export function CustomersPanel() {
                   {c.name.slice(0, 1).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{c.name} {c.company && <span className="text-[10px] text-gray-500">· {c.company}</span>}</div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-3">
+                  <div className="text-sm text-white truncate">{c.name} {c.company && <span className="text-[10px] text-gray-400">· {c.company}</span>}</div>
+                  <div className="text-[10px] text-gray-400 flex items-center gap-3">
                     <span className="font-mono">{c.number}</span>
                     {c.email && <span className="inline-flex items-center gap-0.5"><Mail className="w-2.5 h-2.5" />{c.email}</span>}
                     {c.phone && <span className="inline-flex items-center gap-0.5"><Phone className="w-2.5 h-2.5" />{c.phone}</span>}

@@ -90,13 +90,13 @@ export function FilmStudioSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-fuchsia-600/15 to-transparent">
         <Clapperboard className="w-5 h-5 text-fuchsia-400" />
         <h2 className="text-sm font-bold text-zinc-100">Film Studio</h2>
-        <span className="text-[11px] text-zinc-500">StudioBinder + Resolve + Frame.io shape</span>
+        <span className="text-[11px] text-zinc-400">StudioBinder + Resolve + Frame.io shape</span>
       </header>
 
       {error && <div className="mx-4 mt-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : (
         <>
           {/* Project roster */}
@@ -125,7 +125,7 @@ export function FilmStudioSection() {
           </div>
 
           {!activeProject ? (
-            <p className="text-[11px] text-zinc-500 italic px-4 py-8 text-center">Create a project to start your production.</p>
+            <p className="text-[11px] text-zinc-400 italic px-4 py-8 text-center">Create a project to start your production.</p>
           ) : (
             <>
               {dash && (
@@ -176,7 +176,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

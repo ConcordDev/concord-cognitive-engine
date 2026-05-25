@@ -93,7 +93,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
           onChange={(e) => setNote(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && post()}
           placeholder="Log a status update…"
-          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-600"
+          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-400"
         />
         <button
           type="button"
@@ -106,7 +106,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading timeline…
         </div>
       )}
@@ -126,7 +126,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
                   <span className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
                     {e.kind}
                   </span>
-                  <span className="font-mono text-[10px] text-zinc-600">
+                  <span className="font-mono text-[10px] text-zinc-400">
                     {new Date(e.at).toLocaleString()}
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
       )}
 
       {!loading && data && data.count === 0 && (
-        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-500">
+        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-400">
           No events logged yet.
         </p>
       )}

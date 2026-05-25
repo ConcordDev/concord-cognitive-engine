@@ -69,7 +69,7 @@ function ResultBlock({ result }: { result: Record<string, unknown> }) {
     <div className="rounded border border-teal-500/20 bg-teal-500/5 p-3 grid grid-cols-2 gap-2 text-xs">
       {Object.entries(result).map(([k, v]) => (
         <div key={k}>
-          <span className="text-gray-500 uppercase text-[10px]">{k}</span>
+          <span className="text-gray-400 uppercase text-[10px]">{k}</span>
           <p className="font-mono text-gray-100 break-all">
             {Array.isArray(v) ? `[${v.join(', ')}]` : typeof v === 'object' && v !== null
               ? JSON.stringify(v) : String(v)}
@@ -107,7 +107,7 @@ function SingleSampleTest({ macro, withConfidence }: { macro: string; withConfid
         className={inputCls}
       />
       {withConfidence && (
-        <label className="text-[10px] text-gray-500 uppercase block">
+        <label className="text-[10px] text-gray-400 uppercase block">
           Confidence level (0–1)
           <input
             value={confidence}
@@ -219,7 +219,7 @@ function AnovaForm() {
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-gray-500">One-way ANOVA across ≥ 2 groups.</p>
+      <p className="text-[11px] text-gray-400">One-way ANOVA across ≥ 2 groups.</p>
       {groups.map((g, i) => (
         <div key={i} className="flex gap-1">
           <textarea
@@ -274,7 +274,7 @@ function NonParametricForm() {
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-gray-500">Mann–Whitney U — non-parametric two-sample test.</p>
+      <p className="text-[11px] text-gray-400">Mann–Whitney U — non-parametric two-sample test.</p>
       <textarea value={a} onChange={(e) => setA(e.target.value)} rows={2}
         placeholder="Sample A" className={inputCls} />
       <textarea value={b} onChange={(e) => setB(e.target.value)} rows={2}

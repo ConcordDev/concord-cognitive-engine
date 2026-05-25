@@ -70,7 +70,7 @@ function shortDate(d: string | null | undefined): string {
 }
 
 // Small shared input style
-const inp = 'bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 placeholder:text-zinc-600';
+const inp = 'bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 placeholder:text-zinc-400';
 const btnP = 'px-2.5 py-1 text-xs rounded bg-rose-600 hover:bg-rose-500 text-white font-semibold disabled:opacity-40';
 const btnS = 'px-2 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40';
 const card = 'bg-zinc-900/60 border border-zinc-800 rounded-lg';
@@ -199,7 +199,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
             {(['major', 'midLevel', 'firstTime', 'lapsed', 'recurring', 'prospect'] as const).map(k => (
               <div key={k} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-center">
                 <p className="text-sm font-bold text-rose-300">{segSummary[k] ?? 0}</p>
-                <p className="text-[9px] text-zinc-500 capitalize">{k.replace(/([A-Z])/g, ' $1')}</p>
+                <p className="text-[9px] text-zinc-400 capitalize">{k.replace(/([A-Z])/g, ' $1')}</p>
               </div>
             ))}
           </div>
@@ -210,8 +210,8 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
       </div>
 
       {/* Donor list */}
-      {loading && <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>}
-      {loaded && donors.length === 0 && <p className="text-xs text-zinc-500 italic text-center py-3">No donors yet. Add your first donor above.</p>}
+      {loading && <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>}
+      {loaded && donors.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No donors yet. Add your first donor above.</p>}
       <ul className="space-y-1">
         {donors.map(d => (
           <li key={d.id} className={`${card} px-3 py-2`}>
@@ -219,9 +219,9 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
               <button onClick={() => setExpanded(expanded === d.id ? null : d.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">
                   {expanded === d.id ? <ChevronDown className="w-3 h-3 inline" /> : <ChevronRight className="w-3 h-3 inline" />} {d.name}
-                  <span className="text-zinc-500 font-normal"> · {d.type}</span>
+                  <span className="text-zinc-400 font-normal"> · {d.type}</span>
                 </p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {money(d.totalGiven)} lifetime · {d.giftCount} gift(s) · avg {money(d.avgGift)} · last {shortDate(d.lastGiftAt)}
                 </p>
               </button>
@@ -238,7 +238,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 {/* Giving history */}
                 {d.gifts.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-0.5">Giving history</p>
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-0.5">Giving history</p>
                     {d.gifts.map(g => (
                       <p key={g.id} className="text-[11px] text-zinc-400">
                         <span className="text-emerald-400">{money(g.amount)}</span> · {shortDate(g.at)} · {g.fund} · {g.method}
@@ -250,7 +250,7 @@ function CRMTab({ donors, loaded, loading, reload }: { donors: Donor[]; loaded: 
                 {/* Communication log */}
                 {d.comms.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-0.5">Communications ({d.comms.length})</p>
+                    <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-0.5">Communications ({d.comms.length})</p>
                     {d.comms.slice(-4).map(c => (
                       <p key={c.id} className="text-[11px] text-zinc-400 truncate">{c.kind.replace(/_/g, ' ')} · {c.subject} · {shortDate(c.sentAt)}</p>
                     ))}
@@ -334,15 +334,15 @@ function RecurringTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors:
       </div>
 
       {donors.length === 0 && <p className="text-[10px] text-amber-400">Add donors in the CRM tab first — recurring pledges attach to a donor.</p>}
-      {pledges.length === 0 && <p className="text-xs text-zinc-500 italic text-center py-3">No recurring pledges yet.</p>}
+      {pledges.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No recurring pledges yet.</p>}
       <ul className="space-y-1">
         {pledges.map(p => (
           <li key={p.id} className={`${card} px-3 py-2 flex items-center gap-2`}>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-100 truncate">{p.donorName} · {money(p.amount)} / {p.frequency}</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {money(p.paid)} paid over {p.payments} charge(s) · next {shortDate(p.nextDue)} · {p.fund}
-                <span className={p.status === 'active' ? ' text-emerald-400' : p.status === 'paused' ? ' text-amber-400' : ' text-zinc-500'}> · {p.status}</span>
+                <span className={p.status === 'active' ? ' text-emerald-400' : p.status === 'paused' ? ' text-amber-400' : ' text-zinc-400'}> · {p.status}</span>
               </p>
             </div>
             {p.status !== 'cancelled' && (
@@ -400,12 +400,12 @@ function CommsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: () 
     <div className="space-y-3">
       <div className={`${card} p-2.5`}>
         <p className="text-xs font-semibold text-zinc-200 mb-1.5">Thank-you automation</p>
-        <p className="text-[10px] text-zinc-500 mb-1.5">Finds every gift not yet acknowledged and queues a thank-you to that donor.</p>
+        <p className="text-[10px] text-zinc-400 mb-1.5">Finds every gift not yet acknowledged and queues a thank-you to that donor.</p>
         <button onClick={runThankYou} disabled={busy} className={btnP}>{busy ? <Loader2 className="w-3 h-3 animate-spin inline" /> : <><Send className="w-3 h-3 inline" /> Run thank-you sweep</>}</button>
         {autoResult && (
           <div className="mt-2 text-[11px] text-zinc-300">
             {autoResult.sent === 0 ? 'All gifts already acknowledged.' : `Queued ${autoResult.sent} thank-you message(s):`}
-            {autoResult.queued.map((q, i) => <p key={i} className="text-zinc-500">· {q.donor} ({q.gifts} gift{q.gifts !== 1 ? 's' : ''})</p>)}
+            {autoResult.queued.map((q, i) => <p key={i} className="text-zinc-400">· {q.donor} ({q.gifts} gift{q.gifts !== 1 ? 's' : ''})</p>)}
           </div>
         )}
       </div>
@@ -487,7 +487,7 @@ function ReceiptsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: 
       {donorId && donor && (
         <div className={`${card} p-2.5`}>
           <p className="text-xs font-semibold text-zinc-200 mb-1.5">Per-gift receipts — {donor.name}</p>
-          {donor.gifts.length === 0 && <p className="text-[11px] text-zinc-500 italic">No gifts logged for this donor.</p>}
+          {donor.gifts.length === 0 && <p className="text-[11px] text-zinc-400 italic">No gifts logged for this donor.</p>}
           {donor.gifts.map(g => (
             <div key={g.id} className="flex items-center gap-2 py-0.5">
               <span className="text-[11px] text-zinc-400 flex-1">{money(g.amount)} · {shortDate(g.at)} · {g.fund}</span>
@@ -504,8 +504,8 @@ function ReceiptsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: 
           <p className="text-xs font-bold text-zinc-100 mb-1">Tax Receipt {receipt.receiptNo}</p>
           <p>{receipt.donorName}{receipt.donorAddress ? ` · ${receipt.donorAddress}` : ''}</p>
           <p className="text-emerald-400 text-base font-bold my-1">{money(receipt.amount)}</p>
-          <p className="text-zinc-500">Gift date {shortDate(receipt.giftDate)} · {receipt.fund} · {receipt.method}</p>
-          <p className="text-zinc-500 mt-1 italic">{receipt.statement}</p>
+          <p className="text-zinc-400">Gift date {shortDate(receipt.giftDate)} · {receipt.fund} · {receipt.method}</p>
+          <p className="text-zinc-400 mt-1 italic">{receipt.statement}</p>
         </div>
       )}
       {annual && (
@@ -515,7 +515,7 @@ function ReceiptsTab({ donors, reloadDonors }: { donors: Donor[]; reloadDonors: 
             <p key={i} className="text-zinc-400">{shortDate(g.date)} · {money(g.amount)} · {g.fund}</p>
           ))}
           <p className="text-emerald-400 font-bold mt-1">Total deductible: {money(annual.totalDeductible)} ({annual.giftCount} gift{annual.giftCount !== 1 ? 's' : ''})</p>
-          <p className="text-zinc-500 mt-1 italic">{annual.statement}</p>
+          <p className="text-zinc-400 mt-1 italic">{annual.statement}</p>
         </div>
       )}
     </div>
@@ -568,25 +568,25 @@ function PagesTab() {
         <button onClick={create} disabled={!form.title.trim() || busy} className={btnP}><Plus className="w-3 h-3 inline" /> New page</button>
       </div>
 
-      {pages.length === 0 && <p className="text-xs text-zinc-500 italic text-center py-3">No donation pages yet.</p>}
+      {pages.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No donation pages yet.</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {pages.map(p => (
           <div key={p.id} className={`${card} p-3`} style={{ borderTopColor: p.accentColor, borderTopWidth: 3 }}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs font-bold text-zinc-100 truncate">{p.title}</p>
-                <p className="text-[10px] text-zinc-500 font-mono">{p.publicUrl}</p>
+                <p className="text-[10px] text-zinc-400 font-mono">{p.publicUrl}</p>
               </div>
               <button onClick={() => del(p.id)} className="text-rose-400" aria-label="Delete page"><Trash2 className="w-3 h-3" /></button>
             </div>
             {p.story && <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">{p.story}</p>}
-            <p className="text-sm font-bold mt-1.5" style={{ color: p.accentColor }}>{money(p.raised)}<span className="text-[10px] text-zinc-500"> raised{p.goal > 0 ? ` of ${money(p.goal)}` : ''}</span></p>
+            <p className="text-sm font-bold mt-1.5" style={{ color: p.accentColor }}>{money(p.raised)}<span className="text-[10px] text-zinc-400"> raised{p.goal > 0 ? ` of ${money(p.goal)}` : ''}</span></p>
             {p.goal > 0 && (
               <div className="h-1.5 bg-zinc-800 rounded overflow-hidden mt-1">
                 <div className="h-full" style={{ width: `${Math.min(100, p.progressPct)}%`, backgroundColor: p.accentColor }} />
               </div>
             )}
-            <p className="text-[10px] text-zinc-500 mt-1">{p.donorCount} donor(s) · suggested {p.suggestedAmounts.map(a => `$${a}`).join(' / ')}</p>
+            <p className="text-[10px] text-zinc-400 mt-1">{p.donorCount} donor(s) · suggested {p.suggestedAmounts.map(a => `$${a}`).join(' / ')}</p>
             <div className="flex gap-1.5 mt-2">
               <button onClick={() => togglePub(p)} className={p.published ? btnS : btnP}>{p.published ? 'Unpublish' : 'Publish'}</button>
               {p.published && <button onClick={() => setGiveFor(giveFor === p.id ? null : p.id)} className={btnS}>Test donation</button>}
@@ -672,12 +672,12 @@ function VolunteersTab() {
 
       {vols.length >= 2 && (
         <div className={`${card} p-2.5`}>
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Hours by volunteer</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Hours by volunteer</p>
           <ChartKit kind="bar" data={hoursChart} xKey="name" series={[{ key: 'hours', label: 'Hours', color: '#f43f5e' }]} height={160} showLegend={false} />
         </div>
       )}
 
-      {vols.length === 0 && <p className="text-xs text-zinc-500 italic text-center py-3">No volunteers yet.</p>}
+      {vols.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No volunteers yet.</p>}
       <ul className="space-y-1">
         {vols.map(v => (
           <li key={v.id} className={`${card} px-3 py-2`}>
@@ -686,7 +686,7 @@ function VolunteersTab() {
                 <p className="text-xs font-semibold text-zinc-100 truncate">
                   {expanded === v.id ? <ChevronDown className="w-3 h-3 inline" /> : <ChevronRight className="w-3 h-3 inline" />} {v.name}
                 </p>
-                <p className="text-[10px] text-zinc-500">{Math.round(v.totalHours)} hrs · {v.shifts.length} shift(s) · {v.availability || 'availability n/a'}</p>
+                <p className="text-[10px] text-zinc-400">{Math.round(v.totalHours)} hrs · {v.shifts.length} shift(s) · {v.availability || 'availability n/a'}</p>
               </button>
               <button onClick={() => del(v.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete volunteer"><Trash2 className="w-3 h-3" /></button>
             </div>
@@ -781,7 +781,7 @@ function EventsTab() {
         <button onClick={create} disabled={!form.name.trim() || busy} className={btnP}><Plus className="w-3 h-3 inline" /> New event</button>
       </div>
 
-      {events.length === 0 && <p className="text-xs text-zinc-500 italic text-center py-3">No fundraising events yet.</p>}
+      {events.length === 0 && <p className="text-xs text-zinc-400 italic text-center py-3">No fundraising events yet.</p>}
       <ul className="space-y-1">
         {events.map(ev => (
           <li key={ev.id} className={`${card} px-3 py-2`}>
@@ -789,9 +789,9 @@ function EventsTab() {
               <button onClick={() => setExpanded(expanded === ev.id ? null : ev.id)} className="text-left min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">
                   {expanded === ev.id ? <ChevronDown className="w-3 h-3 inline" /> : <ChevronRight className="w-3 h-3 inline" />} {ev.name}
-                  <span className="text-zinc-500 font-normal"> · {ev.type}</span>
+                  <span className="text-zinc-400 font-normal"> · {ev.type}</span>
                 </p>
-                <p className="text-[10px] text-zinc-500">{money(ev.raised)} raised · {ev.progressPct}% of goal · {ev.teamCount} team(s) · {ev.donorCount} donor(s)</p>
+                <p className="text-[10px] text-zinc-400">{money(ev.raised)} raised · {ev.progressPct}% of goal · {ev.teamCount} team(s) · {ev.donorCount} donor(s)</p>
                 {ev.goal > 0 && (
                   <div className="h-1 bg-zinc-800 rounded overflow-hidden mt-1">
                     <div className="h-full bg-rose-500" style={{ width: `${Math.min(100, ev.progressPct)}%` }} />
@@ -856,7 +856,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
       <p className="text-sm font-bold text-zinc-100">{value}</p>
-      <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

@@ -258,7 +258,7 @@ function DtuChip({
       <span className="font-mono text-xs text-gray-200 group-hover:text-white truncate max-w-[180px]">
         {id}
       </span>
-      <Hash className="w-3 h-3 text-gray-500 group-hover:text-neon-cyan ml-auto" />
+      <Hash className="w-3 h-3 text-gray-400 group-hover:text-neon-cyan ml-auto" />
     </button>
   );
 }
@@ -303,7 +303,7 @@ function ComputationRow({ comp, index }: { comp: OracleComputation; index: numbe
         {hasProof && (
           <ChevronDown
             className={cn(
-              'w-4 h-4 text-gray-500 mt-1 transition-transform',
+              'w-4 h-4 text-gray-400 mt-1 transition-transform',
               expanded && 'rotate-180 text-neon-cyan'
             )}
           />
@@ -423,12 +423,12 @@ function EpistemicSection({
         >
           {style.label}
         </span>
-        <span className="ml-auto text-[10px] font-mono text-gray-500">
+        <span className="ml-auto text-[10px] font-mono text-gray-400">
           {items.length}
         </span>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">Nothing in this bucket.</p>
+        <p className="text-xs text-gray-400 italic">Nothing in this bucket.</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((item, i) => (
@@ -488,7 +488,7 @@ function PhaseRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-sm text-gray-100 capitalize font-medium">{name}</div>
-          <div className="flex gap-3 text-[10px] text-gray-500 font-mono mt-0.5">
+          <div className="flex gap-3 text-[10px] text-gray-400 font-mono mt-0.5">
             {duration && <span>⏱ {duration}</span>}
             {items && <span>▦ {items}</span>}
             {conf && <span>⦿ {conf}</span>}
@@ -496,7 +496,7 @@ function PhaseRow({
         </div>
         <ChevronRight
           className={cn(
-            'w-4 h-4 text-gray-500 transition-transform',
+            'w-4 h-4 text-gray-400 transition-transform',
             open && 'rotate-90 text-neon-cyan'
           )}
         />
@@ -523,7 +523,7 @@ function PhaseRow({
                         key={k}
                         className="rounded-md border border-lattice-border/60 bg-lattice-bg px-2 py-1 text-[11px]"
                       >
-                        <div className="text-[9px] uppercase tracking-wider text-gray-500">
+                        <div className="text-[9px] uppercase tracking-wider text-gray-400">
                           {k}
                         </div>
                         <div className="font-mono text-gray-200 truncate">
@@ -536,7 +536,7 @@ function PhaseRow({
                   </div>
                 )}
                 {!stats.notes && extraKeys.length === 0 && (
-                  <p className="text-[11px] text-gray-500 italic">
+                  <p className="text-[11px] text-gray-400 italic">
                     No additional telemetry for this phase.
                   </p>
                 )}
@@ -789,7 +789,7 @@ export default function OracleResponse({
                         'px-1.5 py-0.5 rounded-full text-[9px] font-mono',
                         isActive
                           ? 'bg-neon-cyan/20 text-neon-cyan'
-                          : 'bg-white/5 text-gray-500'
+                          : 'bg-white/5 text-gray-400'
                       )}
                     >
                       {tab.count}
@@ -860,7 +860,7 @@ export default function OracleResponse({
             <Download className="w-3.5 h-3.5" />
             <span>Download as DTU</span>
           </button>
-          <div className="ml-auto text-[10px] text-gray-500 font-mono">
+          <div className="ml-auto text-[10px] text-gray-400 font-mono">
             Oracle Engine · 6-phase pipeline
           </div>
         </div>
@@ -882,14 +882,14 @@ function SourcesTab({
 }) {
   if (sources.length === 0) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No sources were cited for this answer.
       </div>
     );
   }
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-3">
+      <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-3">
         {sources.length} cited DTU{sources.length === 1 ? '' : 's'}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -904,7 +904,7 @@ function SourcesTab({
 function ComputationsTab({ computations }: { computations: OracleComputation[] }) {
   if (computations.length === 0) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No compute modules were invoked.
       </div>
     );
@@ -921,7 +921,7 @@ function ComputationsTab({ computations }: { computations: OracleComputation[] }
 function ConnectionsTab({ connections }: { connections: OracleConnection[] }) {
   if (connections.length === 0) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No cross-domain connections were surfaced.
       </div>
     );
@@ -942,7 +942,7 @@ function EpistemicTab({
 }) {
   if (!breakdown) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No epistemic breakdown available.
       </div>
     );
@@ -969,7 +969,7 @@ function EpistemicTab({
 function PhasesTab({ phases }: { phases?: OraclePhases }) {
   if (!phases) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No phase telemetry available.
       </div>
     );
@@ -996,7 +996,7 @@ function PhasesTab({ phases }: { phases?: OraclePhases }) {
   });
   if (present.length === 0) {
     return (
-      <div className="text-xs text-gray-500 italic py-6 text-center">
+      <div className="text-xs text-gray-400 italic py-6 text-center">
         No phase telemetry available.
       </div>
     );

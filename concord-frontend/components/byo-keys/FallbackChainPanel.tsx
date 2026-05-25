@@ -55,7 +55,7 @@ export function FallbackChainPanel() {
   return (
     <section className="rounded-xl bg-zinc-900/60 ring-1 ring-zinc-800 p-4 sm:p-6">
       <h2 className="text-sm font-semibold text-zinc-100 mb-1">Fallback routing</h2>
-      <p className="text-[11px] text-zinc-500 mb-3">
+      <p className="text-[11px] text-zinc-400 mb-3">
         If a slot&apos;s primary key fails (rate limit, outage, bad key), Concord retries through
         the next <em>active</em> slot in its chain — in order.
       </p>
@@ -70,7 +70,7 @@ export function FallbackChainPanel() {
                 <div className="flex-1 min-w-0">
                   <span className="font-mono text-xs text-zinc-300">{slot}</span>
                   {!isEditing && (
-                    <span className="text-[11px] text-zinc-500 ml-2">
+                    <span className="text-[11px] text-zinc-400 ml-2">
                       {chain.length > 0 ? (
                         <>→ {chain.join(' → ')}</>
                       ) : (
@@ -91,7 +91,7 @@ export function FallbackChainPanel() {
                 <div className="mt-3 border-t border-zinc-800 pt-3">
                   {draft.length > 0 && (
                     <div className="mb-2 space-y-1">
-                      <div className="text-[10px] uppercase tracking-wide text-zinc-500">Chain order</div>
+                      <div className="text-[10px] uppercase tracking-wide text-zinc-400">Chain order</div>
                       {draft.map((s, i) => (
                         <div key={s} className="flex items-center gap-2 text-xs">
                           <span className="font-mono text-zinc-600 w-4">{i + 1}.</span>
@@ -114,7 +114,7 @@ export function FallbackChainPanel() {
                       ))}
                     </div>
                   )}
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Add slot</div>
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Add slot</div>
                   <div className="flex flex-wrap gap-1.5">
                     {SLOTS.filter((s) => s !== slot && !draft.includes(s)).map((s) => (
                       <button

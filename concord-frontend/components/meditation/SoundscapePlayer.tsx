@@ -219,7 +219,7 @@ export function SoundscapePlayer() {
       <div className="flex items-center gap-2 mb-3">
         <Volume2 className="w-4 h-4 text-sky-300" />
         <h3 className="text-sm font-bold text-zinc-100">Soundscape Audio</h3>
-        <span className="text-[11px] text-zinc-500">synthesized locally</span>
+        <span className="text-[11px] text-zinc-400">synthesized locally</span>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
@@ -232,7 +232,7 @@ export function SoundscapePlayer() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : config ? (
         <>
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 text-[11px] text-zinc-400">
@@ -249,7 +249,7 @@ export function SoundscapePlayer() {
               {playing ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
             </button>
             <div className="flex-1">
-              <label className="text-[10px] text-zinc-500 uppercase tracking-wide block mb-0.5">Volume</label>
+              <label className="text-[10px] text-zinc-400 uppercase tracking-wide block mb-0.5">Volume</label>
               <input type="range" min={0} max={1} step={0.05} value={volume}
                 onChange={(e) => setVolume(Number(e.target.value))}
                 className="w-full accent-sky-500" />
@@ -275,7 +275,7 @@ export function SoundscapePlayer() {
           )}
         </>
       ) : (
-        <p className="text-xs text-zinc-600">Soundscape unavailable.</p>
+        <p className="text-xs text-zinc-400">Soundscape unavailable.</p>
       )}
     </div>
   );

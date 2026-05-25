@@ -125,6 +125,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * fresh account never sees shadow-tier intercepts.
    */
   registerLensAction("black-market", "inventory", (ctx) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -154,7 +155,8 @@ export default function registerBlackMarketActions(registerLensAction) {
       ok: true,
       result: { auctions: visible, lockedCount, repScore: r.score },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Bidding / auction on rare intercepts ──────────────────────────
 
@@ -163,6 +165,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * sets a minimum bid, encryption tier and run duration (minutes).
    */
   registerLensAction("black-market", "auction-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -200,7 +203,8 @@ export default function registerBlackMarketActions(registerLensAction) {
     list.push(auction);
     save();
     return { ok: true, result: { auction } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * auction-bid — place a bid on an open auction. The bid must exceed the
@@ -491,6 +495,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * the buy view).
    */
   registerLensAction("black-market", "resale-market", (ctx) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -509,7 +514,8 @@ export default function registerBlackMarketActions(registerLensAction) {
     market.sort((a, b) => b.listedAt - a.listedAt);
     mine.sort((a, b) => b.listedAt - a.listedAt);
     return { ok: true, result: { market, mine, repScore: r.score } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * resale-buy — buy another player's resale listing. Ownership transfers
@@ -566,6 +572,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * and unlocked tier) appears, watch-check surfaces it as an alert.
    */
   registerLensAction("black-market", "watch-add", (ctx, _artifact, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -594,7 +601,8 @@ export default function registerBlackMarketActions(registerLensAction) {
     list.push(watch);
     save();
     return { ok: true, result: { watch } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * watch-list — the caller's saved searches.
@@ -631,6 +639,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * tiers the caller's reputation has unlocked are considered.
    */
   registerLensAction("black-market", "watch-check", (ctx) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -674,7 +683,8 @@ export default function registerBlackMarketActions(registerLensAction) {
       }
     }
     return { ok: true, result: { alerts, count: alerts.length, watchCount: watches.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Decryption mini-game for shadow-tier messages ─────────────────
   //
@@ -707,6 +717,7 @@ export default function registerBlackMarketActions(registerLensAction) {
    * common letter in the plaintext).
    */
   registerLensAction("black-market", "decrypt-start", (ctx, _artifact, params = {}) => {
+  try {
     const s = getState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const uid = actId(ctx);
@@ -741,7 +752,8 @@ export default function registerBlackMarketActions(registerLensAction) {
         shiftRange: [1, 25],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * decrypt-guess — submit a shift guess for an active decryption

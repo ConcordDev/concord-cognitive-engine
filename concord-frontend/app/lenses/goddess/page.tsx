@@ -143,9 +143,9 @@ export default function GoddessPage() {
                 </div>
 
                 {loading ? (
-                  <div className="text-zinc-500">Listening…</div>
+                  <div className="text-zinc-400">Listening…</div>
                 ) : filtered.length === 0 ? (
-                  <div className="text-center text-zinc-500 italic py-12 border border-zinc-800 rounded-xl">
+                  <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
                     {toneFilter
                       ? `No ${toneFilter} dispatches in this world.`
                       : 'The goddess has not yet spoken in this world.'}

@@ -462,6 +462,7 @@ export default function registerChemActions(registerLensAction) {
    * "generate-safety" UniversalAction button was a dead click.
    */
   registerLensAction("chem", "generate-safety", (ctx, artifact, params) => {
+  try {
     const d = artifact.data || {};
     const name = String(d.name || d.compound || d.formula || params?.name || artifact.title || "(unknown)").trim();
     const lname = name.toLowerCase();
@@ -510,7 +511,8 @@ export default function registerChemActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastSafetyProfile = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * check-interactions
@@ -518,6 +520,7 @@ export default function registerChemActions(registerLensAction) {
    * Pairwise rule lookup against a real (small) chem hazard table.
    */
   registerLensAction("chem", "check-interactions", (ctx, artifact, params) => {
+  try {
     const raw = artifact.data?.compounds || params?.compounds || [];
     const compounds = raw.map(c => typeof c === 'string' ? { name: c } : c).filter(c => c.name);
     if (compounds.length < 2) {
@@ -561,7 +564,8 @@ export default function registerChemActions(registerLensAction) {
     };
     if (artifact.data) artifact.data.lastInteractionCheck = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * explore-element

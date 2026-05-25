@@ -622,6 +622,7 @@ export default function registerAnimationActions(registerLensAction) {
   // A pressure-sampled stroke is [x, y, pressure] triples; this expands
   // them into per-segment width modulation against a brush's dynamics.
   registerLensAction("animation", "stroke-commit-pressure", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -659,12 +660,14 @@ export default function registerAnimationActions(registerLensAction) {
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { strokeId: stroke.id, layerId: layer.id, strokeCount: layer.strokes.length, widthSamples: widths.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Path / shape tweening between keyframes ─────────────────────────
   // Given a shape (a closed/open point path) on two keyframe times, emit
   // interpolated point paths per in-between frame, eased.
   registerLensAction("animation", "tween-shapes", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -699,10 +702,12 @@ export default function registerAnimationActions(registerLensAction) {
       ok: true,
       result: { easing, steps, pointCount: from.length, frames: tween, easings: Object.keys(AN_EASINGS) },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Commit a tween directly into the project as new frames (one per step).
   registerLensAction("animation", "tween-to-frames", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -736,7 +741,8 @@ export default function registerAnimationActions(registerLensAction) {
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { createdFrames: created, count: created.length, easing } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Rigging / bone armature for cut-out animation ───────────────────
   // A rig is a tree of bones; each frame can hold a pose (bone angles).
@@ -749,6 +755,7 @@ export default function registerAnimationActions(registerLensAction) {
   const AN_MAX_BONES = 60;
 
   registerLensAction("animation", "rig-bone-add", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -772,7 +779,8 @@ export default function registerAnimationActions(registerLensAction) {
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { bone, boneCount: rig.bones.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("animation", "rig-bone-update", (ctx, _a, params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -847,6 +855,7 @@ export default function registerAnimationActions(registerLensAction) {
 
   // Forward-kinematics: resolve absolute bone tip positions for a frame.
   registerLensAction("animation", "rig-resolve-pose", (ctx, _a, params = {}) => {
+  try {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
@@ -877,7 +886,8 @@ export default function registerAnimationActions(registerLensAction) {
     };
     const segments = rig.bones.map(resolve);
     return { ok: true, result: { frameId: frame.id, segments, boneCount: segments.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Audio waveform display + sync scrubbing ─────────────────────────
   // Client decodes audio (Web Audio API) and posts peak samples; the

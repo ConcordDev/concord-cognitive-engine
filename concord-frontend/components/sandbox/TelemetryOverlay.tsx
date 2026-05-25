@@ -141,13 +141,13 @@ export function TelemetryOverlay() {
 
       <div className="mb-2 grid grid-cols-2 gap-2">
         <div className="rounded bg-slate-800/60 px-2 py-1.5">
-          <div className="text-[9px] uppercase text-slate-500">Live FPS</div>
+          <div className="text-[9px] uppercase text-slate-400">Live FPS</div>
           <div className={`text-lg font-bold tabular-nums ${liveFps >= 55 ? 'text-emerald-300' : liveFps >= 30 ? 'text-amber-300' : 'text-rose-300'}`}>
             {liveFps || '—'}
           </div>
         </div>
         <div className="rounded bg-slate-800/60 px-2 py-1.5">
-          <div className="text-[9px] uppercase text-slate-500">Frame ms</div>
+          <div className="text-[9px] uppercase text-slate-400">Frame ms</div>
           <div className="text-lg font-bold tabular-nums text-slate-200">{liveFrameMs || '—'}</div>
         </div>
       </div>
@@ -209,7 +209,7 @@ export function TelemetryOverlay() {
       )}
 
       {samples.length === 0 ? (
-        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-500">
+        <div className="rounded border border-dashed border-slate-700 px-2 py-2 text-center text-[10px] text-slate-400">
           No recorded sessions yet.
         </div>
       ) : (
@@ -218,11 +218,11 @@ export function TelemetryOverlay() {
             <li key={s.id} className="flex items-center gap-1.5 rounded bg-slate-800/60 px-2 py-1">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-slate-200">{s.name}</div>
-                <div className="text-[9px] tabular-nums text-slate-500">
+                <div className="text-[9px] tabular-nums text-slate-400">
                   {s.avgFps} fps · p95 {s.p95FrameMs}ms · {s.jankFrames} jank · {s.hitstopCount} hitstops
                 </div>
               </div>
-              <button onClick={() => remove(s.id)} aria-label="Delete telemetry sample" className="text-slate-500 hover:text-rose-400">
+              <button onClick={() => remove(s.id)} aria-label="Delete telemetry sample" className="text-slate-400 hover:text-rose-400">
                 <Trash2 className="h-3 w-3" />
               </button>
             </li>

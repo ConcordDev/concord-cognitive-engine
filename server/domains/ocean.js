@@ -209,6 +209,7 @@ export default function registerOceanActions(registerLensAction) {
   });
 
   registerLensAction("ocean", "spot-list", (ctx, _a, params = {}) => {
+  try {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ocActor(ctx);
     let spots = [...ocSpots(s, userId)];
@@ -218,7 +219,8 @@ export default function registerOceanActions(registerLensAction) {
       ...sp, sessionCount: sessions.filter((se) => se.spotId === sp.id).length,
     }));
     return { ok: true, result: { spots: out, count: out.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("ocean", "spot-delete", (ctx, _a, params = {}) => {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -234,6 +236,7 @@ export default function registerOceanActions(registerLensAction) {
 
   // session-log — record a surf/dive/fishing session at a spot.
   registerLensAction("ocean", "session-log", (ctx, _a, params = {}) => {
+  try {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ocActor(ctx);
     const spot = ocSpots(s, userId).find((x) => x.id === params.spotId);
@@ -253,7 +256,8 @@ export default function registerOceanActions(registerLensAction) {
     ocSessions(s, userId).push(session);
     saveOcean();
     return { ok: true, result: { session } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("ocean", "session-list", (ctx, _a, params = {}) => {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -274,6 +278,7 @@ export default function registerOceanActions(registerLensAction) {
   });
 
   registerLensAction("ocean", "ocean-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ocActor(ctx);
     const spots = ocSpots(s, userId);
@@ -290,7 +295,8 @@ export default function registerOceanActions(registerLensAction) {
         avgRating: rated.length > 0 ? Math.round((rated.reduce((n, x) => n + x.rating, 0) / rated.length) * 10) / 10 : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest active NWS marine weather alerts as visible DTUs.
   registerLensAction("ocean", "feed", async (ctx, _a, params = {}) => {
@@ -694,6 +700,7 @@ export default function registerOceanActions(registerLensAction) {
    * Returns { format, filename, mimeType, content }.
    */
   registerLensAction("ocean", "session-export", (ctx, _a, params = {}) => {
+  try {
     const s = getOceanState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ocActor(ctx);
     const format = params.format === "gpx" ? "gpx" : "csv";
@@ -750,5 +757,6 @@ export default function registerOceanActions(registerLensAction) {
         content: gpx,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

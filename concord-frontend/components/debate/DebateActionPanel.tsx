@@ -317,9 +317,9 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
               </div>
               <div className="text-[12px] font-semibold text-gray-100 leading-tight flex items-center gap-1">
                 {a.label}
-                {a.toggleExpand && (isExpanded ? <ChevronUp className="w-3 h-3 text-gray-500" /> : <ChevronDown className="w-3 h-3 text-gray-500" />)}
+                {a.toggleExpand && (isExpanded ? <ChevronUp className="w-3 h-3 text-gray-400" /> : <ChevronDown className="w-3 h-3 text-gray-400" />)}
               </div>
-              <div className="text-[10px] text-gray-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-gray-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -344,7 +344,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
                 ))}
               </ul>
               {fallacyResult.confidence != null && (
-                <div className="text-[10px] text-gray-500">Confidence: {(fallacyResult.confidence * 100).toFixed(0)}%</div>
+                <div className="text-[10px] text-gray-400">Confidence: {(fallacyResult.confidence * 100).toFixed(0)}%</div>
               )}
             </>
           )}
@@ -360,7 +360,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
             <p className="text-xs text-gray-200 leading-relaxed">{steelmanResult.strengthened}</p>
           )}
           {steelmanResult.reasoning && (
-            <div className="text-[10px] text-gray-500 italic">Reasoning: {steelmanResult.reasoning}</div>
+            <div className="text-[10px] text-gray-400 italic">Reasoning: {steelmanResult.reasoning}</div>
           )}
         </div>
       )}
@@ -377,7 +377,7 @@ export function DebateActionPanel({ debate }: { debate: DebateLike }) {
           </div>
           {scoreResult.reasoning && <p className="text-xs text-gray-300 leading-relaxed">{scoreResult.reasoning}</p>}
           {scoreResult.engagement != null && (
-            <div className="text-[10px] text-gray-500">Engagement: {scoreResult.engagement}</div>
+            <div className="text-[10px] text-gray-400">Engagement: {scoreResult.engagement}</div>
           )}
         </div>
       )}

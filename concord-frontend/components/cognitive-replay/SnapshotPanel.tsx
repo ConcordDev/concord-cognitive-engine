@@ -106,30 +106,30 @@ export function SnapshotPanel({ sinceDays }: { sinceDays: number }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading snapshots…</div>
+        <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading snapshots…</div>
       ) : list.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-600">No snapshots yet. Capture one to share your cognitive week.</div>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4 text-xs text-zinc-400">No snapshots yet. Capture one to share your cognitive week.</div>
       ) : (
         <ul className="space-y-1.5">
           {list.map((s) => (
             <li key={s.shareId} className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
               <button onClick={() => open(s.shareId)} className="flex-1 min-w-0 text-left">
                 <div className="truncate text-xs font-medium text-zinc-200">{s.title}</div>
-                <div className="font-mono text-[10px] text-zinc-500">
+                <div className="font-mono text-[10px] text-zinc-400">
                   {new Date(s.createdAt).toLocaleString()} · {s.stats.turns} turns · {s.stats.totalTokens.toLocaleString()} tok
                 </div>
               </button>
               <button
                 onClick={() => share(s.shareId)}
                 title="Copy share link"
-                className="rounded p-1 text-zinc-500 hover:text-cyan-400"
+                className="rounded p-1 text-zinc-400 hover:text-cyan-400"
               >
                 {copied === s.shareId ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Share2 className="h-3.5 w-3.5" />}
               </button>
               <button
                 onClick={() => remove(s.shareId)}
                 title="Delete snapshot"
-                className="rounded p-1 text-zinc-500 hover:text-rose-400"
+                className="rounded p-1 text-zinc-400 hover:text-rose-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

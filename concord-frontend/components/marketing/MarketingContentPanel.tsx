@@ -15,7 +15,7 @@ interface AbTest { id: string; name: string; variantA: Variant; variantB: Varian
 
 const STATUS_FLOW: Record<string, string> = { draft: 'scheduled', scheduled: 'published' };
 const STATUS_COLOR: Record<string, string> = {
-  draft: 'text-zinc-500', scheduled: 'text-amber-400', published: 'text-emerald-400', archived: 'text-zinc-600',
+  draft: 'text-zinc-400', scheduled: 'text-amber-400', published: 'text-emerald-400', archived: 'text-zinc-600',
 };
 
 export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
@@ -81,7 +81,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
   const delTest = async (id: string) => { await lensRun('marketing', 'abtest-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -104,14 +104,14 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
           </button>
         </div>
         {content.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No content scheduled.</p>
+          <p className="text-[11px] text-zinc-400 italic">No content scheduled.</p>
         ) : (
           <ul className="space-y-1">
             {content.map((c) => (
               <li key={c.id} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
                 <div>
                   <p className="text-xs text-zinc-200">{c.title}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize">{c.channel} · {c.scheduledDate || 'unscheduled'}</p>
+                  <p className="text-[10px] text-zinc-400 capitalize">{c.channel} · {c.scheduledDate || 'unscheduled'}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn('text-[10px] uppercase', STATUS_COLOR[c.status])}>{c.status}</span>
@@ -149,7 +149,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
           <Plus className="w-3.5 h-3.5" /> Create test
         </button>
         {tests.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No A/B tests.</p>
+          <p className="text-[11px] text-zinc-400 italic">No A/B tests.</p>
         ) : (
           <ul className="space-y-2">
             {tests.map((t) => (
@@ -175,7 +175,7 @@ export function MarketingContentPanel({ onChange }: { onChange: () => void }) {
                     <div key={v} className={cn('flex items-center gap-1 mb-1 px-2 py-1 rounded',
                       t.winner === v ? 'bg-emerald-950/40' : '')}>
                       <span className="w-24 text-[11px] text-zinc-300 truncate">{variant.label}</span>
-                      <span className="text-[11px] text-zinc-500 w-20">{variant.conversionRate}% conv.</span>
+                      <span className="text-[11px] text-zinc-400 w-20">{variant.conversionRate}% conv.</span>
                       <input placeholder="visitors" inputMode="numeric" value={f.visitors}
                         onChange={(e) => setRecordForm((p) => ({ ...p, [key]: { ...f, visitors: e.target.value } }))}
                         className="w-20 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />

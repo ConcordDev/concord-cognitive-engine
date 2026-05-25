@@ -144,13 +144,13 @@ function SectionHeader({ icon: Icon, title, hint }: { icon: typeof Plus; title: 
         <Icon className="w-4 h-4 text-neon-cyan" />
         {title}
       </h3>
-      {hint && <p className="mt-0.5 text-[11px] text-gray-500">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] text-gray-400">{hint}</p>}
     </div>
   );
 }
 
 function EmptyHint({ text }: { text: string }) {
-  return <p className="py-6 text-center text-xs text-gray-500">{text}</p>;
+  return <p className="py-6 text-center text-xs text-gray-400">{text}</p>;
 }
 
 // ── For You — affinity model ───────────────────────────────────────────────
@@ -199,7 +199,7 @@ function ForYouTool() {
                   style={{ width: `${(a.affinity / maxAffinity) * 100}%` }}
                 />
               </div>
-              <p className="mt-1 text-[11px] text-gray-500">
+              <p className="mt-1 text-[11px] text-gray-400">
                 {a.likes} likes · {a.replies} replies · {a.reposts} reposts · {a.bookmarks} bookmarks
               </p>
             </li>
@@ -228,7 +228,7 @@ function ThreadNodeView({
   return (
     <div style={{ marginLeft: depth > 0 ? 14 : 0 }} className={depth > 0 ? 'border-l border-lattice-border pl-2' : ''}>
       <div className="rounded-lg bg-lattice-deep border border-lattice-border p-2.5">
-        <div className="flex items-center gap-2 text-[11px] text-gray-500">
+        <div className="flex items-center gap-2 text-[11px] text-gray-400">
           <span
             className={cn(
               'rounded px-1.5 py-0.5 font-semibold uppercase',
@@ -246,7 +246,7 @@ function ThreadNodeView({
         </div>
         {node.quotedBody && (
           <div className="mt-1.5 rounded border border-lattice-border bg-black/30 p-2 text-[11px] text-gray-400">
-            <span className="text-gray-500">Quoting{node.quotedAuthor ? ` @${node.quotedAuthor}` : ''}: </span>
+            <span className="text-gray-400">Quoting{node.quotedAuthor ? ` @${node.quotedAuthor}` : ''}: </span>
             {node.quotedBody}
           </div>
         )}
@@ -266,7 +266,7 @@ function ThreadNodeView({
           )}
           <button
             onClick={() => onDelete(node.id)}
-            className="ml-auto flex items-center gap-0.5 text-gray-500 hover:text-red-400"
+            className="ml-auto flex items-center gap-0.5 text-gray-400 hover:text-red-400"
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -345,7 +345,7 @@ function ThreadsTool() {
         {replyTo && (
           <div className="mb-1.5 flex items-center gap-2 text-[11px] text-neon-cyan">
             Replying in thread
-            <button onClick={() => setReplyTo(null)} className="text-gray-500 hover:text-white">
+            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-white">
               <X className="w-3 h-3" />
             </button>
           </div>
@@ -484,7 +484,7 @@ function ListsTool() {
             <li key={l.id} className="rounded-lg bg-lattice-deep border border-lattice-border p-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">{l.name}</span>
-                <span className="text-[11px] text-gray-500">{l.members.length} members</span>
+                <span className="text-[11px] text-gray-400">{l.members.length} members</span>
                 <button
                   onClick={() => togglePin(l)}
                   className={cn('ml-auto p-1', l.pinned ? 'text-neon-cyan' : 'text-gray-600 hover:text-white')}
@@ -510,7 +510,7 @@ function ListsTool() {
                       @{m}
                       <button
                         onClick={() => updateMembers(l.id, m, 'remove')}
-                        className="text-gray-500 hover:text-red-400"
+                        className="text-gray-400 hover:text-red-400"
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>
@@ -613,7 +613,7 @@ function PollsTool() {
             {opts.length > 2 && (
               <button
                 onClick={() => setOpts((p) => p.filter((_, j) => j !== i))}
-                className="px-1 text-gray-500 hover:text-red-400"
+                className="px-1 text-gray-400 hover:text-red-400"
                 aria-label="Remove option"
               >
                 <X className="w-3 h-3" />
@@ -630,7 +630,7 @@ function PollsTool() {
           </button>
         )}
         <div className="flex items-center gap-2">
-          <label className="text-[11px] text-gray-500">Closes in (min)</label>
+          <label className="text-[11px] text-gray-400">Closes in (min)</label>
           <input
             type="number"
             value={duration}
@@ -663,7 +663,7 @@ function PollsTool() {
                 <span
                   className={cn(
                     'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-                    p.closed ? 'bg-white/5 text-gray-500' : 'bg-neon-green/15 text-neon-green'
+                    p.closed ? 'bg-white/5 text-gray-400' : 'bg-neon-green/15 text-neon-green'
                   )}
                 >
                   {p.closed ? 'closed' : 'live'}
@@ -699,7 +699,7 @@ function PollsTool() {
                   </button>
                 ))}
               </div>
-              <p className="mt-1.5 text-[11px] text-gray-500">{p.totalVotes} total votes</p>
+              <p className="mt-1.5 text-[11px] text-gray-400">{p.totalVotes} total votes</p>
             </li>
           ))}
         </ul>
@@ -797,7 +797,7 @@ function SavedTool() {
                 >
                   <Bookmark className="w-3.5 h-3.5 text-neon-cyan" />
                   <span className="text-sm text-white">{f.name}</span>
-                  <span className="text-[11px] text-gray-500">{f.itemCount} saved</span>
+                  <span className="text-[11px] text-gray-400">{f.itemCount} saved</span>
                   <button
                     onClick={() => delFolder(f.id)}
                     className="ml-auto p-1 text-gray-600 hover:text-red-400"
@@ -811,7 +811,7 @@ function SavedTool() {
           )}
           <div className="mb-3 space-y-1.5 rounded-lg bg-lattice-deep border border-lattice-border p-2.5">
             <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-gray-500" />
+              <Search className="w-3.5 h-3.5 text-gray-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -958,14 +958,14 @@ function SpacesTool() {
                   )}
                 />
                 <span className="text-sm font-bold text-white">{sp.title}</span>
-                <span className="ml-auto text-[11px] text-gray-500">
+                <span className="ml-auto text-[11px] text-gray-400">
                   <Mic className="mr-0.5 inline w-3 h-3" />
                   {sp.speakerCount}
                   <Ear className="ml-1.5 mr-0.5 inline w-3 h-3" />
                   {sp.listenerCount}
                 </span>
               </div>
-              {sp.topic && <p className="mt-0.5 text-[11px] text-gray-500">{sp.topic}</p>}
+              {sp.topic && <p className="mt-0.5 text-[11px] text-gray-400">{sp.topic}</p>}
               {sp.status === 'live' && (
                 <div className="mt-2 flex gap-1.5">
                   <button
@@ -1095,7 +1095,7 @@ function ControlsTool() {
                     {w}
                     <button
                       onClick={() => muteWord('remove', w)}
-                      className="text-gray-500 hover:text-red-400"
+                      className="text-gray-400 hover:text-red-400"
                     >
                       <X className="w-2.5 h-2.5" />
                     </button>

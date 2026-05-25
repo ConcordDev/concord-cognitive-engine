@@ -81,7 +81,7 @@ export function ServiceRequestsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Megaphone className="w-4 h-4 text-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">311 service requests</span>
-        <span className="ml-auto text-[10px] text-gray-500">{requests.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{requests.length}</span>
         <select value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All statuses</option>
           {STATUSES.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
@@ -110,9 +110,9 @@ export function ServiceRequestsPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Megaphone className="w-6 h-6 mx-auto mb-2 opacity-30" />No requests in this view.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Megaphone className="w-6 h-6 mx-auto mb-2 opacity-30" />No requests in this view.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {filtered.map(r => (
@@ -122,7 +122,7 @@ export function ServiceRequestsPanel() {
                   <span className="text-[10px] font-mono text-cyan-300">{r.referenceNumber}</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', PRIORITY_COLOUR[r.priority])}>{r.priority}</span>
                   <span className="text-sm text-white truncate">{r.category.replace(/_/g, ' ')}</span>
-                  <span className="ml-auto text-[10px] text-gray-500">{r.address || `${r.lat.toFixed(3)},${r.lng.toFixed(3)}`}</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{r.address || `${r.lat.toFixed(3)},${r.lng.toFixed(3)}`}</span>
                 </div>
                 <div className="text-xs text-gray-300">{r.description}</div>
                 <div className="mt-1 flex items-center gap-2">

@@ -115,7 +115,7 @@ export function TimelineBuilder() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6 text-zinc-500">
+      <div className="flex items-center justify-center py-6 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
@@ -126,7 +126,7 @@ export function TimelineBuilder() {
       <div className="flex items-center gap-2 mb-3">
         <History className="w-4 h-4 text-amber-400" />
         <h3 className="text-sm font-bold text-zinc-100">Timeline Builder</h3>
-        <span className="text-[11px] text-zinc-500">TimelineJS-shape</span>
+        <span className="text-[11px] text-zinc-400">TimelineJS-shape</span>
       </div>
 
       {/* timeline picker */}
@@ -162,7 +162,7 @@ export function TimelineBuilder() {
             className={cn('px-2.5 py-1 text-[11px] rounded-t-lg -mb-px border-b-2',
               view === v.id
                 ? 'border-amber-500 text-amber-300'
-                : 'border-transparent text-zinc-500 hover:text-zinc-300')}>
+                : 'border-transparent text-zinc-400 hover:text-zinc-300')}>
             {v.label}
           </button>
         ))}
@@ -174,7 +174,7 @@ export function TimelineBuilder() {
       )}
 
       {view !== 'import' && !active && (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[120px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[120px]">
           Select or create a timeline.
         </div>
       )}
@@ -238,7 +238,7 @@ export function TimelineBuilder() {
 
           {/* Event list */}
           {active.events.length === 0 ? (
-            <p className="text-xs text-zinc-500 italic">No events yet — add the first above.</p>
+            <p className="text-xs text-zinc-400 italic">No events yet — add the first above.</p>
           ) : (
             <ol className="relative border-l-2 border-zinc-800 ml-3 space-y-2">
               {[...active.events].sort((a, b) => a.year - b.year).map((ev) => (
@@ -253,7 +253,7 @@ export function TimelineBuilder() {
                       )}
                       <span className="text-[9px] px-1 rounded bg-zinc-800 text-zinc-400">{ev.category}</span>
                       {ev.media.length > 0 && (
-                        <span className="text-[9px] text-zinc-500">{ev.media.length} media</span>
+                        <span className="text-[9px] text-zinc-400">{ev.media.length} media</span>
                       )}
                       <button onClick={() => setMediaOpen(mediaOpen === ev.id ? null : ev.id)}
                         className="text-[9px] text-amber-400 hover:text-amber-300">
@@ -264,8 +264,8 @@ export function TimelineBuilder() {
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
-                    {ev.description && <p className="text-[11px] text-zinc-500 mt-0.5">{ev.description}</p>}
-                    {ev.place && <p className="text-[10px] text-zinc-600 mt-0.5">📍 {ev.place}</p>}
+                    {ev.description && <p className="text-[11px] text-zinc-400 mt-0.5">{ev.description}</p>}
+                    {ev.place && <p className="text-[10px] text-zinc-400 mt-0.5">📍 {ev.place}</p>}
                     {mediaOpen === ev.id && (
                       <div className="mt-2 pt-2 border-t border-zinc-800">
                         <EventMediaManager timelineId={active.id} eventId={ev.id} media={ev.media} onChanged={reload} />

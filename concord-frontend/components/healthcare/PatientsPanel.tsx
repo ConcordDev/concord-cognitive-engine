@@ -56,9 +56,9 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-semibold text-gray-200">Patients</span>
-        <span className="text-[10px] text-gray-500">{list.length}</span>
+        <span className="text-[10px] text-gray-400">{list.length}</span>
         <div className="ml-2 flex items-center gap-1 flex-1 max-w-[300px]">
-          <Search className="w-3.5 h-3.5 text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
             value={q}
             onChange={e => { setQ(e.target.value); refresh(e.target.value); }}
@@ -93,9 +93,9 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No patients yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Users className="w-6 h-6 mx-auto mb-2 opacity-30" />No patients yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(p => (
@@ -106,7 +106,7 @@ export function PatientsPanel({ onSelect }: { onSelect: (patientId: string) => v
                 )}>{p.firstName.slice(0, 1)}{p.lastName.slice(0, 1)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{p.lastName}, {p.firstName}</div>
-                  <div className="text-[10px] text-gray-500 truncate">
+                  <div className="text-[10px] text-gray-400 truncate">
                     <span className="font-mono">{p.mrn}</span>
                     {p.dob && <span> · DOB {p.dob} ({age(p.dob)})</span>}
                     <span> · {p.sex}</span>

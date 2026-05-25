@@ -269,7 +269,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
               )}
             </div>
             <h3 className="text-sm font-semibold text-white font-mono">{advisory.ghsa_id}</h3>
-            {advisory.cve_id && <div className="text-[11px] text-zinc-500 font-mono">{advisory.cve_id}</div>}
+            {advisory.cve_id && <div className="text-[11px] text-zinc-400 font-mono">{advisory.cve_id}</div>}
           </div>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400" aria-label="Close">
             <X className="w-4 h-4" />
@@ -287,7 +287,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
                 onClick={() => { setPane(p.id); setFeedback(null); }}
                 className={cn(
                   'flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap',
-                  active ? '' : 'border-transparent text-zinc-500 hover:text-zinc-200',
+                  active ? '' : 'border-transparent text-zinc-400 hover:text-zinc-200',
                 )}
                 style={active ? { borderBottomColor: p.accent, color: p.accent } : {}}
               >

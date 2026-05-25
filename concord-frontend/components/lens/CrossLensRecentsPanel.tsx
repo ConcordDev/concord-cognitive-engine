@@ -91,13 +91,13 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
         <GitMerge className="w-4 h-4 text-amber-300" aria-hidden="true" />
         <h3 className="text-sm font-medium text-zinc-100 flex-1">
           From elsewhere
-          {rows.length > 0 && <span className="ml-2 text-[10px] text-zinc-500 font-mono">{rows.length}</span>}
+          {rows.length > 0 && <span className="ml-2 text-[10px] text-zinc-400 font-mono">{rows.length}</span>}
         </h3>
         <button
           type="button"
           onClick={() => void fetchData()}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -111,7 +111,7 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
       )}
 
       {!error && rows.length === 0 && !loading && (
-        <div className="px-3 py-3 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-3 text-xs text-zinc-400 italic text-center">
           No DTUs surfaced from elsewhere in the last {sinceDays} day{sinceDays === 1 ? '' : 's'}.
         </div>
       )}
@@ -123,7 +123,7 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
               <div className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-zinc-200 font-medium truncate">{s.title || `DTU ${s.dtuId.slice(0, 12)}`}</div>
-                  <div className="text-[10px] text-zinc-500 truncate font-mono">
+                  <div className="text-[10px] text-zinc-400 truncate font-mono">
                     {s.sourceLens && (
                       <Link href={`/lenses/${s.sourceLens}`} className="text-zinc-400 hover:text-amber-300 underline-offset-2 hover:underline">
                         from {s.sourceLens}
@@ -132,7 +132,7 @@ export function CrossLensRecentsPanel({ lensId, sinceDays = 7, limit = 8, hideWh
                     {' · '}{s.kind}
                   </div>
                 </div>
-                <div className="text-[10px] text-zinc-500 flex items-center gap-1 shrink-0">
+                <div className="text-[10px] text-zinc-400 flex items-center gap-1 shrink-0">
                   <Clock className="w-3 h-3" />
                   {timeAgo(s.surfacedAt)}
                 </div>

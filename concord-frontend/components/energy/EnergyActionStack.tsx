@@ -253,12 +253,12 @@ export function EnergyActionStack() {
           <div className="rounded-lg border-2 border-amber-500/40 bg-zinc-900/60 p-3">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Rate</div>
             <div className="text-2xl font-bold text-amber-300">{rate.latest.priceCentsPerKwh.toFixed(2)}<span className="text-sm ml-1">¢/kWh</span></div>
-            <div className="text-[11px] text-zinc-500 font-mono">{rate.latest.period}</div>
+            <div className="text-[11px] text-zinc-400 font-mono">{rate.latest.period}</div>
           </div>
           <div className="rounded-lg border border-emerald-500/30 bg-zinc-900/60 p-3">
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Est. monthly bill</div>
             <div className="text-2xl font-bold text-emerald-300">{billText}</div>
-            <div className="text-[11px] text-zinc-500">at {kwh} kWh</div>
+            <div className="text-[11px] text-zinc-400">at {kwh} kWh</div>
           </div>
           <div className={cn('rounded-lg border bg-zinc-900/60 p-3', yoy == null ? 'border-zinc-700' : yoy >= 0 ? 'border-rose-500/30' : 'border-emerald-500/30')}>
             <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">YoY change</div>
@@ -266,7 +266,7 @@ export function EnergyActionStack() {
               {yoy == null ? '—' : (yoy >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />)}
               {yoyText}
             </div>
-            <div className="text-[11px] text-zinc-500 font-mono">vs. last year</div>
+            <div className="text-[11px] text-zinc-400 font-mono">vs. last year</div>
           </div>
         </div>
       )}
@@ -305,7 +305,7 @@ export function EnergyActionStack() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}

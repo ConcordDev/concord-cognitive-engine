@@ -48,7 +48,7 @@ export function MarketHeader({ refreshKey }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 p-4 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading market…
       </div>
     );
@@ -68,14 +68,14 @@ export function MarketHeader({ refreshKey }: { refreshKey?: number }) {
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-amber-400" />
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">Available CC</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">Available CC</p>
               <p className="text-lg font-bold text-amber-300">{wallet.balance.toLocaleString()}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-sky-400" />
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-zinc-500">In Escrow</p>
+              <p className="text-[10px] uppercase tracking-wider text-zinc-400">In Escrow</p>
               <p className="text-lg font-bold text-sky-300">{wallet.escrowed.toLocaleString()}</p>
             </div>
           </div>
@@ -101,7 +101,7 @@ export function MarketHeader({ refreshKey }: { refreshKey?: number }) {
 
           {stats.recentLedger.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-              <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+              <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
                 Recent escrow ledger
               </p>
               <div className="space-y-1">
@@ -132,7 +132,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2.5">
       <div className="mb-1">{icon}</div>
-      <p className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</p>
       <p className="text-base font-bold text-white">{value.toLocaleString()}</p>
     </div>
   );

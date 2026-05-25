@@ -220,8 +220,7 @@ export default function LabLensPage() {
                 className={`lens-card cursor-pointer ${
                   selectedOrgan === (organ.name as string) ? 'border-neon-purple' : ''
                 }`}
-                onClick={() => setSelectedOrgan(organ.name as string)}
-              >
+                onClick={() => setSelectedOrgan(organ.name as string)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-sm">{String(organ.name)}</span>
                   <span
@@ -269,7 +268,7 @@ export default function LabLensPage() {
         </h2>
         <div className="space-y-2">
           {experiments?.length === 0 ? (
-            <p className="text-center py-8 text-gray-500">
+            <p className="text-center py-8 text-gray-400">
               No experiments yet. Run your first experiment!
             </p>
           ) : (
@@ -290,7 +289,7 @@ export default function LabLensPage() {
                   </span>
                 </div>
                 {exp.code !== undefined && (
-                  <pre className="text-xs text-gray-500 mt-2 overflow-auto max-h-16 font-mono">
+                  <pre className="text-xs text-gray-400 mt-2 overflow-auto max-h-16 font-mono">
                     {String(exp.code).slice(0, 200)}{String(exp.code).length > 200 ? '…' : ''}
                   </pre>
                 )}
@@ -384,11 +383,11 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
               placeholder="parameter" className="flex-1 input-lattice text-sm" />
             <input type="text" value={c.min} onChange={(e) => updateConstraint(idx, 'min', e.target.value)}
               placeholder="min" className="w-20 input-lattice text-sm" />
-            <span className="text-gray-500">–</span>
+            <span className="text-gray-400">–</span>
             <input type="text" value={c.max} onChange={(e) => updateConstraint(idx, 'max', e.target.value)}
               placeholder="max" className="w-20 input-lattice text-sm" />
             {constraints.length > 1 && (
-              <button onClick={() => removeConstraint(idx)} className="text-gray-500 hover:text-red-400" aria-label="Delete">
+              <button onClick={() => removeConstraint(idx)} className="text-gray-400 hover:text-red-400" aria-label="Delete">
                 <Trash2 className="w-4 h-4" />
               </button>
             )}
@@ -441,7 +440,7 @@ function RealityExplorerSection({ handleAction, isRunning, experimentItems, acti
             </button>
           ))}
         </div>
-        {!experimentItems[0] && <p className="text-xs text-gray-500">Create a lab experiment artifact to run analysis.</p>}
+        {!experimentItems[0] && <p className="text-xs text-gray-400">Create a lab experiment artifact to run analysis.</p>}
         {actionResult && (
           <div className="bg-lattice-deep rounded-lg p-4 space-y-3 text-sm">
             {'model' in actionResult && 'rSquared' in actionResult && (

@@ -42,7 +42,7 @@ export function GlyphKeyboard({ onInsert }: { onInsert?: (glyphs: string) => voi
         <Keyboard className="w-4 h-4 text-gray-400" />
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide">Glyph Keyboard</h2>
       </div>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Type semantic names (Refusal, Pivot, Bridge, Refusal-Pivot…) or base-6 digits
         instead of pasting glyphs. Space- or comma-separated.
       </p>
@@ -91,7 +91,7 @@ export function GlyphKeyboard({ onInsert }: { onInsert?: (glyphs: string) => voi
           </div>
           {/* Quick-pick name buttons sourced from the server's name table */}
           <div className="border-t border-gray-800 pt-2">
-            <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5">Quick add</div>
+            <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-1.5">Quick add</div>
             <div className="flex flex-wrap gap-1.5">
               {result.names.map((n) => (
                 <button key={n.glyph}

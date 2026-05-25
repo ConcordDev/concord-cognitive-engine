@@ -1061,7 +1061,7 @@ export default function GameLensPage() {
             <div className="flex items-end gap-2 h-32">
               {xpHistory.map((d: XpHistoryEntry, dIndex: number) => (
                 <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-xs text-gray-500 font-mono">{d.xp}</span>
+                  <span className="text-xs text-gray-400 font-mono">{d.xp}</span>
                   <motion.div
                     className="w-full rounded-t bg-gradient-to-t from-neon-purple to-neon-cyan"
                     initial={{ height: 0 }}
@@ -1091,7 +1091,7 @@ export default function GameLensPage() {
                 </div>
               ))}
               {quests.filter((q) => q.status === 'accepted').length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">No active quests. Accept some from the Quests tab!</p>
+                <p className="text-sm text-gray-400 text-center py-4">No active quests. Accept some from the Quests tab!</p>
               )}
             </div>
           </div>
@@ -1126,7 +1126,7 @@ export default function GameLensPage() {
                   <div className="flex items-center gap-3">
                     <BranchIcon className={cn('w-5 h-5', data.color)} />
                     <span className="font-semibold text-white">{data.label}</span>
-                    <span className="text-xs text-gray-500">{data.nodes.filter((n) => n.unlocked).length}/{data.nodes.length} unlocked</span>
+                    <span className="text-xs text-gray-400">{data.nodes.filter((n) => n.unlocked).length}/{data.nodes.length} unlocked</span>
                   </div>
                   {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
                 </button>
@@ -1143,12 +1143,12 @@ export default function GameLensPage() {
                         {data.nodes.map((node) => (
                           <div key={node.id} className={cn('flex items-center gap-4 rounded-lg p-3', node.unlocked ? 'bg-lattice-surface' : 'bg-lattice-bg opacity-60')}>
                             <div className={cn('w-10 h-10 rounded-full flex items-center justify-center border-2', node.unlocked ? 'border-neon-green bg-neon-green/10' : 'border-gray-600 bg-gray-800')}>
-                              {node.unlocked ? <Unlock className="w-4 h-4 text-neon-green" /> : <Lock className="w-4 h-4 text-gray-500" />}
+                              {node.unlocked ? <Unlock className="w-4 h-4 text-neon-green" /> : <Lock className="w-4 h-4 text-gray-400" />}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="font-medium text-white text-sm">{node.name}</span>
-                                {node.requires && <span className="text-[10px] text-gray-500">requires prev.</span>}
+                                {node.requires && <span className="text-[10px] text-gray-400">requires prev.</span>}
                               </div>
                               <p className="text-xs text-gray-400 truncate">{node.description}</p>
                               {/* Level pips */}
@@ -1206,7 +1206,7 @@ export default function GameLensPage() {
                   <span className="text-2xl">{quest.icon}</span>
                   <div className="flex items-center gap-2">
                     {quest.timeLeft && (
-                      <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock className="w-3 h-3" />{quest.timeLeft}</span>
+                      <span className="text-[10px] text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" />{quest.timeLeft}</span>
                     )}
                     <span className={cn('text-xs px-2 py-0.5 rounded', difficultyStyle[quest.difficulty])}>{quest.difficulty}</span>
                     <span className={cn('text-xs px-2 py-0.5 rounded', quest.type === 'daily' ? 'bg-neon-cyan/15 text-neon-cyan' : quest.type === 'weekly' ? 'bg-neon-purple/15 text-neon-purple' : 'bg-neon-yellow/15 text-neon-yellow')}>
@@ -1274,11 +1274,11 @@ export default function GameLensPage() {
                       <span className={cn('text-[10px] px-1.5 py-0.5 rounded border', rarityColor[ach.rarity])}>{ach.rarity}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{ach.description}</p>
-                    <p className="text-[10px] text-gray-500 mt-1">Category: {ach.category}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Category: {ach.category}</p>
                     {!ach.unlocked && (
                       <div className="mt-2">
                         <div className="flex justify-between text-[10px] mb-1">
-                          <span className="text-gray-500">Progress</span>
+                          <span className="text-gray-400">Progress</span>
                           <span className="text-gray-300">{ach.progress}/{ach.maxProgress}</span>
                         </div>
                         <div className="h-1.5 bg-lattice-bg rounded-full overflow-hidden">
@@ -1332,7 +1332,7 @@ export default function GameLensPage() {
               </thead>
               <tbody>
                 {sortedLeaderboard.length === 0 && (
-                  <tr><td colSpan={5} className="py-8 text-center text-gray-500">No players on the leaderboard yet. Start a game to climb the ranks.</td></tr>
+                  <tr><td colSpan={5} className="py-8 text-center text-gray-400">No players on the leaderboard yet. Start a game to climb the ranks.</td></tr>
                 )}
                 {sortedLeaderboard.length === 1 && (
                   <tr><td colSpan={6} className="py-4 text-center text-neon-cyan text-xs">🏔️ Pioneer — First on the leaderboard!</td></tr>
@@ -1346,7 +1346,7 @@ export default function GameLensPage() {
                     className={cn('border-b border-lattice-border/30 transition-colors', player.isCurrentUser ? 'bg-neon-purple/10' : 'hover:bg-lattice-surface/50')}
                   >
                     <td className="py-3 px-4">
-                      {sortedLeaderboard.length === 1 ? <Sparkles className="w-5 h-5 text-neon-cyan" /> : index === 0 ? <Crown className="w-5 h-5 text-neon-yellow" /> : index === 1 ? <span className="text-gray-300 font-bold">2</span> : index === 2 ? <span className="text-amber-600 font-bold">3</span> : <span className="text-gray-500">#{index + 1}</span>}
+                      {sortedLeaderboard.length === 1 ? <Sparkles className="w-5 h-5 text-neon-cyan" /> : index === 0 ? <Crown className="w-5 h-5 text-neon-yellow" /> : index === 1 ? <span className="text-gray-300 font-bold">2</span> : index === 2 ? <span className="text-amber-600 font-bold">3</span> : <span className="text-gray-400">#{index + 1}</span>}
                     </td>
                     <td className="py-3 font-medium text-white text-sm">
                       {player.name}
@@ -1388,7 +1388,7 @@ export default function GameLensPage() {
                 </div>
                 <h4 className="font-semibold text-white text-sm">{item.name}</h4>
                 <p className="text-xs text-gray-400 mt-1 flex-1">{item.description}</p>
-                <span className="text-[10px] text-gray-500 mt-1 capitalize">{item.type}</span>
+                <span className="text-[10px] text-gray-400 mt-1 capitalize">{item.type}</span>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
                   <span className="text-sm text-neon-yellow flex items-center gap-1"><Gem className="w-3 h-3" />{item.cost.toLocaleString()}</span>
                   {item.owned ? (
@@ -1468,7 +1468,7 @@ export default function GameLensPage() {
               ].map((entry, i) => (
                 <div key={i} className="flex items-center justify-between text-sm border-b border-lattice-border/30 pb-2 last:border-0">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-gray-500 w-14 shrink-0">{entry.time}</span>
+                    <span className="text-[10px] text-gray-400 w-14 shrink-0">{entry.time}</span>
                     <span className="text-gray-300">{entry.text}</span>
                   </div>
                   <span className={cn('font-mono text-xs shrink-0', entry.color)}>{entry.xp}</span>
@@ -1535,7 +1535,7 @@ export default function GameLensPage() {
                 <div className="text-center space-y-3">
                   <Target className="w-16 h-16 text-neon-purple/50 mx-auto" />
                   <p className="text-gray-400 text-sm">Press <span className="text-white font-semibold">Start Game</span> to begin</p>
-                  <p className="text-gray-500 text-xs">30 seconds &middot; Click targets &middot; Build combos &middot; Earn XP</p>
+                  <p className="text-gray-400 text-xs">30 seconds &middot; Click targets &middot; Build combos &middot; Earn XP</p>
                 </div>
               </div>
             )}
@@ -1584,7 +1584,7 @@ export default function GameLensPage() {
                       <span className="font-bold">+{mgXpAwarded} XP earned!</span>
                     </motion.div>
                   )}
-                  <p className="text-xs text-gray-500">XP has been added to your profile</p>
+                  <p className="text-xs text-gray-400">XP has been added to your profile</p>
                 </motion.div>
               </div>
             )}
@@ -1734,7 +1734,7 @@ export default function GameLensPage() {
 
         {gameActionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setGameActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setGameActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -1794,7 +1794,7 @@ export default function GameLensPage() {
                     </div>
                   ))}
                 </div>
-                {!!gameActionResult.tip && <p className="text-xs text-gray-500 italic">{gameActionResult.tip as string}</p>}
+                {!!gameActionResult.tip && <p className="text-xs text-gray-400 italic">{gameActionResult.tip as string}</p>}
                 {Array.isArray(gameActionResult.timeline) && (
                   <div className="grid grid-cols-6 gap-1">
                     {(gameActionResult.timeline as {minute:number;gold:number}[]).slice(0,6).map(t => (

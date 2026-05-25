@@ -83,7 +83,7 @@ export default function WeatherHero({ data, isLive, lastUpdated, className = '' 
   if (!data?.current) {
     return (
       <section className={`rounded-xl border border-white/10 bg-gradient-to-br from-sky-900/30 to-zinc-900/40 backdrop-blur-sm p-6 ${className}`}>
-        <div className="text-xs text-zinc-500">Open-Meteo feed connecting…</div>
+        <div className="text-xs text-zinc-400">Open-Meteo feed connecting…</div>
       </section>
     );
   }
@@ -119,7 +119,7 @@ export default function WeatherHero({ data, isLive, lastUpdated, className = '' 
               {isLive ? (
                 <><Wifi className="w-3 h-3 text-green-400 animate-pulse" /><span className="text-green-400">live</span></>
               ) : (
-                <><WifiOff className="w-3 h-3 text-zinc-500" /><span className="text-zinc-500">offline</span></>
+                <><WifiOff className="w-3 h-3 text-zinc-400" /><span className="text-zinc-400">offline</span></>
               )}
             </span>
           </div>
@@ -153,10 +153,10 @@ export default function WeatherHero({ data, isLive, lastUpdated, className = '' 
               const DayIcon = dayDecoded.Icon;
               return (
                 <div key={i} className="text-center">
-                  <div className="text-[10px] text-zinc-500 mb-1">{dayLabel(t, i)}</div>
+                  <div className="text-[10px] text-zinc-400 mb-1">{dayLabel(t, i)}</div>
                   <DayIcon className="w-5 h-5 text-sky-300 mx-auto" />
                   <div className="mt-1 text-xs text-zinc-200">{Math.round(max)}°</div>
-                  <div className="text-[10px] text-zinc-500">{Math.round(min)}°</div>
+                  <div className="text-[10px] text-zinc-400">{Math.round(min)}°</div>
                   <div className="mt-1.5 h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-sky-400/60"

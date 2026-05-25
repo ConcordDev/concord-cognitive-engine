@@ -250,28 +250,28 @@ export default function InvariantLensPage() {
           <Shield className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{invariants.length}</p>
-            <p className="text-xs text-gray-500">Rules Total</p>
+            <p className="text-xs text-gray-400">Rules Total</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{enforcedCount}</p>
-            <p className="text-xs text-gray-500">Passing</p>
+            <p className="text-xs text-gray-400">Passing</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-yellow-500" />
           <div>
             <p className="text-lg font-bold">{invariants.filter(i => i.status === 'violated').length}</p>
-            <p className="text-xs text-gray-500">Violations</p>
+            <p className="text-xs text-gray-400">Violations</p>
           </div>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3 * 0.05 }} className="panel p-3 flex items-center gap-3">
           <BarChart3 className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{invariants.length > 0 ? `${((invariants.filter(i => i.status === 'violated').length / invariants.length) * 100).toFixed(1)}%` : '0%'}</p>
-            <p className="text-xs text-gray-500">Violation Rate</p>
+            <p className="text-xs text-gray-400">Violation Rate</p>
           </div>
         </motion.div>
       </div>
@@ -359,7 +359,7 @@ export default function InvariantLensPage() {
             </button>
           ))}
           {(search || statusFilter !== 'all') && (
-            <span className="text-[10px] text-gray-500 ml-2">
+            <span className="text-[10px] text-gray-400 ml-2">
               {visibleInvariants.length} of {invariants.length}
             </span>
           )}
@@ -377,7 +377,7 @@ export default function InvariantLensPage() {
             {category === 'structural' && <Lock className="w-4 h-4 text-neon-blue" />}
             {category === 'capability' && <Eye className="w-4 h-4 text-neon-purple" />}
             {category} Invariants
-            <span className="text-xs text-gray-500 font-normal">({categoryInvariants.length})</span>
+            <span className="text-xs text-gray-400 font-normal">({categoryInvariants.length})</span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {categoryInvariants
@@ -410,7 +410,7 @@ export default function InvariantLensPage() {
                     <div className="flex items-center gap-2">
                       <p className="font-mono text-sm font-bold">{inv.name}</p>
                       {inv.frozen && (
-                        <Lock className="w-3 h-3 text-gray-500" />
+                        <Lock className="w-3 h-3 text-gray-400" />
                       )}
                     </div>
                     <p className="text-sm text-gray-400 mt-1">{inv.description}</p>
@@ -423,7 +423,7 @@ export default function InvariantLensPage() {
       })}
 
       {invariants.length > 0 && visibleInvariants.length === 0 && (
-        <div className="panel p-6 text-center text-sm text-gray-500">
+        <div className="panel p-6 text-center text-sm text-gray-400">
           No invariants match the current filters.
         </div>
       )}
@@ -482,22 +482,22 @@ export default function InvariantLensPage() {
                   <span className="text-2xl font-bold text-neon-green">
                     {invariants.length > 0 ? Math.round((enforcedCount / invariants.length) * 100) : 95}%
                   </span>
-                  <span className="text-[10px] text-gray-500">enforced</span>
+                  <span className="text-[10px] text-gray-400">enforced</span>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div>
                 <p className="text-neon-green font-bold">{enforcedCount}</p>
-                <p className="text-gray-500">Active</p>
+                <p className="text-gray-400">Active</p>
               </div>
               <div>
                 <p className="text-yellow-500 font-bold">{invariants.filter(i => i.status === 'warning').length}</p>
-                <p className="text-gray-500">Warning</p>
+                <p className="text-gray-400">Warning</p>
               </div>
               <div>
                 <p className="text-neon-pink font-bold">{invariants.filter(i => i.status === 'violated').length}</p>
-                <p className="text-gray-500">Violated</p>
+                <p className="text-gray-400">Violated</p>
               </div>
             </div>
           </div>
@@ -606,7 +606,7 @@ export default function InvariantLensPage() {
               );
             })}
           </div>
-          <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+          <div className="flex justify-between text-[10px] text-gray-400 mt-1">
             <span>24h ago</span>
             <span>Now</span>
           </div>
@@ -656,7 +656,7 @@ export default function InvariantLensPage() {
                       <div key={i} className="text-xs text-gray-300 flex gap-2">
                         <span className="text-red-400">[{String(v.severity)}]</span>
                         <span>{String(v.name)}</span>
-                        <span className="text-gray-500 font-mono">{String(v.expression)}</span>
+                        <span className="text-gray-400 font-mono">{String(v.expression)}</span>
                       </div>
                     ))}
                   </div>

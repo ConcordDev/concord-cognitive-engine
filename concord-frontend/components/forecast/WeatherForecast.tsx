@@ -71,8 +71,8 @@ export function WeatherForecast() {
       {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Open-Meteo unreachable.</div>}
       {c && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Thermometer className="h-2.5 w-2.5" />Now</div><div className="mt-0.5 font-mono text-lg text-sky-300">{c.temperature_2m.toFixed(1)}°C</div></div>
-          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Droplets className="h-2.5 w-2.5" />Humidity</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{c.relative_humidity_2m}%</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Thermometer className="h-2.5 w-2.5" />Now</div><div className="mt-0.5 font-mono text-lg text-sky-300">{c.temperature_2m.toFixed(1)}°C</div></div>
+          <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Droplets className="h-2.5 w-2.5" />Humidity</div><div className="mt-0.5 font-mono text-lg text-cyan-300">{c.relative_humidity_2m}%</div></div>
         </div>
       )}
       <div className="space-y-1.5">
@@ -85,8 +85,8 @@ export function WeatherForecast() {
           </div>
         ))}
       </div>
-      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
-      <p className="flex items-center gap-1 text-[10px] text-zinc-500"><ExternalLink className="h-3 w-3" />Open-Meteo · refreshes every 30 min.</p>
+      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      <p className="flex items-center gap-1 text-[10px] text-zinc-400"><ExternalLink className="h-3 w-3" />Open-Meteo · refreshes every 30 min.</p>
     </div>
   );
 }

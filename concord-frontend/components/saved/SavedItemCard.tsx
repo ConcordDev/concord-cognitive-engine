@@ -82,7 +82,7 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
               </span>
             )}
           </div>
-          <div className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
+          <div className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-2 flex-wrap">
             {item.author && <span>by {item.author}</span>}
             <span>saved {new Date(item.savedAt).toLocaleDateString()}</span>
             {item.sourceLens && <span className="text-zinc-600">via {item.sourceLens}</span>}
@@ -92,7 +92,7 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
           type="button"
           onClick={() => onRemove(item.id)}
           aria-label="Remove from saved"
-          className="text-zinc-500 hover:text-rose-300 shrink-0"
+          className="text-zinc-400 hover:text-rose-300 shrink-0"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -132,14 +132,14 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
 
       {editing && (
         <div className="space-y-2 rounded border border-zinc-800 bg-zinc-900/50 p-2">
-          <label className="block text-[10px] text-zinc-500 uppercase">Tags (comma-separated)</label>
+          <label className="block text-[10px] text-zinc-400 uppercase">Tags (comma-separated)</label>
           <input
             value={tagDraft}
             onChange={(e) => setTagDraft(e.target.value)}
             placeholder="research, todo, important"
             className="w-full text-xs bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-zinc-100"
           />
-          <label className="block text-[10px] text-zinc-500 uppercase">Note</label>
+          <label className="block text-[10px] text-zinc-400 uppercase">Note</label>
           <textarea
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
@@ -187,7 +187,7 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
         )}
 
         <div className="inline-flex items-center gap-1 text-[11px]">
-          <FolderInput className="w-3 h-3 text-zinc-500" />
+          <FolderInput className="w-3 h-3 text-zinc-400" />
           <select
             value={item.folderId ?? ''}
             onChange={(e) => onUpdate(item.id, { folderId: e.target.value || null })}

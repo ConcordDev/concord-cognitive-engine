@@ -109,6 +109,7 @@ export default function registerForumActions(registerLensAction) {
 
   // ── Topics ──────────────────────────────────────────────────────────
   registerLensAction("forum", "topic-create", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const title = fmClean(params.title, 200);
@@ -134,7 +135,8 @@ export default function registerForumActions(registerLensAction) {
     fmListB(s.topics, userId).push(topic);
     saveFmState();
     return { ok: true, result: { topic } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forum", "topic-list", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -158,6 +160,7 @@ export default function registerForumActions(registerLensAction) {
   });
 
   registerLensAction("forum", "topic-get", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const topic = (s.topics.get(userId) || []).find((t) => t.id === params.id);
@@ -183,7 +186,8 @@ export default function registerForumActions(registerLensAction) {
     const tree = buildTree("_root", 0);
     const subscribed = (s.subscriptions.get(userId) || []).some((x) => x.topicId === topic.id);
     return { ok: true, result: { topic, posts, tree, replyCount: posts.length, subscribed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forum", "topic-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -217,6 +221,7 @@ export default function registerForumActions(registerLensAction) {
 
   // ── Posts / replies ─────────────────────────────────────────────────
   registerLensAction("forum", "post-reply", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const topic = (s.topics.get(userId) || []).find((t) => t.id === params.topicId);
@@ -256,7 +261,8 @@ export default function registerForumActions(registerLensAction) {
     }
     saveFmState();
     return { ok: true, result: { post } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("forum", "post-delete", (ctx, _a, params = {}) => {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -631,6 +637,7 @@ export default function registerForumActions(registerLensAction) {
   });
 
   registerLensAction("forum", "user-profile", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const author = params.author ? fmClean(params.author, 60) : null;
@@ -660,12 +667,14 @@ export default function registerForumActions(registerLensAction) {
         lastActiveAt: dates[dates.length - 1] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Trending / personalized hot ranking across categories ───────────
   // Reddit-style hot score: log-weighted votes + age decay, blended
   // with a personalization boost from the viewer's tag affinity.
   registerLensAction("forum", "trending", (ctx, _a, params = {}) => {
+  try {
     const s = getFmState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = fmAid(ctx);
     const topics = s.topics.get(userId) || [];
@@ -714,5 +723,6 @@ export default function registerForumActions(registerLensAction) {
         personalized: personalize,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

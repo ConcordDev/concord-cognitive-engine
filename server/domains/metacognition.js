@@ -11,6 +11,7 @@ export default function registerMetacognitionActions(registerLensAction) {
    * params.bins — number of calibration bins (default 10)
    */
   registerLensAction("metacognition", "confidenceCalibration", (ctx, artifact, params) => {
+  try {
     const predictions = artifact.data?.predictions || [];
     if (predictions.length < 2) {
       return { ok: true, result: { message: "Need at least 2 predictions for calibration.", brierScore: null } };
@@ -126,7 +127,8 @@ export default function registerMetacognitionActions(registerLensAction) {
         baseRate: r(baseRate),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * learningCurve
@@ -136,6 +138,7 @@ export default function registerMetacognitionActions(registerLensAction) {
    * params.masteryThreshold — performance level for mastery (default 0.9)
    */
   registerLensAction("metacognition", "learningCurve", (ctx, artifact, params) => {
+  try {
     const progress = artifact.data?.progress || [];
     if (progress.length < 3) {
       return { ok: true, result: { message: "Need at least 3 data points to model a learning curve." } };
@@ -282,7 +285,8 @@ export default function registerMetacognitionActions(registerLensAction) {
         trialRange: { first: trials[0], last: trials[trials.length - 1] },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * biasDetection
@@ -291,6 +295,7 @@ export default function registerMetacognitionActions(registerLensAction) {
    * artifact.data.decisions = [{ id, options: [{ name, score, evidence: [{ supports: bool, strength: number }] }], chosen, initialAnchor?, investedCost?, outcome? }]
    */
   registerLensAction("metacognition", "biasDetection", (ctx, artifact, params) => {
+  try {
     const decisions = artifact.data?.decisions || [];
     if (decisions.length === 0) {
       return { ok: true, result: { message: "No decision data to analyze." } };
@@ -441,7 +446,8 @@ export default function registerMetacognitionActions(registerLensAction) {
         }),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Decision journal + reflection substrate (per-user, STATE-backed) ──────
 

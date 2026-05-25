@@ -322,7 +322,7 @@ function CreateMarketForm({
     <div className="mb-3 rounded-lg border border-indigo-500/30 bg-indigo-950/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-xs font-semibold text-indigo-200">Propose a new market</span>
-        <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-300" aria-label="Close">
+        <button type="button" onClick={onClose} className="text-zinc-400 hover:text-zinc-300" aria-label="Close">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -397,7 +397,7 @@ function BrowseTab({
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-zinc-400" />
           <input
             type="text" value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') onApply(); }}
@@ -439,17 +439,17 @@ function BrowseTab({
             }`}
           >
             <Tag className="h-2.5 w-2.5" />{c}
-            <span className="text-zinc-500">{facets[c] ?? 0}</span>
+            <span className="text-zinc-400">{facets[c] ?? 0}</span>
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-8 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading markets…
         </div>
       ) : markets.length === 0 ? (
-        <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-500">
+        <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
           No markets match. Propose one to start the book.
         </div>
       ) : (
@@ -469,7 +469,7 @@ function BrowseTab({
                   }`}>{m.status}</span>
                 </div>
                 <ProbabilityBar yesPercent={m.yesPercent} />
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-zinc-500">
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-zinc-400">
                   <span className="inline-flex items-center gap-1"><Tag className="h-2.5 w-2.5" />{m.category}</span>
                   <span>pool {m.totalPool} ⚡</span>
                   <span>{m.tradeCount} trades</span>
@@ -607,13 +607,13 @@ function MarketDetail({
       <div className="my-8 w-full max-w-2xl rounded-xl border border-indigo-700/50 bg-[#0d1117] p-5">
         <div className="mb-3 flex items-start justify-between gap-3">
           <h3 className="text-base font-bold text-zinc-100">{market?.question || 'Loading…'}</h3>
-          <button type="button" onClick={onClose} className="shrink-0 text-zinc-500 hover:text-zinc-300" aria-label="Close">
+          <button type="button" onClick={onClose} className="shrink-0 text-zinc-400 hover:text-zinc-300" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {!market ? (
-          <div className="flex items-center justify-center py-10 text-xs text-zinc-500">
+          <div className="flex items-center justify-center py-10 text-xs text-zinc-400">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading market…
           </div>
         ) : (
@@ -623,8 +623,8 @@ function MarketDetail({
               <span className="font-semibold text-zinc-300">Resolution criteria: </span>
               {market.resolutionCriteria}
             </p>
-            {market.description && <p className="text-[11px] text-zinc-500">{market.description}</p>}
-            <p className="font-mono text-[10px] text-zinc-600">
+            {market.description && <p className="text-[11px] text-zinc-400">{market.description}</p>}
+            <p className="font-mono text-[10px] text-zinc-400">
               {market.category} · pool {market.totalPool} ⚡ · {market.tradeCount} trades · status {market.status}
             </p>
 
@@ -666,14 +666,14 @@ function MarketDetail({
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="text-[10px] text-zinc-500">Stake ⚡</label>
+                    <label className="text-[10px] text-zinc-400">Stake ⚡</label>
                     <input
                       type="number" min={1} value={stake}
                       onChange={(e) => setStake(Math.max(1, Number(e.target.value) || 1))}
                       className="w-20 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
                     />
                     {odds && (
-                      <span className="text-[10px] text-zinc-500">
+                      <span className="text-[10px] text-zinc-400">
                         payout if win:{' '}
                         <span className="text-amber-400">
                           {side === 'yes' ? odds.yesStakePayoutIfWin : odds.noStakePayoutIfWin} ⚡
@@ -717,7 +717,7 @@ function MarketDetail({
                     </div>
                     {book.myOrders.filter((o) => o.status === 'open').length > 0 && (
                       <div className="mt-2 space-y-1">
-                        <p className="text-[10px] uppercase text-zinc-500">My resting orders</p>
+                        <p className="text-[10px] uppercase text-zinc-400">My resting orders</p>
                         {book.myOrders.filter((o) => o.status === 'open').map((o) => (
                           <div key={o.id} className="flex items-center justify-between rounded border border-white/5 bg-black/30 px-2 py-1 text-[11px]">
                             <span className="font-mono text-zinc-300">
@@ -725,7 +725,7 @@ function MarketDetail({
                             </span>
                             <button
                               type="button" onClick={() => cancelOrder(o.id)}
-                              className="text-zinc-500 hover:text-rose-400"
+                              className="text-zinc-400 hover:text-rose-400"
                             >
                               cancel
                             </button>
@@ -792,7 +792,7 @@ function MarketDetail({
                     evidence source
                   </a>
                 )}
-                <p className="mt-1 font-mono text-[10px] text-zinc-500">
+                <p className="mt-1 font-mono text-[10px] text-zinc-400">
                   {resolution.winners} winners · {resolution.losers} losers · settled {resolution.settledPositions}
                   {' · '}final YES {Math.round((resolution.finalYesProbability || 0) * 100)}%
                 </p>
@@ -818,7 +818,7 @@ function OrderColumn({
     <div className={`overflow-hidden rounded border ${border}`}>
       <p className={`px-2 py-1 text-[10px] uppercase ${txt} bg-white/5`}>{title}</p>
       {rows.length === 0 ? (
-        <p className="px-2 py-2 text-[10px] text-zinc-600">no resting orders</p>
+        <p className="px-2 py-2 text-[10px] text-zinc-400">no resting orders</p>
       ) : rows.map((r, i) => (
         <div key={i} className="flex justify-between border-t border-white/5 px-2 py-1 font-mono text-[11px]">
           <span className={txt}>{r.price}</span>
@@ -853,7 +853,7 @@ function PositionsTab({
 
   if (positions.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
         No prediction-market positions yet. Open one from Browse.
       </div>
     );
@@ -869,7 +869,7 @@ function PositionsTab({
               {p.side.toUpperCase()} · {p.stakeSparks} ⚡
             </span>
           </div>
-          <p className="mt-1 font-mono text-[10px] text-zinc-500">
+          <p className="mt-1 font-mono text-[10px] text-zinc-400">
             entry {Math.round(p.entryPrice * 100)}% · status {p.status}
             {p.status === 'open' && p.currentValue != null && (
               <>
@@ -913,7 +913,7 @@ function PositionsTab({
 function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 py-8 text-center text-xs italic text-zinc-400">
         No forecasters ranked yet. P&amp;L appears after positions settle.
       </div>
     );
@@ -921,7 +921,7 @@ function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-800">
       <table className="w-full text-xs">
-        <thead className="bg-black/40 text-[10px] uppercase text-zinc-500">
+        <thead className="bg-black/40 text-[10px] uppercase text-zinc-400">
           <tr>
             <th className="px-2 py-1.5 text-left">#</th>
             <th className="px-2 py-1.5 text-left">Forecaster</th>
@@ -934,7 +934,7 @@ function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.userId} className="border-t border-white/5">
-              <td className="px-2 py-1.5 font-mono text-zinc-500">{r.rank}</td>
+              <td className="px-2 py-1.5 font-mono text-zinc-400">{r.rank}</td>
               <td className="px-2 py-1.5 font-mono text-zinc-200">{r.userId}</td>
               <td className={`px-2 py-1.5 text-right font-mono ${r.realizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {r.realizedPnl >= 0 ? '+' : ''}{r.realizedPnl} ⚡
@@ -945,7 +945,7 @@ function LeaderboardTab({ rows }: { rows: PMLeaderRow[] }) {
               <td className="px-2 py-1.5 text-right font-mono text-zinc-400">
                 {r.roi != null ? `${r.roi >= 0 ? '+' : ''}${Math.round(r.roi * 100)}%` : '—'}
               </td>
-              <td className="px-2 py-1.5 text-right font-mono text-zinc-500">{r.wins}/{r.losses}</td>
+              <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{r.wins}/{r.losses}</td>
             </tr>
           ))}
         </tbody>

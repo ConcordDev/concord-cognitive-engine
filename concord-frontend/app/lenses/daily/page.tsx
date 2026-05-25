@@ -402,7 +402,7 @@ export default function DailyLensPage() {
               className="p-1 hover:bg-white/10 rounded" aria-label="Next"><ChevronRight className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {['S','M','T','W','T','F','S'].map((d, i) => <span key={i} className="text-gray-500 font-medium py-1">{d}</span>)}
+            {['S','M','T','W','T','F','S'].map((d, i) => <span key={i} className="text-gray-400 font-medium py-1">{d}</span>)}
             {calDays.map((day, i) => {
               if (day === null) return <span key={`e${i}`} />;
               const ds = `${calMonth.year}-${String(calMonth.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -420,7 +420,7 @@ export default function DailyLensPage() {
 
         {/* Date list */}
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 px-1">Recent Entries</p>
+          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 px-1">Recent Entries</p>
           {recentDates.map((ds) => {
             const entry = entries.find((e) => e.date === ds);
             return (
@@ -429,7 +429,7 @@ export default function DailyLensPage() {
                   ds === selectedDate ? 'bg-neon-cyan/10 border border-neon-cyan/30 text-white' : 'hover:bg-white/5 text-gray-400'}`}>
                 <div>
                   <span className="font-medium text-inherit">{shortDate(ds)}</span>
-                  <span className="text-xs text-gray-500 ml-2">{dayName(ds)}</span>
+                  <span className="text-xs text-gray-400 ml-2">{dayName(ds)}</span>
                 </div>
                 {entry ? <span className="text-sm">{entry.mood !== null ? MOODS[entry.mood] : ''}</span>
                   : ds <= today ? <span className="w-2 h-2 rounded-full bg-gray-700" /> : null}
@@ -462,7 +462,7 @@ export default function DailyLensPage() {
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
             className="text-center py-3 px-4 rounded-lg bg-gradient-to-r from-neon-purple/10 to-neon-cyan/10 border border-lattice-border">
             <p className="text-sm italic text-gray-300">&ldquo;{quote.text}&rdquo;</p>
-            <p className="text-xs text-gray-500 mt-1">&mdash; {quote.author}</p>
+            <p className="text-xs text-gray-400 mt-1">&mdash; {quote.author}</p>
           </motion.div>
 
           {/* Date header */}
@@ -514,26 +514,26 @@ export default function DailyLensPage() {
               <FileText className="w-4 h-4 text-neon-purple" /> Journal Entry
             </h2>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider">Daily Notes</label>
+              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Daily Notes</label>
               <DraftedTextarea lensId="daily" draftKey="journalNotes" initial="" onValueChange={setJournalNotes}
                 placeholder="How did your day go?" rows={3} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <CheckSquare className="w-3 h-3" /> What I worked on today
               </label>
               <DraftedTextarea lensId="daily" draftKey="workedOn" initial="" onValueChange={setWorkedOn}
                 placeholder="Production log..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <BookOpen className="w-3 h-3" /> What I learned
               </label>
               <DraftedTextarea lensId="daily" draftKey="learned" initial="" onValueChange={setLearned}
                 placeholder="Key takeaways..." rows={2} className="input-lattice w-full text-sm resize-none" />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+              <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
                 <Target className="w-3 h-3" /> Goals for tomorrow
               </label>
               <DraftedTextarea lensId="daily" draftKey="goalsTomorrow" initial="" onValueChange={setGoals}
@@ -583,15 +583,15 @@ export default function DailyLensPage() {
                 <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-lattice-border">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{s.project}</p>
-                    <p className="text-xs text-gray-500">{s.category}</p>
+                    <p className="text-xs text-gray-400">{s.category}</p>
                   </div>
                   <div className="text-right shrink-0 ml-3">
                     <span className="text-sm font-mono text-neon-cyan">{fmtDur(s.duration)}</span>
-                    <p className="text-xs text-gray-500">{new Date(s.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
+                    <p className="text-xs text-gray-400">{new Date(s.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
                   </div>
                 </div>
               ))}
-              {sessions.length === 0 && <p className="text-center text-sm text-gray-500 py-4">No sessions logged yet today.</p>}
+              {sessions.length === 0 && <p className="text-center text-sm text-gray-400 py-4">No sessions logged yet today.</p>}
             </div>
           </motion.div>
 
@@ -621,10 +621,10 @@ export default function DailyLensPage() {
                     </button>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{clip.name}</p>
-                      <p className="text-xs text-gray-500">{new Date(clip.recordedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
+                      <p className="text-xs text-gray-400">{new Date(clip.recordedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</p>
                     </div>
                     <MiniWaveform data={clip.waveform} playing={isPlaying} />
-                    <span className="text-xs text-gray-500 font-mono shrink-0 ml-2">{fmtTime(clip.duration)}</span>
+                    <span className="text-xs text-gray-400 font-mono shrink-0 ml-2">{fmtTime(clip.duration)}</span>
                   </div>
                 );
               })}
@@ -656,13 +656,13 @@ export default function DailyLensPage() {
               </div>
               <div className="flex-1 space-y-4">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider">Skill</label>
+                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Skill</label>
                   <select value={selectedSkill} onChange={(e) => setSelectedSkill(e.target.value)} className="input-lattice w-full text-sm">
                     {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1.5 uppercase tracking-wider">Duration</label>
+                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Duration</label>
                   <div className="flex gap-2">
                     {[5, 10, 15, 25, 45].map((m) => (
                       <button key={m} onClick={() => { setTimerDuration(m * 60); setTimeLeft(m * 60); setTimerRunning(false); }}
@@ -675,7 +675,7 @@ export default function DailyLensPage() {
                 </div>
                 {practiceHistory.length > 0 && (
                   <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Today&apos;s Sessions</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Today&apos;s Sessions</p>
                     <div className="space-y-1">
                       {practiceHistory.map((ph) => (
                         <div key={ph.id} className="flex items-center justify-between text-xs p-2 rounded bg-white/5">
@@ -715,7 +715,7 @@ export default function DailyLensPage() {
                 <div key={r.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-lattice-border">
                   <div>
                     <p className="text-sm font-medium">{r.title}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       Due {new Date(r.dueAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </p>
                   </div>
@@ -726,7 +726,7 @@ export default function DailyLensPage() {
                 </div>
               ))}
               {localReminders.filter((r) => !r.completed).length === 0 && (
-                <p className="text-center text-sm text-gray-500 py-3">All caught up!</p>
+                <p className="text-center text-sm text-gray-400 py-3">All caught up!</p>
               )}
             </div>
           </motion.div>
@@ -751,7 +751,7 @@ export default function DailyLensPage() {
                   <div key={note.id || idx} className="p-3 rounded-lg bg-white/5 border border-lattice-border">
                     {note.title && <p className="text-sm font-medium text-white mb-1">{note.title}</p>}
                     {note.content && <p className="text-sm text-gray-300">{note.content}</p>}
-                    {note.date && <p className="text-xs text-gray-500 mt-1">{note.date}</p>}
+                    {note.date && <p className="text-xs text-gray-400 mt-1">{note.date}</p>}
                   </div>
                 ))}
               </div>
@@ -801,12 +801,12 @@ export default function DailyLensPage() {
           <div className="relative rounded-lg bg-lattice-deep border border-lattice-border p-4">
             <button
               onClick={() => setActionResult(null)}
-              className="absolute top-2 right-2 text-gray-500 hover:text-white transition-colors"
+              className="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors"
               aria-label="Dismiss result"
             >
               <XCircle className="w-4 h-4" />
             </button>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Result</p>
+            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Result</p>
             {(() => {
               const r = (actionResult?.['result'] as Record<string, unknown> | undefined) ?? actionResult;
               const errorMsg = typeof actionResult?.['error'] === 'string' ? (actionResult['error'] as string) : null;
@@ -826,18 +826,18 @@ export default function DailyLensPage() {
                   {r?.productivityScore !== undefined ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Date:</span>
+                        <span className="text-gray-400">Date:</span>
                         <span className="text-gray-200">{String(r.date)}</span>
-                        <span className="ml-auto text-gray-500">Mood: <span className="text-neon-cyan">{String(r.mood)}</span></span>
+                        <span className="ml-auto text-gray-400">Mood: <span className="text-neon-cyan">{String(r.mood)}</span></span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-lg font-bold text-neon-green">{String(r.productivityScore)}</p>
-                          <p className="text-[10px] text-gray-500">Productivity Score</p>
+                          <p className="text-[10px] text-gray-400">Productivity Score</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-lg font-bold text-neon-cyan">{String(r.completionRate)}%</p>
-                          <p className="text-[10px] text-gray-500">Task Completion</p>
+                          <p className="text-[10px] text-gray-400">Task Completion</p>
                         </div>
                       </div>
                       <div className="w-full bg-lattice-bg rounded-full h-2">
@@ -846,15 +846,15 @@ export default function DailyLensPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-blue">{String(r.tasksCompleted)}/{String(r.totalTasks)}</p>
-                          <p className="text-[10px] text-gray-500">Tasks</p>
+                          <p className="text-[10px] text-gray-400">Tasks</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-cyan">{String(r.totalFocusMinutes)}m</p>
-                          <p className="text-[10px] text-gray-500">Focus</p>
+                          <p className="text-[10px] text-gray-400">Focus</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-gray-300">{String(r.entriesLogged)}</p>
-                          <p className="text-[10px] text-gray-500">Entries</p>
+                          <p className="text-[10px] text-gray-400">Entries</p>
                         </div>
                       </div>
                     </div>
@@ -864,9 +864,9 @@ export default function DailyLensPage() {
                   {r?.habits !== undefined && r?.totalHabits !== undefined ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Active habits:</span>
+                        <span className="text-gray-400">Active habits:</span>
                         <span className="text-neon-green font-bold">{String(r.activeHabits)}</span>
-                        <span className="text-gray-500">/ {String(r.totalHabits)}</span>
+                        <span className="text-gray-400">/ {String(r.totalHabits)}</span>
                       </div>
                       <div className="space-y-1">
                         {((r.habits as HabitEntry[]) || []).map((h: HabitEntry) => (
@@ -893,25 +893,25 @@ export default function DailyLensPage() {
                   {r?.pomodorosCompleted !== undefined ? (
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Date:</span>
+                        <span className="text-gray-400">Date:</span>
                         <span className="text-gray-200">{String(r.date)}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-green">{String(r.totalHours)}h</p>
-                          <p className="text-[10px] text-gray-500">Focus Today</p>
+                          <p className="text-[10px] text-gray-400">Focus Today</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-cyan">{String(r.sessionsToday)}</p>
-                          <p className="text-[10px] text-gray-500">Sessions</p>
+                          <p className="text-[10px] text-gray-400">Sessions</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-yellow-400">{String(r.pomodorosCompleted)}</p>
-                          <p className="text-[10px] text-gray-500">Pomodoros</p>
+                          <p className="text-[10px] text-gray-400">Pomodoros</p>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-gray-500">
+                        <div className="flex items-center justify-between text-[10px] text-gray-400">
                           <span>Daily target ({String(r.targetMinutes)}m)</span>
                           <span>{String(r.progress)}%</span>
                         </div>
@@ -938,31 +938,31 @@ export default function DailyLensPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-green">{String(r.totalTasksCompleted)}</p>
-                          <p className="text-[10px] text-gray-500">Tasks Done</p>
+                          <p className="text-[10px] text-gray-400">Tasks Done</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="text-sm font-bold text-neon-cyan">{String(r.totalFocusHours)}h</p>
-                          <p className="text-[10px] text-gray-500">Focus Hours</p>
+                          <p className="text-[10px] text-gray-400">Focus Hours</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-gray-300">{String(r.daysTracked)}</p>
-                          <p className="text-[10px] text-gray-500">Days</p>
+                          <p className="text-[10px] text-gray-400">Days</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-yellow-400">{String(r.avgTasksPerDay)}</p>
-                          <p className="text-[10px] text-gray-500">Avg Tasks/Day</p>
+                          <p className="text-[10px] text-gray-400">Avg Tasks/Day</p>
                         </div>
                         <div className="p-2 bg-lattice-bg rounded text-center">
                           <p className="font-bold text-neon-blue">{String(r.avgMood ?? '—')}</p>
-                          <p className="text-[10px] text-gray-500">Avg Mood</p>
+                          <p className="text-[10px] text-gray-400">Avg Mood</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 text-gray-400">
                         <span>Best day:</span>
                         <span className="text-neon-green">{String(r.bestDay)}</span>
-                        <span className="ml-auto text-gray-500">{String(r.avgFocusPerDay)}m avg focus</span>
+                        <span className="ml-auto text-gray-400">{String(r.avgFocusPerDay)}m avg focus</span>
                       </div>
                     </div>
                   ) : null}

@@ -9,6 +9,7 @@ export default function registerAccountingActions(registerLensAction) {
    * params.asOfDate — optional cutoff date (ISO string)
    */
   registerLensAction("accounting", "trialBalance", (ctx, artifact, params) => {
+  try {
     const accounts = artifact.data.accounts || [];
     const asOfDate = params.asOfDate ? new Date(params.asOfDate) : null;
 
@@ -59,7 +60,8 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.trialBalance = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * profitLoss
@@ -68,6 +70,7 @@ export default function registerAccountingActions(registerLensAction) {
    * params.startDate, params.endDate — period boundaries
    */
   registerLensAction("accounting", "profitLoss", (ctx, artifact, params) => {
+  try {
     const accounts = artifact.data.accounts || [];
     const startDate = params.startDate ? new Date(params.startDate) : new Date(new Date().getFullYear(), 0, 1);
     const endDate = params.endDate ? new Date(params.endDate) : new Date();
@@ -140,7 +143,8 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.profitLoss = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * invoiceAging
@@ -148,6 +152,7 @@ export default function registerAccountingActions(registerLensAction) {
    * artifact.data.invoices: [{ invoiceId, customer, amount, issueDate, dueDate, paidDate }]
    */
   registerLensAction("accounting", "invoiceAging", (ctx, artifact, params) => {
+  try {
     const invoices = artifact.data.invoices || [];
     const now = params.asOfDate ? new Date(params.asOfDate) : new Date();
 
@@ -212,7 +217,8 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.invoiceAging = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * budgetVariance
@@ -221,6 +227,7 @@ export default function registerAccountingActions(registerLensAction) {
    * params.period — label for the period
    */
   registerLensAction("accounting", "budgetVariance", (ctx, artifact, params) => {
+  try {
     const budget = artifact.data.budget || [];
     const period = params.period || "current";
 
@@ -271,7 +278,8 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.budgetVariance = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rentRoll
@@ -280,6 +288,7 @@ export default function registerAccountingActions(registerLensAction) {
    * params.asOfMonth — "YYYY-MM" to check (defaults to current month)
    */
   registerLensAction("accounting", "rentRoll", (ctx, artifact, params) => {
+  try {
     const properties = artifact.data.properties || [];
     const now = new Date();
     const asOfMonth = params.asOfMonth || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -367,7 +376,8 @@ export default function registerAccountingActions(registerLensAction) {
     artifact.data.rentRoll = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * validate-ledger
@@ -378,6 +388,7 @@ export default function registerAccountingActions(registerLensAction) {
    * dead click (cataloged in lens-features.js but no handler).
    */
   registerLensAction("accounting", "validate-ledger", (ctx, artifact, _params) => {
+  try {
     const accounts = artifact.data?.accounts || [];
     let totalDebits = 0;
     let totalCredits = 0;
@@ -428,7 +439,8 @@ export default function registerAccountingActions(registerLensAction) {
 
     artifact.data.validationResult = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generate-invoice
@@ -439,6 +451,7 @@ export default function registerAccountingActions(registerLensAction) {
    * params.invoiceNumber (auto if missing), params.notes
    */
   registerLensAction("accounting", "generate-invoice", (ctx, artifact, params) => {
+  try {
     const lineItems = artifact.data?.lineItems || params?.lineItems || [];
     const client = params?.client || artifact.data?.client || {};
     const dueDays = Number(params?.dueDays) || 30;
@@ -486,7 +499,8 @@ export default function registerAccountingActions(registerLensAction) {
 
     artifact.data.lastGeneratedInvoice = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * reconcile
@@ -499,6 +513,7 @@ export default function registerAccountingActions(registerLensAction) {
    * artifact.data.transactions: [{ id, date, amount, counterparty, memo, reconciled?: bool }]
    */
   registerLensAction("accounting", "reconcile", (ctx, artifact, _params) => {
+  try {
     const bankLines = (artifact.data?.bankLines || []).filter(l => !l.matchedTxId);
     const transactions = (artifact.data?.transactions || []).filter(t => !t.reconciled);
 
@@ -549,7 +564,8 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.reconciliation = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * generate-statements
@@ -558,6 +574,7 @@ export default function registerAccountingActions(registerLensAction) {
    * shape consistency.
    */
   registerLensAction("accounting", "generate-statements", (ctx, artifact, params) => {
+  try {
     const accounts = artifact.data?.accounts || [];
     const startDate = params?.startDate ? new Date(params.startDate) : new Date(new Date().getFullYear(), 0, 1);
     const endDate = params?.endDate ? new Date(params.endDate) : new Date();
@@ -628,7 +645,8 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.statements = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * audit-trail
@@ -638,6 +656,7 @@ export default function registerAccountingActions(registerLensAction) {
    * matching account record.
    */
   registerLensAction("accounting", "audit-trail", (ctx, artifact, _params) => {
+  try {
     const transactions = artifact.data?.transactions || [];
     const accounts = artifact.data?.accounts || [];
 
@@ -690,7 +709,8 @@ export default function registerAccountingActions(registerLensAction) {
     };
     artifact.data.auditTrail = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 parity — real Chart of Accounts + Journal + Ledger substrate ──
   //
@@ -829,6 +849,7 @@ export default function registerAccountingActions(registerLensAction) {
   // ── Chart of Accounts ──
 
   registerLensAction("accounting", "coa-list", (ctx, _artifact, _params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -836,7 +857,8 @@ export default function registerAccountingActions(registerLensAction) {
     const accounts = Array.from(s.coa.get(userId).values())
       .sort((a, b) => a.code.localeCompare(b.code));
     return { ok: true, result: { accounts, categories: COA_CATEGORIES } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "coa-create", (ctx, _artifact, params = {}) => {
     const s = getAccountingState();
@@ -907,6 +929,7 @@ export default function registerAccountingActions(registerLensAction) {
   // ── Journal Entry (double-entry posting) ──
 
   registerLensAction("accounting", "je-post", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -955,11 +978,13 @@ export default function registerAccountingActions(registerLensAction) {
     });
     saveAccountingState();
     return { ok: true, result: { entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Ledger (paginated transaction list with filtering) ──
 
   registerLensAction("accounting", "ledger-list", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -990,11 +1015,13 @@ export default function registerAccountingActions(registerLensAction) {
     rows.sort((a, b) => (b.date.localeCompare(a.date)) || b.number.localeCompare(a.number));
     const total = rows.length;
     return { ok: true, result: { rows: rows.slice(offset, offset + limit), total, offset, limit } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Balance Sheet (computed from journal) ──
 
   registerLensAction("accounting", "balance-sheet-compute", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -1036,11 +1063,13 @@ export default function registerAccountingActions(registerLensAction) {
     out.balanced = Math.abs(out.totals.assets - (out.totals.liabilities + out.totals.equity)) < 0.01;
     out.imbalance = out.totals.assets - (out.totals.liabilities + out.totals.equity);
     return { ok: true, result: out };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AR Aging Report (buckets from invoices) ──
 
   registerLensAction("accounting", "invoice-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -1067,7 +1096,8 @@ export default function registerAccountingActions(registerLensAction) {
     s.invoices.get(userId).push(invoice);
     saveAccountingState();
     return { ok: true, result: { invoice } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "invoice-mark-paid", (ctx, _artifact, params = {}) => {
     const s = getAccountingState();
@@ -1089,6 +1119,7 @@ export default function registerAccountingActions(registerLensAction) {
    * issuedAt desc. Supports optional status filter (open|paid|all).
    */
   registerLensAction("accounting", "invoice-list", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -1101,7 +1132,8 @@ export default function registerAccountingActions(registerLensAction) {
         invoices: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * invoice-create-payment-link — creates a real Stripe hosted invoice
@@ -1245,6 +1277,7 @@ export default function registerAccountingActions(registerLensAction) {
   });
 
   registerLensAction("accounting", "aging-ar", (ctx, _artifact, params = {}) => {
+  try {
     const s = getAccountingState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
@@ -1272,15 +1305,18 @@ export default function registerAccountingActions(registerLensAction) {
       totalOpen += inv.total;
     }
     return { ok: true, result: { asOf, buckets: Object.values(buckets).map((b, i) => ({ ...b, key: Object.keys(buckets)[i] })), totalOpen } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Customers (CRM-lite for invoicing) ─────────────────────────
 
   registerLensAction("accounting", "customers-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.customers, actId(ctx));
     return { ok: true, result: { customers: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "customers-create", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1332,10 +1368,12 @@ export default function registerAccountingActions(registerLensAction) {
   // ── Vendors (AP suppliers) ─────────────────────────────────────
 
   registerLensAction("accounting", "vendors-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.vendors, actId(ctx));
     return { ok: true, result: { vendors: list.slice().sort((a, b) => a.name.localeCompare(b.name)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "vendors-create", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1389,14 +1427,17 @@ export default function registerAccountingActions(registerLensAction) {
   // ── Bills (AP — incoming invoices from vendors) ───────────────
 
   registerLensAction("accounting", "bills-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const status = ["open", "paid", "all"].includes(params.status) ? params.status : "all";
     const list = ensureList(s.bills, actId(ctx));
     const filtered = status === "all" ? list : list.filter(b => b.status === status);
     return { ok: true, result: { bills: filtered.slice().sort((a, b) => (b.issuedAt || "").localeCompare(a.issuedAt || "")) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bills-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1453,9 +1494,11 @@ export default function registerAccountingActions(registerLensAction) {
 
     saveAccountingState();
     return { ok: true, result: { bill } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bills-pay", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1496,7 +1539,8 @@ export default function registerAccountingActions(registerLensAction) {
     bill.payJeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { bill, paymentEntry: entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bills-delete", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1519,6 +1563,7 @@ export default function registerAccountingActions(registerLensAction) {
   });
 
   registerLensAction("accounting", "aging-ap", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const asOf = params.asOf ? String(params.asOf) : nowIso().slice(0, 10);
@@ -1540,11 +1585,13 @@ export default function registerAccountingActions(registerLensAction) {
       totalOpen += bill.total;
     }
     return { ok: true, result: { asOf, buckets: Object.entries(buckets).map(([k, b]) => ({ key: k, ...b })), totalOpen } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── P&L from journal (real, not artifact-driven) ──────────────
 
   registerLensAction("accounting", "pl-compute", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1587,11 +1634,13 @@ export default function registerAccountingActions(registerLensAction) {
         netMarginPct: totalRev > 0 ? (netIncome / totalRev) * 100 : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Cash flow (direct method, from cash-account journal activity) ─
 
   registerLensAction("accounting", "cashflow-compute", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1630,11 +1679,13 @@ export default function registerAccountingActions(registerLensAction) {
         netCashFlow: totalIn - totalOut,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Runway forecast (cash + AR − AP, projected months) ────────
 
   registerLensAction("accounting", "runway-forecast", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1697,16 +1748,20 @@ export default function registerAccountingActions(registerLensAction) {
         forecast,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Recurring invoices ────────────────────────────────────────
 
   registerLensAction("accounting", "recurring-invoices-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { recurring: ensureList(s.recurring, actId(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "recurring-invoices-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
@@ -1734,7 +1789,8 @@ export default function registerAccountingActions(registerLensAction) {
     ensureList(s.recurring, userId).push(r);
     saveAccountingState();
     return { ok: true, result: { recurring: r } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "recurring-invoices-toggle", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1781,11 +1837,14 @@ export default function registerAccountingActions(registerLensAction) {
   // ── Estimates → Invoice ────────────────────────────────────────
 
   registerLensAction("accounting", "estimates-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { estimates: ensureList(s.estimates, actId(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "estimates-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const customerName = String(params.customerName || "").trim();
@@ -1808,9 +1867,11 @@ export default function registerAccountingActions(registerLensAction) {
     ensureList(s.estimates, userId).push(e);
     saveAccountingState();
     return { ok: true, result: { estimate: e } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "estimates-convert", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const id = String(params.id || "");
@@ -1836,19 +1897,23 @@ export default function registerAccountingActions(registerLensAction) {
     e.convertedInvoiceId = inv.id;
     saveAccountingState();
     return { ok: true, result: { estimate: e, invoice: inv } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Bank feeds (transaction inbox) ─────────────────────────────
 
   registerLensAction("accounting", "bank-feeds-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const status = ["uncategorized", "categorized", "all"].includes(params.status) ? params.status : "uncategorized";
     const list = ensureList(s.bankTxns, actId(ctx));
     const filtered = status === "all" ? list : list.filter(t => (status === "uncategorized") ? !t.accountId : !!t.accountId);
     return { ok: true, result: { txns: filtered.slice().sort((a, b) => b.date.localeCompare(a.date)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bank-feeds-import", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const seq = ensureSeq(s, userId);
@@ -1881,9 +1946,11 @@ export default function registerAccountingActions(registerLensAction) {
     }
     saveAccountingState();
     return { ok: true, result: { imported, count: imported.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bank-feeds-categorize", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -1925,7 +1992,8 @@ export default function registerAccountingActions(registerLensAction) {
     txn.jeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { txn, entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bank-feeds-uncategorize", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2079,6 +2147,7 @@ Output the single best account code:`;
 
   // bulk-accept — accept an explicit batch of {txnId, accountId} pairs.
   registerLensAction("accounting", "bank-feeds-bulk-accept", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -2126,11 +2195,13 @@ Output the single best account code:`;
     }
     saveAccountingState();
     return { ok: true, result: { accepted: accepted.length, errors, total: picks.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AI suggest vendor for a bank txn description ──────────────
 
   registerLensAction("accounting", "ai-suggest-vendor", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const description = String(params.description || "").toLowerCase();
@@ -2157,7 +2228,8 @@ Output the single best account code:`;
       .slice(0, 2)
       .join(" ");
     return { ok: true, result: { matched: false, suggestedNewVendor: newName || description.slice(0, 30) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Natural-language Q&A ("JAX"-style: Show me overdue invoices) ─
 
@@ -2264,11 +2336,14 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "category-rules-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { rules: ensureList(s.catRules, actId(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "category-rules-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const pattern = String(params.pattern || "").trim();
@@ -2288,7 +2363,8 @@ Output the single best account code:`;
     ensureList(s.catRules, userId).push(rule);
     saveAccountingState();
     return { ok: true, result: { rule } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "category-rules-delete", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2303,12 +2379,15 @@ Output the single best account code:`;
   // ── Expenses (out-of-pocket / card spend) ─────────────────────
 
   registerLensAction("accounting", "expenses-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.expenses, actId(ctx));
     return { ok: true, result: { expenses: list.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "")) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "expenses-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -2355,11 +2434,13 @@ Output the single best account code:`;
     exp.jeEntryId = entry.id;
     saveAccountingState();
     return { ok: true, result: { expense: exp, entry } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 1099 summary (vendor totals for the tax year) ──────────────
 
   registerLensAction("accounting", "summary-1099", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const year = Number(params.year) || new Date().getFullYear();
@@ -2380,11 +2461,13 @@ Output the single best account code:`;
     const THRESHOLD = 600; // IRS reporting threshold for 1099-NEC
     const rows = Array.from(totals.values()).map(r => ({ ...r, reportable: r.total >= THRESHOLD }));
     return { ok: true, result: { year, threshold: THRESHOLD, vendors: rows.sort((a, b) => b.total - a.total) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary (KPI strip) ──────────────────────────────
 
   registerLensAction("accounting", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -2424,7 +2507,8 @@ Output the single best account code:`;
         vendorCount: ensureList(s.vendors, userId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── QuickBooks parity — payroll, budgets, inventory, sales tax, ────
   // purchase orders, financial ratios.
@@ -2493,10 +2577,12 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "employee-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const employees = ensureList(s.employees, actId(ctx));
     return { ok: true, result: { employees, count: employees.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "employee-update", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2522,6 +2608,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "payrun-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -2570,9 +2657,11 @@ Output the single best account code:`;
     ensureList(s.payRuns, userId).push(run);
     saveAccountingState();
     return { ok: true, result: { run } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "payrun-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const runs = ensureList(s.payRuns, actId(ctx))
       .map((r) => ({
@@ -2581,16 +2670,20 @@ Output the single best account code:`;
       }))
       .sort((a, b) => b.payDate.localeCompare(a.payDate));
     return { ok: true, result: { runs, count: runs.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "payrun-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const run = ensureList(s.payRuns, actId(ctx)).find((r) => r.id === params.id);
     if (!run) return { ok: false, error: "pay run not found" };
     return { ok: true, result: { run } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "payroll-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const runs = ensureList(s.payRuns, actId(ctx));
     const ytd = nowIso().slice(0, 4);
@@ -2605,7 +2698,8 @@ Output the single best account code:`;
         ytdWithholding: acN(ytdRuns.reduce((a, r) => a + r.totalWithholding, 0)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Budgets ─────────────────────────────────────────────────────────
   registerLensAction("accounting", "budget-create", (ctx, _a, params = {}) => {
@@ -2624,10 +2718,12 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "budget-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const budgets = ensureList(s.budgets, actId(ctx));
     return { ok: true, result: { budgets, count: budgets.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "budget-set-line", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2644,6 +2740,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "budget-vs-actual", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const budget = ensureList(s.budgets, userId).find((b) => b.id === params.budgetId);
@@ -2675,7 +2772,8 @@ Output the single best account code:`;
         totalActual: acN(rows.reduce((a, r) => a + r.actual, 0)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "budget-delete", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2708,10 +2806,12 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "item-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = ensureList(s.items, actId(ctx));
     return { ok: true, result: { items, count: items.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "item-update", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2750,6 +2850,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "inventory-low-stock", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = ensureList(s.items, actId(ctx))
       .filter((x) => x.type === "inventory" && (x.qtyOnHand || 0) <= (x.reorderPoint || 0));
@@ -2762,7 +2863,8 @@ Output the single best account code:`;
           .filter((x) => x.type === "inventory").reduce((a, x) => a + (x.qtyOnHand || 0) * x.cost, 0)),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Sales tax ───────────────────────────────────────────────────────
   registerLensAction("accounting", "tax-code-create", (ctx, _a, params = {}) => {
@@ -2780,10 +2882,12 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "tax-code-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const taxCodes = ensureList(s.taxCodes, actId(ctx));
     return { ok: true, result: { taxCodes, count: taxCodes.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "tax-code-delete", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2796,6 +2900,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "tax-liability", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const acctId = acAcctByCode(s, userId, "2100");
@@ -2808,7 +2913,8 @@ Output the single best account code:`;
       }
     }
     return { ok: true, result: { salesTaxPayable: acN(owed) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "tax-payment-record", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2828,6 +2934,7 @@ Output the single best account code:`;
 
   // ── Purchase orders ─────────────────────────────────────────────────
   registerLensAction("accounting", "po-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const vendorId = acStr(params.vendorId, 60);
@@ -2854,14 +2961,17 @@ Output the single best account code:`;
     ensureList(s.purchaseOrders, userId).push(po);
     saveAccountingState();
     return { ok: true, result: { purchaseOrder: po } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "po-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const purchaseOrders = ensureList(s.purchaseOrders, actId(ctx))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { purchaseOrders, count: purchaseOrders.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "po-receive", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2898,6 +3008,7 @@ Output the single best account code:`;
 
   // ── Financial ratios ────────────────────────────────────────────────
   registerLensAction("accounting", "financial-ratios", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const coa = s.coa.get(userId) || new Map();
@@ -2952,7 +3063,8 @@ Output the single best account code:`;
         note: "Current vs. long-term split approximated by account code (<1500 assets, <2500 liabilities).",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   //  2026 PARITY BACKLOG — QuickBooks Online feature gaps
@@ -2999,11 +3111,13 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "bank-feeds-institutions-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.institutions, actId(ctx));
     const configured = Boolean(process.env.CONCORD_BANK_AGGREGATOR_URL && process.env.CONCORD_BANK_AGGREGATOR_TOKEN);
     return { ok: true, result: { institutions: list.slice().sort((a, b) => (b.linkedAt || "").localeCompare(a.linkedAt || "")), aggregatorConfigured: configured } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "bank-feeds-unlink-institution", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -3094,6 +3208,7 @@ Output the single best account code:`;
   }
 
   registerLensAction("accounting", "currency-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const cs = getCurrencyState(s, actId(ctx));
     return {
@@ -3103,7 +3218,8 @@ Output the single best account code:`;
         rates: Object.entries(cs.rates).map(([code, v]) => ({ code, rate: v.rate, updatedAt: v.updatedAt })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "currency-set-base", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -3149,6 +3265,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "fx-revaluation", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const cs = getCurrencyState(s, userId);
@@ -3198,7 +3315,8 @@ Output the single best account code:`;
         direction: totalGainLoss > 0 ? "gain" : totalGainLoss < 0 ? "loss" : "flat",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Class / location / project dimensional tagging ─────────────
   //
@@ -3227,12 +3345,14 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "dimension-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ensureList(s.dimensions, actId(ctx));
     const kind = DIMENSION_KINDS.includes(params.kind) ? params.kind : null;
     const filtered = (kind ? list.filter(d => d.kind === kind) : list).filter(d => !d.archived);
     return { ok: true, result: { dimensions: filtered.slice().sort((a, b) => a.name.localeCompare(b.name)), kinds: DIMENSION_KINDS } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "dimension-delete", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -3269,6 +3389,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "segment-pl", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -3311,7 +3432,8 @@ Output the single best account code:`;
       netIncome: Math.round((t.netIncome + r.netIncome) * 100) / 100,
     }), { revenue: 0, cogs: 0, grossProfit: 0, expense: 0, netIncome: 0 });
     return { ok: true, result: { kind, period: { start, end }, segments: rows, totals } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [L] Payroll tax e-filing + ACH deposits ────────────────────────
   //
@@ -3322,6 +3444,7 @@ Output the single best account code:`;
   // marked "prepared-not-transmitted" so nothing is faked.
 
   registerLensAction("accounting", "payroll-tax-efile", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const runs = ensureList(s.payRuns, userId);
@@ -3372,9 +3495,11 @@ Output the single best account code:`;
       summary: `Prepared Form 941 ${year} Q${quarter} — tax liability ${totalTaxLiability.toFixed(2)}`,
     });
     return { ok: true, result: { filing } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "payroll-ach-batch", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const runId = String(params.runId || "");
@@ -3421,11 +3546,13 @@ Output the single best account code:`;
       summary: `Prepared ACH batch for run ${runId} — ${entries.length} deposits, ${batch.totalNet.toFixed(2)}`,
     });
     return { ok: true, result: { batch } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Recurring bill / expense scheduling ────────────────────────
 
   registerLensAction("accounting", "recurring-bills-create", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -3453,12 +3580,15 @@ Output the single best account code:`;
     ensureList(s.recurringBills, userId).push(rb);
     saveAccountingState();
     return { ok: true, result: { recurringBill: rb } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "recurring-bills-list", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     return { ok: true, result: { recurringBills: ensureList(s.recurringBills, actId(ctx)) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "recurring-bills-toggle", (ctx, _a, params = {}) => {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -3481,6 +3611,7 @@ Output the single best account code:`;
   });
 
   registerLensAction("accounting", "recurring-bills-run-due", (ctx, _a, _p = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -3540,7 +3671,8 @@ Output the single best account code:`;
     });
     saveAccountingState();
     return { ok: true, result: { created, count: created.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] Mobile receipt-capture OCR → expense ───────────────────────
   //
@@ -3616,14 +3748,17 @@ Output the single best account code:`;
   }
 
   registerLensAction("accounting", "receipt-ocr", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const text = String(params.ocrText || "");
     if (!text.trim()) return { ok: false, error: "ocrText required (raw text from the mobile receipt scan)" };
     const parsed = parseReceiptText(text);
     return { ok: true, result: { parsed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "receipt-ocr-to-expense", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     seedDefaultCoA(userId, s);
@@ -3678,11 +3813,13 @@ Output the single best account code:`;
     });
     saveAccountingState();
     return { ok: true, result: { expense: exp, entry, parsed } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [S] Per-transaction edit audit log ─────────────────────────────
 
   registerLensAction("accounting", "audit-log-list", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     let log = (ensureList(s.auditLog, userId)).slice();
@@ -3695,7 +3832,8 @@ Output the single best account code:`;
     log.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
     const limit = Math.max(1, Math.min(500, Number(params.limit) || 100));
     return { ok: true, result: { entries: log.slice(0, limit), total: log.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── [M] 1099 / W-2 e-filing export to IRS FIRE format ──────────────
   //
@@ -3717,6 +3855,7 @@ Output the single best account code:`;
   }
 
   registerLensAction("accounting", "efile-1099-fire", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const year = Number(params.year) || new Date().getUTCFullYear() - 1;
@@ -3788,9 +3927,11 @@ Output the single best account code:`;
         note: "FIRE-format file generated. Upload at fire.irs.gov with your TCC account — Concord does not transmit on your behalf.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("accounting", "efile-w2-export", (ctx, _a, params = {}) => {
+  try {
     const s = getAccountingState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = actId(ctx);
     const year = Number(params.year) || new Date().getUTCFullYear() - 1;
@@ -3866,5 +4007,6 @@ Output the single best account code:`;
         note: "EFW2-format file generated. Upload at the SSA Business Services Online portal — Concord does not transmit on your behalf.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

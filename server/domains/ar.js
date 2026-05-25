@@ -11,6 +11,7 @@ export default function registerArActions(registerLensAction) {
    * params.proximityRadius — radius for proximity queries (default 2.0)
    */
   registerLensAction("ar", "spatialMapping", (ctx, artifact, params) => {
+  try {
     const anchors = artifact.data.anchors || [];
     if (anchors.length === 0) {
       return { ok: true, result: { message: "No spatial anchors provided." } };
@@ -185,7 +186,8 @@ export default function registerArActions(registerLensAction) {
 
     artifact.data.spatialMapping = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * markerDetection
@@ -196,6 +198,7 @@ export default function registerArActions(registerLensAction) {
    * params.minHammingDistance — minimum Hamming distance for valid set (default 4)
    */
   registerLensAction("ar", "markerDetection", (ctx, artifact, params) => {
+  try {
     const markers = artifact.data.markers || [];
     if (markers.length === 0) {
       return { ok: true, result: { message: "No markers provided for analysis." } };
@@ -358,7 +361,8 @@ export default function registerArActions(registerLensAction) {
 
     artifact.data.markerDetection = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sceneGraph
@@ -367,6 +371,7 @@ export default function registerArActions(registerLensAction) {
    * artifact.data.nodes: [{ id, parentId?, position: {x,y,z}, rotation?: {x,y,z}, scale?: {x,y,z}, type?, meshVertexCount? }]
    */
   registerLensAction("ar", "sceneGraph", (ctx, artifact, params) => {
+  try {
     const nodes = artifact.data.nodes || [];
     if (nodes.length === 0) {
       return { ok: true, result: { message: "No scene graph nodes provided." } };
@@ -541,7 +546,8 @@ export default function registerArActions(registerLensAction) {
 
     artifact.data.sceneGraph = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // AR scene-authoring substrate (Adobe Aero / Niantic Studio parity).

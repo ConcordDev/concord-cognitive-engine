@@ -331,10 +331,10 @@ function CostCalc() {
                   <span>Total</span>
                   <span className="font-mono">${result.totalEstimate}</span>
                 </div>
-                <p className="mt-1 text-zinc-500">{result.tip}</p>
+                <p className="mt-1 text-zinc-400">{result.tip}</p>
               </>
             ) : (
-              <p className="text-zinc-500">{result.message}</p>
+              <p className="text-zinc-400">{result.message}</p>
             )}
           </div>
         )}

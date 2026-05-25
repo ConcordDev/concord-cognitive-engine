@@ -170,7 +170,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
       <section>
         <div className="flex items-center gap-2 mb-2">
           <div className="flex items-center gap-1.5 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2">
-            <Search className="w-3.5 h-3.5 text-zinc-500" />
+            <Search className="w-3.5 h-3.5 text-zinc-400" />
             <input placeholder="Search entries" value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void runSearch(); }}
@@ -185,9 +185,9 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+          <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
         ) : entries.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">
             {searching ? 'No entries match your search.' : 'No entries yet. Write your first one above.'}
           </p>
         ) : (
@@ -196,7 +196,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
               <li key={e.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-zinc-400">
                       {e.date}
                       {e.mood && <span className={cn('ml-2 uppercase', MOOD_COLOR[e.mood])}>{e.mood}</span>}
                     </p>
@@ -207,7 +207,7 @@ export function RfEntriesPanel({ onChange }: { onChange: () => void }) {
                   </button>
                 </div>
                 <p className="text-xs text-zinc-300 mt-1 whitespace-pre-wrap line-clamp-4">{e.text}</p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] text-zinc-400">
                   <span>{e.wordCount} words</span>
                   {e.location && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{e.location}</span>}
                   {e.weather && <span className="flex items-center gap-0.5"><CloudSun className="w-3 h-3" />{e.weather}</span>}

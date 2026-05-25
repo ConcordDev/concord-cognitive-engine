@@ -41,13 +41,13 @@ export function HrAnalyticsPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (!data) {
-    return <p className="text-[11px] text-zinc-500 italic">Analytics unavailable.</p>;
+    return <p className="text-[11px] text-zinc-400 italic">Analytics unavailable.</p>;
   }
   if (data.headcount === 0) {
-    return <p className="text-[11px] text-zinc-500 italic">No employees yet — add employees to see workforce analytics.</p>;
+    return <p className="text-[11px] text-zinc-400 italic">No employees yet — add employees to see workforce analytics.</p>;
   }
 
   const tenureData = Object.entries(data.tenureDistribution).map(([bucket, count]) => ({ bucket, count }));
@@ -62,7 +62,7 @@ export function HrAnalyticsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-zinc-500">Workforce snapshot</span>
+        <span className="text-[11px] text-zinc-400">Workforce snapshot</span>
         <button type="button" onClick={refresh}
           className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200">
           <RefreshCw className="w-3 h-3" /> Refresh
@@ -111,7 +111,7 @@ export function HrAnalyticsPanel() {
         <div className="overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="text-zinc-500 text-left border-b border-zinc-800">
+              <tr className="text-zinc-400 text-left border-b border-zinc-800">
                 <th className="py-1.5 pr-2">Department</th>
                 <th className="py-1.5 px-2 text-right">Headcount</th>
                 <th className="py-1.5 px-2 text-right">Payroll</th>
@@ -139,7 +139,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
       <p className="text-sm font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

@@ -197,7 +197,7 @@ export function CalendarActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -208,7 +208,7 @@ export function CalendarActionPanel() {
           <div className={cn('rounded-md border p-2.5', confResult.conflictFree ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: confResult.conflictFree ? '#86efac' : '#fca5a5' }}>Conflicts</div>
             <div className={cn('text-2xl font-bold', confResult.conflictFree ? 'text-emerald-300' : 'text-red-300')}>{confResult.conflictCount}</div>
-            <div className="text-[10px] text-zinc-500">of {confResult.totalEvents} events</div>
+            <div className="text-[10px] text-zinc-400">of {confResult.totalEvents} events</div>
             {confResult.conflicts.slice(0, 3).map((c, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5">{c.event1} ⨯ {c.event2} · {c.overlapMinutes}min</div>)}
           </div>
         )}
@@ -216,7 +216,7 @@ export function CalendarActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Free time · {availResult.workHours}</div>
             <div className="text-2xl font-bold text-green-300">{availResult.totalFreeMinutes}<span className="text-xs text-zinc-400"> min</span></div>
-            <div className="text-[10px] text-zinc-500">{availResult.availableSlots.length} slots · {availResult.eventsToday} events today</div>
+            <div className="text-[10px] text-zinc-400">{availResult.availableSlots.length} slots · {availResult.eventsToday} events today</div>
             {availResult.availableSlots.slice(0, 4).map((s, i) => <div key={i} className="text-[10px] text-green-200 mt-0.5 font-mono">{s.start}–{s.end} ({s.minutes}m)</div>)}
           </div>
         )}

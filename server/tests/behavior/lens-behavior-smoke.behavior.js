@@ -57,15 +57,25 @@ const _llmEnabled = String(process.env.CONCORD_BEHAVIOR_TEST_LLM || "").toLowerC
 // than over-firing brain calls in CI.
 const LLM_HINT_RE = /^(respond|chat|reply|deliberate|narrate|synthesize|generate|brainstorm|propose|critique|reason|explain|elaborate|expand|rewrite|translate|tutor|teach|answer|ask|dream|imagine|score|evaluate|grade|review|writeReply|composeMessage|debate|persuade|argue)$|llm|brain/i;
 
-// Destructive macros need bespoke fixtures (e.g. delete needs an existing id
-// to delete). Skipped from smoke and covered by per-lens contract tests.
+// Destructive macros: previously skipped under the assumption that they
+// needed bespoke fixtures. In practice, calling a destructive macro with
+// empty/synthetic input either (a) fails the macro's own input validation
+// and returns {ok:false, error:"id required"} — safe, or (b) throws,
+// which the dispatcher catches and converts to {ok:false, error:
+// "macro_uncaught_throw"} — also safe. The smoke harness only asserts a
+// well-formed {ok:boolean} envelope, which both paths satisfy. Setting
+// CONCORD_BEHAVIOR_SKIP_DESTRUCTIVE=true restores the old skip if
+// circumstances ever require it.
+const _skipDestructive = String(process.env.CONCORD_BEHAVIOR_SKIP_DESTRUCTIVE || "").toLowerCase() === "true";
 const DESTRUCTIVE_HINT_RE = /^(delete|destroy|reset|wipe|clear|purge|drop|kill|terminate|revoke|unpublish)$|^(forceDelete|hardDelete|nuke)/i;
 
-// Domains that are intentionally LLM-only or operate on heavy
-// long-running pipelines we don't want to fire blindly in CI.
+// Domains that are intentionally LLM-only — keep oracle + concordance
+// skipped because they fire multi-stage LLM pipelines that need real
+// inputs. council is now opted-in: most of its macros are CRUD
+// (action-create, agenda-add, attendee-add) that return clean envelopes
+// without an LLM round-trip.
 const SKIP_DOMAINS_DEFAULT = new Set([
   "oracle",       // multi-phase reasoning pipeline; needs a real query
-  "council",      // weighted-voice deliberation; LLM-heavy
   "concordance",  // sovereign-only governance ops
 ]);
 
@@ -99,7 +109,7 @@ function buildInput(domain, name) {
 
 function shouldSkip(domain, name) {
   if (SKIP_DOMAINS_DEFAULT.has(domain)) return { skip: true, reason: "intentionally-skipped domain (heavy/LLM-only)" };
-  if (DESTRUCTIVE_HINT_RE.test(name)) return { skip: true, reason: "destructive — covered by per-lens contract test" };
+  if (_skipDestructive && DESTRUCTIVE_HINT_RE.test(name)) return { skip: true, reason: "destructive — disabled via CONCORD_BEHAVIOR_SKIP_DESTRUCTIVE" };
   if (!_llmEnabled && LLM_HINT_RE.test(name)) return { skip: true, reason: "LLM-dependent — set CONCORD_BEHAVIOR_TEST_LLM=true to include" };
   return { skip: false };
 }

@@ -75,7 +75,7 @@ export function GdLevelPanel({ gameId, onChange }: { gameId: string; onChange: (
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (open) {
@@ -110,7 +110,7 @@ export function GdLevelPanel({ gameId, onChange }: { gameId: string; onChange: (
       </section>
 
       {levels.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No levels yet. Create one to open the tilemap editor.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No levels yet. Create one to open the tilemap editor.</p>
       ) : (
         <ul className="space-y-1.5">
           {levels.map((l) => (
@@ -118,7 +118,7 @@ export function GdLevelPanel({ gameId, onChange }: { gameId: string; onChange: (
               <Grid3x3 className="w-4 h-4 text-lime-400 shrink-0" />
               <button type="button" onClick={() => setOpen(l.id)} className="flex-1 text-left">
                 <span className="text-xs text-zinc-100">{l.name}</span>
-                <span className="text-[10px] text-zinc-500 ml-2">{l.cols}×{l.rows} · {l.layerCount} layers</span>
+                <span className="text-[10px] text-zinc-400 ml-2">{l.cols}×{l.rows} · {l.layerCount} layers</span>
               </button>
               <button type="button" onClick={() => setOpen(l.id)}
                 className="text-[11px] px-2 py-0.5 bg-lime-600 hover:bg-lime-500 text-white rounded">Edit</button>
@@ -443,7 +443,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
   };
 
   if (loading || !level) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const intLayers = level.layers.filter((l) => l.kind === 'intgrid');
@@ -457,7 +457,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
           <ArrowLeft className="w-3.5 h-3.5" /> Levels
         </button>
         <span className="text-sm font-semibold text-zinc-100 truncate">{level.name}</span>
-        <span className="text-[11px] text-zinc-500">{level.cols}×{level.rows}</span>
+        <span className="text-[11px] text-zinc-400">{level.cols}×{level.rows}</span>
         <select value={level.orientation} onChange={(e) => setOrientation(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-200 capitalize">
           {ORIENTATIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -542,7 +542,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
                   </button>
                   <button type="button" onClick={() => setActiveLayer(l.id)} className="flex-1 text-left text-xs text-zinc-200 truncate">
                     {l.name}
-                    <span className="ml-1 text-[9px] text-zinc-500 uppercase">{l.kind}</span>
+                    <span className="ml-1 text-[9px] text-zinc-400 uppercase">{l.kind}</span>
                   </button>
                   <button type="button" onClick={() => moveLayer(l, 1)} className="text-zinc-600 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
                   <button type="button" onClick={() => moveLayer(l, -1)} className="text-zinc-600 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
@@ -600,7 +600,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
       {layer?.kind === 'intgrid' && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-1.5">
           <h3 className="text-xs font-semibold text-zinc-300">IntGrid value</h3>
-          <p className="text-[10px] text-zinc-500">Paint integer values, then map them to tiles in Auto-layer.</p>
+          <p className="text-[10px] text-zinc-400">Paint integer values, then map them to tiles in Auto-layer.</p>
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={() => setActiveInt(0)}
               className={cn('flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg border',
@@ -621,9 +621,9 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
       {layer?.kind === 'object' && (
         <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
           <h3 className="text-xs font-semibold text-zinc-300">Objects</h3>
-          <p className="text-[10px] text-zinc-500">Click an empty cell to place an object; click + drag an object to move it.</p>
+          <p className="text-[10px] text-zinc-400">Click an empty cell to place an object; click + drag an object to move it.</p>
           {(layer.objects || []).length === 0 ? (
-            <p className="text-[11px] text-zinc-600 italic">No objects on this layer yet.</p>
+            <p className="text-[11px] text-zinc-400 italic">No objects on this layer yet.</p>
           ) : (
             <ul className="space-y-1">
               {(layer.objects || []).map((o) => (
@@ -639,7 +639,7 @@ function LevelEditor({ levelId, gameId, onExit }: { levelId: string; gameId: str
                     <option value="">— entity —</option>
                     {entities.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
-                  <span className="text-[10px] text-zinc-600">{Math.round(o.x / level.tileSize)},{Math.round(o.y / level.tileSize)}</span>
+                  <span className="text-[10px] text-zinc-400">{Math.round(o.x / level.tileSize)},{Math.round(o.y / level.tileSize)}</span>
                   <button type="button" onClick={() => deleteObject(o.id)} className="text-zinc-600 hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -672,7 +672,7 @@ function AutoRulePanel({
           className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((v) => <option key={v} value={v}>value {v}</option>)}
         </select>
-        <span className="text-zinc-500 text-xs">→</span>
+        <span className="text-zinc-400 text-xs">→</span>
         <select value={draft.tile} onChange={(e) => setDraft({ ...draft, tile: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100">
           {tiles.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -685,7 +685,7 @@ function AutoRulePanel({
           {rules.map((r) => (
             <li key={r.id} className="flex items-center gap-1.5 bg-zinc-950/60 border border-zinc-800 rounded-lg px-2 py-1 text-[11px] text-zinc-300">
               <span className="font-bold">{r.intValue}</span>
-              <span className="text-zinc-500">→</span>
+              <span className="text-zinc-400">→</span>
               <span className="w-3 h-3 rounded border border-black/30" style={{ background: tiles.find((t) => t.id === r.tile)?.color || '#52525b' }} />
               <span>{tiles.find((t) => t.id === r.tile)?.name || r.tile}</span>
               <button type="button" onClick={() => onDelete(r.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>

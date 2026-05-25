@@ -87,7 +87,7 @@ function AttentionPanel() {
       )}
 
       {loading ? (
-        <p className="text-xs text-gray-500">Loading...</p>
+        <p className="text-xs text-gray-400">Loading...</p>
       ) : (
         <div className="space-y-1.5">
           {allocation.slice(0, 12).map((a) => (
@@ -101,8 +101,8 @@ function AttentionPanel() {
                   style={{ width: `${Math.max(2, (a.budget / totalBudget) * 100)}%` }}
                 />
               </div>
-              <span className="w-8 text-right text-gray-500">{a.budget}</span>
-              <span className="w-12 text-right text-gray-500">{(a.urgency * 100).toFixed(0)}%</span>
+              <span className="w-8 text-right text-gray-400">{a.budget}</span>
+              <span className="w-12 text-right text-gray-400">{(a.urgency * 100).toFixed(0)}%</span>
             </div>
           ))}
         </div>

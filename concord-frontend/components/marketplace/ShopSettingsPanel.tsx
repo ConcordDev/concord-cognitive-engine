@@ -42,8 +42,8 @@ export function ShopSettingsPanel({ onUpdated }: { onUpdated?: (shop: Shop) => v
     finally { setSaving(false); }
   }
 
-  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
-  if (!shop) return <div className="p-10 text-center text-xs text-gray-500">Shop not found.</div>;
+  if (loading) return <div className="flex items-center justify-center py-12 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+  if (!shop) return <div className="p-10 text-center text-xs text-gray-400">Shop not found.</div>;
 
   return (
     <div className="bg-[#0d1117] border border-orange-500/15 rounded-lg overflow-hidden">
@@ -101,7 +101,7 @@ export function ShopSettingsPanel({ onUpdated }: { onUpdated?: (shop: Shop) => v
 function Field({ label, className, children }: { label: string; className?: string; children: React.ReactNode }) {
   return (
     <label className={className}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
       {children}
     </label>
   );

@@ -195,7 +195,7 @@ export function LawEnforcementActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -207,7 +207,7 @@ export function LawEnforcementActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{caseResult.caseId}</div>
             <div className={cn('text-2xl font-bold', STATUS_COLOR[caseResult.status])}>{caseResult.caseStrength}<span className="text-xs text-zinc-400">/100</span></div>
             <div className={cn('text-[11px] font-semibold capitalize', STATUS_COLOR[caseResult.status])}>{caseResult.status.replace(/-/g, ' ')}</div>
-            <div className="text-[10px] text-zinc-500">E {caseResult.evidenceCount} · W {caseResult.witnessCount} · S {caseResult.suspectCount}</div>
+            <div className="text-[10px] text-zinc-400">E {caseResult.evidenceCount} · W {caseResult.witnessCount} · S {caseResult.suspectCount}</div>
             {caseResult.nextSteps.map((s, i) => <div key={i} className="text-[10px] text-purple-200 mt-0.5">→ {s}</div>)}
           </div>
         )}
@@ -222,7 +222,7 @@ export function LawEnforcementActionPanel() {
           <div className={cn('rounded-md border p-2.5', reportResult.complete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Report · {reportResult.reportId}</div>
             <div className="text-[11px] text-zinc-200">{reportResult.type}</div>
-            <div className="text-[10px] text-zinc-500">@ {reportResult.location} · {reportResult.severity}</div>
+            <div className="text-[10px] text-zinc-400">@ {reportResult.location} · {reportResult.severity}</div>
             <div className={cn('text-[10px] font-semibold', reportResult.complete ? 'text-emerald-300' : 'text-amber-300')}>{reportResult.complete ? '✓ complete' : `⚠ missing: ${reportResult.missingFields.join(', ')}`}</div>
           </div>
         )}
@@ -230,7 +230,7 @@ export function LawEnforcementActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Stats · {statsResult.trend}</div>
             <div className="text-2xl font-bold text-green-300">{statsResult.clearanceRate}%<span className="text-xs text-zinc-400"> cleared</span></div>
-            <div className="text-[10px] text-zinc-500">{statsResult.totalIncidents} total · top: {statsResult.mostCommon}</div>
+            <div className="text-[10px] text-zinc-400">{statsResult.totalIncidents} total · top: {statsResult.mostCommon}</div>
             {statsResult.byType.slice(0, 4).map((t, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5">{t.type}: {t.count}</div>)}
           </div>
         )}

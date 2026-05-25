@@ -111,7 +111,7 @@ export function RSSFeedManager({
         <div className="flex items-center gap-2">
           <Rss className="w-5 h-5 text-orange-400" />
           <span className="font-medium text-white">RSS Feeds</span>
-          <span className="text-xs text-gray-500">({feeds.length})</span>
+          <span className="text-xs text-gray-400">({feeds.length})</span>
         </div>
         <div className="flex items-center gap-2">
           {onRefreshAll && (
@@ -218,7 +218,7 @@ export function RSSFeedManager({
                       </span>
                       {getStatusIcon(feed.status)}
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 mt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
                       <span>{feed.itemCount} items</span>
                       {feed.lastFetched && (
                         <span className="flex items-center gap-1">
@@ -271,7 +271,7 @@ export function RSSFeedManager({
                     >
                       <div className="px-4 pb-3 space-y-2">
                         {feed.items.length === 0 ? (
-                          <p className="text-sm text-gray-500 py-2 pl-7">
+                          <p className="text-sm text-gray-400 py-2 pl-7">
                             No items in this feed
                           </p>
                         ) : (
@@ -291,7 +291,7 @@ export function RSSFeedManager({
                                     {item.title}
                                     <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
                                   </a>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-gray-400">
                                     {formatTime(item.pubDate)}
                                   </span>
                                 </div>
@@ -316,7 +316,7 @@ export function RSSFeedManager({
                           ))
                         )}
                         {feed.items.length > 10 && (
-                          <p className="text-xs text-gray-500 pl-7">
+                          <p className="text-xs text-gray-400 pl-7">
                             +{feed.items.length - 10} more items
                           </p>
                         )}

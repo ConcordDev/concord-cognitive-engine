@@ -166,7 +166,7 @@ function BandcampTile({ item, onSupport, onOpen }: BandcampTileProps) {
 
         {/* Name-your-price row — Bandcamp's signature interaction. */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-gray-500 uppercase tracking-wider">name your price</span>
+          <span className="text-[10px] text-gray-400 uppercase tracking-wider">name your price</span>
           {item.suggestedPriceCc !== undefined && (
             <span className="text-[10px] text-amber-400/80 font-mono">
               suggested {item.suggestedPriceCc}

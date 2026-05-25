@@ -88,11 +88,11 @@ export function PlacesGraph() {
         </button>
       </div>
       {loading ? (
-        <div className="flex h-[300px] items-center justify-center text-zinc-500">
+        <div className="flex h-[300px] items-center justify-center text-zinc-400">
           <Loader2 className="h-5 w-5 animate-spin" />
         </div>
       ) : nodes.length === 0 ? (
-        <div className="flex h-[300px] flex-col items-center justify-center gap-2 rounded border border-dashed border-zinc-800 text-center text-[11px] text-zinc-500">
+        <div className="flex h-[300px] flex-col items-center justify-center gap-2 rounded border border-dashed border-zinc-800 text-center text-[11px] text-zinc-400">
           <Network className="h-6 w-6 text-zinc-700" />
           No data yet. Save places and group them into lists — they appear here as a connected graph.
         </div>

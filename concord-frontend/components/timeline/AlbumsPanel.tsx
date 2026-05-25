@@ -76,7 +76,7 @@ export function AlbumsPanel() {
         <div className="flex items-center gap-2">
           <LayoutGrid className="w-5 h-5 text-blue-400" />
           <h3 className="font-semibold text-white">Photo Albums</h3>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-400">
             {data?.totalAlbums ?? 0} albums · {data?.totalMedia ?? 0} items
           </span>
         </div>
@@ -119,11 +119,11 @@ export function AlbumsPanel() {
       )}
 
       {isLoading ? (
-        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" /> Loading albums…
         </div>
       ) : albums.length === 0 ? (
-        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-500">
+        <div className="bg-[#242526] rounded-lg p-8 text-center text-gray-400">
           <LayoutGrid className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No albums yet. Create one to organise your photos and videos.</p>
         </div>
@@ -144,7 +144,7 @@ export function AlbumsPanel() {
               </div>
               <div className="p-2">
                 <p className="text-sm font-medium text-white truncate">{album.name}</p>
-                <p className="text-[11px] text-gray-500">{album.media.length} items</p>
+                <p className="text-[11px] text-gray-400">{album.media.length} items</p>
               </div>
             </button>
           ))}
@@ -155,12 +155,10 @@ export function AlbumsPanel() {
       {active && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setOpenAlbum(null)}
-        >
+          onClick={() => setOpenAlbum(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="bg-[#242526] border border-gray-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
               <div>
                 <h3 className="font-bold text-white">{active.name}</h3>
@@ -173,14 +171,14 @@ export function AlbumsPanel() {
 
             <div className="flex-1 overflow-y-auto p-4">
               {active.media.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-6">No media in this album yet.</p>
+                <p className="text-sm text-gray-400 text-center py-6">No media in this album yet.</p>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
                   {active.media.map((m: MediaItem) => (
                     <div key={m.id ?? m.url} className="aspect-square bg-[#3a3b3c] rounded overflow-hidden relative group">
                       {m.kind === 'video' ? (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Film className="w-8 h-8 text-gray-500" />
+                          <Film className="w-8 h-8 text-gray-400" />
                         </div>
                       ) : (
                         <img src={m.url} alt={m.caption || 'photo'} className="w-full h-full object-cover" />

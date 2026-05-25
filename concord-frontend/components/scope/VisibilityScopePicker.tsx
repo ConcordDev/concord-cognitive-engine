@@ -174,7 +174,7 @@ export function VisibilityScopePicker({
                 <Icon className="w-4 h-4" />
                 <span className="text-sm font-medium">{opt.label}</span>
               </div>
-              <span className="text-[10px] text-gray-500 group-hover:text-gray-400 leading-tight">
+              <span className="text-[10px] text-gray-400 group-hover:text-gray-400 leading-tight">
                 {opt.description(declaredRegional, declaredNational)}
               </span>
             </button>

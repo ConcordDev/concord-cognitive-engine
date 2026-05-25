@@ -205,7 +205,7 @@ export function NeuroActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -216,13 +216,13 @@ export function NeuroActionPanel() {
           <div key={ci} className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{ch.channel} · peak {ch.peakFrequency} Hz</div>
             <div className="text-[11px] text-zinc-300">dominant: <span className="font-bold capitalize" style={{ color: BAND_COLORS[ch.dominantBand.name] }}>{ch.dominantBand.name}</span> ({ch.dominantBand.relativePower}%)</div>
-            <div className="text-[10px] text-zinc-500 italic">{ch.dominantBand.association}</div>
+            <div className="text-[10px] text-zinc-400 italic">{ch.dominantBand.association}</div>
             <div className="flex gap-0.5 h-6 mt-1.5">
               {Object.entries(ch.bands).map(([name, b]) => <div key={name} className="flex-1 rounded-sm relative group" style={{ backgroundColor: BAND_COLORS[name] + '40', borderTop: `2px solid ${BAND_COLORS[name]}`, height: `${Math.max(8, b.relativePower)}%` }} title={`${b.label}: ${b.relativePower}%`}>
-                <div className="absolute -bottom-3.5 left-0 right-0 text-center text-[8px] text-zinc-500 uppercase">{name[0]}</div>
+                <div className="absolute -bottom-3.5 left-0 right-0 text-center text-[8px] text-zinc-400 uppercase">{name[0]}</div>
               </div>)}
             </div>
-            <div className="text-[10px] text-zinc-500 mt-4">α/β {ch.indices.alphaBetaRatio} · θ/β {ch.indices.thetaBetaRatio} · {ch.indices.arousalLevel} / {ch.indices.attentionIndex}</div>
+            <div className="text-[10px] text-zinc-400 mt-4">α/β {ch.indices.alphaBetaRatio} · θ/β {ch.indices.thetaBetaRatio} · {ch.indices.arousalLevel} / {ch.indices.attentionIndex}</div>
           </div>
         ))}
         {connResult?.connections && (
@@ -237,7 +237,7 @@ export function NeuroActionPanel() {
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ERP</div>
             <div className="text-2xl font-bold text-amber-300">{erpResult.peakAmplitudeMicroV ?? '-'} μV</div>
-            <div className="text-[10px] text-zinc-500">peak latency {erpResult.peakLatencyMs ?? '-'} ms</div>
+            <div className="text-[10px] text-zinc-400">peak latency {erpResult.peakLatencyMs ?? '-'} ms</div>
             {erpResult.component && <div className="text-[10px] text-amber-200">component: {erpResult.component}</div>}
           </div>
         )}

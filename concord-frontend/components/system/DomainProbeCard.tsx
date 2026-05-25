@@ -85,7 +85,7 @@ export function DomainProbeCard({ probe, className }: DomainProbeCardProps) {
           onClick={() => refetch()}
           disabled={isFetching}
           aria-label={`Re-probe ${probe.title}`}
-          className="text-gray-500 hover:text-white transition disabled:opacity-50"
+          className="text-gray-400 hover:text-white transition disabled:opacity-50"
         >
           <LucideIcons.RotateCw className={cn('h-3 w-3', isFetching && 'animate-spin')} />
         </button>

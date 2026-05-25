@@ -361,7 +361,7 @@ export function KnowledgeBaseWorkbench() {
           className="rounded-md border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-amber-500/40 focus:outline-none"
         />
         <div className="flex items-center gap-1.5">
-          <label className="text-[10px] text-zinc-500">conf</label>
+          <label className="text-[10px] text-zinc-400">conf</label>
           <input
             type="number" min={0} max={1} step={0.05} value={fConfidence}
             onChange={(e) => setFConfidence(Math.max(0, Math.min(1, Number(e.target.value))))}
@@ -389,7 +389,7 @@ export function KnowledgeBaseWorkbench() {
           <button
             key={id} type="button" onClick={() => { setTab(id); setErr(null); if (id === 'taxonomy' && !tax) runTax(); }}
             className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition-colors ${
-              tab === id ? 'bg-amber-500/10 text-amber-200 border-b-2 border-amber-400' : 'text-zinc-500 hover:text-zinc-200'
+              tab === id ? 'bg-amber-500/10 text-amber-200 border-b-2 border-amber-400' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Icon className="h-3.5 w-3.5" /> {label}
@@ -438,14 +438,14 @@ export function KnowledgeBaseWorkbench() {
                 ].map((s) => (
                   <div key={s.label} className="rounded-md border border-zinc-800 bg-zinc-950 p-2 text-center">
                     <div className="text-lg font-bold text-amber-300">{s.value}</div>
-                    <div className="text-[10px] text-zinc-500">{s.label}</div>
+                    <div className="text-[10px] text-zinc-400">{s.label}</div>
                   </div>
                 ))}
               </div>
               {graphTree ? (
                 <TreeDiagram root={graphTree} onSelect={(n) => setGraphFocus(n.label.split(' → ').pop() || graphFocus)} />
               ) : (
-                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-500">
+                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-400">
                   No connected facts. Add facts above, then build the graph.
                 </p>
               )}
@@ -489,7 +489,7 @@ export function KnowledgeBaseWorkbench() {
           </div>
           {infer && (
             <div className="space-y-2">
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {infer.count} new fact(s) derivable via transitive closure over {infer.baseFactCount} base fact(s).
               </p>
               {infer.inferences.map((row, i) => (
@@ -498,7 +498,7 @@ export function KnowledgeBaseWorkbench() {
                     <span className="font-mono text-cyan-300">{row.subject}</span>
                     <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-1.5 py-0.5 text-[10px] text-indigo-200">{row.relationLabel}</span>
                     <span className="font-mono text-violet-300">{row.object}</span>
-                    <span className="ml-auto font-mono text-[10px] text-zinc-500">conf {row.confidence.toFixed(3)} · {row.hops} hops</span>
+                    <span className="ml-auto font-mono text-[10px] text-zinc-400">conf {row.confidence.toFixed(3)} · {row.hops} hops</span>
                     <button
                       type="button" onClick={() => commitInference(row)}
                       disabled={busy === `commit-${row.subject}-${row.object}`}
@@ -508,7 +508,7 @@ export function KnowledgeBaseWorkbench() {
                       Commit
                     </button>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-zinc-500">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-zinc-400">
                     <span className="italic">{row.rationale}:</span>
                     {row.derivation.map((d, j) => (
                       <span key={j} className="flex items-center gap-1">
@@ -520,7 +520,7 @@ export function KnowledgeBaseWorkbench() {
                 </div>
               ))}
               {infer.count === 0 && (
-                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-500">
+                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-400">
                   No new facts derivable. Add chained transitive facts (e.g. A IsA B, B IsA C).
                 </p>
               )}
@@ -585,7 +585,7 @@ export function KnowledgeBaseWorkbench() {
               Refresh Taxonomy
             </button>
             {tax && (
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-zinc-400">
                 {tax.relationsInUse}/{tax.totalRelationTypes} relation types in use
               </span>
             )}
@@ -594,7 +594,7 @@ export function KnowledgeBaseWorkbench() {
             <div key={g.group} className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
               <div className="flex items-baseline gap-2">
                 <h3 className="text-xs font-semibold text-amber-200">{g.group}</h3>
-                <span className="text-[10px] text-zinc-500">{g.description}</span>
+                <span className="text-[10px] text-zinc-400">{g.description}</span>
               </div>
               <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {g.relations.map((rel) => (
@@ -608,7 +608,7 @@ export function KnowledgeBaseWorkbench() {
                       {rel.transitive && <span className="rounded bg-indigo-500/15 px-1 text-[9px] text-indigo-300">transitive</span>}
                       {rel.symmetric && <span className="rounded bg-violet-500/15 px-1 text-[9px] text-violet-300">symmetric</span>}
                     </span>
-                    {rel.inverse && <span className="text-[10px] text-zinc-600">inv: {rel.inverse}</span>}
+                    {rel.inverse && <span className="text-[10px] text-zinc-400">inv: {rel.inverse}</span>}
                     <span className="ml-auto rounded-full bg-amber-500/15 px-1.5 py-0.5 font-mono text-[10px] text-amber-300">{rel.usageCount}</span>
                   </button>
                 ))}
@@ -661,12 +661,12 @@ export function KnowledgeBaseWorkbench() {
                     <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-800">
                       <div className="h-full rounded-full bg-emerald-500/70" style={{ width: `${m.confidence * 100}%` }} />
                     </div>
-                    <span className="font-mono text-[10px] text-zinc-500">{(m.confidence * 100).toFixed(0)}%</span>
+                    <span className="font-mono text-[10px] text-zinc-400">{(m.confidence * 100).toFixed(0)}%</span>
                   </div>
                 </div>
               ))}
               {query.count === 0 && (
-                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-500">
+                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-400">
                   Nothing meets the confidence threshold. Lower the slider or add facts.
                 </p>
               )}
@@ -701,7 +701,7 @@ export function KnowledgeBaseWorkbench() {
           </div>
           {extract && (
             <div className="space-y-2">
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 {extract.count} triple(s) from {extract.charactersAnalyzed} chars
                 {extract.committed > 0 && <span className="text-emerald-400"> · {extract.committed} imported to store</span>}
               </p>
@@ -711,13 +711,13 @@ export function KnowledgeBaseWorkbench() {
                     <span className="font-mono text-cyan-300">{row.subject}</span>
                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-200">{row.relationLabel}</span>
                     <span className="font-mono text-violet-300">{row.object}</span>
-                    <span className="ml-auto font-mono text-[10px] text-zinc-500">conf {row.confidence.toFixed(2)}</span>
+                    <span className="ml-auto font-mono text-[10px] text-zinc-400">conf {row.confidence.toFixed(2)}</span>
                   </div>
-                  <p className="mt-1 text-[10px] italic text-zinc-600">&ldquo;{row.sourceSentence}&rdquo;</p>
+                  <p className="mt-1 text-[10px] italic text-zinc-400">&ldquo;{row.sourceSentence}&rdquo;</p>
                 </div>
               ))}
               {extract.count === 0 && (
-                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-500">
+                <p className="rounded-md border border-zinc-800 bg-zinc-950 p-4 text-center text-xs text-zinc-400">
                   No triples matched. Try simple declarative sentences (X is a Y, X can Z, X causes Y).
                 </p>
               )}
@@ -731,23 +731,22 @@ export function KnowledgeBaseWorkbench() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[260px_1fr]">
             <div className="rounded-md border border-zinc-800 bg-zinc-950 p-2">
-              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Fact Store</h3>
+              <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Fact Store</h3>
               <div className="max-h-80 space-y-1 overflow-y-auto">
-                {facts.length === 0 && <p className="p-2 text-[11px] text-zinc-600">No facts yet — add some above.</p>}
+                {facts.length === 0 && <p className="p-2 text-[11px] text-zinc-400">No facts yet — add some above.</p>}
                 {facts.map((f) => (
                   <div
                     key={f.id}
                     className={`group flex items-center gap-1.5 rounded px-2 py-1.5 text-[11px] cursor-pointer ${
                       provFactId === f.id ? 'bg-amber-500/10 border border-amber-500/30' : 'hover:bg-zinc-900'
                     }`}
-                    onClick={() => runProv(f.id)}
-                  >
+                    onClick={() => runProv(f.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <span className="flex-1 truncate">
                       <span className="font-mono text-cyan-300">{f.subject}</span>{' '}
-                      <span className="text-zinc-500">{f.relation.replace(/_/g, ' ')}</span>{' '}
+                      <span className="text-zinc-400">{f.relation.replace(/_/g, ' ')}</span>{' '}
                       <span className="font-mono text-violet-300">{f.object}</span>
                     </span>
-                    <span className="font-mono text-[9px] text-zinc-600">{(f.confidence * 100).toFixed(0)}%</span>
+                    <span className="font-mono text-[9px] text-zinc-400">{(f.confidence * 100).toFixed(0)}%</span>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); deleteFact(f.id); }}
@@ -762,13 +761,13 @@ export function KnowledgeBaseWorkbench() {
               </div>
             </div>
             <div className="rounded-md border border-zinc-800 bg-zinc-950 p-3">
-              {!prov && <p className="py-8 text-center text-xs text-zinc-600">Select a fact to trace its provenance chain.</p>}
+              {!prov && <p className="py-8 text-center text-xs text-zinc-400">Select a fact to trace its provenance chain.</p>}
               {prov && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-xs">
                     <ScrollText className="h-4 w-4 text-amber-400" />
                     <span className="font-mono text-cyan-300">{prov.fact.subject}</span>
-                    <span className="text-zinc-500">{prov.fact.relation.replace(/_/g, ' ')}</span>
+                    <span className="text-zinc-400">{prov.fact.relation.replace(/_/g, ' ')}</span>
                     <span className="font-mono text-violet-300">{prov.fact.object}</span>
                     {prov.independentlyVerified && (
                       <span className="ml-auto flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300">
@@ -782,13 +781,13 @@ export function KnowledgeBaseWorkbench() {
                         <div className="flex items-center gap-2">
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/15 font-mono text-[10px] text-amber-300">{step.step}</span>
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{step.kind.replace(/-/g, ' ')}</span>
-                          {step.confidence != null && <span className="ml-auto font-mono text-[10px] text-zinc-500">conf {step.confidence}</span>}
+                          {step.confidence != null && <span className="ml-auto font-mono text-[10px] text-zinc-400">conf {step.confidence}</span>}
                         </div>
                         {step.detail && <p className="mt-1 text-[11px] text-zinc-400">{step.detail}</p>}
                         {step.facts && step.facts.length > 0 && (
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {step.facts.map((f) => (
-                              <span key={f.id} className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
+                              <span key={f.id} className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">
                                 {f.subject} {f.relation} {f.object}
                               </span>
                             ))}

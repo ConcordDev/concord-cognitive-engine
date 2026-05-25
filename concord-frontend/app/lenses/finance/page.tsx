@@ -912,7 +912,7 @@ export default function FinanceLensPage() {
                     'p-2 rounded-md transition-colors',
                     chartType === type
                       ? 'bg-lattice-elevated text-neon-cyan'
-                      : 'text-gray-500 hover:text-white'
+                      : 'text-gray-400 hover:text-white'
                   )}
                 >
                   {type === 'line' && <LineChart className="w-4 h-4" />}
@@ -964,7 +964,7 @@ export default function FinanceLensPage() {
                   {formatCurrency(chartTooltip.value)}
                 </p>
                 {chartTooltip.min !== undefined && (
-                  <p className="text-[10px] text-gray-500 font-mono">
+                  <p className="text-[10px] text-gray-400 font-mono">
                     Min: {formatCurrency(chartTooltip.min)}
                   </p>
                 )}
@@ -1023,7 +1023,7 @@ export default function FinanceLensPage() {
                     a.name.toLowerCase().includes(searchQuery.toLowerCase())
                 ).length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                    <td colSpan={7} className="py-8 text-center text-gray-400">
                       {searchQuery ? 'No assets match your search' : 'No assets in portfolio'}
                     </td>
                   </tr>
@@ -1278,7 +1278,7 @@ export default function FinanceLensPage() {
                     <p className="font-medium text-sm leading-tight">{newsItem.title}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-gray-400">{newsItem.source}</span>
-                      <span className="text-xs text-gray-500">·</span>
+                      <span className="text-xs text-gray-400">·</span>
                       <span className="text-xs text-gray-400">
                         {formatTime(newsItem.timestamp)}
                       </span>
@@ -1398,7 +1398,7 @@ export default function FinanceLensPage() {
                       );
                     })
                 ) : (
-                  <div className="text-center text-xs text-gray-500 py-4">No buy orders yet</div>
+                  <div className="text-center text-xs text-gray-400 py-4">No buy orders yet</div>
                 )}
               </div>
 
@@ -1436,7 +1436,7 @@ export default function FinanceLensPage() {
                       );
                     })
                 ) : (
-                  <div className="text-center text-xs text-gray-500 py-4">No sell orders yet</div>
+                  <div className="text-center text-xs text-gray-400 py-4">No sell orders yet</div>
                 )}
               </div>
             </div>
@@ -1634,7 +1634,7 @@ export default function FinanceLensPage() {
           <tbody>
             {orders.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                   No orders yet
                 </td>
               </tr>
@@ -1757,7 +1757,7 @@ export default function FinanceLensPage() {
                   }
                   className={cn(
                     'p-2 rounded-lg',
-                    alert.active ? 'text-neon-green' : 'text-gray-500'
+                    alert.active ? 'text-neon-green' : 'text-gray-400'
                   )}
                 >
                   {alert.active ? <Bell className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
@@ -1947,7 +1947,7 @@ export default function FinanceLensPage() {
           <div className="mt-3 rounded-lg bg-black/30 border border-emerald-900/20 p-4 relative">
             <button
               onClick={() => setFinanceActionResult(null)}
-              className="absolute top-3 right-3 text-gray-500 hover:text-white"
+              className="absolute top-3 right-3 text-gray-400 hover:text-white"
             aria-label="Close">
               <X className="w-4 h-4" />
             </button>
@@ -2189,7 +2189,7 @@ export default function FinanceLensPage() {
                       ))}
                     </div>
                     {financeActionResult.strategy && (
-                      <p className="text-xs text-gray-500 italic">
+                      <p className="text-xs text-gray-400 italic">
                         {financeActionResult.strategy as string}
                       </p>
                     )}
@@ -2266,7 +2266,7 @@ export default function FinanceLensPage() {
               'flex items-center gap-2 px-4 py-2 rounded-md transition-colors font-mono text-sm',
               viewMode === item.id
                 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
+                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
             )}
           >
             <item.icon className="w-4 h-4" />

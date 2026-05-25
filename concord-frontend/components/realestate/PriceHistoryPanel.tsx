@@ -71,7 +71,7 @@ export function PriceHistoryPanel({ listingId }: { listingId?: string }) {
 
   if (!listingId) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-500">
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-400">
         <LineChart className="w-6 h-6 mx-auto mb-2 opacity-30" />
         Select a listing to view its price history time series.
       </div>
@@ -86,7 +86,7 @@ export function PriceHistoryPanel({ listingId }: { listingId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <LineChart className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Price history</span>
-        <span className="ml-auto text-[10px] text-gray-500">Zestimate-style</span>
+        <span className="ml-auto text-[10px] text-gray-400">Zestimate-style</span>
         <button onClick={() => setAdding((v) => !v)} className="p-1 text-gray-400 hover:text-white" title="Add price event"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -102,28 +102,28 @@ export function PriceHistoryPanel({ listingId }: { listingId?: string }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !result || result.history.length === 0 ? (
-        <div className="py-8 text-center text-xs text-gray-500">No price history yet. Add a price event.</div>
+        <div className="py-8 text-center text-xs text-gray-400">No price history yet. Add a price event.</div>
       ) : (
         <div className="p-3 space-y-3">
           <div className="grid grid-cols-4 gap-2 text-center text-xs">
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">Current</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Current</div>
               <div className="text-sm font-mono tabular-nums text-white">${result.lastPrice.toLocaleString()}</div>
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">Total change</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Total change</div>
               <div className={cn('text-sm font-mono tabular-nums inline-flex items-center gap-1', up ? 'text-emerald-400' : 'text-rose-400')}>
                 {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}{result.totalChangePct}%
               </div>
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">Low / High</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">Low / High</div>
               <div className="text-sm font-mono tabular-nums text-white">${(result.lowestPrice / 1000).toFixed(0)}K–${(result.highestPrice / 1000).toFixed(0)}K</div>
             </div>
             <div className="rounded-md border border-white/10 bg-white/[0.03] p-2">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500">$/sqft</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400">$/sqft</div>
               <div className="text-sm font-mono tabular-nums text-white">{result.pricePerSqft ? `$${result.pricePerSqft}` : '—'}</div>
             </div>
           </div>

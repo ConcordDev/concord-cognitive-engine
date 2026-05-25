@@ -108,8 +108,8 @@ function GovernanceFeed() {
         </div>
       ) : actions.length === 0 ? (
         <div className="text-center py-4">
-          <p className="text-sm text-gray-500">No recent governance activity</p>
-          <p className="text-xs text-gray-600 mt-1">Council decisions will appear here</p>
+          <p className="text-sm text-gray-400">No recent governance activity</p>
+          <p className="text-xs text-gray-400 mt-1">Council decisions will appear here</p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -122,10 +122,10 @@ function GovernanceFeed() {
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-gray-300 truncate">{getActionLabel(action)}</p>
                 {action.reason && (
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">{action.reason}</p>
+                  <p className="text-[10px] text-gray-400 truncate mt-0.5">{action.reason}</p>
                 )}
               </div>
-              <span className="text-[10px] text-gray-600 flex-shrink-0 mt-0.5">
+              <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">
                 {(action.timestamp || action.created_at) &&
                   new Date(action.timestamp || action.created_at || '').toLocaleTimeString(
                     undefined,

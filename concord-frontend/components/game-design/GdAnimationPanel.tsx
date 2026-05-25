@@ -142,7 +142,7 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -173,7 +173,7 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
       </section>
 
       {anims.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No animation clips yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No animation clips yet.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {anims.map((a) => (
@@ -219,7 +219,7 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
                     className="w-14 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
                 </label>
               </div>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {active.frames.length} frames · total {active.frames.reduce((s, f) => s + f.durationMs, 0)}ms
                 {!activeAsset && ' · attach a sprite sheet asset to preview pixels'}
               </p>
@@ -232,7 +232,7 @@ export function GdAnimationPanel({ gameId, onChange }: { gameId: string; onChang
           </button>
 
           {active.frames.length === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic py-3 text-center">No keyframes — add one to start the timeline.</p>
+            <p className="text-[11px] text-zinc-400 italic py-3 text-center">No keyframes — add one to start the timeline.</p>
           ) : (
             <ol className="flex flex-wrap gap-1.5">
               {active.frames.map((f, i) => (

@@ -62,7 +62,7 @@ export function InferencePlayground({ initialModel = '' }: { initialModel?: stri
         <h3 className="font-semibold flex items-center gap-2">
           <TestTube className="w-4 h-4 text-neon-purple" /> Inference Playground
         </h3>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           Runs against the Hugging Face hosted Inference API. First call may cold-start the model.
         </p>
         <div>
@@ -97,7 +97,7 @@ export function InferencePlayground({ initialModel = '' }: { initialModel?: stri
       <div className="space-y-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Code className="w-4 h-4 text-neon-green" /> Output
-          {result && <span className="text-xs text-gray-500 font-normal">· {result.latencyMs}ms</span>}
+          {result && <span className="text-xs text-gray-400 font-normal">· {result.latencyMs}ms</span>}
         </h3>
         <div className="panel p-4 h-[340px] overflow-auto">
           {result ? (
@@ -105,7 +105,7 @@ export function InferencePlayground({ initialModel = '' }: { initialModel?: stri
               {JSON.stringify(result.output, null, 2)}
             </pre>
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
+            <div className="h-full flex items-center justify-center text-gray-400">
               <div className="text-center">
                 <FileJson className="w-10 h-10 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Run inference to see output</p>

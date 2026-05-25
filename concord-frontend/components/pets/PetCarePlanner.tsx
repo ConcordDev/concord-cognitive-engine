@@ -78,14 +78,14 @@ export function PetCarePlanner() {
 
   const allVaccines = vaccines ? [...(vaccines.upcoming || []), ...(vaccines.overdue || []), ...(vaccines.schedule || [])] : [];
 
-  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Loading pets…</div>;
+  if (isLoading) return <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Loading pets…</div>;
 
   if (pets.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950 p-8 text-center">
         <PawPrint className="mx-auto h-8 w-8 text-zinc-600" />
         <div className="mt-3 text-sm text-zinc-300">Add your first pet to build a care plan.</div>
-        <div className="mt-1 text-xs text-zinc-500">Create a PetProfile via the "New" button above. Once saved, this panel will compute real feeding + vaccination plans from that pet's species, weight, age, and activity level.</div>
+        <div className="mt-1 text-xs text-zinc-400">Create a PetProfile via the "New" button above. Once saved, this panel will compute real feeding + vaccination plans from that pet's species, weight, age, and activity level.</div>
       </div>
     );
   }
@@ -115,13 +115,13 @@ export function PetCarePlanner() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <label className="block sm:col-span-2">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Pet</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Pet</span>
           <select value={activePet?.id || ''} onChange={(e) => { setSelectedPetId(e.target.value); setActivityOverride(null); setFeeding(null); setVaccines(null); }} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
             {pets.map((p) => <option key={p.id} value={p.id}>{p.data.name || p.title}{p.data.species ? ` (${p.data.species})` : ''}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Activity (override)</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Activity (override)</span>
           <select value={effectiveActivity} onChange={(e) => setActivityOverride(e.target.value as typeof ACTIVITY[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
             {ACTIVITY.map((a) => <option key={a} value={a}>{a}</option>)}
           </select>
@@ -142,14 +142,14 @@ export function PetCarePlanner() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Utensils className="h-3 w-3" />Feeding plan</div>
-          {!feeding && <div className="text-[11px] text-zinc-500">Click Plan to compute.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Utensils className="h-3 w-3" />Feeding plan</div>
+          {!feeding && <div className="text-[11px] text-zinc-400">Click Plan to compute.</div>}
           {feeding && (
             <div className="space-y-1.5 text-[11px]">
               <div className="grid grid-cols-3 gap-1">
-                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Daily</div><div className="font-mono text-rose-200">{feeding.dailyCalories ?? '—'} kcal</div></div>
-                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Meals</div><div className="font-mono text-rose-200">{feeding.mealsPerDay ?? '—'}/d</div></div>
-                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Per meal</div><div className="font-mono text-rose-200">{feeding.gramsPerMeal ?? '—'} g</div></div>
+                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Daily</div><div className="font-mono text-rose-200">{feeding.dailyCalories ?? '—'} kcal</div></div>
+                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Meals</div><div className="font-mono text-rose-200">{feeding.mealsPerDay ?? '—'}/d</div></div>
+                <div className="rounded border border-rose-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Per meal</div><div className="font-mono text-rose-200">{feeding.gramsPerMeal ?? '—'} g</div></div>
               </div>
               {feeding.recommendations && feeding.recommendations.length > 0 && (
                 <ul className="list-disc space-y-0.5 pl-4 text-zinc-300">
@@ -160,8 +160,8 @@ export function PetCarePlanner() {
           )}
         </div>
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Syringe className="h-3 w-3" />Vaccination schedule</div>
-          {!vaccines && <div className="text-[11px] text-zinc-500">Click Plan to compute.</div>}
+          <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Syringe className="h-3 w-3" />Vaccination schedule</div>
+          {!vaccines && <div className="text-[11px] text-zinc-400">Click Plan to compute.</div>}
           {vaccines && (
             <div className="space-y-1 max-h-44 overflow-y-auto">
               {vaccines.overdue && vaccines.overdue.length > 0 && (

@@ -220,7 +220,7 @@ export default function PharmacyLensPage() {
 
       {/* Prescription Status Badges & Drug Interaction Warning */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="flex items-center gap-3 flex-wrap">
-        <span className="text-xs text-gray-500 uppercase tracking-wide">Rx Status:</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wide">Rx Status:</span>
         {[
           { label: 'Ready', count: medications.filter(m => m.status === 'active' && (m.refillsLeft || 0) > 1).length, cls: 'bg-green-500/20 text-green-400 border-green-500/30' },
           { label: 'Processing', count: medications.filter(m => m.status === 'pending').length, cls: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
@@ -271,7 +271,7 @@ export default function PharmacyLensPage() {
         <div className="flex items-center gap-2 mb-1">
           <Pill className="w-4 h-4 text-neon-green" />
           <h2 className="font-semibold text-sm">Pharmacy Analysis Engine</h2>
-          <span className="text-xs text-gray-500 ml-auto">Interactions · Dosage · Inventory · Formulary</span>
+          <span className="text-xs text-gray-400 ml-auto">Interactions · Dosage · Inventory · Formulary</span>
         </div>
         <div className="bg-amber-500/10 border border-amber-500/20 rounded p-2 flex items-center gap-2 text-xs text-amber-400">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -327,11 +327,11 @@ export default function PharmacyLensPage() {
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Checked</p>
+                      <p className="text-xs text-gray-400">Checked</p>
                       <p className="text-sm font-bold text-white">{String(interactionResult.medicationsChecked ?? 0)}</p>
                     </div>
                     <div className="lens-card text-center">
-                      <p className="text-xs text-gray-500">Interactions</p>
+                      <p className="text-xs text-gray-400">Interactions</p>
                       <p className={`text-sm font-bold ${Number(interactionResult.interactionsFound) > 0 ? 'text-red-400' : 'text-green-400'}`}>
                         {String(interactionResult.interactionsFound ?? 0)}
                       </p>
@@ -384,7 +384,7 @@ export default function PharmacyLensPage() {
                       { label: 'Frequency', value: String(dosageResult.frequency) },
                     ].map(({ label, value }) => (
                       <div key={label} className="lens-card">
-                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                         <p className="text-sm font-mono font-bold text-white">{value}</p>
                       </div>
                     ))}
@@ -397,7 +397,7 @@ export default function PharmacyLensPage() {
                     </span>
                   </div>
                   {'disclaimer' in dosageResult && (
-                    <p className="text-[10px] text-gray-500 italic">{String(dosageResult.disclaimer)}</p>
+                    <p className="text-[10px] text-gray-400 italic">{String(dosageResult.disclaimer)}</p>
                   )}
                 </>
               )}
@@ -428,7 +428,7 @@ export default function PharmacyLensPage() {
                       { label: 'Near Expiry', value: String(inventoryResult.nearExpiry ?? 0), color: 'text-orange-400' },
                     ].map(({ label, value, color }) => (
                       <div key={label} className="lens-card text-center">
-                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                         <p className={`text-sm font-bold ${color}`}>{value}</p>
                       </div>
                     ))}
@@ -461,7 +461,7 @@ export default function PharmacyLensPage() {
                 <p className="text-xs text-gray-400">{String(formularyResult.message)}</p>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
                     <span>Query: <span className="text-white font-mono">{String(formularyResult.query)}</span></span>
                     <span className="ml-auto">{String(formularyResult.found)} / {String(formularyResult.formularySize)} found</span>
                   </div>
@@ -477,7 +477,7 @@ export default function PharmacyLensPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-500">No formulary matches found.</p>
+                    <p className="text-xs text-gray-400">No formulary matches found.</p>
                   )}
                 </>
               )}
@@ -491,7 +491,7 @@ export default function PharmacyLensPage() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search medications..." className="w-full bg-black/30 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm" />
       </div>
@@ -548,7 +548,7 @@ export default function PharmacyLensPage() {
 
           <div className="space-y-2">
             {medications.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No medications tracked yet.</p>
+              <p className="text-gray-400 text-sm text-center py-4">No medications tracked yet.</p>
             ) : (
               <AnimatePresence mode="popLayout">
               {medications.map((med, idx) => (
@@ -570,7 +570,7 @@ export default function PharmacyLensPage() {
                     <p className="text-xs text-gray-400 mt-1">{med.dosage} - {med.frequency} - {med.route}</p>
                   </div>
                   <button onClick={() => update(med.id, { data: { status: med.status === 'active' ? 'discontinued' : 'active' } })} className="text-xs px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-400 mr-2">{med.status === 'active' ? 'Discontinue' : 'Reactivate'}</button>
-                  <button onClick={() => remove(med.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => remove(med.id)} className="text-gray-400 hover:text-red-400" aria-label="Delete"><Trash2 className="w-4 h-4" /></button>
                 </motion.div>
               ))}
               </AnimatePresence>
@@ -598,7 +598,7 @@ export default function PharmacyLensPage() {
           <div className="panel p-4">
             <h3 className="font-semibold mb-3">Known Interactions</h3>
             {interactions.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No interaction checks performed yet.</p>
+              <p className="text-gray-400 text-sm text-center py-4">No interaction checks performed yet.</p>
             ) : (
               interactions.map(ix => (
                 <div key={ix.id} className="p-3 rounded-lg bg-white/5 mb-2">
@@ -620,7 +620,7 @@ export default function PharmacyLensPage() {
         <div className="panel p-4">
           <h3 className="font-semibold mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-neon-cyan" /> Refill Tracker</h3>
           {medications.filter(m => m.status === 'active').length === 0 ? (
-            <p className="text-gray-500 text-sm text-center py-4">Add active medications to track refills.</p>
+            <p className="text-gray-400 text-sm text-center py-4">Add active medications to track refills.</p>
           ) : (
             <div className="space-y-2">
               {medications.filter(m => m.status === 'active').map(med => (

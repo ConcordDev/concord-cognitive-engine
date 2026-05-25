@@ -283,7 +283,7 @@ export function GraphParityPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-zinc-500">
+      <div className="flex items-center justify-center py-8 text-zinc-400">
         <Loader2 className="w-4 h-4 animate-spin" />
       </div>
     );
@@ -294,7 +294,7 @@ export function GraphParityPanel() {
       <div className="flex items-center gap-2 mb-3">
         <Workflow className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Graph Toolkit</h3>
-        <span className="text-[11px] text-zinc-500">Obsidian / Kumu parity</span>
+        <span className="text-[11px] text-zinc-400">Obsidian / Kumu parity</span>
       </div>
 
       {/* Map picker */}
@@ -310,13 +310,13 @@ export function GraphParityPanel() {
             <option key={m.id} value={m.id}>{m.title} ({m.nodeCount} nodes)</option>
           ))}
         </select>
-        <button onClick={() => void refreshMaps()} className="p-1 text-zinc-500 hover:text-cyan-300" title="Reload maps">
+        <button onClick={() => void refreshMaps()} className="p-1 text-zinc-400 hover:text-cyan-300" title="Reload maps">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {maps.length === 0 && (
-        <p className="text-[11px] text-zinc-500 mb-3">No maps yet — create one in the Mind Map Builder below.</p>
+        <p className="text-[11px] text-zinc-400 mb-3">No maps yet — create one in the Mind Map Builder below.</p>
       )}
 
       {/* Tabs */}
@@ -391,7 +391,7 @@ export function GraphParityPanel() {
                 </div>
               </div>
             ) : (
-              <p className="text-[11px] text-zinc-500">Pick a focus node to see its neighborhood at the chosen depth.</p>
+              <p className="text-[11px] text-zinc-400">Pick a focus node to see its neighborhood at the chosen depth.</p>
             )}
           </div>
         )}
@@ -420,11 +420,11 @@ export function GraphParityPanel() {
               </button>
             </div>
             <div className="space-y-1 max-h-36 overflow-y-auto">
-              {filters.length === 0 && <p className="text-[11px] text-zinc-500">No saved filters yet.</p>}
+              {filters.length === 0 && <p className="text-[11px] text-zinc-400">No saved filters yet.</p>}
               {filters.map((f) => (
                 <div key={f.id} className="flex items-center gap-2 text-xs bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1">
                   <span className="text-zinc-200 font-medium">{f.name}</span>
-                  <span className="text-zinc-500 text-[10px] truncate">
+                  <span className="text-zinc-400 text-[10px] truncate">
                     {[f.query.labelContains && `label~"${f.query.labelContains}"`,
                       f.query.tag && `tag~"${f.query.tag}"`,
                       f.query.central && 'central',
@@ -442,7 +442,7 @@ export function GraphParityPanel() {
               <div className="text-[11px] text-zinc-300 border-t border-zinc-800 pt-1.5">
                 {filterMatch.ids.length} match(es):{' '}
                 {filterMatch.ids.length === 0
-                  ? <span className="text-zinc-500">none</span>
+                  ? <span className="text-zinc-400">none</span>
                   : filterMatch.ids.map((id) => <span key={id} className="text-cyan-300">{labelOf(id)} </span>)}
               </div>
             )}
@@ -467,12 +467,12 @@ export function GraphParityPanel() {
               </button>
             </div>
             <div className="space-y-1">
-              {rules.length === 0 && <p className="text-[11px] text-zinc-500">No color rules. Add one to group nodes by color.</p>}
+              {rules.length === 0 && <p className="text-[11px] text-zinc-400">No color rules. Add one to group nodes by color.</p>}
               {rules.map((r) => (
                 <div key={r.id} className="flex items-center gap-2 text-xs bg-zinc-950/60 border border-zinc-800 rounded px-2 py-1">
                   <span className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: r.color }} />
                   <span className="text-zinc-200">{r.name}</span>
-                  <span className="text-zinc-500 text-[10px]">
+                  <span className="text-zinc-400 text-[10px]">
                     {[r.labelContains && `label~"${r.labelContains}"`, r.tag && `tag~"${r.tag}"`].filter(Boolean).join(' · ')}
                   </span>
                   <button onClick={() => removeRule(r.id)} className="ml-auto text-rose-400 hover:text-rose-300">
@@ -515,7 +515,7 @@ export function GraphParityPanel() {
                   <div className="flex gap-4 text-xs">
                     <span className="text-cyan-300">{tlSnapshot.nodeCount} nodes</span>
                     <span className="text-violet-300">{tlSnapshot.edgeCount} edges</span>
-                    <span className="text-zinc-500">grown to this point</span>
+                    <span className="text-zinc-400">grown to this point</span>
                   </div>
                 )}
                 <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
@@ -524,7 +524,7 @@ export function GraphParityPanel() {
                 </div>
               </>
             ) : (
-              <p className="text-[11px] text-zinc-500">Select a map to scrub its growth over time.</p>
+              <p className="text-[11px] text-zinc-400">Select a map to scrub its growth over time.</p>
             )}
           </div>
         )}
@@ -565,7 +565,7 @@ export function GraphParityPanel() {
                 })}
               </svg>
             ) : (
-              <p className="text-[11px] text-zinc-500">Compute a layout to position nodes by the chosen algorithm.</p>
+              <p className="text-[11px] text-zinc-400">Compute a layout to position nodes by the chosen algorithm.</p>
             )}
           </div>
         )}
@@ -592,7 +592,7 @@ export function GraphParityPanel() {
               className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
               <RefreshCw className="w-3 h-3" /> Push node edits to DTU
             </button>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               Linking a node to a DTU lets graph-side label/notes edits flow back into the knowledge substrate.
             </p>
             {syncNode && nodes.find((n) => n.id === syncNode)?.syncedAt && (
@@ -630,7 +630,7 @@ export function GraphParityPanel() {
               <div className="rounded border border-zinc-800 overflow-hidden bg-zinc-950"
                 dangerouslySetInnerHTML={{ __html: exSvg }} />
             ) : (
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-zinc-400">
                 Export the current map (with view state baked in) as an SVG image or portable JSON.
               </p>
             )}
@@ -639,7 +639,7 @@ export function GraphParityPanel() {
       </div>
 
       {mapId && (
-        <p className="mt-2 text-[10px] text-zinc-600">
+        <p className="mt-2 text-[10px] text-zinc-400">
           {nodes.length} nodes · {edges.length} edges · max degree {Math.max(0, ...Object.values(degreeOf))}
         </p>
       )}

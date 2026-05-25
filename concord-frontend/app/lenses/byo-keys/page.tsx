@@ -181,7 +181,7 @@ export default function ByoKeysLens() {
               your inference through those providers instead and get frontier-tier intelligence
               inside Concord, free.
             </p>
-            <p className="mt-3 text-xs text-zinc-500 leading-relaxed">
+            <p className="mt-3 text-xs text-zinc-400 leading-relaxed">
               <strong className="text-zinc-300">Privacy:</strong> keys are encrypted AES-GCM with a
               per-user wrapping key derived from JWT_SECRET. They are never returned to your browser
               after save (only the masked preview is shown). Prompts go directly to your provider
@@ -201,20 +201,20 @@ export default function ByoKeysLens() {
                       <div className="mt-1 text-xs text-zinc-400">
                         {existing ? (
                           <>
-                            <span className={existing.active ? 'text-emerald-400' : 'text-zinc-500'}>
+                            <span className={existing.active ? 'text-emerald-400' : 'text-zinc-400'}>
                               {existing.active ? '● active' : '○ inactive'}
                             </span>{' '}
                             <span className="text-zinc-300 font-mono">{existing.provider}</span>
                             {existing.model_id && (
-                              <span className="text-zinc-500"> / {existing.model_id}</span>
+                              <span className="text-zinc-400"> / {existing.model_id}</span>
                             )}
                             {existing.key_preview && (
-                              <span className="ml-2 text-zinc-500 font-mono">{existing.key_preview}</span>
+                              <span className="ml-2 text-zinc-400 font-mono">{existing.key_preview}</span>
                             )}
                             <span className="ml-3 text-zinc-600">last used {fmtRelative(existing.last_used_at)}</span>
                           </>
                         ) : (
-                          <span className="text-zinc-500">default — uses concord-os.org Ollama (free)</span>
+                          <span className="text-zinc-400">default — uses concord-os.org Ollama (free)</span>
                         )}
                       </div>
                     </div>
@@ -302,7 +302,7 @@ export default function ByoKeysLens() {
                           <div>
                             <label className="block text-xs text-zinc-400 mb-1">
                               API key {selectedProvider?.keyFormat && (
-                                <span className="font-mono text-zinc-500">({selectedProvider.keyFormat})</span>
+                                <span className="font-mono text-zinc-400">({selectedProvider.keyFormat})</span>
                               )}
                             </label>
                             <input
@@ -313,7 +313,7 @@ export default function ByoKeysLens() {
                               className="w-full px-3 py-1.5 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none font-mono"
                               autoComplete="off"
                             />
-                            <p className="mt-1 text-[10px] text-zinc-500">
+                            <p className="mt-1 text-[10px] text-zinc-400">
                               Encrypted at rest. Never logged. Never returned to the frontend after save.
                               Concord-os.org is never in the data path — your prompts go directly to {selectedProvider?.name}.
                             </p>
@@ -342,7 +342,7 @@ export default function ByoKeysLens() {
             })}
           </ul>
 
-          <footer className="mt-8 text-xs text-zinc-500 leading-relaxed">
+          <footer className="mt-8 text-xs text-zinc-400 leading-relaxed">
             <p className="mb-2">
               <strong className="text-zinc-300">The revolving door (opt-in):</strong> when you mint
               DTUs with a frontier-tier model (Claude / GPT / Grok / Gemini), they default to{' '}

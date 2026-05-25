@@ -574,14 +574,13 @@ export default function CalendarLensPage() {
                   !isCurrentMonth && 'bg-lattice-deep/30',
                   isSelected && 'bg-neon-cyan/5',
                   isToday(date) && 'bg-neon-blue/10'
-                )}
-              >
+                )} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex items-center justify-between mb-1">
                   <span
                     className={cn(
                       'w-7 h-7 flex items-center justify-center rounded-full text-sm',
                       isToday(date) && 'bg-neon-blue text-white',
-                      !isCurrentMonth && 'text-gray-500'
+                      !isCurrentMonth && 'text-gray-400'
                     )}
                   >
                     {date.getDate()}
@@ -691,8 +690,7 @@ export default function CalendarLensPage() {
                         setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
                         setEditingEventId(null);
                         setShowCreateModal(true);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {hourEvents.map((event) => {
                         const start = new Date(event.startDate);
                         const end = new Date(event.endDate);
@@ -792,8 +790,7 @@ export default function CalendarLensPage() {
                     setNewEvent({ ...newEvent, startDate: newStart, endDate: newEnd });
                     setEditingEventId(null);
                     setShowCreateModal(true);
-                  }}
-                >
+                  }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   {hourEvents.map((event) => {
                     const start = new Date(event.startDate);
                     const end = new Date(event.endDate);
@@ -877,8 +874,7 @@ export default function CalendarLensPage() {
                       onClick={() => {
                         setSelectedEvent(event);
                         setShowEventModal(true);
-                      }}
-                    >
+                      }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {/* Artwork gradient */}
                       <div
                         className="w-full h-20 rounded-md mb-2 flex items-center justify-center"
@@ -1000,7 +996,7 @@ export default function CalendarLensPage() {
                         </div>
                       )}
                       {event.description && (
-                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{event.description}</p>
+                        <p className="text-sm text-gray-400 mt-1 line-clamp-2">{event.description}</p>
                       )}
                     </button>
                   ))}
@@ -1111,7 +1107,7 @@ export default function CalendarLensPage() {
               <h4 className="text-sm font-medium mb-3">Categories</h4>
               <div className="space-y-2">
                 {categories.length === 0 && (
-                  <p className="text-xs text-gray-500 py-2">No categories yet. Create events to see categories here.</p>
+                  <p className="text-xs text-gray-400 py-2">No categories yet. Create events to see categories here.</p>
                 )}
                 {categories.map((category) => (
                   <button
@@ -1130,9 +1126,9 @@ export default function CalendarLensPage() {
                     </div>
                     <CategoryIcon
                       type={category.icon}
-                      className={cn('w-4 h-4', !category.visible && 'text-gray-500')}
+                      className={cn('w-4 h-4', !category.visible && 'text-gray-400')}
                     />
-                    <span className={cn('text-sm', !category.visible && 'text-gray-500')}>
+                    <span className={cn('text-sm', !category.visible && 'text-gray-400')}>
                       {category.name}
                     </span>
                   </button>
@@ -1375,7 +1371,7 @@ export default function CalendarLensPage() {
                 >
                   <button
                     onClick={() => setActionResult(null)}
-                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-300"
+                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-300"
                     aria-label="Dismiss result"
                   >
                     <XCircle className="w-4 h-4" />
@@ -1392,7 +1388,7 @@ export default function CalendarLensPage() {
                         : (actionResult.conflicts as Array<{ event1: string; event2: string; overlap?: string }>).map((c, i) => (
                           <div key={i} className="mb-1 text-yellow-300">
                             <span className="font-medium">{c.event1}</span>
-                            <span className="text-gray-500 mx-1">&#x2715;</span>
+                            <span className="text-gray-400 mx-1">&#x2715;</span>
                             <span className="font-medium">{c.event2}</span>
                             {c.overlap && <span className="text-gray-400 ml-1">({c.overlap})</span>}
                           </div>
@@ -1465,7 +1461,7 @@ export default function CalendarLensPage() {
                         <div className="space-y-2">
                           {Object.entries(actionResult).map(([key, val]) => (
                             <div key={key} className="flex justify-between p-2 bg-lattice-deep rounded text-xs">
-                              <span className="text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
+                              <span className="text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
                               <span className="text-white font-medium">{typeof val === 'object' ? `${Object.keys(val as Record<string, unknown>).length} items` : String(val)}</span>
                             </div>
                           ))}

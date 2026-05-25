@@ -80,13 +80,13 @@ interface DiffResult {
 }
 
 const inputCls =
-  'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white placeholder:text-zinc-600';
+  'rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-xs text-white placeholder:text-zinc-400';
 
 function StatTile({ label, value, tone }: { label: string; value: string | number; tone?: string }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-center">
       <p className={`text-lg font-bold ${tone || 'text-zinc-100'}`}>{value}</p>
-      <p className="text-[9px] uppercase tracking-wide text-zinc-500">{label}</p>
+      <p className="text-[9px] uppercase tracking-wide text-zinc-400">{label}</p>
     </div>
   );
 }
@@ -117,7 +117,7 @@ function CompareTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Commit-level ahead/behind comparison between a fork and its parent (or any two repos).
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -142,7 +142,7 @@ function CompareTab() {
             <StatTile label="+lines" value={data.additions} tone="text-emerald-300" />
             <StatTile label="-lines" value={data.deletions} tone="text-red-300" />
           </div>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             <span className="font-mono text-zinc-300">{data.baseRepo}@{data.baseRef}</span>
             {' '}<span className="text-cyan-400">···</span>{' '}
             <span className="font-mono text-zinc-300">{data.headRepo}@{data.headRef}</span>
@@ -150,11 +150,11 @@ function CompareTab() {
           </p>
           {data.files.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
-              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Changed files</p>
+              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Changed files</p>
               <ul className="max-h-56 divide-y divide-zinc-900 overflow-y-auto">
                 {data.files.map((f) => (
                   <li key={f.filename} className="flex items-center gap-2 px-3 py-1.5 text-[11px]">
-                    <span className="w-12 shrink-0 font-mono uppercase text-zinc-500">{f.status.slice(0, 4)}</span>
+                    <span className="w-12 shrink-0 font-mono uppercase text-zinc-400">{f.status.slice(0, 4)}</span>
                     <span className="min-w-0 flex-1 truncate font-mono text-zinc-300">{f.filename}</span>
                     <span className="font-mono text-emerald-400">+{f.additions}</span>
                     <span className="font-mono text-red-400">-{f.deletions}</span>
@@ -165,7 +165,7 @@ function CompareTab() {
           )}
           {data.commits.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
-              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Commits ({data.commits.length})</p>
+              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Commits ({data.commits.length})</p>
               <ul className="max-h-56 divide-y divide-zinc-900 overflow-y-auto">
                 {data.commits.map((c) => (
                   <li key={c.sha} className="px-3 py-1.5 text-[11px]">
@@ -205,7 +205,7 @@ function PRTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Pull-request status overlay — open / merged / closed PRs and which forks contribute them.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="flex flex-wrap items-center gap-2">
@@ -213,7 +213,7 @@ function PRTab() {
         <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
           {(['open', 'closed', 'all'] as const).map((s) => (
             <button key={s} type="button" onClick={() => setState(s)}
-              className={`rounded px-2 py-0.5 font-mono uppercase ${state === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{s}</button>
+              className={`rounded px-2 py-0.5 font-mono uppercase ${state === s ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
           ))}
         </div>
         <button type="submit" disabled={!fullName.trim() || loading}
@@ -233,21 +233,21 @@ function PRTab() {
           </div>
           {data.forkContributions.length > 0 && (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
-              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">PRs by contributing fork</p>
+              <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">PRs by contributing fork</p>
               <ul className="max-h-40 divide-y divide-zinc-900 overflow-y-auto">
                 {data.forkContributions.map((fc) => (
                   <li key={fc.repo} className="flex items-center gap-2 px-3 py-1.5 text-[11px]">
                     <span className="min-w-0 flex-1 truncate font-mono text-zinc-300">{fc.repo}</span>
                     <span className="text-emerald-400">{fc.open} open</span>
                     <span className="text-violet-400">{fc.merged} merged</span>
-                    <span className="text-zinc-500">{fc.total} total</span>
+                    <span className="text-zinc-400">{fc.total} total</span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
           {data.pullRequests.length === 0 ? (
-            <p className="py-3 text-center text-xs italic text-zinc-500">No pull requests for this state.</p>
+            <p className="py-3 text-center text-xs italic text-zinc-400">No pull requests for this state.</p>
           ) : (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
               <ul className="max-h-64 divide-y divide-zinc-900 overflow-y-auto">
@@ -294,12 +294,12 @@ function NetworkTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Commits-over-time across the parent and its top forks — GitHub-style network graph.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="flex flex-wrap items-center gap-2">
         <input className={`${inputCls} w-32`} value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner" />
-        <span className="text-zinc-500">/</span>
+        <span className="text-zinc-400">/</span>
         <input className={`${inputCls} w-40`} value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="repo" />
         <button type="submit" disabled={!owner.trim() || !repo.trim() || loading}
           className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -317,7 +317,7 @@ function NetworkTab() {
           </div>
           {chartData.length > 0 ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Weekly commits — combined network</p>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Weekly commits — combined network</p>
               <ChartKit
                 kind="area"
                 data={chartData}
@@ -328,12 +328,12 @@ function NetworkTab() {
               />
             </div>
           ) : (
-            <p className="py-3 text-center text-xs italic text-zinc-500">
+            <p className="py-3 text-center text-xs italic text-zinc-400">
               GitHub is still computing commit statistics for this network — retry shortly.
             </p>
           )}
           <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
-            <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Per-repo commit volume</p>
+            <p className="border-b border-zinc-800 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Per-repo commit volume</p>
             <ul className="max-h-56 divide-y divide-zinc-900 overflow-y-auto">
               {data.repos.map((rp) => {
                 const max = Math.max(1, ...data.repos.map((x) => x.total));
@@ -379,7 +379,7 @@ function StaleTab() {
 
   const bandTone: Record<string, string> = {
     active: 'text-emerald-300', slowing: 'text-amber-300',
-    stale: 'text-red-300', archived: 'text-zinc-500', unknown: 'text-zinc-500',
+    stale: 'text-red-300', archived: 'text-zinc-400', unknown: 'text-zinc-400',
   };
   const sevTone: Record<string, string> = {
     high: 'border-red-500/30 bg-red-500/5 text-red-300',
@@ -389,14 +389,14 @@ function StaleTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Contributor activity / stale-fork detection — flags forks gone quiet past the threshold.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="flex flex-wrap items-center gap-2">
         <input className={`${inputCls} w-28`} value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner" />
-        <span className="text-zinc-500">/</span>
+        <span className="text-zinc-400">/</span>
         <input className={`${inputCls} w-36`} value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="repo" />
-        <label className="flex items-center gap-1 text-[10px] text-zinc-500">
+        <label className="flex items-center gap-1 text-[10px] text-zinc-400">
           stale after
           <input type="number" min={1} max={3650} value={staleDays}
             onChange={(e) => setStaleDays(Math.max(1, Math.min(3650, Number(e.target.value) || 180)))}
@@ -435,9 +435,9 @@ function StaleTab() {
                 {data.forks.map((f) => (
                   <li key={f.fullName} className="flex items-center gap-2 px-3 py-1.5 text-[11px]">
                     <span className="min-w-0 flex-1 truncate font-mono text-zinc-300">{f.fullName}</span>
-                    <span className="inline-flex items-center gap-0.5 text-zinc-500"><Star className="h-3 w-3" />{f.stargazers}</span>
+                    <span className="inline-flex items-center gap-0.5 text-zinc-400"><Star className="h-3 w-3" />{f.stargazers}</span>
                     <span className="text-zinc-600">{f.daysSincePush != null ? `${f.daysSincePush}d` : '—'}</span>
-                    <span className={`font-mono uppercase ${bandTone[f.band] || 'text-zinc-500'}`}>{f.band}</span>
+                    <span className={`font-mono uppercase ${bandTone[f.band] || 'text-zinc-400'}`}>{f.band}</span>
                     <a href={f.htmlUrl} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300">
                       <ExternalLink className="h-3 w-3" />
                     </a>
@@ -469,7 +469,7 @@ function ReleasesTab() {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Release / tag tracking on a watched repo — latest stable, asset downloads, lightweight tags.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="flex flex-wrap items-center gap-2">
@@ -492,12 +492,12 @@ function ReleasesTab() {
             <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-3 py-2 text-[11px]">
               <span className="font-semibold text-cyan-200">Latest stable: </span>
               <span className="font-mono text-zinc-200">{data.latest.tagName}</span>
-              {data.latest.publishedAt && <span className="text-zinc-500"> · {data.latest.publishedAt.slice(0, 10)}</span>}
+              {data.latest.publishedAt && <span className="text-zinc-400"> · {data.latest.publishedAt.slice(0, 10)}</span>}
               <a href={data.latest.htmlUrl} target="_blank" rel="noopener noreferrer" className="ml-2 text-cyan-400 hover:text-cyan-300">open</a>
             </div>
           )}
           {data.releases.length === 0 ? (
-            <p className="py-3 text-center text-xs italic text-zinc-500">No releases published for this repo.</p>
+            <p className="py-3 text-center text-xs italic text-zinc-400">No releases published for this repo.</p>
           ) : (
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60">
               <ul className="max-h-56 divide-y divide-zinc-900 overflow-y-auto">
@@ -512,7 +512,7 @@ function ReleasesTab() {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
-                    {rel.bodyExcerpt && <p className="mt-0.5 line-clamp-2 text-zinc-500">{rel.bodyExcerpt}</p>}
+                    {rel.bodyExcerpt && <p className="mt-0.5 line-clamp-2 text-zinc-400">{rel.bodyExcerpt}</p>}
                     {rel.assets.length > 0 && (
                       <p className="mt-0.5 text-zinc-600">
                         {rel.assets.length} asset{rel.assets.length !== 1 ? 's' : ''} ·{' '}
@@ -563,12 +563,12 @@ function DiffTab() {
   const rowTone: Record<string, string> = {
     add: 'bg-emerald-500/10 text-emerald-200',
     del: 'bg-red-500/10 text-red-200',
-    context: 'text-zinc-500',
+    context: 'text-zinc-400',
   };
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Cross-fork file-level diff browser — compares one file across two repos / refs, line by line.
       </p>
       <form onSubmit={(e) => { e.preventDefault(); void run(); }} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -590,13 +590,13 @@ function DiffTab() {
             <span className="font-mono text-zinc-300">{data.path}</span>
             <span className="inline-flex items-center gap-0.5 text-emerald-400"><Plus className="h-3 w-3" />{data.additions}</span>
             <span className="inline-flex items-center gap-0.5 text-red-400"><Minus className="h-3 w-3" />{data.deletions}</span>
-            {data.identical && <span className="text-zinc-500">identical</span>}
+            {data.identical && <span className="text-zinc-400">identical</span>}
             {!data.baseExists && <span className="inline-flex items-center gap-0.5 text-amber-300"><ArrowUp className="h-3 w-3" />absent in base</span>}
             {!data.headExists && <span className="inline-flex items-center gap-0.5 text-amber-300"><ArrowDown className="h-3 w-3" />absent in head</span>}
             {data.truncated && <span className="text-amber-400">(truncated)</span>}
           </div>
           {data.rows.length === 0 ? (
-            <p className="py-3 text-center text-xs italic text-zinc-500">No content to diff.</p>
+            <p className="py-3 text-center text-xs italic text-zinc-400">No content to diff.</p>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-zinc-800 bg-zinc-950/80">
               <pre className="max-h-80 overflow-y-auto text-[10px] leading-relaxed">
@@ -628,7 +628,7 @@ export function ForkInsights() {
       <div className="mb-3 flex items-center gap-2">
         <GitCompareArrows className="h-4 w-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Fork Insights</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-zinc-500">
+        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
           github api · live
         </span>
       </div>
@@ -640,7 +640,7 @@ export function ForkInsights() {
               className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
                 tab === t.id
                   ? 'bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-500/30'
-                  : 'text-zinc-500 hover:bg-zinc-900 hover:text-zinc-300'
+                  : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300'
               }`}>
               <Icon className="h-3.5 w-3.5" />
               {t.label}

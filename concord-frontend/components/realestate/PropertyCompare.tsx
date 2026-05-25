@@ -43,21 +43,21 @@ export function PropertyCompare({ ids, onClear, onRemove }: { ids: string[]; onC
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Columns3 className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Side-by-side compare</span>
-        <span className="ml-auto text-[10px] text-gray-500">{ids.length} picked</span>
+        <span className="ml-auto text-[10px] text-gray-400">{ids.length} picked</span>
         {ids.length > 0 && <button onClick={onClear} className="text-[10px] text-gray-400 hover:text-rose-300">Clear</button>}
       </header>
       <div className="p-3">
         {ids.length < 2 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500"><Columns3 className="w-6 h-6 mx-auto mb-2 opacity-30" />Pick at least 2 listings from the browser to compare.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400"><Columns3 className="w-6 h-6 mx-auto mb-2 opacity-30" />Pick at least 2 listings from the browser to compare.</div>
         ) : loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : error ? (
           <div className="px-3 py-4 text-center text-xs text-rose-300">{error}</div>
         ) : (
           <table className="w-full text-xs">
             <thead className="border-b border-white/10">
               <tr>
-                <th className="text-left text-[10px] uppercase tracking-wider text-gray-500 px-2 py-2">Field</th>
+                <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 px-2 py-2">Field</th>
                 {listings.map(l => (
                   <th key={l.id} className="text-left text-[10px] px-2 py-2 min-w-[140px]">
                     <div className="text-white truncate">{l.address}</div>

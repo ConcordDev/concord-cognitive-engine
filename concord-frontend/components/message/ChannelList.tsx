@@ -91,9 +91,9 @@ export function ChannelList({
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
+          <div className="p-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</div>
         ) : list.length === 0 ? (
-          <div className="p-3 text-xs text-gray-500 italic">No channels.</div>
+          <div className="p-3 text-xs text-gray-400 italic">No channels.</div>
         ) : (
           <>
             <Section title="Channels" items={channels} activeId={activeId} onSelect={onSelect} />
@@ -108,7 +108,7 @@ export function ChannelList({
 function Section({ title, items, activeId, onSelect }: { title: string; items: Channel[]; activeId: string | null; onSelect: (id: string) => void }) {
   return (
     <div className="border-b border-white/5">
-      <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-semibold">{title}</div>
+      <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-400 font-semibold">{title}</div>
       <ul>
         {items.map(c => {
           const active = activeId === c.id;
@@ -122,7 +122,7 @@ function Section({ title, items, activeId, onSelect }: { title: string; items: C
                   c.unread > 0 && !active && 'text-white font-semibold',
                 )}
               >
-                <ChannelIcon kind={c.kind} isPrivate={c.isPrivate} className={cn('w-3 h-3 flex-shrink-0', active ? 'text-violet-300' : 'text-gray-500')} />
+                <ChannelIcon kind={c.kind} isPrivate={c.isPrivate} className={cn('w-3 h-3 flex-shrink-0', active ? 'text-violet-300' : 'text-gray-400')} />
                 <span className="truncate flex-1">{c.name}</span>
                 {c.unread > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[9px] font-mono">{c.unread}</span>

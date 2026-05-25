@@ -342,7 +342,7 @@ function ConfirmModal({
   if (!open) return null;
 
   return (
-    <div className={ds.modalBackdrop} onClick={onCancel}>
+    <div className={ds.modalBackdrop} onClick={onCancel} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className={ds.modalContainer}>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -723,7 +723,7 @@ export default function PrivacySharingPage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5">
                         {toggle.description}
                       </p>
                     </div>
@@ -802,7 +802,7 @@ export default function PrivacySharingPage() {
                 </div>
                 {Array.isArray(privacyActionResult.priorityActions) && (
                   <div className="space-y-0.5">
-                    <p className="text-gray-500 font-semibold">Immediate actions:</p>
+                    <p className="text-gray-400 font-semibold">Immediate actions:</p>
                     {(privacyActionResult.priorityActions as string[]).map((a, i) => <p key={i} className="text-gray-300">• {a}</p>)}
                   </div>
                 )}
@@ -815,8 +815,8 @@ export default function PrivacySharingPage() {
 
       {/* Footer info */}
       <div className="flex items-start gap-2 pt-2 pb-4">
-        <Eye className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
-        <p className="text-xs text-gray-500 leading-relaxed">
+        <Eye className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+        <p className="text-xs text-gray-400 leading-relaxed">
           Your privacy settings are encrypted and stored securely. Changes take
           effect immediately after saving. Non-revocable actions cannot be undone
           once granted. Social DM settings are in beta and may not be fully

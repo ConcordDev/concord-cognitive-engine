@@ -15,6 +15,7 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.pantry: [{ name, quantity, unit }] (optional)
    */
   registerLensAction("household", "generateGroceryList", (ctx, artifact, params) => {
+  try {
     const mealPlan = artifact.data.mealPlan || [];
     const pantry = artifact.data.pantry || [];
     const categorize = params.categorize !== false;
@@ -93,7 +94,8 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.groceryList = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * maintenanceCheck
@@ -102,6 +104,7 @@ export default function registerHouseholdActions(registerLensAction) {
    * params.lookaheadDays (default 14)
    */
   registerLensAction("household", "maintenanceCheck", (ctx, artifact, params) => {
+  try {
     const items = artifact.data.maintenanceItems || [];
     const lookaheadDays = params.lookaheadDays != null ? params.lookaheadDays : 14;
     const now = new Date();
@@ -147,7 +150,8 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.maintenanceCheckResult = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * rotateChores
@@ -202,6 +206,7 @@ export default function registerHouseholdActions(registerLensAction) {
    * artifact.data.upcomingTasks: [{ name, dueDate }]
    */
   registerLensAction("household", "weeklySummary", (ctx, artifact, _params) => {
+  try {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 86400000);
     const weekAhead = new Date(now.getTime() + 7 * 86400000);
@@ -253,7 +258,8 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.weeklySummary = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * maintenanceDue
@@ -262,6 +268,7 @@ export default function registerHouseholdActions(registerLensAction) {
    * params.lookaheadDays (default 30) — also flag items due soon
    */
   registerLensAction("household", "maintenanceDue", (ctx, artifact, params) => {
+  try {
     const items = artifact.data.maintenanceItems || [];
     const lookaheadDays = params.lookaheadDays != null ? params.lookaheadDays : 30;
     const now = new Date();
@@ -338,7 +345,8 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.maintenanceReport = report;
 
     return { ok: true, result: report };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * choreRotation
@@ -348,6 +356,7 @@ export default function registerHouseholdActions(registerLensAction) {
    * params.strategy — "round-robin" (default) or "random"
    */
   registerLensAction("household", "choreRotation", (ctx, artifact, params) => {
+  try {
     const chores = artifact.data.chores || [];
     const rawMembers = artifact.data.members || [];
     const strategy = params.strategy || "round-robin";
@@ -428,7 +437,8 @@ export default function registerHouseholdActions(registerLensAction) {
     artifact.data.lastRotation = result;
 
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * off-product-lookup — Real Open Food Facts product lookup by UPC/EAN
@@ -665,6 +675,7 @@ export default function registerHouseholdActions(registerLensAction) {
 
   // chore-board — the prioritised cross-room cleaning list (Tody's core).
   registerLensAction("household", "chore-board", (ctx, _a, _params = {}) => {
+  try {
     const s = getHomeState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hmActor(ctx);
     const nowMs = effectiveNow(s, userId);
@@ -684,7 +695,8 @@ export default function registerHouseholdActions(registerLensAction) {
         paused: !!s.vacation.get(userId),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("household", "assignee-leaderboard", (ctx, _a, _params = {}) => {
     const s = getHomeState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -724,6 +736,7 @@ export default function registerHouseholdActions(registerLensAction) {
   });
 
   registerLensAction("household", "household-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getHomeState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = hmActor(ctx);
     const nowMs = effectiveNow(s, userId);
@@ -742,7 +755,8 @@ export default function registerHouseholdActions(registerLensAction) {
         paused: !!s.vacation.get(userId),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Coordination layer (Cozi-shape): calendar, meal plan, rewards,
   //     notifications, shared lists, recurring templates, expense splits.
@@ -846,6 +860,7 @@ export default function registerHouseholdActions(registerLensAction) {
 
   // ── Meal-planning calendar ───────────────────────────────────────
   registerLensAction("household", "meal-plan-set", (ctx, _a, params = {}) => {
+  try {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const date = hmClean(params.date, 10);
     if (!date) return { ok: false, error: "meal date required" };
@@ -876,7 +891,8 @@ export default function registerHouseholdActions(registerLensAction) {
     }
     saveHome();
     return { ok: true, result: { meal } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("household", "meal-plan-list", (ctx, _a, params = {}) => {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -923,6 +939,7 @@ export default function registerHouseholdActions(registerLensAction) {
   // allowance-summary computes per-person points and dollar allowance
   // from the existing real chore-completion log.
   registerLensAction("household", "allowance-summary", (ctx, _a, params = {}) => {
+  try {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const home = getHomeState();
     const log = home ? hmList(home.choreLog, hmActor(ctx)) : [];
@@ -939,7 +956,8 @@ export default function registerHouseholdActions(registerLensAction) {
     const totalPoints = members.reduce((sum, m) => sum + m.points, 0);
     const totalAllowance = Math.round(members.reduce((sum, m) => sum + m.allowance, 0) * 100) / 100;
     return { ok: true, result: { members, dollarsPerPoint: rate, totalPoints, totalAllowance } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Per-member notifications ─────────────────────────────────────
   registerLensAction("household", "notification-create", (ctx, _a, params = {}) => {
@@ -1131,6 +1149,7 @@ export default function registerHouseholdActions(registerLensAction) {
 
   // ── Budget / shared-expense splitting ────────────────────────────
   registerLensAction("household", "expense-add", (ctx, _a, params = {}) => {
+  try {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const description = hmClean(params.description, 120);
     if (!description) return { ok: false, error: "description required" };
@@ -1158,7 +1177,8 @@ export default function registerHouseholdActions(registerLensAction) {
     hmList(s.expenses, hmActor(ctx)).push(expense);
     saveHome();
     return { ok: true, result: { expense } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("household", "expense-list", (ctx, _a, params = {}) => {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1193,6 +1213,7 @@ export default function registerHouseholdActions(registerLensAction) {
   // expense-balances — net owed/owing per member across unsettled
   // shared expenses, plus minimal settle-up transfers.
   registerLensAction("household", "expense-balances", (ctx, _a, _params = {}) => {
+  try {
     const s = getCoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const expenses = hmList(s.expenses, hmActor(ctx)).filter((e) => !e.settled);
     const net = {};
@@ -1222,5 +1243,6 @@ export default function registerHouseholdActions(registerLensAction) {
       if (debtors[di].net <= 0.005) di++;
     }
     return { ok: true, result: { balances, transfers, unsettledExpenses: expenses.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };

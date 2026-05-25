@@ -63,7 +63,7 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
   const del = async (id: string) => { await lensRun('travel', 'price-watch-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -88,7 +88,7 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
       </button>
 
       {watches.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No price watches. Track a flight or hotel to get buy/wait guidance.
         </div>
       ) : (
@@ -102,14 +102,14 @@ export function TravelWatchesPanel({ onChange }: { onChange: () => void }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{w.subject}</p>
-                    <p className="text-[11px] text-zinc-500 capitalize">
+                    <p className="text-[11px] text-zinc-400 capitalize">
                       {w.kind} · target ${w.targetPrice || '—'} · low ${w.lowestSeen} · {w.observations} checks
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="flex items-center gap-1 text-sm font-bold text-zinc-100">
                       <TrendIcon className={cn('w-3.5 h-3.5',
-                        w.trend === 'falling' ? 'text-emerald-400' : w.trend === 'rising' ? 'text-rose-400' : 'text-zinc-500')} />
+                        w.trend === 'falling' ? 'text-emerald-400' : w.trend === 'rising' ? 'text-rose-400' : 'text-zinc-400')} />
                       ${w.currentPrice}
                     </p>
                     <p className={cn('text-[10px] font-medium', rec.color)}>{rec.text}</p>

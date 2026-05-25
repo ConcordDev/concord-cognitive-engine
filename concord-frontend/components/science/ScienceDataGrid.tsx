@@ -120,9 +120,9 @@ export function ScienceDataGrid() {
         </div>
         {error && <p className="text-xs text-red-400">{error}</p>}
         {loading ? (
-          <p className="text-xs text-gray-500">Loading…</p>
+          <p className="text-xs text-gray-400">Loading…</p>
         ) : datasets.length === 0 ? (
-          <p className="text-xs text-gray-500">No datasets yet. Create one to start entering data.</p>
+          <p className="text-xs text-gray-400">No datasets yet. Create one to start entering data.</p>
         ) : (
           <ul className="space-y-1.5">
             {datasets.map((d) => (
@@ -138,7 +138,7 @@ export function ScienceDataGrid() {
                   <FileSpreadsheet className="w-4 h-4 text-teal-400 shrink-0" />
                   <span className="min-w-0">
                     <span className="block text-xs text-gray-100 truncate">{d.name}</span>
-                    <span className="block text-[10px] text-gray-500">
+                    <span className="block text-[10px] text-gray-400">
                       {d.columns.length} cols · {d.rowCount} rows
                     </span>
                   </span>
@@ -146,7 +146,7 @@ export function ScienceDataGrid() {
                 <button
                   type="button"
                   onClick={() => del(d.id)}
-                  className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                  className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
                   aria-label="Delete dataset"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

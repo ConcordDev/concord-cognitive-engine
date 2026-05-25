@@ -76,13 +76,13 @@ export default function NamedEncounterHUD({ npcId, npcName, onDismiss }: Props) 
           <p className="text-sm font-semibold text-gray-100">{npcName || 'Named Encounter'}</p>
         </div>
         {onDismiss && (
-          <button onClick={onDismiss} className="text-xs text-gray-500 hover:text-gray-300">×</button>
+          <button onClick={onDismiss} className="text-xs text-gray-400 hover:text-gray-300">×</button>
         )}
       </header>
       <div className="p-3 space-y-2">
-        {loading && <p className="text-xs text-gray-500">Reading lineage…</p>}
+        {loading && <p className="text-xs text-gray-400">Reading lineage…</p>}
         {!loading && !skill && (
-          <p className="text-xs text-gray-500 italic">No authored skill on record.</p>
+          <p className="text-xs text-gray-400 italic">No authored skill on record.</p>
         )}
         {skill && (
           <>
@@ -94,7 +94,7 @@ export default function NamedEncounterHUD({ npcId, npcName, onDismiss }: Props) 
             </div>
             {history.length > 0 && (
               <div className="pt-2 border-t border-zinc-800">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Recent revisions</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Recent revisions</p>
                 <RevisionLineageTree revisions={history} maxRows={4} />
               </div>
             )}

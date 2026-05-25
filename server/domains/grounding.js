@@ -11,6 +11,7 @@ export default function registerGroundingActions(registerLensAction) {
    * artifact.data.evidence = [{ text, source?, date?, reliability? }]
    */
   registerLensAction("grounding", "factCheck", (ctx, artifact, _params) => {
+  try {
     const claim = artifact.data?.claim || {};
     const evidence = artifact.data?.evidence || [];
     const claimText = (claim.text || "").toLowerCase();
@@ -164,7 +165,8 @@ export default function registerGroundingActions(registerLensAction) {
         evaluations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * sourceCredibility
@@ -173,6 +175,7 @@ export default function registerGroundingActions(registerLensAction) {
    * artifact.data.sources = [{ name, url?, type?, date?, claims: [string], affiliations?: [], fundingSources?: [] }]
    */
   registerLensAction("grounding", "sourceCredibility", (ctx, artifact, _params) => {
+  try {
     const sources = artifact.data?.sources || [];
     if (sources.length === 0) {
       return { ok: true, result: { message: "No sources provided." } };
@@ -326,7 +329,8 @@ export default function registerGroundingActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * claimDecomposition
@@ -336,6 +340,7 @@ export default function registerGroundingActions(registerLensAction) {
    * artifact.data.evidence = [{ text, source? }] (optional, for scoring components)
    */
   registerLensAction("grounding", "claimDecomposition", (ctx, artifact, _params) => {
+  try {
     const claim = artifact.data?.claim || {};
     const evidence = artifact.data?.evidence || [];
     const text = claim.text || "";
@@ -495,7 +500,8 @@ export default function registerGroundingActions(registerLensAction) {
         }, {}),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Fact-verification substrate (per-user, STATE-backed) ───────────
   // Powers: multi-source evidence aggregation with citations, probability

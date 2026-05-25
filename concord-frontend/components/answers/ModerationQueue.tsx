@@ -70,7 +70,7 @@ export function ModerationQueue({ onResolved }: { onResolved?: () => void }) {
       <div className="flex items-center gap-2">
         <ShieldAlert className="w-4 h-4 text-orange-400" />
         <h4 className="text-sm font-semibold text-zinc-200">Moderation queue</h4>
-        <span className="text-[11px] text-zinc-500">{items.length} pending</span>
+        <span className="text-[11px] text-zinc-400">{items.length} pending</span>
       </div>
 
       {gateError && (
@@ -80,9 +80,9 @@ export function ModerationQueue({ onResolved }: { onResolved?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-6"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
       ) : !gateError && items.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-4 text-center">No data yet — queue is clear.</p>
+        <p className="text-xs text-zinc-400 italic py-4 text-center">No data yet — queue is clear.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((item) => (
@@ -98,7 +98,7 @@ export function ModerationQueue({ onResolved }: { onResolved?: () => void }) {
                 <span className="ml-auto text-zinc-600">{new Date(item.createdAt).toLocaleDateString()}</span>
               </div>
               <p className="text-[12px] text-zinc-300 mt-1 font-medium">{item.questionTitle}</p>
-              {item.excerpt && <p className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2">{item.excerpt}</p>}
+              {item.excerpt && <p className="text-[11px] text-zinc-400 mt-0.5 line-clamp-2">{item.excerpt}</p>}
               {item.note && <p className="text-[11px] text-zinc-400 mt-0.5 italic">&ldquo;{item.note}&rdquo;</p>}
               {item.kind !== 'close-vote-pending' && (
                 <div className="flex gap-1.5 mt-2">

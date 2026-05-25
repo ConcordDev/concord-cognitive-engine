@@ -108,7 +108,7 @@ export function MarketingWorkflowsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -126,7 +126,7 @@ export function MarketingWorkflowsPanel() {
       </div>
 
       {workflows.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No workflows yet. Chain trigger → delay → email → branch steps.</p>
+        <p className="text-[11px] text-zinc-400 italic">No workflows yet. Chain trigger → delay → email → branch steps.</p>
       ) : (
         <ul className="space-y-2">
           {workflows.map((w) => (
@@ -134,7 +134,7 @@ export function MarketingWorkflowsPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{w.name}</p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     {w.stepCount} steps · {w.enrolled} enrolled · {w.completionRate}% completed · {w.status}
                   </p>
                 </div>
@@ -172,9 +172,9 @@ export function MarketingWorkflowsPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} workflow</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -190,7 +190,7 @@ export function MarketingWorkflowsPanel() {
               ))}
             </div>
             {fSteps.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">Add steps to define the nurture sequence.</p>
+              <p className="text-[11px] text-zinc-400 italic">Add steps to define the nurture sequence.</p>
             ) : (
               <ul className="space-y-1.5">
                 {fSteps.map((st, i) => (
@@ -230,9 +230,9 @@ export function MarketingWorkflowsPanel() {
 
       {/* Enroll modal */}
       {enrollTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollTarget(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEnrollTarget(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-semibold text-white">Enroll a contact</h4>
             <input value={contact} onChange={(e) => setContact(e.target.value)}
               placeholder="contact@example.com" className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100" />
@@ -251,15 +251,15 @@ export function MarketingWorkflowsPanel() {
 
       {/* Runs modal */}
       {runsFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRunsFor(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRunsFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Workflow runs ({runs.length})</h4>
               <button type="button" onClick={() => setRunsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
             </div>
             {runs.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No runs yet. Enroll a contact to simulate the sequence.</p>
+              <p className="text-[11px] text-zinc-400 italic">No runs yet. Enroll a contact to simulate the sequence.</p>
             ) : (
               <ul className="space-y-3">
                 {runs.map((run) => {
@@ -274,7 +274,7 @@ export function MarketingWorkflowsPanel() {
                     <li key={run.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
                       <div className="flex items-center justify-between mb-1.5">
                         <span className="text-xs text-zinc-200">{run.contact}</span>
-                        <span className={cn('text-[10px]', run.reachedGoal ? 'text-emerald-300' : 'text-zinc-500')}>
+                        <span className={cn('text-[10px]', run.reachedGoal ? 'text-emerald-300' : 'text-zinc-400')}>
                           {run.reachedGoal ? 'reached goal' : 'in progress'} · {run.durationHours}h
                         </span>
                       </div>

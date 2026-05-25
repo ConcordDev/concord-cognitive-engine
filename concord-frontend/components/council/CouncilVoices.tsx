@@ -89,7 +89,7 @@ export function CouncilVoices() {
           </div>
         </div>
       )}
-      {(voices.isPending || evaluate.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Convening…</div>}
+      {(voices.isPending || evaluate.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Convening…</div>}
     </div>
   );
 }

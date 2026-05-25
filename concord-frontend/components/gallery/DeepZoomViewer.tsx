@@ -89,7 +89,7 @@ export function DeepZoomViewer() {
       )}
 
       {!data && !error && !loading && (
-        <div className="py-8 text-center text-[12px] text-zinc-500 italic">
+        <div className="py-8 text-center text-[12px] text-zinc-400 italic">
           No artwork loaded yet. Enter a Cleveland Museum artwork id to inspect it at full resolution.
         </div>
       )}
@@ -145,7 +145,7 @@ export function DeepZoomViewer() {
                 </div>
               </>
             ) : (
-              <div className="flex h-full items-center justify-center text-[12px] text-zinc-500 italic">No zoomable image.</div>
+              <div className="flex h-full items-center justify-center text-[12px] text-zinc-400 italic">No zoomable image.</div>
             )}
           </div>
         </div>

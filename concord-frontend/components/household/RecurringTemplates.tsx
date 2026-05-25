@@ -57,14 +57,14 @@ export function RecurringTemplates() {
     await refresh();
   }
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Repeat className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-zinc-100">Recurring Task Templates</h3>
-        <span className="text-[11px] text-zinc-500">{templates.length}</span>
+        <span className="text-[11px] text-zinc-400">{templates.length}</span>
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex gap-1.5 flex-wrap">
@@ -92,14 +92,14 @@ export function RecurringTemplates() {
       {spawned && <p className="mb-2 text-[11px] text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 rounded px-2 py-1">{spawned}</p>}
 
       {templates.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">No data yet — define a recurring task template above, then spawn it onto the chore board.</p>
+        <p className="text-xs text-zinc-400 italic">No data yet — define a recurring task template above, then spawn it onto the chore board.</p>
       ) : (
         <ul className="space-y-1">
           {templates.map(t => (
             <li key={t.id} className="group flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-1.5">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{t.name}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   <span className="text-cyan-400">{t.frequency}</span>
                   {t.room ? ` · ${t.room}` : ''}{t.assignee ? ` · ${t.assignee}` : ''} · {t.effort}
                   {t.lastSpawnedAt && ` · last spawned ${new Date(t.lastSpawnedAt).toLocaleDateString()}`}

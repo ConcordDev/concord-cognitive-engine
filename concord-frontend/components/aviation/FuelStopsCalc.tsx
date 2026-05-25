@@ -71,7 +71,7 @@ function Tile({ label, value, tone }: { label: string; value: string; tone: stri
   const colour = tone === 'amber' ? 'text-amber-300 border-amber-500/30 bg-amber-500/5' : tone === 'cyan' ? 'text-cyan-300 border-cyan-500/30 bg-cyan-500/5' : tone === 'violet' ? 'text-violet-300 border-violet-500/30 bg-violet-500/5' : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/5';
   return (
     <div className={`rounded-lg border p-3 text-center ${colour}`}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-xl font-mono font-bold tabular-nums">{value}</div>
     </div>
   );

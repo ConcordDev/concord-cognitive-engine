@@ -92,7 +92,7 @@ export function SocraticTutor({ subject = 'general', level = 'high school', cont
       <header className="px-4 py-2 border-b border-white/10 bg-gradient-to-r from-purple-500/10 to-cyan-500/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-purple-400" />
         <span className="text-sm font-bold text-purple-300">Socratic tutor</span>
-        <span className="text-[10px] text-gray-500">{subject} · {level}</span>
+        <span className="text-[10px] text-gray-400">{subject} · {level}</span>
         <span className={cn('ml-auto text-[10px] px-1.5 py-0.5 rounded font-bold',
           hintLevel === 1 ? 'bg-green-500/20 text-green-300' :
           hintLevel === 2 ? 'bg-yellow-500/20 text-yellow-300' :
@@ -113,7 +113,7 @@ export function SocraticTutor({ subject = 'general', level = 'high school', cont
           const isStudent = m.role === 'student';
           return (
             <div key={i} className={cn('flex flex-col gap-1', isStudent ? 'items-end' : 'items-start')}>
-              <div className="text-[9px] uppercase tracking-wider text-gray-600">{isStudent ? 'you' : 'tutor'}</div>
+              <div className="text-[9px] uppercase tracking-wider text-gray-400">{isStudent ? 'you' : 'tutor'}</div>
               <div className={cn(
                 'max-w-[90%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap',
                 isStudent ? 'bg-cyan-500/10 border border-cyan-500/30 text-gray-100' : 'bg-white/[0.03] border border-white/10 text-gray-200',
@@ -124,7 +124,7 @@ export function SocraticTutor({ subject = 'general', level = 'high school', cont
           );
         })}
         {pending && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="w-3 h-3 animate-spin" /> Thinking…
           </div>
         )}
@@ -158,7 +158,7 @@ export function SocraticTutor({ subject = 'general', level = 'high school', cont
             </button>
           )}
           {context && (
-            <span className="ml-auto text-[10px] text-gray-500 inline-flex items-center gap-1">
+            <span className="ml-auto text-[10px] text-gray-400 inline-flex items-center gap-1">
               <BookOpen className="w-3 h-3" /> Lesson context loaded
             </span>
           )}

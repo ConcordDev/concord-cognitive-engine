@@ -200,6 +200,7 @@ export default function registerGeologyActions(registerLensAction) {
   const SAMPLE_KINDS = ["rock", "mineral", "fossil", "outcrop", "structure", "other"];
 
   registerLensAction("geology", "observation-log", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = geoClean(params.name, 160);
     if (!name) return { ok: false, error: "observation name required" };
@@ -219,9 +220,11 @@ export default function registerGeologyActions(registerLensAction) {
     geoObs(s, geoActor(ctx)).push(obs);
     saveGeo();
     return { ok: true, result: { observation: obs } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "observation-list", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let obs = [...geoObs(s, geoActor(ctx))];
     if (params.kind) obs = obs.filter((o) => o.kind === params.kind);
@@ -233,7 +236,8 @@ export default function registerGeologyActions(registerLensAction) {
     if (q) obs = obs.filter((o) => o.name.toLowerCase().includes(q) || (o.notes || "").toLowerCase().includes(q));
     obs.sort((a, b) => b.collectedAt.localeCompare(a.collectedAt) || b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { observations: obs, count: obs.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "observation-update", (ctx, _a, params = {}) => {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -259,6 +263,7 @@ export default function registerGeologyActions(registerLensAction) {
   });
 
   registerLensAction("geology", "field-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const obs = geoObs(s, geoActor(ctx));
     const byKind = {};
@@ -273,7 +278,8 @@ export default function registerGeologyActions(registerLensAction) {
         formations: [...new Set(obs.map((o) => o.formation).filter(Boolean))].length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest live USGS significant earthquakes as visible DTUs.
   registerLensAction("geology", "feed", async (ctx, _a, params = {}) => {
@@ -400,6 +406,7 @@ export default function registerGeologyActions(registerLensAction) {
   const norm360 = (v) => { let n = ((v % 360) + 360) % 360; return n; };
 
   registerLensAction("geology", "measurement-record", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const strike = geoNum(params.strike);
     const dip = geoNum(params.dip);
@@ -426,9 +433,11 @@ export default function registerGeologyActions(registerLensAction) {
     map.get(userId).push(m);
     saveGeo();
     return { ok: true, result: { measurement: m } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "measurement-list", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const map = ensureStructure(s);
     let rows = [...(map.get(geoActor(ctx)) || [])];
@@ -448,7 +457,8 @@ export default function registerGeologyActions(registerLensAction) {
       ? Math.round(norm360((Math.atan2(sumSin, sumCos) * 180) / Math.PI) * 10) / 10
       : null;
     return { ok: true, result: { measurements: rows, count: rows.length, byKind, meanStrike } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "measurement-delete", (ctx, _a, params = {}) => {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -466,6 +476,7 @@ export default function registerGeologyActions(registerLensAction) {
     return s.photos;
   }
   registerLensAction("geology", "photo-attach", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const observationId = geoClean(params.observationId, 80);
     const dataUrl = geoClean(params.dataUrl, 6_000_000);
@@ -498,9 +509,11 @@ export default function registerGeologyActions(registerLensAction) {
     }
     saveGeo();
     return { ok: true, result: { photo } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "photo-list", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let rows = [...(ensurePhotos(s).get(geoActor(ctx)) || [])];
     if (params.observationId) {
@@ -512,7 +525,8 @@ export default function registerGeologyActions(registerLensAction) {
       ok: true,
       result: { photos: rows, count: rows.length, geotagged: rows.filter((p) => p.exifLat != null).length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "photo-delete", (ctx, _a, params = {}) => {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -639,6 +653,7 @@ export default function registerGeologyActions(registerLensAction) {
   });
 
   registerLensAction("geology", "fieldtrip-add-stop", (ctx, _a, params = {}) => {
+  try {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const trip = findTrip(s, geoActor(ctx), params.tripId);
     if (!trip) return { ok: false, error: "field trip not found" };
@@ -661,7 +676,8 @@ export default function registerGeologyActions(registerLensAction) {
     trip.stops.push(stop);
     saveGeo();
     return { ok: true, result: { stop, stopCount: trip.stops.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("geology", "fieldtrip-reorder-stops", (ctx, _a, params = {}) => {
     const s = getGeoState(); if (!s) return { ok: false, error: "STATE unavailable" };

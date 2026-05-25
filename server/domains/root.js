@@ -300,6 +300,7 @@ export default function registerRootActions(registerLensAction) {
   // numbers are computed live from the real conversion/operation primitives
   // so the lesson can never drift from the implementation.
   registerLensAction("root", "tutorial", (_ctx, _artifact, _params = {}) => {
+  try {
     const sumRes = add(11, 16);
     const mulRes = multiply(0, 7);
     const subRes = subtract(8, 8);
@@ -355,7 +356,8 @@ export default function registerRootActions(registerLensAction) {
       },
     ];
     return { ok: true, result: { lessons, lessonCount: lessons.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2. Saved computation notebook + history re-load ──────────────────
   /**
@@ -367,6 +369,7 @@ export default function registerRootActions(registerLensAction) {
    *   params.label?: string
    */
   registerLensAction("root", "save", (ctx, _artifact, params = {}) => {
+  try {
     const s = getRootState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const kind = ["operation", "expression", "bitwise"].includes(params.kind) ? params.kind : "operation";
@@ -403,7 +406,8 @@ export default function registerRootActions(registerLensAction) {
     if (list.length > 200) list.length = 200;
     saveRoot();
     return { ok: true, result: { computation: entry, total: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * history — list saved computations for the user (most recent first).

@@ -56,7 +56,7 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = (trends?.daily || []).map((d) => ({
@@ -104,7 +104,7 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
             </div>
           </>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">
             {trends?.note || 'Log feeds, sleep and diapers for a few days to see trends.'}
           </p>
         )}
@@ -119,7 +119,7 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
               ? 'border-amber-900/50 bg-amber-950/30' : 'border-zinc-800 bg-zinc-900/70'}`}>
               {a.severity === 'watch'
                 ? <AlertTriangle className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                : <Info className="w-3.5 h-3.5 text-zinc-500 mt-0.5 shrink-0" />}
+                : <Info className="w-3.5 h-3.5 text-zinc-400 mt-0.5 shrink-0" />}
               <span className="text-[11px] text-zinc-300">{a.text}</span>
             </div>
           ))}
@@ -132,7 +132,7 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
             <BookOpen className="w-3.5 h-3.5 text-rose-400" /> For {expert.childName} · {expert.topic}
           </h3>
-          <p className="text-[10px] text-zinc-500 mb-2">Age-targeted developmental guidance ({expert.ageRange}).</p>
+          <p className="text-[10px] text-zinc-400 mb-2">Age-targeted developmental guidance ({expert.ageRange}).</p>
           <ul className="space-y-1.5">
             {expert.articles.map((a) => (
               <li key={a.id} className="flex items-start gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
@@ -142,11 +142,11 @@ export function PgInsightsPanel({ childId }: { childId: string }) {
             ))}
           </ul>
           {expert.comingNext && (
-            <p className="text-[10px] text-zinc-500 mt-2">
+            <p className="text-[10px] text-zinc-400 mt-2">
               Coming up: <span className="text-zinc-300">{expert.comingNext.topic}</span> around {expert.comingNext.atMonths} months.
             </p>
           )}
-          <p className="text-[10px] text-zinc-500 mt-1">{expert.note}</p>
+          <p className="text-[10px] text-zinc-400 mt-1">{expert.note}</p>
         </section>
       )}
     </div>
@@ -157,7 +157,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5 text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

@@ -48,7 +48,7 @@ function flightCategoryFromMetar(raw: string): { label: 'VFR' | 'MVFR' | 'IFR' |
   // MVFR: 1000-3000 ceiling OR 3-5sm vis
   // IFR: 500-1000 ceiling OR 1-3sm vis
   // LIFR: <500 ceiling OR <1sm vis
-  if (!raw) return { label: '?', color: 'text-zinc-500 border-zinc-700' };
+  if (!raw) return { label: '?', color: 'text-zinc-400 border-zinc-700' };
   const visMatch = raw.match(/\s(\d{1,3})SM(?:\s|$)/);
   const ceilMatch = raw.match(/(BKN|OVC)(\d{3})/);
   const visSm = visMatch ? Number(visMatch[1]) : 99;
@@ -106,7 +106,7 @@ export function AirportBrief() {
 
       <form onSubmit={submit} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={identInput}
@@ -131,7 +131,7 @@ export function AirportBrief() {
       )}
 
       {!airport && !lookupMutation.isPending && !error && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           Enter a 3-4 char ICAO ident — gets you the FAA airport record + current METAR + TAF.
         </div>
       )}
@@ -149,7 +149,7 @@ export function AirportBrief() {
                   </span>
                 </div>
                 <p className="text-sm text-zinc-300">{airport.name}</p>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   {airport.city} · {airport.lat.toFixed(4)}, {airport.lng.toFixed(4)} · elev {airport.elev_ft} ft
                 </p>
               </div>
@@ -187,7 +187,7 @@ export function AirportBrief() {
                 {airport.runways.map((r) => (
                   <div key={r.id} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
                     <div className="font-mono font-bold text-cyan-300">{r.id}</div>
-                    <div className="text-[10px] text-zinc-500">{r.length.toLocaleString()} ft · {r.surface || '—'}</div>
+                    <div className="text-[10px] text-zinc-400">{r.length.toLocaleString()} ft · {r.surface || '—'}</div>
                   </div>
                 ))}
               </div>
@@ -210,23 +210,23 @@ export function AirportBrief() {
           <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
             <button type="button" onClick={() => setShowRaw((v) => !v)} className="flex w-full items-center justify-between text-xs font-semibold text-zinc-200 hover:text-zinc-100">
               <span className="flex items-center gap-2"><Wind className="h-3.5 w-3.5 text-cyan-400" /> Weather</span>
-              <span className="text-[10px] text-zinc-500">{showRaw ? 'hide raw' : 'show raw'}</span>
+              <span className="text-[10px] text-zinc-400">{showRaw ? 'hide raw' : 'show raw'}</span>
               {showRaw ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             </button>
             {!metar && lookupMutation.isPending && (
-              <div className="mt-2 flex items-center gap-2 text-[11px] text-zinc-500"><Loader2 className="h-3 w-3 animate-spin" /> Loading METAR/TAF…</div>
+              <div className="mt-2 flex items-center gap-2 text-[11px] text-zinc-400"><Loader2 className="h-3 w-3 animate-spin" /> Loading METAR/TAF…</div>
             )}
             {(metar || taf) && (
               <div className="mt-2 space-y-2 text-xs">
                 {metar && (
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">METAR</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-400">METAR</div>
                     <pre className="mt-0.5 whitespace-pre-wrap font-mono text-[11px] text-emerald-300">{showRaw ? metar : metar.replace(/^\S+ /, '').slice(0, 200)}</pre>
                   </div>
                 )}
                 {taf && (
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-zinc-500">TAF</div>
+                    <div className="text-[10px] uppercase tracking-wider text-zinc-400">TAF</div>
                     <pre className="mt-0.5 max-h-32 overflow-y-auto whitespace-pre-wrap font-mono text-[11px] text-cyan-300">{showRaw ? taf : taf.slice(0, 400)}</pre>
                   </div>
                 )}
@@ -250,7 +250,7 @@ function FreqCell({ label, freq }: { label: string; freq: string }) {
   if (!freq) {
     return (
       <div className="rounded border border-zinc-800 bg-zinc-950 p-2 text-xs opacity-50">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
         <div className="font-mono text-zinc-600">—</div>
       </div>
     );
@@ -262,7 +262,7 @@ function FreqCell({ label, freq }: { label: string; freq: string }) {
       title="Click to copy"
       className="rounded border border-zinc-800 bg-zinc-950 p-2 text-left text-xs transition-colors hover:border-cyan-500/30"
     >
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="font-mono text-cyan-300">{freq}</div>
     </button>
   );

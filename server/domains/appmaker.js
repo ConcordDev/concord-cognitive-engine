@@ -11,6 +11,7 @@ export default function registerAppmakerActions(registerLensAction) {
    * params.framework = "react" | "vue" | "svelte" (default "react")
    */
   registerLensAction("app-maker", "scaffoldApp", (ctx, artifact, params) => {
+  try {
     const spec = artifact.data?.spec || {};
     const pages = spec.pages || [];
     const framework = params.framework || "react";
@@ -126,7 +127,8 @@ export default function registerAppmakerActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * uiComplexity
@@ -135,6 +137,7 @@ export default function registerAppmakerActions(registerLensAction) {
    * artifact.data.screens = [{ name, widgets: [{ type, interactive?, children? }] }]
    */
   registerLensAction("app-maker", "uiComplexity", (ctx, artifact, params) => {
+  try {
     const screens = artifact.data?.screens || [];
     if (screens.length === 0) return { ok: true, result: { message: "No screens to analyze." } };
 
@@ -220,7 +223,8 @@ export default function registerAppmakerActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * wireframeValidate
@@ -229,6 +233,7 @@ export default function registerAppmakerActions(registerLensAction) {
    * artifact.data.wireframe = { screens: [{ name, links: [targetScreen], actions: [{ type, target? }] }] }
    */
   registerLensAction("app-maker", "wireframeValidate", (ctx, artifact, params) => {
+  try {
     const wireframe = artifact.data?.wireframe || {};
     const screens = wireframe.screens || [];
     if (screens.length === 0) return { ok: true, result: { message: "No wireframe screens to validate." } };
@@ -367,7 +372,8 @@ export default function registerAppmakerActions(registerLensAction) {
         unreachable,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ───────────────────────────────────────────────────────────────────
   // No-code builder substrate — per-user, STATE-backed.

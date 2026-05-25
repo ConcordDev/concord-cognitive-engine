@@ -136,11 +136,11 @@ export function LaunchExplorer() {
 
       {data && !loading && (
         <>
-          <p className="text-[11px] text-zinc-500">
+          <p className="text-[11px] text-zinc-400">
             Showing {data.count} of {data.totalBeforeFilter} upcoming launches
           </p>
           {data.count === 0 ? (
-            <p className="text-xs text-zinc-500 text-center py-4">
+            <p className="text-xs text-zinc-400 text-center py-4">
               No launches match the selected filters.
             </p>
           ) : (
@@ -168,7 +168,7 @@ export function LaunchExplorer() {
                         <MapPin className="w-3 h-3" /> {l.location}
                       </span>
                     )}
-                    <span className="text-[11px] text-zinc-500 ml-auto">{fmtDate(l.net)}</span>
+                    <span className="text-[11px] text-zinc-400 ml-auto">{fmtDate(l.net)}</span>
                   </div>
                 </li>
               ))}

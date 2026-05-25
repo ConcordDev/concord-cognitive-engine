@@ -48,7 +48,7 @@ export function AtlasShell({ activeNav, onNavChange, badges = {}, panel, map }: 
               title={n.label}
               className={cn(
                 'relative w-12 h-12 m-0.5 rounded flex items-center justify-center transition-colors',
-                active ? 'bg-teal-500/15 text-teal-200' : 'text-gray-500 hover:text-white hover:bg-white/[0.04]',
+                active ? 'bg-teal-500/15 text-teal-200' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',
               )}
             >
               <Icon className="w-5 h-5" />

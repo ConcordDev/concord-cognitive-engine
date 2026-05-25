@@ -281,12 +281,12 @@ export default function InheritancePage() {
           {TABS.map((t) => (
             <button
               key={t.id} type="button" onClick={() => setTab(t.id)}
-              className={`px-3 py-1.5 text-xs font-medium ${tab === t.id ? 'border-b-2 border-amber-500 text-amber-300' : 'text-zinc-500 hover:text-zinc-300'}`}
+              className={`px-3 py-1.5 text-xs font-medium ${tab === t.id ? 'border-b-2 border-amber-500 text-amber-300' : 'text-zinc-400 hover:text-zinc-300'}`}
             >{t.label}{t.id === 'notices' && notices.some((n) => n.status === 'unread') ? ` (${notices.filter((n) => n.status === 'unread').length})` : ''}</button>
           ))}
         </nav>
 
-        {loading ? <div className="text-zinc-500">Loading estate…</div> : (
+        {loading ? <div className="text-zinc-400">Loading estate…</div> : (
           <>
             {/* ── Overview ─────────────────────────────────────────── */}
             {tab === 'overview' && overview && (
@@ -303,7 +303,7 @@ export default function InheritancePage() {
                     ['Escrow held', `${escrowedCc} CC`],
                   ].map(([label, val]) => (
                     <div key={label} className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-                      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+                      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
                       <div className="mt-0.5 font-mono text-lg text-amber-300">{val}</div>
                     </div>
                   ))}
@@ -340,13 +340,13 @@ export default function InheritancePage() {
                   </div>
                 </div>
                 {beneficiaries.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-500">No beneficiaries designated yet.</div>
+                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No beneficiaries designated yet.</div>
                 ) : (
                   <ul className="space-y-2">
                     {beneficiaries.map((b) => (
                       <li key={b.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-zinc-100">{b.name} <span className="text-xs font-normal text-zinc-500">· {b.relationship}</span></div>
+                          <div className="text-sm font-semibold text-zinc-100">{b.name} <span className="text-xs font-normal text-zinc-400">· {b.relationship}</span></div>
                           {b.contingent && <div className="text-[10px] text-amber-400">contingent on: {b.contingentOn}</div>}
                           {b.acceptanceStatus && <div className={`text-[10px] ${tone(b.acceptanceStatus)}`}>designation {b.acceptanceStatus}</div>}
                         </div>
@@ -354,13 +354,13 @@ export default function InheritancePage() {
                           className={`${inp} w-20`} type="number" defaultValue={b.sharePct}
                           onBlur={(e) => { const v = Number(e.target.value); if (v !== b.sharePct) void reShare(b.id, v); }}
                         />
-                        <span className="text-xs text-zinc-500">%</span>
+                        <span className="text-xs text-zinc-400">%</span>
                         <button type="button" className="text-xs text-rose-400 hover:text-rose-300" onClick={() => removeBeneficiary(b.id)}>Remove</button>
                       </li>
                     ))}
                   </ul>
                 )}
-                <div className="text-xs text-zinc-500">Unallocated remainder: <span className="font-mono text-amber-300">{remainderPct}%</span></div>
+                <div className="text-xs text-zinc-400">Unallocated remainder: <span className="font-mono text-amber-300">{remainderPct}%</span></div>
               </div>
             )}
 
@@ -387,7 +387,7 @@ export default function InheritancePage() {
                   <div>
                     <h3 className="mb-2 text-xs font-semibold text-zinc-300">Version history</h3>
                     {wills.length === 0 ? (
-                      <div className="rounded-xl border border-zinc-800 py-8 text-center italic text-zinc-500">No will authored yet.</div>
+                      <div className="rounded-xl border border-zinc-800 py-8 text-center italic text-zinc-400">No will authored yet.</div>
                     ) : (
                       <ul className="space-y-1.5">
                         {[...wills].reverse().map((w) => (
@@ -396,9 +396,9 @@ export default function InheritancePage() {
                               <button type="button" className="text-left text-xs font-semibold text-zinc-100 hover:text-amber-300" onClick={() => viewWill(w.version)}>
                                 v{w.version} · {w.title}
                               </button>
-                              <span className={`text-[10px] ${w.status === 'active' ? 'text-emerald-300' : 'text-zinc-500'}`}>{w.status}</span>
+                              <span className={`text-[10px] ${w.status === 'active' ? 'text-emerald-300' : 'text-zinc-400'}`}>{w.status}</span>
                             </div>
-                            <div className="mt-0.5 text-[10px] text-zinc-500">
+                            <div className="mt-0.5 text-[10px] text-zinc-400">
                               {w.kind} · {new Date(w.authoredAt).toLocaleString()}
                               {w.restoredFrom ? ` · restored from v${w.restoredFrom}` : ''}
                             </div>
@@ -441,16 +441,16 @@ export default function InheritancePage() {
                   </div>
                 </div>
                 {assets.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-500">No assets inventoried yet.</div>
+                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No assets inventoried yet.</div>
                 ) : (
                   <table className="w-full text-left text-xs">
-                    <thead className="text-zinc-500">
+                    <thead className="text-zinc-400">
                       <tr><th className="py-1">Asset</th><th>Category</th><th>Value</th><th>Location</th><th /></tr>
                     </thead>
                     <tbody>
                       {assets.map((a) => (
                         <tr key={a.id} className="border-t border-zinc-800">
-                          <td className="py-1.5 text-zinc-100">{a.label}{a.notes ? <span className="text-zinc-500"> — {a.notes}</span> : null}</td>
+                          <td className="py-1.5 text-zinc-100">{a.label}{a.notes ? <span className="text-zinc-400"> — {a.notes}</span> : null}</td>
                           <td className="text-zinc-400">{a.category}</td>
                           <td className="font-mono text-amber-300">{a.valueCc} CC</td>
                           <td className="text-zinc-400">{a.location || '—'}</td>
@@ -480,13 +480,13 @@ export default function InheritancePage() {
                   </div>
                 </div>
                 {executors.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-500">No executors appointed. The estate needs at least one to resolve probate.</div>
+                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No executors appointed. The estate needs at least one to resolve probate.</div>
                 ) : (
                   <ul className="space-y-2">
                     {executors.map((x) => (
                       <li key={x.id} className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
                         <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-zinc-100">{x.name} <span className="text-xs font-normal text-zinc-500">· {x.role}</span></div>
+                          <div className="text-sm font-semibold text-zinc-100">{x.name} <span className="text-xs font-normal text-zinc-400">· {x.role}</span></div>
                           <div className={`text-[10px] ${tone(x.consentStatus)}`}>consent: {x.consentStatus}</div>
                         </div>
                         {x.consentStatus === 'pending' && (
@@ -510,7 +510,7 @@ export default function InheritancePage() {
                   {pendingTransfers} death-triggered transfer{pendingTransfers === 1 ? '' : 's'} pending resolution.
                 </div>
                 {timeline.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-500">No probate events yet — author a will or appoint an executor to begin.</div>
+                  <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No probate events yet — author a will or appoint an executor to begin.</div>
                 ) : (
                   <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
                     <TimelineView events={timeline} />
@@ -543,13 +543,13 @@ export default function InheritancePage() {
             {/* ── Notices ──────────────────────────────────────────── */}
             {tab === 'notices' && (
               notices.length === 0 ? (
-                <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-500">No inheritance notices. When someone names you a beneficiary or executor, it appears here.</div>
+                <div className="rounded-xl border border-zinc-800 py-10 text-center italic text-zinc-400">No inheritance notices. When someone names you a beneficiary or executor, it appears here.</div>
               ) : (
                 <ul className="space-y-2">
                   {notices.map((n) => (
                     <li key={n.id} className={`rounded-lg border p-3 ${n.status === 'unread' ? 'border-amber-700/50 bg-amber-950/30' : 'border-zinc-800 bg-zinc-900/80'}`}>
                       <div className="text-xs text-zinc-100">{n.message}</div>
-                      <div className="mt-0.5 text-[10px] text-zinc-500">{n.kind} · {new Date(n.createdAt).toLocaleString()}</div>
+                      <div className="mt-0.5 text-[10px] text-zinc-400">{n.kind} · {new Date(n.createdAt).toLocaleString()}</div>
                       {n.acceptance === 'pending' && (
                         <div className="mt-1.5 flex gap-3">
                           <button type="button" className="text-xs text-emerald-400 hover:text-emerald-300" onClick={() => respondNotice(n.id, 'accepted')}>Accept</button>
@@ -573,7 +573,7 @@ export default function InheritancePage() {
                   Escrow is held until resolution; revoke any time from the Probate tab.
                 </p>
                 {listings.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-800 py-12 text-center italic text-zinc-500">
+                  <div className="rounded-xl border border-zinc-800 py-12 text-center italic text-zinc-400">
                     No open inheritance listings. Mentors list dying NPCs here to pre-arrange an heir.
                   </div>
                 ) : (
@@ -583,7 +583,7 @@ export default function InheritancePage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0 flex-1">
                             <h3 className="text-sm font-bold text-zinc-100">{l.npc_name || l.dying_npc_id}</h3>
-                            <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                            <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
                               mentor {l.mentor_user_id.slice(0, 8)} · listed {new Date(l.listed_at * 1000).toLocaleDateString()}
                             </p>
                           </div>

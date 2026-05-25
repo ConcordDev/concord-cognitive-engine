@@ -323,7 +323,7 @@ export function ProductivityActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -336,8 +336,8 @@ export function ProductivityActionPanel() {
             <label key={t.id} className="flex items-center gap-2 text-[12px] cursor-pointer hover:bg-zinc-800/60 px-2 py-1 rounded">
               <input type="checkbox" checked={t.completed} onChange={() => toggle(t.id)} className="rounded" />
               <span className={cn('flex-shrink-0 rounded px-1 text-[9px] font-mono', t.priority === 1 ? 'bg-rose-500/20 text-rose-300' : t.priority === 2 ? 'bg-orange-500/20 text-orange-300' : t.priority === 3 ? 'bg-yellow-500/20 text-yellow-300' : 'bg-zinc-700/40 text-zinc-400')}>P{t.priority}</span>
-              <span className={cn('flex-1', t.completed && 'line-through text-zinc-500')}>{t.title}</span>
-              <span className="text-[10px] text-zinc-500">{t.project}</span>
+              <span className={cn('flex-1', t.completed && 'line-through text-zinc-400')}>{t.title}</span>
+              <span className="text-[10px] text-zinc-400">{t.project}</span>
               {t.dueDate && <span className="text-[10px] text-cyan-400 font-mono">{t.dueDate}</span>}
             </label>
           ))}
@@ -348,10 +348,10 @@ export function ProductivityActionPanel() {
         <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-3">
           <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold flex items-center gap-1.5 mb-1"><Timer className="w-3 h-3" /> Focus block ({focusResult.energy} energy)</div>
           <div className="text-sm font-semibold text-zinc-100">{focusResult.candidate.title}</div>
-          <div className="text-[10px] text-zinc-500">P{focusResult.candidate.priority} · {focusResult.candidate.project} · {focusResult.durationMin}m work + {focusResult.breakAfterMin}m break</div>
+          <div className="text-[10px] text-zinc-400">P{focusResult.candidate.priority} · {focusResult.candidate.project} · {focusResult.durationMin}m work + {focusResult.breakAfterMin}m break</div>
           <div className="text-[10px] text-zinc-400 italic mt-1">{focusResult.rationale}</div>
           {focusResult.nextUp && focusResult.nextUp.length > 0 && (
-            <div className="text-[10px] text-zinc-500 mt-2">Up next: {focusResult.nextUp.map(t => `P${t.priority} ${t.title}`).join(' · ')}</div>
+            <div className="text-[10px] text-zinc-400 mt-2">Up next: {focusResult.nextUp.map(t => `P${t.priority} ${t.title}`).join(' · ')}</div>
           )}
         </div>
       )}

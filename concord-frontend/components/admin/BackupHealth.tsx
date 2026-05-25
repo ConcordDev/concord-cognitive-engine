@@ -290,7 +290,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
                     ? 'Not Set Up'
                     : 'Unknown'}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-400 mt-1">
             {status?.schedulerRunning ? 'Scheduler active' : 'Scheduler stopped'}
           </div>
         </div>
@@ -302,7 +302,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <span className="text-sm text-gray-400">Last Backup</span>
           </div>
           <div className="text-lg font-bold text-white">{status?.age?.human || 'Never'}</div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-400 mt-1">
             Alert after {status?.alertThresholdHours || 12}h
           </div>
         </div>
@@ -314,7 +314,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <span className="text-sm text-gray-400">Local</span>
           </div>
           <div className="text-lg font-bold text-white">{status?.localFiles?.db || 0} files</div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-400 mt-1">
             {formatBytes(status?.localFiles?.totalSizeBytes || 0)} used
           </div>
         </div>
@@ -325,14 +325,14 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             {status?.s3Enabled ? (
               <Cloud className="w-5 h-5 text-green-400" />
             ) : (
-              <CloudOff className="w-5 h-5 text-gray-500" />
+              <CloudOff className="w-5 h-5 text-gray-400" />
             )}
             <span className="text-sm text-gray-400">S3 Offsite</span>
           </div>
           <div className="text-lg font-bold text-white">
             {status?.s3Enabled ? `${status?.counts?.s3 || 0} uploads` : 'Disabled'}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-400 mt-1">
             {status?.s3Enabled
               ? `${status?.counts?.s3 || 0} of ${status?.counts?.total || 0} total`
               : 'Set AWS_BUCKET to enable'}
@@ -343,7 +343,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
       {/* Schedule info */}
       {status && (
         <div className="px-6 pb-2">
-          <div className="flex items-center gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-4 text-xs text-gray-400">
             <span>
               Schedule: <code className="text-gray-400">{status.schedule}</code>
             </span>
@@ -367,16 +367,16 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-lattice-border">
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">
                     Status
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Type</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Time</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">Size</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">Type</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">Time</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">Size</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">
                     Duration
                   </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500">
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-400">
                     Integrity
                   </th>
                 </tr>
@@ -429,7 +429,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
                       ) : entry.integrity_check ? (
                         <span className="text-xs text-yellow-400">{entry.integrity_check}</span>
                       ) : (
-                        <span className="text-xs text-gray-500">-</span>
+                        <span className="text-xs text-gray-400">-</span>
                       )}
                     </td>
                   </tr>
@@ -459,7 +459,7 @@ function BackupHealth({ className, apiBase = '' }: BackupHealthProps) {
           <div className="text-center py-8 bg-lattice-bg rounded-lg">
             <Database className="w-10 h-10 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400 text-sm">No backups recorded yet</p>
-            <p className="text-gray-500 text-xs mt-1">
+            <p className="text-gray-400 text-xs mt-1">
               Click "Backup Now" to create your first backup
             </p>
           </div>

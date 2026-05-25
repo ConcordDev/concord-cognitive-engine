@@ -58,25 +58,25 @@ export function MhCalendarPanel() {
         </h3>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => setYear((y) => y - 1)}
-            className="text-zinc-500 hover:text-zinc-200" aria-label="Previous year"><ChevronLeft className="w-4 h-4" /></button>
+            className="text-zinc-400 hover:text-zinc-200" aria-label="Previous year"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-xs font-mono text-zinc-200 w-12 text-center">{year}</span>
           <button type="button" onClick={() => setYear((y) => Math.min(new Date().getUTCFullYear(), y + 1))}
-            className="text-zinc-500 hover:text-zinc-200 disabled:opacity-30"
+            className="text-zinc-400 hover:text-zinc-200 disabled:opacity-30"
             disabled={year >= new Date().getUTCFullYear()} aria-label="Next year"><ChevronRight className="w-4 h-4" /></button>
         </div>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : !data || data.loggedDays === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No mood entries logged in {year} yet.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No mood entries logged in {year} yet.</p>
       ) : (
         <>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 overflow-x-auto">
             <div className="flex gap-1.5 min-w-max">
               {months.map((m) => (
                 <div key={m.name} className="flex flex-col gap-0.5">
-                  <span className="text-[9px] text-zinc-500 text-center mb-0.5">{m.name}</span>
+                  <span className="text-[9px] text-zinc-400 text-center mb-0.5">{m.name}</span>
                   {m.days.map((dt) => {
                     const cell = byDate.get(dt);
                     return (
@@ -94,19 +94,19 @@ export function MhCalendarPanel() {
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-lg font-bold text-zinc-100">{data.loggedDays}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Days logged</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Days logged</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-lg font-bold text-zinc-100">{data.avgMood ?? '—'}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Avg mood</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Avg mood</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-lg font-bold text-emerald-400">{(data.distribution['4'] || 0) + (data.distribution['5'] || 0)}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Good days</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Good days</p>
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500">
+          <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-400">
             <span>Low</span>
             {[1, 2, 3, 4, 5].map((n) => (
               <span key={n} className="w-3 h-3 rounded-[2px]" style={{ backgroundColor: moodColor(n) }} />

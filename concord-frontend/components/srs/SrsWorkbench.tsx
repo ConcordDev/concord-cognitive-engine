@@ -149,7 +149,7 @@ export function SrsWorkbench() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-10 text-zinc-500">
+      <div className="flex items-center justify-center py-10 text-zinc-400">
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
     );
@@ -160,7 +160,7 @@ export function SrsWorkbench() {
       <div className="flex items-center gap-2 mb-3">
         <Layers className="w-4 h-4 text-purple-400" />
         <h3 className="text-sm font-bold text-zinc-100">SRS Workbench</h3>
-        <span className="text-[11px] text-zinc-500">Anki 2026 parity</span>
+        <span className="text-[11px] text-zinc-400">Anki 2026 parity</span>
       </div>
 
       {/* Tab bar */}
@@ -274,7 +274,7 @@ function DecksTab({
               {n.options?.scheduler || 'fsrs'}
             </span>
           </p>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             {n.ownCardCount} cards · <span className="text-sky-400">{n.newCount} new</span>
             {' · '}<span className="text-emerald-400">{n.dueCount} due</span>
           </p>
@@ -292,7 +292,7 @@ function DecksTab({
     <div className="grid lg:grid-cols-[1fr_300px] gap-3">
       <div>
         {tree.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+          <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
             No decks yet. Create your first deck to begin.
           </div>
         ) : (
@@ -340,7 +340,7 @@ function DecksTab({
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             Queries: <code>tag:NAME</code>, <code>is:due</code>, <code>is:new</code>, or any text match.
           </p>
         </div>
@@ -352,7 +352,7 @@ function DecksTab({
           <DeckOptionsPanel deck={activeDeck} decks={decks} refreshDecks={refreshDecks}
             moveDeck={moveDeck} flash={flash} />
         ) : (
-          <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+          <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
             {activeDeck?.filtered ? 'Filtered decks use dynamic queries — no per-deck options.'
               : 'Select a deck to configure its options.'}
           </div>
@@ -399,7 +399,7 @@ function DeckOptionsPanel({
       </p>
 
       <label className="block">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Scheduler</span>
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Scheduler</span>
         <div className="mt-1 flex gap-1">
           {(['fsrs', 'sm2'] as const).map(s => (
             <button key={s} onClick={() => setOpts({ ...opts, scheduler: s })}
@@ -413,28 +413,28 @@ function DeckOptionsPanel({
       </label>
 
       <label className="block">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">New cards / day</span>
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">New cards / day</span>
         <input type="number" min={0} max={9999} value={opts.newPerDay}
           onChange={e => setOpts({ ...opts, newPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
 
       <label className="block">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Reviews / day cap</span>
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Reviews / day cap</span>
         <input type="number" min={0} max={99999} value={opts.reviewsPerDay}
           onChange={e => setOpts({ ...opts, reviewsPerDay: Math.max(0, Number(e.target.value) || 0) })}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
 
       <label className="block">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Learning steps (minutes)</span>
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Learning steps (minutes)</span>
         <input value={stepsText} onChange={e => setStepsText(e.target.value)}
           placeholder="1 10"
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
       </label>
 
       <label className="block">
-        <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Move deck under</span>
+        <span className="text-[10px] text-zinc-400 uppercase tracking-wide">Move deck under</span>
         <select value={deck.parentId || ''}
           onChange={e => void moveDeck(deck.id, e.target.value)}
           className="mt-1 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300">
@@ -532,7 +532,7 @@ function AddCardsTab({
 
   if (nonFiltered.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+      <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
         Create a deck in the Decks tab before adding cards.
       </div>
     );
@@ -573,7 +573,7 @@ function AddCardsTab({
             <textarea value={clozeText} onChange={e => setClozeText(e.target.value)}
               placeholder="The {{c1::sun}} is a {{c2::star}}." rows={3}
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 resize-none" />
-            <p className="text-[10px] text-zinc-500">
+            <p className="text-[10px] text-zinc-400">
               Wrap deletions in <code>{'{{c1::answer}}'}</code> — optional hint:{' '}
               <code>{'{{c1::answer::hint}}'}</code>. One sub-card is generated per index.
             </p>
@@ -587,7 +587,7 @@ function AddCardsTab({
             <input value={occLabels} onChange={e => setOccLabels(e.target.value)}
               placeholder="Region labels, comma-separated (heart, lung, liver)"
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
-            <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+            <p className="text-[10px] text-zinc-400 flex items-center gap-1">
               <ImageIcon className="w-3 h-3" />One card is created per masked region.
             </p>
           </>
@@ -605,7 +605,7 @@ function AddCardsTab({
                 placeholder="Back template"
                 className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 font-mono" />
             </div>
-            <p className="text-[10px] text-zinc-500">
+            <p className="text-[10px] text-zinc-400">
               Use <code>Field=value</code> per line; reference with <code>{'{{Field}}'}</code> in templates.
             </p>
           </>
@@ -614,7 +614,7 @@ function AddCardsTab({
         {/* Markup + hint */}
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
-            <span className="text-[10px] text-zinc-500 uppercase">Markup</span>
+            <span className="text-[10px] text-zinc-400 uppercase">Markup</span>
             <select value={markup} onChange={e => setMarkup(e.target.value as typeof markup)}
               className="mt-0.5 w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-300">
               <option value="plain">Plain text</option>
@@ -694,7 +694,7 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 space-y-2">
       <p className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
         <Library className="w-3.5 h-3.5 text-pink-400" />Media library
-        <span className="text-[10px] text-zinc-500 font-normal">{media.length} asset(s)</span>
+        <span className="text-[10px] text-zinc-400 font-normal">{media.length} asset(s)</span>
       </p>
       <div className="flex flex-wrap gap-1.5">
         <select value={kind} onChange={e => setKind(e.target.value as typeof kind)}
@@ -714,7 +714,7 @@ function MediaLibrary({ flash }: { flash: (m: string) => void }) {
         </button>
       </div>
       {media.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 italic">No media yet — add image/audio URLs to reuse on cards.</p>
+        <p className="text-[11px] text-zinc-400 italic">No media yet — add image/audio URLs to reuse on cards.</p>
       ) : (
         <ul className="space-y-1 max-h-32 overflow-y-auto">
           {media.map(m => (
@@ -805,7 +805,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-1.5">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
           <input value={query} onChange={e => setQuery(e.target.value)}
             placeholder="Search front/back/tags"
             className="w-full pl-7 pr-2 py-1.5 bg-zinc-900 border border-zinc-800 rounded text-xs text-zinc-200" />
@@ -882,7 +882,7 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
       <div className="rounded-lg border border-zinc-800 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-left text-[10px] text-zinc-500 bg-zinc-900/60 border-b border-zinc-800">
+            <tr className="text-left text-[10px] text-zinc-400 bg-zinc-900/60 border-b border-zinc-800">
               <th className="p-2 w-8"></th>
               <th className="p-2">Front → Back</th>
               <th className="p-2 w-20">Type</th>
@@ -928,10 +928,10 @@ function BrowseTab({ decks, flash }: { decks: Deck[]; flash: (m: string) => void
           </tbody>
         </table>
         {!loading && cards.length === 0 && (
-          <div className="p-6 text-center text-xs text-zinc-500">No cards match — no data yet.</div>
+          <div className="p-6 text-center text-xs text-zinc-400">No cards match — no data yet.</div>
         )}
         {loading && (
-          <div className="p-6 text-center text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+          <div className="p-6 text-center text-zinc-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
         )}
       </div>
     </div>
@@ -977,7 +977,7 @@ function StudyTab({
 
   if (decks.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+      <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
         Create a deck to start studying.
       </div>
     );
@@ -994,15 +994,15 @@ function StudyTab({
             </option>
           ))}
         </select>
-        <span className="text-[11px] text-zinc-500">
+        <span className="text-[11px] text-zinc-400">
           Scheduler: <span className="text-purple-300">{deck?.options?.scheduler?.toUpperCase() || 'FSRS'}</span>
         </span>
-        <span className="ml-auto text-[11px] text-zinc-500">{done} studied this session</span>
+        <span className="ml-auto text-[11px] text-zinc-400">{done} studied this session</span>
       </div>
 
       {card ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 text-center">
-          <p className="text-[10px] text-zinc-500 mb-2">{remaining} left</p>
+          <p className="text-[10px] text-zinc-400 mb-2">{remaining} left</p>
 
           {card.media?.frontImage && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -1054,7 +1054,7 @@ function StudyTab({
           <Sparkles className="w-7 h-7 text-emerald-400 mx-auto mb-2" />
           <p className="text-sm text-zinc-200">All caught up — nothing due in this deck.</p>
           {scheduler && nextDays != null && (
-            <p className="text-[11px] text-zinc-500 mt-1">
+            <p className="text-[11px] text-zinc-400 mt-1">
               Last card scheduled +{nextDays}d via {scheduler.toUpperCase()}.
             </p>
           )}
@@ -1108,7 +1108,7 @@ function StatsTab({
   }
 
   if (loading) {
-    return <div className="py-8 text-center text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline" /></div>;
+    return <div className="py-8 text-center text-zinc-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div>;
   }
 
   const hasData = (heatmap?.totalReviews || 0) > 0 || (forecast?.totalUpcoming || 0) > 0;
@@ -1124,7 +1124,7 @@ function StatsTab({
       </div>
 
       {!hasData && (
-        <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">
+        <div className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">
           No review history yet — study some cards to populate the heatmap and forecast.
         </div>
       )}
@@ -1164,7 +1164,7 @@ function StatsTab({
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
           <p className="text-xs font-semibold text-zinc-300 mb-2 flex items-center gap-1.5">
             <CalendarDays className="w-3.5 h-3.5 text-sky-400" />30-day review forecast
-            <span className="ml-auto text-[10px] text-zinc-500">
+            <span className="ml-auto text-[10px] text-zinc-400">
               {forecast.dueNow} due now · {forecast.totalUpcoming} upcoming
             </span>
           </p>
@@ -1191,7 +1191,7 @@ function Stat({
     <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-center">
       <Icon className={cn('w-4 h-4 mx-auto mb-1', accent)} />
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500">{label}</p>
+      <p className="text-[10px] text-zinc-400">{label}</p>
     </div>
   );
 }
@@ -1262,7 +1262,7 @@ function TransferTab({
           className="w-full px-2 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1.5">
           <Download className="w-3.5 h-3.5" />Download .apkg.json bundle
         </button>
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-zinc-400">
           Exports all cards, tags, media references, and deck options as a portable shared-deck bundle.
         </p>
       </div>

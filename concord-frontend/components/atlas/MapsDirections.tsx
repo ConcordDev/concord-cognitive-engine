@@ -180,31 +180,31 @@ export function MapsDirections() {
           <div className="relative flex items-center gap-2">
             <span className="z-10 h-2.5 w-2.5 shrink-0 rounded-full border-2 border-blue-400 bg-zinc-950" />
             <input
-              className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-blue-500/40 focus:outline-none"
+              className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-blue-500/40 focus:outline-none"
               placeholder="Choose starting point"
               value={origin.query}
               onChange={(e) => setOrigin({ query: e.target.value })}
             />
-            <button type="button" onClick={swap} className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="Swap"><ArrowDownUp className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={swap} className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="Swap"><ArrowDownUp className="h-3.5 w-3.5" /></button>
           </div>
 
           {stops.map((s, i) => (
             <div key={i} className="relative flex items-center gap-2">
               <span className="z-10 h-2 w-2 shrink-0 rounded-full bg-zinc-600" />
               <input
-                className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-blue-500/40 focus:outline-none"
+                className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-blue-500/40 focus:outline-none"
                 placeholder={`Stop ${i + 1}`}
                 value={s.query}
                 onChange={(e) => updateStop(i, e.target.value)}
               />
-              <button type="button" onClick={() => removeStop(i)} className="shrink-0 rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-rose-300" aria-label="Remove stop"><X className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => removeStop(i)} className="shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-rose-300" aria-label="Remove stop"><X className="h-3.5 w-3.5" /></button>
             </div>
           ))}
 
           <div className="relative flex items-center gap-2">
             <MapPin className="z-10 h-3 w-3 shrink-0 text-rose-400" />
             <input
-              className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-blue-500/40 focus:outline-none"
+              className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-blue-500/40 focus:outline-none"
               placeholder="Choose destination"
               value={destination.query}
               onChange={(e) => setDestination({ query: e.target.value })}
@@ -212,7 +212,7 @@ export function MapsDirections() {
             <span className="w-[26px]" />
           </div>
 
-          <button type="button" onClick={addStop} className="ml-[18px] inline-flex items-center gap-1 text-[10px] text-zinc-500 hover:text-blue-300"><Plus className="h-3 w-3" />Add stop</button>
+          <button type="button" onClick={addStop} className="ml-[18px] inline-flex items-center gap-1 text-[10px] text-zinc-400 hover:text-blue-300"><Plus className="h-3 w-3" />Add stop</button>
         </div>
 
         <button
@@ -229,10 +229,10 @@ export function MapsDirections() {
       {/* Route summary + step list — Maps-style result rail */}
       <div className="p-3">
         {!route && !compute.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Enter origin and destination above, then tap "Get directions".</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Enter origin and destination above, then tap "Get directions".</div>
         )}
         {compute.isPending && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" />Resolving addresses + computing route…</div>
+          <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" />Resolving addresses + computing route…</div>
         )}
         {route && route.totalDistanceKm != null && (
           <div className="space-y-3">
@@ -242,7 +242,7 @@ export function MapsDirections() {
                 <span className="font-mono text-2xl text-blue-200">{totalDuration}</span>
                 <span className="font-mono text-sm text-zinc-400">{route.totalDistanceKm.toLocaleString()} km</span>
               </div>
-              <div className="mt-1 flex items-center gap-1 text-[10px] text-zinc-500">
+              <div className="mt-1 flex items-center gap-1 text-[10px] text-zinc-400">
                 <span>via {mode}</span>
                 {route.legs && <span>· {route.legs.length} leg{route.legs.length === 1 ? '' : 's'}</span>}
               </div>
@@ -263,7 +263,7 @@ export function MapsDirections() {
             {/* Legs — step-by-step */}
             {route.legs && route.legs.length > 0 && (
               <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Steps</div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-400">Steps</div>
                 {route.legs.map((leg, i) => {
                   const legDuration = formatDuration(leg.km, modeSpeed);
                   return (
@@ -271,7 +271,7 @@ export function MapsDirections() {
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-blue-400" />
                       <div className="flex-1 text-[11px]">
                         <div className="text-zinc-100">{leg.from} → {leg.to}</div>
-                        <div className="text-[10px] text-zinc-500">{leg.km} km · {legDuration}</div>
+                        <div className="text-[10px] text-zinc-400">{leg.km} km · {legDuration}</div>
                       </div>
                     </div>
                   );

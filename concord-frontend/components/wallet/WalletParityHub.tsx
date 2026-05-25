@@ -131,7 +131,7 @@ const btnCls =
   'flex items-center gap-1.5 px-3 py-2 text-sm rounded bg-neon-cyan/15 text-neon-cyan border border-neon-cyan/40 hover:bg-neon-cyan/25 disabled:opacity-40 disabled:cursor-not-allowed';
 
 function EmptyState({ message }: { message: string }) {
-  return <p className="text-sm text-gray-500 py-6 text-center">{message}</p>;
+  return <p className="text-sm text-gray-400 py-6 text-center">{message}</p>;
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -313,7 +313,7 @@ function RequestsTab() {
                 />
                 <button
                   onClick={() => setLineItems(lineItems.filter((_, j) => j !== i))}
-                  className="px-2 text-gray-500 hover:text-red-400"
+                  className="px-2 text-gray-400 hover:text-red-400"
                   aria-label="Remove line item"
                 >
                   <XIcon className="w-4 h-4" />
@@ -373,7 +373,7 @@ function RequestsTab() {
                     <p className="text-sm text-white truncate">
                       {req.note || (req.kind === 'invoice' ? 'Invoice' : 'Money request')}
                     </p>
-                    <p className="text-[11px] text-gray-500 font-mono truncate">
+                    <p className="text-[11px] text-gray-400 font-mono truncate">
                       {req.requesterId} → {req.payerId}
                     </p>
                   </div>
@@ -395,7 +395,7 @@ function RequestsTab() {
               )}
               {req.status === 'pending' && (
                 <div className="mt-2 flex items-center gap-2">
-                  <code className="text-[10px] text-gray-500 truncate flex-1">{req.payLink}</code>
+                  <code className="text-[10px] text-gray-400 truncate flex-1">{req.payLink}</code>
                   <button onClick={() => update(req.id, 'paid')} className="text-[11px] text-green-400 hover:underline flex items-center gap-0.5">
                     <Check className="w-3 h-3" /> Mark paid
                   </button>
@@ -516,7 +516,7 @@ function SchedulesTab() {
                 <p className="text-sm text-white truncate">
                   {s.amount.toLocaleString()} CC → <span className="font-mono">{s.recipientId}</span>
                 </p>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-gray-400">
                   {s.frequency} · next {new Date(s.nextRunAt).toLocaleDateString()}
                   {s.note ? ` · ${s.note}` : ''}
                 </p>
@@ -531,7 +531,7 @@ function SchedulesTab() {
                     {s.status === 'active' ? 'Pause' : 'Resume'}
                   </button>
                 )}
-                <button onClick={() => remove(s.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete schedule">
+                <button onClick={() => remove(s.id)} className="text-gray-400 hover:text-red-400" aria-label="Delete schedule">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -662,7 +662,7 @@ function FeedTab() {
                     <span className="font-mono">{e.counterparty}</span>
                   </p>
                   <p className="text-xs text-gray-400">{e.note}</p>
-                  <p className="text-[10px] text-gray-600 mt-0.5">
+                  <p className="text-[10px] text-gray-400 mt-0.5">
                     {new Date(e.createdAt).toLocaleString()} · {e.visibility}
                     {e.amount != null ? ` · ${e.amount.toLocaleString()} CC` : ''}
                   </p>
@@ -675,7 +675,7 @@ function FeedTab() {
                 >
                   <Heart className="w-3.5 h-3.5" /> {e.likes.length}
                 </button>
-                <span className="text-xs text-gray-500">{e.comments.length} comment{e.comments.length !== 1 ? 's' : ''}</span>
+                <span className="text-xs text-gray-400">{e.comments.length} comment{e.comments.length !== 1 ? 's' : ''}</span>
               </div>
               {e.comments.length > 0 && (
                 <ul className="mt-1.5 space-y-0.5">
@@ -772,7 +772,7 @@ function SplitsTab() {
         <input className={inputCls} placeholder="Participant user IDs, comma-separated" value={participants} onChange={(e) => setParticipants(e.target.value)} />
         <input className={inputCls} placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
         {err && <p className="text-xs text-red-400">{err}</p>}
-        <p className="text-[11px] text-gray-500">Split evenly across you + each participant.</p>
+        <p className="text-[11px] text-gray-400">Split evenly across you + each participant.</p>
         <button onClick={create} disabled={busy} className={btnCls}>
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Split className="w-4 h-4" />}
           Create split
@@ -792,7 +792,7 @@ function SplitsTab() {
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-sm text-white truncate">{sp.title}</p>
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-gray-400">
                       {sp.total.toLocaleString()} CC · owed {owed.toLocaleString()} CC
                     </p>
                   </div>
@@ -884,7 +884,7 @@ function CardsTab() {
     <div className="space-y-4">
       <div className="rounded-lg border border-lattice-border bg-lattice-deep p-3 space-y-2">
         <h4 className="text-sm font-semibold text-white">Add a funding source</h4>
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[11px] text-gray-400">
           Only the last 4 digits are stored — never a full card number.
         </p>
         <div className="grid sm:grid-cols-3 gap-2">
@@ -930,9 +930,9 @@ function CardsTab() {
                 <div>
                   <p className="text-sm text-white">
                     {c.label}
-                    {c.brand ? <span className="text-gray-500"> · {c.brand}</span> : ''}
+                    {c.brand ? <span className="text-gray-400"> · {c.brand}</span> : ''}
                   </p>
-                  <p className="text-[11px] text-gray-500 capitalize">
+                  <p className="text-[11px] text-gray-400 capitalize">
                     {c.type}{c.last4 ? ` ···· ${c.last4}` : ''}
                   </p>
                 </div>
@@ -947,7 +947,7 @@ function CardsTab() {
                     Make default
                   </button>
                 )}
-                <button onClick={() => remove(c.id)} className="text-gray-500 hover:text-red-400" aria-label="Remove funding source">
+                <button onClick={() => remove(c.id)} className="text-gray-400 hover:text-red-400" aria-label="Remove funding source">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1019,7 +1019,7 @@ function QrTab() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qrImgUrl} alt="Wallet pay QR code" width={180} height={180} />
             </div>
-            <code className="block text-[10px] text-gray-500 break-all">{qr.token}</code>
+            <code className="block text-[10px] text-gray-400 break-all">{qr.token}</code>
             <button
               onClick={() => navigator.clipboard?.writeText(qr.token)}
               className="text-[11px] text-neon-cyan hover:underline"
@@ -1181,7 +1181,7 @@ function InsightsTab() {
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-deep p-2.5">
-      <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-gray-400">{label}</p>
       <p className={cn('text-sm font-mono font-bold mt-0.5', color)}>{value}</p>
     </div>
   );

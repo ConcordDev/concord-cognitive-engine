@@ -80,7 +80,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const TrendIcon = trend.trend === 'gaining' ? TrendingUp : trend.trend === 'losing' ? TrendingDown : Minus;
@@ -99,7 +99,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
           {trend.latest != null && (
             <span className="flex items-center gap-1 text-[11px] text-zinc-400">
               <TrendIcon className="w-3 h-3" /> {trend.latest} kg
-              {trend.changeKg !== 0 && <span className="text-zinc-500">({trend.changeKg > 0 ? '+' : ''}{trend.changeKg})</span>}
+              {trend.changeKg !== 0 && <span className="text-zinc-400">({trend.changeKg > 0 ? '+' : ''}{trend.changeKg})</span>}
             </span>
           )}
         </div>
@@ -114,7 +114,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">Log at least two weigh-ins to see a chart.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">Log at least two weigh-ins to see a chart.</p>
         )}
         <div className="flex gap-1 mt-2">
           <input placeholder="Weight (kg)" inputMode="decimal" value={weightInput} onChange={(e) => setWeightInput(e.target.value)}
@@ -144,13 +144,13 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
           </button>
         </div>
         {activities.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No care activities logged.</p>
+          <p className="text-[11px] text-zinc-400 italic">No care activities logged.</p>
         ) : (
           <ul className="space-y-1">
             {activities.slice(0, 8).map((a) => (
               <li key={a.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-zinc-300 capitalize">{a.kind.replace(/_/g, ' ')}{a.note ? ` — ${a.note}` : ''}</span>
-                <span className="text-zinc-500">{a.durationMin > 0 ? `${a.durationMin}m · ` : ''}{a.date}</span>
+                <span className="text-zinc-400">{a.durationMin > 0 ? `${a.durationMin}m · ` : ''}{a.date}</span>
               </li>
             ))}
           </ul>
@@ -177,7 +177,7 @@ export function PetWellnessPanel({ petId, onChange }: { petId: string; onChange:
           </button>
         </div>
         {symptoms.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No symptoms logged.</p>
+          <p className="text-[11px] text-zinc-400 italic">No symptoms logged.</p>
         ) : (
           <ul className="space-y-1">
             {symptoms.slice(0, 8).map((sy) => (

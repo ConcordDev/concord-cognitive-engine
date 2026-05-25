@@ -149,7 +149,7 @@ export function PaperWorkbench() {
       <div className="flex items-center gap-2 mb-3">
         <BookOpen className="w-4 h-4 text-violet-400" />
         <h3 className="text-sm font-bold text-zinc-100">Research Workbench</h3>
-        <span className="text-[11px] text-zinc-500">PDF reader · capture · dedupe · groups · alerts</span>
+        <span className="text-[11px] text-zinc-400">PDF reader · capture · dedupe · groups · alerts</span>
       </div>
 
       <div className="flex gap-1 mb-3 flex-wrap">
@@ -172,7 +172,7 @@ export function PaperWorkbench() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : (
         <>
           {tab === 'reader' && <ReaderTab papers={papers} busy={busy} setBusy={setBusy} setErr={setErr} onChanged={refreshPapers} />}
@@ -286,7 +286,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
   }, [selId, setBusy, setErr, onChanged]);
 
   if (papers.length === 0) {
-    return <p className="text-xs text-zinc-500 italic py-6 text-center">No papers yet — save one in the Paper Library above, then attach a PDF here.</p>;
+    return <p className="text-xs text-zinc-400 italic py-6 text-center">No papers yet — save one in the Paper Library above, then attach a PDF here.</p>;
   }
 
   const refTree: TreeNode | null = sel?.enrichment && sel.enrichment.references.length > 0
@@ -308,7 +308,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
               className={cn('w-full text-left px-2 py-1.5 rounded text-[11px] transition-colors',
                 selId === p.id ? 'bg-violet-600/20 border border-violet-600/50 text-zinc-100' : 'text-zinc-400 hover:bg-zinc-800')}>
               <span className="line-clamp-2">{p.title}</span>
-              <span className="flex items-center gap-1.5 mt-0.5 text-[9px] text-zinc-500">
+              <span className="flex items-center gap-1.5 mt-0.5 text-[9px] text-zinc-400">
                 {p.pdf && <FileText className="w-2.5 h-2.5 text-emerald-400" />}
                 {(p.annotations?.length || 0) > 0 && <span>{p.annotations?.length} hl</span>}
               </span>
@@ -320,7 +320,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
       {/* Reader pane */}
       <div className="min-w-0">
         {!sel ? (
-          <p className="text-xs text-zinc-500 italic py-6 text-center">Select a paper to read.</p>
+          <p className="text-xs text-zinc-400 italic py-6 text-center">Select a paper to read.</p>
         ) : (
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
@@ -340,7 +340,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                     <a href={pdfUrl} download={sel.pdf?.fileName || 'paper.pdf'} className="text-violet-400 underline">Download</a>
                   </p>
                 </object>
-                <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                <div className="flex items-center justify-between text-[10px] text-zinc-400">
                   <span>{sel.pdf?.fileName} · {sel.pdf ? fmtBytes(sel.pdf.sizeBytes) : ''}</span>
                   <button onClick={removePdf} disabled={busy === 'remove'} className="text-rose-400 hover:text-rose-300 inline-flex items-center gap-1">
                     <Trash2 className="w-3 h-3" />Remove PDF
@@ -349,7 +349,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center gap-1.5 h-[120px] rounded-lg border border-dashed border-zinc-700 bg-zinc-900/40 cursor-pointer hover:border-violet-600/60">
-                {busy === 'attach' ? <Loader2 className="w-5 h-5 animate-spin text-violet-400" /> : <FileUp className="w-5 h-5 text-zinc-500" />}
+                {busy === 'attach' ? <Loader2 className="w-5 h-5 animate-spin text-violet-400" /> : <FileUp className="w-5 h-5 text-zinc-400" />}
                 <span className="text-[11px] text-zinc-400">Attach a PDF (max 12 MB)</span>
                 <input type="file" accept="application/pdf" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void attachPdf(f); e.target.value = ''; }} />
@@ -386,7 +386,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
             {annotations.length > 0 && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-wide">{annotations.length} highlight{annotations.length === 1 ? '' : 's'}</span>
+                  <span className="text-[10px] text-zinc-400 uppercase tracking-wide">{annotations.length} highlight{annotations.length === 1 ? '' : 's'}</span>
                   <button onClick={syncToNotes} disabled={busy === 'sync'}
                     className="inline-flex items-center gap-1 text-[10px] text-violet-400 hover:text-violet-300 disabled:opacity-40">
                     {busy === 'sync' ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowRight className="w-3 h-3" />}Sync to notes
@@ -422,7 +422,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                      ['References', sel.enrichment.referenceCount]] as const).map(([l, v]) => (
                     <div key={l} className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-center">
                       <p className="text-sm font-bold text-zinc-100">{v ?? '—'}</p>
-                      <p className="text-[9px] text-zinc-500 uppercase">{l}</p>
+                      <p className="text-[9px] text-zinc-400 uppercase">{l}</p>
                     </div>
                   ))}
                 </div>
@@ -436,7 +436,7 @@ function ReaderTab({ papers, busy, setBusy, setErr, onChanged }:
                 )}
                 {refTree && (
                   <div>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">References graph</p>
+                    <p className="text-[10px] text-zinc-400 uppercase tracking-wide mb-1">References graph</p>
                     <div className="max-h-[200px] overflow-auto">
                       <TreeDiagram root={refTree} />
                     </div>
@@ -499,7 +499,7 @@ function CaptureTab({ busy, setBusy, setErr, onCaptured }:
             {captured.authors.slice(0, 4).join(', ')}{captured.authors.length > 4 ? ' et al.' : ''}
             {captured.year ? ` · ${captured.year}` : ''}
           </p>
-          {captured.doi && <p className="text-[10px] text-zinc-500 font-mono">{captured.doi}</p>}
+          {captured.doi && <p className="text-[10px] text-zinc-400 font-mono">{captured.doi}</p>}
         </div>
       )}
     </div>
@@ -551,7 +551,7 @@ function DedupeTab({ busy, setBusy, setErr, onMerged }:
       {scanned && groups.length === 0 && (
         <p className="text-xs text-emerald-400 italic py-4 text-center">No duplicates across {total} paper{total === 1 ? '' : 's'}.</p>
       )}
-      {!scanned && <p className="text-xs text-zinc-500 italic py-4 text-center">Run a scan to detect duplicates.</p>}
+      {!scanned && <p className="text-xs text-zinc-400 italic py-4 text-center">Run a scan to detect duplicates.</p>}
       {groups.map(g => (
         <div key={g.key} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5">
           <div className="flex items-center justify-between mb-1.5">
@@ -659,7 +659,7 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
           className="px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40">Join</button>
       </div>
 
-      {groups.length === 0 && <p className="text-xs text-zinc-500 italic py-4 text-center">No group libraries yet — create one or join with a code.</p>}
+      {groups.length === 0 && <p className="text-xs text-zinc-400 italic py-4 text-center">No group libraries yet — create one or join with a code.</p>}
 
       <ul className="space-y-1.5">
         {groups.map(g => (
@@ -667,7 +667,7 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
             <button onClick={() => open(g.id)} className="w-full flex items-center gap-2 px-3 py-2 text-left">
               <Users className="w-3.5 h-3.5 text-violet-400 shrink-0" />
               <span className="text-xs font-semibold text-zinc-100 min-w-0 flex-1 truncate">{g.name}</span>
-              <span className="text-[10px] text-zinc-500">{g.memberCount} member{g.memberCount === 1 ? '' : 's'} · {g.paperCount} paper{g.paperCount === 1 ? '' : 's'}</span>
+              <span className="text-[10px] text-zinc-400">{g.memberCount} member{g.memberCount === 1 ? '' : 's'} · {g.paperCount} paper{g.paperCount === 1 ? '' : 's'}</span>
               {g.isOwner && g.shareCode && (
                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-violet-300">{g.shareCode}</span>
               )}
@@ -684,7 +684,7 @@ function GroupsTab({ papers, busy, setBusy, setErr }:
                     className="px-2 py-1 text-[11px] rounded bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40">Add</button>
                 </div>
                 {openPapers.length === 0 ? (
-                  <p className="text-[11px] text-zinc-500 italic">No shared papers yet.</p>
+                  <p className="text-[11px] text-zinc-400 italic">No shared papers yet.</p>
                 ) : openPapers.map(p => (
                   <div key={p.id} className="group flex items-center gap-2 text-[11px] text-zinc-300">
                     <span className="w-1 h-1 rounded-full bg-zinc-600 shrink-0" />
@@ -759,9 +759,9 @@ function AlertsTab({ busy, setBusy, setErr }: TabProps) {
           </button>
         </div>
       </div>
-      {checkedAt && <p className="text-[10px] text-zinc-500">Last checked {new Date(checkedAt).toLocaleString()}</p>}
+      {checkedAt && <p className="text-[10px] text-zinc-400">Last checked {new Date(checkedAt).toLocaleString()}</p>}
       {alerts.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-4 text-center">No alerts yet — run a check to scan for new citations.</p>
+        <p className="text-xs text-zinc-400 italic py-4 text-center">No alerts yet — run a check to scan for new citations.</p>
       ) : (
         <ul className="space-y-1">
           {alerts.map(a => (
@@ -771,7 +771,7 @@ function AlertsTab({ busy, setBusy, setErr }: TabProps) {
               <Bell className={cn('w-3 h-3 shrink-0 mt-0.5', a.read ? 'text-zinc-600' : 'text-violet-400')} />
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] text-zinc-200">{a.message}</p>
-                <p className="text-[9px] text-zinc-500 mt-0.5">{new Date(a.createdAt).toLocaleString()}</p>
+                <p className="text-[9px] text-zinc-400 mt-0.5">{new Date(a.createdAt).toLocaleString()}</p>
               </div>
               {!a.read && (
                 <button onClick={() => markRead(a.id)} className="shrink-0 text-[10px] text-violet-400 hover:text-violet-300">

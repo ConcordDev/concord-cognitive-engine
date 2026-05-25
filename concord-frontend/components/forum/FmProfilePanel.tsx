@@ -75,7 +75,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
   };
 
   if (loading || !rep || !profile) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const tierIdx = TIERS.indexOf(rep.tier);
@@ -86,9 +86,9 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
         <div className="flex items-center gap-2 mb-2">
           <Award className={cn('w-5 h-5', TIER_COLOR[rep.tier])} />
           <span className={cn('text-lg font-bold capitalize', TIER_COLOR[rep.tier])}>{rep.tier}</span>
-          <span className="text-[11px] text-zinc-500">trust tier</span>
+          <span className="text-[11px] text-zinc-400">trust tier</span>
           <div className="flex-1" />
-          <span className="text-[10px] text-zinc-500">
+          <span className="text-[10px] text-zinc-400">
             {profile.joinedAt ? `joined ${new Date(profile.joinedAt).toLocaleDateString()}` : 'no activity yet'}
           </span>
         </div>
@@ -144,7 +144,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
 
       {sub === 'saved' && (
         saved.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No saved posts. Bookmark topics or replies to find them here.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No saved posts. Bookmark topics or replies to find them here.</p>
         ) : (
           <ul className="space-y-1.5">
             {saved.map((s) => (
@@ -152,11 +152,11 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] uppercase text-orange-400/80">{s.targetType}</span>
                   <span className="flex-1 text-xs text-zinc-100 min-w-0 truncate">{s.title}</span>
-                  <span className="text-[10px] text-zinc-500">{s.score} pts</span>
+                  <span className="text-[10px] text-zinc-400">{s.score} pts</span>
                   <button type="button" onClick={() => unsave(s)}
-                    className="text-[10px] text-zinc-500 hover:text-rose-300">Unsave</button>
+                    className="text-[10px] text-zinc-400 hover:text-rose-300">Unsave</button>
                 </div>
-                {s.snippet && <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-2">{s.snippet}</p>}
+                {s.snippet && <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-2">{s.snippet}</p>}
               </li>
             ))}
           </ul>
@@ -165,7 +165,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
 
       {sub === 'history' && (
         history.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-4 text-center">No post history yet.</p>
+          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No post history yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {history.map((h) => (
@@ -175,10 +175,10 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] uppercase text-orange-400/80">{h.type}</span>
                     <span className="flex-1 text-xs text-zinc-100 min-w-0 truncate">{h.title}</span>
-                    <span className="text-[10px] text-zinc-500">{h.score} pts</span>
-                    <span className="text-[10px] text-zinc-600">{new Date(h.at).toLocaleDateString()}</span>
+                    <span className="text-[10px] text-zinc-400">{h.score} pts</span>
+                    <span className="text-[10px] text-zinc-400">{new Date(h.at).toLocaleDateString()}</span>
                   </div>
-                  {h.snippet && <p className="text-[10px] text-zinc-500 mt-0.5 line-clamp-1">{h.snippet}</p>}
+                  {h.snippet && <p className="text-[10px] text-zinc-400 mt-0.5 line-clamp-1">{h.snippet}</p>}
                 </button>
               </li>
             ))}
@@ -190,7 +190,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
         <section>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2">
-              <Search className="w-3.5 h-3.5 text-zinc-500" />
+              <Search className="w-3.5 h-3.5 text-zinc-400" />
               <input placeholder="Search topics and replies" value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void search(); }}
@@ -201,7 +201,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
           </div>
           {results != null && (
             results.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic mt-2">No topics match your search.</p>
+              <p className="text-[11px] text-zinc-400 italic mt-2">No topics match your search.</p>
             ) : (
               <ul className="space-y-1 mt-2">
                 {results.map((t) => (
@@ -209,7 +209,7 @@ export function FmProfilePanel({ onOpenTopic }: { onOpenTopic?: (id: string) => 
                     <button type="button" onClick={() => onOpenTopic?.(t.id)}
                       className="w-full flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5 hover:border-orange-900/50">
                       <span className="text-xs text-zinc-200">{t.title}</span>
-                      <span className="text-[10px] text-zinc-500">{t.score} pts</span>
+                      <span className="text-[10px] text-zinc-400">{t.score} pts</span>
                     </button>
                   </li>
                 ))}
@@ -226,7 +226,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="text-center">
       <p className="text-lg font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

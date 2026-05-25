@@ -81,7 +81,7 @@ export function DatabaseViews() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
@@ -98,13 +98,13 @@ export function DatabaseViews() {
           </button>
         </div>
         <ul className="space-y-0.5">
-          {list.length === 0 && <li className="text-[11px] text-zinc-600 italic">No databases — create one.</li>}
+          {list.length === 0 && <li className="text-[11px] text-zinc-400 italic">No databases — create one.</li>}
           {list.map(d => (
             <li key={d.id}
               className={cn('group flex items-center gap-1 rounded px-1.5 py-1 hover:bg-zinc-800', active?.id === d.id && 'bg-zinc-800')}>
               <button onClick={() => open(d.id)} className="flex-1 text-left text-xs text-zinc-300 truncate">
-                <Table2 className="w-3 h-3 inline mr-1 text-zinc-500" />{d.name}
-                <span className="text-[10px] text-zinc-600 ml-1">{d.rowCount} rows</span>
+                <Table2 className="w-3 h-3 inline mr-1 text-zinc-400" />{d.name}
+                <span className="text-[10px] text-zinc-400 ml-1">{d.rowCount} rows</span>
               </button>
               <button onClick={() => deleteDb(d.id)} className="opacity-0 group-hover:opacity-100 text-rose-400">
                 <Trash2 className="w-3 h-3" />
@@ -156,7 +156,7 @@ export function DatabaseViews() {
           )}
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-500 min-h-[160px]">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-400 min-h-[160px]">
           Select or create a database.
         </div>
       )}
@@ -202,7 +202,7 @@ function DbTable({ db, onUpdate, onDelete }: {
           <tr>
             {db.columns.map(c => (
               <th key={c.id} className="border border-zinc-800 px-1.5 py-1 text-left font-semibold text-zinc-300">
-                {c.name} <span className="text-[9px] text-zinc-600">{c.type}</span>
+                {c.name} <span className="text-[9px] text-zinc-400">{c.type}</span>
               </th>
             ))}
             <th className="w-6" />
@@ -210,7 +210,7 @@ function DbTable({ db, onUpdate, onDelete }: {
         </thead>
         <tbody>
           {db.rows.length === 0 && (
-            <tr><td colSpan={db.columns.length + 1} className="text-[11px] text-zinc-600 italic py-2 text-center">No rows yet.</td></tr>
+            <tr><td colSpan={db.columns.length + 1} className="text-[11px] text-zinc-400 italic py-2 text-center">No rows yet.</td></tr>
           )}
           {db.rows.map(r => (
             <tr key={r.id}>
@@ -238,7 +238,7 @@ function DbBoard({ db, onUpdate }: {
 }) {
   const selectCol = db.columns.find(c => c.type === 'select');
   if (!selectCol) {
-    return <p className="text-[11px] text-zinc-600 italic py-2">Board view needs a &ldquo;select&rdquo; column to group by.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-2">Board view needs a &ldquo;select&rdquo; column to group by.</p>;
   }
   const titleCol = db.columns.find(c => c.type === 'text') || db.columns[0];
   const groups = ['', ...selectCol.options];
@@ -254,7 +254,7 @@ function DbBoard({ db, onUpdate }: {
                 <div key={r.id} className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-1">
                   <p className="text-[11px] text-zinc-200 truncate">{String(r.cells[titleCol.id] ?? '(untitled)')}</p>
                   <select value={g} onChange={e => onUpdate(r.id, selectCol.id, e.target.value)}
-                    className="mt-0.5 w-full bg-transparent text-[10px] text-zinc-500 focus:outline-none">
+                    className="mt-0.5 w-full bg-transparent text-[10px] text-zinc-400 focus:outline-none">
                     <option value="">—</option>
                     {selectCol.options.map(o => <option key={o} value={o}>{o}</option>)}
                   </select>

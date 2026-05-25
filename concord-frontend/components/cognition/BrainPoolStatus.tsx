@@ -44,7 +44,7 @@ export function BrainPoolStatus() {
         )}
       </header>
       {status.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Brain pool unreachable.</div>}
-      {status.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling brains…</div>}
+      {status.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling brains…</div>}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {entries.map(([name, b]) => (
           <div key={name} className={`rounded-lg border p-3 ${b.ok ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
@@ -61,11 +61,11 @@ export function BrainPoolStatus() {
               <div>queue {b.queueDepth ?? '—'}</div>
               <div>{b.tokens24h ? `${(b.tokens24h / 1000).toFixed(0)}k tok` : '—'}</div>
             </div>
-            {b.url && <div className="mt-0.5 truncate font-mono text-[9px] text-zinc-500">{b.url}</div>}
+            {b.url && <div className="mt-0.5 truncate font-mono text-[9px] text-zinc-400">{b.url}</div>}
           </div>
         ))}
         {entries.length === 0 && !status.isPending && (
-          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No brains reporting.</div>
+          <div className="col-span-full rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No brains reporting.</div>
         )}
       </div>
     </div>

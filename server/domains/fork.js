@@ -18,6 +18,7 @@ export default function registerForkActions(registerLensAction) {
    * artifact.data.forkB = { files: { [path]: content }, lastSyncTimestamp? }
    */
   registerLensAction("fork", "divergenceAnalysis", (ctx, artifact, params) => {
+  try {
     const base = artifact.data?.base || {};
     const forkA = artifact.data?.forkA || {};
     const forkB = artifact.data?.forkB || {};
@@ -199,7 +200,8 @@ export default function registerForkActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * mergeComplexity
@@ -207,6 +209,7 @@ export default function registerForkActions(registerLensAction) {
    * artifact.data.changes = [{ file, regions: [{ startLine, endLine, author }], dependencies?: [string] }]
    */
   registerLensAction("fork", "mergeComplexity", (ctx, artifact, params) => {
+  try {
     const changes = artifact.data?.changes || [];
     if (changes.length === 0) {
       return { ok: true, result: { message: "No changes to analyze." } };
@@ -337,7 +340,8 @@ export default function registerForkActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * forkHealth
@@ -346,6 +350,7 @@ export default function registerForkActions(registerLensAction) {
    *   contributorCount?, openIssues?, upstream: { lastCommitAt?, commitCount? } }
    */
   registerLensAction("fork", "forkHealth", (ctx, artifact, params) => {
+  try {
     const fork = artifact.data?.fork || {};
     const upstream = fork.upstream || {};
     const now = Date.now();
@@ -444,7 +449,8 @@ export default function registerForkActions(registerLensAction) {
         recommendations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * github-forks — List forks of a GitHub repo (real, live data).
@@ -563,6 +569,7 @@ export default function registerForkActions(registerLensAction) {
   const fkRepos = (s, u) => { if (!s.repos.has(u)) s.repos.set(u, []); return s.repos.get(u); };
 
   registerLensAction("fork", "watch-add", (ctx, _a, params = {}) => {
+  try {
     const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const fullName = fkClean(params.fullName, 160).replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "");
     if (!/^[\w.-]+\/[\w.-]+$/.test(fullName)) return { ok: false, error: "fullName must be owner/repo" };
@@ -573,7 +580,8 @@ export default function registerForkActions(registerLensAction) {
       lastStars: null, lastPushedAt: null, createdAt: new Date().toISOString() };
     arr.push(repo); saveFork();
     return { ok: true, result: { repo } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
   registerLensAction("fork", "watch-list", (ctx, _a, _p = {}) => {
     const s = getForkState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const repos = fkRepos(s, fkActor(ctx));

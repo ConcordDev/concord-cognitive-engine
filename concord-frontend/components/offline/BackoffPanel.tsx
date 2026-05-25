@@ -174,20 +174,20 @@ export function BackoffPanel({ onRetryDue }: { onRetryDue?: () => void }) {
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Attempt</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Attempt</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-200">
             {attempt} / {plan?.policy.maxAttempts ?? 8}
           </div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Next retry</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Next retry</div>
           <div className="mt-0.5 flex items-center gap-1 font-mono text-lg text-zinc-200">
             <Timer className="h-3.5 w-3.5 text-cyan-400" />
             {online || dirty === 0 ? '—' : `${Math.ceil(countdownMs / 1000)}s`}
           </div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Queue</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Queue</div>
           <div
             className={`mt-0.5 font-mono text-lg ${dirty > 0 ? 'text-amber-400' : 'text-zinc-200'}`}
           >
@@ -195,7 +195,7 @@ export function BackoffPanel({ onRetryDue }: { onRetryDue?: () => void }) {
           </div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Worst case</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Worst case</div>
           <div className="mt-0.5 font-mono text-lg text-zinc-200">
             {plan ? `${plan.totalWaitSeconds}s` : '—'}
           </div>

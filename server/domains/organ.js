@@ -10,6 +10,7 @@ export default function registerOrganActions(registerLensAction) {
    * Computes span of control, depth, flatness ratio, bottleneck managers.
    */
   registerLensAction("organ", "orgChart", (ctx, artifact, _params) => {
+  try {
     const employees = artifact.data?.employees || [];
     if (employees.length === 0) {
       return { ok: true, result: { message: "No employee data to analyze." } };
@@ -117,7 +118,8 @@ export default function registerOrganActions(registerLensAction) {
         })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * teamComposition
@@ -126,6 +128,7 @@ export default function registerOrganActions(registerLensAction) {
    * Computes skills coverage, diversity metrics, Belbin role balance.
    */
   registerLensAction("organ", "teamComposition", (ctx, artifact, params) => {
+  try {
     const team = artifact.data?.team || [];
     const requiredSkills = params.requiredSkills || artifact.data?.requiredSkills || [];
     if (team.length === 0) {
@@ -253,7 +256,8 @@ export default function registerOrganActions(registerLensAction) {
         demographics,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * communicationFlow
@@ -262,6 +266,7 @@ export default function registerOrganActions(registerLensAction) {
    * Builds communication graph, detects silos, computes flow efficiency.
    */
   registerLensAction("organ", "communicationFlow", (ctx, artifact, _params) => {
+  try {
     const comms = artifact.data?.communications || [];
     if (comms.length === 0) {
       return { ok: true, result: { message: "No communication data to analyze." } };
@@ -446,7 +451,8 @@ export default function registerOrganActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────────────
   // Persistent org-design substrate (per-user, STATE-backed).

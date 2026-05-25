@@ -83,7 +83,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && assign()}
           placeholder="Responder name"
-          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-600"
+          className="min-w-0 flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-white placeholder:text-zinc-400"
         />
         <select
           value={role}
@@ -105,13 +105,13 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
       </div>
 
       {loading && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading roster…
         </div>
       )}
 
       {!loading && team && team.count === 0 && (
-        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-500">
+        <p className="rounded border border-white/10 bg-white/5 p-3 text-center text-xs text-zinc-400">
           No responders assigned. Assign an Incident Commander to begin.
         </p>
       )}
@@ -120,7 +120,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
         <div className="space-y-2">
           {roles.filter((r) => (team.byRole[r] || []).length > 0).map((r) => (
             <div key={r}>
-              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">
                 {ROLE_LABEL[r] || r}
               </div>
               <ul className="space-y-1">
@@ -133,7 +133,7 @@ export function TeamPanel({ crisisId }: { crisisId: string }) {
                     <button
                       type="button"
                       onClick={() => unassign(m.id)}
-                      className="rounded p-0.5 text-zinc-500 hover:bg-rose-600/30 hover:text-rose-200"
+                      className="rounded p-0.5 text-zinc-400 hover:bg-rose-600/30 hover:text-rose-200"
                       aria-label="Remove"
                     >
                       <X className="h-3.5 w-3.5" />

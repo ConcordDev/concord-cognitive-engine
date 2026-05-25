@@ -44,7 +44,7 @@ export function ReviewsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Reviews & NPS</span>
-        <span className="ml-auto inline-flex items-center gap-3 text-[10px] text-gray-500">
+        <span className="ml-auto inline-flex items-center gap-3 text-[10px] text-gray-400">
           <span><span className="text-amber-300 font-bold">{avgRating.toFixed(1)}</span>/5 avg</span>
           <span>NPS <span className={cn('font-bold', nps >= 50 ? 'text-emerald-300' : nps >= 0 ? 'text-amber-300' : 'text-rose-300')}>{nps > 0 ? '+' : ''}{nps}</span></span>
         </span>
@@ -63,9 +63,9 @@ export function ReviewsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : reviews.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Star className="w-6 h-6 mx-auto mb-2 opacity-30" />No reviews yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Star className="w-6 h-6 mx-auto mb-2 opacity-30" />No reviews yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {reviews.map(r => (
@@ -76,7 +76,7 @@ export function ReviewsPanel() {
                   </div>
                   <span className="text-xs text-white">{r.customerName}</span>
                   {r.nps != null && <span className={cn('text-[10px] font-mono', r.nps >= 9 ? 'text-emerald-300' : r.nps >= 7 ? 'text-amber-300' : 'text-rose-300')}>NPS {r.nps}</span>}
-                  <span className="ml-auto text-[10px] text-gray-500">{new Date(r.submittedAt).toLocaleDateString()}</span>
+                  <span className="ml-auto text-[10px] text-gray-400">{new Date(r.submittedAt).toLocaleDateString()}</span>
                 </div>
                 {r.text && <p className="text-[11px] text-gray-300 ml-1">{r.text}</p>}
               </li>

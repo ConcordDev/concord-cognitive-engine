@@ -15,14 +15,14 @@ export function JobsPanel() {
   useEffect(() => { void refresh(); }, [refresh]);
   return (
     <div className="text-sm">
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">My job</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">My job</h3>
       {emp?.job_id ? (
         <div className="flex items-center justify-between mb-3 bg-zinc-900/50 border border-zinc-800 rounded p-2">
-          <span className="text-zinc-200">{emp.job_id}</span><span className="text-xs text-zinc-500">{emp.shifts_completed} shifts</span>
+          <span className="text-zinc-200">{emp.job_id}</span><span className="text-xs text-zinc-400">{emp.shifts_completed} shifts</span>
           <button type="button" onClick={async () => { const r = await macro('jobs', 'complete_shift'); if (r?.ok) refresh(); }} aria-label="Complete shift" className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-800 hover:bg-emerald-700 text-emerald-100">+shift</button>
         </div>
-      ) : <p className="text-zinc-500 text-xs italic mb-3">Unemployed. Pick a job below.</p>}
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Open positions</h3>
+      ) : <p className="text-zinc-400 text-xs italic mb-3">Unemployed. Pick a job below.</p>}
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Open positions</h3>
       <ul className="space-y-1 mb-3">
         {jobs.map((j) => (
           <li key={j.id} className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800 rounded p-2">
@@ -32,7 +32,7 @@ export function JobsPanel() {
           </li>
         ))}
       </ul>
-      <h3 className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Ration floor</h3>
+      <h3 className="text-xs uppercase tracking-wider text-zinc-400 mb-2">Ration floor</h3>
       <ul className="grid grid-cols-2 gap-1 text-[10px]">
         {rations.map((r) => (
           <li key={r.demographic_kind} className="bg-zinc-900/40 border border-zinc-800 rounded p-1.5 flex items-center justify-between">

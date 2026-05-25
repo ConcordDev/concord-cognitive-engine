@@ -120,7 +120,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
         <div className="flex items-center gap-2">
           <FolderOpen className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Projects</span>
-          <span className="text-[10px] text-gray-500 ml-1">{projects.length}</span>
+          <span className="text-[10px] text-gray-400 ml-1">{projects.length}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -202,14 +202,14 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading projects…
           </div>
         ) : projects.length === 0 && !creating ? (
           <div className="text-center py-8 px-4">
             <Folder className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-            <p className="text-xs text-gray-500">No projects yet</p>
-            <p className="text-[10px] text-gray-600 mt-1">
+            <p className="text-xs text-gray-400">No projects yet</p>
+            <p className="text-[10px] text-gray-400 mt-1">
               Group related chats with a shared system prompt and attached DTUs.
             </p>
           </div>
@@ -245,9 +245,9 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                     <span className="text-sm font-medium text-gray-100 truncate">{p.name}</span>
                   </div>
                   {p.systemPrompt && (
-                    <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{p.systemPrompt}</p>
+                    <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{p.systemPrompt}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-600">
+                  <div className="flex items-center gap-3 mt-1.5 text-[10px] text-gray-400">
                     <span>{p.threadIds.length} chats</span>
                     <span>{p.attachedDtuIds.length} DTUs</span>
                   </div>
@@ -256,7 +256,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                   <button
                     type="button"
                     onClick={() => startEdit(p)}
-                    className="p-1 text-gray-500 hover:text-cyan-300"
+                    className="p-1 text-gray-400 hover:text-cyan-300"
                     aria-label="Edit project"
                   >
                     <Edit3 className="w-3 h-3" />
@@ -264,7 +264,7 @@ export function ProjectsPanel({ open, onClose, onSelectProject, activeProjectId 
                   <button
                     type="button"
                     onClick={() => remove(p.id)}
-                    className="p-1 text-gray-500 hover:text-rose-300"
+                    className="p-1 text-gray-400 hover:text-rose-300"
                     aria-label="Delete project"
                   >
                     <Trash2 className="w-3 h-3" />

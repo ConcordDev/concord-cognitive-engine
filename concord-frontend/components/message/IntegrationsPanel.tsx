@@ -118,7 +118,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
 
       <div>
         <div className="flex items-center mb-1">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Commands</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Commands</div>
           <button onClick={() => setShowNew((v) => !v)} className="ml-auto text-[11px] text-cyan-300 inline-flex items-center gap-0.5">
             <Plus className="w-3 h-3" /> Custom command
           </button>
@@ -133,7 +133,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
           </div>
         )}
         {loading ? (
-          <p className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+          <p className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
         ) : (
           <div className="space-y-1">
             {commands.map((c) => (
@@ -141,7 +141,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
                 <span className="text-[11px] font-mono text-cyan-300">{c.name}</span>
                 <span className="text-[11px] text-gray-400 flex-1 truncate">{c.description}</span>
                 {c.builtin ? (
-                  <span className="text-[9px] text-gray-600 uppercase">builtin</span>
+                  <span className="text-[9px] text-gray-400 uppercase">builtin</span>
                 ) : (
                   <button onClick={() => c.id && removeCommand(c.id)} className="opacity-0 group-hover:opacity-100 text-rose-300" title="Remove">
                     <Trash2 className="w-3 h-3" />
@@ -154,14 +154,14 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
       </div>
 
       <div>
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">App messages</div>
+        <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">App messages</div>
         {appMessages.length === 0 ? (
-          <p className="text-xs text-gray-600">No app messages yet. Run a command to post one.</p>
+          <p className="text-xs text-gray-400">No app messages yet. Run a command to post one.</p>
         ) : (
           <div className="space-y-1">
             {appMessages.slice().reverse().map((m) => (
               <div key={m.id} className="rounded border border-white/10 bg-white/[0.02] px-2 py-1.5">
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                   <Bot className="w-3 h-3 text-cyan-400" />
                   <span className="text-cyan-300 font-semibold">{m.appName}</span>
                   <span className="font-mono">{m.command}</span>

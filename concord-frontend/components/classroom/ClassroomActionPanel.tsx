@@ -182,7 +182,7 @@ export function ClassroomActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -206,7 +206,7 @@ export function ClassroomActionPanel() {
         {workResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">{workResult.title}</div>
-            {workResult.firstPublishDate && <div className="text-[10px] text-zinc-500">first published: {workResult.firstPublishDate}</div>}
+            {workResult.firstPublishDate && <div className="text-[10px] text-zinc-400">first published: {workResult.firstPublishDate}</div>}
             {workResult.description && <div className="text-[11px] text-zinc-300 mt-1 line-clamp-4">{workResult.description}</div>}
             {(workResult.subjects ?? []).slice(0, 5).map((s, i) => <span key={i} className="inline-block text-[9px] bg-purple-500/10 text-purple-200 px-1.5 py-0.5 rounded mr-1 mt-1">{s}</span>)}
           </div>
@@ -214,7 +214,7 @@ export function ClassroomActionPanel() {
         {isbnResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">ISBN {isbnResult.isbn}</div>
-            <div className="flex gap-2 mt-1">{isbnResult.coverImage && <img src={isbnResult.coverImage} alt={isbnResult.title} className="w-16 h-24 object-cover rounded" />}<div><div className="text-[11px] font-semibold text-amber-200">{isbnResult.title}</div><div className="text-[10px] text-zinc-400">{(isbnResult.authors ?? []).join(', ')}</div><div className="text-[10px] text-zinc-500">{isbnResult.publisher} · {isbnResult.publishDate}</div>{isbnResult.pages && <div className="text-[10px] text-zinc-500">{isbnResult.pages} pages</div>}</div></div>
+            <div className="flex gap-2 mt-1">{isbnResult.coverImage && <img src={isbnResult.coverImage} alt={isbnResult.title} className="w-16 h-24 object-cover rounded" />}<div><div className="text-[11px] font-semibold text-amber-200">{isbnResult.title}</div><div className="text-[10px] text-zinc-400">{(isbnResult.authors ?? []).join(', ')}</div><div className="text-[10px] text-zinc-400">{isbnResult.publisher} · {isbnResult.publishDate}</div>{isbnResult.pages && <div className="text-[10px] text-zinc-400">{isbnResult.pages} pages</div>}</div></div>
           </div>
         )}
       </div>

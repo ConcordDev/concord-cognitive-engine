@@ -109,7 +109,7 @@ function SovereigntyDashboard() {
 
   if (isLoading || !status) {
     return (
-      <div className="p-6 text-center text-gray-500">
+      <div className="p-6 text-center text-gray-400">
         <Shield className="w-8 h-8 mx-auto mb-2 animate-pulse" />
         Loading sovereignty status...
       </div>
@@ -201,7 +201,7 @@ function SovereigntyDashboard() {
               <opt.icon
                 className={cn(
                   'w-4 h-4',
-                  status.globalAssistConsent === opt.value ? 'text-neon-cyan' : 'text-zinc-500'
+                  status.globalAssistConsent === opt.value ? 'text-neon-cyan' : 'text-zinc-400'
                 )}
               />
               <div>
@@ -213,7 +213,7 @@ function SovereigntyDashboard() {
                 >
                   {opt.label}
                 </p>
-                <p className="text-xs text-zinc-500">{opt.desc}</p>
+                <p className="text-xs text-zinc-400">{opt.desc}</p>
               </div>
             </button>
           ))}
@@ -237,7 +237,7 @@ function SovereigntyDashboard() {
                 <button
                   onClick={() => unsync.mutate(domain)}
                   disabled={unsync.isPending}
-                  className="text-zinc-500 hover:text-red-400 transition-colors"
+                  className="text-zinc-400 hover:text-red-400 transition-colors"
                   title={`Unsync ${domain}`}
                 >
                   <Trash2 className="w-3.5 h-3.5" />

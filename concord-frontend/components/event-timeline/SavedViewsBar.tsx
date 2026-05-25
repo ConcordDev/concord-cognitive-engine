@@ -82,7 +82,7 @@ export function SavedViewsBar({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-1 text-[11px] font-medium text-zinc-500">
+      <span className="flex items-center gap-1 text-[11px] font-medium text-zinc-400">
         <Bookmark className="h-3 w-3" /> Views
       </span>
 
@@ -140,7 +140,7 @@ export function SavedViewsBar({
       ) : (
         <button
           onClick={() => setNaming(true)}
-          className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-zinc-500 ring-1 ring-zinc-800 hover:text-zinc-200 hover:ring-zinc-600"
+          className="flex items-center gap-1 rounded-full px-2.5 py-1 text-xs text-zinc-400 ring-1 ring-zinc-800 hover:text-zinc-200 hover:ring-zinc-600"
           title="Save current filter as a view"
         >
           <Plus className="h-3 w-3" /> Save view

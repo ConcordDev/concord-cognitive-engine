@@ -27,7 +27,7 @@ function TokenBalance({ userId }: { userId?: string }) {
           {balance.toLocaleString()}
         </span>
       )}
-      <span className="text-xs text-gray-500">tokens</span>
+      <span className="text-xs text-gray-400">tokens</span>
     </div>
   );
 }

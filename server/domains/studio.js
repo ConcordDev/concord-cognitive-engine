@@ -1170,6 +1170,7 @@ export default function registerStudioActions(registerLensAction) {
   // ── Stem / multi-track export + project import/export ─────────────
 
   registerLensAction("studio", "export-stems", (ctx, _a, params = {}) => {
+  try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
@@ -1202,9 +1203,11 @@ export default function registerStudioActions(registerLensAction) {
     });
     saveStudioState();
     return { ok: true, result: { job } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("studio", "project-export", (ctx, _a, params = {}) => {
+  try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projectId = String(params.projectId || "");
@@ -1230,9 +1233,11 @@ export default function registerStudioActions(registerLensAction) {
       midiMaps: ensureStuBucket(s, "midiMaps", userId).filter(m => m.projectId === projectId),
     };
     return { ok: true, result: { bundle } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("studio", "project-import", (ctx, _a, params = {}) => {
+  try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const bundle = params.bundle;
@@ -1287,7 +1292,8 @@ export default function registerStudioActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Real-time collaboration on a project ──────────────────────────
   // A live session: collaborators + an append-only edit log + per-user
@@ -1450,6 +1456,7 @@ export default function registerStudioActions(registerLensAction) {
   // ── Dashboard summary (DawShell data source) ──────────────────
 
   registerLensAction("studio", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
     const projects = s.projects.get(userId) ? Array.from(s.projects.get(userId).values()) : [];
@@ -1481,5 +1488,6 @@ export default function registerStudioActions(registerLensAction) {
           : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

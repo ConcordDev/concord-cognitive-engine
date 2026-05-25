@@ -61,7 +61,7 @@ export function MobileTabBar({ tabs, active, onSelect, className }: MobileTabBar
             aria-current={isActive ? 'page' : undefined}
             className={cn(
               'flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative transition-colors',
-              isActive ? 'text-indigo-300' : 'text-zinc-500 hover:text-zinc-300',
+              isActive ? 'text-indigo-300' : 'text-zinc-400 hover:text-zinc-300',
             )}
           >
             <Icon className="w-5 h-5" aria-hidden="true" />

@@ -103,7 +103,7 @@ export function PathPlanner() {
             })
           )}
         </svg>
-        <p className="text-[11px] text-gray-500 text-center pt-1">
+        <p className="text-[11px] text-gray-400 text-center pt-1">
           Click cells to paint with the selected tool, then plan a path.
         </p>
       </div>
@@ -125,12 +125,12 @@ export function PathPlanner() {
         <div className="panel p-3 grid grid-cols-2 md:grid-cols-5 gap-3 text-center text-xs">
           <div>
             <p className={`text-lg font-bold ${result.found ? 'text-green-400' : 'text-red-400'}`}>{result.found ? 'FOUND' : 'BLOCKED'}</p>
-            <p className="text-gray-500">Result</p>
+            <p className="text-gray-400">Result</p>
           </div>
-          <div><p className="text-lg font-bold font-mono">{result.length}</p><p className="text-gray-500">Path cells</p></div>
-          <div><p className="text-lg font-bold font-mono">{result.cost ?? '—'}</p><p className="text-gray-500">Cost</p></div>
-          <div><p className="text-lg font-bold font-mono">{result.expansions}</p><p className="text-gray-500">Expansions</p></div>
-          <div><p className="text-lg font-bold font-mono">{result.obstacleCount}</p><p className="text-gray-500">Obstacles</p></div>
+          <div><p className="text-lg font-bold font-mono">{result.length}</p><p className="text-gray-400">Path cells</p></div>
+          <div><p className="text-lg font-bold font-mono">{result.cost ?? '—'}</p><p className="text-gray-400">Cost</p></div>
+          <div><p className="text-lg font-bold font-mono">{result.expansions}</p><p className="text-gray-400">Expansions</p></div>
+          <div><p className="text-lg font-bold font-mono">{result.obstacleCount}</p><p className="text-gray-400">Obstacles</p></div>
         </div>
       )}
     </div>

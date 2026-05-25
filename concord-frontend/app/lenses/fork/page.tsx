@@ -104,7 +104,7 @@ export default function ForkLensPage() {
   const statusColors = {
     active: 'text-neon-green bg-neon-green/20',
     merged: 'text-neon-blue bg-neon-blue/20',
-    abandoned: 'text-gray-500 bg-gray-500/20',
+    abandoned: 'text-gray-400 bg-gray-500/20',
   };
 
   const handleMerge = useCallback(async () => {
@@ -149,7 +149,7 @@ export default function ForkLensPage() {
               : 'bg-lattice-deep hover:bg-lattice-surface'
           }`}
         >
-          {level > 0 && <GitBranch className="w-4 h-4 text-gray-500" />}
+          {level > 0 && <GitBranch className="w-4 h-4 text-gray-400" />}
           {level === 0 && <GitFork className="w-4 h-4 text-neon-purple" />}
           <div className="flex-1 text-left">
             <p className="font-medium">{fork.workspace}</p>
@@ -159,7 +159,7 @@ export default function ForkLensPage() {
             {fork.status}
           </span>
           {fork.children > 0 && (
-            <span className="text-xs text-gray-500">+{fork.children}</span>
+            <span className="text-xs text-gray-400">+{fork.children}</span>
           )}
         </button>
         {children.map((child) => renderTreeNode(child, level + 1))}
@@ -310,7 +310,7 @@ export default function ForkLensPage() {
 
         {forkActionResult && (
           <div className="mt-3 rounded-lg bg-black/30 border border-white/10 p-4 relative">
-            <button onClick={() => setForkActionResult(null)} className="absolute top-3 right-3 text-gray-500 hover:text-white" aria-label="Close">
+            <button onClick={() => setForkActionResult(null)} className="absolute top-3 right-3 text-gray-400 hover:text-white" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
 
@@ -457,7 +457,7 @@ export default function ForkLensPage() {
               const synced = fork.status === 'merged';
               return (
                 <div key={fork.id} className="flex items-center gap-3">
-                  <GitBranch className="w-3 h-3 text-gray-500 flex-shrink-0" />
+                  <GitBranch className="w-3 h-3 text-gray-400 flex-shrink-0" />
                   <span className="text-xs text-gray-400 w-36 truncate font-mono">{fork.workspace}</span>
                   <div className="flex-1 h-2 bg-lattice-deep rounded-full overflow-hidden">
                     <motion.div
@@ -478,7 +478,7 @@ export default function ForkLensPage() {
           </div>
         </motion.div>
       ) : (
-        <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+        <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
           <p>No forks created yet. Fork a DTU to see version branches here.</p>
         </div>
       )}
@@ -490,23 +490,23 @@ export default function ForkLensPage() {
             <GitFork className="w-4 h-4 text-neon-purple" />
             Fork {viewMode === 'tree' ? 'Tree' : 'List'}
             {(forkSearch || forkStatusFilter !== 'all') && (
-              <span className="text-xs text-gray-500 font-normal ml-2">
+              <span className="text-xs text-gray-400 font-normal ml-2">
                 ({visibleListForks.length} of {forks.length})
               </span>
             )}
           </h2>
           {forks.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4 text-center">No forks yet.</p>
+            <p className="text-sm text-gray-400 py-4 text-center">No forks yet.</p>
           ) : viewMode === 'tree' ? (
             rootForks.length === 0 ? (
-              <p className="text-sm text-gray-500 py-4 text-center">No forks match the current filters.</p>
+              <p className="text-sm text-gray-400 py-4 text-center">No forks match the current filters.</p>
             ) : (
               <div className="space-y-1">
                 {rootForks.map((fork) => renderTreeNode(fork))}
               </div>
             )
           ) : visibleListForks.length === 0 ? (
-            <p className="text-sm text-gray-500 py-4 text-center">No forks match the current filters.</p>
+            <p className="text-sm text-gray-400 py-4 text-center">No forks match the current filters.</p>
           ) : (
             <div className="space-y-1">
               {visibleListForks.map((fork) => {
@@ -521,7 +521,7 @@ export default function ForkLensPage() {
                         : 'bg-lattice-deep hover:bg-lattice-surface'
                     }`}
                   >
-                    <GitBranch className={`w-4 h-4 ${fork.parentId ? 'text-gray-500' : 'text-neon-purple'}`} />
+                    <GitBranch className={`w-4 h-4 ${fork.parentId ? 'text-gray-400' : 'text-neon-purple'}`} />
                     <div className="flex-1 text-left">
                       <p className="font-medium">{fork.workspace}</p>
                       <p className="text-xs text-gray-400">{fork.entityName}{fork.depth > 0 ? ` · depth ${fork.depth}` : ''}</p>
@@ -530,7 +530,7 @@ export default function ForkLensPage() {
                       {fork.status}
                     </span>
                     {fork.children > 0 && (
-                      <span className="text-xs text-gray-500">+{fork.children}</span>
+                      <span className="text-xs text-gray-400">+{fork.children}</span>
                     )}
                   </button>
                 );
@@ -554,7 +554,7 @@ export default function ForkLensPage() {
               <div className="lens-card">
                 <p className="text-xs text-gray-400">Entity</p>
                 <p>{selectedForkData.entityName}</p>
-                <p className="text-xs text-gray-500 font-mono">{selectedForkData.entityId}</p>
+                <p className="text-xs text-gray-400 font-mono">{selectedForkData.entityId}</p>
               </div>
               <div className="lens-card">
                 <p className="text-xs text-gray-400">Status</p>
@@ -586,7 +586,7 @@ export default function ForkLensPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-400">
               <GitFork className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>Select a fork to view details</p>
             </div>

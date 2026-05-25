@@ -148,13 +148,13 @@ function TierSection({
         className="flex items-center gap-2 w-full text-left text-sm font-medium text-gray-300 hover:text-white transition-colors py-1"
       >
         {open ? (
-          <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
         )}
         <span className={`text-${color}`}>{icon}</span>
         <span>{label}</span>
-        <span className="ml-auto text-xs text-gray-500">{dtus.length}</span>
+        <span className="ml-auto text-xs text-gray-400">{dtus.length}</span>
       </button>
 
       {open && (
@@ -235,7 +235,7 @@ function DTURow({
 
       {/* Tag chips */}
       {dtu.tags?.length > 0 && (
-        <span className="hidden sm:inline-flex text-[10px] text-gray-500 truncate max-w-[80px]">
+        <span className="hidden sm:inline-flex text-[10px] text-gray-400 truncate max-w-[80px]">
           {dtu.tags.slice(0, 2).join(', ')}
         </span>
       )}
@@ -247,7 +247,7 @@ function DTURow({
             e.stopPropagation();
             onPublish(dtu);
           }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-500 hover:text-neon-cyan transition-opacity"
+          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-neon-cyan transition-opacity"
           title="Publish to marketplace"
         >
           <ExternalLink className="w-3 h-3" />

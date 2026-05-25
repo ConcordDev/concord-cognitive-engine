@@ -241,7 +241,7 @@ function StatusStrip({ status, peerCount }: { status: FederationStatus | null; p
         icon={<Activity className="w-3.5 h-3.5" />}
       />
       {caps.length > 0 && (
-        <div className="col-span-2 sm:col-span-4 text-[11px] text-gray-500 mt-1">
+        <div className="col-span-2 sm:col-span-4 text-[11px] text-gray-400 mt-1">
           capabilities: <span className="text-gray-400 font-mono">{caps.join(', ')}</span>
         </div>
       )}
@@ -274,7 +274,7 @@ function NetworkTab() {
       <h2 className="text-amber-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <Globe className="w-4 h-4" /> Trust graph
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Each node is an instance; edges show mutual trust. Edge weight tracks
         rolling DTU exchange + verification success rate.
       </p>
@@ -350,16 +350,16 @@ function SearchTab() {
       </div>
 
       {meta && (
-        <div className="text-xs text-gray-500 mb-3">
+        <div className="text-xs text-gray-400 mb-3">
           {meta.total ?? 0} result{meta.total === 1 ? '' : 's'} across {meta.fanout ?? 0} instance{meta.fanout === 1 ? '' : 's'}
           {scope !== 'all' && ` (scoped: ${scope})`}.
         </div>
       )}
 
       {visible === null ? (
-        <p className="text-xs text-gray-500 italic">Enter a query and press Enter or Search.</p>
+        <p className="text-xs text-gray-400 italic">Enter a query and press Enter or Search.</p>
       ) : visible.length === 0 ? (
-        <div className="text-gray-500 italic">No matches.</div>
+        <div className="text-gray-400 italic">No matches.</div>
       ) : (
         <ul className="space-y-2">
           {visible.map((r, i) => (
@@ -377,7 +377,7 @@ function SearchTab() {
                   {r.source === 'self' ? 'local' : (r.peerName ?? r.source)}
                 </span>
                 {typeof r.score === 'number' && (
-                  <span className="text-[10px] text-gray-500">{r.score.toFixed(3)}</span>
+                  <span className="text-[10px] text-gray-400">{r.score.toFixed(3)}</span>
                 )}
               </div>
               {r.snippet && <div className="text-xs text-gray-400 mt-1">{r.snippet}</div>}
@@ -557,10 +557,10 @@ function PeerList({ peers, onChanged }: { peers: Peer[]; onChanged: () => void }
     <section className="rounded-lg border border-white/10 bg-black/60 p-4">
       <h2 className="text-amber-200 font-semibold mb-3 inline-flex items-center gap-1.5">
         <Users className="w-4 h-4" /> Trusted peers
-        <span className="text-gray-500 text-xs">({peers.length})</span>
+        <span className="text-gray-400 text-xs">({peers.length})</span>
       </h2>
       {peers.length === 0 ? (
-        <p className="text-xs text-gray-500 italic">No peers yet. Add one above.</p>
+        <p className="text-xs text-gray-400 italic">No peers yet. Add one above.</p>
       ) : (
         <ul className="space-y-2">
           {peers.map((p) => {
@@ -576,11 +576,11 @@ function PeerList({ peers, onChanged }: { peers: Peer[]; onChanged: () => void }
                   <div className="text-sm font-medium text-gray-100 truncate">
                     {p.name || id || '(unnamed)'}
                   </div>
-                  <div className="text-[11px] text-gray-500 font-mono truncate">{String(id)}</div>
+                  <div className="text-[11px] text-gray-400 font-mono truncate">{String(id)}</div>
                   {p.registryUrl && (
-                    <div className="text-[11px] text-gray-500 truncate">{p.registryUrl}</div>
+                    <div className="text-[11px] text-gray-400 truncate">{p.registryUrl}</div>
                   )}
-                  <div className="text-[10px] text-gray-600 mt-1">
+                  <div className="text-[10px] text-gray-400 mt-1">
                     last seen: {lastSeen} · status: {p.status ?? 'unknown'}
                   </div>
                 </div>
@@ -655,7 +655,7 @@ function SyncTab({ onSynced }: { onSynced: () => void }) {
       <h2 className="text-violet-300 font-semibold mb-3 inline-flex items-center gap-1.5">
         <Zap className="w-4 h-4" /> Manual sync
       </h2>
-      <p className="text-xs text-gray-500 mb-3">
+      <p className="text-xs text-gray-400 mb-3">
         Triggers a federation pass: pulls new shadow DTUs from peers, pushes
         any pending posts queued locally, and refreshes peer last-seen timestamps.
       </p>
@@ -671,13 +671,13 @@ function SyncTab({ onSynced }: { onSynced: () => void }) {
       {error  && <p className="mt-2 text-rose-300 text-xs">{error}</p>}
 
       <div className="mt-5 border-t border-white/10 pt-3">
-        <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-2 inline-flex items-center gap-1">
+        <div className="text-[10px] uppercase tracking-wide text-gray-400 mb-2 inline-flex items-center gap-1">
           <Activity className="w-3 h-3" /> Recent federation events
         </div>
         {recentEvents.isLoading ? (
-          <p className="text-xs text-gray-500 italic">Loading events…</p>
+          <p className="text-xs text-gray-400 italic">Loading events…</p>
         ) : !recentEvents.data?.artifacts || recentEvents.data.artifacts.length === 0 ? (
-          <p className="text-xs text-gray-500 italic">No events yet. Probe a peer or trigger a sync to populate.</p>
+          <p className="text-xs text-gray-400 italic">No events yet. Probe a peer or trigger a sync to populate.</p>
         ) : (
           <ul className="space-y-1 text-xs">
             {recentEvents.data.artifacts.map((a) => {
@@ -689,7 +689,7 @@ function SyncTab({ onSynced }: { onSynced: () => void }) {
                     status === 'ok' ? 'bg-emerald-400' : status === 'error' ? 'bg-rose-400' : 'bg-amber-400'
                   }`} />
                   <span className="text-gray-200 flex-1 truncate">{a.title}</span>
-                  <span className="text-gray-500 text-[10px]">
+                  <span className="text-gray-400 text-[10px]">
                     {new Date(data?.at ?? a.createdAt).toLocaleString()}
                   </span>
                   {data?.kind && (

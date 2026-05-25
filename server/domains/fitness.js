@@ -39,6 +39,7 @@ export default function registerFitnessActions(registerLensAction) {
   });
 
   registerLensAction("fitness", "bodyCompReport", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const weight = parseFloat(data.weight) || 0; // in lbs or kg
     const height = parseFloat(data.height) || 0; // in inches or cm
@@ -103,7 +104,8 @@ export default function registerFitnessActions(registerLensAction) {
         age, sex,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "attendanceReport", (ctx, artifact, _params) => {
     const log = artifact.data?.attendanceLog || [];
@@ -478,6 +480,7 @@ Generate the plan.`;
 
   // ── Activities ──────────────────────────────────────────────────────
   registerLensAction("fitness", "activity-create", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const type = String(params.type || "").toLowerCase();
@@ -511,7 +514,8 @@ Generate the plan.`;
     }
     saveStateIfAvailable();
     return { ok: true, result: { activity: act } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "activity-list", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -532,6 +536,7 @@ Generate the plan.`;
   });
 
   registerLensAction("fitness", "activity-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const act = (s.activities.get(faid(ctx)) || []).find((a) => a.id === params.id);
     if (!act) return { ok: false, error: "activity not found" };
@@ -548,7 +553,8 @@ Generate the plan.`;
       detail.splitAnalysis = { splits, fastestKm: fastest.km, slowestKm: slowest.km };
     }
     return { ok: true, result: { activity: detail } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "activity-delete", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -586,6 +592,7 @@ Generate the plan.`;
 
   // ── Segments + leaderboards ─────────────────────────────────────────
   registerLensAction("fitness", "segment-create", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
@@ -609,7 +616,8 @@ Generate the plan.`;
     s.segmentEfforts.set(seg.id, []);
     saveStateIfAvailable();
     return { ok: true, result: { segment: seg } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "segment-list", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -653,6 +661,7 @@ Generate the plan.`;
   });
 
   registerLensAction("fitness", "segment-leaderboard", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const seg = s.segments.get(String(params.segmentId));
     if (!seg) return { ok: false, error: "segment not found" };
@@ -673,10 +682,12 @@ Generate the plan.`;
         isMe: e.userId === faid(ctx),
       }));
     return { ok: true, result: { segment: seg, leaderboard: board, athletes: board.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Routes ──────────────────────────────────────────────────────────
   registerLensAction("fitness", "route-create", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const name = String(params.name || "").trim();
     if (!name) return { ok: false, error: "name required" };
@@ -707,7 +718,8 @@ Generate the plan.`;
     flistB(s.routes, faid(ctx)).push(route);
     saveStateIfAvailable();
     return { ok: true, result: { route } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "route-list", (ctx, _a, _params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -727,6 +739,7 @@ Generate the plan.`;
 
   // ── Training load + Garmin physiology ───────────────────────────────
   registerLensAction("fitness", "training-load", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const acts = s.activities.get(faid(ctx)) || [];
     const tl = trainingLoadSeries(acts);
@@ -745,9 +758,11 @@ Generate the plan.`;
         status, trackedDays: tl.days, daily: tl.daily,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "vo2max-estimate", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let distanceMeters = fnum(params.distanceKm) * 1000;
     let timeMinutes = fnum(params.durationSec) / 60;
@@ -781,9 +796,11 @@ Generate the plan.`;
         fitnessAge, source,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "race-predictor", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let vdot = fnum(params.vo2max);
     let source = "supplied VO2max";
@@ -812,7 +829,8 @@ Generate the plan.`;
       };
     });
     return { ok: true, result: { vo2max: Math.round(vdot * 10) / 10, source, predictions } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "hrv-log", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -829,6 +847,7 @@ Generate the plan.`;
   });
 
   registerLensAction("fitness", "hrv-status", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const samples = [...(s.hrvSamples.get(faid(ctx)) || [])].sort((a, b) => a.date.localeCompare(b.date));
     if (samples.length < 3) {
@@ -854,9 +873,11 @@ Generate the plan.`;
         latest: samples[samples.length - 1],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "training-readiness", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const factors = [];
@@ -899,7 +920,8 @@ Generate the plan.`;
           : "Prioritise recovery — easy movement or rest.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "body-battery", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -969,6 +991,7 @@ Generate the plan.`;
   }
 
   registerLensAction("fitness", "goal-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const acts = s.activities.get(userId) || [];
@@ -977,7 +1000,8 @@ Generate the plan.`;
       ok: true,
       result: { goals, count: goals.length, completed: goals.filter((g) => g.progress.complete).length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "goal-delete", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -991,6 +1015,7 @@ Generate the plan.`;
 
   // ── Personal records ────────────────────────────────────────────────
   registerLensAction("fitness", "personal-records", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const acts = s.activities.get(faid(ctx)) || [];
     if (!acts.length) return { ok: true, result: { records: [], activities: 0 } };
@@ -1032,7 +1057,8 @@ Generate the plan.`;
       records.push({ label: "Biggest week", value: Math.round(km * 100) / 100, display: `${Math.round(km * 100) / 100} km`, weekOf: wk });
     }
     return { ok: true, result: { records, activities: acts.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Gear ────────────────────────────────────────────────────────────
   registerLensAction("fitness", "gear-add", (ctx, _a, params = {}) => {
@@ -1155,6 +1181,7 @@ Generate the plan.`;
   }
 
   registerLensAction("fitness", "challenge-list", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     let challenges = [...s.challenges.values()];
@@ -1179,7 +1206,8 @@ Generate the plan.`;
       };
     });
     return { ok: true, result: { challenges, count: challenges.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "challenge-join", (ctx, _a, params = {}) => {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1195,6 +1223,7 @@ Generate the plan.`;
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("fitness", "fitness-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const acts = s.activities.get(userId) || [];
@@ -1222,7 +1251,8 @@ Generate the plan.`;
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ════════════════════════════════════════════════════════════════════
   // Parity backlog — Strava / Garmin 2026 feature gap closure.
@@ -1332,6 +1362,7 @@ Generate the plan.`;
    * `points` (array of {lat,lon,ele?,t?}) or `gpx` (raw GPX XML string).
    */
   registerLensAction("fitness", "gps-record", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     let points = Array.isArray(params.points) ? params.points : null;
@@ -1395,7 +1426,8 @@ Generate the plan.`;
     }
     saveStateIfAvailable();
     return { ok: true, result: { activity: act, summary, imported } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "gps-track", (ctx, _a, params = {}) => {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1447,6 +1479,7 @@ Generate the plan.`;
    * synthetic data — the bridge supplies real device readings.
    */
   registerLensAction("fitness", "wearable-sync", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const provider = String(params.provider || "").toLowerCase();
     if (!WEARABLE_PROVIDERS.includes(provider)) {
@@ -1518,7 +1551,8 @@ Generate the plan.`;
         synced: recoveryAdded + activityAdded + hrvAdded,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Map heatmap + segment explore ───────────────────────────────────
   /**
@@ -1526,6 +1560,7 @@ Generate the plan.`;
    * density grid for a real map render. Cells are ~0.0025° (~250m).
    */
   registerLensAction("fitness", "activity-heatmap", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const myActIds = new Set((s.activities.get(userId) || []).map((a) => a.id));
@@ -1563,7 +1598,8 @@ Generate the plan.`;
               centerLat: (minLat + maxLat) / 2, centerLon: (minLon + maxLon) / 2 },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * segment-explore — segments visible on the map. Optionally bounded
@@ -1723,6 +1759,7 @@ Generate the plan.`;
   });
 
   registerLensAction("fitness", "beacon-status", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     // resolve by share token (follower view) or id (owner view)
@@ -1757,7 +1794,8 @@ Generate the plan.`;
         isOwner,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "beacon-stop", (ctx, _a, params = {}) => {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1793,6 +1831,7 @@ Generate the plan.`;
   const PLAN_SESSION_TYPES = ["easy", "long", "tempo", "intervals", "recovery", "race", "rest", "strength", "cross"];
 
   registerLensAction("fitness", "plan-create", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const name = String(params.name || "").trim();
@@ -1828,7 +1867,8 @@ Generate the plan.`;
     flistB(s.trainingPlans, userId).push(plan);
     saveStateIfAvailable();
     return { ok: true, result: { plan } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   function planWithCompletion(plan, acts) {
     // mark a planned session complete if a matching activity exists that
@@ -1873,6 +1913,7 @@ Generate the plan.`;
   }
 
   registerLensAction("fitness", "plan-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = faid(ctx);
     const acts = s.activities.get(userId) || [];
@@ -1881,7 +1922,8 @@ Generate the plan.`;
       return { ...p, sessions, adherence };
     });
     return { ok: true, result: { plans, count: plans.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("fitness", "plan-delete", (ctx, _a, params = {}) => {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1949,6 +1991,7 @@ Generate the plan.`;
    * weekly RE rollups and a form-trend verdict.
    */
   registerLensAction("fitness", "fitness-freshness", (ctx, _a, params = {}) => {
+  try {
     const s = getFitState2(); if (!s) return { ok: false, error: "STATE unavailable" };
     const acts = s.activities.get(faid(ctx)) || [];
     const tl = trainingLoadSeries(acts);
@@ -1998,7 +2041,8 @@ Generate the plan.`;
         trackedDays: tl.days,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest real exercises from the open wger workout database as
   // visible DTUs. Free public API, no key.

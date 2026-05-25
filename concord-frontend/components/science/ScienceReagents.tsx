@@ -161,7 +161,7 @@ export function ScienceReagents() {
             {HAZARDS.map((h) => <option key={h} value={h}>{h}</option>)}
           </select>
         </div>
-        <label className="text-[10px] text-gray-500 uppercase block">
+        <label className="text-[10px] text-gray-400 uppercase block">
           Expiry date
           <input type="date" value={form.expiryDate || ''}
             onChange={(e) => setForm({ ...form, expiryDate: e.target.value })}
@@ -200,9 +200,9 @@ export function ScienceReagents() {
         </div>
       )}
       {loading ? (
-        <p className="text-xs text-gray-500">Loading…</p>
+        <p className="text-xs text-gray-400">Loading…</p>
       ) : reagents.length === 0 ? (
-        <p className="text-xs text-gray-500">No reagents tracked yet.</p>
+        <p className="text-xs text-gray-400">No reagents tracked yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {reagents.map((r) => (
@@ -223,7 +223,7 @@ export function ScienceReagents() {
                       </span>
                     )}
                   </span>
-                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                  <span className="block text-[11px] text-gray-400 mt-0.5">
                     <span className={cn('font-mono', r.lowStock ? 'text-amber-300' : 'text-gray-300')}>
                       {r.quantity} {r.unit}
                     </span>
@@ -241,7 +241,7 @@ export function ScienceReagents() {
                     <Minus className="w-3.5 h-3.5" />
                   </button>
                   <button type="button" onClick={() => del(r.id)}
-                    className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+                    className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
                     aria-label="Delete reagent">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

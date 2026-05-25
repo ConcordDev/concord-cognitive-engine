@@ -129,7 +129,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
         <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-cyan-400" />
           <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Decks</span>
-          <span className="ml-auto text-[10px] text-gray-500">{decks.length}</span>
+          <span className="ml-auto text-[10px] text-gray-400">{decks.length}</span>
         </header>
         <div className="p-3 border-b border-white/10 flex items-center gap-2">
           <input
@@ -147,7 +147,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
           </button>
         </div>
         {decks.length === 0 ? (
-          <div className="px-3 py-8 text-xs text-gray-500 text-center">
+          <div className="px-3 py-8 text-xs text-gray-400 text-center">
             No decks yet. Create one above, or generate from any DTU via the Quiz tab.
           </div>
         ) : (
@@ -160,14 +160,14 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
                 >
                   <div className="flex-1">
                     <div className="text-sm text-white">{d.title}</div>
-                    <div className="text-[10px] text-gray-500">{d.count} cards · {d.due} due today</div>
+                    <div className="text-[10px] text-gray-400">{d.count} cards · {d.due} due today</div>
                   </div>
                   {d.due > 0 && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-300 font-bold">
                       {d.due}
                     </span>
                   )}
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
               </li>
             ))}
@@ -189,7 +189,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
         </button>
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <span className="text-sm font-bold text-white">{deck?.title || 'Deck'}</span>
-        <span className="ml-auto text-[10px] text-gray-500">{deck?.count || 0} cards · {queue.length} in queue</span>
+        <span className="ml-auto text-[10px] text-gray-400">{deck?.count || 0} cards · {queue.length} in queue</span>
         <button
           onClick={() => setCreating(v => !v)}
           title="Add card"
@@ -237,18 +237,18 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
 
       <div className="p-4 min-h-[320px] flex flex-col">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
+          <div className="flex-1 flex items-center justify-center text-gray-400">
             <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading queue…
           </div>
         ) : !card ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-500 gap-2">
+          <div className="flex-1 flex flex-col items-center justify-center text-center text-gray-400 gap-2">
             <BarChart3 className="w-8 h-8 opacity-30" />
             <p className="text-sm">Inbox zero! No cards due.</p>
             <p className="text-xs">Add new cards or come back later for spaced-repetition reviews.</p>
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-500 mb-2">
+            <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-gray-400 mb-2">
               <span>Card {idx + 1} of {queue.length}</span>
               <span>Interval: {card.interval}d · ease {card.ease.toFixed(2)} · reps {card.repetitions}</span>
             </div>
@@ -286,7 +286,7 @@ export function FlashcardDeck({ initialDeckId }: FlashcardDeckProps) {
             <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-cyan-500 to-green-400 transition-all" style={{ width: `${stats.progressPct}%` }} />
             </div>
-            <span className="text-[10px] text-gray-500 font-mono">{stats.reviewed}/{queue.length}</span>
+            <span className="text-[10px] text-gray-400 font-mono">{stats.reviewed}/{queue.length}</span>
           </div>
         )}
       </div>

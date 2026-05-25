@@ -108,7 +108,7 @@ export function PestIdentifier() {
       </header>
 
       <div>
-        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Crop</div>
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Crop</div>
         <div className="flex flex-wrap gap-1.5">
           {CROPS.map((c) => (
             <button
@@ -129,7 +129,7 @@ export function PestIdentifier() {
       </div>
 
       <div>
-        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-500">Symptom keywords (multi-select)</div>
+        <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Symptom keywords (multi-select)</div>
         <div className="flex flex-wrap gap-1.5">
           {SYMPTOM_CHIPS.map((s) => (
             <button
@@ -167,7 +167,7 @@ export function PestIdentifier() {
       </form>
 
       {!result && !identifyMutation.isPending && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/40 px-3 py-6 text-center text-xs text-zinc-400">
           Pick a crop + tap symptom chips (or describe what you see) → get a ranked match
           from the authored pest/disease library with treatment recommendations.
         </div>
@@ -216,7 +216,7 @@ function CandidateCard({ cand, crop }: { cand: Candidate; crop: string }) {
           </div>
           <p className="mt-2 text-xs leading-relaxed text-zinc-300">{cand.treatment}</p>
           {cand.crops && cand.crops.length > 0 && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-zinc-500">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px] text-zinc-400">
               <span>Affects:</span>
               {cand.crops.map((c) => (
                 <span key={c} className="rounded bg-zinc-800 px-1.5 py-0.5">{c}</span>

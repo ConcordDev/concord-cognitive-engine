@@ -188,14 +188,14 @@ export function SoilGridPanel({
 
   if (fieldsLoading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fields…
       </div>
     );
   }
   if (fields.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <Sprout className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No fields yet. Add a field (with coordinates) to generate a soil-sampling grid.
       </div>
@@ -250,11 +250,11 @@ export function SoilGridPanel({
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading grids…
         </div>
       ) : !latest ? (
-        <div className="py-8 text-center text-xs text-gray-500">
+        <div className="py-8 text-center text-xs text-gray-400">
           No sampling grid for this field yet. Generate one above.
         </div>
       ) : (
@@ -268,7 +268,7 @@ export function SoilGridPanel({
             ].map((m) => (
               <div key={m.k} className="rounded bg-lattice-deep px-2 py-1.5">
                 <div className="text-sm font-bold text-lime-300">{m.v}</div>
-                <div className="text-[10px] text-gray-500">{m.k}</div>
+                <div className="text-[10px] text-gray-400">{m.k}</div>
               </div>
             ))}
           </div>
@@ -296,7 +296,7 @@ export function SoilGridPanel({
                 {Object.entries(latest.averages).map(([k, v]) => (
                   <div key={k} className="rounded bg-lattice-deep px-2 py-1.5 text-center">
                     <div className="text-sm font-bold text-emerald-300">{v}</div>
-                    <div className="text-[10px] text-gray-500">{NUTRIENT_LABELS[k] || k}</div>
+                    <div className="text-[10px] text-gray-400">{NUTRIENT_LABELS[k] || k}</div>
                   </div>
                 ))}
               </div>
@@ -331,7 +331,7 @@ export function SoilGridPanel({
             )}
             Import lab results
           </button>
-          <div className="text-[10px] text-gray-600">
+          <div className="text-[10px] text-gray-400">
             Grid generated {new Date(latest.generatedAt).toLocaleString()}
           </div>
         </div>

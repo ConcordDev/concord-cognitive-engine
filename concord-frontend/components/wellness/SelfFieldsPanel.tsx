@@ -84,12 +84,12 @@ export function SelfFieldsPanel() {
       <header className="flex items-center gap-2 border-b border-purple-500/10 pb-2">
         <ShieldHalf className="h-4 w-4 text-purple-400" />
         <h3 className="text-sm font-semibold text-white">Self-composed fields</h3>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
-        <span className="ml-auto text-[10px] text-zinc-500">{active.length} active</span>
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
+        <span className="ml-auto text-[10px] text-zinc-400">{active.length} active</span>
       </header>
 
       <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Gate one of your own patterns</div>
+        <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Gate one of your own patterns</div>
         <div className="grid grid-cols-2 gap-2">
           <select value={kind} onChange={e => setKind(e.target.value)}
             className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white">
@@ -112,17 +112,17 @@ export function SelfFieldsPanel() {
       </div>
 
       {fields.length === 0 ? (
-        <div className="py-6 text-center text-xs text-zinc-500">No fields composed yet.</div>
+        <div className="py-6 text-center text-xs text-zinc-400">No fields composed yet.</div>
       ) : (
         <ul className="space-y-1.5">
           {fields.map(f => (
             <li key={f.id} className={cn('rounded border bg-black/30 p-2.5',
               f.status === 'active' ? 'border-purple-500/30' : 'border-white/5 opacity-60')}>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-mono text-zinc-500">{f.number}</span>
+                <span className="text-[9px] font-mono text-zinc-400">{f.number}</span>
                 <span className="text-sm text-white flex-1 truncate">{f.fieldKind.replace(/_/g, ' ')}</span>
                 <span className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded',
-                  f.status === 'active' ? 'bg-purple-500/15 text-purple-300' : 'bg-white/5 text-zinc-500')}>
+                  f.status === 'active' ? 'bg-purple-500/15 text-purple-300' : 'bg-white/5 text-zinc-400')}>
                   {f.status === 'active' ? humanRemaining(f.msRemaining) : f.status}
                 </span>
                 {f.status === 'active' && (

@@ -116,7 +116,7 @@ export function EcoChallenges() {
         {error && <div className="text-xs text-red-400">{error}</div>}
 
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 py-6 justify-center">
+          <div className="flex items-center gap-2 text-xs text-gray-400 py-6 justify-center">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading challenges…
           </div>
         )}
@@ -128,25 +128,25 @@ export function EcoChallenges() {
                 <Trophy className="w-4 h-4" />
                 {mine.totalPoints}
               </p>
-              <p className="text-[10px] text-gray-500">total points</p>
+              <p className="text-[10px] text-gray-400">total points</p>
             </div>
             <div className="p-2 bg-white/[0.03] rounded text-center">
               <p className="text-lg font-bold text-orange-400 flex items-center justify-center gap-1">
                 <Flame className="w-4 h-4" />
                 {mine.bestStreak}
               </p>
-              <p className="text-[10px] text-gray-500">best streak</p>
+              <p className="text-[10px] text-gray-400">best streak</p>
             </div>
             <div className="p-2 bg-white/[0.03] rounded text-center">
               <p className="text-lg font-bold text-green-400">{mine.totalKgSaved}</p>
-              <p className="text-[10px] text-gray-500">kg CO₂e saved</p>
+              <p className="text-[10px] text-gray-400">kg CO₂e saved</p>
             </div>
           </div>
         )}
 
         {!loading && mine && mine.enrollments.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">My challenges</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">My challenges</p>
             {mine.enrollments.map((e) => {
               const checkedToday = e.checkIns.includes(today);
               return (
@@ -159,7 +159,7 @@ export function EcoChallenges() {
                       <div className="text-sm text-white">
                         {e.challenge?.title || e.slug}
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-gray-400">
                         {e.challenge?.cadence} · {e.challenge?.points} pts/check-in
                       </div>
                     </div>
@@ -168,7 +168,7 @@ export function EcoChallenges() {
                       {e.currentStreak}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-3 text-[10px] text-gray-500">
+                  <div className="flex flex-wrap gap-3 text-[10px] text-gray-400">
                     <span>{e.totalCheckIns} check-ins</span>
                     <span>longest streak {e.longestStreak}</span>
                     <span>{e.totalKgSaved} kg saved</span>
@@ -202,7 +202,7 @@ export function EcoChallenges() {
 
         {!loading && available.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider">Join a challenge</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Join a challenge</p>
             {available.map((c) => (
               <div
                 key={c.slug}
@@ -222,7 +222,7 @@ export function EcoChallenges() {
                       </span>
                     </div>
                     <p className="text-[11px] text-gray-400">{c.description}</p>
-                    <p className="text-[10px] text-gray-600">
+                    <p className="text-[10px] text-gray-400">
                       {c.cadence} · {c.points} pts · {c.kgCo2eSavedPerCheckIn} kg/check-in · {c.citation}
                     </p>
                   </div>
@@ -241,7 +241,7 @@ export function EcoChallenges() {
         )}
 
         {!loading && available.length === 0 && (mine?.enrollments.length ?? 0) > 0 && (
-          <p className="text-center text-xs text-gray-500 py-2">
+          <p className="text-center text-xs text-gray-400 py-2">
             You&apos;ve joined every available challenge. Keep your streaks alive.
           </p>
         )}

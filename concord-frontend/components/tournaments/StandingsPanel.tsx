@@ -36,7 +36,7 @@ export function StandingsPanel({
           </h3>
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-slate-500">
+              <tr className="text-left text-[10px] uppercase tracking-wider text-slate-400">
                 <th className="pb-1">#</th>
                 <th className="pb-1">Entrant</th>
                 <th className="pb-1 text-center">W</th>
@@ -47,7 +47,7 @@ export function StandingsPanel({
             <tbody>
               {t.standings.map((s) => (
                 <tr key={s.entrantId} className="border-t border-slate-800">
-                  <td className="py-1 font-mono text-slate-500">{s.rank}</td>
+                  <td className="py-1 font-mono text-slate-400">{s.rank}</td>
                   <td className="py-1 font-medium text-slate-100">{s.name}</td>
                   <td className="py-1 text-center text-emerald-300">{s.wins}</td>
                   <td className="py-1 text-center text-rose-300">{s.losses}</td>
@@ -81,13 +81,13 @@ export function StandingsPanel({
         </h3>
         <div className="mb-3 flex items-baseline gap-2">
           <span className="text-2xl font-bold text-amber-300">{t.prizePoolCc}</span>
-          <span className="text-xs text-slate-500">CC prize pool</span>
+          <span className="text-xs text-slate-400">CC prize pool</span>
         </div>
 
         {t.status === 'completed' ? (
           <>
             {t.payouts.length === 0 ? (
-              <p className="text-xs text-slate-500">No payouts computed.</p>
+              <p className="text-xs text-slate-400">No payouts computed.</p>
             ) : (
               <ul className="space-y-1">
                 {t.payouts.map((p) => (
@@ -125,7 +125,7 @@ export function StandingsPanel({
             </div>
           </>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Split <span className="font-mono text-slate-400">{t.payoutSplit.join(' / ')}</span> — payouts compute on completion.
           </p>
         )}

@@ -174,6 +174,7 @@ export default function registerAuditActions(registerLensAction) {
    * params.expectedActors — list of authorized actors (optional)
    */
   registerLensAction("audit", "trailAnalysis", (ctx, artifact, params) => {
+  try {
     const trail = artifact.data.trail || [];
     if (trail.length === 0) {
       return { ok: true, result: { message: "No audit trail entries provided." } };
@@ -345,7 +346,8 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.trailAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * riskScore
@@ -356,6 +358,7 @@ export default function registerAuditActions(registerLensAction) {
    * params.priorRiskLevel — Bayesian prior for overall risk (default 0.5)
    */
   registerLensAction("audit", "riskScore", (ctx, artifact, params) => {
+  try {
     const controls = artifact.data.controls || [];
     const inherentRisks = artifact.data.inherentRisks || [];
     const priorRiskLevel = params.priorRiskLevel || 0.5;
@@ -468,7 +471,8 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.riskScore = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * samplingPlan
@@ -480,6 +484,7 @@ export default function registerAuditActions(registerLensAction) {
    * params.expectedDefectRate — expected defect/error rate (default 0.05)
    */
   registerLensAction("audit", "samplingPlan", (ctx, artifact, params) => {
+  try {
     const population = artifact.data.population || {};
     const total = population.total || 0;
 
@@ -604,7 +609,8 @@ export default function registerAuditActions(registerLensAction) {
 
     artifact.data.samplingPlan = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─────────────────────────────────────────────────────────────
   // Compliance-automation core (parity sprint vs Vanta / Drata)
@@ -1004,6 +1010,7 @@ export default function registerAuditActions(registerLensAction) {
   });
 
   registerLensAction("audit", "findingList", (ctx, _artifact, params = {}) => {
+  try {
     const state = getAuditState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = actorId(ctx);
@@ -1037,7 +1044,8 @@ export default function registerAuditActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Feature 5: Policy library + acceptance tracking ──
 
@@ -1123,6 +1131,7 @@ export default function registerAuditActions(registerLensAction) {
   // ── Feature 6: Exportable audit report / auditor-shareable view ──
 
   registerLensAction("audit", "exportReport", (ctx, _artifact, params = {}) => {
+  try {
     const state = getAuditState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = actorId(ctx);
@@ -1219,11 +1228,13 @@ export default function registerAuditActions(registerLensAction) {
     ].join("\n");
 
     return { ok: true, result: { report, markdown: md } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Feature 7: Vendor / third-party risk register ──
 
   registerLensAction("audit", "vendorAdd", (ctx, _artifact, params = {}) => {
+  try {
     const state = getAuditState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = actorId(ctx);
@@ -1256,7 +1267,8 @@ export default function registerAuditActions(registerLensAction) {
     state.vendors.get(userId).push(vendor);
     saveAuditState();
     return { ok: true, result: { vendor } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("audit", "vendorUpdate", (ctx, _artifact, params = {}) => {
     const state = getAuditState();
@@ -1291,6 +1303,7 @@ export default function registerAuditActions(registerLensAction) {
   });
 
   registerLensAction("audit", "vendorList", (ctx, _artifact, params = {}) => {
+  try {
     const state = getAuditState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = actorId(ctx);
@@ -1317,5 +1330,6 @@ export default function registerAuditActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

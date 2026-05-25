@@ -10,6 +10,7 @@ export default function registerNewsActions(registerLensAction) {
    * artifact.data.articles = [{ title, body, source?, date?, entities?: [string] }]
    */
   registerLensAction("news", "biasDetection", (ctx, artifact, params) => {
+  try {
     const articles = artifact.data?.articles || [];
     if (articles.length === 0) {
       return { ok: true, result: { message: "No articles to analyze." } };
@@ -149,7 +150,8 @@ export default function registerNewsActions(registerLensAction) {
         articleAnalyses: articleAnalyses.slice(0, 20),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * eventExtraction
@@ -158,6 +160,7 @@ export default function registerNewsActions(registerLensAction) {
    * artifact.data.articles = [{ title, body, date?, source? }]
    */
   registerLensAction("news", "eventExtraction", (ctx, artifact, params) => {
+  try {
     const articles = artifact.data?.articles || [];
     if (articles.length === 0) {
       return { ok: true, result: { message: "No articles for event extraction." } };
@@ -316,7 +319,8 @@ export default function registerNewsActions(registerLensAction) {
         })(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * narrativeTracking
@@ -326,6 +330,7 @@ export default function registerNewsActions(registerLensAction) {
    * params.windowSize — number of articles per window (default 3)
    */
   registerLensAction("news", "narrativeTracking", (ctx, artifact, params) => {
+  try {
     const articles = artifact.data?.articles || [];
     if (articles.length < 2) {
       return { ok: true, result: { message: "Need at least 2 articles to track narrative." } };
@@ -495,7 +500,8 @@ export default function registerNewsActions(registerLensAction) {
         shiftCount: shifts.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint ──
   // ── Real headlines via GDELT Project (free, no key) ──
@@ -786,6 +792,7 @@ export default function registerNewsActions(registerLensAction) {
 
   // ── Personalized feed ───────────────────────────────────────────────
   registerLensAction("news", "feed", (ctx, _a, _params = {}) => {
+  try {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = nwaid(ctx);
     const channels = s.followedChannels.get(userId) || [];
@@ -808,7 +815,8 @@ export default function registerNewsActions(registerLensAction) {
         unread: view.filter((a) => !a.read).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("news", "today-digest", (ctx, _a, _params = {}) => {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1002,6 +1010,7 @@ export default function registerNewsActions(registerLensAction) {
   // ── Bias-spectrum comparison ────────────────────────────────────────
   // Place every article on the same story across left/center/right.
   registerLensAction("news", "bias-spectrum", (ctx, _a, params = {}) => {
+  try {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = nwaid(ctx);
     const topic = nwclean(params.topic, 60).toLowerCase();
@@ -1039,12 +1048,14 @@ export default function registerNewsActions(registerLensAction) {
           cols.center.length === 0 ? "center" : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Story clustering ────────────────────────────────────────────────
   // Group articles covering the same event into one story by title/summary
   // token overlap (Jaccard >= threshold).
   registerLensAction("news", "story-clusters", (ctx, _a, params = {}) => {
+  try {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = nwaid(ctx);
     const threshold = Math.min(0.9, Math.max(0.1, Number(params.threshold) || 0.28));
@@ -1099,7 +1110,8 @@ export default function registerNewsActions(registerLensAction) {
         multiSource: clusters.filter((c) => c.sourceCount > 1).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Audio / read-aloud mode ─────────────────────────────────────────
   // Returns a clean, sentence-segmented script + estimated duration so the
@@ -1155,6 +1167,7 @@ export default function registerNewsActions(registerLensAction) {
 
   // Generate alerts by matching newly-added articles against subscriptions.
   registerLensAction("news", "alert-feed", (ctx, _a, params = {}) => {
+  try {
     const p = getNewsParityState(); if (!p) return { ok: false, error: "STATE unavailable" };
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = nwaid(ctx);
@@ -1190,7 +1203,8 @@ export default function registerNewsActions(registerLensAction) {
       ok: true,
       result: { alerts: sorted, count: sorted.length, unread: sorted.filter((a) => !a.read).length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Offline reading / save-for-later sync ───────────────────────────
   registerLensAction("news", "offline-sync", (ctx, _a, params = {}) => {
@@ -1231,6 +1245,7 @@ export default function registerNewsActions(registerLensAction) {
 
   // ── Source transparency — ownership, factuality, blindspot ──────────
   registerLensAction("news", "source-profile", (ctx, _a, params = {}) => {
+  try {
     const s = getNewsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const source = nwclean(params.source, 80);
     if (!source) return { ok: false, error: "source required" };
@@ -1271,7 +1286,8 @@ export default function registerNewsActions(registerLensAction) {
           .sort((a, b) => b.count - a.count),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Personalized digest scheduling ──────────────────────────────────
   registerLensAction("news", "digest-schedule-set", (ctx, _a, params = {}) => {

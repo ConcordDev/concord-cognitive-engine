@@ -143,10 +143,10 @@ export function MultiFileAgentReview({ open, onClose, prompt, edits, loading, on
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3">
                   <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
-                  <p className="text-xs text-gray-500">Planning multi-file edits…</p>
+                  <p className="text-xs text-gray-400">Planning multi-file edits…</p>
                 </div>
               ) : edits.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-500">
+                <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                   <Sparkles className="w-8 h-8 opacity-30" />
                   <p className="text-xs">The agent didn't propose any file edits.</p>
                 </div>
@@ -167,14 +167,14 @@ export function MultiFileAgentReview({ open, onClose, prompt, edits, loading, on
                         )}>
                           <button
                             onClick={() => toggle(k)}
-                            className="text-gray-500 hover:text-white"
+                            className="text-gray-400 hover:text-white"
                             aria-label={isOpen ? 'Collapse' : 'Expand'}
                           >
                             {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                           </button>
                           <FileCode className="w-4 h-4 text-cyan-400" />
                           <span className="text-sm text-white font-mono">{e.filename}</span>
-                          <span className="text-[10px] text-gray-500 uppercase">{e.language}</span>
+                          <span className="text-[10px] text-gray-400 uppercase">{e.language}</span>
                           <span className="ml-3 text-[10px] text-green-400">+{after.length}</span>
                           <span className="text-[10px] text-red-400">−{before.length}</span>
                           <div className="ml-auto flex items-center gap-1">

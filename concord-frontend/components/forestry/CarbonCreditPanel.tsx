@@ -113,7 +113,7 @@ export function CarbonCreditPanel() {
           ] as const).map(([l, v]) => (
             <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2 py-1.5 text-center">
               <p className="text-sm font-bold text-teal-300">{v}</p>
-              <p className="text-[9px] text-zinc-500 uppercase tracking-wide">{l}</p>
+              <p className="text-[9px] text-zinc-400 uppercase tracking-wide">{l}</p>
             </div>
           ))}
         </div>
@@ -146,20 +146,20 @@ export function CarbonCreditPanel() {
           <div key={c.id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-2.5 py-2">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-zinc-100">{c.projectName}</span>
-              <span className="text-[10px] text-zinc-500">vintage {c.vintageYear}</span>
-              <span className="text-[10px] text-zinc-500">{c.tonsCO2.toLocaleString()} t · ${c.estimatedValue.toLocaleString()}</span>
-              <span className="text-[10px] text-zinc-500">{c.registry}</span>
+              <span className="text-[10px] text-zinc-400">vintage {c.vintageYear}</span>
+              <span className="text-[10px] text-zinc-400">{c.tonsCO2.toLocaleString()} t · ${c.estimatedValue.toLocaleString()}</span>
+              <span className="text-[10px] text-zinc-400">{c.registry}</span>
               <span className={`ml-auto text-[10px] font-semibold ${STATUS_STYLE[c.status]}`}>
                 {c.status.replace(/_/g, ' ')}
               </span>
             </div>
             {c.serialNumber && (
-              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+              <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
                 Serial {c.serialNumber}{c.verifier ? ` · verified by ${c.verifier} (${c.verifiedDate})` : ''}
               </p>
             )}
             {c.retiredBy && (
-              <p className="text-[10px] text-zinc-500 mt-0.5">Retired by {c.retiredBy} on {c.retiredDate}</p>
+              <p className="text-[10px] text-zinc-400 mt-0.5">Retired by {c.retiredBy} on {c.retiredDate}</p>
             )}
             {c.status === 'pending_verification' && (
               <div className="flex flex-wrap gap-1 mt-1.5">
@@ -185,7 +185,7 @@ export function CarbonCreditPanel() {
             )}
           </div>
         ))}
-        {(!list || list.count === 0) && <p className="text-xs text-zinc-500 italic">No carbon credits issued yet.</p>}
+        {(!list || list.count === 0) && <p className="text-xs text-zinc-400 italic">No carbon credits issued yet.</p>}
       </div>
     </div>
   );

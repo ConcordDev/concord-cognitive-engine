@@ -98,7 +98,7 @@ export default function DreamsPage() {
 
         {tab === 'recent' && (
           dreams.length === 0 ? (
-            <div className="text-center text-zinc-500 italic py-12 border border-zinc-800 rounded-xl">
+            <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
               Sleep generates dreams. Come back tomorrow.
             </div>
           ) : (
@@ -110,7 +110,7 @@ export default function DreamsPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold text-zinc-100 truncate">{title}</h3>
-                        <p className="mt-0.5 text-[10px] text-zinc-500 font-mono">
+                        <p className="mt-0.5 text-[10px] text-zinc-400 font-mono">
                           {d.fragment_count ?? 0} fragments · {d.composer} · {new Date(d.composed_at * 1000).toLocaleString()}
                         </p>
                         {d.tags && d.tags.length > 0 && (

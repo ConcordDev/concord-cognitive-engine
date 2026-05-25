@@ -329,7 +329,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
           <div className="flex-1 min-w-0">
             <h2 className="text-sm font-semibold text-zinc-100 truncate">{room?.title || 'Live room'}</h2>
             {room && (
-              <p className="text-[10px] text-zinc-500 flex items-center gap-2">
+              <p className="text-[10px] text-zinc-400 flex items-center gap-2">
                 <span className="inline-flex items-center gap-0.5"><Mic className="w-2.5 h-2.5" /> {room.speakers?.length || 0}</span>
                 <span className="inline-flex items-center gap-0.5"><Users className="w-2.5 h-2.5" /> {room.listenerCount}</span>
                 {room.isRecording && <span className="text-rose-300">REC</span>}
@@ -353,7 +353,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
         )}
 
         {!room && (
-          <div className="p-8 flex items-center justify-center text-zinc-500">
+          <div className="p-8 flex items-center justify-center text-zinc-400">
             <Loader2 className="w-4 h-4 animate-spin" />
           </div>
         )}
@@ -362,7 +362,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
           <>
             {/* Speakers */}
             <section className="px-4 pt-4">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">Speakers · {room.speakers.length}</h3>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">Speakers · {room.speakers.length}</h3>
               <ul className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                 {room.speakers.map(s => {
                   const isMe = s.user_id === selfUserId;
@@ -377,12 +377,12 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
                         {s.role === 'host' && <ShieldCheck className="absolute -bottom-1 -right-1 w-4 h-4 text-amber-300 bg-zinc-950 rounded-full" />}
                       </div>
                       <UserLink userId={s.user_id} prefix="@" className="text-[10px] max-w-[80px] truncate" />
-                      <span className="text-[9px] uppercase text-zinc-600">{s.role}</span>
+                      <span className="text-[9px] uppercase text-zinc-400">{s.role}</span>
                     </li>
                   );
                 })}
                 {room.speakers.length === 0 && (
-                  <li className="col-span-full text-xs text-zinc-500 text-center py-4">No speakers yet</li>
+                  <li className="col-span-full text-xs text-zinc-400 text-center py-4">No speakers yet</li>
                 )}
               </ul>
             </section>
@@ -390,7 +390,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
             {/* Hands raised (host can promote) */}
             {room.handsRaised.length > 0 && (
               <section className="px-4 pt-4">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
                   ✋ Hands raised · {room.handsRaised.length}
                 </h3>
                 <ul className="space-y-1.5">
@@ -416,8 +416,8 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
 
             {/* Listeners count (no avatars — privacy) */}
             <section className="px-4 pt-4 pb-4">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-1">Listeners · {room.listenerCount}</h3>
-              <p className="text-[10px] text-zinc-500">{room.listenerCount} silent listener{room.listenerCount === 1 ? '' : 's'}</p>
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-1">Listeners · {room.listenerCount}</h3>
+              <p className="text-[10px] text-zinc-400">{room.listenerCount} silent listener{room.listenerCount === 1 ? '' : 's'}</p>
             </section>
 
             {/* Footer controls */}
@@ -455,7 +455,7 @@ export function RoomStage({ roomId, selfUserId, onClose }: RoomStageProps) {
                 </button>
               )}
 
-              <span className="flex-1 text-[10px] text-zinc-500">
+              <span className="flex-1 text-[10px] text-zinc-400">
                 {peersRef.current.size} peer mesh connection{peersRef.current.size === 1 ? '' : 's'}
               </span>
 

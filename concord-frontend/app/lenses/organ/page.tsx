@@ -267,7 +267,7 @@ export default function OrganLensPage() {
             <span className="text-sm font-semibold text-green-400">Healthy</span>
           </div>
           <p className="text-3xl font-bold text-green-400">{healthyOrgans.length}</p>
-          <p className="text-xs text-gray-500">Health &ge; 70%</p>
+          <p className="text-xs text-gray-400">Health &ge; 70%</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="panel p-4 border-l-4 border-l-amber-500 bg-amber-500/5">
@@ -276,7 +276,7 @@ export default function OrganLensPage() {
             <span className="text-sm font-semibold text-amber-400">Monitoring</span>
           </div>
           <p className="text-3xl font-bold text-amber-400">{organs.length - healthyOrgans.length - criticalOrgans.length}</p>
-          <p className="text-xs text-gray-500">Health 30-70%</p>
+          <p className="text-xs text-gray-400">Health 30-70%</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="panel p-4 border-l-4 border-l-red-500 bg-red-500/5">
@@ -285,7 +285,7 @@ export default function OrganLensPage() {
             <span className="text-sm font-semibold text-red-400">Critical</span>
           </div>
           <p className="text-3xl font-bold text-red-400">{criticalOrgans.length}</p>
-          <p className="text-xs text-gray-500">Health &lt; 30%</p>
+          <p className="text-xs text-gray-400">Health &lt; 30%</p>
         </motion.div>
       </div>
 
@@ -325,7 +325,7 @@ export default function OrganLensPage() {
       {/* Controls */}
       <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             className="w-full pl-10 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm focus:border-neon-cyan outline-none"
             placeholder="Search organs..."
@@ -367,10 +367,10 @@ export default function OrganLensPage() {
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Heart className="w-4 h-4 text-neon-pink" />
             Organ Registry
-            <span className="text-xs text-gray-500 font-normal">({displayOrgans.length})</span>
+            <span className="text-xs text-gray-400 font-normal">({displayOrgans.length})</span>
           </h2>
           {displayOrgans.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-gray-400">
               <Heart className="w-12 h-12 mx-auto mb-4 opacity-40" />
               <p>{searchFilter ? 'No matching organs found' : 'No organs registered in the system'}</p>
               <p className="text-xs mt-2">Organs will appear here when the organism initializes</p>
@@ -407,7 +407,7 @@ export default function OrganLensPage() {
                     </div>
 
                     {organ.lastTick && (
-                      <div className="flex items-center gap-1 mt-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1 mt-3 text-xs text-gray-400">
                         <Clock className="w-3 h-3" />
                         Last tick: {new Date(organ.lastTick).toLocaleTimeString()}
                       </div>
@@ -423,7 +423,7 @@ export default function OrganLensPage() {
                                 {dep}
                               </span>
                             )) : (
-                              <span className="text-xs text-gray-500">None</span>
+                              <span className="text-xs text-gray-400">None</span>
                             )}
                           </div>
                         </div>
@@ -476,13 +476,13 @@ export default function OrganLensPage() {
                   </div>
                   <div className="w-20 text-right shrink-0">
                     <p className="text-sm font-mono">{(organ.maturity * 100).toFixed(0)}%</p>
-                    <p className="text-xs text-gray-500">maturity</p>
+                    <p className="text-xs text-gray-400">maturity</p>
                   </div>
                 </div>
               );
             })}
             {displayOrgans.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-400">
                 <p className="text-sm">No organs to display</p>
               </div>
             )}
@@ -510,16 +510,16 @@ export default function OrganLensPage() {
                     }`}>
                       {organ.name.slice(0, 2).toUpperCase()}
                     </div>
-                    <span className="text-[10px] text-gray-500 max-w-[60px] truncate">{organ.name}</span>
+                    <span className="text-[10px] text-gray-400 max-w-[60px] truncate">{organ.name}</span>
                     {organ.dependencies.length > 0 && (
-                      <span className="text-[9px] text-gray-600">{organ.dependencies.length} deps</span>
+                      <span className="text-[9px] text-gray-400">{organ.dependencies.length} deps</span>
                     )}
                   </motion.div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center text-gray-500">
+            <div className="text-center text-gray-400">
               <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">Dependency graph will appear when organs are registered</p>
             </div>
@@ -541,7 +541,7 @@ export default function OrganLensPage() {
                 style={{ width: `${Math.max(0, avgHealth) * 100}%` }}
               />
             </div>
-            <div className="flex justify-between mt-1 text-xs text-gray-500">
+            <div className="flex justify-between mt-1 text-xs text-gray-400">
               <span>Nascent</span>
               <span>Juvenile</span>
               <span>Mature</span>
@@ -557,15 +557,15 @@ export default function OrganLensPage() {
         </p>
         <div className="grid grid-cols-3 gap-3 mt-4">
           <div className="bg-lattice-deep p-2 rounded-lg text-center">
-            <p className="text-xs text-gray-500">Healthy</p>
+            <p className="text-xs text-gray-400">Healthy</p>
             <p className="text-lg font-bold text-neon-green">{healthyOrgans.length}</p>
           </div>
           <div className="bg-lattice-deep p-2 rounded-lg text-center">
-            <p className="text-xs text-gray-500">Degraded</p>
+            <p className="text-xs text-gray-400">Degraded</p>
             <p className="text-lg font-bold text-yellow-400">{organs.length - healthyOrgans.length - criticalOrgans.length}</p>
           </div>
           <div className="bg-lattice-deep p-2 rounded-lg text-center">
-            <p className="text-xs text-gray-500">Critical</p>
+            <p className="text-xs text-gray-400">Critical</p>
             <p className="text-lg font-bold text-red-400">{criticalOrgans.length}</p>
           </div>
         </div>

@@ -105,7 +105,7 @@ export function PainBoard({
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold flex items-center gap-2">
           Pain-Point Board
-          <span className="text-xs text-gray-500">({pains.length})</span>
+          <span className="text-xs text-gray-400">({pains.length})</span>
           {(loading || busy) && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
         </h3>
         <div className="flex items-center gap-2">
@@ -196,7 +196,7 @@ export function PainBoard({
       )}
 
       {pains.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-6">
+        <p className="text-gray-400 text-sm text-center py-6">
           No pain points yet. Capture your first one above.
         </p>
       ) : (
@@ -233,7 +233,7 @@ function PainRow({
   return (
     <div className="rounded-lg bg-white/[0.03] border border-white/10">
       <div className="flex items-center gap-2 p-2.5">
-        <button onClick={onToggle} className="text-gray-500 hover:text-gray-200" aria-label="Expand">
+        <button onClick={onToggle} className="text-gray-400 hover:text-gray-200" aria-label="Expand">
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
         <div className="flex-1 min-w-0">
@@ -248,7 +248,7 @@ function PainRow({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5">
+          <div className="flex items-center gap-3 text-[11px] text-gray-400 mt-0.5">
             <span>S{pain.severity}</span>
             <span>F{pain.frequency}</span>
             <span>I{pain.impact}</span>
@@ -285,7 +285,7 @@ function PainRow({
             <p className="text-xs text-gray-400">{pain.description}</p>
           )}
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">Theme:</span>
+            <span className="text-gray-400">Theme:</span>
             <select
               value={pain.themeId || ''}
               onChange={(e) => onRun('pain-update', { id: pain.id, themeId: e.target.value || null })}
@@ -297,14 +297,14 @@ function PainRow({
           </div>
 
           <div>
-            <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+            <p className="text-xs text-gray-400 mb-1.5 flex items-center gap-1">
               <Quote className="w-3 h-3" /> Evidence ({pain.evidence?.length || 0})
             </p>
             {pain.evidence?.map((ev) => (
               <div key={ev.id} className="flex items-start gap-2 mb-1.5 text-xs bg-white/[0.03] rounded px-2 py-1.5">
                 <span className="flex-1">
                   <span className="text-gray-300">&ldquo;{ev.quote}&rdquo;</span>
-                  {ev.source && <span className="text-gray-500 ml-1">— {ev.source}</span>}
+                  {ev.source && <span className="text-gray-400 ml-1">— {ev.source}</span>}
                 </span>
                 <button
                   onClick={() => onRun('evidence-remove', { painId: pain.id, evidenceId: ev.id })}

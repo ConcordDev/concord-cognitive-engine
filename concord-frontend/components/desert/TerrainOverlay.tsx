@@ -95,7 +95,7 @@ export function TerrainOverlay() {
           <h3 className="text-sm font-semibold text-white">Terrain dataset overlay</h3>
         </div>
         <div className="space-y-2">
-          <div className="grid grid-cols-7 gap-1.5 text-[10px] uppercase tracking-wider text-zinc-500">
+          <div className="grid grid-cols-7 gap-1.5 text-[10px] uppercase tracking-wider text-zinc-400">
             <span>lat</span>
             <span>lng</span>
             <span>soil</span>
@@ -145,7 +145,7 @@ export function TerrainOverlay() {
               {samples.length > 1 && (
                 <button
                   onClick={() => setSamples((ss) => ss.filter((_, j) => j !== i))}
-                  className="p-1 text-zinc-500 hover:text-red-400"
+                  className="p-1 text-zinc-400 hover:text-red-400"
                   aria-label="Remove sample"
                 >
                   <Trash2 className="h-3.5 w-3.5" />

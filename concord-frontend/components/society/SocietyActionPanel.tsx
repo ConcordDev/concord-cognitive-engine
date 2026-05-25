@@ -178,7 +178,7 @@ export function SocietyActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -189,7 +189,7 @@ export function SocietyActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">{indicatorResult.countryName} · {indicatorResult.indicator}</div>
             {indicatorResult.latest && <div className="text-2xl font-bold text-blue-300">{indicatorResult.latest.value.toLocaleString()}<span className="text-xs text-zinc-400"> ({indicatorResult.latest.year})</span></div>}
-            <div className="text-[10px] text-zinc-500">{indicatorResult.count} years of data</div>
+            <div className="text-[10px] text-zinc-400">{indicatorResult.count} years of data</div>
             <div className="flex gap-0.5 mt-1 h-8 items-end">{indicatorResult.series.slice(0, 20).reverse().map((p, i) => { const max = Math.max(...indicatorResult.series.map(s => s.value)); return <div key={i} className="flex-1 rounded-t-sm bg-blue-400" style={{ height: `${(p.value / max) * 100}%` }} title={`${p.year}: ${p.value}`} />; })}</div>
           </div>
         )}
@@ -197,22 +197,22 @@ export function SocietyActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">{countryResult.name} · {countryResult.iso3}</div>
             <div className="text-[11px] text-zinc-300">capital: {countryResult.capital}</div>
-            <div className="text-[10px] text-zinc-500">region: {countryResult.region}</div>
-            <div className="text-[10px] text-zinc-500">income: {countryResult.incomeLevel}</div>
-            <div className="text-[10px] text-zinc-500">lending: {countryResult.lendingType}</div>
-            {countryResult.latitude != null && countryResult.longitude != null && <div className="text-[10px] text-zinc-500 font-mono">{countryResult.latitude.toFixed(2)}, {countryResult.longitude.toFixed(2)}</div>}
+            <div className="text-[10px] text-zinc-400">region: {countryResult.region}</div>
+            <div className="text-[10px] text-zinc-400">income: {countryResult.incomeLevel}</div>
+            <div className="text-[10px] text-zinc-400">lending: {countryResult.lendingType}</div>
+            {countryResult.latitude != null && countryResult.longitude != null && <div className="text-[10px] text-zinc-400 font-mono">{countryResult.latitude.toFixed(2)}, {countryResult.longitude.toFixed(2)}</div>}
           </div>
         )}
         {compareResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Compare · {compareResult.indicator}</div>
-            {compareResult.points.slice(0, 10).map((p, i) => { const max = Math.max(...compareResult.points.map(p => p.value)); return <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-12 text-purple-200">{p.country}</span><div className="flex-1 h-2 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-purple-400" style={{ width: `${(p.value / max) * 100}%` }} /></div><span className="font-mono text-purple-200 w-24 text-right">{p.value.toLocaleString()}</span><span className="text-zinc-500">({p.year})</span></div>; })}
+            {compareResult.points.slice(0, 10).map((p, i) => { const max = Math.max(...compareResult.points.map(p => p.value)); return <div key={i} className="text-[10px] text-zinc-300 mt-0.5 flex items-center gap-2"><span className="font-mono w-12 text-purple-200">{p.country}</span><div className="flex-1 h-2 bg-zinc-800 rounded-sm overflow-hidden"><div className="h-full bg-purple-400" style={{ width: `${(p.value / max) * 100}%` }} /></div><span className="font-mono text-purple-200 w-24 text-right">{p.value.toLocaleString()}</span><span className="text-zinc-400">({p.year})</span></div>; })}
           </div>
         )}
         {catalogResult && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Indicator catalog · {catalogResult.count} aliases</div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-1 mt-1">{Object.entries(catalogResult.indicators).slice(0, 30).map(([alias, code]) => <button key={alias} type="button" onClick={() => setIndicator(alias)} className="text-left text-[10px] bg-amber-500/5 hover:bg-amber-500/20 border border-amber-500/20 rounded px-2 py-1"><div className="text-amber-200 font-mono">{alias}</div><div className="text-zinc-500 text-[9px] truncate">{code}</div></button>)}</div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1 mt-1">{Object.entries(catalogResult.indicators).slice(0, 30).map(([alias, code]) => <button key={alias} type="button" onClick={() => setIndicator(alias)} className="text-left text-[10px] bg-amber-500/5 hover:bg-amber-500/20 border border-amber-500/20 rounded px-2 py-1"><div className="text-amber-200 font-mono">{alias}</div><div className="text-zinc-400 text-[9px] truncate">{code}</div></button>)}</div>
           </div>
         )}
       </div>

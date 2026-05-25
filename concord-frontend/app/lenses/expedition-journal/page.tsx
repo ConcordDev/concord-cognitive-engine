@@ -134,7 +134,7 @@ export default function ExpeditionJournalPage() {
         </nav>
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading expeditions…</div>
+          <div className="flex items-center gap-2 text-sm text-gray-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading expeditions…</div>
         )}
 
         {!loading && tab === 'world' && (

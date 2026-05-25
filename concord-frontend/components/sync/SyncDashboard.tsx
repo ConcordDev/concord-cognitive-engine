@@ -279,12 +279,12 @@ export function SyncDashboard() {
             <div className="flex items-center gap-3">
               {status.state === 'synced' && <CheckCircle2 className="h-6 w-6 text-emerald-400" />}
               {status.state === 'needs_attention' && <AlertTriangle className="h-6 w-6 text-amber-400" />}
-              {(status.state === 'all_offline' || status.state === 'no_devices') && <WifiOff className="h-6 w-6 text-zinc-500" />}
+              {(status.state === 'all_offline' || status.state === 'no_devices') && <WifiOff className="h-6 w-6 text-zinc-400" />}
               <div>
                 <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${(STATE_BADGE[status.state] || STATE_BADGE.no_devices).cls}`}>
                   {(STATE_BADGE[status.state] || STATE_BADGE.no_devices).text}
                 </span>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-zinc-400">
                   Last sync {status.lastSyncAt ? ago(status.lastSyncAt) : 'never'}
                 </p>
               </div>
@@ -309,7 +309,7 @@ export function SyncDashboard() {
             {openConflicts.map((c) => (
               <li key={c.id} className="rounded-lg border border-amber-800/40 bg-zinc-950/60 p-3">
                 <p className="text-sm font-semibold text-zinc-100">{c.title}</p>
-                <p className="text-[11px] text-zinc-500">DTU {c.dtuId} · detected {ago(c.detectedAt)}</p>
+                <p className="text-[11px] text-zinc-400">DTU {c.dtuId} · detected {ago(c.detectedAt)}</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <ConflictSide tag="LOCAL" side={c.local} />
                   <ConflictSide tag="REMOTE" side={c.remote} />
@@ -345,7 +345,7 @@ export function SyncDashboard() {
         >
           <GitMerge className="h-4 w-4 text-amber-400" />
           Report a sync conflict
-          <span className="text-[11px] font-normal text-zinc-500">
+          <span className="text-[11px] font-normal text-zinc-400">
             {showConflictForm ? '(hide)' : '(when two devices edited the same DTU)'}
           </span>
         </button>
@@ -418,7 +418,7 @@ export function SyncDashboard() {
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Devices</h2>
         {devices.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-500">
+          <p className="rounded-lg border border-dashed border-zinc-800 p-6 text-center text-sm text-zinc-400">
             No devices registered yet. Add one above to start syncing your DTUs.
           </p>
         ) : (
@@ -432,7 +432,7 @@ export function SyncDashboard() {
                       : <WifiOff className="h-5 w-5 text-zinc-600" aria-label="offline" />}
                     <div>
                       <p className="text-sm font-semibold text-zinc-100">{d.label}</p>
-                      <p className="text-[11px] text-zinc-500">
+                      <p className="text-[11px] text-zinc-400">
                         {d.online ? 'Online' : `Last seen ${ago(d.lastSeenAt)}`}
                         {' · '}<Clock className="inline h-3 w-3" /> last sync {ago(d.lastSyncAt)}
                         {d.lastSyncStatus === 'quota_exceeded' && (
@@ -472,7 +472,7 @@ export function SyncDashboard() {
 
                 {/* Quota usage bar */}
                 <div className="mt-3">
-                  <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
                     <span className="flex items-center gap-1">
                       <HardDrive className="h-3 w-3" /> {fmtBytes(d.usedBytes)} of {fmtBytes(d.quotaBytes)}
                     </span>
@@ -500,7 +500,7 @@ export function SyncDashboard() {
                         onChange={(e) => setQuotaInput(e.target.value)}
                         className="w-24 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100"
                       />
-                      <span className="text-xs text-zinc-500">GB</span>
+                      <span className="text-xs text-zinc-400">GB</span>
                       <button
                         type="button" onClick={() => applyQuota(d.id)}
                         disabled={busy === `quota:${d.id}`}
@@ -543,7 +543,7 @@ export function SyncDashboard() {
                             }`}
                           >
                             <span className="font-semibold">{sc.label}</span>
-                            <span className="block text-[10px] text-zinc-500">{sc.note}</span>
+                            <span className="block text-[10px] text-zinc-400">{sc.note}</span>
                           </button>
                         );
                       })}
@@ -560,7 +560,7 @@ export function SyncDashboard() {
       <section>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wider text-zinc-400">Sync activity</h2>
         {timeline.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-500">
+          <p className="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-sm text-zinc-400">
             No sync activity yet.
           </p>
         ) : (
@@ -569,7 +569,7 @@ export function SyncDashboard() {
             <ul className="mt-3 space-y-1.5">
               {logs.slice(0, 12).map((l) => (
                 <li key={l.id} className="flex items-start gap-2 text-xs text-zinc-400">
-                  <span className="mt-0.5 w-20 shrink-0 font-mono text-[10px] text-zinc-600">{ago(l.at)}</span>
+                  <span className="mt-0.5 w-20 shrink-0 font-mono text-[10px] text-zinc-400">{ago(l.at)}</span>
                   <span>{l.message || l.kind}</span>
                 </li>
               ))}
@@ -601,9 +601,9 @@ export function SyncDashboard() {
 function Stat({ label, value, hint, warn }: { label: string; value: string; hint?: string; warn?: boolean }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 font-mono text-lg ${warn ? 'text-amber-300' : 'text-emerald-300'}`}>{value}</div>
-      {hint && <div className="text-[10px] text-zinc-600">{hint}</div>}
+      {hint && <div className="text-[10px] text-zinc-400">{hint}</div>}
     </div>
   );
 }
@@ -614,9 +614,9 @@ function ConflictSide({ tag, side }: {
 }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-2">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{tag} · {side.deviceLabel}</p>
+      <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">{tag} · {side.deviceLabel}</p>
       <p className="mt-0.5 text-xs text-zinc-200">{side.summary}</p>
-      <p className="text-[10px] text-zinc-600">edited {new Date(side.editedAt).toLocaleString()}</p>
+      <p className="text-[10px] text-zinc-400">edited {new Date(side.editedAt).toLocaleString()}</p>
     </div>
   );
 }

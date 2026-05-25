@@ -81,15 +81,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     <div
       className="fixed inset-0 z-[120] flex items-start justify-center bg-black/70 backdrop-blur-sm pt-[12vh] px-4"
       onClick={onClose}
-      role="presentation"
-    >
+      role="presentation" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="w-full max-w-xl rounded-xl border border-neon-cyan/30 bg-lattice-void shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
-      >
+        aria-label="Command palette" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center gap-2 border-b border-lattice-border px-3 py-2.5">
           <Search className="w-4 h-4 text-neon-cyan shrink-0" />
           <input
@@ -100,12 +98,12 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             placeholder="Jump to any lens action…"
             className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-gray-600"
           />
-          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-500" />}
-          <kbd className="text-[10px] text-gray-500 border border-lattice-border rounded px-1">Esc</kbd>
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+          <kbd className="text-[10px] text-gray-400 border border-lattice-border rounded px-1">Esc</kbd>
         </div>
         <div ref={listRef} className="max-h-[50vh] overflow-y-auto">
           {commands.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-gray-500">
+            <div className="px-4 py-8 text-center text-xs text-gray-400">
               {loading ? 'Searching…' : indexed === 0 ? 'Command index not available yet.' : 'No matching actions.'}
             </div>
           ) : (
@@ -124,7 +122,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                   {Icon ? <Icon className="w-4 h-4 text-neon-cyan shrink-0" /> : <Command className="w-4 h-4 text-neon-cyan shrink-0" />}
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm text-white truncate">{cmd.action}</span>
-                    <span className="block text-[11px] text-gray-500 truncate">{lens?.name || cmd.domain}</span>
+                    <span className="block text-[11px] text-gray-400 truncate">{lens?.name || cmd.domain}</span>
                   </span>
                   {idx === active && <CornerDownLeft className="w-3.5 h-3.5 text-neon-cyan shrink-0" />}
                 </button>
@@ -132,7 +130,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             })
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-lattice-border px-3 py-1.5 text-[10px] text-gray-600">
+        <div className="flex items-center justify-between border-t border-lattice-border px-3 py-1.5 text-[10px] text-gray-400">
           <span>{commands.length} of {indexed} actions</span>
           <span>↑↓ navigate · ↵ open · Esc close</span>
         </div>

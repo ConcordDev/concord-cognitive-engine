@@ -28,23 +28,23 @@ interface Props {
 export default function RevisionLineageTree({ revisions, maxRows = 6 }: Props) {
   const rows = (revisions as Revision[]).slice(-maxRows);
   if (rows.length === 0) {
-    return <p className="text-xs text-gray-500 italic">No prior revisions — this is the original.</p>;
+    return <p className="text-xs text-gray-400 italic">No prior revisions — this is the original.</p>;
   }
   return (
     <div className="space-y-1.5">
       {rows.map((r, i) => (
         <div key={`${r.revision_num}-${i}`} className="relative">
           <div className="flex items-start gap-2 p-2 rounded bg-zinc-800/40 border border-zinc-700/60">
-            <GitBranch className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
+            <GitBranch className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 text-xs">
                 <span className="font-mono text-gray-400">rev {r.revision_num}</span>
-                <span className="text-gray-500">·</span>
+                <span className="text-gray-400">·</span>
                 <span className="font-mono text-gray-300">lvl {Math.round(r.level_at_revision || 0)}</span>
                 {r.composer && (
                   <>
-                    <span className="text-gray-500">·</span>
-                    <span className="text-gray-500 italic">{r.composer.replace('_', ' ')}</span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-400 italic">{r.composer.replace('_', ' ')}</span>
                   </>
                 )}
                 {r.author_kind === 'npc' && (
@@ -58,7 +58,7 @@ export default function RevisionLineageTree({ revisions, maxRows = 6 }: Props) {
                 <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{r.description}</p>
               )}
               {Number.isFinite(r.max_damage_before) && Number.isFinite(r.max_damage_after) && (
-                <p className="text-[11px] text-gray-500 mt-0.5">
+                <p className="text-[11px] text-gray-400 mt-0.5">
                   max damage {r.max_damage_before} → {r.max_damage_after}
                 </p>
               )}

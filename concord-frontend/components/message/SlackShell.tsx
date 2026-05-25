@@ -58,7 +58,7 @@ export function SlackShell({ activeNav, onNavChange, badges = {}, channelList, m
               title={n.label}
               className={cn(
                 'relative w-12 h-12 m-1 rounded flex items-center justify-center transition-colors',
-                active ? 'bg-violet-500/15 text-violet-200' : 'text-gray-500 hover:text-white hover:bg-white/[0.04]',
+                active ? 'bg-violet-500/15 text-violet-200' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]',
               )}
             >
               <Icon className="w-5 h-5" />

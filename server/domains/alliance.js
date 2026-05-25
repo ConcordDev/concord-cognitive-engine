@@ -11,6 +11,7 @@ export default function registerAllianceActions(registerLensAction) {
    * params.weights — optional { capabilities, values, resources, complementarity } weight overrides
    */
   registerLensAction("alliance", "compatibilityScore", (ctx, artifact, params) => {
+  try {
     const a = artifact.data.partnerA || {};
     const b = artifact.data.partnerB || {};
 
@@ -115,7 +116,8 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.compatibilityScore = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * networkAnalysis
@@ -125,6 +127,7 @@ export default function registerAllianceActions(registerLensAction) {
    * artifact.data.edges: [{ source, target, weight? }]
    */
   registerLensAction("alliance", "networkAnalysis", (ctx, artifact, params) => {
+  try {
     const nodes = artifact.data.nodes || [];
     const edges = artifact.data.edges || [];
 
@@ -293,7 +296,8 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.networkAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * riskAssessment
@@ -303,6 +307,7 @@ export default function registerAllianceActions(registerLensAction) {
    * params.concentrationThreshold — pct threshold for concentration risk (default 30)
    */
   registerLensAction("alliance", "riskAssessment", (ctx, artifact, params) => {
+  try {
     const alliances = artifact.data.alliances || [];
     if (alliances.length === 0) {
       return { ok: true, result: { message: "No alliances provided for risk assessment." } };
@@ -429,7 +434,8 @@ export default function registerAllianceActions(registerLensAction) {
 
     artifact.data.riskAssessment = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Cross-org collaboration primitives — Slack Connect / Discord

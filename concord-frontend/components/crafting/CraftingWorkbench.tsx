@@ -232,8 +232,7 @@ function AssemblyGridPanel() {
                   ? 'bg-amber-500/15 border-amber-500/40'
                   : 'bg-white/5 border-dashed border-white/15 hover:border-white/30'
               }`}
-              title={c ? 'Click to clear' : 'Click or drop to fill'}
-            >
+              title={c ? 'Click to clear' : 'Click or drop to fill'} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               {c ? (
                 <>
                   <span className="text-[9px] leading-tight text-amber-200 break-words">{c.material}</span>

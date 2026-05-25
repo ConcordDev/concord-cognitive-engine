@@ -342,6 +342,7 @@ export default function registerGameDesignActions(registerLensAction) {
 
   // ── Levels — grid tilemap editor ────────────────────────────────────
   registerLensAction("game-design", "level-create", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
@@ -361,7 +362,8 @@ export default function registerGameDesignActions(registerLensAction) {
     gdListB(s.levels, userId).push(level);
     saveGdState();
     return { ok: true, result: { level } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("game-design", "level-list", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1020,6 +1022,7 @@ export default function registerGameDesignActions(registerLensAction) {
 
   // Reachability / structure analysis of the narrative graph.
   registerLensAction("game-design", "narrative-graph", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     const nodes = (s.narrativeNodes.get(userId) || []).filter((n) => n.gameId === String(params.gameId));
@@ -1062,10 +1065,12 @@ export default function registerGameDesignActions(registerLensAction) {
           : `${unreachable.length} unreachable · ${orphans.length} orphaned`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Entity balance report ──────────────────────────────────────────
   registerLensAction("game-design", "balance-report", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
@@ -1101,7 +1106,8 @@ export default function registerGameDesignActions(registerLensAction) {
         verdict: outliers.length === 0 ? "stat spread is even" : `${outliers.length} entity(ies) sit far above the curve`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Whole-project JSON export ──────────────────────────────────────
   registerLensAction("game-design", "game-export", (ctx, _a, params = {}) => {
@@ -1163,6 +1169,7 @@ export default function registerGameDesignActions(registerLensAction) {
   // mechanics/loops the runtime should advertise. The frontend renders
   // and steps this scene on a <canvas> — no engine code on the server.
   registerLensAction("game-design", "runtime-compile", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     const level = gdFindLevel(s, userId, params.levelId);
@@ -1241,7 +1248,8 @@ export default function registerGameDesignActions(registerLensAction) {
       compiledAt: gdNow(),
     };
     return { ok: true, result: { scene } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Collision / physics config on a level ──────────────────────────
   registerLensAction("game-design", "level-collision-get", (ctx, _a, params = {}) => {
@@ -1293,6 +1301,7 @@ export default function registerGameDesignActions(registerLensAction) {
   // or generated server-side — the user provides the source.
   const GD_ASSET_KINDS = ["sprite", "tileset", "audio", "texture", "font", "other"];
   registerLensAction("game-design", "asset-import", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
@@ -1321,7 +1330,8 @@ export default function registerGameDesignActions(registerLensAction) {
     gdListB(s.assets, userId).push(asset);
     saveGdState();
     return { ok: true, result: { asset } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("game-design", "asset-list", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1572,6 +1582,7 @@ export default function registerGameDesignActions(registerLensAction) {
   // frontend runtime reports these after a session. The macro stores
   // them; playtest-report aggregates real runs into balance verdicts.
   registerLensAction("game-design", "playtest-record", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     const game = gdGame(s, userId, params.gameId);
@@ -1594,7 +1605,8 @@ export default function registerGameDesignActions(registerLensAction) {
     gdListB(s.playtests, userId).push(run);
     saveGdState();
     return { ok: true, result: { run } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("game-design", "playtest-list", (ctx, _a, params = {}) => {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1618,6 +1630,7 @@ export default function registerGameDesignActions(registerLensAction) {
   // Aggregate real playtest runs into a balance report — closes the
   // design → playtest → rebalance loop with measured data only.
   registerLensAction("game-design", "playtest-report", (ctx, _a, params = {}) => {
+  try {
     const s = getGdState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = gdAid(ctx);
     if (!gdGame(s, userId, params.gameId)) return { ok: false, error: "game not found" };
@@ -1659,7 +1672,8 @@ export default function registerGameDesignActions(registerLensAction) {
               : "balance reads healthy from measured runs",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 6. Collaborative real-time level editing ───────────────────────
   // A collab session lets multiple participants share a level. Edits

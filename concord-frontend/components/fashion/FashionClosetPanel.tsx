@@ -19,7 +19,7 @@ interface Item {
 const CATEGORIES = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory', 'bag', 'activewear'];
 const VALUE_COLOR: Record<string, string> = {
   excellent: 'text-emerald-400', good: 'text-sky-400', moderate: 'text-amber-400',
-  poor: 'text-rose-400', unworn: 'text-zinc-500',
+  poor: 'text-rose-400', unworn: 'text-zinc-400',
 };
 
 export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
@@ -62,7 +62,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -110,7 +110,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
       )}
 
       {items.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No items. Add pieces to build your digital closet.
         </div>
       ) : (
@@ -131,7 +131,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{i.name}</p>
-                  <p className="text-[10px] text-zinc-500 capitalize">
+                  <p className="text-[10px] text-zinc-400 capitalize">
                     {i.category}{i.brand ? ` · ${i.brand}` : ''}{i.color ? ` · ${i.color}` : ''}
                   </p>
                 </div>
@@ -150,7 +150,7 @@ export function FashionClosetPanel({ onChange }: { onChange: () => void }) {
                 <span className="inline-block mt-2 text-[10px] text-emerald-400">Flat-lay cutout applied</span>
               )}
               <div className="flex items-center justify-between mt-2">
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-[10px] text-zinc-400">
                   worn {i.timesWorn}× ·{' '}
                   <span className={VALUE_COLOR[i.valueRating]}>
                     {i.costPerWear != null ? `$${i.costPerWear}/wear` : 'unworn'}

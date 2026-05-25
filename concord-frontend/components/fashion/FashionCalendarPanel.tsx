@@ -85,13 +85,13 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
         <CalendarDays className="w-3.5 h-3.5 text-fuchsia-400" />
         <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-100" />
-        <span className="text-[11px] text-zinc-500">{entries.length} wears logged</span>
+        <span className="text-[11px] text-zinc-400">{entries.length} wears logged</span>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : entries.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           Nothing logged for {month}. Log what you wear to build your style history.
         </div>
       ) : (
@@ -100,8 +100,8 @@ export function FashionCalendarPanel({ onChange }: { onChange: () => void }) {
             <li key={idx} className="flex items-center justify-between bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
               <span className="text-xs text-zinc-200">{e.label}</span>
               <span className="flex items-center gap-2">
-                <span className={cn('text-[10px] uppercase', e.kind === 'outfit' ? 'text-fuchsia-400' : 'text-zinc-500')}>{e.kind}</span>
-                <span className="text-[11px] text-zinc-500">{e.date}</span>
+                <span className={cn('text-[10px] uppercase', e.kind === 'outfit' ? 'text-fuchsia-400' : 'text-zinc-400')}>{e.kind}</span>
+                <span className="text-[11px] text-zinc-400">{e.date}</span>
               </span>
             </li>
           ))}

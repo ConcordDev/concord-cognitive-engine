@@ -112,7 +112,7 @@ export default function UxSuiteLensPage() {
             <ComponentWorkbench />
           </div>
 
-          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Real semantic homes
           </h2>
           <p className="mb-3 text-[11px] text-slate-400">
@@ -131,7 +131,7 @@ export default function UxSuiteLensPage() {
             if (!items.length) return null;
             return (
               <div key={g.id} className="mb-6">
-                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{g.label}</h2>
+                <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{g.label}</h2>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((c) => {
                     const Icon = c.icon;
@@ -145,7 +145,7 @@ export default function UxSuiteLensPage() {
                               <ArrowRight className="h-3 w-3 opacity-0 transition group-hover:opacity-100" />
                             </div>
                             <p className="mt-0.5 text-[11px] text-slate-400">{c.description}</p>
-                            <p className="mt-1 text-[10px] text-slate-500">→ {c.homeLabel}</p>
+                            <p className="mt-1 text-[10px] text-slate-400">→ {c.homeLabel}</p>
                           </div>
                         </div>
                       </Link>

@@ -66,7 +66,7 @@ export function DisciplineSearch() {
       {/* Search bar */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -102,7 +102,7 @@ export function DisciplineSearch() {
       {/* Discipline chips */}
       {disciplines.length > 0 && (
         <div>
-          <h4 className="text-[10px] text-gray-500 uppercase mb-2">Disciplines</h4>
+          <h4 className="text-[10px] text-gray-400 uppercase mb-2">Disciplines</h4>
           <div className="flex flex-wrap gap-1.5">
             {disciplines.map((d) => (
               <button
@@ -124,7 +124,7 @@ export function DisciplineSearch() {
       {/* Tag cloud */}
       {tags.length > 0 && (
         <div>
-          <h4 className="text-[10px] text-gray-500 uppercase mb-2">Tag Cloud</h4>
+          <h4 className="text-[10px] text-gray-400 uppercase mb-2">Tag Cloud</h4>
           <div className="flex flex-wrap gap-2 items-baseline">
             {tags.slice(0, 40).map((t) => {
               const scale = 0.7 + (t.count / maxTagCount) * 0.9;
@@ -145,13 +145,13 @@ export function DisciplineSearch() {
 
       {/* Results */}
       <div>
-        <h4 className="text-[10px] text-gray-500 uppercase mb-2">
+        <h4 className="text-[10px] text-gray-400 uppercase mb-2">
           {searched ? `${results.length} ${results.length === 1 ? 'result' : 'results'}` : 'Results'}
         </h4>
         {loading ? (
           <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
         ) : results.length === 0 ? (
-          <div className="text-center py-10 text-gray-500 text-sm">No projects match your search.</div>
+          <div className="text-center py-10 text-gray-400 text-sm">No projects match your search.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {results.map((p) => (
@@ -163,15 +163,15 @@ export function DisciplineSearch() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                  <div className="text-[11px] text-gray-500">by {p.userId} · {p.discipline}</div>
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-500">
+                  <div className="text-[11px] text-gray-400">by {p.userId} · {p.discipline}</div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations}</span>
                     <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{p.commentCount}</span>
                   </div>
                   {p.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
-                      {p.tags.slice(0, 3).map((t) => <span key={t} className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-500">#{t}</span>)}
+                      {p.tags.slice(0, 3).map((t) => <span key={t} className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">#{t}</span>)}
                     </div>
                   )}
                 </div>

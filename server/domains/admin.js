@@ -11,6 +11,7 @@ export default function registerAdminActions(registerLensAction) {
    * params.stdDevThreshold — standard deviation threshold for anomaly flagging (default 2)
    */
   registerLensAction("admin", "auditLog", (ctx, artifact, params) => {
+  try {
     const entries = artifact.data.entries || [];
     if (entries.length === 0) {
       return { ok: true, result: { message: "No audit log entries to analyze." } };
@@ -174,7 +175,8 @@ export default function registerAdminActions(registerLensAction) {
 
     artifact.data.auditLogAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * permissionMatrix
@@ -185,6 +187,7 @@ export default function registerAdminActions(registerLensAction) {
    * artifact.data.sodRules: [{ name, conflicting: [perm1, perm2] }] — optional separation-of-duty rules
    */
   registerLensAction("admin", "permissionMatrix", (ctx, artifact, params) => {
+  try {
     const roles = artifact.data.roles || [];
     const users = artifact.data.users || [];
     const sodRules = artifact.data.sodRules || [];
@@ -310,7 +313,8 @@ export default function registerAdminActions(registerLensAction) {
 
     artifact.data.permissionMatrix = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * systemHealth
@@ -321,6 +325,7 @@ export default function registerAdminActions(registerLensAction) {
    * params.thresholds — optional { cpu, memory, disk, latency, errorRate } critical thresholds
    */
   registerLensAction("admin", "systemHealth", (ctx, artifact, params) => {
+  try {
     const metrics = artifact.data.metrics || [];
     if (metrics.length === 0) {
       return { ok: true, result: { message: "No metrics data provided." } };
@@ -482,7 +487,8 @@ export default function registerAdminActions(registerLensAction) {
 
     artifact.data.systemHealth = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ===========================================================================
   // Ops-console backlog — Datadog / Grafana parity.

@@ -132,7 +132,7 @@ export function LiveCohorts() {
       )}
 
       <div className="flex items-center gap-2">
-        <label className="text-[10px] uppercase tracking-wider text-gray-500">Join as</label>
+        <label className="text-[10px] uppercase tracking-wider text-gray-400">Join as</label>
         <input
           value={learnerName} onChange={e => setLearnerName(e.target.value)}
           placeholder="Your name (blank = your account)"
@@ -141,11 +141,11 @@ export function LiveCohorts() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500 py-6">
+        <div className="flex items-center gap-2 text-xs text-gray-400 py-6">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading sessions…
         </div>
       ) : cohorts.length === 0 ? (
-        <p className="text-sm text-gray-500 py-8 text-center">No live sessions scheduled yet.</p>
+        <p className="text-sm text-gray-400 py-8 text-center">No live sessions scheduled yet.</p>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {cohorts.map(c => (
@@ -153,14 +153,14 @@ export function LiveCohorts() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h4 className="text-sm font-bold text-white truncate">{c.title}</h4>
-                  <p className="text-[11px] text-gray-500">Instructor: {c.instructor}</p>
+                  <p className="text-[11px] text-gray-400">Instructor: {c.instructor}</p>
                 </div>
                 <span className={cn('text-[10px] px-2 py-0.5 rounded border font-bold uppercase shrink-0 flex items-center gap-1', STATUS_STYLE[c.status])}>
                   {c.status === 'live' && <Radio className="w-2.5 h-2.5" />}
                   {c.status}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-gray-500">
+              <div className="flex items-center gap-3 text-[10px] text-gray-400">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
                   {new Date(c.scheduledAt).toLocaleString()}

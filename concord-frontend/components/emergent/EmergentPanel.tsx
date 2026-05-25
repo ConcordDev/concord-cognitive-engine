@@ -25,7 +25,7 @@ function EmergentPanel() {
           <Brain className="w-4 h-4 text-neon-purple" />
           Emergent Council
         </h2>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-400">
           {
             emergents.filter(
               (e) => e.state === 'active' || e.status === 'active' || e.active === true
@@ -44,8 +44,8 @@ function EmergentPanel() {
       ) : emergents.length === 0 ? (
         <div className="text-center py-6">
           <Brain className="w-8 h-8 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm text-gray-500">No emergent entities detected</p>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-sm text-gray-400">No emergent entities detected</p>
+          <p className="text-xs text-gray-400 mt-1">
             The council will appear when emergents are active
           </p>
         </div>

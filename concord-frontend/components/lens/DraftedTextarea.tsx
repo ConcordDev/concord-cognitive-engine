@@ -111,7 +111,7 @@ export function DraftedTextarea({
           {status === 'saved' && lastSavedAt && (
             <>
               <Check className="w-2.5 h-2.5 text-emerald-400" aria-hidden="true" />
-              <span className="text-zinc-500">saved</span>
+              <span className="text-zinc-400">saved</span>
             </>
           )}
           {status === 'error' && (

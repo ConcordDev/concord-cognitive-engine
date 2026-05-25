@@ -98,7 +98,7 @@ export function SnapshotManager({ onApplied }: { onApplied?: () => void }) {
           placeholder="Snapshot label (optional)"
           aria-label="Snapshot label"
           maxLength={80}
-          className="flex-1 px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="flex-1 px-3 py-1.5 text-xs bg-zinc-900 border border-zinc-700 rounded text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
         />
         <button
           onClick={capture}
@@ -121,7 +121,7 @@ export function SnapshotManager({ onApplied }: { onApplied?: () => void }) {
           <Loader2 className="w-4 h-4 animate-spin" /> Loading snapshots…
         </div>
       ) : snapshots.length === 0 ? (
-        <p className="text-[11px] text-gray-500 italic">No snapshots yet — capture one to roll back later.</p>
+        <p className="text-[11px] text-gray-400 italic">No snapshots yet — capture one to roll back later.</p>
       ) : (
         <ul className="space-y-1.5">
           {snapshots.map((s) => (
@@ -153,7 +153,7 @@ export function SnapshotManager({ onApplied }: { onApplied?: () => void }) {
                 disabled={busy === s.id}
                 aria-label={`Delete snapshot ${s.label}`}
                 title="Delete snapshot"
-                className="text-gray-500 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
+                className="text-gray-400 hover:text-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 rounded"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

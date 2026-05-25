@@ -66,15 +66,15 @@ export function BrainPoolStatus() {
       {status.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">/api/brain/status unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Reachable</div>
-          <div className="mt-0.5 font-mono text-lg text-fuchsia-300">{reachable} <span className="text-[10px] text-zinc-500">/ {brains.length}</span></div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Reachable</div>
+          <div className="mt-0.5 font-mono text-lg text-fuchsia-300">{reachable} <span className="text-[10px] text-zinc-400">/ {brains.length}</span></div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Inflight now</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Inflight now</div>
           <div className="mt-0.5 font-mono text-lg text-fuchsia-300">{totalInflight}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Total requests</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Total requests</div>
           <div className="mt-0.5 font-mono text-lg text-fuchsia-300">{totalReq.toLocaleString()}</div>
         </div>
       </div>
@@ -89,19 +89,19 @@ export function BrainPoolStatus() {
               </div>
               <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] ${b.reachable ? 'bg-emerald-500/20 text-emerald-200' : 'bg-rose-500/30 text-rose-200'}`}>{b.reachable ? 'UP' : 'DOWN'}</span>
             </div>
-            <div className="mt-1 grid grid-cols-3 gap-1.5 text-[10px] text-zinc-500">
+            <div className="mt-1 grid grid-cols-3 gap-1.5 text-[10px] text-zinc-400">
               <span className="flex items-center gap-0.5"><Activity className="h-3 w-3" />inflight {b.inflight ?? 0}</span>
               <span>req {b.totalRequests ?? 0}</span>
               <span>err {b.totalErrors ?? 0}</span>
             </div>
-            {(b.host || b.url) && <p className="mt-0.5 line-clamp-1 font-mono text-[9px] text-zinc-600">{b.host || b.url}</p>}
+            {(b.host || b.url) && <p className="mt-0.5 line-clamp-1 font-mono text-[9px] text-zinc-400">{b.host || b.url}</p>}
           </div>
         ))}
         {brains.length === 0 && !status.isPending && !status.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No brains reported. Backend may be initializing.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No brains reported. Backend may be initializing.</div>
         )}
       </div>
-      {status.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling brain pool…</div>}
+      {status.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling brain pool…</div>}
     </div>
   );
 }

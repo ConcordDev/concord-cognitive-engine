@@ -54,7 +54,7 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
       {loading ? (
         <div className="py-10 text-center text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
       ) : spaces.length === 0 ? (
-        <div className="panel p-12 text-center text-gray-500">
+        <div className="panel p-12 text-center text-gray-400">
           <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p>No demo spaces yet</p>
           <p className="text-sm mt-1">Create a shareable demo app for a model</p>
@@ -70,7 +70,7 @@ export function SpacesPanel({ defaultModelId = '' }: { defaultModelId?: string }
                   {sp.visibility}
                 </span>
               </div>
-              {sp.description && <p className="text-xs text-gray-500 mb-2 line-clamp-2">{sp.description}</p>}
+              {sp.description && <p className="text-xs text-gray-400 mb-2 line-clamp-2">{sp.description}</p>}
               <p className="text-xs text-neon-cyan font-mono mb-2 truncate">{sp.modelId}</p>
               <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
                 <span className="bg-lattice-surface px-1.5 py-0.5 rounded">{sp.sdk}</span>
@@ -116,9 +116,9 @@ function SpaceModal({ defaultModelId, onClose, onDone }: {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div className="bg-lattice-bg border border-lattice-border rounded-xl w-full max-w-md p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}>
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">New Demo Space</h2>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded" aria-label="Close"><X className="w-5 h-5" /></button>

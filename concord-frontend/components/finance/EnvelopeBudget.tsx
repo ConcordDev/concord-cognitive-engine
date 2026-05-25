@@ -83,7 +83,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Wallet className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Envelope budgets</span>
-        <span className="ml-auto text-[10px] text-gray-500">YNAB-style zero-based</span>
+        <span className="ml-auto text-[10px] text-gray-400">YNAB-style zero-based</span>
         <button onClick={() => setCreating(v => !v)} className="p-1 text-gray-400 hover:text-white" title="New envelope">
           <Plus className="w-4 h-4" />
         </button>
@@ -134,11 +134,11 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : envelopes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500">
+          <div className="px-3 py-10 text-center text-xs text-gray-400">
             <Wallet className="w-6 h-6 mx-auto mb-2 opacity-30" />
             No envelopes yet. Hit + to create one.
           </div>
@@ -155,11 +155,11 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
                     {overspent && <span className="text-[10px] text-red-300 inline-flex items-center gap-0.5"><AlertTriangle className="w-3 h-3" /> over</span>}
                     <span className="ml-auto text-xs font-mono tabular-nums">
                       <span className={overspent ? 'text-red-300' : 'text-white'}>${e.spentThisMonth.toFixed(0)}</span>
-                      <span className="text-gray-500"> / ${e.monthlyTarget.toFixed(0)}</span>
+                      <span className="text-gray-400"> / ${e.monthlyTarget.toFixed(0)}</span>
                     </span>
                     <button
                       onClick={() => remove(e.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-400"
                       title="Delete"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -171,7 +171,7 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
                       style={{ width: `${Math.min(100, pct)}%` }}
                     />
                   </div>
-                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-500">
+                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-gray-400">
                     <span>Remaining: <span className={overspent ? 'text-red-300' : 'text-cyan-300'}>${remaining.toFixed(0)}</span></span>
                     {e.rolloverEnabled && <span>Rolls over · ${e.currentBalance.toFixed(0)} carry</span>}
                   </div>
@@ -181,9 +181,9 @@ export function EnvelopeBudget({ monthlyIncome = 0 }: EnvelopeBudgetProps) {
           </ul>
         )}
       </div>
-      <footer className="px-3 py-2 border-t border-white/10 text-[10px] text-gray-500 flex items-center justify-between">
+      <footer className="px-3 py-2 border-t border-white/10 text-[10px] text-gray-400 flex items-center justify-between">
         <span>Total spent: <span className="text-white tabular-nums">${totalSpent.toFixed(0)}</span></span>
-        <span>Savings rate: <span className={cn('tabular-nums', income > 0 ? 'text-green-400' : 'text-gray-500')}>{income > 0 ? `${(((income - totalSpent) / income) * 100).toFixed(0)}%` : '—'}</span></span>
+        <span>Savings rate: <span className={cn('tabular-nums', income > 0 ? 'text-green-400' : 'text-gray-400')}>{income > 0 ? `${(((income - totalSpent) / income) * 100).toFixed(0)}%` : '—'}</span></span>
       </footer>
     </div>
   );

@@ -59,11 +59,11 @@ export function NewsBriefing() {
         </span>
       </header>
       {loading || !briefing ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Composing…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Composing…</div>
       ) : (
         <div className="p-4 space-y-4 max-h-[600px] overflow-y-auto">
           <p className="text-sm text-cyan-300 font-medium">{briefing.greeting}</p>
-          <p className="text-[10px] text-gray-500">{briefing.date}</p>
+          <p className="text-[10px] text-gray-400">{briefing.date}</p>
           {(['topStories', 'business', 'tech', 'science'] as const).map(k => {
             const sec = briefing[k];
             return (

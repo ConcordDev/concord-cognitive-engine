@@ -152,7 +152,7 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
       aria-label={`${manifest?.label || lensId} first-run guide`}
     >
       {/* Dim backdrop */}
-      <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} />
+      <div className="absolute inset-0 bg-black/40 pointer-events-auto" onClick={() => finish('skipped')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
 
       {/* Spotlight halo */}
       {spotlight && (
@@ -182,11 +182,11 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
           <h2 className="text-sm font-medium text-zinc-100 flex-1">
             {manifest?.label || lensId} · quick tour
           </h2>
-          <span className="text-[10px] font-mono text-zinc-500">{step + 1} / {total}</span>
+          <span className="text-[10px] font-mono text-zinc-400">{step + 1} / {total}</span>
           <button
             type="button"
             onClick={() => finish('skipped')}
-            className="text-zinc-500 hover:text-zinc-300 -mr-1"
+            className="text-zinc-400 hover:text-zinc-300 -mr-1"
             aria-label="Skip tour"
           >
             <X className="w-4 h-4" />

@@ -109,7 +109,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
             </span>
           </div>
         )}
-        <p className="text-xs text-zinc-500 mb-3">
+        <p className="text-xs text-zinc-400 mb-3">
           Questions adapt to your mastery — weaker and overdue words appear more often.
         </p>
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -154,7 +154,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] text-zinc-500">Question {idx + 1} / {questions.length}</p>
+        <p className="text-[10px] text-zinc-400">Question {idx + 1} / {questions.length}</p>
         <p className="text-[10px] text-zinc-400">{score.points} pts · {score.correct} correct</p>
       </div>
       <div className="h-1 bg-zinc-800 rounded-full mb-3 overflow-hidden">
@@ -165,7 +165,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 mb-3">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">
           {q.mode === 'typing' ? 'Type the word for this definition' : 'Pick the definition'}
           {q.partOfSpeech ? ` · ${q.partOfSpeech}` : ''}
         </p>
@@ -189,7 +189,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
                   !graded && 'border-zinc-800 bg-zinc-900/60 hover:border-fuchsia-600 text-zinc-200',
                   isAnswer && 'border-emerald-600 bg-emerald-900/30 text-emerald-200',
                   graded && isPicked && !isAnswer && 'border-rose-600 bg-rose-900/30 text-rose-200',
-                  graded && !isPicked && !isAnswer && 'border-zinc-800 bg-zinc-900/40 text-zinc-500',
+                  graded && !isPicked && !isAnswer && 'border-zinc-800 bg-zinc-900/40 text-zinc-400',
                 )}
               >
                 {c}
@@ -236,7 +236,7 @@ export function QuizEngine({ onComplete }: { onComplete?: () => void }) {
             {!graded.correct && (
               <p className="text-zinc-400 mt-0.5">Answer: <span className="text-zinc-200">{graded.correctAnswer}</span></p>
             )}
-            <p className="text-zinc-500 mt-0.5">Mastery level now {graded.level} / 5</p>
+            <p className="text-zinc-400 mt-0.5">Mastery level now {graded.level} / 5</p>
           </div>
         </div>
       )}

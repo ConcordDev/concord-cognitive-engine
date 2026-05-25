@@ -305,7 +305,7 @@ function MidiPreview({ dtuId, filename, downloadUrl }: { dtuId: string; filename
         <span className="text-neon-purple text-lg">{'\u266B'}</span>
         <span className="text-sm text-zinc-200">{filename}</span>
         {midiData?.duration && (
-          <span className="text-xs text-zinc-500">{Math.round(midiData.duration)}s</span>
+          <span className="text-xs text-zinc-400">{Math.round(midiData.duration)}s</span>
         )}
       </div>
       <div className="h-24 bg-zinc-800 rounded overflow-hidden relative">
@@ -322,7 +322,7 @@ function MidiPreview({ dtuId, filename, downloadUrl }: { dtuId: string; filename
             })}
           </svg>
         ) : (
-          <div className="flex items-center justify-center h-full text-xs text-zinc-500">
+          <div className="flex items-center justify-center h-full text-xs text-zinc-400">
             MIDI piano roll preview
           </div>
         )}
@@ -356,7 +356,7 @@ function CalendarEventPreview({ dtuId, filename, downloadUrl }: { dtuId: string;
         <div>
           <p className="text-sm font-medium text-zinc-200">{summary}</p>
           {dtStart && <p className="text-xs text-zinc-400">{dtStart}</p>}
-          {location && <p className="text-xs text-zinc-500">{location}</p>}
+          {location && <p className="text-xs text-zinc-400">{location}</p>}
         </div>
       </div>
       <DownloadButton url={downloadUrl} filename={filename} label="Add to Calendar" />

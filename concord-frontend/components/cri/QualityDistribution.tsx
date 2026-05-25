@@ -60,7 +60,7 @@ export function QualityDistribution() {
         )}
       </header>
       {dtus.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">DTU substrate unreachable.</div>}
-      {dtus.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
+      {dtus.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Cell label="Sampled DTUs" value={list.length.toString()} />
         <Cell label="With CRETI" value={withCreti.length.toString()} />
@@ -90,7 +90,7 @@ export function QualityDistribution() {
                 <div key={i} className="flex-1 rounded-t bg-cyan-500/40" style={{ height: `${(n / histMax) * 100}%` }} title={`${(i / 10).toFixed(1)}–${((i + 1) / 10).toFixed(1)}: ${n}`} />
               ))}
             </div>
-            <div className="mt-1 flex justify-between font-mono text-[9px] text-zinc-500"><span>0.0</span><span>0.5</span><span>1.0</span></div>
+            <div className="mt-1 flex justify-between font-mono text-[9px] text-zinc-400"><span>0.0</span><span>0.5</span><span>1.0</span></div>
           </div>
         </>
       )}
@@ -101,7 +101,7 @@ export function QualityDistribution() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-lg text-cyan-300">{value}</div>
     </div>
   );

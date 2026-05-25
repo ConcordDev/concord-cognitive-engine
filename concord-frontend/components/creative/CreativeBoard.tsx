@@ -121,7 +121,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const bounds = cards.reduce((b, c) => ({
@@ -179,7 +179,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
           </svg>
 
           {cards.length === 0 && (
-            <p className="absolute left-4 top-4 text-[11px] text-zinc-500 italic">
+            <p className="absolute left-4 top-4 text-[11px] text-zinc-400 italic">
               Empty board. Add a card from the toolbar above.
             </p>
           )}
@@ -211,7 +211,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
                       onBlur={(e) => saveCard(card.id, { content: e.target.value })}
                       rows={2}
                       className={cn('flex-1 bg-transparent text-xs focus:outline-none resize-none',
-                        card.done ? 'text-zinc-500 line-through' : 'text-zinc-100')} />
+                        card.done ? 'text-zinc-400 line-through' : 'text-zinc-100')} />
                   </div>
                 ) : card.type === 'link' ? (
                   <div className="space-y-1">
@@ -278,7 +278,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
           })}
         </div>
       )}
-      {sel && <p className="text-[10px] text-zinc-600">Selected card · drag to move · use the color row to recolor.</p>}
+      {sel && <p className="text-[10px] text-zinc-400">Selected card · drag to move · use the color row to recolor.</p>}
     </div>
   );
 }

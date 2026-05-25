@@ -74,7 +74,7 @@ export function AcademicSearchPanel() {
     <div className="p-3 space-y-3">
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             value={query}
@@ -111,7 +111,7 @@ export function AcademicSearchPanel() {
       )}
 
       {!loading && searched && results.length === 0 && !error && (
-        <p className="text-center text-xs text-gray-500 py-6">No results found.</p>
+        <p className="text-center text-xs text-gray-400 py-6">No results found.</p>
       )}
 
       <div className="space-y-2">
@@ -139,9 +139,9 @@ export function AcademicSearchPanel() {
                 {w.venue ? ` · ${w.venue}` : ''}
               </p>
               {w.abstract && (
-                <p className="text-[11px] text-gray-500 line-clamp-3">{w.abstract}</p>
+                <p className="text-[11px] text-gray-400 line-clamp-3">{w.abstract}</p>
               )}
-              <div className="flex items-center gap-3 text-[10px] text-gray-500">
+              <div className="flex items-center gap-3 text-[10px] text-gray-400">
                 {typeof w.citationCount === 'number' && (
                   <span className="text-amber-300">{w.citationCount} citations</span>
                 )}

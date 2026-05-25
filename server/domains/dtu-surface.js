@@ -180,6 +180,7 @@ export default function registerDtuSurfaceMacros(register) {
    * sourceLens, title, citation count, and recent surfaces.
    */
   register("dtu_surface", "provenance_trail", async (ctx, input = {}) => {
+  try {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
 
@@ -228,5 +229,6 @@ export default function registerDtuSurfaceMacros(register) {
     }
 
     return { ok: true, dtuId, trail, depthReached: trail.length > 0 ? Math.max(...trail.map(t => t.depth)) : 0 };
-  }, { note: "walk citation graph upstream + join surface counts" });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+}, { note: "walk citation graph upstream + join surface counts" });
 }

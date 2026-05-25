@@ -72,7 +72,7 @@ export function CountryPicker(props: Props) {
     };
     return (
       <div className="space-y-1">
-        <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+        <span className="text-[10px] uppercase tracking-wider text-zinc-400">
           {props.label} · {selected.length}/{max}
         </span>
         {selected.length > 0 && (
@@ -120,7 +120,7 @@ export function CountryPicker(props: Props) {
 
   return (
     <label className="block space-y-1">
-      <span className="text-[10px] uppercase tracking-wider text-zinc-500">{props.label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-zinc-400">{props.label}</span>
       <select
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}

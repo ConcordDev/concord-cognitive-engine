@@ -53,7 +53,7 @@ function ValidationBar({ label, pass, icon: Icon, detail }: {
       ) : (
         <XCircle className="w-3.5 h-3.5 text-red-400" />
       )}
-      {detail && <span className="text-[10px] text-gray-500">{detail}</span>}
+      {detail && <span className="text-[10px] text-gray-400">{detail}</span>}
     </div>
   );
 }
@@ -73,7 +73,7 @@ export default function InspectorPanel({
     return (
       <div className={`w-72 flex-shrink-0 ${panel} p-4`}>
         <h3 className="text-sm font-semibold text-gray-400 mb-2">Inspector</h3>
-        <p className="text-xs text-gray-600">Click any element in the district to inspect it.</p>
+        <p className="text-xs text-gray-400">Click any element in the district to inspect it.</p>
       </div>
     );
   }
@@ -83,7 +83,7 @@ export default function InspectorPanel({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-white">Inspector</h3>
-        <button onClick={onClose} className="text-gray-500 hover:text-white text-xs">Close</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-xs">Close</button>
       </div>
 
       {/* Building Inspector */}
@@ -94,12 +94,12 @@ export default function InspectorPanel({
               <Building2 className="w-5 h-5 text-cyan-400" />
               <div>
                 <p className="text-sm font-medium text-white">{selectedBuilding.dtuId}</p>
-                <p className="text-[10px] text-gray-500">by {selectedBuilding.creator}</p>
+                <p className="text-[10px] text-gray-400">by {selectedBuilding.creator}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <StatusBadge status={selectedBuilding.validationStatus} />
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-gray-400">
                 Placed {selectedBuilding.placedAt}
               </span>
             </div>
@@ -158,7 +158,7 @@ export default function InspectorPanel({
                     style={{ width: `${validationReport.categories.habitability.score}%` }}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[10px] text-gray-500">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 mt-2 text-[10px] text-gray-400">
                   {Object.entries(validationReport.categories.habitability.factors).map(([key, val]) => (
                     <div key={key} className="flex justify-between">
                       <span>{key.replace(/([A-Z])/g, ' $1').trim()}</span>
@@ -180,7 +180,7 @@ export default function InspectorPanel({
                       <div key={i} className="p-2 rounded bg-red-500/10 border border-red-500/20 text-[10px]">
                         <p className="text-red-300 font-medium">{fp.memberType} {fp.memberId}</p>
                         <p className="text-red-400/70">{fp.failureMode}</p>
-                        <p className="text-gray-500 mt-0.5">{fp.suggestion}</p>
+                        <p className="text-gray-400 mt-0.5">{fp.suggestion}</p>
                       </div>
                     ))}
                   </div>
@@ -202,20 +202,20 @@ export default function InspectorPanel({
             {selectedInfra.type === 'data' && <Activity className="w-5 h-5 text-purple-400" />}
             <div>
               <p className="text-sm font-medium text-white capitalize">{selectedInfra.type} Network</p>
-              <p className="text-[10px] text-gray-500">by {selectedInfra.creator}</p>
+              <p className="text-[10px] text-gray-400">by {selectedInfra.creator}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Capacity</p>
+              <p className="text-gray-400">Capacity</p>
               <p className="font-medium text-white">{selectedInfra.capacity.toLocaleString()}</p>
             </div>
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Citations</p>
+              <p className="text-gray-400">Citations</p>
               <p className="font-medium text-white">{selectedInfra.citations}</p>
             </div>
             <div className="p-2 rounded bg-white/5 col-span-2">
-              <p className="text-gray-500">Nodes</p>
+              <p className="text-gray-400">Nodes</p>
               <p className="font-medium text-white">{selectedInfra.path.length} connection points</p>
             </div>
           </div>
@@ -231,23 +231,23 @@ export default function InspectorPanel({
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Soil Type</p>
+              <p className="text-gray-400">Soil Type</p>
               <p className="font-medium text-white capitalize">{selectedTerrain.soilType}</p>
             </div>
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Elevation</p>
+              <p className="text-gray-400">Elevation</p>
               <p className="font-medium text-white">{selectedTerrain.elevation.toFixed(1)}m</p>
             </div>
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Bedrock</p>
+              <p className="text-gray-400">Bedrock</p>
               <p className="font-medium text-white">{selectedTerrain.bedrockDepth.toFixed(1)}m</p>
             </div>
             <div className="p-2 rounded bg-white/5">
-              <p className="text-gray-500">Water Table</p>
+              <p className="text-gray-400">Water Table</p>
               <p className="font-medium text-white">{selectedTerrain.waterTableDepth.toFixed(1)}m</p>
             </div>
             <div className="p-2 rounded bg-white/5 col-span-2">
-              <p className="text-gray-500">Seismic Zone</p>
+              <p className="text-gray-400">Seismic Zone</p>
               <p className="font-medium text-white">Zone {selectedTerrain.seismicZone}</p>
             </div>
           </div>

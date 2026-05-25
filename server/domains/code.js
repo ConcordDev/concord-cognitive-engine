@@ -23,6 +23,7 @@ export default function registerCodeActions(registerLensAction) {
    * loops, nestingDepth, dependencies? }]`.
    */
   registerLensAction("code", "complexityAnalysis", (ctx, artifact, _params) => {
+  try {
     const modules = artifact.data?.modules || [];
     if (modules.length === 0) {
       return { ok: true, result: { modules: [], message: "No modules to analyze." } };
@@ -79,12 +80,14 @@ export default function registerCodeActions(registerLensAction) {
         hotspots: hotspots.slice(0, 10),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * dependencyAudit — License + version + circular dependency check.
    */
   registerLensAction("code", "dependencyAudit", (ctx, artifact, _params) => {
+  try {
     const deps = artifact.data?.dependencies || [];
     if (deps.length === 0) {
       return { ok: true, result: { dependencies: [], message: "No dependencies to audit." } };
@@ -159,12 +162,14 @@ export default function registerCodeActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * coverageAnalysis — Statement/branch/function coverage from instrumented runs.
    */
   registerLensAction("code", "coverageAnalysis", (ctx, artifact, _params) => {
+  try {
     const coverage = artifact.data?.coverage || [];
     if (coverage.length === 0) {
       return { ok: true, result: { files: [], message: "No coverage data available." } };
@@ -204,12 +209,14 @@ export default function registerCodeActions(registerLensAction) {
         meetsThreshold80: overallStatement >= 80,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * changeRiskAssessment — Heuristic risk score for a proposed changeset.
    */
   registerLensAction("code", "changeRiskAssessment", (ctx, artifact, _params) => {
+  try {
     const changes = artifact.data?.changes || [];
     if (changes.length === 0) {
       return { ok: true, result: { files: [], overallRisk: "low", message: "No changes to assess." } };
@@ -261,7 +268,8 @@ export default function registerCodeActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── IDE-grade macros (parity sprint) ──────────────────────────────────
 
@@ -809,6 +817,7 @@ Rules:
   });
 
   registerLensAction("code", "projects-create", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const name = String(params.name || "").trim();
@@ -835,7 +844,8 @@ Rules:
     }
     saveWS();
     return { ok: true, result: { project: proj } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "projects-delete", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -854,6 +864,7 @@ Rules:
   // ── Files CRUD ─────────────────────────────────────────────────
 
   registerLensAction("code", "files-tree", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -866,9 +877,11 @@ Rules:
       tree.push({ path: p, language: langFromPath(p), size: files.get(p).content.length, modifiedAt: files.get(p).modifiedAt });
     }
     return { ok: true, result: { tree, count: tree.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "files-read", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -878,7 +891,8 @@ Rules:
     if (!files.has(path)) return { ok: false, error: "file not found" };
     const file = files.get(path);
     return { ok: true, result: { path, content: file.content, language: langFromPath(path), modifiedAt: file.modifiedAt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "files-write", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -935,6 +949,7 @@ Rules:
   // ── Virtual Git (project-scoped) ──────────────────────────────
 
   registerLensAction("code", "git-status", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -951,7 +966,8 @@ Rules:
         clean: git.modified.size === 0 && git.staged.size === 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "git-stage", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -981,6 +997,7 @@ Rules:
   });
 
   registerLensAction("code", "git-commit", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1007,7 +1024,8 @@ Rules:
     git.staged.clear();
     saveWS();
     return { ok: true, result: { commit: { ...commit, tree: undefined } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "git-log", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1061,6 +1079,7 @@ Rules:
 
   // ── Branch merge (3-way with conflict detection) ──────────────
   registerLensAction("code", "git-merge", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1113,10 +1132,12 @@ Rules:
     git.branchHeads[git.branch] = commit.id;
     saveWS();
     return { ok: true, result: { merged: true, commit: { ...commit, tree: undefined }, filesChanged: Object.keys(merged).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── File diff vs HEAD ─────────────────────────────────────────
   registerLensAction("code", "git-diff", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1137,10 +1158,12 @@ Rules:
         status: !files.has(path) ? 'deleted' : committed === '' ? 'added' : added + removed > 0 ? 'modified' : 'unchanged',
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Blame (per-line commit attribution) ───────────────────────
   registerLensAction("code", "git-blame", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1163,7 +1186,8 @@ Rules:
         : { lineNo: idx + 1, text: line, commitId: null, message: 'Uncommitted (working tree)', author: userId, committedAt: null };
     });
     return { ok: true, result: { path, blame, lineCount: lines.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Discard working changes to a file ─────────────────────────
   registerLensAction("code", "git-discard", (ctx, _a, params = {}) => {
@@ -1188,6 +1212,7 @@ Rules:
 
   // ── Stash ─────────────────────────────────────────────────────
   registerLensAction("code", "git-stash", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1213,9 +1238,11 @@ Rules:
     git.staged.clear();
     saveWS();
     return { ok: true, result: { stashId: entry.id, stashedFiles: Object.keys(entry.files).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "git-stash-list", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
     return {
@@ -1224,7 +1251,8 @@ Rules:
         stashes: git.stashes.map((e) => ({ id: e.id, message: e.message, branch: e.branch, createdAt: e.createdAt, fileCount: Object.keys(e.files).length })),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "git-stash-pop", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1511,6 +1539,7 @@ Rules:
   // ── Find references (file-grep across project) ───────────────
 
   registerLensAction("code", "find-references", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1527,10 +1556,12 @@ Rules:
       });
     }
     return { ok: true, result: { symbol, references: refs.slice(0, 200), count: refs.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Symbol outline (Outline view / breadcrumbs) ───────────────
   registerLensAction("code", "symbols-outline", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1541,10 +1572,12 @@ Rules:
     const lang = langFromPath(path);
     const symbols = extractSymbols(files.get(path).content, lang);
     return { ok: true, result: { path, language: lang, symbols, count: symbols.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Diagnostics (Problems panel — heuristic static analysis) ──
   registerLensAction("code", "diagnostics", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1559,10 +1592,12 @@ Rules:
     const bySeverity = { error: 0, warning: 0, info: 0 };
     for (const p of problems) bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
     return { ok: true, result: { problems, total: problems.length, bySeverity, filesScanned: targets.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── TODO / FIXME tracker ──────────────────────────────────────
   registerLensAction("code", "todo-scan", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1580,7 +1615,8 @@ Rules:
     const byTag = {};
     for (const t of todos) byTag[t.tag] = (byTag[t.tag] || 0) + 1;
     return { ok: true, result: { todos, total: todos.length, byTag } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Search & replace across the project ───────────────────────
   registerLensAction("code", "replace-project", (ctx, _a, params = {}) => {
@@ -1624,6 +1660,7 @@ Rules:
 
   // ── Rename a symbol project-wide ──────────────────────────────
   registerLensAction("code", "rename-symbol", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1646,7 +1683,8 @@ Rules:
     }
     if (changed.length > 0) saveWS();
     return { ok: true, result: { from, to, changed, filesChanged: changed.length, totalOccurrences } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════
   //  Parity backlog — LSP IntelliSense, remote GitHub git, step
@@ -1728,6 +1766,7 @@ Rules:
   });
 
   registerLensAction("code", "lsp-completions", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1756,7 +1795,8 @@ Rules:
     }
     const completions = Array.from(seen.values()).slice(0, 100);
     return { ok: true, result: { completions, count: completions.length, prefix } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Remote GitHub repo (push / pull) ──────────────────────────
   // Pulls a real public GitHub repo into the virtual workspace via
@@ -1822,6 +1862,7 @@ Rules:
   });
 
   registerLensAction("code", "github-push", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projectId = String(params.projectId || "");
@@ -1854,9 +1895,11 @@ Rules:
         note: "Push staged locally. Connect a GitHub OAuth token in BYO keys to deliver.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "github-remote-status", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const git = ensureGit(s, aidC(ctx), String(params.projectId || ""));
     return {
@@ -1867,13 +1910,15 @@ Rules:
         hasRemote: !!git.remote?.provider,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Step debugger (breakpoints / watch / call stack) ──────────
   // Instruments the user's JS and executes it under the vm sandbox,
   // capturing a real call-stack + variable snapshot at each line
   // that carries a breakpoint.
   registerLensAction("code", "debug-run", (_ctx, _a, params = {}) => {
+  try {
     const code = String(params.code || "");
     const language = String(params.language || "javascript").toLowerCase();
     const breakpoints = Array.isArray(params.breakpoints)
@@ -1885,7 +1930,8 @@ Rules:
       return { ok: false, error: `step debugger supports JS/TS only (got ${language})` };
     }
     return runDebugSession(code, language, new Set(breakpoints), watch);
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Codebase-wide AI chat with @-file context ─────────────────
   // Cursor's killer feature: an AI chat where the user references
@@ -2128,10 +2174,22 @@ Rules:
     session.ops.push(op);
     if (session.ops.length > 2000) session.ops = session.ops.slice(-2000);
     saveWS();
+    // Phase 4 realtime push: broadcast the new op to every joined client on
+    // the session's room. Polling clients still work (the next `liveshare-poll`
+    // will return this op via the cursor path), but realtime clients see the
+    // edit immediately. The realtime layer is best-effort — if Socket.IO
+    // isn't wired (e.g. unit-test ctx), the polling path is the fallback.
+    try {
+      const rt = globalThis._concordREALTIME || globalThis.__CONCORD_REALTIME__;
+      if (rt?.io && typeof rt.io.to === "function") {
+        rt.io.to(`code:liveshare:${code}`).emit("liveshare:op", { code, op });
+      }
+    } catch { /* never fail the edit on emit error */ }
     return { ok: true, result: { op } };
   });
 
   registerLensAction("code", "liveshare-poll", (ctx, _a, params = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const code = String(params.code || "").trim().toUpperCase();
     const session = ensureSessions(s).get(code);
@@ -2146,7 +2204,8 @@ Rules:
         nextSince: session.ops.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("code", "liveshare-end", (ctx, _a, params = {}) => {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -2164,6 +2223,7 @@ Rules:
   // ── Dashboard summary ─────────────────────────────────────────
 
   registerLensAction("code", "workspace-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getWorkspaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidC(ctx);
     const projects = bucketC(s.projects, userId);
@@ -2191,7 +2251,8 @@ Rules:
         dirtyProjects,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────

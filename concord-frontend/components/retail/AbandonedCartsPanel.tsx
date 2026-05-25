@@ -60,9 +60,9 @@ export function AbandonedCartsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : carts.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />No abandoned carts.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><ShoppingCart className="w-6 h-6 mx-auto mb-2 opacity-30" />No abandoned carts.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {carts.map(c => (
@@ -70,12 +70,12 @@ export function AbandonedCartsPanel() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white font-mono">{c.id.slice(0, 16)}…</div>
-                    <div className="text-[10px] text-gray-500">{c.ageHours}h ago · {c.itemCount} items</div>
+                    <div className="text-[10px] text-gray-400">{c.ageHours}h ago · {c.itemCount} items</div>
                   </div>
                   <span className="font-mono text-sm text-amber-300 tabular-nums">${c.subtotal.toFixed(2)}</span>
                   <button onClick={() => recover(c.id)} className="px-2 py-1 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center gap-1"><Send className="w-3 h-3" />Recover</button>
                 </div>
-                <div className="mt-1 text-[10px] text-gray-500 truncate">{c.lines.map(l => `${l.qty}× ${l.name}`).join(' · ')}</div>
+                <div className="mt-1 text-[10px] text-gray-400 truncate">{c.lines.map(l => `${l.qty}× ${l.name}`).join(' · ')}</div>
               </li>
             ))}
           </ul>

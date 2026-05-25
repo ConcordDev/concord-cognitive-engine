@@ -63,7 +63,7 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -100,7 +100,7 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
           {patterns.map((p) => (
             <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <p className="text-xs font-semibold text-zinc-100">{p.name}</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {p.inhale}-{p.hold1}-{p.exhale}{p.hold2 ? `-${p.hold2}` : ''} · {p.use}
               </p>
               <button type="button" onClick={() => breathe(p.id)}
@@ -126,14 +126,14 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
             className="px-2.5 py-1.5 text-xs bg-sky-600 hover:bg-sky-500 text-white rounded-lg">Create</button>
         </div>
         {courses.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No courses yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No courses yet.</p>
         ) : (
           <ul className="space-y-2">
             {courses.map((c) => (
               <li key={c.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-zinc-200">{c.name}</span>
-                  <span className="text-[10px] text-zinc-500">{c.completedSessions}/{c.totalSessions}</span>
+                  <span className="text-[10px] text-zinc-400">{c.completedSessions}/{c.totalSessions}</span>
                 </div>
                 <div className="mt-1.5 h-2 rounded-full bg-zinc-800 overflow-hidden">
                   <div className={cn('h-full rounded-full', c.complete ? 'bg-emerald-500' : 'bg-sky-500')}
@@ -161,7 +161,7 @@ export function MhPracticePanel({ onChange }: { onChange: () => void }) {
             {sessions.slice(0, 6).map((s) => (
               <li key={s.id} className="flex items-center justify-between text-[11px] bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-zinc-300 capitalize">{s.title || s.type.replace(/_/g, ' ')}</span>
-                <span className="text-zinc-500">{s.durationMin} min · {s.date}</span>
+                <span className="text-zinc-400">{s.durationMin} min · {s.date}</span>
               </li>
             ))}
           </ul>

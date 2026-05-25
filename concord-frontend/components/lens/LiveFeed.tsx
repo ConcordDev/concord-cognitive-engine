@@ -122,14 +122,14 @@ export default function LiveFeed({
               <span>live</span>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-500">
+            <span className="inline-flex items-center gap-1 text-[10px] text-zinc-400">
               <WifiOff className="w-3 h-3" />
               <span>offline</span>
             </span>
           )}
         </div>
         {lastUpdated && (
-          <span className="text-[10px] text-zinc-500 inline-flex items-center gap-1">
+          <span className="text-[10px] text-zinc-400 inline-flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {relTime(lastUpdated)}
           </span>
@@ -137,7 +137,7 @@ export default function LiveFeed({
       </header>
 
       {list.length === 0 ? (
-        <div className="px-4 py-8 text-center text-xs text-zinc-500">{meta.emptyTip}</div>
+        <div className="px-4 py-8 text-center text-xs text-zinc-400">{meta.emptyTip}</div>
       ) : (
         <div className="divide-y divide-white/5">
           {hero && (
@@ -164,7 +164,7 @@ export default function LiveFeed({
                   {hero.summary && (
                     <p className="mt-1.5 text-xs text-zinc-400 line-clamp-2">{hero.summary}</p>
                   )}
-                  <div className="mt-1.5 text-[10px] text-zinc-500">{relTime(hero.pubDate)}</div>
+                  <div className="mt-1.5 text-[10px] text-zinc-400">{relTime(hero.pubDate)}</div>
                 </div>
               </div>
             </article>
@@ -181,12 +181,12 @@ export default function LiveFeed({
                   ) : (
                     <span className="text-sm text-zinc-200">{a.title}</span>
                   )}
-                  <div className="mt-0.5 text-[10px] text-zinc-500">
+                  <div className="mt-0.5 text-[10px] text-zinc-400">
                     {a.source}{a.pubDate ? ` · ${relTime(a.pubDate)}` : ''}
                   </div>
                 </div>
                 {a.link && (
-                  <a href={a.link} target="_blank" rel="noopener noreferrer" className="shrink-0 text-zinc-500 hover:text-zinc-300" aria-label="Open">
+                  <a href={a.link} target="_blank" rel="noopener noreferrer" className="shrink-0 text-zinc-400 hover:text-zinc-300" aria-label="Open">
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}

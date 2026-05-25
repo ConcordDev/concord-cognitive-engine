@@ -71,7 +71,7 @@ function highlight(code: string): { kind: 'kw' | 'str' | 'com' | 'txt'; text: st
 }
 
 const COLOR: Record<string, string> = {
-  kw: 'text-yellow-300', str: 'text-emerald-400', com: 'text-zinc-500', txt: 'text-yellow-100',
+  kw: 'text-yellow-300', str: 'text-emerald-400', com: 'text-zinc-400', txt: 'text-yellow-100',
 };
 
 export function CompileTool() {

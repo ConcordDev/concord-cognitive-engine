@@ -50,7 +50,7 @@ export function RecipeImporter({ onImported }: RecipeImporterProps) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <LinkIcon className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Recipe import</span>
-        <span className="ml-auto text-[10px] text-gray-500">JSON-LD schema.org first, LLM fallback</span>
+        <span className="ml-auto text-[10px] text-gray-400">JSON-LD schema.org first, LLM fallback</span>
       </header>
       <div className="p-4 space-y-3">
         <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function RecipeImporter({ onImported }: RecipeImporterProps) {
                 {Math.round(recipe.nutrition.calories)} kcal · P {Math.round(recipe.nutrition.protein_g)}g · C {Math.round(recipe.nutrition.carbs_g)}g · F {Math.round(recipe.nutrition.fat_g)}g
               </div>
             )}
-            <div className="text-[10px] text-gray-500 truncate">{recipe.sourceUrl}</div>
+            <div className="text-[10px] text-gray-400 truncate">{recipe.sourceUrl}</div>
           </div>
         )}
       </div>

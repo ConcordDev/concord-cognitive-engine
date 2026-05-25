@@ -113,7 +113,7 @@ export function PortfolioPanel() {
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Wallet className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-semibold text-gray-200">Holdings</span>
-            <span className="text-[10px] text-gray-500">{holdings.length} asset(s)</span>
+            <span className="text-[10px] text-gray-400">{holdings.length} asset(s)</span>
             <button onClick={() => setShowAddBuy(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1">
               <Plus className="w-3 h-3" />Record buy
             </button>
@@ -145,12 +145,12 @@ export function PortfolioPanel() {
 
           <div className="max-h-[28rem] overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : holdings.length === 0 ? (
-              <div className="px-3 py-10 text-center text-xs text-gray-500"><Wallet className="w-6 h-6 mx-auto mb-2 opacity-30" />No holdings yet. Record your first buy.</div>
+              <div className="px-3 py-10 text-center text-xs text-gray-400"><Wallet className="w-6 h-6 mx-auto mb-2 opacity-30" />No holdings yet. Record your first buy.</div>
             ) : (
               <table className="w-full text-xs">
-                <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                   <tr><th className="text-left py-1.5 pl-3">Asset</th><th className="text-right">Qty</th><th className="text-right">Avg cost</th><th className="text-right">Price</th><th className="text-right">Value</th><th className="text-right">PnL</th><th className="pr-3 text-right"></th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -158,13 +158,13 @@ export function PortfolioPanel() {
                     <tr key={h.symbol} className="hover:bg-white/[0.03]">
                       <td className="py-1.5 pl-3">
                         <div className="text-white font-semibold">{h.ticker}</div>
-                        <div className="text-[10px] text-gray-500">{h.chains.join(', ')} · {h.lotCount} lot{h.lotCount === 1 ? '' : 's'}</div>
+                        <div className="text-[10px] text-gray-400">{h.chains.join(', ')} · {h.lotCount} lot{h.lotCount === 1 ? '' : 's'}</div>
                       </td>
                       <td className="text-right font-mono text-gray-300">{h.qty.toFixed(h.qty < 1 ? 6 : 4)}</td>
                       <td className="text-right font-mono text-gray-400">${h.avgCostUsd.toFixed(2)}</td>
                       <td className="text-right font-mono text-white">{h.priceUsd !== null ? `$${h.priceUsd.toFixed(2)}` : '—'}</td>
                       <td className="text-right font-mono text-white">{h.marketValueUsd !== null ? `$${h.marketValueUsd.toLocaleString()}` : '—'}</td>
-                      <td className={cn('text-right font-mono', h.unrealizedPnlUsd === null ? 'text-gray-500' : h.unrealizedPnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
+                      <td className={cn('text-right font-mono', h.unrealizedPnlUsd === null ? 'text-gray-400' : h.unrealizedPnlUsd >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                         {h.unrealizedPnlUsd !== null && h.unrealizedPnlPct !== null ? `${h.unrealizedPnlUsd >= 0 ? '+' : ''}${h.unrealizedPnlPct.toFixed(2)}%` : '—'}
                       </td>
                       <td className="pr-3 text-right">
@@ -182,9 +182,9 @@ export function PortfolioPanel() {
 
         {/* Chain allocation pie */}
         <div className="bg-[#0d1117] border border-blue-500/15 rounded-lg p-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">By chain</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">By chain</div>
           {chainData.length === 0 ? (
-            <div className="py-10 text-center text-xs text-gray-500">No data yet.</div>
+            <div className="py-10 text-center text-xs text-gray-400">No data yet.</div>
           ) : (
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -216,9 +216,9 @@ function Tile({ label, value, sub, tone = 'neutral', bold }: { label: string; va
   const colour = tone === 'positive' ? 'text-emerald-300' : tone === 'negative' ? 'text-rose-300' : tone === 'amber' ? 'text-amber-300' : 'text-white';
   return (
     <div className={cn('p-3 rounded-lg border bg-black/30', bold ? 'border-blue-500/30' : 'border-white/10')}>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-xl font-mono tabular-nums', colour, bold && 'text-2xl font-bold')}>{value}</div>
-      {sub && <div className={cn('text-[10px] mt-0.5', tone === 'positive' ? 'text-emerald-400' : tone === 'negative' ? 'text-rose-400' : 'text-gray-500')}>{sub}</div>}
+      {sub && <div className={cn('text-[10px] mt-0.5', tone === 'positive' ? 'text-emerald-400' : tone === 'negative' ? 'text-rose-400' : 'text-gray-400')}>{sub}</div>}
     </div>
   );
 }

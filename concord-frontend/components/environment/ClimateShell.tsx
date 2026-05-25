@@ -68,7 +68,7 @@ export function ClimateShell({
           <header className="px-3 py-2 bg-emerald-500/5 border-b border-emerald-500/20 flex items-center gap-2">
             <Leaf className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Emissions by month · {currentYear}</span>
-            <span className="ml-auto text-[10px] text-gray-500">scope breakdown</span>
+            <span className="ml-auto text-[10px] text-gray-400">scope breakdown</span>
           </header>
           {scopeMonthly.length === 0 ? (
             <ScopeBar s1={ytdScope1} s2={ytdScope2} s3={ytdScope3} />
@@ -103,7 +103,7 @@ export function ClimateShell({
             <header className="px-3 py-2 bg-violet-500/5 border-b border-violet-500/20 flex items-center gap-2">
               <Building2 className="w-3.5 h-3.5 text-violet-400" />
               <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Supplier engagement</span>
-              <span className="ml-auto text-[10px] text-gray-500">{supplierCount}</span>
+              <span className="ml-auto text-[10px] text-gray-400">{supplierCount}</span>
             </header>
             <div className="p-3">
               <div className="flex items-baseline gap-2 mb-2">
@@ -113,7 +113,7 @@ export function ClimateShell({
               <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                 <div className="h-full bg-violet-400" style={{ width: `${supplierResponseRate}%` }} />
               </div>
-              <div className="mt-2 text-[10px] text-gray-500">
+              <div className="mt-2 text-[10px] text-gray-400">
                 {supplierReportedTonnes.toLocaleString(undefined, { maximumFractionDigits: 0 })} tCO₂e reported by suppliers
               </div>
             </div>
@@ -123,10 +123,10 @@ export function ClimateShell({
             <header className="px-3 py-2 bg-cyan-500/5 border-b border-cyan-500/20 flex items-center gap-2">
               <Target className="w-3.5 h-3.5 text-cyan-400" />
               <span className="text-xs uppercase font-semibold tracking-wider text-gray-300">Targets · {activeTargets} active</span>
-              <span className="ml-auto text-[10px] text-gray-500">{activeProjects} projects</span>
+              <span className="ml-auto text-[10px] text-gray-400">{activeProjects} projects</span>
             </header>
             {topTargets.length === 0 ? (
-              <div className="p-4 text-center text-xs text-gray-500">No targets yet.</div>
+              <div className="p-4 text-center text-xs text-gray-400">No targets yet.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {topTargets.slice(0, 3).map(t => (
@@ -139,7 +139,7 @@ export function ClimateShell({
                     <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div className={cn('h-full transition-all', t.onTrack ? 'bg-emerald-400' : 'bg-amber-400')} style={{ width: `${Math.min(100, Math.max(0, t.achievedPct))}%` }} />
                     </div>
-                    <div className="mt-0.5 flex justify-between text-[9px] text-gray-500">
+                    <div className="mt-0.5 flex justify-between text-[9px] text-gray-400">
                       <span>{t.achievedPct.toFixed(1)}% achieved</span>
                       <span>vs {t.expectedPct.toFixed(1)}% expected</span>
                     </div>
@@ -202,10 +202,10 @@ function Metric({ icon: Icon, label, value, caption, tone }: { icon: typeof Leaf
     <div className={cn('rounded-lg border bg-white/[0.02] p-2.5', TILE_TONE[tone])}>
       <div className="flex items-center gap-1.5 mb-0.5">
         <Icon className="w-3 h-3" />
-        <span className="text-[10px] uppercase tracking-wider text-gray-500">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider text-gray-400">{label}</span>
       </div>
       <div className="text-base font-mono font-bold tabular-nums text-white">{value}</div>
-      <div className="text-[10px] text-gray-500">{caption}</div>
+      <div className="text-[10px] text-gray-400">{caption}</div>
     </div>
   );
 }

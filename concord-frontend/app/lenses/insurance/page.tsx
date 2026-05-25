@@ -670,7 +670,7 @@ export default function InsuranceLensPage() {
   const renderCard = (item: LensItem<ArtifactDataUnion>) => {
     const d = item.data as unknown as Record<string, unknown>;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={cn(ds.heading3, 'line-clamp-1')}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -692,7 +692,7 @@ export default function InsuranceLensPage() {
                   {(d.coverageLimit as number) > 0 && <span className={ds.textMuted}>Limit: ${(d.coverageLimit as number)?.toLocaleString()}</span>}
                   {(d.deductible as number) > 0 && <span className={ds.textMuted}>Ded: ${d.deductible as number}</span>}
                 </div>
-                <p className={cn(ds.textMono, 'text-xs text-gray-500')}>{d.effectiveDate as string} to {d.expiryDate as string}</p>
+                <p className={cn(ds.textMono, 'text-xs text-gray-400')}>{d.effectiveDate as string} to {d.expiryDate as string}</p>
                 {(d.namedInsureds as string[])?.length > 0 && (
                   <p className={cn(ds.textMuted, 'text-xs')}><Users className="w-3 h-3 inline mr-1" />{(d.namedInsureds as string[]).join(', ')}</p>
                 )}
@@ -720,7 +720,7 @@ export default function InsuranceLensPage() {
                 {(d.paidAmount as number) > 0 && <span className={cn(ds.textMono, 'text-green-400')}>Paid: ${(d.paidAmount as number)?.toLocaleString()}</span>}
               </div>
               {Boolean(d.subrogation) && <span className={ds.badge('blue-400')}>Subrogation</span>}
-              {Boolean(d.dateOfLoss) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>Loss: {d.dateOfLoss as string}</p>}
+              {Boolean(d.dateOfLoss) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>Loss: {d.dateOfLoss as string}</p>}
             </>
           )}
 
@@ -756,7 +756,7 @@ export default function InsuranceLensPage() {
               {(d.coverageGaps as string[])?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">{(d.coverageGaps as string[]).map(g => <span key={g} className={ds.badge('red-400')}><AlertTriangle className="w-2.5 h-2.5" />{g}</span>)}</div>
               )}
-              {Boolean(d.nextRenewal) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>Next renewal: {d.nextRenewal as string}</p>}
+              {Boolean(d.nextRenewal) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>Next renewal: {d.nextRenewal as string}</p>}
             </>
           )}
 
@@ -770,7 +770,7 @@ export default function InsuranceLensPage() {
               </div>
               {Boolean(d.policyRef) && <p className={cn(ds.textMuted, 'text-xs')}>Policy: {d.policyRef as string}</p>}
               {Boolean(d.agent) && <p className={cn(ds.textMuted, 'text-xs')}>Agent: {d.agent as string}</p>}
-              {Boolean(d.period) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>{d.period as string}</p>}
+              {Boolean(d.period) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>{d.period as string}</p>}
             </>
           )}
 
@@ -778,7 +778,7 @@ export default function InsuranceLensPage() {
             <>
               <span className={ds.badge('blue-400')}>{d.type as string}</span>
               {Boolean(d.state) && <span className={ds.badge('gray-400')}>{d.state as string}</span>}
-              {Boolean(d.dueDate) && <p className={cn(ds.textMono, 'text-xs text-gray-500')}>Due: {d.dueDate as string}</p>}
+              {Boolean(d.dueDate) && <p className={cn(ds.textMono, 'text-xs text-gray-400')}>Due: {d.dueDate as string}</p>}
               {(d.creditsRequired as number) > 0 && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-lattice-elevated rounded-full overflow-hidden">
@@ -917,7 +917,7 @@ export default function InsuranceLensPage() {
                   <p className="text-lg font-bold text-white">{count}</p>
                   <p className={cn(ds.textMuted, 'text-xs capitalize')}>{s}</p>
                 </div>
-                {idx < CLAIM_STATUSES.length - 1 && <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />}
+                {idx < CLAIM_STATUSES.length - 1 && <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
               </div>
             );
           })}
@@ -1198,15 +1198,15 @@ export default function InsuranceLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalPolicies)}</p>
-                    <p className="text-[10px] text-gray-500">Policies</p>
+                    <p className="text-[10px] text-gray-400">Policies</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.gapCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.gapCount)}</p>
-                    <p className="text-[10px] text-gray-500">Gaps</p>
+                    <p className="text-[10px] text-gray-400">Gaps</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Array.isArray(actionResult.expiringSoon) && (actionResult.expiringSoon as unknown[]).length > 0 ? 'text-amber-400' : 'text-green-400'}`}>{Array.isArray(actionResult.expiringSoon) ? (actionResult.expiringSoon as unknown[]).length : 0}</p>
-                    <p className="text-[10px] text-gray-500">Expiring Soon</p>
+                    <p className="text-[10px] text-gray-400">Expiring Soon</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.gaps) && (actionResult.gaps as string[]).length > 0 && (
@@ -1224,11 +1224,11 @@ export default function InsuranceLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.averageChangePercent) > 2 ? 'text-red-400' : Number(actionResult.averageChangePercent) < -2 ? 'text-green-400' : 'text-neon-cyan'}`}>{String(actionResult.averageChangePercent)}%</p>
-                    <p className="text-[10px] text-gray-500">Avg Change</p>
+                    <p className="text-[10px] text-gray-400">Avg Change</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan capitalize">{String(actionResult.trend)}</p>
-                    <p className="text-[10px] text-gray-500">Trend</p>
+                    <p className="text-[10px] text-gray-400">Trend</p>
                   </div>
                 </div>
               </div>
@@ -1239,15 +1239,15 @@ export default function InsuranceLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.totalClaims)}</p>
-                    <p className="text-[10px] text-gray-500">Total Claims</p>
+                    <p className="text-[10px] text-gray-400">Total Claims</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-amber-400">{String(actionResult.openClaims)}</p>
-                    <p className="text-[10px] text-gray-500">Open</p>
+                    <p className="text-[10px] text-gray-400">Open</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.totalAmount).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Total Amount</p>
+                    <p className="text-[10px] text-gray-400">Total Amount</p>
                   </div>
                 </div>
               </div>
@@ -1258,11 +1258,11 @@ export default function InsuranceLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${actionResult.level === 'critical' ? 'text-red-400' : actionResult.level === 'high' ? 'text-orange-400' : actionResult.level === 'medium' ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.normalizedScore)}/100</p>
-                    <p className="text-[10px] text-gray-500">Risk Score</p>
+                    <p className="text-[10px] text-gray-400">Risk Score</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold capitalize ${actionResult.level === 'critical' ? 'text-red-400' : actionResult.level === 'high' ? 'text-orange-400' : actionResult.level === 'medium' ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.level)}</p>
-                    <p className="text-[10px] text-gray-500">Level</p>
+                    <p className="text-[10px] text-gray-400">Level</p>
                   </div>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -1276,9 +1276,9 @@ export default function InsuranceLensPage() {
 
       {/* Editor Modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-hidden flex flex-col')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

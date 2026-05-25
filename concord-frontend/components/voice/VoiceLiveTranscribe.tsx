@@ -134,7 +134,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
 
   if (!supported) {
     return (
-      <div className="bg-zinc-900/40 border border-dashed border-zinc-800 rounded-lg p-4 text-xs text-zinc-500">
+      <div className="bg-zinc-900/40 border border-dashed border-zinc-800 rounded-lg p-4 text-xs text-zinc-400">
         Live transcription needs the browser SpeechRecognition API (Chrome / Edge). Your browser does not support it.
       </div>
     );
@@ -150,7 +150,7 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
           placeholder="Live session title (optional)"
           className="flex-1 min-w-[160px] bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100 disabled:opacity-50"
         />
-        <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500"><Languages className="w-3 h-3" /></span>
+        <span className="inline-flex items-center gap-1 text-[11px] text-zinc-400"><Languages className="w-3 h-3" /></span>
         <select
           value={lang}
           onChange={e => setLang(e.target.value)}
@@ -182,31 +182,31 @@ export function VoiceLiveTranscribe({ onFinalized }: { onFinalized?: () => void 
 
       {session ? (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 min-h-[110px]">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1.5 inline-flex items-center gap-1">
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1.5 inline-flex items-center gap-1">
             {listening && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
             {session.title} · {session.language}
           </p>
           <p className="text-sm text-zinc-200 leading-relaxed">
             {session.words.length === 0 && <span className="text-zinc-600 italic">no data yet — start speaking</span>}
             {session.words.map(w => (
-              <span key={w.id} className={cn(w.isFinal ? 'text-zinc-100' : 'text-zinc-500 italic')}>{w.text} </span>
+              <span key={w.id} className={cn(w.isFinal ? 'text-zinc-100' : 'text-zinc-400 italic')}>{w.text} </span>
             ))}
           </p>
         </div>
       ) : (
-        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg p-4 text-xs text-zinc-500">
+        <div className="bg-zinc-900/20 border border-dashed border-zinc-800 rounded-lg p-4 text-xs text-zinc-400">
           No live session running. Press &ldquo;Go live&rdquo; to stream words as you speak.
         </div>
       )}
 
       {recent.length > 0 && (
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 mb-1">Recent live sessions</p>
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400 mb-1">Recent live sessions</p>
           <ul className="space-y-1">
             {recent.map(s => (
               <li key={s.id} className="flex items-center gap-2 bg-zinc-900/40 rounded px-2 py-1 text-xs">
                 <span className="flex-1 truncate text-zinc-300">{s.title}</span>
-                <span className="text-zinc-500">{s.wordCount} words</span>
+                <span className="text-zinc-400">{s.wordCount} words</span>
                 <span className={cn('px-1.5 rounded text-[10px]', s.status === 'finalized' ? 'bg-emerald-900/40 text-emerald-300' : 'bg-rose-900/40 text-rose-300')}>
                   {s.status}
                 </span>

@@ -170,7 +170,7 @@ export function MentorDirectoryPanel() {
             </div>
             <div className="text-right">
               <div className="flex items-center gap-1"><Stars rating={selected.rating} /></div>
-              <p className="text-xs text-zinc-500">{selected.reviewCount} reviews</p>
+              <p className="text-xs text-zinc-400">{selected.reviewCount} reviews</p>
             </div>
           </div>
           {selected.bio && <p className="text-sm text-zinc-300">{selected.bio}</p>}
@@ -204,7 +204,7 @@ export function MentorDirectoryPanel() {
         <div className="panel p-4 space-y-3">
           <h4 className="font-semibold text-sm flex items-center gap-2"><Star className="w-4 h-4 text-amber-400" /> Reviews ({reviews.length})</h4>
           {reviews.length === 0 ? (
-            <p className="text-xs text-zinc-500">No reviews yet. Be the first.</p>
+            <p className="text-xs text-zinc-400">No reviews yet. Be the first.</p>
           ) : reviews.map((rv) => (
             <div key={rv.id} className="lens-card text-sm">
               <div className="flex items-center justify-between">
@@ -274,7 +274,7 @@ export function MentorDirectoryPanel() {
 
       <div className="flex gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[160px]">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search mentors..." className="input-lattice w-full pl-9" />
         </div>
         <select value={skillFilter} onChange={(e) => setSkillFilter(e.target.value)} className="input-lattice">
@@ -287,9 +287,9 @@ export function MentorDirectoryPanel() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : mentors.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-8">No mentors found. List yourself as a mentor to seed the directory.</p>
+        <p className="text-sm text-zinc-400 text-center py-8">No mentors found. List yourself as a mentor to seed the directory.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {mentors.map((m) => (
@@ -306,7 +306,7 @@ export function MentorDirectoryPanel() {
                   <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300">{s}</span>
                 ))}
               </div>
-              <div className="flex items-center justify-between text-xs text-zinc-500 mt-1.5">
+              <div className="flex items-center justify-between text-xs text-zinc-400 mt-1.5">
                 <span>{m.experienceYears}y exp · {m.availability}</span>
                 <span className={cn(m.menteeCount < m.capacity ? 'text-neon-green' : 'text-amber-400')}>
                   {Math.max(0, m.capacity - m.menteeCount)} slots

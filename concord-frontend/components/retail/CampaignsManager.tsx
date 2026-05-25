@@ -99,7 +99,7 @@ export function CampaignsManager() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Megaphone className="w-4 h-4 text-purple-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Marketing campaigns</span>
-        <span className="ml-auto text-[10px] text-gray-500">{campaigns.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{campaigns.length}</span>
       </header>
 
       {/* Create */}
@@ -129,7 +129,7 @@ export function CampaignsManager() {
       {/* Performance chart */}
       {perfChart.length > 0 && (
         <div className="p-3 border-b border-white/10">
-          <p className="text-[10px] uppercase text-gray-500 mb-1">Campaign revenue</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-1">Campaign revenue</p>
           <ChartKit kind="bar" data={perfChart} xKey="name" height={160}
             series={[{ key: 'revenue', label: 'Revenue ($)', color: '#a855f7' }, { key: 'conversions', label: 'Conversions', color: '#22c55e' }]} />
         </div>
@@ -138,16 +138,16 @@ export function CampaignsManager() {
       {/* Campaign list */}
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : campaigns.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Megaphone className="w-6 h-6 mx-auto mb-2 opacity-30" />No campaigns yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Megaphone className="w-6 h-6 mx-auto mb-2 opacity-30" />No campaigns yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {campaigns.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03]">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-white font-medium flex-1 truncate">{c.name}</span>
-                  <span className="text-[10px] text-gray-500">{c.channel} · {c.segment}</span>
+                  <span className="text-[10px] text-gray-400">{c.channel} · {c.segment}</span>
                   <span className={cn('px-1.5 py-0.5 text-[9px] uppercase rounded', c.status === 'sent' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-gray-500/15 text-gray-300')}>{c.status}</span>
                   {c.status === 'draft' && (
                     <button onClick={() => send(c.id)} disabled={busy} className="px-2 py-0.5 text-[10px] rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 inline-flex items-center gap-1 disabled:opacity-40">
@@ -161,7 +161,7 @@ export function CampaignsManager() {
                     <span className="text-emerald-300">{c.conversions} conversions</span>
                     <span className="text-emerald-300">${c.revenue.toFixed(2)} revenue</span>
                     <div className="ml-auto flex items-center gap-1">
-                      <Target className="w-3 h-3 text-gray-500" />
+                      <Target className="w-3 h-3 text-gray-400" />
                       <select value={convForm[c.id] || ''} onChange={e => setConvForm({ ...convForm, [c.id]: e.target.value })} className="px-1 py-0.5 text-[10px] bg-lattice-deep border border-lattice-border rounded text-white">
                         <option value="">Attribute order…</option>
                         {orders.map(o => <option key={o.id} value={o.id}>{o.number} (${o.total})</option>)}

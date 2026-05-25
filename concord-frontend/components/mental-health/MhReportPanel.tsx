@@ -89,13 +89,13 @@ export function MhReportPanel() {
             ].map((c) => (
               <div key={c.label} className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
                 <p className="text-base font-bold text-zinc-100">{c.value}</p>
-                <p className="text-[10px] text-zinc-500 uppercase">{c.label}</p>
+                <p className="text-[10px] text-zinc-400 uppercase">{c.label}</p>
               </div>
             ))}
           </div>
 
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-            <p className="text-[10px] text-zinc-500 uppercase mb-1">Report preview · {s.from} → {s.to}</p>
+            <p className="text-[10px] text-zinc-400 uppercase mb-1">Report preview · {s.from} → {s.to}</p>
             <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-300 leading-relaxed max-h-48 overflow-y-auto">
               {report.text}
             </pre>
@@ -111,14 +111,14 @@ export function MhReportPanel() {
               <Download className="w-3.5 h-3.5" /> Mood CSV
             </button>
           </div>
-          <p className="text-[10px] text-zinc-600 italic">
+          <p className="text-[10px] text-zinc-400 italic">
             Self-reported tracking data, not a clinical assessment. Share only with people you trust.
           </p>
         </>
       )}
 
       {!s && !loading && (
-        <p className="text-[11px] text-zinc-500 italic py-4 text-center">
+        <p className="text-[11px] text-zinc-400 italic py-4 text-center">
           Generate a report to summarize your tracking for a therapist or doctor.
         </p>
       )}

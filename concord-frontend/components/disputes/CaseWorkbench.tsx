@@ -158,7 +158,7 @@ function StatusPill({ status }: { status: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[11px] uppercase tracking-wider text-zinc-500 mb-1">{label}</span>
+      <span className="block text-[11px] uppercase tracking-wider text-zinc-400 mb-1">{label}</span>
       {children}
     </label>
   );
@@ -263,11 +263,11 @@ export function CaseWorkbench() {
         {/* Case list */}
         <div className="space-y-2">
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-zinc-500 text-sm">
+            <div className="flex items-center justify-center py-10 text-zinc-400 text-sm">
               <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading cases…
             </div>
           ) : cases.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-zinc-800 py-10 text-center text-sm text-zinc-500">
+            <div className="rounded-lg border border-dashed border-zinc-800 py-10 text-center text-sm text-zinc-400">
               No cases yet. Open one to start dispute resolution.
             </div>
           ) : (
@@ -285,7 +285,7 @@ export function CaseWorkbench() {
                   <span className="text-sm font-medium text-zinc-200 truncate">{c.title}</span>
                   <StatusPill status={c.status} />
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-500">
+                <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400">
                   <span className="font-mono">#{c.caseNumber}</span>
                   <span>{fmtLabel(c.dispute_type)}</span>
                   {c.disputeAmount > 0 && (
@@ -294,7 +294,7 @@ export function CaseWorkbench() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-600">
+                <div className="flex items-center gap-3 mt-1 text-[11px] text-zinc-400">
                   <span className="flex items-center gap-0.5"><Paperclip className="w-3 h-3" />{c.evidenceCount}</span>
                   <span className="flex items-center gap-0.5"><MessageSquare className="w-3 h-3" />{c.messageCount}</span>
                   <span className="flex items-center gap-0.5"><Gavel className="w-3 h-3" />{c.offerCount}</span>
@@ -316,7 +316,7 @@ export function CaseWorkbench() {
               run={run}
             />
           ) : (
-            <div className="rounded-lg border border-dashed border-zinc-800 py-20 text-center text-sm text-zinc-500">
+            <div className="rounded-lg border border-dashed border-zinc-800 py-20 text-center text-sm text-zinc-400">
               Select a case to view evidence, messages, offers and resolution controls.
             </div>
           )}
@@ -357,7 +357,7 @@ function StatsRow({ stats }: { stats: ListStats }) {
       {items.map((s) => (
         <div key={s.label} className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
           <p className={`text-lg font-bold ${s.tone}`}>{s.value}</p>
-          <p className="text-[10px] uppercase tracking-wider text-zinc-500">{s.label}</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-400">{s.label}</p>
         </div>
       ))}
     </div>
@@ -433,13 +433,13 @@ function NewCaseModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+      <div className="w-full max-w-lg rounded-xl border border-zinc-800 bg-zinc-950" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <h3 className="text-sm font-semibold text-zinc-200 flex items-center gap-2">
             <Plus className="w-4 h-4 text-indigo-400" /> Open Dispute Case
           </h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-300"><X className="w-4 h-4" /></button>
         </div>
         <div className="space-y-3 p-4">
           <Field label="Case Title">
@@ -504,7 +504,7 @@ function CaseDetailPanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-zinc-100">{c.title}</p>
-            <p className="text-[11px] text-zinc-500 mt-0.5">
+            <p className="text-[11px] text-zinc-400 mt-0.5">
               #{c.caseNumber} · {fmtLabel(c.dispute_type)} · opened {fmtDate(c.openedAt)}
             </p>
           </div>
@@ -525,7 +525,7 @@ function CaseDetailPanel({
             </button>
           )}
           {c.slaDeadline && !closed && (
-            <span className={`text-[11px] ${c.slaBreached ? 'text-rose-400' : 'text-zinc-500'}`}>
+            <span className={`text-[11px] ${c.slaBreached ? 'text-rose-400' : 'text-zinc-400'}`}>
               SLA deadline: {fmtDate(c.slaDeadline)}{c.slaBreached ? ' (breached)' : ''}
             </span>
           )}
@@ -541,7 +541,7 @@ function CaseDetailPanel({
       {/* resolution */}
       {closed && c.outcome ? (
         <div className="px-4 py-3 border-b border-zinc-800 bg-green-500/[0.03]">
-          <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1">Resolution Outcome</p>
+          <p className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1">Resolution Outcome</p>
           <p className="text-sm text-zinc-200 font-medium">{fmtLabel(c.outcome.type)}</p>
           {c.outcome.refundAmount > 0 && (
             <p className="text-sm text-green-400 flex items-center gap-1 mt-0.5">
@@ -551,9 +551,9 @@ function CaseDetailPanel({
           {c.outcome.settlementAmount != null && (
             <p className="text-sm text-green-400 mt-0.5">Settlement: {c.outcome.settlementAmount} CC</p>
           )}
-          {c.outcome.rationale && <p className="text-xs text-zinc-500 mt-1">{c.outcome.rationale}</p>}
-          {c.outcome.terms && <p className="text-xs text-zinc-500 mt-1">Terms: {c.outcome.terms}</p>}
-          <p className="text-[11px] text-zinc-600 mt-1">Resolved {fmtDate(c.resolvedAt)}</p>
+          {c.outcome.rationale && <p className="text-xs text-zinc-400 mt-1">{c.outcome.rationale}</p>}
+          {c.outcome.terms && <p className="text-xs text-zinc-400 mt-1">Terms: {c.outcome.terms}</p>}
+          <p className="text-[11px] text-zinc-400 mt-1">Resolved {fmtDate(c.resolvedAt)}</p>
         </div>
       ) : (
         <ResolvePanel c={c} busy={busy} run={run} />
@@ -571,7 +571,7 @@ function CaseDetailPanel({
             key={id}
             onClick={() => setTab(id)}
             className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-              tab === id ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-300'
+              tab === id ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-zinc-400 hover:text-zinc-300'
             }`}
           >
             {label} <span className="text-zinc-600">{count}</span>
@@ -599,7 +599,7 @@ function EscrowControls({ c, busy, run, closed }: { c: PublicCase; busy: string 
 
   return (
     <div className="rounded-md border border-zinc-800 p-2.5">
-      <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center gap-1">
+      <p className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1">
         {c.escrowFrozen ? <Lock className="w-3 h-3 text-amber-500" /> : <Unlock className="w-3 h-3" />} Escrow
       </p>
       {c.escrowFrozen ? (
@@ -624,7 +624,7 @@ function EscrowControls({ c, busy, run, closed }: { c: PublicCase; busy: string 
           </div>
         </div>
       ) : closed ? (
-        <p className="text-sm text-zinc-500">No active hold.</p>
+        <p className="text-sm text-zinc-400">No active hold.</p>
       ) : (
         <div className="flex gap-2">
           <input
@@ -658,7 +658,7 @@ function MediatorControls({ c, busy, run }: { c: PublicCase; busy: string | null
 
   return (
     <div className="rounded-md border border-zinc-800 p-2.5">
-      <p className="text-[11px] uppercase tracking-wider text-zinc-500 mb-1.5 flex items-center gap-1">
+      <p className="text-[11px] uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center gap-1">
         <UserCheck className="w-3 h-3" /> Mediator
       </p>
       {c.mediatorId ? (
@@ -814,22 +814,22 @@ function EvidenceTab({ c, items, busy, run, closed }: { c: PublicCase; items: Ev
         </div>
       )}
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-4">No evidence attached.</p>
+        <p className="text-sm text-zinc-400 text-center py-4">No evidence attached.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((e) => (
             <li key={e.id} className="flex items-start justify-between gap-3 rounded-md border border-zinc-800 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm text-zinc-200 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                  <FileText className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                   {e.label}
-                  <span className="text-[10px] text-zinc-500 uppercase">{e.kind}</span>
+                  <span className="text-[10px] text-zinc-400 uppercase">{e.kind}</span>
                 </p>
                 {e.url && (
                   <a href={e.url} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:underline break-all">{e.url}</a>
                 )}
-                {e.note && <p className="text-xs text-zinc-500 mt-0.5">{e.note}</p>}
-                <p className="text-[11px] text-zinc-600 mt-0.5">Reliability {Math.round(e.reliability * 100)}% · {fmtDate(e.uploadedAt)}</p>
+                {e.note && <p className="text-xs text-zinc-400 mt-0.5">{e.note}</p>}
+                <p className="text-[11px] text-zinc-400 mt-0.5">Reliability {Math.round(e.reliability * 100)}% · {fmtDate(e.uploadedAt)}</p>
               </div>
               {!closed && (
                 <button
@@ -865,7 +865,7 @@ function MessagesTab({ c, messages, busy, run }: { c: PublicCase; messages: Thre
     <div className="space-y-3">
       <div className="space-y-2 max-h-72 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-sm text-zinc-500 text-center py-4">No messages in this thread yet.</p>
+          <p className="text-sm text-zinc-400 text-center py-4">No messages in this thread yet.</p>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`rounded-md border px-3 py-2 ${
@@ -875,7 +875,7 @@ function MessagesTab({ c, messages, busy, run }: { c: PublicCase; messages: Thre
             }`}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-400">{m.role}</span>
-                <span className="text-[10px] text-zinc-600">{fmtDate(m.postedAt)}</span>
+                <span className="text-[10px] text-zinc-400">{fmtDate(m.postedAt)}</span>
               </div>
               <p className="text-sm text-zinc-200 mt-0.5">{m.body}</p>
             </div>
@@ -939,7 +939,7 @@ function OffersTab({ c, offers, busy, run, closed }: { c: PublicCase; offers: Se
         </div>
       )}
       {offers.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-4">No settlement offers yet.</p>
+        <p className="text-sm text-zinc-400 text-center py-4">No settlement offers yet.</p>
       ) : (
         <ul className="space-y-2">
           {offers.map((o) => (
@@ -950,16 +950,16 @@ function OffersTab({ c, offers, busy, run, closed }: { c: PublicCase; offers: Se
                     <DollarSign className="w-3.5 h-3.5 text-green-400" />
                     {o.amount} CC
                     {o.isCounter && <span className="text-[10px] text-amber-400 uppercase">Counter</span>}
-                    <span className="text-[10px] text-zinc-500 uppercase">from {o.fromRole}</span>
+                    <span className="text-[10px] text-zinc-400 uppercase">from {o.fromRole}</span>
                   </p>
-                  {o.terms && <p className="text-xs text-zinc-500 mt-0.5">{o.terms}</p>}
-                  <p className="text-[11px] text-zinc-600 mt-0.5">{fmtDate(o.madeAt)}</p>
+                  {o.terms && <p className="text-xs text-zinc-400 mt-0.5">{o.terms}</p>}
+                  <p className="text-[11px] text-zinc-400 mt-0.5">{fmtDate(o.madeAt)}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span className={`text-[11px] px-2 py-0.5 rounded-full ${
                     o.status === 'accepted' ? 'bg-green-500/15 text-green-400'
                       : o.status === 'rejected' ? 'bg-rose-500/15 text-rose-400'
-                      : o.status === 'superseded' ? 'bg-zinc-700/40 text-zinc-500'
+                      : o.status === 'superseded' ? 'bg-zinc-700/40 text-zinc-400'
                       : 'bg-yellow-500/15 text-yellow-400'
                   }`}>{fmtLabel(o.status)}</span>
                   {o.status === 'pending' && (
@@ -1000,7 +1000,7 @@ function HistoryTab({ history }: { history: HistoryEntry[] }) {
       : h.event.includes('escrow') ? 'warn' : 'info',
     detail: h.actor === 'system' ? 'Automated' : `by ${h.actor}`,
   }));
-  if (events.length === 0) return <p className="text-sm text-zinc-500 text-center py-4">No history.</p>;
+  if (events.length === 0) return <p className="text-sm text-zinc-400 text-center py-4">No history.</p>;
   return (
     <div className="space-y-3">
       <TimelineView events={events} height={110} />
@@ -1077,15 +1077,15 @@ function ArchivePanel() {
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-md border border-zinc-800 px-3 py-2">
             <p className="text-lg font-bold text-zinc-200">{meta.total}</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Closed Cases</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400">Closed Cases</p>
           </div>
           <div className="rounded-md border border-zinc-800 px-3 py-2">
             <p className="text-lg font-bold text-green-400">{meta.totalRefunded}</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Total Refunded</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400">Total Refunded</p>
           </div>
           <div className="rounded-md border border-zinc-800 px-3 py-2">
             <p className="text-lg font-bold text-blue-400">{meta.avgResolutionDays}d</p>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500">Avg Resolution</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400">Avg Resolution</p>
           </div>
         </div>
       )}
@@ -1102,14 +1102,14 @@ function ArchivePanel() {
       )}
 
       {results.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-3">No matching resolved cases.</p>
+        <p className="text-sm text-zinc-400 text-center py-3">No matching resolved cases.</p>
       ) : (
         <ul className="space-y-1.5">
           {results.map((c) => (
             <li key={c.id} className="flex items-center justify-between gap-3 rounded-md border border-zinc-800 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-sm text-zinc-200 truncate">{c.title}</p>
-                <p className="text-[11px] text-zinc-500">
+                <p className="text-[11px] text-zinc-400">
                   #{c.caseNumber} · {fmtLabel(c.dispute_type)} · resolved {fmtDate(c.resolvedAt)}
                 </p>
               </div>

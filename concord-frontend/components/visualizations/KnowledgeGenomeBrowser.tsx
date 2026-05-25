@@ -389,7 +389,7 @@ export default function KnowledgeGenomeBrowser({ dtus: dtusProp, className }: Kn
 
   if (dtus.length === 0) {
     return (
-      <div className={cn('flex items-center justify-center h-64 text-gray-500 text-sm bg-lattice-surface border border-lattice-border rounded-xl', className)}>
+      <div className={cn('flex items-center justify-center h-64 text-gray-400 text-sm bg-lattice-surface border border-lattice-border rounded-xl', className)}>
         No DTU lineage data available
       </div>
     );
@@ -406,9 +406,9 @@ export default function KnowledgeGenomeBrowser({ dtus: dtusProp, className }: Kn
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
           <h3 className="text-sm font-semibold text-white">Knowledge Genome Browser</h3>
-          <span className="text-xs text-gray-500">{dtus.length} DTUs</span>
+          <span className="text-xs text-gray-400">{dtus.length} DTUs</span>
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+        <div className="flex items-center gap-2 text-[10px] text-gray-400">
           <button onClick={() => setZoom(z => Math.min(4, z * 1.2))} className="px-2 py-0.5 rounded bg-lattice-elevated border border-lattice-border hover:border-white/20 text-gray-400 hover:text-white transition-colors">+</button>
           <span>{Math.round(zoom * 100)}%</span>
           <button onClick={() => setZoom(z => Math.max(0.2, z / 1.2))} className="px-2 py-0.5 rounded bg-lattice-elevated border border-lattice-border hover:border-white/20 text-gray-400 hover:text-white transition-colors">-</button>
@@ -445,10 +445,10 @@ export default function KnowledgeGenomeBrowser({ dtus: dtusProp, className }: Kn
             style={{ left: hoveredItem.x * zoom + pan.x + 20, top: hoveredItem.y * zoom + pan.y - 10 }}
           >
             <p className="text-xs font-bold text-white truncate">{hoveredItem.dtu.title}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">
+            <p className="text-[10px] text-gray-400 mt-0.5">
               {TIER_LABEL[hoveredItem.dtu.tier]} &middot; {hoveredItem.dtu.domain}
             </p>
-            <p className="text-[10px] text-gray-600 mt-0.5">
+            <p className="text-[10px] text-gray-400 mt-0.5">
               {hoveredItem.dtu.parentIds.length} parents &middot; {hoveredItem.dtu.childIds.length} children
             </p>
           </div>
@@ -474,19 +474,19 @@ export default function KnowledgeGenomeBrowser({ dtus: dtusProp, className }: Kn
           </div>
           <div className="grid grid-cols-4 gap-3 text-xs">
             <div>
-              <p className="text-gray-500">Domain</p>
+              <p className="text-gray-400">Domain</p>
               <p className="text-white font-medium">{selectedItem.dtu.domain}</p>
             </div>
             <div>
-              <p className="text-gray-500">Parents</p>
+              <p className="text-gray-400">Parents</p>
               <p className="text-white font-medium">{selectedItem.dtu.parentIds.length}</p>
             </div>
             <div>
-              <p className="text-gray-500">Children</p>
+              <p className="text-gray-400">Children</p>
               <p className="text-white font-medium">{selectedItem.dtu.childIds.length}</p>
             </div>
             <div>
-              <p className="text-gray-500">ID</p>
+              <p className="text-gray-400">ID</p>
               <p className="text-white font-mono text-[10px] truncate">{selectedItem.dtu.id}</p>
             </div>
           </div>

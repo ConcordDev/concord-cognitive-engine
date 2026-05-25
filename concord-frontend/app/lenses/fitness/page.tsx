@@ -314,7 +314,7 @@ function StatCard({ icon: Icon, label, value, sub, color = 'red-400' }: { icon: 
       <Icon className={cn('w-5 h-5 mb-2', `text-${color}`)} />
       <p className="text-2xl font-bold">{value}</p>
       <p className={ds.textMuted}>{label}</p>
-      {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -358,7 +358,7 @@ function WorkoutStreakCounter() {
         <h3 className="font-semibold flex items-center gap-2">
           <Flame className="w-4 h-4 text-orange-400" /> Workout Streak
         </h3>
-        <span className="text-xs text-gray-500">Best: {bestStreak} days</span>
+        <span className="text-xs text-gray-400">Best: {bestStreak} days</span>
       </div>
       <div className="flex items-center gap-3">
         <div className="relative w-16 h-16 shrink-0">
@@ -379,7 +379,7 @@ function WorkoutStreakCounter() {
             {days.map((d, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
                 <button onClick={() => toggleDay(i)} className={cn('w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors cursor-pointer',
-                  activeDays[i] ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-500 hover:bg-white/10'
+                  activeDays[i] ? 'bg-orange-500 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
                 )}>{d}</button>
               </div>
             ))}
@@ -426,8 +426,8 @@ function DailyGoalsRings() {
               </div>
               <div className="text-center">
                 <p className="text-xs font-semibold" style={{ color: g.color }}>{Math.round(pct)}%</p>
-                <p className="text-xs text-gray-500">{g.label}</p>
-                <p className="text-xs text-gray-600">{g.current.toLocaleString()}/{g.target.toLocaleString()}</p>
+                <p className="text-xs text-gray-400">{g.label}</p>
+                <p className="text-xs text-gray-400">{g.current.toLocaleString()}/{g.target.toLocaleString()}</p>
               </div>
             </div>
           );
@@ -482,7 +482,7 @@ function ExerciseSetTracker() {
           </select>
         </div>
       </div>
-      <div className="text-xs text-gray-500 flex items-center gap-2">
+      <div className="text-xs text-gray-400 flex items-center gap-2">
         <span className={cn('px-2 py-0.5 rounded font-medium', intConf.text, intConf.bg)}>{intConf.label}</span>
         <span>{doneSets}/{sets.length} sets done</span>
       </div>
@@ -501,10 +501,10 @@ function ExerciseSetTracker() {
             <span className="text-xs text-gray-400 w-8">Set {i+1}</span>
             <input type="number" value={s.weight} onChange={e => updateSet(i, 'weight', parseFloat(e.target.value)||0)}
               className="w-14 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs text-center" />
-            <span className="text-xs text-gray-500">kg ×</span>
+            <span className="text-xs text-gray-400">kg ×</span>
             <input type="number" value={s.reps} onChange={e => updateSet(i, 'reps', parseInt(e.target.value)||0)}
               className="w-12 bg-white/5 border border-white/10 rounded px-2 py-0.5 text-xs text-center" />
-            <span className="text-xs text-gray-500">reps</span>
+            <span className="text-xs text-gray-400">reps</span>
             <button onClick={() => removeSet(i)} className="ml-auto text-gray-600 hover:text-red-400" aria-label="Close">
               <X className="w-3 h-3" />
             </button>
@@ -1159,7 +1159,7 @@ export default function FitnessLensPage() {
                             <td className="py-2 px-2"><input type="number" value={m.arms || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, arms: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
                             <td className="py-2 px-2"><input type="number" value={m.thighs || ''} onChange={e => { const nm = [...clientMetrics]; nm[i] = { ...m, thighs: parseFloat(e.target.value) || 0 }; setClientMetrics(nm); }} className={cn(ds.input, 'text-xs w-16 text-right')} /></td>
                             <td className="py-2 px-2">
-                              {weightTrend < 0 ? <ArrowDownRight className="w-4 h-4 text-red-400" /> : weightTrend > 0 ? <ArrowUpRight className="w-4 h-4 text-red-400" /> : <Minus className="w-4 h-4 text-gray-500" />}
+                              {weightTrend < 0 ? <ArrowDownRight className="w-4 h-4 text-red-400" /> : weightTrend > 0 ? <ArrowUpRight className="w-4 h-4 text-red-400" /> : <Minus className="w-4 h-4 text-gray-400" />}
                             </td>
                             <td className="py-2 px-2">
                               <button onClick={() => setClientMetrics(prev => prev.filter((_, idx) => idx !== i))} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3 h-3 text-red-400" /></button>
@@ -1187,7 +1187,7 @@ export default function FitnessLensPage() {
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center justify-end">
                           <div className="w-full bg-neon-cyan/60 rounded-t" style={{ height: `${Math.max(10, pct)}%` }} title={`${m.weight}kg`} />
-                          <span className="text-[9px] text-gray-500 mt-0.5">{m.date.slice(5)}</span>
+                          <span className="text-[9px] text-gray-400 mt-0.5">{m.date.slice(5)}</span>
                         </div>
                       );
                     })}
@@ -1315,7 +1315,7 @@ export default function FitnessLensPage() {
                 <div key={item.id} className={ds.panelHover} onClick={() => {
                   if (activeTab === 'Clients') openClientDashboard(item);
                   else openEditEditor(item);
-                }}>
+                }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                   <div className="flex items-start justify-between mb-2">
                     <h3 className={cn(ds.heading3, 'text-base truncate flex-1')}>{item.title}</h3>
                     <span className={ds.badge(STATUS_COLORS[d.status])}>{d.status}</span>
@@ -1362,7 +1362,7 @@ export default function FitnessLensPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                  <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
                     {d.coach && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.coach}</span>}
                     {d.category && <span className="flex items-center gap-1"><Target className="w-3 h-3" /> {d.category}</span>}
                     {d.duration != null && <span className="flex items-center gap-1"><Timer className="w-3 h-3" /> {d.duration} min</span>}
@@ -1410,7 +1410,7 @@ export default function FitnessLensPage() {
                   <div key={i} className="p-2 bg-lattice-surface rounded flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-white">{r.exercise}</p>
-                      <p className="text-[10px] text-gray-500">RPE {r.currentRPE} &rarr; {r.recommendation.replace(/_/g, ' ')}</p>
+                      <p className="text-[10px] text-gray-400">RPE {r.currentRPE} &rarr; {r.recommendation.replace(/_/g, ' ')}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-gray-400 line-through">{r.currentWeight}kg</p>
@@ -1433,15 +1433,15 @@ export default function FitnessLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.enrolled)}</p>
-                    <p className="text-[10px] text-gray-500">Enrolled</p>
+                    <p className="text-[10px] text-gray-400">Enrolled</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.capacity)}</p>
-                    <p className="text-[10px] text-gray-500">Capacity</p>
+                    <p className="text-[10px] text-gray-400">Capacity</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.sessions)}</p>
-                    <p className="text-[10px] text-gray-500">Sessions</p>
+                    <p className="text-[10px] text-gray-400">Sessions</p>
                   </div>
                 </div>
               </div>
@@ -1454,7 +1454,7 @@ export default function FitnessLensPage() {
                   <div key={i} className="p-2 bg-lattice-surface rounded flex items-center justify-between">
                     <div>
                       <p className="text-xs font-semibold text-neon-cyan">{p.name}</p>
-                      <p className="text-[10px] text-gray-500">{p.sets} sets &times; {p.reps} reps @ {p.intensity}</p>
+                      <p className="text-[10px] text-gray-400">{p.sets} sets &times; {p.reps} reps @ {p.intensity}</p>
                     </div>
                     <span className="text-xs text-gray-400">{p.weeks}w</span>
                   </div>
@@ -1467,11 +1467,11 @@ export default function FitnessLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String((actionResult.profile as {sport:string}).sport)}</p>
-                    <p className="text-[10px] text-gray-500">Sport</p>
+                    <p className="text-[10px] text-gray-400">Sport</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String((actionResult.profile as {recruitingStatus:string}).recruitingStatus)}</p>
-                    <p className="text-[10px] text-gray-500">Status</p>
+                    <p className="text-[10px] text-gray-400">Status</p>
                   </div>
                 </div>
               </div>
@@ -1483,7 +1483,7 @@ export default function FitnessLensPage() {
       {/* ========== Body Composition Calculator Modal ========== */}
       {showBodyComp && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowBodyComp(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowBodyComp(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1591,27 +1591,27 @@ export default function FitnessLensPage() {
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>TDEE</p>
                         <p className="text-xl font-bold text-red-500">{tdee}</p>
-                        <p className="text-xs text-gray-500">cal/day</p>
+                        <p className="text-xs text-gray-400">cal/day</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Target</p>
                         <p className="text-xl font-bold text-red-400">{macros.calories}</p>
-                        <p className="text-xs text-gray-500">cal/day</p>
+                        <p className="text-xs text-gray-400">cal/day</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Protein</p>
                         <p className="text-xl font-bold text-red-400">{macros.protein}g</p>
-                        <p className="text-xs text-gray-500">{macros.protein * 4} cal</p>
+                        <p className="text-xs text-gray-400">{macros.protein * 4} cal</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Carbs</p>
                         <p className="text-xl font-bold text-amber-400">{macros.carbs}g</p>
-                        <p className="text-xs text-gray-500">{macros.carbs * 4} cal</p>
+                        <p className="text-xs text-gray-400">{macros.carbs * 4} cal</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Fat</p>
                         <p className="text-xl font-bold text-red-300">{macros.fat}g</p>
-                        <p className="text-xs text-gray-500">{macros.fat * 9} cal</p>
+                        <p className="text-xs text-gray-400">{macros.fat * 9} cal</p>
                       </div>
                     </div>
                   ) : (
@@ -1637,12 +1637,12 @@ export default function FitnessLensPage() {
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Epley Formula</p>
                         <p className="text-2xl font-bold text-red-400">{oneRMEpley}</p>
-                        <p className="text-xs text-gray-500">estimated 1RM</p>
+                        <p className="text-xs text-gray-400">estimated 1RM</p>
                       </div>
                       <div className={ds.panel}>
                         <p className={ds.textMuted}>Brzycki Formula</p>
                         <p className="text-2xl font-bold text-neon-cyan">{oneRMBrzycki}</p>
-                        <p className="text-xs text-gray-500">estimated 1RM</p>
+                        <p className="text-xs text-gray-400">estimated 1RM</p>
                       </div>
                     </div>
                   ) : (
@@ -1671,7 +1671,7 @@ export default function FitnessLensPage() {
       {/* ========== Editor Modal ========== */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-4xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1805,7 +1805,7 @@ export default function FitnessLensPage() {
                       <div key={ex.id} className={cn(ds.panel, ex.isSuperset && 'border-l-2 border-l-red-300')}>
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-gray-500 font-mono w-5">{idx + 1}.</span>
+                            <span className="text-xs text-gray-400 font-mono w-5">{idx + 1}.</span>
                             <span className="font-medium text-sm">{ex.name}</span>
                             <span className={ds.badge(ex.category === 'Upper' ? 'red-500' : ex.category === 'Lower' ? 'red-400' : ex.category === 'Core' ? 'amber-400' : ex.category === 'Cardio' ? 'red-400' : 'red-300')}>
                               {ex.category}
@@ -1844,7 +1844,7 @@ export default function FitnessLensPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
+                        <div className="mt-1 flex items-center gap-3 text-xs text-gray-400">
                           <span>Vol: {(ex.sets * ex.reps * ex.weight).toLocaleString()}</span>
                           <span>RPE: {ex.rpe}/10</span>
                         </div>
@@ -1896,7 +1896,7 @@ export default function FitnessLensPage() {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <Layers className="w-4 h-4 text-red-300" />
-                              <span className="text-xs text-gray-500">Block {idx + 1}</span>
+                              <span className="text-xs text-gray-400">Block {idx + 1}</span>
                               <span className={ds.badge(phaseColor)}>{block.phase}</span>
                             </div>
                             <button onClick={() => removeBlock(block.id)} className={ds.btnGhost} aria-label="Delete"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
@@ -1973,7 +1973,7 @@ export default function FitnessLensPage() {
                         const slotsForTime = classSlots.filter(s => s.day === classViewDay && s.time === time);
                         return (
                           <div key={time} data-lens-theme="fitness" className="flex items-start gap-3">
-                            <span className="text-xs text-gray-500 w-16 pt-2 shrink-0">{time}</span>
+                            <span className="text-xs text-gray-400 w-16 pt-2 shrink-0">{time}</span>
                             <div className="flex-1">
                               {slotsForTime.length > 0 ? slotsForTime.map(slot => (
                                 <div key={slot.id} className={cn(ds.panel, 'mb-1')}>
@@ -2020,7 +2020,7 @@ export default function FitnessLensPage() {
                                   </div>
                                 </div>
                               )) : (
-                                <div className="text-xs text-gray-600 py-1 border-b border-lattice-border/30">No class</div>
+                                <div className="text-xs text-gray-400 py-1 border-b border-lattice-border/30">No class</div>
                               )}
                             </div>
                           </div>
@@ -2142,7 +2142,7 @@ export default function FitnessLensPage() {
                             onClick={() => setFormRecruitStage(stage)}
                             className={cn(
                               'flex-1 py-2 px-2 rounded text-xs font-medium text-center transition-colors',
-                              formRecruitStage === stage ? `bg-${RECRUIT_STAGE_COLORS[stage]}/30 text-${RECRUIT_STAGE_COLORS[stage]} border border-${RECRUIT_STAGE_COLORS[stage]}/50` : 'bg-lattice-elevated text-gray-500'
+                              formRecruitStage === stage ? `bg-${RECRUIT_STAGE_COLORS[stage]}/30 text-${RECRUIT_STAGE_COLORS[stage]} border border-${RECRUIT_STAGE_COLORS[stage]}/50` : 'bg-lattice-elevated text-gray-400'
                             )}
                           >
                             {stage}
@@ -2156,21 +2156,21 @@ export default function FitnessLensPage() {
                       <div>
                         <label className={ds.label}>Email</label>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                           <input value={formEmail} onChange={e => setFormEmail(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="athlete@email.com" />
                         </div>
                       </div>
                       <div>
                         <label className={ds.label}>Phone</label>
                         <div className="relative">
-                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                           <input value={formPhone} onChange={e => setFormPhone(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="(555) 000-0000" />
                         </div>
                       </div>
                       <div>
                         <label className={ds.label}>Location</label>
                         <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                           <input value={formLocation} onChange={e => setFormLocation(e.target.value)} className={cn(ds.input, 'pl-9')} placeholder="City, State" />
                         </div>
                       </div>

@@ -146,7 +146,7 @@ export default function EquipmentSlotsPanel({ onClose }: Props) {
                   )}
                 </>
               ) : (
-                <div className="text-xs text-slate-500">empty — click to equip</div>
+                <div className="text-xs text-slate-400">empty — click to equip</div>
               )}
             </button>
           );
@@ -163,7 +163,7 @@ export default function EquipmentSlotsPanel({ onClose }: Props) {
             <button onClick={() => setPickerSlot(null)} className="text-slate-400 hover:text-white text-xs">cancel</button>
           </div>
           {eligibleForSlot(pickerSlot).length === 0 ? (
-            <div className="text-xs text-slate-500 text-center py-2">No compatible weapons. Craft or pick one up.</div>
+            <div className="text-xs text-slate-400 text-center py-2">No compatible weapons. Craft or pick one up.</div>
           ) : (
             <div className="space-y-1">
               {eligibleForSlot(pickerSlot).map((it) => (
@@ -174,7 +174,7 @@ export default function EquipmentSlotsPanel({ onClose }: Props) {
                   className="w-full text-left px-2 py-1.5 rounded hover:bg-cyan-500/10 transition-colors flex items-center justify-between"
                 >
                   <span className="text-xs text-white">{it.item_name}</span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400">
                     {it.weapon_class || it.item_type}
                     {it.handedness && it.handedness !== 'either' ? ` · ${it.handedness}` : ''}
                   </span>
@@ -185,7 +185,7 @@ export default function EquipmentSlotsPanel({ onClose }: Props) {
         </div>
       )}
 
-      <div className="text-[10px] text-slate-500 leading-relaxed">
+      <div className="text-[10px] text-slate-400 leading-relaxed">
         Tap E for right hand. Hold Shift + E for left hand. Two-handed weapons
         take both slots and route every E to a heavy two-hand swing. Combat
         Flow learns your loadout — sword + pistol builds different combos

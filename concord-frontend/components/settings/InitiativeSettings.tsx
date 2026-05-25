@@ -365,7 +365,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
       <div className={cn(ds.panel, 'flex items-center justify-between')}>
         <div className="flex items-center gap-3">
           {settings.disabled ? (
-            <BellOff className="w-5 h-5 text-zinc-500" />
+            <BellOff className="w-5 h-5 text-zinc-400" />
           ) : (
             <Bell className="w-5 h-5 text-neon-cyan" />
           )}
@@ -373,7 +373,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
             <p className="text-sm font-medium text-white">
               {settings.disabled ? 'Initiatives Disabled' : 'Initiatives Enabled'}
             </p>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-400">
               {settings.disabled
                 ? 'Concord will not proactively reach out to you'
                 : 'Concord will send proactive messages based on your preferences'}
@@ -418,7 +418,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                   [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
                   [&::-moz-range-thumb]:bg-neon-cyan [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+              <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
                 <span>Off</span>
                 <span>5/day</span>
                 <span>10/day</span>
@@ -446,7 +446,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                   [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
                   [&::-moz-range-thumb]:bg-neon-cyan [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:cursor-pointer"
               />
-              <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+              <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
                 <span>Off</span>
                 <span>25/week</span>
                 <span>50/week</span>
@@ -460,7 +460,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
               <Moon className="w-4 h-4 text-zinc-400" />
               <h3 className="text-sm font-medium text-white">Quiet Hours</h3>
             </div>
-            <p className="text-xs text-zinc-500 mb-4">
+            <p className="text-xs text-zinc-400 mb-4">
               Concord will not send initiatives during these hours.
             </p>
 
@@ -485,7 +485,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 text-[10px] text-zinc-500">
+            <div className="mt-3 flex items-center gap-2 text-[10px] text-zinc-400">
               <Clock className="w-3 h-3" />
               <span>
                 Quiet from {settings.quietStart} to {settings.quietEnd} (your local time)
@@ -499,7 +499,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
               <MessageSquare className="w-4 h-4 text-zinc-400" />
               <h3 className="text-sm font-medium text-white">Delivery Channels</h3>
             </div>
-            <p className="text-xs text-zinc-500 mb-4">
+            <p className="text-xs text-zinc-400 mb-4">
               Choose how Concord reaches you. At least one channel should be enabled.
             </p>
 
@@ -521,7 +521,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                     <div className="flex items-center gap-3">
                       <ChannelIcon className={cn(
                         'w-4 h-4',
-                        enabled ? 'text-neon-cyan' : 'text-zinc-500',
+                        enabled ? 'text-neon-cyan' : 'text-zinc-400',
                       )} />
                       <div>
                         <p className={cn(
@@ -530,7 +530,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                         )}>
                           {channelInfo?.label || channelId}
                         </p>
-                        <p className="text-[10px] text-zinc-500">
+                        <p className="text-[10px] text-zinc-400">
                           {channelInfo?.description || ''}
                           {channelInfo?.requiresOptIn && (
                             <span className="ml-1 text-yellow-500">(requires opt-in)</span>
@@ -555,7 +555,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
               <MessageCircle className="w-5 h-5 text-zinc-400" />
               <div>
                 <p className="text-sm font-medium text-white">Allow Double Texting</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-zinc-400">
                   Let Concord send follow-up messages with corrections, additional context,
                   or new thoughts without waiting for your reply
                 </p>
@@ -575,14 +575,14 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                 <ShieldAlert className="w-4 h-4 text-zinc-400" />
                 <h3 className="text-sm font-medium text-white">Response Backoff</h3>
               </div>
-              <p className="text-xs text-zinc-500 mb-3">
+              <p className="text-xs text-zinc-400 mb-3">
                 Concord adapts its initiative frequency based on your responses.
                 Ignoring or dismissing initiatives causes Concord to back off automatically.
               </p>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg bg-lattice-surface border border-lattice-border">
-                  <p className="text-[10px] text-zinc-500 mb-1">Ignored Count</p>
+                  <p className="text-[10px] text-zinc-400 mb-1">Ignored Count</p>
                   <p className={cn(
                     'text-lg font-mono',
                     backoff.ignoredCount > 5 ? 'text-orange-400' :
@@ -592,7 +592,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-lattice-surface border border-lattice-border">
-                  <p className="text-[10px] text-zinc-500 mb-1">Last Initiative</p>
+                  <p className="text-[10px] text-zinc-400 mb-1">Last Initiative</p>
                   <p className="text-sm text-white">
                     {backoff.lastInitiativeAt
                       ? formatTimeAgo(backoff.lastInitiativeAt)
@@ -600,7 +600,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-lattice-surface border border-lattice-border">
-                  <p className="text-[10px] text-zinc-500 mb-1">Backoff Until</p>
+                  <p className="text-[10px] text-zinc-400 mb-1">Backoff Until</p>
                   <p className={cn(
                     'text-sm',
                     backoff.backoffUntil ? 'text-orange-400' : 'text-emerald-400',
@@ -613,7 +613,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
               </div>
 
               {backoff.ignoredCount > 0 && (
-                <p className="mt-3 text-[10px] text-zinc-600">
+                <p className="mt-3 text-[10px] text-zinc-400">
                   Responding to initiatives will gradually reduce the ignored count and remove any active backoff.
                 </p>
               )}
@@ -631,12 +631,12 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                 <h3 className="text-sm font-medium text-white">Trigger Previews</h3>
               </div>
               {showPreview ? (
-                <ChevronUp className="w-4 h-4 text-zinc-500" />
+                <ChevronUp className="w-4 h-4 text-zinc-400" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-zinc-500" />
+                <ChevronDown className="w-4 h-4 text-zinc-400" />
               )}
             </button>
-            <p className="text-xs text-zinc-500 mt-1">
+            <p className="text-xs text-zinc-400 mt-1">
               See examples of what each type of initiative looks like
             </p>
 
@@ -667,7 +667,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                           trigger.priority === 'high'
                             ? 'bg-red-500/10 text-red-400'
                             : trigger.priority === 'low'
-                            ? 'bg-zinc-700/50 text-zinc-500'
+                            ? 'bg-zinc-700/50 text-zinc-400'
                             : 'bg-blue-500/10 text-blue-400',
                         )}>
                           {trigger.priority}
@@ -676,7 +676,7 @@ export function InitiativeSettings({ className, apiBase = '' }: InitiativeSettin
                       <p className="text-xs text-zinc-300 leading-relaxed mb-2">
                         {preview.exampleMessage}
                       </p>
-                      <p className="text-[10px] text-zinc-600">
+                      <p className="text-[10px] text-zinc-400">
                         {trigger.description}
                       </p>
                     </div>

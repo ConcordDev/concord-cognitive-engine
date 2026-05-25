@@ -37,7 +37,7 @@ export function YelpBookingsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -47,7 +47,7 @@ export function YelpBookingsPanel() {
           <Users className="w-3.5 h-3.5 text-red-400" /> Active waitlists
         </h3>
         {waitlist.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Not on any waitlist. Join one from a restaurant&apos;s page.</p>
+          <p className="text-[11px] text-zinc-400 italic">Not on any waitlist. Join one from a restaurant&apos;s page.</p>
         ) : (
           <ul className="space-y-2">
             {waitlist.map((e) => (
@@ -55,11 +55,11 @@ export function YelpBookingsPanel() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{e.bizName}</p>
-                    <p className="text-[11px] text-zinc-500">Party of {e.partySize}</p>
+                    <p className="text-[11px] text-zinc-400">Party of {e.partySize}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-red-300">#{e.position}</p>
-                    <p className="text-[10px] text-zinc-500">~{e.estimatedWaitMin} min</p>
+                    <p className="text-[10px] text-zinc-400">~{e.estimatedWaitMin} min</p>
                   </div>
                 </div>
                 <div className="flex gap-1 mt-2">
@@ -83,23 +83,23 @@ export function YelpBookingsPanel() {
           <CalendarClock className="w-3.5 h-3.5 text-red-400" /> Reservations
         </h3>
         {reservations.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No reservations. Book a table from a restaurant&apos;s page.</p>
+          <p className="text-[11px] text-zinc-400 italic">No reservations. Book a table from a restaurant&apos;s page.</p>
         ) : (
           <ul className="space-y-2">
             {reservations.map((r) => (
               <li key={r.id} className={cn('flex items-center justify-between bg-zinc-900/70 border rounded-xl p-3',
                 r.status === 'cancelled' ? 'border-zinc-800 opacity-60' : 'border-zinc-800')}>
                 <div>
-                  <p className={cn('text-sm font-semibold', r.status === 'cancelled' ? 'text-zinc-500 line-through' : 'text-zinc-100')}>
+                  <p className={cn('text-sm font-semibold', r.status === 'cancelled' ? 'text-zinc-400 line-through' : 'text-zinc-100')}>
                     {r.bizName}
                   </p>
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-zinc-400">
                     Party of {r.partySize} · {r.dateTime} · {r.status}
                   </p>
                 </div>
                 {r.status === 'confirmed' && (
                   <button type="button" onClick={() => cancel(r.id)}
-                    className="text-[11px] text-zinc-500 hover:text-rose-400">Cancel</button>
+                    className="text-[11px] text-zinc-400 hover:text-rose-400">Cancel</button>
                 )}
               </li>
             ))}

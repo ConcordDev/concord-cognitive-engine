@@ -38,10 +38,10 @@ export function FarmMapPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapIcon className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Farm map</span>
-        <span className="ml-auto text-[10px] text-gray-500">{fieldsWithCoords.length} fields · {equipWithCoords.length} machines with live GPS</span>
+        <span className="ml-auto text-[10px] text-gray-400">{fieldsWithCoords.length} fields · {equipWithCoords.length} machines with live GPS</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <FieldsMap fields={fields} equipment={equipment} className="h-96 w-full" />
       )}

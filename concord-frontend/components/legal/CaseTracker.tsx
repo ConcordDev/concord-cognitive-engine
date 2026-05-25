@@ -63,7 +63,7 @@ export function CaseTracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Gavel className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Active matters</span>
-        <span className="ml-auto text-[10px] text-gray-500">{cases.length} cases{upcomingDeadlines.length > 0 ? ` · ${upcomingDeadlines.length} deadline${upcomingDeadlines.length === 1 ? '' : 's'} soon` : ''}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{cases.length} cases{upcomingDeadlines.length > 0 ? ` · ${upcomingDeadlines.length} deadline${upcomingDeadlines.length === 1 ? '' : 's'} soon` : ''}</span>
         <button onClick={() => setAdding(v => !v)} className="p-1 text-gray-400 hover:text-white" title="Add case">
           <Plus className="w-4 h-4" />
         </button>
@@ -82,9 +82,9 @@ export function CaseTracker() {
       )}
       <div className="max-h-[500px] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : cases.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Gavel className="w-6 h-6 mx-auto mb-2 opacity-30" /> No active cases.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Gavel className="w-6 h-6 mx-auto mb-2 opacity-30" /> No active cases.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {cases.map(c => {
@@ -93,7 +93,7 @@ export function CaseTracker() {
                 <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03]">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-white">{c.caption}</span>
-                    <span className="text-[10px] text-gray-500">{c.caseNumber}</span>
+                    <span className="text-[10px] text-gray-400">{c.caseNumber}</span>
                     <span className={cn('ml-auto text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded font-bold',
                       c.status === 'active' ? 'bg-blue-500/20 text-blue-300' :
                       c.status === 'on_hold' ? 'bg-yellow-500/20 text-yellow-300' :
@@ -101,7 +101,7 @@ export function CaseTracker() {
                       'bg-gray-500/20 text-gray-300'
                     )}>{c.status.replace(/_/g, ' ')}</span>
                   </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap">
+                  <div className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="capitalize">{c.matterType}</span>
                     <span>{c.court}</span>
                     <span>Filed {new Date(c.filedAt).toLocaleDateString()}</span>

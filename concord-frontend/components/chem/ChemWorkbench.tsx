@@ -135,10 +135,10 @@ function MWTab() {
           <p className="text-sm text-gray-200">
             <span className="font-mono text-violet-300">{result.formula}</span>
             <span className="ml-2 text-2xl text-gray-100">{result.molecularWeight}</span>
-            <span className="text-[11px] text-gray-500 ml-1">{result.units}</span>
+            <span className="text-[11px] text-gray-400 ml-1">{result.units}</span>
           </p>
           <div className="mt-3 space-y-1">
-            <p className="text-[10px] uppercase text-gray-500 tracking-wider">Composition</p>
+            <p className="text-[10px] uppercase text-gray-400 tracking-wider">Composition</p>
             {result.components.map((c) => (
               <div key={c.element} className="flex justify-between text-xs">
                 <span className="text-gray-300 font-mono">{c.element}<sub>{c.count}</sub> · {c.name}</span>
@@ -172,14 +172,14 @@ function MolarityTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[11px] text-gray-500">Provide any 2 of moles / liters / molarity — solver fills the third.</p>
+      <p className="text-[11px] text-gray-400">Provide any 2 of moles / liters / molarity — solver fills the third.</p>
       <div className="grid grid-cols-3 gap-2">
         {[
           ['moles', 'Moles', moles, setMoles],
           ['liters', 'Liters', liters, setLiters],
         ].map(([id, label, val, setter]) => (
           <label key={id as string} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-gray-500">{label as string}</span>
+            <span className="text-[10px] uppercase tracking-wider text-gray-400">{label as string}</span>
             <input type="number" value={val as string} step="0.0001"
               onChange={(e) => (setter as (v: string) => void)(e.target.value)}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -194,7 +194,7 @@ function MolarityTab() {
           <p>Moles: <span className="font-mono text-gray-100">{result.moles}</span></p>
           <p>Liters: <span className="font-mono text-gray-100">{result.liters}</span></p>
           <p>Molarity: <span className="font-mono text-violet-300">{result.molarity} M</span></p>
-          <p className="text-[10px] text-gray-500">{result.formula}</p>
+          <p className="text-[10px] text-gray-400">{result.formula}</p>
         </div>
       )}
     </div>
@@ -225,7 +225,7 @@ function DilutionTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[11px] text-gray-500">M1V1 = M2V2 — provide any 3 of the 4 values.</p>
+      <p className="text-[11px] text-gray-400">M1V1 = M2V2 — provide any 3 of the 4 values.</p>
       <div className="grid grid-cols-4 gap-2">
         {[
           ['M1', m1, setM1],
@@ -234,7 +234,7 @@ function DilutionTab() {
           ['V2', v2, setV2],
         ].map(([label, val, setter]) => (
           <label key={label as string} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label as string}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label as string}</span>
             <input type="number" value={val as string} step="0.001"
               onChange={(e) => (setter as (v: string) => void)(e.target.value)}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -331,7 +331,7 @@ function GasTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[11px] text-gray-500">PV = nRT — provide any 3 of P (atm), V (L), n (mol), T (K).</p>
+      <p className="text-[11px] text-gray-400">PV = nRT — provide any 3 of P (atm), V (L), n (mol), T (K).</p>
       <div className="grid grid-cols-4 gap-2">
         {[
           ['P (atm)', P, setP],
@@ -340,7 +340,7 @@ function GasTab() {
           ['T (K)', T, setT],
         ].map(([label, val, setter]) => (
           <label key={label as string} className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase text-gray-500">{label as string}</span>
+            <span className="text-[10px] uppercase text-gray-400">{label as string}</span>
             <input type="number" value={val as string} step="0.001"
               onChange={(e) => (setter as (v: string) => void)(e.target.value)}
               className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 font-mono" />
@@ -380,14 +380,14 @@ function PeriodicTab() {
   useEffect(() => { refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
+    return <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>;
   }
 
   const sorted = Object.entries(elements).sort((a, b) => a[1].z - b[1].z);
 
   return (
     <div className="p-3">
-      <p className="text-[11px] text-gray-500 mb-3">{sorted.length} elements (subset of 118 — extend via DTU)</p>
+      <p className="text-[11px] text-gray-400 mb-3">{sorted.length} elements (subset of 118 — extend via DTU)</p>
       <div className="grid grid-cols-6 gap-1">
         {sorted.map(([sym, el]) => (
           <div key={sym}
@@ -397,7 +397,7 @@ function PeriodicTab() {
             )}
             title={`${el.name} · Z=${el.z} · ${el.mass} g/mol`}
           >
-            <p className="text-[9px] text-gray-500 font-mono">{el.z}</p>
+            <p className="text-[9px] text-gray-400 font-mono">{el.z}</p>
             <p className="text-sm font-bold">{sym}</p>
             <p className="text-[8px]">{el.mass.toFixed(2)}</p>
           </div>

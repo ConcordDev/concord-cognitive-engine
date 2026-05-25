@@ -60,7 +60,7 @@ export function CoinGeckoTicker() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {VS.map((v) => (
-              <button key={v.id} onClick={() => setVs(v.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${vs === v.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{v.label}</button>
+              <button key={v.id} onClick={() => setVs(v.id)} className={`rounded px-2 py-0.5 font-mono uppercase ${vs === v.id ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{v.label}</button>
             ))}
           </div>
           {list.length > 0 && (
@@ -77,7 +77,7 @@ export function CoinGeckoTicker() {
         </div>
       </header>
       {coins.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">CoinGecko rate-limited or unreachable.</div>}
-      {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling live ticker…</div>}
+      {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling live ticker…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => {
           const ch24 = c.price_change_percentage_24h ?? 0;
@@ -89,11 +89,11 @@ export function CoinGeckoTicker() {
                 <img src={c.image} alt={c.symbol} className="h-6 w-6" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-mono text-[10px] text-zinc-500">#{c.market_cap_rank}</span>
+                    <span className="font-mono text-[10px] text-zinc-400">#{c.market_cap_rank}</span>
                     <span className="font-mono text-sm font-semibold uppercase text-white">{c.symbol}</span>
                     <span className="line-clamp-1 text-[11px] text-zinc-400">{c.name}</span>
                   </div>
-                  <div className="font-mono text-[10px] text-zinc-500">mcap {sym}{(c.market_cap / 1e9).toFixed(2)}B · vol {sym}{(c.total_volume / 1e9).toFixed(2)}B</div>
+                  <div className="font-mono text-[10px] text-zinc-400">mcap {sym}{(c.market_cap / 1e9).toFixed(2)}B · vol {sym}{(c.total_volume / 1e9).toFixed(2)}B</div>
                 </div>
                 <div className="text-right">
                   <div className="font-mono text-sm text-cyan-300">{sym}{fmt(c.current_price)}</div>

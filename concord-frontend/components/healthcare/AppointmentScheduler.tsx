@@ -132,7 +132,7 @@ export function AppointmentScheduler() {
       <div className="grid grid-cols-1 lg:grid-cols-2 max-h-[600px]">
         <div className="overflow-y-auto border-r border-white/5">
           {providers.length === 0 && !loading ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500">No providers match.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400">No providers match.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {providers.map(p => (
@@ -147,7 +147,7 @@ export function AppointmentScheduler() {
                       {p.acceptsTelehealth && <Video className="w-3 h-3 text-cyan-400" />}
                       {p.rating && <span className="ml-auto text-[10px] text-yellow-400 tabular-nums">★ {p.rating.toFixed(1)}</span>}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">
+                    <div className="text-[10px] text-gray-400 mt-0.5">
                       {p.specialty} · {p.practice}
                       {p.distanceMi != null && ` · ${p.distanceMi.toFixed(1)} mi`}
                       {p.nextSlot && ` · next ${p.nextSlot}`}
@@ -160,14 +160,14 @@ export function AppointmentScheduler() {
         </div>
         <div className="overflow-y-auto p-3">
           {!selectedProvider ? (
-            <div className="text-xs text-gray-500 italic text-center py-10">Select a provider to see availability.</div>
+            <div className="text-xs text-gray-400 italic text-center py-10">Select a provider to see availability.</div>
           ) : confirmed ? (
             <div className="space-y-3">
               <div className="bg-green-500/10 border border-green-500/40 rounded p-4 text-center">
                 <Calendar className="w-8 h-8 text-green-400 mx-auto mb-2" />
                 <h3 className="text-sm font-bold text-green-300 mb-1">Appointment booked!</h3>
                 <p className="text-xs text-gray-300">{selectedProvider.name} · {confirmed.slot.date} at {confirmed.slot.time}</p>
-                <p className="text-[10px] text-gray-500 mt-1">{confirmed.slot.kind === 'telehealth' ? 'Video call link will be sent before visit' : 'In-person'}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{confirmed.slot.kind === 'telehealth' ? 'Video call link will be sent before visit' : 'In-person'}</p>
               </div>
               {confirmed.copayUsd && confirmed.copayUsd > 0 && !copayIntent && (
                 <button
@@ -194,7 +194,7 @@ export function AppointmentScheduler() {
               <div className="text-sm font-medium text-white">{selectedProvider.name}</div>
               <div className="text-xs text-gray-400">{selectedProvider.specialty} · {selectedProvider.practice}</div>
               <div className="rounded border border-zinc-700 bg-zinc-900/60 p-2">
-                <label className="text-[10px] uppercase tracking-wider text-zinc-500">Co-pay (USD, optional)</label>
+                <label className="text-[10px] uppercase tracking-wider text-zinc-400">Co-pay (USD, optional)</label>
                 <input
                   type="number" min={0} step="0.01" placeholder="0.00"
                   value={copayUsd}
@@ -204,7 +204,7 @@ export function AppointmentScheduler() {
               </div>
               {Object.entries(slotsByDate).slice(0, 10).map(([date, daySlots]) => (
                 <div key={date}>
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
                     {new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
                   </div>
                   <div className="flex flex-wrap gap-1.5">

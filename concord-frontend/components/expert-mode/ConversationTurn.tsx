@@ -185,7 +185,7 @@ export function ConversationTurn({
     <article className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
       <h3 className="text-base font-semibold text-zinc-100">{turn.query}</h3>
 
-      <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-500">
+      <div className="flex items-center gap-2 flex-wrap text-xs text-zinc-400">
         <span>Synthesized by</span>
         {answerBadge ? (
           <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${answerBadge.color}`}>
@@ -253,9 +253,9 @@ export function ConversationTurn({
                     )}
                   </div>
                   {s.snippet && (
-                    <p className="mt-1 text-[11px] text-zinc-500 line-clamp-2">{s.snippet}</p>
+                    <p className="mt-1 text-[11px] text-zinc-400 line-clamp-2">{s.snippet}</p>
                   )}
-                  <div className="mt-1 text-[11px] text-zinc-600 flex items-center gap-2">
+                  <div className="mt-1 text-[11px] text-zinc-400 flex items-center gap-2">
                     {s.origin === 'web' ? (
                       s.url ? (
                         <a
@@ -331,7 +331,7 @@ export function ConversationTurn({
           Share link
         </button>
         {threadId && (
-          <span className="text-[10px] text-zinc-600 font-mono">thread {threadId.slice(0, 10)}…</span>
+          <span className="text-[10px] text-zinc-400 font-mono">thread {threadId.slice(0, 10)}…</span>
         )}
       </div>
 

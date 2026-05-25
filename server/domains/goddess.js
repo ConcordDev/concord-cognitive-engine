@@ -189,6 +189,7 @@ export default function registerGoddessActions(registerLensAction) {
    *   params.dispatchId (required)
    */
   registerLensAction("goddess", "reactions", (ctx, _artifact, params = {}) => {
+  try {
     const dispatchId = Number(params.dispatchId);
     if (!Number.isFinite(dispatchId) || dispatchId <= 0) {
       return { ok: false, error: "dispatchId required" };
@@ -213,7 +214,8 @@ export default function registerGoddessActions(registerLensAction) {
         mine: map.get(userId) || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * subscribe — subscribe to a tone for a world. When the goddess next

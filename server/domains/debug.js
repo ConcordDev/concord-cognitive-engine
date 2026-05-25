@@ -589,6 +589,7 @@ export default function registerDebugActions(registerLensAction) {
    * artifact.data.logs = [{ timestamp, level, message, source?, context? }]
    */
   registerLensAction("debug", "logAnalysis", (ctx, artifact, _params) => {
+  try {
     const logs = artifact.data?.logs || [];
     if (logs.length === 0) return { ok: true, result: { message: "No logs to analyze." } };
 
@@ -686,7 +687,8 @@ export default function registerDebugActions(registerLensAction) {
         timespan: { start: sorted[0] ? new Date(sorted[0].ts).toISOString() : null, end: sorted.length > 0 ? new Date(sorted[sorted.length - 1].ts).toISOString() : null },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * errorCluster
@@ -694,6 +696,7 @@ export default function registerDebugActions(registerLensAction) {
    * artifact.data.errors = [{ message, stack?, count?, firstSeen?, lastSeen?, source? }]
    */
   registerLensAction("debug", "errorCluster", (ctx, artifact, _params) => {
+  try {
     const errors = artifact.data?.errors || [];
     if (errors.length === 0) return { ok: true, result: { message: "No errors to cluster." } };
 
@@ -799,7 +802,8 @@ export default function registerDebugActions(registerLensAction) {
         topCluster: clusters[0],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * performanceProfile
@@ -807,6 +811,7 @@ export default function registerDebugActions(registerLensAction) {
    * artifact.data.traces = [{ name, startMs, endMs, parent?, metadata? }]
    */
   registerLensAction("debug", "performanceProfile", (ctx, artifact, _params) => {
+  try {
     const traces = artifact.data?.traces || [];
     if (traces.length === 0) return { ok: true, result: { message: "No traces." } };
 
@@ -897,7 +902,8 @@ export default function registerDebugActions(registerLensAction) {
         hotPath: profiles.slice(0, 3).map(p => p.name),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * stackTraceAnalysis
@@ -905,6 +911,7 @@ export default function registerDebugActions(registerLensAction) {
    * artifact.data.stackTraces = [{ error, stack, timestamp?, context? }]
    */
   registerLensAction("debug", "stackTraceAnalysis", (ctx, artifact, _params) => {
+  try {
     const traces = artifact.data?.stackTraces || [];
     if (traces.length === 0) return { ok: true, result: { message: "No stack traces." } };
 
@@ -997,5 +1004,6 @@ export default function registerDebugActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

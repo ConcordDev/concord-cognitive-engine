@@ -204,7 +204,7 @@ export default function AnimationPage() {
             <motion.div key={stat.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:border-orange-500/30 transition-colors">
               <stat.icon className={cn('w-4 h-4 mb-1', stat.color)} />
               <div className="text-xl font-bold">{stat.value}</div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</div>
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{stat.label}</div>
             </motion.div>
           ))}
         </div>
@@ -250,16 +250,16 @@ export default function AnimationPage() {
               value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Search projects..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-orange-500/30"
+                className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-orange-500/30"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Close">
+                <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Close">
                   <X className="w-4 h-4" />
                 </button>
               )}
             </div>
             {projects.filter(p => !searchQuery || p.title.toLowerCase().includes(searchQuery.toLowerCase()) || p.type?.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 ? (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <Clapperboard className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No animation projects yet.</p>
                 <button onClick={() => setShowCreateModal(true)} className="mt-3 px-4 py-2 text-xs bg-orange-500/20 rounded-lg hover:bg-orange-500/30">Create Project</button>
@@ -272,7 +272,7 @@ export default function AnimationPage() {
                       <h3 className="font-medium text-sm">{proj.title}</h3>
                       <span className={cn('text-[10px] px-1.5 py-0.5 rounded', proj.status === 'complete' ? 'bg-green-500/20 text-green-400' : proj.status === 'rendering' ? 'bg-orange-500/20 text-orange-400' : 'bg-gray-500/20 text-gray-400')}>{proj.status || 'draft'}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
                       <span>{proj.type}</span>
                       <span>{proj.fps || 24} fps</span>
                       <span>{proj.frameCount || 0} frames</span>
@@ -318,7 +318,7 @@ export default function AnimationPage() {
                 <Upload className="w-3 h-3" /> {uploadAssetMutation.isPending ? 'Uploading...' : 'Upload Asset'}
               </button>
             </div>
-            <div className="text-center py-12 text-gray-500 text-sm">
+            <div className="text-center py-12 text-gray-400 text-sm">
               <Layers className="w-8 h-8 mx-auto mb-2 opacity-30" />
               Upload sprites, backgrounds, and frame sequences.
             </div>
@@ -365,10 +365,10 @@ export default function AnimationPage() {
                 {actionResult.totalFrames !== undefined && actionResult.sampleFrames !== undefined && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.keyframeCount as number}</p><p className="text-[10px] text-gray-500">Keyframes</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.fps as number}</p><p className="text-[10px] text-gray-500">FPS</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.totalFrames as number}</p><p className="text-[10px] text-gray-500">Total Frames</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-green-400">{actionResult.durationSeconds as number}s</p><p className="text-[10px] text-gray-500">Duration</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.keyframeCount as number}</p><p className="text-[10px] text-gray-400">Keyframes</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.fps as number}</p><p className="text-[10px] text-gray-400">FPS</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.totalFrames as number}</p><p className="text-[10px] text-gray-400">Total Frames</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-green-400">{actionResult.durationSeconds as number}s</p><p className="text-[10px] text-gray-400">Duration</p></div>
                     </div>
                     {(actionResult.sampleFrames as Array<{ frame: number; time: number; value: number }>)?.length > 0 && (
                       <div className="flex items-end gap-1 h-16">
@@ -384,15 +384,15 @@ export default function AnimationPage() {
                 {actionResult.totalDuration !== undefined && actionResult.sequences !== undefined && !actionResult.sampleFrames && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.totalDuration as number}s</p><p className="text-[10px] text-gray-500">Total Duration</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.totalFrames as number}</p><p className="text-[10px] text-gray-500">Total Frames</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.overlappingPairs as number}</p><p className="text-[10px] text-gray-500">Overlaps</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.totalDuration as number}s</p><p className="text-[10px] text-gray-400">Total Duration</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.totalFrames as number}</p><p className="text-[10px] text-gray-400">Total Frames</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.overlappingPairs as number}</p><p className="text-[10px] text-gray-400">Overlaps</p></div>
                     </div>
                     {(actionResult.sequences as Array<{ name: string; duration: number; delay: number; easing: string }>)?.map((seq, i) => (
                       <div key={i} className="flex items-center gap-3 p-2 bg-white/5 rounded text-xs">
                         <span className="text-white font-medium w-24 truncate">{seq.name}</span>
                         <span className="text-gray-400">{seq.duration}s</span>
-                        <span className="text-gray-500">delay: {seq.delay}s</span>
+                        <span className="text-gray-400">delay: {seq.delay}s</span>
                         <span className="text-purple-400 ml-auto">{seq.easing}</span>
                       </div>
                     ))}
@@ -403,10 +403,10 @@ export default function AnimationPage() {
                 {actionResult.recommendedFPS !== undefined && actionResult.frameTimeMs !== undefined && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-gray-400">{actionResult.currentFPS as number}</p><p className="text-[10px] text-gray-500">Current FPS</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-green-400">{actionResult.recommendedFPS as number}</p><p className="text-[10px] text-gray-500">Recommended</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.frameTimeMs as number}ms</p><p className="text-[10px] text-gray-500">Frame Time</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.targetDevice as string}</p><p className="text-[10px] text-gray-500">Target</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-gray-400">{actionResult.currentFPS as number}</p><p className="text-[10px] text-gray-400">Current FPS</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-green-400">{actionResult.recommendedFPS as number}</p><p className="text-[10px] text-gray-400">Recommended</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.frameTimeMs as number}ms</p><p className="text-[10px] text-gray-400">Frame Time</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.targetDevice as string}</p><p className="text-[10px] text-gray-400">Target</p></div>
                     </div>
                     <div className={cn('flex items-center gap-2 text-xs p-2 rounded', (actionResult.withinBudget as boolean) ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400')}>
                       {(actionResult.withinBudget as boolean) ? <Sparkles className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
@@ -422,15 +422,15 @@ export default function AnimationPage() {
                 {actionResult.scenes !== undefined && actionResult.sceneCount !== undefined && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.sceneCount as number}</p><p className="text-[10px] text-gray-500">Scenes</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.totalDuration as number}s</p><p className="text-[10px] text-gray-500">Total</p></div>
-                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.avgSceneDuration as number}s</p><p className="text-[10px] text-gray-500">Avg Scene</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-orange-400">{actionResult.sceneCount as number}</p><p className="text-[10px] text-gray-400">Scenes</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-cyan-400">{actionResult.totalDuration as number}s</p><p className="text-[10px] text-gray-400">Total</p></div>
+                      <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-purple-400">{actionResult.avgSceneDuration as number}s</p><p className="text-[10px] text-gray-400">Avg Scene</p></div>
                     </div>
                     {(actionResult.scenes as Array<{ scene: number; name: string; startTime: number; duration: number; description: string }>)?.map((s) => (
                       <div key={s.scene} className="flex items-center gap-3 p-2 bg-white/5 rounded text-xs">
                         <span className="text-orange-400 font-bold w-6 text-center">{s.scene}</span>
                         <span className="text-white font-medium flex-1 truncate">{s.name}</span>
-                        <span className="text-gray-500">{s.startTime}s</span>
+                        <span className="text-gray-400">{s.startTime}s</span>
                         <span className="text-gray-400">{s.duration}s</span>
                       </div>
                     ))}
@@ -444,9 +444,9 @@ export default function AnimationPage() {
               </motion.div>
             )}
 
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-400">
               <Zap className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p className="text-xs text-gray-600">Export animations as video, GIF, or sprite sheets via the render engine.</p>
+              <p className="text-xs text-gray-400">Export animations as video, GIF, or sprite sheets via the render engine.</p>
             </div>
           </div>
         )}
@@ -455,15 +455,15 @@ export default function AnimationPage() {
         {tab === 'stats' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Projects</div>
+              <div className="text-xs text-gray-400 mb-1">Projects</div>
               <div className="text-2xl font-bold">{projects.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Animation DTUs</div>
+              <div className="text-xs text-gray-400 mb-1">Animation DTUs</div>
               <div className="text-2xl font-bold">{contextDTUs.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Total Frames</div>
+              <div className="text-xs text-gray-400 mb-1">Total Frames</div>
               <div className="text-2xl font-bold">{projects.reduce((s, p) => s + (p.frameCount || 0), 0)}</div>
             </div>
           </div>

@@ -107,7 +107,7 @@ export function FederationConsole() {
         </div>
         <div>
           <h2 className="text-sm font-bold text-zinc-100">Federation Console</h2>
-          <p className="text-[11px] text-zinc-500">Cross-world sync ops — peers, flows, mappings, schedules, alerts</p>
+          <p className="text-[11px] text-zinc-400">Cross-world sync ops — peers, flows, mappings, schedules, alerts</p>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ export function FederationConsole() {
         {CONSOLE_TABS.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`flex-1 min-w-[96px] flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-colors ${
-              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}>
+              tab === t.id ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'}`}>
             {t.icon}<span>{t.label}</span>
           </button>
         ))}
@@ -193,7 +193,7 @@ function PeerBar({ peers, busy, setBusy, setErr, reload }: {
         </button>
       </div>
       {peers.length === 0 ? (
-        <p className="text-[11px] text-zinc-600">No peers registered yet. Add a world or federation peer to bridge to.</p>
+        <p className="text-[11px] text-zinc-400">No peers registered yet. Add a world or federation peer to bridge to.</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {peers.map(p => (
@@ -268,7 +268,7 @@ function TopologyTab({ peers }: { peers: Peer[] }) {
       </div>
 
       {nodes.length <= 1 ? (
-        <div className="h-48 flex items-center justify-center text-xs text-zinc-600 border border-zinc-800 rounded-lg">
+        <div className="h-48 flex items-center justify-center text-xs text-zinc-400 border border-zinc-800 rounded-lg">
           Register peers and record sync flows to build the topology graph.
         </div>
       ) : (
@@ -410,7 +410,7 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
         <div className="flex gap-2 text-xs">
           {['', 'failed', 'succeeded', 'pending'].map(f => (
             <button key={f || 'all'} onClick={() => setFilter(f)}
-              className={`px-2 py-1 rounded ${filter === f ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500 hover:text-zinc-300'}`}>
+              className={`px-2 py-1 rounded ${filter === f ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-300'}`}>
               {f || 'all'}
             </button>
           ))}
@@ -423,7 +423,7 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
       </div>
 
       {flows.length === 0 ? (
-        <div className="h-32 flex items-center justify-center text-xs text-zinc-600 border border-zinc-800 rounded-lg">
+        <div className="h-32 flex items-center justify-center text-xs text-zinc-400 border border-zinc-800 rounded-lg">
           No flows recorded. Record a sync flow above.
         </div>
       ) : (
@@ -435,13 +435,13 @@ function FlowsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null)
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="font-medium text-zinc-200">{f.peerName}</span>
-                  <span className="text-zinc-500">{f.action}</span>
+                  <span className="text-zinc-400">{f.action}</span>
                   <span className="text-zinc-600">{f.records} rec · {f.rps} rps</span>
                   {f.attempts > 1 && <span className="text-amber-400">×{f.attempts}</span>}
                 </div>
                 {f.error && <p className="text-[11px] text-red-400/80 mt-0.5 truncate">{f.error}</p>}
               </div>
-              <span className="text-[10px] text-zinc-600">{new Date(f.at).toLocaleTimeString()}</span>
+              <span className="text-[10px] text-zinc-400">{new Date(f.at).toLocaleTimeString()}</span>
               {f.status === 'failed' && (
                 <button onClick={() => replay(f.id)} disabled={replaying === f.id}
                   className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 text-[11px] disabled:opacity-40">
@@ -543,7 +543,7 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
 
       {/* mapping list */}
       {mappings.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 px-1">No field mappings defined yet.</p>
+        <p className="text-[11px] text-zinc-400 px-1">No field mappings defined yet.</p>
       ) : (
         <div className="space-y-1.5">
           {mappings.map(m => (
@@ -575,7 +575,7 @@ function MappingsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | nu
           className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200 font-mono mb-2" />
         {preview && (
           preview.length === 0
-            ? <p className="text-[11px] text-zinc-600">No mappings to preview — add one above.</p>
+            ? <p className="text-[11px] text-zinc-400">No mappings to preview — add one above.</p>
             : <div className="space-y-1">
                 {preview.map(r => (
                   <div key={r.mappingId} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-zinc-900">
@@ -639,7 +639,7 @@ function SchedulesTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | n
         <b className="text-cyan-400">{active}</b> of {schedules.length} peers on an active schedule.
       </p>
       {schedules.length === 0 ? (
-        <div className="h-32 flex items-center justify-center text-xs text-zinc-600 border border-zinc-800 rounded-lg">
+        <div className="h-32 flex items-center justify-center text-xs text-zinc-400 border border-zinc-800 rounded-lg">
           Register peers to configure sync schedules.
         </div>
       ) : (
@@ -648,7 +648,7 @@ function SchedulesTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | n
             const e = edits[s.peerId] || { mode: s.mode, intervalMinutes: s.intervalMinutes, enabled: s.enabled };
             return (
               <div key={s.peerId} className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                <Calendar className="w-4 h-4 text-zinc-500" />
+                <Calendar className="w-4 h-4 text-zinc-400" />
                 <span className="text-sm font-medium text-zinc-200 min-w-[100px]">{s.peerName}</span>
                 <select value={e.mode} onChange={ev => patch(s.peerId, { mode: ev.target.value })}
                   className="bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200">
@@ -670,7 +670,7 @@ function SchedulesTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | n
                     onChange={ev => patch(s.peerId, { enabled: ev.target.checked })} /> enabled
                 </label>
                 {s.nextRunAt && (
-                  <span className="text-[10px] text-zinc-600">next {new Date(s.nextRunAt).toLocaleString()}</span>
+                  <span className="text-[10px] text-zinc-400">next {new Date(s.nextRunAt).toLocaleString()}</span>
                 )}
                 <button onClick={() => save(s.peerId)}
                   className="ml-auto px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 text-[11px]">
@@ -767,7 +767,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
 
       {/* rule list */}
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
+        <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide">
           {rules.length} Rule{rules.length !== 1 ? 's' : ''}
         </p>
         <button onClick={evaluate}
@@ -776,12 +776,12 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
         </button>
       </div>
       {rules.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 px-1">No alert rules. Add one to monitor sync failure or lag.</p>
+        <p className="text-[11px] text-zinc-400 px-1">No alert rules. Add one to monitor sync failure or lag.</p>
       ) : (
         <div className="space-y-1.5">
           {rules.map(r => (
             <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg bg-zinc-950/60 border border-zinc-800 text-xs">
-              <Bell className="w-3.5 h-3.5 text-zinc-500" />
+              <Bell className="w-3.5 h-3.5 text-zinc-400" />
               <span className="text-zinc-300">{METRIC_LABEL[r.metric] || r.metric}</span>
               <span className="font-bold text-amber-400">{r.threshold}</span>
               <span className="text-zinc-600">
@@ -798,7 +798,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
       {/* fired alerts */}
       {evalStats && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-          <p className="text-[11px] text-zinc-500 mb-2">
+          <p className="text-[11px] text-zinc-400 mb-2">
             Evaluated {evalStats.rulesEvaluated} rule{evalStats.rulesEvaluated !== 1 ? 's' : ''} —{' '}
             <b className="text-amber-400">{evalStats.firing} firing</b>
             {evalStats.critical > 0 && <span className="text-red-400"> · {evalStats.critical} critical</span>}
@@ -818,7 +818,7 @@ function AlertsTab({ peers, setErr }: { peers: Peer[]; setErr: (e: string | null
                   <span className="font-medium">{a.peerName}</span>
                   <span>{a.metric}</span>
                   <span className="font-mono">{a.value} ≥ {a.threshold}</span>
-                  <span className="text-zinc-500 ml-auto">{a.detail}</span>
+                  <span className="text-zinc-400 ml-auto">{a.detail}</span>
                 </div>
               ))}
             </div>
@@ -893,13 +893,13 @@ function ThroughputTab({ peers }: { peers: Peer[] }) {
       </div>
 
       {chartData.length === 0 ? (
-        <div className="h-40 flex items-center justify-center text-xs text-zinc-600 border border-zinc-800 rounded-lg">
+        <div className="h-40 flex items-center justify-center text-xs text-zinc-400 border border-zinc-800 rounded-lg">
           {msg || 'No throughput history yet — record sync flows to build a time series.'}
         </div>
       ) : (
         <>
           <div>
-            <p className="text-[11px] text-zinc-500 mb-1">Records / second over time</p>
+            <p className="text-[11px] text-zinc-400 mb-1">Records / second over time</p>
             <ChartKit kind="area" data={chartData} xKey="time"
               series={[
                 { key: 'avgRPS', label: 'Avg RPS', color: '#06b6d4' },
@@ -907,7 +907,7 @@ function ThroughputTab({ peers }: { peers: Peer[] }) {
               ]} height={200} />
           </div>
           <div>
-            <p className="text-[11px] text-zinc-500 mb-1">Flow outcomes per bucket</p>
+            <p className="text-[11px] text-zinc-400 mb-1">Flow outcomes per bucket</p>
             <ChartKit kind="bar" data={chartData} xKey="time" stacked
               series={[
                 { key: 'succeeded', label: 'Succeeded', color: '#22c55e' },

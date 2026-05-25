@@ -130,20 +130,20 @@ function AnalyzerTab() {
       {result && (
         <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-2">
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <div><span className="text-gray-500">Length</span><p className="text-gray-100 font-mono">{result.length}</p></div>
+            <div><span className="text-gray-400">Length</span><p className="text-gray-100 font-mono">{result.length}</p></div>
             {result.gcPercent !== undefined && (
-              <div><span className="text-gray-500">GC%</span><p className="text-gray-100 font-mono">{result.gcPercent}</p></div>
+              <div><span className="text-gray-400">GC%</span><p className="text-gray-100 font-mono">{result.gcPercent}</p></div>
             )}
             {result.tm !== undefined && (
-              <div><span className="text-gray-500">Tm</span><p className="text-gray-100 font-mono">{result.tm}°C</p></div>
+              <div><span className="text-gray-400">Tm</span><p className="text-gray-100 font-mono">{result.tm}°C</p></div>
             )}
             {result.molecularWeight && (
-              <div><span className="text-gray-500">MW</span><p className="text-gray-100 font-mono">{result.molecularWeight.toLocaleString()} Da</p></div>
+              <div><span className="text-gray-400">MW</span><p className="text-gray-100 font-mono">{result.molecularWeight.toLocaleString()} Da</p></div>
             )}
           </div>
           {result.orfs && result.orfs.length > 0 && (
             <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Open Reading Frames (≥30 aa)</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Open Reading Frames (≥30 aa)</p>
               {result.orfs.map((o, i) => (
                 <p key={i} className="text-xs font-mono text-gray-200">
                   Frame {o.frame}: {o.start}–{o.end} ({o.length} bp / {Math.floor(o.length / 3)} aa)
@@ -199,16 +199,16 @@ function PrimerTab() {
             { label: 'Reverse', data: primers.reverse, color: 'cyan' },
           ].map(({ label, data }) => (
             <div key={label} className="rounded border border-white/10 bg-black/20 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-500">{label} primer</p>
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">{label} primer</p>
               <p className="text-sm font-mono text-gray-100 break-all">{data.sequence}</p>
-              <div className="flex gap-4 mt-1 text-[11px] text-gray-500 font-mono">
+              <div className="flex gap-4 mt-1 text-[11px] text-gray-400 font-mono">
                 <span>{data.length} bp</span>
                 <span>Tm {data.tm}°C</span>
                 <span>GC {data.gcPercent}%</span>
               </div>
             </div>
           ))}
-          <p className="text-[11px] text-gray-500">Product size: <span className="font-mono text-gray-300">{primers.productSize} bp</span></p>
+          <p className="text-[11px] text-gray-400">Product size: <span className="font-mono text-gray-300">{primers.productSize} bp</span></p>
         </div>
       )}
     </div>
@@ -253,9 +253,9 @@ function AlignTab() {
       {result && (
         <div className="rounded border border-emerald-500/20 bg-emerald-500/5 p-3 space-y-1">
           <div className="grid grid-cols-3 gap-2 text-xs">
-            <div><span className="text-gray-500">Score</span><p className="text-gray-100 font-mono">{result.score}</p></div>
-            <div><span className="text-gray-500">Identity</span><p className="text-gray-100 font-mono">{result.identity}%</p></div>
-            <div><span className="text-gray-500">Length</span><p className="text-gray-100 font-mono">{result.alignmentLength}</p></div>
+            <div><span className="text-gray-400">Score</span><p className="text-gray-100 font-mono">{result.score}</p></div>
+            <div><span className="text-gray-400">Identity</span><p className="text-gray-100 font-mono">{result.identity}%</p></div>
+            <div><span className="text-gray-400">Length</span><p className="text-gray-100 font-mono">{result.alignmentLength}</p></div>
           </div>
           <pre className="text-[11px] font-mono text-gray-300 mt-2 overflow-x-auto whitespace-pre">
 {result.alignA}
@@ -296,7 +296,7 @@ function RestrictionTab() {
       {sites.length > 0 ? (
         <div className="border border-white/10 rounded overflow-hidden">
           <table className="w-full text-xs">
-            <thead className="bg-black/40 text-gray-500 uppercase text-[10px]">
+            <thead className="bg-black/40 text-gray-400 uppercase text-[10px]">
               <tr><th className="text-left px-2 py-1">Enzyme</th><th className="text-left px-2 py-1">Site</th><th className="text-right px-2 py-1">Pos</th><th className="text-right px-2 py-1">Cut at</th></tr>
             </thead>
             <tbody>
@@ -312,7 +312,7 @@ function RestrictionTab() {
           </table>
         </div>
       ) : (
-        <p className="text-xs text-gray-500 text-center py-4">No sites mapped yet.</p>
+        <p className="text-xs text-gray-400 text-center py-4">No sites mapped yet.</p>
       )}
     </div>
   );
@@ -383,20 +383,20 @@ function LibraryTab() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
         </div>
       ) : seqs.length === 0 ? (
-        <p className="text-center text-xs text-gray-500 py-8">No saved sequences yet.</p>
+        <p className="text-center text-xs text-gray-400 py-8">No saved sequences yet.</p>
       ) : (
         seqs.map((s) => (
           <div key={s.id} className="rounded border border-white/10 bg-black/20 p-3 group">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-100">{s.name}</p>
-                <p className="text-[10px] uppercase text-gray-500">{s.kind} · {s.length} {s.kind === 'protein' ? 'aa' : 'bp'}</p>
-                {s.description && <p className="text-[11px] text-gray-500 mt-1">{s.description}</p>}
-                <p className="text-[10px] font-mono text-gray-600 mt-1 truncate">{s.sequence.slice(0, 80)}{s.sequence.length > 80 ? '…' : ''}</p>
+                <p className="text-[10px] uppercase text-gray-400">{s.kind} · {s.length} {s.kind === 'protein' ? 'aa' : 'bp'}</p>
+                {s.description && <p className="text-[11px] text-gray-400 mt-1">{s.description}</p>}
+                <p className="text-[10px] font-mono text-gray-400 mt-1 truncate">{s.sequence.slice(0, 80)}{s.sequence.length > 80 ? '…' : ''}</p>
               </div>
               <button type="button" onClick={() => remove(s.id)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100">

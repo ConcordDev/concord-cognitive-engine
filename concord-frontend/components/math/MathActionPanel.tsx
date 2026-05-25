@@ -205,7 +205,7 @@ export function MathActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -229,7 +229,7 @@ export function MathActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Matrix · {matrixOp}</div>
             {matrixResult.determinant != null && <div className="text-2xl font-bold text-purple-300">det = {matrixResult.determinant.toFixed(3)}</div>}
-            {matrixResult.rank != null && <div className="text-[10px] text-zinc-500">rank {matrixResult.rank}</div>}
+            {matrixResult.rank != null && <div className="text-[10px] text-zinc-400">rank {matrixResult.rank}</div>}
             {matrixResult.result && Array.isArray(matrixResult.result[0]) && (
               <pre className="text-[10px] text-purple-200 font-mono mt-1 overflow-x-auto">{matrixResult.result.map(row => '[' + row.map(c => c.toFixed(2)).join(', ') + ']').join('\n')}</pre>
             )}

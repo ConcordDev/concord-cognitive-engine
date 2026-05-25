@@ -44,7 +44,7 @@ export function FlagButton({ questionId, answerId, onFlagged }: FlagButtonProps)
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[10px] text-zinc-600 hover:text-rose-400 inline-flex items-center gap-0.5"
+        className="text-[10px] text-zinc-400 hover:text-rose-400 inline-flex items-center gap-0.5"
       >
         <Flag className="w-2.5 h-2.5" />Flag
       </button>

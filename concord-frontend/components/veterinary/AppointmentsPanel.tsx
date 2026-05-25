@@ -169,7 +169,7 @@ export function AppointmentsPanel({ onChanged }: { onChanged?: () => void }) {
             className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-white"
           />
           {dayFilter && (
-            <button onClick={() => setDayFilter('')} className="text-zinc-500 hover:text-white">
+            <button onClick={() => setDayFilter('')} className="text-zinc-400 hover:text-white">
               clear
             </button>
           )}
@@ -188,11 +188,11 @@ export function AppointmentsPanel({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : appts.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <Calendar className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No appointments {dayFilter ? 'on this day' : 'booked'}.
         </div>
@@ -206,11 +206,11 @@ export function AppointmentsPanel({ onChanged }: { onChanged?: () => void }) {
               <div>
                 <p className="text-sm font-semibold text-white">
                   {a.patientName}{' '}
-                  <span className="text-xs font-normal text-zinc-500">
+                  <span className="text-xs font-normal text-zinc-400">
                     {a.date} {a.time} · {a.durationMin}min
                   </span>
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-zinc-400">
                   {a.type} · {a.owner || 'no owner'}
                   {a.vet && ` · ${a.vet}`}
                   {a.reason && ` — ${a.reason}`}
@@ -231,7 +231,7 @@ export function AppointmentsPanel({ onChanged }: { onChanged?: () => void }) {
                 <button
                   onClick={() => cancel(a.id)}
                   aria-label="Cancel appointment"
-                  className="rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-red-400"
+                  className="rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

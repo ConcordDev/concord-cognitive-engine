@@ -269,7 +269,7 @@ export function ForecastWorkbench() {
               <Database className="h-3.5 w-3.5" /> Stored Datasets ({datasets.length})
             </div>
             {datasets.length === 0 ? (
-              <p className="text-[11px] text-zinc-500">No datasets imported yet.</p>
+              <p className="text-[11px] text-zinc-400">No datasets imported yet.</p>
             ) : (
               <div className="space-y-1">
                 {datasets.map((d) => (
@@ -281,11 +281,10 @@ export function ForecastWorkbench() {
                         ? 'border-sky-500/50 bg-sky-500/10'
                         : 'border-zinc-800 bg-zinc-950 hover:border-zinc-700',
                     )}
-                    onClick={() => selectDataset(d.id)}
-                  >
+                    onClick={() => selectDataset(d.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="min-w-0">
                       <p className="truncate font-medium text-zinc-100">{d.name}</p>
-                      <p className="text-[10px] text-zinc-500">
+                      <p className="text-[10px] text-zinc-400">
                         {d.count} pts {d.hasTimestamps ? '· dated' : ''}
                       </p>
                     </div>
@@ -306,7 +305,7 @@ export function ForecastWorkbench() {
         {/* ── right: chart + analysis ── */}
         <div className="space-y-4">
           {!activeData ? (
-            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-600">
+            <div className="flex h-48 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-400">
               Import or select a dataset to begin analysis.
             </div>
           ) : (
@@ -404,7 +403,7 @@ function BrushControl({
   const start = brush?.start ?? 0;
   const end = brush?.end ?? length;
   return (
-    <div className="mt-2 flex items-center gap-2 text-[10px] text-zinc-500">
+    <div className="mt-2 flex items-center gap-2 text-[10px] text-zinc-400">
       <span>Zoom</span>
       <input
         type="range"
@@ -451,7 +450,7 @@ function ParamControls(props: {
   } = props;
   const field = (label: string, node: React.ReactNode) => (
     <div>
-      <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-500">{label}</label>
+      <label className="mb-1 block text-[10px] uppercase tracking-wider text-zinc-400">{label}</label>
       {node}
     </div>
   );
@@ -483,7 +482,7 @@ function ParamControls(props: {
       {tab === 'forecast' && (
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">
               Holiday / Event effects
             </label>
             <button
@@ -494,7 +493,7 @@ function ParamControls(props: {
             </button>
           </div>
           {holidays.length === 0 && (
-            <p className="text-[10px] text-zinc-600">
+            <p className="text-[10px] text-zinc-400">
               None — plain Holt forecast. Add a holiday to model calendar spikes.
             </p>
           )}
@@ -552,13 +551,13 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
           <Stat label="Seasonal strength" value={`${(result.strength?.seasonal * 100).toFixed(0)}% (${result.strength?.seasonalLabel})`} />
           <Stat label="Residual var" value={result.variance?.residual} />
         </div>
-        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Observed vs Trend</p>
+        <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Observed vs Trend</p>
         <ChartKit kind="line" data={data} xKey="label" height={170}
           series={[
             { key: 'observed', label: 'Observed', color: '#06b6d4' },
             { key: 'trend', label: 'Trend', color: '#f59e0b' },
           ]} />
-        <p className="mb-1 mt-3 text-[10px] uppercase tracking-wider text-zinc-500">Seasonal + Residual</p>
+        <p className="mb-1 mt-3 text-[10px] uppercase tracking-wider text-zinc-400">Seasonal + Residual</p>
         <ChartKit kind="line" data={data} xKey="label" height={150}
           series={[
             { key: 'seasonal', label: 'Seasonal', color: '#a855f7' },
@@ -606,7 +605,7 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
           ]} />
         {result.holidayEffects?.length > 0 && (
           <div className="mt-3">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Estimated holiday effects</p>
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Estimated holiday effects</p>
             <div className="space-y-1">
               {result.holidayEffects.map((h: any, i: number) => (
                 <div key={i} className="flex justify-between rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-[11px]">
@@ -657,7 +656,7 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
           ]} />
         {events.length > 0 && (
           <div className="mt-3">
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Anomalies on time axis</p>
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Anomalies on time axis</p>
             <TimelineView events={events} height={110} />
           </div>
         )}
@@ -727,12 +726,12 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
         ))}
         {result.acfCurve?.length > 0 && (
           <div>
-            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Autocorrelation</p>
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Autocorrelation</p>
             <ChartKit kind="line" data={result.acfCurve} xKey="lag" height={140}
               series={[{ key: 'acf', label: 'ACF', color: '#06b6d4' }]} />
           </div>
         )}
-        {seasons.length === 0 && <p className="text-[11px] text-zinc-500">{result.note}</p>}
+        {seasons.length === 0 && <p className="text-[11px] text-zinc-400">{result.note}</p>}
       </div>
     );
   }
@@ -764,7 +763,7 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-[11px]">
             <thead>
-              <tr className="text-zinc-500">
+              <tr className="text-zinc-400">
                 <th className="py-1 text-left">Model</th>
                 <th className="py-1 text-right">MAE</th>
                 <th className="py-1 text-right">RMSE</th>
@@ -812,7 +811,7 @@ function ResultPanel({ result, activeData }: { result: any; activeData: DatasetF
 function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 font-mono text-sm text-sky-300">{value ?? '—'}</div>
     </div>
   );

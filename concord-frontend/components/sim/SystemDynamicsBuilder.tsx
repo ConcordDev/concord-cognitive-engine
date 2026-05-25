@@ -427,7 +427,7 @@ export function SystemDynamicsBuilder() {
                 {result.feedbackLoops.map((loop, i) => (
                   <div key={i} className="flex items-center justify-between text-sm bg-lattice-surface/50 rounded px-2 py-1.5">
                     <span className="text-gray-300 font-mono">{loop.flow}</span>
-                    <span className="text-xs text-gray-500">{loop.referencesStocks.join(', ')}</span>
+                    <span className="text-xs text-gray-400">{loop.referencesStocks.join(', ')}</span>
                     <span className={cn(
                       'text-xs px-1.5 py-0.5 rounded-full',
                       loop.polarity === 'reinforcing'

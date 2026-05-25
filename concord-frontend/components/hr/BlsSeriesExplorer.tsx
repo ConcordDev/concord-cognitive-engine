@@ -108,24 +108,24 @@ export function BlsSeriesExplorer() {
       </div>
 
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling BLS series…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling BLS series…</div>}
 
       {series && (
         <div className="rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-white">{preset.label}</h3>
-              <p className="text-[11px] text-zinc-500">{preset.description} · series {series.seriesId}</p>
+              <p className="text-[11px] text-zinc-400">{preset.description} · series {series.seriesId}</p>
             </div>
             {latest && (
               <div className="text-right">
                 <div className="font-mono text-2xl text-cyan-300">{latest.value.toLocaleString()}</div>
-                <div className="text-[10px] text-zinc-500">{latest.periodName} {latest.year}</div>
+                <div className="text-[10px] text-zinc-400">{latest.periodName} {latest.year}</div>
               </div>
             )}
           </div>
           <div ref={chartHostRef} className="mt-3 w-full" />
-          <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-500">
+          <div className="mt-2 flex items-center justify-between text-[10px] text-zinc-400">
             <span><LineChartIcon className="mr-1 inline h-3 w-3" />{series.data.length} observations</span>
             <span>{data?.startYear}–{data?.endYear}{data?.authenticated ? ' · keyed' : ' · public'}</span>
           </div>

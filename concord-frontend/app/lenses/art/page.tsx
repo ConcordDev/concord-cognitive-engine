@@ -691,7 +691,7 @@ export default function ArtLensPage() {
                 </div>
                 <div className="p-3">
                   <p className="font-medium text-sm text-gray-300">{['Neon Dreams', 'Digital Horizons', 'Abstract Flow', 'Cosmic Pulse', 'Neural Art', 'Pixel Paradise', 'Wave Form', 'Fractal Mind'][i]}</p>
-                  <p className="text-xs text-gray-500 mt-1">{ART_STYLES[i % ART_STYLES.length]}</p>
+                  <p className="text-xs text-gray-400 mt-1">{ART_STYLES[i % ART_STYLES.length]}</p>
                 </div>
               </div>
             ))
@@ -823,7 +823,7 @@ export default function ArtLensPage() {
               )}
             </div>
             {/* Keyboard shortcut hint */}
-            <div className="absolute bottom-4 left-4 text-xs text-gray-500 space-x-3 select-none">
+            <div className="absolute bottom-4 left-4 text-xs text-gray-400 space-x-3 select-none">
               <span title="Brush">B</span>
               <span title="Eraser">E</span>
               <span title="Fill">G</span>
@@ -996,7 +996,7 @@ export default function ArtLensPage() {
               </div>
               <div className="p-4">
                 <h3 className="font-medium text-gray-300">{['Album Cover Pack', 'Neon Logo Kit', 'Abstract Backgrounds', 'Character Set', 'Social Media Kit', 'Poster Templates'][i]}</h3>
-                <p className="text-xs text-gray-500 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
+                <p className="text-xs text-gray-400 mt-1">{ART_TYPES[i]?.replace('-', ' ')}</p>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-neon-green font-bold">${[25, 50, 35, 75, 15, 100][i]}</span>
                   <button onClick={() => setViewMode('gallery')} className="px-3 py-1.5 bg-white/10 text-gray-300 rounded text-xs hover:bg-white/20">View</button>
@@ -1137,7 +1137,7 @@ export default function ArtLensPage() {
                 <div className="border-2 border-dashed border-white/20 rounded-lg p-8 text-center">
                   <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
                   <p className="text-sm text-gray-400">Drop files here or click to upload</p>
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG, WebP up to 50MB</p>
+                  <p className="text-xs text-gray-400 mt-1">PNG, JPG, SVG, WebP up to 50MB</p>
                 </div>
                 <button onClick={handleUpload} disabled={uploadMutation.isPending} className="w-full py-2.5 bg-neon-pink text-white rounded-lg font-medium hover:bg-neon-pink/80 disabled:opacity-50">
                   {uploadMutation.isPending ? 'Uploading...' : 'Upload Artwork'}
@@ -1207,9 +1207,9 @@ export default function ArtLensPage() {
             {actionResult.harmonies !== undefined && actionResult.paletteSize !== undefined && (
               <div className="space-y-2">
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.paletteSize as number}</p><p className="text-[10px] text-gray-500">Colors</p></div>
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-500">Harmony Score</p></div>
-                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.temperature as string}</p><p className="text-[10px] text-gray-500">Temperature</p></div>
+                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.paletteSize as number}</p><p className="text-[10px] text-gray-400">Colors</p></div>
+                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-400">Harmony Score</p></div>
+                  <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.temperature as string}</p><p className="text-[10px] text-gray-400">Temperature</p></div>
                 </div>
                 {(actionResult.harmonies as Array<{ type: string; colors: string[] }>)?.slice(0, 4).map((h, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs"><span className="text-white capitalize">{h.type}</span><div className="flex gap-1">{h.colors.map((c, j) => <span key={j} className="w-4 h-4 rounded-sm border border-white/20" style={{ backgroundColor: c }} />)}</div></div>
@@ -1222,7 +1222,7 @@ export default function ArtLensPage() {
                 <div className="text-3xl font-bold text-neon-cyan">{actionResult.overall as number}<span className="text-sm text-gray-400">/100</span></div>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(actionResult.scores as Record<string, number>).map(([key, val]) => (
-                    <div key={key} className="p-2 bg-white/5 rounded"><p className="text-[10px] text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{val}</p></div>
+                    <div key={key} className="p-2 bg-white/5 rounded"><p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p><p className="text-sm font-bold text-white">{val}</p></div>
                   ))}
                 </div>
               </div>

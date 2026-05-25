@@ -130,7 +130,7 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
       {/* Open campaigns picker (when not viewing one) */}
       {!session.session && openSessions.length > 0 && (
         <div className="mb-3 space-y-1">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Open campaigns</div>
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Open campaigns</div>
           {openSessions.map(s => (
             <button
               key={s.id}
@@ -139,7 +139,7 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
               className="w-full flex items-center justify-between text-xs px-2 py-1.5 rounded border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-200"
             >
               <span className="truncate">{s.title || 'Untitled'}</span>
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-[10px] font-mono text-slate-400">
                 step: {s.currentStep || '—'} · {s.stepCount} adv
                 <ChevronRight className="inline w-3 h-3 ml-1" />
               </span>
@@ -157,7 +157,7 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
 
       {/* Empty hint */}
       {!session.session && openSessions.length === 0 && (
-        <p className="text-xs text-slate-500 italic">
+        <p className="text-xs text-slate-400 italic">
           No open campaigns for this kingdom. Start one to plan across visits — the substrate persists every step.
         </p>
       )}
@@ -170,7 +170,7 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
             <button
               type="button"
               onClick={() => setActiveSessionId(null)}
-              className="text-[10px] text-slate-500 hover:text-slate-200"
+              className="text-[10px] text-slate-400 hover:text-slate-200"
             >
               Back to list
             </button>
@@ -230,10 +230,10 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
 
           {session.session.currentStep === 'engage' && (
             <div className="rounded border border-slate-700 bg-slate-800/40 p-3 text-xs text-slate-300 space-y-1">
-              <div><FileText className="inline w-3 h-3 mr-1 text-slate-500" /> Target: <span className="font-mono">{state.target || '—'}</span></div>
+              <div><FileText className="inline w-3 h-3 mr-1 text-slate-400" /> Target: <span className="font-mono">{state.target || '—'}</span></div>
               <div>Ally: <span className="font-mono">{state.ally || 'none'}</span></div>
               <div>Troops: <span className="font-mono tabular-nums">{state.troops || 0}</span></div>
-              <p className="text-slate-500 italic mt-2">
+              <p className="text-slate-400 italic mt-2">
                 Execute the contest via the kingdom contest endpoint, then advance to resolve.
               </p>
             </div>
@@ -273,14 +273,14 @@ export function WarCampaignSession({ kingdomId, kingdomName, className }: WarCam
           {/* Recent event ledger */}
           {session.events.length > 0 && (
             <details className="text-xs">
-              <summary className="text-slate-500 hover:text-slate-300 cursor-pointer text-[11px]">
+              <summary className="text-slate-400 hover:text-slate-300 cursor-pointer text-[11px]">
                 Session events ({session.events.length})
               </summary>
               <ol className="mt-2 space-y-1">
                 {session.events.slice(0, 6).map(e => (
                   <li key={e.id} className="text-[11px] text-slate-400 font-mono">
                     {e.kind}{e.toStep ? ` → ${e.toStep}` : ''}
-                    {e.note && <span className="text-slate-500"> · {e.note}</span>}
+                    {e.note && <span className="text-slate-400"> · {e.note}</span>}
                   </li>
                 ))}
               </ol>

@@ -29,13 +29,13 @@ export function OpenHouseCalendar() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <CalendarDays className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Open houses · 21 days</span>
-        <span className="ml-auto text-[10px] text-gray-500">{events.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{events.length}</span>
       </header>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : events.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><CalendarDays className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming open houses.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><CalendarDays className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming open houses.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {events.map((e, i) => (
@@ -46,7 +46,7 @@ export function OpenHouseCalendar() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{e.address}</div>
-                  <div className="text-[10px] text-gray-500">{e.startTime} – {e.endTime}</div>
+                  <div className="text-[10px] text-gray-400">{e.startTime} – {e.endTime}</div>
                 </div>
                 <span className="font-mono text-sm text-cyan-300 tabular-nums">${e.price.toLocaleString()}</span>
               </li>

@@ -134,7 +134,7 @@ function OverviewView({ metrics }: { metrics: AtlasMetrics }) {
       </div>
 
       {metrics.coverage.bestResolution_cm && (
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-zinc-400">
           Best resolution: {metrics.coverage.bestResolution_cm}cm |
           Active bands: {metrics.coverage.frequenciesActive.length}
         </div>
@@ -162,19 +162,19 @@ function TileView({ tile }: { tile: MapTile }) {
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Resolution</div>
+          <div className="text-zinc-400">Resolution</div>
           <div className="text-zinc-200 font-semibold">{tile.resolution_cm}cm</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Version</div>
+          <div className="text-zinc-400">Version</div>
           <div className="text-zinc-200 font-semibold">v{tile.version}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Signal Paths</div>
+          <div className="text-zinc-400">Signal Paths</div>
           <div className="text-zinc-200 font-semibold">{tile.signal_paths_used}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Nodes</div>
+          <div className="text-zinc-400">Nodes</div>
           <div className="text-zinc-200 font-semibold">{tile.node_count}</div>
         </div>
       </div>
@@ -189,7 +189,7 @@ function TileView({ tile }: { tile: MapTile }) {
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
+        className="text-xs text-zinc-400 hover:text-zinc-300 flex items-center gap-1"
       >
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         {expanded ? 'Hide layers' : 'Show layers'}
@@ -204,7 +204,7 @@ function TileView({ tile }: { tile: MapTile }) {
               <div key={name} className="flex items-center gap-2 p-1.5 bg-zinc-800 rounded text-xs">
                 <span className={config.color}>{config.icon}</span>
                 <span className="text-zinc-300 flex-1">{config.label}</span>
-                <span className="text-zinc-500">
+                <span className="text-zinc-400">
                   {(data as LayerData).dominantMaterial || 'unknown'}
                 </span>
               </div>
@@ -226,19 +226,19 @@ function CoverageView({ coverage }: { coverage: CoverageData }) {
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Signal Paths</div>
+          <div className="text-zinc-400">Signal Paths</div>
           <div className="text-zinc-200 font-semibold">{coverage.totalPaths}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Map Tiles</div>
+          <div className="text-zinc-400">Map Tiles</div>
           <div className="text-zinc-200 font-semibold">{coverage.totalTiles}</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Area Covered</div>
+          <div className="text-zinc-400">Area Covered</div>
           <div className="text-zinc-200 font-semibold">{coverage.coveredArea_km2.toFixed(3)} km²</div>
         </div>
         <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-500">Best Resolution</div>
+          <div className="text-zinc-400">Best Resolution</div>
           <div className="text-zinc-200 font-semibold">
             {coverage.bestResolution_cm ? `${coverage.bestResolution_cm}cm` : 'N/A'}
           </div>
@@ -254,7 +254,7 @@ function CoverageView({ coverage }: { coverage: CoverageData }) {
             </span>
             <span className="text-zinc-300 flex-1">{band.name}</span>
             {band.resolution_cm > 0 && (
-              <span className="text-zinc-500">{band.resolution_cm}cm</span>
+              <span className="text-zinc-400">{band.resolution_cm}cm</span>
             )}
           </div>
         ))}
@@ -273,10 +273,10 @@ function TimelineView({ metrics }: { metrics: AtlasMetrics }) {
 
       <div className="bg-zinc-800 rounded p-3 text-center">
         <div className="text-2xl font-bold text-zinc-200">{metrics.stats.changesDetected}</div>
-        <div className="text-xs text-zinc-500">Physical changes detected</div>
+        <div className="text-xs text-zinc-400">Physical changes detected</div>
       </div>
 
-      <div className="text-xs text-zinc-500">
+      <div className="text-xs text-zinc-400">
         Changes include: construction, demolition, weather effects, seasonal variation, human activity patterns.
         Detected through temporal differencing of tomographic reconstructions.
       </div>

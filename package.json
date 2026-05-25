@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "playwright": "^1.55.0"
+  }
+}

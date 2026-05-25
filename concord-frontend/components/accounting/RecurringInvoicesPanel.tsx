@@ -72,7 +72,7 @@ export function RecurringInvoicesPanel() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Calendar className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Recurring invoices</span>
-        <span className="text-[10px] text-gray-500">{list.filter(r => r.active).length} active</span>
+        <span className="text-[10px] text-gray-400">{list.filter(r => r.active).length} active</span>
         <button onClick={runDue} disabled={running} className="ml-auto px-2.5 py-1 text-xs rounded border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40 inline-flex items-center gap-1">
           {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}Run due
         </button>
@@ -96,9 +96,9 @@ export function RecurringInvoicesPanel() {
 
       <div className="max-h-[28rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : list.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No recurring invoices.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No recurring invoices.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {list.map(r => (
@@ -108,12 +108,12 @@ export function RecurringInvoicesPanel() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-gray-500">{r.number}</span>
+                    <span className="font-mono text-[10px] text-gray-400">{r.number}</span>
                     <span>{r.customerName}</span>
                     <span className="text-[10px] text-emerald-300">{CADENCES.find(c => c.id === r.cadence)?.label}</span>
                   </div>
                   {r.memo && <div className="text-[11px] text-gray-400 truncate">{r.memo}</div>}
-                  <div className="text-[10px] text-gray-500">Next run {r.nextRunAt} · {r.runCount} run{r.runCount === 1 ? '' : 's'}{r.lastRunAt && ` · last ${r.lastRunAt}`}</div>
+                  <div className="text-[10px] text-gray-400">Next run {r.nextRunAt} · {r.runCount} run{r.runCount === 1 ? '' : 's'}{r.lastRunAt && ` · last ${r.lastRunAt}`}</div>
                 </div>
                 <div className="text-sm font-mono tabular-nums text-white w-24 text-right">${r.total.toFixed(2)}</div>
               </li>

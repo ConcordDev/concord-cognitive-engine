@@ -125,10 +125,10 @@ function QualiaSensoryFeed({ entityId, channels, overloadActive = false }: Quali
         <div className="flex items-center gap-2">
           <Radio className="w-4 h-4 text-neon-cyan" />
           <h3 className="text-sm font-semibold text-zinc-200">Sensory Feed</h3>
-          <span className="text-xs text-zinc-500 font-mono" title={`Entity: ${entityId}`}>
+          <span className="text-xs text-zinc-400 font-mono" title={`Entity: ${entityId}`}>
             {entityId.slice(0, 8)}
           </span>
-          <span className="text-xs text-zinc-600">{channelEntries.length} channels</span>
+          <span className="text-xs text-zinc-400">{channelEntries.length} channels</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
           <span className={valenceColor(avgValence)}>{valenceLabel(avgValence)}</span>
@@ -184,9 +184,9 @@ function QualiaSensoryFeed({ entityId, channels, overloadActive = false }: Quali
                 <span className="text-zinc-600 font-mono">{pct}%</span>
               </div>
 
-              <div className="text-[9px] text-zinc-600 mt-1">
+              <div className="text-[9px] text-zinc-400 mt-1">
                 {meta.description}
-                {age !== null && age < 60 && <span className="ml-1 text-zinc-500">{age}s ago</span>}
+                {age !== null && age < 60 && <span className="ml-1 text-zinc-400">{age}s ago</span>}
               </div>
             </div>
           );

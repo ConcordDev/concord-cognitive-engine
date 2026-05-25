@@ -78,8 +78,8 @@ export function StreetImagery() {
           <span className="text-sm font-semibold text-white">Street-level imagery</span>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <input type="number" step="any" placeholder="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-fuchsia-500/40 focus:outline-none" />
-          <input type="number" step="any" placeholder="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:border-fuchsia-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Latitude" value={lat} onChange={(e) => setLat(e.target.value)} className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none" />
+          <input type="number" step="any" placeholder="Longitude" value={lng} onChange={(e) => setLng(e.target.value)} className="w-32 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white placeholder:text-zinc-400 focus:border-fuchsia-500/40 focus:outline-none" />
           <button
             type="button"
             onClick={compute}
@@ -97,7 +97,7 @@ export function StreetImagery() {
           <div className="rounded border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
         )}
         {!result && !error && !loading && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No data yet. Enter coordinates to load nearby street-level photos.
           </div>
         )}
@@ -108,20 +108,20 @@ export function StreetImagery() {
             </div>
             {result.coverageTileUrl && (
               <div className="rounded border border-zinc-800 bg-zinc-900/40 p-2">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Keyless coverage tile layer</p>
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400">Keyless coverage tile layer</p>
                 <p className="mt-1 break-all font-mono text-[10px] text-zinc-400">{result.coverageTileUrl}</p>
               </div>
             )}
           </div>
         )}
         {result && result.hasToken && result.images.length === 0 && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">
             No street imagery found within ~280 m of this point.
           </div>
         )}
         {result && result.hasToken && result.images.length > 0 && (
           <div className="space-y-3">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500">{result.images.length} photo{result.images.length === 1 ? '' : 's'} nearby</div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-400">{result.images.length} photo{result.images.length === 1 ? '' : 's'} nearby</div>
             <div className="grid grid-cols-3 gap-2">
               {result.images.map((im) => (
                 <button
@@ -161,7 +161,7 @@ export function StreetImagery() {
                 </div>
               </div>
             )}
-            <p className="text-[10px] text-zinc-600">Source: {result.source}</p>
+            <p className="text-[10px] text-zinc-400">Source: {result.source}</p>
           </div>
         )}
       </div>

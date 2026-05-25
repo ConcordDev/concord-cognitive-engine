@@ -109,7 +109,7 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
           type="button"
           onClick={() => void fetchData(country, indicator)}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -140,7 +140,7 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
       )}
 
       {!error && validPoints.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">
           No data for that country + indicator.
         </div>
       )}
@@ -152,14 +152,14 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
               <div className="text-2xl font-bold text-zinc-100 tabular-nums">
                 {formatValue(latest?.value ?? null, indicator)}
               </div>
-              <div className="text-[10px] text-zinc-500 font-mono">{latest?.year}</div>
+              <div className="text-[10px] text-zinc-400 font-mono">{latest?.year}</div>
             </div>
             {earliest && earliest.year !== latest?.year && (
               <div className="text-right">
                 <div className="text-xs text-zinc-400 tabular-nums">
                   was {formatValue(earliest.value, indicator)}
                 </div>
-                <div className="text-[10px] text-zinc-500 font-mono">{earliest.year}</div>
+                <div className="text-[10px] text-zinc-400 font-mono">{earliest.year}</div>
               </div>
             )}
           </div>
@@ -173,7 +173,7 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
                 points={validPoints.map((p, i) => `${i * 10},${40 - ((p.value as number) - min) / range * 36 - 2}`).join(' ')}
               />
             </svg>
-            <div className="flex justify-between text-[10px] text-zinc-500 font-mono mt-1">
+            <div className="flex justify-between text-[10px] text-zinc-400 font-mono mt-1">
               <span>{validPoints[0]?.year}</span>
               <span>{validPoints[validPoints.length - 1]?.year}</span>
             </div>
@@ -181,7 +181,7 @@ export function WorldBankPanel({ domain, className }: WorldBankPanelProps) {
         </>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: World Bank Open Data · api.worldbank.org/v2
       </footer>
     </section>

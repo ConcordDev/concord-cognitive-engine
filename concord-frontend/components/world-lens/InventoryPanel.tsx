@@ -259,12 +259,12 @@ export default function InventoryPanel({
         <div className="flex items-center gap-2">
           <Package className="w-4 h-4 text-cyan-400" />
           <h2 className="text-sm font-semibold">Inventory</h2>
-          <span className="text-[10px] text-gray-500">
+          <span className="text-[10px] text-gray-400">
             {items.length}/{TOTAL_SLOTS}
           </span>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -273,7 +273,7 @@ export default function InventoryPanel({
       {/* Search */}
       <div className="px-3 py-2 border-b border-white/5">
         <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5 border border-white/10">
-          <Search className="w-3.5 h-3.5 text-gray-500" />
+          <Search className="w-3.5 h-3.5 text-gray-400" />
           <input
             type="text"
             placeholder="Search items..."
@@ -291,7 +291,7 @@ export default function InventoryPanel({
           className={`px-2 py-1 text-[10px] rounded whitespace-nowrap ${
             activeCategory === 'all'
               ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-              : 'text-gray-500 hover:text-gray-300'
+              : 'text-gray-400 hover:text-gray-300'
           }`}
         >
           All
@@ -306,7 +306,7 @@ export default function InventoryPanel({
               className={`flex items-center gap-1 px-2 py-1 text-[10px] rounded whitespace-nowrap ${
                 activeCategory === cat
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                  : 'text-gray-500 hover:text-gray-300'
+                  : 'text-gray-400 hover:text-gray-300'
               }`}
             >
               <Icon className="w-3 h-3" />
@@ -318,13 +318,13 @@ export default function InventoryPanel({
 
       {/* Sort control */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-white/5">
-        <span className="text-[10px] text-gray-600">{filtered.length} items</span>
+        <span className="text-[10px] text-gray-400">{filtered.length} items</span>
         <button
           onClick={() => {
             const modes: SortMode[] = ['name', 'category', 'quantity', 'date'];
             setSortMode(modes[(modes.indexOf(sortMode) + 1) % modes.length]);
           }}
-          className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300"
+          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-300"
         >
           <ArrowUpDown className="w-3 h-3" />
           Sort: {sortMode}
@@ -333,7 +333,7 @@ export default function InventoryPanel({
 
       {/* Equipment loadout */}
       <div className="px-3 py-2 border-b border-white/5">
-        <p className="text-[10px] text-gray-600 mb-1.5 uppercase tracking-wider">Equipment</p>
+        <p className="text-[10px] text-gray-400 mb-1.5 uppercase tracking-wider">Equipment</p>
         <div className="grid grid-cols-5 gap-1">
           {EQUIP_SLOTS.map(({ slot, label }) => {
             const item = equipped[slot];
@@ -361,8 +361,8 @@ export default function InventoryPanel({
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Package className="w-8 h-8 text-gray-700 mb-2" />
-            <p className="text-xs text-gray-500">Your inventory is empty.</p>
-            <p className="text-[10px] text-gray-600 mt-1">Visit The Exchange to get started.</p>
+            <p className="text-xs text-gray-400">Your inventory is empty.</p>
+            <p className="text-[10px] text-gray-400 mt-1">Visit The Exchange to get started.</p>
           </div>
         ) : (
           <div className="grid grid-cols-6 gap-1">
@@ -398,16 +398,16 @@ export default function InventoryPanel({
                     {item.stats && (
                       <div className="mt-1 border-t border-white/5 pt-1">
                         {Object.entries(item.stats).map(([k, v]) => (
-                          <p key={k} className="text-[9px] text-gray-500">
+                          <p key={k} className="text-[9px] text-gray-400">
                             {k}: <span className="text-cyan-400">{v}</span>
                           </p>
                         ))}
                       </div>
                     )}
                     {item.creator && (
-                      <p className="text-[9px] text-gray-600 mt-1">Creator: {item.creator}</p>
+                      <p className="text-[9px] text-gray-400 mt-1">Creator: {item.creator}</p>
                     )}
-                    {item.dtuRef && <p className="text-[9px] text-gray-600">DTU: {item.dtuRef}</p>}
+                    {item.dtuRef && <p className="text-[9px] text-gray-400">DTU: {item.dtuRef}</p>}
                     {item.effectivenessLabel && (
                       <div className="mt-1.5 border-t border-white/5 pt-1">
                         <span
@@ -420,7 +420,7 @@ export default function InventoryPanel({
                           {item.effectivenessLabel}
                         </span>
                         {!item.hasKnowledge && (
-                          <p className="text-[8px] text-gray-500 mt-0.5">
+                          <p className="text-[8px] text-gray-400 mt-0.5">
                             Find the schematic to unlock full potential
                           </p>
                         )}
@@ -456,7 +456,7 @@ export default function InventoryPanel({
       <div className="px-3 py-2 border-t border-white/5">
         <button
           onClick={() => setShowStorage(!showStorage)}
-          className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-cyan-400 transition-colors"
+          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-cyan-400 transition-colors"
         >
           <ChevronDown
             className={`w-3 h-3 transition-transform ${showStorage ? 'rotate-180' : ''}`}
@@ -465,7 +465,7 @@ export default function InventoryPanel({
         </button>
         {showStorage && (
           <div className="mt-1.5 p-2 rounded bg-white/5 border border-white/5">
-            <p className="text-[10px] text-gray-600 flex items-center gap-1">
+            <p className="text-[10px] text-gray-400 flex items-center gap-1">
               <Info className="w-3 h-3" />
               Storage linked to your firm or residence. Transfer items from your inventory here.
             </p>

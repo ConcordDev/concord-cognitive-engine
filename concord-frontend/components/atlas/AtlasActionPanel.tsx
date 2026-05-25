@@ -242,7 +242,7 @@ export function AtlasActionPanel() {
         <input type="text" value={lng} onChange={(e) => setLng(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="Lng" />
         <input type="text" value={amenity} onChange={(e) => setAmenity(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Amenity (e.g. cafe)" />
         <div className="md:col-span-5 flex items-end gap-1 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500 self-center">bbox</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400 self-center">bbox</span>
           <input type="text" value={bboxSouth} onChange={(e) => setBboxSouth(e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white font-mono" placeholder="S" />
           <input type="text" value={bboxWest} onChange={(e) => setBboxWest(e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white font-mono" placeholder="W" />
           <input type="text" value={bboxNorth} onChange={(e) => setBboxNorth(e.target.value)} className="w-20 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[10px] text-white font-mono" placeholder="N" />
@@ -278,7 +278,7 @@ export function AtlasActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -288,20 +288,20 @@ export function AtlasActionPanel() {
         {geoResult && (
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5 max-h-60 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Geocode · {geoResult.count} matches</div>
-            {geoResult.places.slice(0, 5).map((p, i) => <div key={i} className="text-[11px] text-zinc-200 mt-1"><strong className="text-blue-200">{p.displayName}</strong><div className="text-[10px] text-zinc-500 font-mono">{p.latitude.toFixed(4)}, {p.longitude.toFixed(4)} · {p.category}/{p.type}</div></div>)}
+            {geoResult.places.slice(0, 5).map((p, i) => <div key={i} className="text-[11px] text-zinc-200 mt-1"><strong className="text-blue-200">{p.displayName}</strong><div className="text-[10px] text-zinc-400 font-mono">{p.latitude.toFixed(4)}, {p.longitude.toFixed(4)} · {p.category}/{p.type}</div></div>)}
           </div>
         )}
         {revResult && (
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Reverse · {revResult.latitude}, {revResult.longitude}</div>
             <div className="text-[11px] text-green-200">{revResult.displayName}</div>
-            {revResult.address && Object.entries(revResult.address).slice(0, 5).map(([k, v]) => <div key={k} className="text-[10px] text-zinc-400"><span className="font-mono text-zinc-500">{k}:</span> {v}</div>)}
+            {revResult.address && Object.entries(revResult.address).slice(0, 5).map(([k, v]) => <div key={k} className="text-[10px] text-zinc-400"><span className="font-mono text-zinc-400">{k}:</span> {v}</div>)}
           </div>
         )}
         {poiResult?.elements && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 max-h-60 overflow-y-auto md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">POI · {poiResult.elements.length} {amenity}</div>
-            {poiResult.elements.slice(0, 10).map((e, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><strong className="text-amber-200">{e.name ?? 'unnamed'}</strong> · <span className="font-mono text-zinc-500">{e.latitude?.toFixed(4)}, {e.longitude?.toFixed(4)}</span>{e.tags?.cuisine ? ` · ${e.tags.cuisine}` : ''}</div>)}
+            {poiResult.elements.slice(0, 10).map((e, i) => <div key={i} className="text-[10px] text-zinc-300 mt-0.5"><strong className="text-amber-200">{e.name ?? 'unnamed'}</strong> · <span className="font-mono text-zinc-400">{e.latitude?.toFixed(4)}, {e.longitude?.toFixed(4)}</span>{e.tags?.cuisine ? ` · ${e.tags.cuisine}` : ''}</div>)}
           </div>
         )}
         {distResult && (

@@ -22,7 +22,7 @@ const TYPES = ['arm', 'mobile', 'drone', 'humanoid', 'swarm', 'custom'];
 const STATUSES = ['idle', 'running', 'error', 'maintenance', 'offline'];
 const STATUS_COLOR: Record<string, string> = {
   idle: 'text-blue-400', running: 'text-green-400', error: 'text-red-400',
-  maintenance: 'text-yellow-400', offline: 'text-gray-500',
+  maintenance: 'text-yellow-400', offline: 'text-gray-400',
 };
 
 /**
@@ -132,13 +132,13 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
       {loading ? (
         <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-neon-cyan" /></div>
       ) : robots.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">No robots registered. Add one above.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No robots registered. Add one above.</p>
       ) : (
         <div className="space-y-2">
           {robots.map(robot => (
             <div key={robot.id}
               className={`panel p-3 flex items-center justify-between cursor-pointer transition-colors ${selectedId === robot.id ? 'ring-1 ring-neon-cyan/50 bg-neon-cyan/5' : 'hover:bg-white/5'}`}
-              onClick={() => onSelect?.(robot)}>
+              onClick={() => onSelect?.(robot)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <Bot className="w-5 h-5 text-neon-cyan shrink-0" />
                 <div>
@@ -154,14 +154,14 @@ export function FleetManager({ onSelect, selectedId }: { onSelect?: (r: RobotRow
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-2" onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <select value={robot.status} onChange={e => updateStatus(robot.id, e.target.value)}
                   disabled={busy === robot.id}
                   className="bg-black/30 border border-white/10 rounded px-2 py-1 text-[11px]">
                   {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button onClick={() => remove(robot.id)} disabled={busy === robot.id}
-                  className="text-gray-500 hover:text-red-400" aria-label="Remove robot">
+                  className="text-gray-400 hover:text-red-400" aria-label="Remove robot">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

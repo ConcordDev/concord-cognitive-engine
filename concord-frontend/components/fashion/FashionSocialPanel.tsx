@@ -87,7 +87,7 @@ export function FashionSocialPanel() {
           <Share2 className="w-4 h-4 text-fuchsia-400" /> Share an outfit
         </h3>
         {outfits.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">Create an outfit first to share it.</p>
+          <p className="text-[11px] text-zinc-400 italic">Create an outfit first to share it.</p>
         ) : (
           <>
             <select value={shareOutfitId} onChange={(e) => setShareOutfitId(e.target.value)}
@@ -119,9 +119,9 @@ export function FashionSocialPanel() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : posts.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           {filter === 'saved' ? 'No saved looks yet.'
             : filter === 'mine' ? 'You have not shared any outfits.'
               : 'No community looks yet — be the first to share.'}
@@ -132,7 +132,7 @@ export function FashionSocialPanel() {
             <li key={p.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-zinc-100">{p.ownerLabel}</span>
-                <span className="text-[10px] text-zinc-500 capitalize">{p.occasion} · {p.season}</span>
+                <span className="text-[10px] text-zinc-400 capitalize">{p.occasion} · {p.season}</span>
               </div>
               <p className="text-sm text-zinc-200 mt-0.5">{p.caption}</p>
               {p.itemNames.length > 0 && (
@@ -144,11 +144,11 @@ export function FashionSocialPanel() {
               )}
               <div className="flex items-center gap-3 mt-2">
                 <button type="button" onClick={() => like(p.id)}
-                  className={cn('flex items-center gap-1 text-[11px]', p.likedByMe ? 'text-rose-400' : 'text-zinc-500 hover:text-rose-300')}>
+                  className={cn('flex items-center gap-1 text-[11px]', p.likedByMe ? 'text-rose-400' : 'text-zinc-400 hover:text-rose-300')}>
                   <Heart className={cn('w-3.5 h-3.5', p.likedByMe && 'fill-rose-400')} /> {p.likes}
                 </button>
                 <button type="button" onClick={() => save(p.id)}
-                  className={cn('flex items-center gap-1 text-[11px]', p.savedByMe ? 'text-amber-400' : 'text-zinc-500 hover:text-amber-300')}>
+                  className={cn('flex items-center gap-1 text-[11px]', p.savedByMe ? 'text-amber-400' : 'text-zinc-400 hover:text-amber-300')}>
                   <Bookmark className={cn('w-3.5 h-3.5', p.savedByMe && 'fill-amber-400')} /> {p.saves}
                 </button>
                 {p.mine && (

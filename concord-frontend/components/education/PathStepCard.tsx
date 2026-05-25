@@ -137,7 +137,7 @@ export function PathStepCard({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-gray-500">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400">
                 Step {step.order}
               </span>
               <span
@@ -150,7 +150,7 @@ export function PathStepCard({
                 {meta.label}
               </span>
               {step.domain && (
-                <span className="text-[10px] uppercase text-gray-500">
+                <span className="text-[10px] uppercase text-gray-400">
                   {step.domain}
                 </span>
               )}
@@ -188,7 +188,7 @@ export function PathStepCard({
           <span>{step.estimatedMinutes ?? 15} min</span>
         </div>
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-[10px] uppercase text-gray-500">Readiness</span>
+          <span className="text-[10px] uppercase text-gray-400">Readiness</span>
           <div className="flex-1 h-1.5 bg-lattice-bg rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-amber-400 to-emerald-400"

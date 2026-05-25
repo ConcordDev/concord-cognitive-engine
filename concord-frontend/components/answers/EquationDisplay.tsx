@@ -66,7 +66,7 @@ export function EquationDisplay({
         </code>
         {solution && (
           <>
-            <span className="text-gray-500 font-mono select-none">⇔</span>
+            <span className="text-gray-400 font-mono select-none">⇔</span>
             <code className="font-mono text-neon-pink/90">{solution}</code>
           </>
         )}

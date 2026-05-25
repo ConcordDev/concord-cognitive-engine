@@ -437,7 +437,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   };
 
   if (loading || !artwork) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const TOOLS: { id: string; icon: typeof Brush; label: string }[] = [
@@ -487,7 +487,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         <div className="flex items-center gap-2 bg-violet-950/40 border border-violet-900/50 rounded-lg px-3 py-1.5">
           <span className="text-[11px] text-violet-200">{selectedIds.size} selected</span>
           <button type="button" onClick={deleteSelection} className="text-[11px] px-2 py-0.5 bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">Delete</button>
-          <span className="text-[10px] text-zinc-500">Transform panel applies to the selection.</span>
+          <span className="text-[10px] text-zinc-400">Transform panel applies to the selection.</span>
           <button type="button" onClick={() => setSelectedIds(new Set())} className="text-[11px] text-zinc-400 ml-auto">Clear</button>
         </div>
       )}
@@ -524,11 +524,11 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
                   </button>
                   <button type="button" onClick={() => { setActiveLayer(l.id); setSelectedIds(new Set()); }}
                     className="flex-1 text-left text-xs text-zinc-200 truncate">{l.name}</button>
-                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} className="text-zinc-500 hover:text-zinc-300">
+                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} className="text-zinc-400 hover:text-zinc-300">
                     {l.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   </button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} className="text-zinc-500 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} className="text-zinc-500 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
                   <button type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 {activeLayer === l.id && (
@@ -597,7 +597,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         </div>
         {panel === 'transform' && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] text-zinc-500">{selectedIds.size ? 'selection' : 'layer'}:</span>
+            <span className="text-[10px] text-zinc-400">{selectedIds.size ? 'selection' : 'layer'}:</span>
             <button type="button" onClick={() => doTransform('layer-transform', { dx: -20, dy: 0, scale: 1 })} className={miniBtn}>← move</button>
             <button type="button" onClick={() => doTransform('layer-transform', { dx: 20, dy: 0, scale: 1 })} className={miniBtn}>move →</button>
             <button type="button" onClick={() => doTransform('layer-transform', { dx: 0, dy: -20, scale: 1 })} className={miniBtn}>↑</button>
@@ -629,7 +629,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
             <button type="button" onClick={() => flipCanvas('vertical')} className={miniBtn}>Flip V</button>
             <button type="button" onClick={() => resizeCanvas(artwork.width + 200, artwork.height)} className={miniBtn}>Wider</button>
             <button type="button" onClick={() => resizeCanvas(artwork.width, artwork.height + 200)} className={miniBtn}>Taller</button>
-            <span className="text-[10px] text-zinc-500">{artwork.width}×{artwork.height}</span>
+            <span className="text-[10px] text-zinc-400">{artwork.width}×{artwork.height}</span>
           </div>
         )}
       </div>

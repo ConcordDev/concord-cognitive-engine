@@ -206,10 +206,10 @@ export default function MentalHealthLensPage() {
               value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Search moods, journals, strategies..."
-          className="w-full bg-black/30 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:border-neon-purple/30"
+          className="w-full bg-black/30 border border-white/10 rounded-lg pl-3 pr-8 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:border-neon-purple/30"
         />
         {searchQuery && (
-          <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white" aria-label="Add">
+          <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white" aria-label="Add">
             <Plus className="w-4 h-4 rotate-45" />
           </button>
         )}
@@ -277,7 +277,7 @@ export default function MentalHealthLensPage() {
                   style={{ height: `${(entry.score || 3) * 8}px`, minHeight: '8px' }}
                   title={`${cfg.label} - ${entry.date ? new Date(entry.date).toLocaleDateString() : ''}`} />;
               })}
-              {moods.length === 0 && <p className="text-xs text-gray-600">No entries yet</p>}
+              {moods.length === 0 && <p className="text-xs text-gray-400">No entries yet</p>}
             </div>
           </div>
         </div>
@@ -298,7 +298,7 @@ export default function MentalHealthLensPage() {
                     <div className="flex items-center gap-2">
                       <Icon className={cn('w-4 h-4', cfg.color)} />
                       <span className={cn('text-sm font-medium', cfg.color)}>{cfg.label}</span>
-                      <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                      <span className="text-xs text-gray-400">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
                     </div>
                     {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                   </div>
@@ -316,7 +316,7 @@ export default function MentalHealthLensPage() {
         <div className="flex items-center gap-2 mb-1">
           <Brain className="w-4 h-4 text-neon-purple" />
           <h2 className="font-semibold text-sm">Wellness Analysis Engine</h2>
-          <span className="text-xs text-gray-500 ml-auto">Track • Strategize • Score • Reflect</span>
+          <span className="text-xs text-gray-400 ml-auto">Track • Strategize • Score • Reflect</span>
         </div>
 
         {/* Buttons */}
@@ -361,7 +361,7 @@ export default function MentalHealthLensPage() {
                       { label: 'Variance', value: String(moodTrackerResult.variance ?? '—') },
                     ].map(({ label, value }) => (
                       <div key={label} className="lens-card text-center">
-                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                         <p className="text-sm font-bold text-white">{value}</p>
                       </div>
                     ))}
@@ -372,14 +372,14 @@ export default function MentalHealthLensPage() {
                       { label: 'Highest', value: String(moodTrackerResult.highest ?? '—'), color: 'text-green-400' },
                     ].map(({ label, value, color }) => (
                       <div key={label} className="lens-card text-center">
-                        <p className="text-xs text-gray-500">{label}</p>
+                        <p className="text-xs text-gray-400">{label}</p>
                         <p className={cn('text-sm font-bold', color)}>{value}</p>
                       </div>
                     ))}
                   </div>
                   {'trend' in moodTrackerResult && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Trend:</span>
+                      <span className="text-xs text-gray-400">Trend:</span>
                       <span className={cn('flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full',
                         String(moodTrackerResult.trend) === 'improving' ? 'bg-green-500/20 text-green-400' :
                         String(moodTrackerResult.trend) === 'declining' ? 'bg-red-500/20 text-red-400' :
@@ -419,7 +419,7 @@ export default function MentalHealthLensPage() {
                     </div>
                   )}
                   {'triggers' in copingResult && (
-                    <p className="text-xs text-gray-500">Based on {String(copingResult.triggers)} trigger(s)</p>
+                    <p className="text-xs text-gray-400">Based on {String(copingResult.triggers)} trigger(s)</p>
                   )}
                 </>
               )}
@@ -455,7 +455,7 @@ export default function MentalHealthLensPage() {
                     <div className="flex-1 space-y-1">
                       {'breakdown' in wellnessResult && typeof wellnessResult.breakdown === 'object' && wellnessResult.breakdown !== null && Object.entries(wellnessResult.breakdown as Record<string, string>).map(([key, val]) => (
                         <div key={key} className="flex justify-between text-xs">
-                          <span className="text-gray-500 capitalize">{key}</span>
+                          <span className="text-gray-400 capitalize">{key}</span>
                           <span className="text-gray-300 font-mono">{val}</span>
                         </div>
                       ))}
@@ -463,7 +463,7 @@ export default function MentalHealthLensPage() {
                   </div>
                   {Array.isArray(wellnessResult.areas) && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Focus Areas</p>
+                      <p className="text-xs text-gray-400 mb-1">Focus Areas</p>
                       <div className="flex flex-wrap gap-1.5">
                         {(wellnessResult.areas as string[]).map((a, i) => (
                           <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-pink-500/15 text-pink-300">{a}</span>
@@ -500,7 +500,7 @@ export default function MentalHealthLensPage() {
                 </div>
               )}
               {'instruction' in journalPromptResult && (
-                <p className="text-xs text-gray-500 italic">{String(journalPromptResult.instruction)}</p>
+                <p className="text-xs text-gray-400 italic">{String(journalPromptResult.instruction)}</p>
               )}
               {'reminder' in journalPromptResult && (
                 <p className="text-xs text-yellow-400/70">{String(journalPromptResult.reminder)}</p>
@@ -568,7 +568,7 @@ export default function MentalHealthLensPage() {
           <div className="panel p-4 space-y-2">
             <h3 className="font-semibold mb-3">Mood History</h3>
             {moods.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No mood entries yet. Log your first mood above.</p>
+              <p className="text-gray-400 text-sm text-center py-4">No mood entries yet. Log your first mood above.</p>
             ) : (
               moods.filter(e => !searchQuery || (e.notes || '').toLowerCase().includes(searchQuery.toLowerCase()) || (e.mood || '').toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 20).map(entry => {
                 const cfg = MOOD_CONFIG[entry.mood] || MOOD_CONFIG.neutral;
@@ -580,9 +580,9 @@ export default function MentalHealthLensPage() {
                       <span className={`text-sm font-medium ${cfg.color}`}>{cfg.label}</span>
                       {entry.notes && <p className="text-xs text-gray-400 mt-0.5">{entry.notes}</p>}
                     </div>
-                    <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
-                    <button onClick={() => update(entry.id, { data: { ...entry, notes: (entry.notes || '') + ' (updated)' } as unknown as Record<string, unknown> })} className="text-gray-500 hover:text-neon-cyan" title="Edit"><Search className="w-3 h-3" /></button>
-                    <button onClick={() => remove(entry.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                    <span className="text-xs text-gray-400">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                    <button onClick={() => update(entry.id, { data: { ...entry, notes: (entry.notes || '') + ' (updated)' } as unknown as Record<string, unknown> })} className="text-gray-400 hover:text-neon-cyan" title="Edit"><Search className="w-3 h-3" /></button>
+                    <button onClick={() => remove(entry.id)} className="text-gray-400 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 );
               })
@@ -614,8 +614,8 @@ export default function MentalHealthLensPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">{entry.title}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
-                    <button onClick={() => removeJournal(entry.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
+                    <span className="text-xs text-gray-400">{entry.date ? new Date(entry.date).toLocaleDateString() : ''}</span>
+                    <button onClick={() => removeJournal(entry.id)} className="text-gray-400 hover:text-red-400" aria-label="Delete"><Trash2 className="w-3 h-3" /></button>
                   </div>
                 </div>
                 <p className="text-sm text-gray-300">{entry.content}</p>
@@ -635,7 +635,7 @@ export default function MentalHealthLensPage() {
                 <button key={strategy} onClick={() => createCoping({ title: strategy, data: { strategy, createdAt: new Date().toISOString() } })} className="lens-card flex items-center gap-2 hover:border-neon-cyan/30 transition-colors text-left">
                   <Heart className="w-4 h-4 text-neon-pink" />
                   <span className="text-sm">{strategy}</span>
-                  <Plus className="w-3 h-3 ml-auto text-gray-500" />
+                  <Plus className="w-3 h-3 ml-auto text-gray-400" />
                 </button>
               ))}
             </div>
@@ -649,7 +649,7 @@ export default function MentalHealthLensPage() {
                   <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                     <Heart className="w-4 h-4 text-neon-cyan" />
                     <span className="text-sm flex-1">{item.title}</span>
-                    <span className="text-xs text-gray-500">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span>
+                    <span className="text-xs text-gray-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span>
                   </div>
                 ))}
               </div>

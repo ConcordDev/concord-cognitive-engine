@@ -255,6 +255,7 @@ export default function registerCookingActions(registerLensAction) {
   }
 
   registerLensAction("cooking", "recipes-create", (ctx, _a, params = {}) => {
+  try {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCk(ctx);
     const title = String(params.title || "").trim();
@@ -283,7 +284,8 @@ export default function registerCookingActions(registerLensAction) {
     listCk(s.recipes, userId).push(recipe);
     saveCook();
     return { ok: true, result: { recipe } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("cooking", "recipes-update", (ctx, _a, params = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -434,6 +436,7 @@ export default function registerCookingActions(registerLensAction) {
   // ── Shopping list (auto from meal plan, consolidated + aisle-grouped) ─
 
   registerLensAction("cooking", "shopping-list-generate", (ctx, _a, params = {}) => {
+  try {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCk(ctx);
     const start = String(params.start || new Date().toISOString().slice(0, 10));
@@ -481,7 +484,8 @@ export default function registerCookingActions(registerLensAction) {
     const byAisle = {};
     for (const it of items) (byAisle[it.aisle] = byAisle[it.aisle] || []).push(it);
     return { ok: true, result: { items, byAisle, itemCount: items.length, range: { start, end } } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("cooking", "shopping-list-get", (ctx, _a, _p = {}) => {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -599,6 +603,7 @@ export default function registerCookingActions(registerLensAction) {
   // ── AI meal plan (Samsung Food / FoodiePrep parity) ──────────
 
   registerLensAction("cooking", "ai-meal-plan", async (ctx, _a, params = {}) => {
+  try {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCk(ctx);
     const recipes = listCk(s.recipes, userId);
@@ -629,7 +634,8 @@ export default function registerCookingActions(registerLensAction) {
     }
     saveCook();
     return { ok: true, result: { assigned, days, slots, poolSize: pool.length, preference: tagFilter || null, source: 'deterministic' } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary ────────────────────────────────────────
 
@@ -1017,6 +1023,7 @@ export default function registerCookingActions(registerLensAction) {
   }
 
   registerLensAction("cooking", "shopping-list-by-store", (ctx, _a, params = {}) => {
+  try {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const items = listCk(s.shopping, aidCk(ctx));
     // Normalize + consolidate by (name, canonical unit).
@@ -1051,10 +1058,12 @@ export default function registerCookingActions(registerLensAction) {
       aisles: Object.entries(b.aisles).map(([aisle, list]) => ({ aisle, items: list })),
     }));
     return { ok: true, result: { stores: storeList, storeCount: storeList.length, consolidatedFrom: items.length, totalItems: merged.size } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 7. Recipe export — printable card / PDF-ready structured doc ─
   registerLensAction("cooking", "recipe-export-card", (ctx, _a, params = {}) => {
+  try {
     const s = getCookState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const r = listCk(s.recipes, aidCk(ctx)).find((x) => x.id === String(params.id || ""));
     if (!r) return { ok: false, error: "recipe not found" };
@@ -1095,5 +1104,6 @@ export default function registerCookingActions(registerLensAction) {
       (r.sourceUrl ? `<p class="meta">Source: ${esc(r.sourceUrl)}</p>` : "") +
       `</body></html>`;
     return { ok: true, result: { recipeId: r.id, title: r.title, card, html, format: "printable-card" } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

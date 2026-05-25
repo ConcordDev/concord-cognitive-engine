@@ -45,6 +45,7 @@ export default function registerRealEstateActions(registerLensAction) {
   });
 
   registerLensAction("realestate", "vacancyReport", (ctx, artifact, params) => {
+  try {
     const units = artifact.data?.units || [];
     const avgRent = params.avgMarketRent || artifact.data?.avgMarketRent || 0;
     const now = new Date();
@@ -89,7 +90,8 @@ export default function registerRealEstateActions(registerLensAction) {
         recommendations,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("realestate", "vacancyRate", (ctx, artifact, _params) => {
     const units = artifact.data?.units || [];
@@ -124,6 +126,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Mortgage PITI calculator ──
 
   registerLensAction("realestate", "calc-mortgage", (_ctx, _artifact, params = {}) => {
+  try {
     const price = Number(params.price);
     const downPercent = Number(params.downPercent ?? 20);
     const rate = Number(params.rate ?? 7); // percent
@@ -165,7 +168,8 @@ export default function registerRealEstateActions(registerLensAction) {
         formula: "M = P × r(1+r)^n / ((1+r)^n − 1) ; PITI + PMI + HOA",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Affordability (28/36 DTI rule) ──
 
@@ -209,6 +213,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Rent vs buy break-even ──
 
   registerLensAction("realestate", "calc-rent-vs-buy", (_ctx, _artifact, params = {}) => {
+  try {
     const price = Number(params.price);
     const rent = Number(params.rent);
     const downPercent = Number(params.downPercent ?? 20);
@@ -254,7 +259,8 @@ export default function registerRealEstateActions(registerLensAction) {
           : `Renting wins over the ${horizonYears}-year horizon.`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Saved searches ──
 
@@ -426,6 +432,7 @@ export default function registerRealEstateActions(registerLensAction) {
   });
 
   registerLensAction("realestate", "listings-add", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const address = String(params.address || "").trim();
@@ -457,7 +464,8 @@ export default function registerRealEstateActions(registerLensAction) {
     ensureREBucket(s, "listings", userId).push(listing);
     saveREState();
     return { ok: true, result: { listing } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("realestate", "listings-get", (ctx, _a, params = {}) => {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -482,6 +490,7 @@ export default function registerRealEstateActions(registerLensAction) {
   });
 
   registerLensAction("realestate", "listings-search", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const all = ensureREBucket(s, "listings", userId);
@@ -505,7 +514,8 @@ export default function registerRealEstateActions(registerLensAction) {
       return true;
     });
     return { ok: true, result: { matches, total: matches.length, filters: f } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Favourites ─────────────────────────────────────────────────
 
@@ -682,6 +692,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Hot-home algorithm (Redfin-shape) ──────────────────────────
 
   registerLensAction("realestate", "hot-score", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const id = String(params.listingId || "");
@@ -706,7 +717,8 @@ export default function registerRealEstateActions(registerLensAction) {
     score = Math.max(0, Math.min(100, score));
     const tag = score >= 80 ? "🔥 Very hot" : score >= 65 ? "🔥 Hot" : score >= 45 ? "Warm" : "Cooling";
     return { ok: true, result: { listingId: id, score, tag, daysOnMarket: listing.daysOnMarket, tourCount: tours.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AI conversational search parser ────────────────────────────
 
@@ -824,6 +836,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Open house calendar ────────────────────────────────────────
 
   registerLensAction("realestate", "open-houses-upcoming", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const days = Math.max(1, Math.min(30, Number(params.days) || 14));
@@ -843,7 +856,8 @@ export default function registerRealEstateActions(registerLensAction) {
       };
     }).sort((a, b) => a.date.localeCompare(b.date));
     return { ok: true, result: { events, days } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Per-listing private notes ──────────────────────────────────
 
@@ -886,6 +900,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Dashboard summary (RealtorShell data source) ───────────────
 
   registerLensAction("realestate", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const listings = ensureREBucket(s, "listings", userId);
@@ -909,7 +924,8 @@ export default function registerRealEstateActions(registerLensAction) {
         medianListPrice: medianPrice,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 Zillow-parity backlog ──────────────────────────────────
   //
@@ -923,6 +939,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Interactive map: draw-area / bounding-box search ───────────────
 
   registerLensAction("realestate", "listings-in-bounds", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const b = params.bounds || {};
@@ -958,7 +975,8 @@ export default function registerRealEstateActions(registerLensAction) {
         bounds: { north, south, east, west },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Per-listing photo gallery + virtual tour ──────────────────────
 
@@ -1053,6 +1071,7 @@ export default function registerRealEstateActions(registerLensAction) {
   });
 
   registerLensAction("realestate", "price-history", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const listing = findListing(s, userId, String(params.listingId || ""));
@@ -1080,7 +1099,8 @@ export default function registerRealEstateActions(registerLensAction) {
         pricePerSqft: listing.sqft > 0 ? Math.round(lastPrice / listing.sqft) : null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Mortgage pre-approval / lender connect flow ───────────────────
 
@@ -1112,6 +1132,7 @@ export default function registerRealEstateActions(registerLensAction) {
   });
 
   registerLensAction("realestate", "preapproval-request", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const lenderId = String(params.lenderId || "");
@@ -1158,7 +1179,8 @@ export default function registerRealEstateActions(registerLensAction) {
     ensureREBucket(s, "preapprovals", userId).push(preapproval);
     saveREState();
     return { ok: true, result: { preapproval } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("realestate", "preapprovals-list", (ctx, _a, _p = {}) => {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1216,6 +1238,7 @@ export default function registerRealEstateActions(registerLensAction) {
   // ── Full property detail: tax history + lot + similar homes ───────
 
   registerLensAction("realestate", "property-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getREState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = reActor(ctx);
     const listing = findListing(s, userId, String(params.listingId || ""));
@@ -1276,7 +1299,8 @@ export default function registerRealEstateActions(registerLensAction) {
         photoCount: Array.isArray(listing.photos) ? listing.photos.length : 0,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Contact-agent lead form with scheduling ───────────────────────
 

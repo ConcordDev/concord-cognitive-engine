@@ -77,12 +77,10 @@ export function BoardSettingsPanel({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto"
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="w-full max-w-xl rounded-xl border border-white/10 bg-gray-950 shadow-2xl my-8"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between px-5 pt-4 pb-2">
           <h2 className="text-lg font-bold text-white">Board Settings</h2>
           <button
@@ -109,7 +107,7 @@ export function BoardSettingsPanel({
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 -mb-px transition-colors ${
                 tab === t.id
                   ? 'border-purple-500 text-purple-300'
-                  : 'border-transparent text-gray-500 hover:text-gray-300'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
               }`}
             >
               <t.icon className="w-3.5 h-3.5" />
@@ -126,7 +124,7 @@ export function BoardSettingsPanel({
             <div className="space-y-3">
               <div className="space-y-1.5">
                 {labels.length === 0 && (
-                  <p className="text-xs text-gray-600">No labels defined yet.</p>
+                  <p className="text-xs text-gray-400">No labels defined yet.</p>
                 )}
                 {labels.map((l) => (
                   <div
@@ -188,12 +186,12 @@ export function BoardSettingsPanel({
           {/* AUTOMATION */}
           {tab === 'automation' && (
             <div className="space-y-3">
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-gray-400">
                 When a card is moved to a column, run an action automatically.
               </p>
               <div className="space-y-1.5">
                 {automations.length === 0 && (
-                  <p className="text-xs text-gray-600">No automation rules yet.</p>
+                  <p className="text-xs text-gray-400">No automation rules yet.</p>
                 )}
                 {automations.map((a) => (
                   <div
@@ -292,14 +290,14 @@ export function BoardSettingsPanel({
               </div>
               <div className="space-y-1.5">
                 {collaborators.length === 0 && (
-                  <p className="text-xs text-gray-600">No collaborators yet.</p>
+                  <p className="text-xs text-gray-400">No collaborators yet.</p>
                 )}
                 {collaborators.map((c) => (
                   <div
                     key={c.id}
                     className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.06]"
                   >
-                    <Users className="w-3.5 h-3.5 text-gray-500" />
+                    <Users className="w-3.5 h-3.5 text-gray-400" />
                     <span className="text-sm text-gray-300 flex-1">{c.userId}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">
                       {c.role}
@@ -358,7 +356,7 @@ export function BoardSettingsPanel({
             <div className="space-y-3">
               <div className="space-y-1.5">
                 {fields.length === 0 && (
-                  <p className="text-xs text-gray-600">No custom fields yet.</p>
+                  <p className="text-xs text-gray-400">No custom fields yet.</p>
                 )}
                 {fields.map((f) => (
                   <div

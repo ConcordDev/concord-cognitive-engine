@@ -68,7 +68,7 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
     await refresh();
   }
 
-  if (loading) return <div className="flex justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div className="space-y-3">
@@ -76,7 +76,7 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
         {([['Total', totals.total, 'text-zinc-100'], ['Reimbursable', totals.reimbursable, 'text-amber-400'], ['Approved', totals.approved, 'text-emerald-400']] as const).map(([l, v, c]) => (
           <div key={l} className="bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 text-center">
             <p className={`text-base font-bold ${c}`}>${v.toLocaleString()}</p>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{l}</p>
+            <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{l}</p>
           </div>
         ))}
       </div>
@@ -105,18 +105,18 @@ export function ExpenseTracker({ engagements }: { engagements: EngagementOption[
       {error && <p className="text-[11px] text-rose-400">{error}</p>}
 
       <ul className="space-y-1.5">
-        {expenses.length === 0 && <li className="text-xs text-zinc-500 italic py-3 text-center">No expenses logged.</li>}
+        {expenses.length === 0 && <li className="text-xs text-zinc-400 italic py-3 text-center">No expenses logged.</li>}
         {expenses.map(exp => (
           <li key={exp.id} className="group bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2 flex items-center gap-2">
             <Receipt className="w-4 h-4 text-indigo-400 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-zinc-100 truncate">{exp.description}</p>
-              <p className="text-[10px] text-zinc-500">{exp.engagementName} · {exp.category} · {exp.date}{exp.reimbursable ? ' · reimbursable' : ''}</p>
+              <p className="text-[10px] text-zinc-400">{exp.engagementName} · {exp.category} · {exp.date}{exp.reimbursable ? ' · reimbursable' : ''}</p>
             </div>
             <span className="text-sm font-bold text-zinc-100">${exp.amount.toLocaleString()}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase ${STATUS_COLOR[exp.status] || 'text-zinc-400 bg-zinc-800'}`}>{exp.status}</span>
             {exp.status !== 'reimbursed' && exp.status !== 'rejected' && (
-              <button onClick={() => cycleStatus(exp)} aria-label="Advance status" className="text-zinc-500 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
+              <button onClick={() => cycleStatus(exp)} aria-label="Advance status" className="text-zinc-400 hover:text-emerald-400"><Check className="w-3.5 h-3.5" /></button>
             )}
             {exp.status === 'pending' && (
               <button onClick={() => reject(exp)} className="text-[10px] text-rose-400 hover:text-rose-300">reject</button>

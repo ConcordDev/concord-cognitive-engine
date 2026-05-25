@@ -62,7 +62,7 @@ export function PlantFinder() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Common or scientific name…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -84,14 +84,14 @@ export function PlantFinder() {
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="line-clamp-1 text-sm text-white">{p.commonName || p.scientificName}</div>
-                  <div className="line-clamp-1 font-mono text-[10px] italic text-zinc-500">{p.scientificName}</div>
-                  {p.family && <div className="text-[10px] text-zinc-500">{p.family}{p.year ? ` · ${p.year}` : ''}</div>}
+                  <div className="line-clamp-1 font-mono text-[10px] italic text-zinc-400">{p.scientificName}</div>
+                  {p.family && <div className="text-[10px] text-zinc-400">{p.family}{p.year ? ` · ${p.year}` : ''}</div>}
                 </div>
               </div>
             </button>
           ))}
           {hits.length === 0 && !search.isPending && !error && (
-            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">Search to see species.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">Search to see species.</div>
           )}
         </div>
 
@@ -107,7 +107,7 @@ export function PlantFinder() {
                   <div>
                     <h3 className="text-base font-semibold text-white">{detail.commonName || detail.scientificName}</h3>
                     <p className="font-mono text-[11px] italic text-cyan-300/80">{detail.scientificName}</p>
-                    <p className="text-[11px] text-zinc-500">{detail.family} · {detail.genus}{detail.growthHabit ? ` · ${detail.growthHabit}` : ''}</p>
+                    <p className="text-[11px] text-zinc-400">{detail.family} · {detail.genus}{detail.growthHabit ? ` · ${detail.growthHabit}` : ''}</p>
                     {detail.edible && <span className="mt-1 inline-block rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-300">Edible{detail.ediblePart?.length ? `: ${detail.ediblePart.join(', ')}` : ''}</span>}
                   </div>
                 </div>
@@ -133,7 +133,7 @@ export function PlantFinder() {
               </div>
             </div>
           ) : (
-            <div className="rounded border border-dashed border-zinc-800 p-8 text-center text-[11px] text-zinc-500">Pick a species to see growth requirements.</div>
+            <div className="rounded border border-dashed border-zinc-800 p-8 text-center text-[11px] text-zinc-400">Pick a species to see growth requirements.</div>
           )}
         </div>
       </div>
@@ -144,7 +144,7 @@ export function PlantFinder() {
 function Cell({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500">{Icon && <Icon className="h-3 w-3" />}{label}</div>
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400">{Icon && <Icon className="h-3 w-3" />}{label}</div>
       <div className="mt-0.5 font-mono text-sm text-cyan-300">{value}</div>
     </div>
   );

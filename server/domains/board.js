@@ -10,6 +10,7 @@ export default function registerBoardActions(registerLensAction) {
    * artifact.data.columns: [{ name, wipLimit? }] — ordered column definitions
    */
   registerLensAction("board", "workflowAnalysis", (ctx, artifact, params) => {
+  try {
     const cards = artifact.data.cards || [];
     const columns = artifact.data.columns || [];
 
@@ -179,7 +180,8 @@ export default function registerBoardActions(registerLensAction) {
 
     artifact.data.workflowAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * cardPrioritization
@@ -188,6 +190,7 @@ export default function registerBoardActions(registerLensAction) {
    * artifact.data.cards: [{ id, title, businessValue: 1-10, timeCriticality: 1-10, riskReduction: 1-10, effort: 1-10, deadline? }]
    */
   registerLensAction("board", "cardPrioritization", (ctx, artifact, params) => {
+  try {
     const cards = artifact.data.cards || [];
     if (cards.length === 0) {
       return { ok: true, result: { message: "No cards provided for prioritization." } };
@@ -293,7 +296,8 @@ export default function registerBoardActions(registerLensAction) {
 
     artifact.data.cardPrioritization = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * burndownForecast
@@ -305,6 +309,7 @@ export default function registerBoardActions(registerLensAction) {
    * params.sprintLengthDays — sprint duration in days (default 14)
    */
   registerLensAction("board", "burndownForecast", (ctx, artifact, params) => {
+  try {
     const sprints = artifact.data.sprints || [];
     const remainingPoints = parseFloat(artifact.data.remainingPoints) || 0;
     const simulations = params.simulations || 1000;
@@ -452,7 +457,8 @@ export default function registerBoardActions(registerLensAction) {
 
     artifact.data.burndownForecast = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Trello / Asana-shape kanban substrate (per-user, STATE) ─────────
 
@@ -495,19 +501,23 @@ export default function registerBoardActions(registerLensAction) {
   });
 
   registerLensAction("board", "board-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const boards = bdList(s, bdActor(ctx)).map((b) => ({
       id: b.id, name: b.name, columnCount: b.columns.length, cardCount: b.cards.length, createdAt: b.createdAt,
     }));
     return { ok: true, result: { boards, count: boards.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("board", "board-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = bdList(s, bdActor(ctx)).find((b) => b.id === params.id);
     if (!board) return { ok: false, error: "board not found" };
     return { ok: true, result: { board } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("board", "board-delete", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -633,6 +643,7 @@ export default function registerBoardActions(registerLensAction) {
   });
 
   registerLensAction("board", "board-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const boards = bdList(s, bdActor(ctx));
     const allCards = boards.flatMap((b) => b.cards);
@@ -646,7 +657,8 @@ export default function registerBoardActions(registerLensAction) {
         withChecklists: allCards.filter((c) => c.checklist.length > 0).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog parity macros (Trello feature gap) ─────────────────────
   // Comments + attachments + activity feed, calendar view, card covers,
@@ -856,6 +868,7 @@ export default function registerBoardActions(registerLensAction) {
 
   // card-move-auto: move a card and apply matching automation rules
   registerLensAction("board", "card-move-auto", (ctx, _a, params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
@@ -889,7 +902,8 @@ export default function registerBoardActions(registerLensAction) {
     }
     saveBoard();
     return { ok: true, result: { cardId: card.id, columnId: card.columnId, automationsApplied: applied } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Label management ───────────────────────────────────────────────
   const LABEL_COLORS = new Set([
@@ -958,6 +972,7 @@ export default function registerBoardActions(registerLensAction) {
   });
 
   registerLensAction("board", "collaborator-list", (ctx, _a, params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
@@ -968,7 +983,8 @@ export default function registerBoardActions(registerLensAction) {
         collaborators: Array.isArray(board.collaborators) ? board.collaborators : [],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("board", "collaborator-remove", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -985,6 +1001,7 @@ export default function registerBoardActions(registerLensAction) {
   // ── Power-ups / custom fields on cards ─────────────────────────────
   const FIELD_TYPES = new Set(["text", "number", "date", "select", "checkbox"]);
   registerLensAction("board", "custom-field-add", (ctx, _a, params = {}) => {
+  try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
@@ -1002,7 +1019,8 @@ export default function registerBoardActions(registerLensAction) {
     board.customFields.push(field);
     saveBoard();
     return { ok: true, result: { field } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("board", "custom-field-list", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };

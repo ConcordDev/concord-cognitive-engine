@@ -51,7 +51,7 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -62,7 +62,7 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
           <Award className="w-8 h-8 text-amber-400 shrink-0" />
           <div>
             <p className="text-2xl font-bold text-zinc-100">{karma.karma} <span className="text-sm font-normal text-zinc-400">karma</span></p>
-            <p className="text-[11px] text-zinc-500">{karma.level} · {karma.completions} tasks completed</p>
+            <p className="text-[11px] text-zinc-400">{karma.level} · {karma.completions} tasks completed</p>
           </div>
         </section>
       )}
@@ -76,19 +76,19 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
           <div className="grid grid-cols-4 gap-2 mb-2">
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-sm font-bold text-zinc-100">{stats.todaySessions}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Today</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Today</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-sm font-bold text-zinc-100">{stats.todayMinutes}m</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Today min</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Today min</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-sm font-bold text-zinc-100">{stats.totalSessions}</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Sessions</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Sessions</p>
             </div>
             <div className="bg-zinc-900/70 border border-zinc-800 rounded-lg p-2 text-center">
               <p className="text-sm font-bold text-zinc-100">{Math.round(stats.totalMinutes / 60 * 10) / 10}h</p>
-              <p className="text-[10px] text-zinc-500 uppercase">Total</p>
+              <p className="text-[10px] text-zinc-400 uppercase">Total</p>
             </div>
           </div>
         )}
@@ -117,9 +117,9 @@ export function ProductivityFocusPanel({ onChange }: { onChange: () => void }) {
             {QUADRANT_META.map((q) => (
               <div key={q.key} className={cn('bg-zinc-900/70 border rounded-xl p-2.5', q.color)}>
                 <p className="text-[11px] font-semibold text-zinc-200">{q.label}</p>
-                <p className="text-[9px] text-zinc-600 uppercase mb-1">{q.hint}</p>
+                <p className="text-[9px] text-zinc-400 uppercase mb-1">{q.hint}</p>
                 {quadrants[q.key].length === 0 ? (
-                  <p className="text-[10px] text-zinc-600 italic">—</p>
+                  <p className="text-[10px] text-zinc-400 italic">—</p>
                 ) : (
                   <ul className="space-y-0.5">
                     {quadrants[q.key].slice(0, 5).map((t) => (

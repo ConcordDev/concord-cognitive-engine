@@ -56,8 +56,8 @@ export default function AtlasPublicView({ data, loading }: AtlasPublicViewProps)
     return (
       <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4">
         <div className="flex items-center gap-2">
-          <Map size={16} className="text-zinc-500" />
-          <span className="text-sm text-zinc-500">
+          <Map size={16} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">
             {data?.error || 'No public atlas data available'}
           </span>
         </div>
@@ -87,7 +87,7 @@ function TerrainView({ data }: { data: NonNullable<AtlasPublicData['terrain']> }
           <Mountain size={16} className="text-emerald-400" />
           <span className="text-sm font-medium text-zinc-200">Terrain View</span>
         </div>
-        <span className="text-xs text-zinc-500">{tile.resolution_cm}cm res</span>
+        <span className="text-xs text-zinc-400">{tile.resolution_cm}cm res</span>
       </div>
       <div className="text-xs text-zinc-400">
         {tile.coordinates.lat_min.toFixed(3)} - {tile.coordinates.lat_max.toFixed(3)}N,{' '}
@@ -106,7 +106,7 @@ function TerrainView({ data }: { data: NonNullable<AtlasPublicData['terrain']> }
           ) : null
         )}
       </div>
-      <div className="flex items-center gap-2 text-xs text-zinc-600">
+      <div className="flex items-center gap-2 text-xs text-zinc-400">
         <span>Confidence: {Math.round(tile.confidence * 100)}%</span>
       </div>
     </div>
@@ -205,7 +205,7 @@ function OverviewView({ data }: { data: AtlasPublicData }) {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="px-2 py-1.5 rounded bg-zinc-900/50 text-xs">
-      <div className="text-zinc-500">{label}</div>
+      <div className="text-zinc-400">{label}</div>
       <div className="text-zinc-200 font-medium">{String(value)}</div>
     </div>
   );

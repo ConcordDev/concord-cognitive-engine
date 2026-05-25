@@ -70,7 +70,7 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
         <div className="bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 px-3 py-2 rounded-lg text-sm">{msg}</div>
       )}
       {items.length === 0 ? (
-        <div className="text-center text-zinc-500 italic py-6 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
           No active sponsorships. Browse the Discover tab to find a creator.
         </div>
       ) : (
@@ -83,10 +83,10 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
                     {sp.creatorName}
                     <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${sp.status === 'active' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-amber-900/60 text-amber-300'}`}>{sp.status}</span>
                   </p>
-                  <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                  <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">
                     {sp.tierName} · {sp.monthlyCc} CC/mo · every {sp.dispatchFreqHours}h · since {new Date(sp.startedAt * 1000).toLocaleDateString()}
                   </p>
-                  <p className="text-[10px] text-zinc-500 font-mono">
+                  <p className="text-[10px] text-zinc-400 font-mono">
                     contributed {sp.totalContributed} CC · next charge {new Date(sp.nextChargeAt * 1000).toLocaleDateString()}
                   </p>
                 </div>
@@ -118,13 +118,13 @@ export function MySponsorships({ refreshKey, onChange }: { refreshKey: number; o
               {openHistory === sp.id && (
                 <div className="mt-2 border-t border-zinc-800 pt-2 space-y-1.5">
                   {(history[sp.id] || []).length === 0 ? (
-                    <p className="text-[11px] text-zinc-600 italic">No dispatches yet for this sponsorship.</p>
+                    <p className="text-[11px] text-zinc-400 italic">No dispatches yet for this sponsorship.</p>
                   ) : (
                     (history[sp.id] || []).map((d) => (
                       <div key={d.id} className="bg-zinc-950 border border-zinc-800 rounded p-2">
                         <p className="text-[12px] text-zinc-200 font-medium">{d.title}</p>
                         {d.body && <p className="text-[11px] text-zinc-400 mt-0.5">{d.body}</p>}
-                        <p className="text-[9px] text-zinc-600 mt-0.5">{new Date(d.publishedAt * 1000).toLocaleString()}</p>
+                        <p className="text-[9px] text-zinc-400 mt-0.5">{new Date(d.publishedAt * 1000).toLocaleString()}</p>
                       </div>
                     ))
                   )}

@@ -540,7 +540,7 @@ export default function RetailLensPage() {
                 {s.conversionRate !== null && (
                   <div className="flex items-center justify-center my-1">
                     <ChevronDown className="w-4 h-4 text-gray-600" />
-                    <span className="text-xs text-gray-500 mx-2">{s.conversionRate}% conversion</span>
+                    <span className="text-xs text-gray-400 mx-2">{s.conversionRate}% conversion</span>
                     <ChevronDown className="w-4 h-4 text-gray-600" />
                   </div>
                 )}
@@ -593,7 +593,7 @@ export default function RetailLensPage() {
               <div key={stage} className="flex-1 flex items-center">
                 <div className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all',
-                  isComplete ? `bg-${color}/30 border-${color} text-${color}` : 'bg-lattice-elevated border-gray-600 text-gray-500',
+                  isComplete ? `bg-${color}/30 border-${color} text-${color}` : 'bg-lattice-elevated border-gray-600 text-gray-400',
                   isCurrent && 'ring-2 ring-offset-2 ring-offset-lattice-void ring-neon-blue'
                 )}>
                   {isComplete ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
@@ -640,7 +640,7 @@ export default function RetailLensPage() {
                   <div>
                     <p className="text-sm text-white">{event.status}</p>
                     <p className={ds.textMuted}>{event.note}</p>
-                    <p className="text-xs text-gray-500">{event.timestamp}</p>
+                    <p className="text-xs text-gray-400">{event.timestamp}</p>
                   </div>
                 </div>
               ))}
@@ -788,7 +788,7 @@ export default function RetailLensPage() {
                 <div className="mt-2 w-full bg-gray-800 rounded-full h-2">
                   <div className={cn('h-2 rounded-full transition-all', `bg-${color}`)} style={{ width: `${pct}%` }} />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{pct}% of customers</p>
+                <p className="text-xs text-gray-400 mt-1">{pct}% of customers</p>
               </div>
             );
           })}
@@ -1067,7 +1067,7 @@ export default function RetailLensPage() {
                     <div className={cn(ds.sectionHeader, 'mb-3')}>
                       <div>
                         <h4 className="text-sm font-semibold text-white">{item.title}</h4>
-                        <p className={cn(ds.textMono, 'text-gray-500')}>SKU: {d.sku || 'N/A'} | Barcode: {d.barcode || 'N/A'}</p>
+                        <p className={cn(ds.textMono, 'text-gray-400')}>SKU: {d.sku || 'N/A'} | Barcode: {d.barcode || 'N/A'}</p>
                       </div>
                       <span className={ds.textMuted}>{variants.length} variant{variants.length !== 1 ? 's' : ''}</span>
                     </div>
@@ -1076,12 +1076,12 @@ export default function RetailLensPage() {
                         <table className="w-full text-xs">
                           <thead>
                             <tr className="border-b border-lattice-border">
-                              <th className="text-left py-1.5 text-gray-500 font-medium">Size</th>
-                              <th className="text-left py-1.5 text-gray-500 font-medium">Color</th>
-                              <th className="text-left py-1.5 text-gray-500 font-medium">Style</th>
-                              <th className="text-left py-1.5 text-gray-500 font-medium">SKU</th>
-                              <th className="text-right py-1.5 text-gray-500 font-medium">Stock</th>
-                              <th className="text-right py-1.5 text-gray-500 font-medium">Price</th>
+                              <th className="text-left py-1.5 text-gray-400 font-medium">Size</th>
+                              <th className="text-left py-1.5 text-gray-400 font-medium">Color</th>
+                              <th className="text-left py-1.5 text-gray-400 font-medium">Style</th>
+                              <th className="text-left py-1.5 text-gray-400 font-medium">SKU</th>
+                              <th className="text-right py-1.5 text-gray-400 font-medium">Stock</th>
+                              <th className="text-right py-1.5 text-gray-400 font-medium">Price</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1099,7 +1099,7 @@ export default function RetailLensPage() {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500 italic">No variants defined. Edit this product to add size/color/style combinations.</p>
+                      <p className="text-xs text-gray-400 italic">No variants defined. Edit this product to add size/color/style combinations.</p>
                     )}
                   </div>
                 );
@@ -1148,15 +1148,15 @@ export default function RetailLensPage() {
                     <div className="mt-2 space-y-1">
                       {history.slice(0, 5).map((entry, idx) => (
                         <div key={idx} className="flex items-center gap-2 text-xs">
-                          <Calendar className="w-3 h-3 text-gray-500" />
-                          <span className="text-gray-500 w-20">{entry.date}</span>
+                          <Calendar className="w-3 h-3 text-gray-400" />
+                          <span className="text-gray-400 w-20">{entry.date}</span>
                           <span className="text-white font-mono">{formatCurrency(entry.price)}</span>
-                          <span className="text-gray-500">- {entry.reason}</span>
+                          <span className="text-gray-400">- {entry.reason}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-500 italic mt-1">No price changes recorded.</p>
+                    <p className="text-xs text-gray-400 italic mt-1">No price changes recorded.</p>
                   )}
                 </div>
               );
@@ -1399,7 +1399,7 @@ export default function RetailLensPage() {
   const renderCard = (item: LensItem<ArtifactData>) => {
     const d = item.data as unknown as Record<string, unknown>;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => setSelectedItemId(selectedItemId === item.id ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.sectionHeader}>
           <h3 className={ds.heading3}>{item.title}</h3>
           {renderStatusBadge(item.meta.status)}
@@ -1407,7 +1407,7 @@ export default function RetailLensPage() {
         <div className="mt-2 space-y-1">
           {currentType === 'Product' && (
             <>
-              <p className={cn(ds.textMono, 'text-gray-500')}>SKU: {d.sku as string} {d.barcode ? `| BC: ${d.barcode}` : ''}</p>
+              <p className={cn(ds.textMono, 'text-gray-400')}>SKU: {d.sku as string} {d.barcode ? `| BC: ${d.barcode}` : ''}</p>
               <p className={ds.textMuted}>{d.category as string}{d.collection ? ` | ${d.collection}` : ''} | {formatCurrency((d.price as number) || 0)}</p>
               <p className={ds.textMuted}>Stock: {d.stock as number} (reorder at {d.reorderPoint as number}){d.supplier ? ` | ${d.supplier}` : ''}</p>
               {(d.stock as number) <= (d.reorderPoint as number) && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Low stock - reorder needed</p>}
@@ -1636,15 +1636,14 @@ export default function RetailLensPage() {
                               className={cn('flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
                                 'bg-lattice-elevated border-lattice-border hover:border-neon-cyan/50'
                               )}
-                              onClick={() => setSelectedItemId(item.id)}
-                            >
+                              onClick={() => setSelectedItemId(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                               <div>
                                 <p className="text-sm font-medium text-white">Order #{d.orderNumber || item.title}</p>
                                 <p className={ds.textMuted}>{d.customer} | {formatCurrency(d.total || 0)}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {renderStatusBadge(item.meta.status)}
-                                <ChevronRight className="w-4 h-4 text-gray-500" />
+                                <ChevronRight className="w-4 h-4 text-gray-400" />
                               </div>
                             </div>
                           );
@@ -1746,15 +1745,15 @@ export default function RetailLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.criticalCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.criticalCount)}</p>
-                    <p className="text-[10px] text-gray-500">Critical</p>
+                    <p className="text-[10px] text-gray-400">Critical</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.reorderCount) > 0 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.reorderCount)}</p>
-                    <p className="text-[10px] text-gray-500">Needs Reorder</p>
+                    <p className="text-[10px] text-gray-400">Needs Reorder</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-green-400">{String(actionResult.sufficientCount)}</p>
-                    <p className="text-[10px] text-gray-500">Sufficient</p>
+                    <p className="text-[10px] text-gray-400">Sufficient</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.critical) && (actionResult.critical as {name:string;onHand:number;status:string}[]).slice(0,3).map((item, i) => (
@@ -1771,15 +1770,15 @@ export default function RetailLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.dealCount)}</p>
-                    <p className="text-[10px] text-gray-500">Deals</p>
+                    <p className="text-[10px] text-gray-400">Deals</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.totalWeightedValue).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Weighted Value</p>
+                    <p className="text-[10px] text-gray-400">Weighted Value</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.avgDealSize).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Avg Deal</p>
+                    <p className="text-[10px] text-gray-400">Avg Deal</p>
                   </div>
                 </div>
               </div>
@@ -1790,15 +1789,15 @@ export default function RetailLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.avgProjectedLTV).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Avg LTV</p>
+                    <p className="text-[10px] text-gray-400">Avg LTV</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.customersAnalyzed)}</p>
-                    <p className="text-[10px] text-gray-500">Customers</p>
+                    <p className="text-[10px] text-gray-400">Customers</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.atRiskCount) > 0 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.atRiskCount)}</p>
-                    <p className="text-[10px] text-gray-500">At Risk</p>
+                    <p className="text-[10px] text-gray-400">At Risk</p>
                   </div>
                 </div>
               </div>
@@ -1809,19 +1808,19 @@ export default function RetailLensPage() {
                 <div className="grid grid-cols-4 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.slaComplianceRate) >= 95 ? 'text-green-400' : Number(actionResult.slaComplianceRate) >= 80 ? 'text-amber-400' : 'text-red-400'}`}>{String(actionResult.slaComplianceRate)}%</p>
-                    <p className="text-[10px] text-gray-500">SLA Rate</p>
+                    <p className="text-[10px] text-gray-400">SLA Rate</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.breachedCount) > 0 ? 'text-red-400' : 'text-green-400'}`}>{String(actionResult.breachedCount)}</p>
-                    <p className="text-[10px] text-gray-500">Breached</p>
+                    <p className="text-[10px] text-gray-400">Breached</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.atRiskCount) > 0 ? 'text-amber-400' : 'text-green-400'}`}>{String(actionResult.atRiskCount)}</p>
-                    <p className="text-[10px] text-gray-500">At Risk</p>
+                    <p className="text-[10px] text-gray-400">At Risk</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-green-400">{String(actionResult.metCount)}</p>
-                    <p className="text-[10px] text-gray-500">Met</p>
+                    <p className="text-[10px] text-gray-400">Met</p>
                   </div>
                 </div>
               </div>
@@ -1972,9 +1971,9 @@ export default function RetailLensPage() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>
@@ -2087,7 +2086,7 @@ function ShopifyWorkbenchSection() {
               'px-3 py-1.5 rounded-md text-xs font-mono whitespace-nowrap transition',
               active === t.id
                 ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20'
-                : 'text-gray-500 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
+                : 'text-gray-400 hover:text-emerald-300 hover:bg-emerald-900/10 border border-transparent'
             )}
           >
             {t.label}

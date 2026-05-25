@@ -45,9 +45,9 @@ export function RelatedSidebar({ questionId, onOpenQuestion }: RelatedSidebarPro
         <h4 className="text-sm font-semibold text-zinc-200">Related</h4>
       </div>
       {loading ? (
-        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
       ) : items.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-3">No related questions yet.</p>
+        <p className="text-xs text-zinc-400 italic py-3">No related questions yet.</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((it) => (
@@ -63,7 +63,7 @@ export function RelatedSidebar({ questionId, onOpenQuestion }: RelatedSidebarPro
                   <span className="text-[12px] text-orange-300 leading-snug">{it.title}</span>
                   {it.hasAccepted && <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />}
                 </div>
-                <p className="text-[10px] text-zinc-600 mt-0.5 pl-7">
+                <p className="text-[10px] text-zinc-400 mt-0.5 pl-7">
                   {it.sharedTags} shared tag{it.sharedTags === 1 ? '' : 's'} · {(it.relevance * 100).toFixed(0)}% relevant
                 </p>
               </button>

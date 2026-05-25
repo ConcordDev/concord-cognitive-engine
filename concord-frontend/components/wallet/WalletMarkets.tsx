@@ -29,16 +29,16 @@ export function WalletMarkets() {
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {list.map((c) => (
           <a key={c.id} href={`https://www.coingecko.com/en/coins/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded border border-emerald-500/15 bg-emerald-500/5 p-2 text-[11px] hover:border-emerald-500/40">
-            <span className="w-6 shrink-0 font-mono text-[10px] text-zinc-500">#{c.market_cap_rank}</span>
+            <span className="w-6 shrink-0 font-mono text-[10px] text-zinc-400">#{c.market_cap_rank}</span>
             <span className="w-12 shrink-0 font-mono font-bold text-emerald-200">{c.symbol.toUpperCase()}</span>
             <span className="flex-1 truncate text-zinc-100">{c.name}</span>
             <span className="font-mono text-zinc-100">${c.current_price.toLocaleString(undefined, { maximumFractionDigits: c.current_price > 1 ? 2 : 6 })}</span>
             <span className={`font-mono ${c.price_change_percentage_24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{c.price_change_percentage_24h >= 0 ? '+' : ''}{c.price_change_percentage_24h?.toFixed(2)}%</span>
-            <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+            <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
           </a>
         ))}
       </div>
-      {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {coins.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

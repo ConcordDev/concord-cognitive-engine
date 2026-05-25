@@ -56,7 +56,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
 
   if (isLoading) {
     return (
-      <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-500">
+      <div className="bg-[#242526] rounded-lg p-6 text-center text-sm text-gray-400">
         <Loader2 className="w-5 h-5 animate-spin mx-auto" />
       </div>
     );
@@ -85,7 +85,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">{viewerId}</h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {data?.stats.posts ?? 0} posts · {data?.stats.albums ?? 0} albums
             </p>
           </div>
@@ -148,8 +148,8 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                   const Icon = row.icon;
                   return (
                     <div key={row.key} className="flex items-center gap-2 text-sm text-gray-400">
-                      <Icon className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-500">{row.label}</span>
+                      <Icon className="w-4 h-4 text-gray-400" />
+                      <span className="text-gray-400">{row.label}</span>
                       <span className="text-gray-200">{profile?.about?.[row.key]}</span>
                     </div>
                   );

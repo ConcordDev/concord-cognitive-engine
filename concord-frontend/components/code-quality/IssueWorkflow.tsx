@@ -78,9 +78,9 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
       </div>
 
       {busy && !issues.length ? (
-        <p className="text-sm text-gray-500">Loading issues…</p>
+        <p className="text-sm text-gray-400">Loading issues…</p>
       ) : issues.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-400">
           No tracked issues. Track findings from the Annotations tab to build a workflow.
         </p>
       ) : (
@@ -95,7 +95,7 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
                 </span>
                 <span className="font-mono text-gray-300">{iss.rule}</span>
                 {iss.file && (
-                  <span className="font-mono text-gray-500">
+                  <span className="font-mono text-gray-400">
                     {iss.file}
                     {iss.line != null ? `:${iss.line}` : ''}
                   </span>
@@ -130,16 +130,16 @@ export function IssueWorkflow({ refreshKey }: { refreshKey: number }) {
                   }}
                   className="bg-black/40 border border-gray-700 rounded px-1.5 py-0.5 text-xs w-32"
                 />
-                <span className="text-[11px] text-gray-600">
+                <span className="text-[11px] text-gray-400">
                   {iss.assignee ? `→ ${iss.assignee}` : 'unassigned'} · enter to save
                 </span>
               </div>
               {iss.history.length > 1 && (
                 <details className="mt-1.5">
-                  <summary className="text-[11px] text-gray-500 cursor-pointer">
+                  <summary className="text-[11px] text-gray-400 cursor-pointer">
                     history ({iss.history.length})
                   </summary>
-                  <ul className="mt-1 space-y-0.5 text-[11px] text-gray-500">
+                  <ul className="mt-1 space-y-0.5 text-[11px] text-gray-400">
                     {iss.history.map((h, i) => (
                       <li key={i} className="font-mono">
                         {h.at.slice(0, 19).replace('T', ' ')} — {h.action}

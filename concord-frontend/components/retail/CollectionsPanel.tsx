@@ -54,7 +54,7 @@ export function CollectionsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FolderTree className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Collections</span>
-        <span className="ml-auto text-[10px] text-gray-500">{collections.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{collections.length}</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
@@ -65,19 +65,19 @@ export function CollectionsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : collections.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><FolderTree className="w-6 h-6 mx-auto mb-2 opacity-30" />No collections yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><FolderTree className="w-6 h-6 mx-auto mb-2 opacity-30" />No collections yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {collections.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] group">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm text-white font-medium flex-1 truncate">{c.name}</span>
-                  <span className="text-[10px] text-gray-500">{c.productSkus.length} products</span>
-                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <span className="text-[10px] text-gray-400">{c.productSkus.length} products</span>
+                  <button onClick={() => remove(c.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
-                {c.description && <p className="text-[11px] text-gray-500 mb-1">{c.description}</p>}
+                {c.description && <p className="text-[11px] text-gray-400 mb-1">{c.description}</p>}
                 <div className="flex flex-wrap items-center gap-1">
                   {c.productSkus.map(sku => (
                     <span key={sku} className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-cyan-500/15 text-cyan-300">{sku}</span>

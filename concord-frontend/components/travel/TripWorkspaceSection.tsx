@@ -32,7 +32,7 @@ interface SharedTrip extends DomainTrip {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  draft: 'text-zinc-500', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
+  draft: 'text-zinc-400', upcoming: 'text-sky-400', active: 'text-emerald-400', past: 'text-zinc-600',
 };
 
 export function TripWorkspaceSection() {
@@ -117,9 +117,9 @@ export function TripWorkspaceSection() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : trips.length === 0 && shared.length === 0 ? (
-        <div className="text-center text-zinc-500 text-xs italic py-8 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-xs italic py-8 border border-zinc-800 rounded-xl">
           No trips yet. Create one to open the map, agenda, weather and collaboration tools.
         </div>
       ) : (
@@ -132,7 +132,7 @@ export function TripWorkspaceSection() {
                   {t.name}
                   {t.status && <span className={cn('ml-2 text-[10px] uppercase', STATUS_COLOR[t.status])}>{t.status}</span>}
                 </p>
-                <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                <p className="text-[11px] text-zinc-400 flex items-center gap-1">
                   <MapPin className="w-3 h-3" />{t.destination}
                   {t.startDate ? ` · ${t.startDate}${t.endDate ? ` → ${t.endDate}` : ''}` : ''}
                 </p>
@@ -150,7 +150,7 @@ export function TripWorkspaceSection() {
                   className="w-full flex items-center justify-between bg-zinc-900/50 border border-dashed border-zinc-800 hover:border-sky-700 rounded-xl p-3 text-left transition-colors mb-1">
                   <div>
                     <p className="text-sm font-semibold text-zinc-100">{t.name}</p>
-                    <p className="text-[11px] text-zinc-500 flex items-center gap-1">
+                    <p className="text-[11px] text-zinc-400 flex items-center gap-1">
                       <MapPin className="w-3 h-3" />{t.destination} · from {t.ownerId} · {t.myRole}
                     </p>
                   </div>

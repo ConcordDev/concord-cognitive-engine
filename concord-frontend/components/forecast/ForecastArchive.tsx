@@ -44,11 +44,11 @@ export function ForecastArchive({ worldId }: { worldId: string }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  if (loading) return <p className="text-xs text-zinc-500">Loading archive…</p>;
+  if (loading) return <p className="text-xs text-zinc-400">Loading archive…</p>;
 
   if (!result || result.count === 0) {
     return (
-      <p className="py-8 text-center text-xs italic text-zinc-500">
+      <p className="py-8 text-center text-xs italic text-zinc-400">
         No data yet — compose and persist forecasts to build the archive.
       </p>
     );
@@ -64,7 +64,7 @@ export function ForecastArchive({ worldId }: { worldId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-zinc-500">{result.count} persisted forecasts.</p>
+      <p className="text-[11px] text-zinc-400">{result.count} persisted forecasts.</p>
 
       {(hasTemp || hasEco) && (
         <ChartKit
@@ -85,14 +85,14 @@ export function ForecastArchive({ worldId }: { worldId: string }) {
             key={`${e.composed_at}-${i}`}
             className="flex items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-zinc-950/50 px-3 py-2"
           >
-            <span className="w-36 shrink-0 font-mono text-[10px] text-zinc-500">
+            <span className="w-36 shrink-0 font-mono text-[10px] text-zinc-400">
               {new Date(e.composed_at * 1000).toLocaleString()}
             </span>
             <span className="text-xs text-zinc-200">{e.weather_kind ?? '—'}</span>
             <span className="font-mono text-xs text-cyan-300">
               {e.temperature_c !== null ? `${e.temperature_c}°C` : '—'}
             </span>
-            <span className="font-mono text-[10px] text-zinc-500">
+            <span className="font-mono text-[10px] text-zinc-400">
               {e.drift_kind ? `drift: ${e.drift_kind} · ` : ''}
               {e.event_count} events
             </span>

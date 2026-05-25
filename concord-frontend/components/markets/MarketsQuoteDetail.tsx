@@ -180,7 +180,7 @@ export function MarketsQuoteDetail() {
           <button
             type="button"
             onClick={reset}
-            className="rounded-md px-2 py-1 text-xs text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
+            className="rounded-md px-2 py-1 text-xs text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-200"
           >
             New lookup
           </button>
@@ -189,7 +189,7 @@ export function MarketsQuoteDetail() {
 
       <form onSubmit={submitSearch} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={inputValue}
@@ -215,7 +215,7 @@ export function MarketsQuoteDetail() {
       )}
 
       {!primarySymbol && !errorMsg && (
-        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded-md border border-dashed border-zinc-800 bg-zinc-950/50 px-3 py-8 text-center text-xs text-zinc-400">
           Pull a real-time quote, price chart, and side-by-side comparison for any Yahoo-listed ticker —
           equities, ETFs, indices (^GSPC), futures (ES=F), forex (EURUSD=X), or crypto (BTC-USD).
         </div>
@@ -243,7 +243,7 @@ export function MarketsQuoteDetail() {
 
           {comparisons.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">Comparing:</span>
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400">Comparing:</span>
               {[primarySymbol, ...comparisons].map((sym, i) => (
                 <span
                   key={sym}
@@ -324,13 +324,13 @@ function QuoteHero({ symbol, quote, history }: { symbol: string; quote: Quote | 
               </span>
             </div>
             {history?.currency && history.currency !== 'USD' && (
-              <span className="text-[10px] uppercase tracking-wider text-zinc-500">
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400">
                 {history.currency}
               </span>
             )}
           </div>
           {history?.exchangeName && (
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-1 text-[11px] text-zinc-400">
               {history.exchangeName}
             </p>
           )}
@@ -371,7 +371,7 @@ function QuoteFundamentals({ quote }: { quote: Quote }) {
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
       {cells.map((c) => (
         <div key={c.label} className="rounded-md border border-zinc-800 bg-zinc-950/40 px-3 py-2">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">{c.label}</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">{c.label}</div>
           <div className={`font-mono text-sm font-medium ${c.color ?? 'text-white'}`}>{c.value ?? '—'}</div>
         </div>
       ))}
@@ -418,7 +418,7 @@ function ChartControls({
               type="button"
               onClick={() => setChartType(t)}
               className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                chartType === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'
+                chartType === t ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'
               }`}
             >
               <Activity className="h-3 w-3" />
@@ -428,7 +428,7 @@ function ChartControls({
         </div>
 
         <div className="flex items-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-950 p-1">
-          <Plus className="h-3 w-3 text-zinc-500" />
+          <Plus className="h-3 w-3 text-zinc-400" />
           <input
             type="text"
             value={comparisonInput}
@@ -561,7 +561,7 @@ function LightChart({ symbols, series, comparing, chartType, isLoading }: {
         </div>
       )}
       {!isLoading && !hasAnyData && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center text-xs text-zinc-500">
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-xs text-zinc-400">
           No chart data for the selected range
         </div>
       )}

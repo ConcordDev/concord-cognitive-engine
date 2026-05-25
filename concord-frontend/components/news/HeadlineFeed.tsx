@@ -54,18 +54,18 @@ export function HeadlineFeed() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Newspaper className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Headlines</span>
-        <span className="ml-auto text-[10px] text-gray-500">{headlines.length} stories</span>
+        <span className="ml-auto text-[10px] text-gray-400">{headlines.length} stories</span>
       </header>
       <div className="px-3 py-2 border-b border-white/5 flex items-center gap-1 overflow-x-auto">
         {CATEGORIES.map(c => (
           <button key={c} onClick={() => setCategory(c)} className={cn('px-2 py-0.5 text-[10px] uppercase tracking-wider rounded',
-            category === c ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-500 hover:text-white'
+            category === c ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'
           )}>{c}</button>
         ))}
       </div>
       <div className="max-h-[600px] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {headlines.map(h => {
@@ -80,14 +80,14 @@ export function HeadlineFeed() {
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-bold text-white">{h.title}</h3>
                       <p className="text-xs text-gray-400 mt-1 line-clamp-2">{h.excerpt}</p>
-                      <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-2">
+                      <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-2">
                         <span className="text-cyan-300">{h.source}</span>
                         <span>{new Date(h.publishedAt).toLocaleString()}</span>
                         <span className="uppercase">{h.category}</span>
                         <a href={h.url} target="_blank" rel="noreferrer noopener" className="text-cyan-300 hover:text-cyan-100 inline-flex items-center gap-0.5 ml-auto"><ExternalLink className="w-3 h-3" /> Read</a>
                       </div>
                     </div>
-                    <button onClick={() => toggleSave(h.id)} className="p-1 text-gray-500 hover:text-yellow-400" title={isSaved ? 'Unsave' : 'Save'}>
+                    <button onClick={() => toggleSave(h.id)} className="p-1 text-gray-400 hover:text-yellow-400" title={isSaved ? 'Unsave' : 'Save'}>
                       {isSaved ? <BookmarkCheck className="w-4 h-4 text-yellow-400" /> : <Bookmark className="w-4 h-4" />}
                     </button>
                   </div>

@@ -387,7 +387,7 @@ export function FactGroundingWorkbench() {
                     <button
                       type="button"
                       onClick={() => setEvidence((arr) => arr.filter((_, j) => j !== i))}
-                      className="rounded bg-zinc-800 px-1.5 text-zinc-500 hover:text-red-400"
+                      className="rounded bg-zinc-800 px-1.5 text-zinc-400 hover:text-red-400"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -421,7 +421,7 @@ export function FactGroundingWorkbench() {
                     </div>
                     <span className="font-mono text-xs text-zinc-300">{Math.round(aggregate.probabilityTrue * 100)}% likely true</span>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-zinc-500">
+                  <p className="mt-0.5 text-[10px] text-zinc-400">
                     {aggregate.sourceCount} sources · {aggregate.knownSourceCount} rated · spectrum: {aggregate.spectrumCoverage}
                   </p>
                 </div>
@@ -430,21 +430,21 @@ export function FactGroundingWorkbench() {
               <div className="grid grid-cols-3 gap-2">
                 <div className="rounded bg-zinc-950 p-2 text-center">
                   <p className="text-lg font-bold text-emerald-400">{aggregate.breakdown.supporting.count}</p>
-                  <p className="text-[10px] text-zinc-500">Supporting · w {aggregate.breakdown.supporting.weight}</p>
+                  <p className="text-[10px] text-zinc-400">Supporting · w {aggregate.breakdown.supporting.weight}</p>
                 </div>
                 <div className="rounded bg-zinc-950 p-2 text-center">
                   <p className="text-lg font-bold text-rose-400">{aggregate.breakdown.contradicting.count}</p>
-                  <p className="text-[10px] text-zinc-500">Contradicting · w {aggregate.breakdown.contradicting.weight}</p>
+                  <p className="text-[10px] text-zinc-400">Contradicting · w {aggregate.breakdown.contradicting.weight}</p>
                 </div>
                 <div className="rounded bg-zinc-950 p-2 text-center">
                   <p className="text-lg font-bold text-zinc-400">{aggregate.breakdown.neutral.count}</p>
-                  <p className="text-[10px] text-zinc-500">Neutral</p>
+                  <p className="text-[10px] text-zinc-400">Neutral</p>
                 </div>
               </div>
 
               {/* per-source citations with bias chips */}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Citations</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Citations</p>
                 {aggregate.citations.map((c) => (
                   <div key={c.index} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
                     <div className="flex items-center justify-between gap-2">
@@ -461,14 +461,14 @@ export function FactGroundingWorkbench() {
                             style={{ backgroundColor: LEAN_COLOR[c.bias.lean] || '#52525b' }}
                           >{c.bias.lean}</span>
                         )}
-                        <span className="font-mono text-[9px] text-zinc-500">w {c.sourceWeight}</span>
+                        <span className="font-mono text-[9px] text-zinc-400">w {c.sourceWeight}</span>
                       </div>
                     </div>
                     {c.excerpt && <p className="mt-1 line-clamp-2 text-zinc-400">{c.excerpt}</p>}
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] italic text-zinc-500">{aggregate.notes}</p>
+              <p className="text-[10px] italic text-zinc-400">{aggregate.notes}</p>
             </div>
           )}
 
@@ -493,7 +493,7 @@ export function FactGroundingWorkbench() {
                 ] as Array<[string, number]>).map(([label, v]) => (
                   <div key={label} className="rounded bg-zinc-950 p-1.5">
                     <p className="font-mono text-xs text-indigo-300">{Math.round(v * 100)}%</p>
-                    <p className="text-[9px] text-zinc-500">{label}</p>
+                    <p className="text-[9px] text-zinc-400">{label}</p>
                   </div>
                 ))}
               </div>
@@ -547,12 +547,12 @@ export function FactGroundingWorkbench() {
                 <div className="flex flex-wrap gap-1">
                   {card.sources.map((s, i) => (
                     <span key={i} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] text-zinc-300">
-                      {s.name} <span className="text-zinc-500">· {s.lean}</span>
+                      {s.name} <span className="text-zinc-400">· {s.lean}</span>
                     </span>
                   ))}
                 </div>
               )}
-              <p className="text-[9px] text-zinc-600">Issued {new Date(card.issuedAt).toLocaleString()}</p>
+              <p className="text-[9px] text-zinc-400">Issued {new Date(card.issuedAt).toLocaleString()}</p>
             </div>
           )}
         </div>
@@ -609,13 +609,13 @@ export function FactGroundingWorkbench() {
                       className="w-24 rounded px-1.5 py-0.5 text-center text-[9px] font-semibold text-zinc-950"
                       style={{ backgroundColor: LEAN_COLOR[s.lean] || '#52525b' }}
                     >{s.lean}</span>
-                    <span className="w-20 text-right text-[10px] text-zinc-500">
+                    <span className="w-20 text-right text-[10px] text-zinc-400">
                       {s.factuality != null ? `${s.factuality}% fact` : 'no rating'}
                     </span>
                   </div>
                 ))}
               </div>
-              <p className="text-[9px] italic text-zinc-600">{sourceBias.referenceNote}</p>
+              <p className="text-[9px] italic text-zinc-400">{sourceBias.referenceNote}</p>
             </div>
           )}
         </div>
@@ -634,7 +634,7 @@ export function FactGroundingWorkbench() {
 
           {trending && (
             <div className="space-y-2">
-              <p className="text-[10px] text-zinc-500">{trending.count} items · {trending.date} · {trending.source}</p>
+              <p className="text-[10px] text-zinc-400">{trending.count} items · {trending.date} · {trending.source}</p>
               {trending.claims.map((c, i) => (
                 <div key={i} className="rounded border border-zinc-800 bg-zinc-900/40 p-2.5">
                   <div className="flex items-center justify-between gap-2">
@@ -643,7 +643,7 @@ export function FactGroundingWorkbench() {
                       c.checkability === 'high' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-amber-500/15 text-amber-300'
                     }`}>{c.kind} · {c.checkability}</span>
                   </div>
-                  <p className="mt-1 text-[10px] text-zinc-500">Suggested claim: {c.suggestedClaim}</p>
+                  <p className="mt-1 text-[10px] text-zinc-400">Suggested claim: {c.suggestedClaim}</p>
                   <button
                     type="button"
                     onClick={() => { setClaim(c.suggestedClaim); setTab('aggregate'); }}
@@ -674,19 +674,19 @@ export function FactGroundingWorkbench() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                   <p className="text-2xl font-bold text-white">{audit.totalChecks}</p>
-                  <p className="text-[10px] text-zinc-500">Total fact-checks</p>
+                  <p className="text-[10px] text-zinc-400">Total fact-checks</p>
                 </div>
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2 text-center">
                   <p className="text-2xl font-bold text-cyan-300">
                     {audit.stats.avgProbabilityTrue != null ? `${Math.round(audit.stats.avgProbabilityTrue * 100)}%` : '—'}
                   </p>
-                  <p className="text-[10px] text-zinc-500">Avg probability true</p>
+                  <p className="text-[10px] text-zinc-400">Avg probability true</p>
                 </div>
               </div>
 
               {verdictChartData.length > 0 && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Verdict distribution</p>
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Verdict distribution</p>
                   <ChartKit
                     kind="bar" data={verdictChartData} xKey="verdict"
                     series={[{ key: 'count', label: 'Checks', color: '#06b6d4' }]}
@@ -697,15 +697,15 @@ export function FactGroundingWorkbench() {
 
               {trailEvents.length > 0 && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Verification activity</p>
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Verification activity</p>
                   <TimelineView events={trailEvents} height={110} />
                 </div>
               )}
 
               <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Recorded checks</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Recorded checks</p>
                 {audit.checks.length === 0 && (
-                  <p className="py-4 text-center text-[11px] text-zinc-600">
+                  <p className="py-4 text-center text-[11px] text-zinc-400">
                     No recorded checks yet — run an aggregation and click &ldquo;Record to audit trail&rdquo;.
                   </p>
                 )}
@@ -719,7 +719,7 @@ export function FactGroundingWorkbench() {
                         : 'bg-amber-500/15 text-amber-300'
                       }`}>{c.verdict}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-3 text-[9px] text-zinc-500">
+                    <div className="mt-1 flex items-center gap-3 text-[9px] text-zinc-400">
                       {c.probabilityTrue != null && <span>{Math.round(c.probabilityTrue * 100)}% true</span>}
                       {c.confidence != null && <span>conf {Math.round(c.confidence * 100)}%</span>}
                       <span>{c.sourceCount} sources</span>
@@ -765,20 +765,20 @@ export function FactGroundingWorkbench() {
               Link rebuttal
             </button>
             {(!audit?.checks.length) && (
-              <p className="text-[10px] text-zinc-600">Record a fact-check first to link a rebuttal to it.</p>
+              <p className="text-[10px] text-zinc-400">Record a fact-check first to link a rebuttal to it.</p>
             )}
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">Debate threads ({rebuttals.length})</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Debate threads ({rebuttals.length})</p>
               <button
                 type="button" onClick={loadRebuttals}
                 className="text-[10px] text-cyan-400 hover:underline"
               >Refresh</button>
             </div>
             {rebuttals.length === 0 && (
-              <p className="py-4 text-center text-[11px] text-zinc-600">No rebuttals linked yet.</p>
+              <p className="py-4 text-center text-[11px] text-zinc-400">No rebuttals linked yet.</p>
             )}
             {rebuttals.map((r) => (
               <div key={r.id} className="rounded border border-zinc-800 bg-zinc-900/40 p-2.5 text-[11px]">
@@ -795,13 +795,13 @@ export function FactGroundingWorkbench() {
                 {r.counterEvidence.length > 0 && (
                   <div className="mt-1.5 space-y-0.5">
                     {r.counterEvidence.map((e, i) => (
-                      <p key={i} className="text-[9px] text-zinc-500">
+                      <p key={i} className="text-[9px] text-zinc-400">
                         ↳ {e.text}{e.sourceUrl && <span className="text-cyan-500"> · {e.sourceUrl}</span>}
                       </p>
                     ))}
                   </div>
                 )}
-                <p className="mt-1 text-[9px] text-zinc-600">Linked {new Date(r.linkedAt).toLocaleString()}</p>
+                <p className="mt-1 text-[9px] text-zinc-400">Linked {new Date(r.linkedAt).toLocaleString()}</p>
               </div>
             ))}
           </div>

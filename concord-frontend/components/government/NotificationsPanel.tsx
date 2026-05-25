@@ -83,7 +83,7 @@ export function NotificationsPanel() {
 
       {/* Subscribe to case updates */}
       <div className="p-3 border-b border-white/10">
-        <div className="text-[10px] uppercase text-gray-500 mb-1.5 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Subscribe to a case for email / SMS updates</div>
+        <div className="text-[10px] uppercase text-gray-400 mb-1.5 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Subscribe to a case for email / SMS updates</div>
         <div className="grid grid-cols-6 gap-2">
           <select value={subForm.subjectKind} onChange={e => setSubForm({ ...subForm, subjectKind: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
             {SUBJECT_KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -112,9 +112,9 @@ export function NotificationsPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" />Loading…</div>
         ) : notifications.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No notifications yet. Permit, fine and 311 status changes will appear here.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Bell className="w-6 h-6 mx-auto mb-2 opacity-30" />No notifications yet. Permit, fine and 311 status changes will appear here.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {notifications.map(n => (
@@ -122,7 +122,7 @@ export function NotificationsPanel() {
                 <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.read ? 'bg-gray-600' : 'bg-cyan-400'}`} />
                 <div className="flex-1 min-w-0">
                   <div className="text-xs text-white">{n.message}</div>
-                  <div className="text-[10px] text-gray-500 inline-flex items-center gap-1.5">
+                  <div className="text-[10px] text-gray-400 inline-flex items-center gap-1.5">
                     <span>{n.subjectKind.replace(/_/g, ' ')}</span>
                     <span>· via {n.channel}{n.contact && ` (${n.contact})`}</span>
                     <span>· {new Date(n.createdAt).toLocaleString()}</span>

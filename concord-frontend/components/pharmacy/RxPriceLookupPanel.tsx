@@ -81,13 +81,13 @@ export function RxPriceLookupPanel() {
               {priceResult.rxcui ? ` · RxCUI ${priceResult.rxcui}` : ''} · qty {priceResult.quantity}
             </p>
             {priceResult.quotes.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">{priceResult.note || 'No pricing data found.'}</p>
+              <p className="text-[11px] text-zinc-400 italic">{priceResult.note || 'No pricing data found.'}</p>
             ) : (
               <>
                 {priceResult.lowestTotal != null && (
                   <p className="text-xs text-emerald-400 mb-1.5">
                     Lowest est. total: <span className="font-mono font-bold">${priceResult.lowestTotal}</span>
-                    <span className="text-zinc-500"> (${priceResult.lowestPerUnit}/unit)</span>
+                    <span className="text-zinc-400"> (${priceResult.lowestPerUnit}/unit)</span>
                   </p>
                 )}
                 <ul className="space-y-1 max-h-56 overflow-y-auto">
@@ -100,7 +100,7 @@ export function RxPriceLookupPanel() {
                     </li>
                   ))}
                 </ul>
-                {priceResult.disclaimer && <p className="text-[10px] text-zinc-600 italic mt-1.5">{priceResult.disclaimer}</p>}
+                {priceResult.disclaimer && <p className="text-[10px] text-zinc-400 italic mt-1.5">{priceResult.disclaimer}</p>}
               </>
             )}
           </div>
@@ -134,19 +134,19 @@ export function RxPriceLookupPanel() {
         {pillResult && (
           <div className="mt-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
             {pillResult.matches.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">{pillResult.note || 'No pill matched.'}</p>
+              <p className="text-[11px] text-zinc-400 italic">{pillResult.note || 'No pill matched.'}</p>
             ) : (
               <ul className="space-y-1.5 max-h-64 overflow-y-auto">
                 {pillResult.matches.map((m, i) => (
                   <li key={m.setId || i} className="bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
                     <p className="text-xs text-zinc-100">
                       {m.brandName || m.genericName || 'Unknown'}
-                      {m.brandName && m.genericName ? <span className="text-zinc-500"> · {m.genericName}</span> : null}
+                      {m.brandName && m.genericName ? <span className="text-zinc-400"> · {m.genericName}</span> : null}
                     </p>
-                    <p className="text-[10px] text-zinc-500">
+                    <p className="text-[10px] text-zinc-400">
                       {[m.dosageForm, m.route, m.manufacturer].filter(Boolean).join(' · ')}
                     </p>
-                    {m.strength && <p className="text-[10px] text-zinc-500">{m.strength}</p>}
+                    {m.strength && <p className="text-[10px] text-zinc-400">{m.strength}</p>}
                     {(m.colorMatch || m.shapeMatch) && (
                       <p className="text-[10px] text-emerald-400">
                         {m.colorMatch ? 'color match ' : ''}{m.shapeMatch ? 'shape match' : ''}
@@ -156,7 +156,7 @@ export function RxPriceLookupPanel() {
                 ))}
               </ul>
             )}
-            {pillResult.disclaimer && <p className="text-[10px] text-zinc-600 italic mt-1.5">{pillResult.disclaimer}</p>}
+            {pillResult.disclaimer && <p className="text-[10px] text-zinc-400 italic mt-1.5">{pillResult.disclaimer}</p>}
           </div>
         )}
       </section>

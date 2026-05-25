@@ -94,7 +94,7 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
 
   if (!listingId) {
     return (
-      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-500">
+      <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg p-8 text-center text-xs text-gray-400">
         <Camera className="w-6 h-6 mx-auto mb-2 opacity-30" />
         Select a listing to manage its photo gallery and 3D tour.
       </div>
@@ -108,7 +108,7 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Camera className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Photos & 3D tour</span>
-        <span className="ml-auto text-[10px] text-gray-500">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>
         <button onClick={() => setAdding((v) => !v)} className="p-1 text-gray-400 hover:text-white" title="Add photo"><Plus className="w-4 h-4" /></button>
       </header>
 
@@ -122,11 +122,11 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <div className="p-3 space-y-3">
           {photos.length === 0 ? (
-            <div className="py-8 text-center text-xs text-gray-500">No photos yet. Hit + to add a photo URL.</div>
+            <div className="py-8 text-center text-xs text-gray-400">No photos yet. Hit + to add a photo URL.</div>
           ) : (
             <>
               <div className="relative aspect-video bg-black/40 rounded overflow-hidden">

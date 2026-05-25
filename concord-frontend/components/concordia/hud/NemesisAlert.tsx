@@ -46,7 +46,7 @@ export function NemesisAlert() {
               <div className="text-white font-bold text-xl mb-1">{risen.npcName}</div>
               <div className="text-red-300 italic text-sm mb-2">"{risen.npcTitle}"</div>
               {risen.killCount > 1 && (
-                <div className="text-gray-500 text-xs">
+                <div className="text-gray-400 text-xs">
                   They have defeated you {risen.killCount} time{risen.killCount > 1 ? 's' : ''}.
                 </div>
               )}

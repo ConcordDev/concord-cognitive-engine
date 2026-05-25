@@ -80,7 +80,7 @@ export default function WalkerArbitrageMap({ worldId = 'concordia-hub' }: { worl
         {walkerCount} walkers in transit · {opps.length} arbitrage opportunities
       </p>
       {opps.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No arbitrage opps right now — markets in equilibrium.</p>
+        <p className="text-[11px] text-zinc-400 italic">No arbitrage opps right now — markets in equilibrium.</p>
       ) : (
         <ul className="space-y-1.5 max-h-64 overflow-y-auto">
           {opps.slice(0, 8).map((o, i) => (

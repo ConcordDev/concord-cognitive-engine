@@ -192,7 +192,7 @@ export function PoetryActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -203,7 +203,7 @@ export function PoetryActionPanel() {
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Meter ({meterResult.lines} lines)</div>
             <div className="text-sm text-zinc-100">avg <span className="font-mono text-cyan-300">{meterResult.avgSyllables}</span> syll · <span className="capitalize">{meterResult.meterConsistency}</span> · <span className="text-violet-300 font-semibold">{meterResult.possibleForm}</span></div>
-            {meterResult.syllablesPerLine && <div className="text-[10px] text-zinc-500 font-mono mt-1">{meterResult.syllablesPerLine.slice(0, 8).join(' · ')}</div>}
+            {meterResult.syllablesPerLine && <div className="text-[10px] text-zinc-400 font-mono mt-1">{meterResult.syllablesPerLine.slice(0, 8).join(' · ')}</div>}
           </div>
         )}
         {rhymeResult && (
@@ -211,7 +211,7 @@ export function PoetryActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Rhyme</div>
             <div className="text-lg font-bold font-mono text-purple-300">{rhymeResult.scheme}</div>
             <div className="text-[11px] text-zinc-300">{rhymeResult.form} · {rhymeResult.rhyming ? 'rhyming' : 'unrhymed'}</div>
-            {rhymeResult.endWords && <div className="text-[10px] text-zinc-500 font-mono">end: {rhymeResult.endWords.slice(0, 8).join(', ')}</div>}
+            {rhymeResult.endWords && <div className="text-[10px] text-zinc-400 font-mono">end: {rhymeResult.endWords.slice(0, 8).join(', ')}</div>}
           </div>
         )}
         {formResult && (

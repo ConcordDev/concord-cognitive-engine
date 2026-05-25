@@ -79,7 +79,7 @@ export function ReportExport() {
           {preview}
         </pre>
       ) : (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           Generate a downloadable report of every pain point, theme, intervention, and trend snapshot.
         </p>
       )}

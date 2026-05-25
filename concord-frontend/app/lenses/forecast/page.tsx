@@ -117,7 +117,7 @@ export default function ForecastPage() {
 
         {tab === 'now' && (
           !forecast ? (
-            <div className="text-center text-zinc-500 italic py-12 border border-zinc-800 rounded-xl">
+            <div className="text-center text-zinc-400 italic py-12 border border-zinc-800 rounded-xl">
               No forecast yet. Compose one above.
             </div>
           ) : (
@@ -126,7 +126,7 @@ export default function ForecastPage() {
                 <section className="bg-zinc-900/80 border border-cyan-700/40 rounded-xl p-4">
                   <h2 className="text-xs font-bold text-cyan-300 uppercase tracking-wider mb-2">Weather</h2>
                   <p className="text-zinc-100">{forecast.weather.kind}{forecast.weather.temperature_c !== null ? ` · ${forecast.weather.temperature_c}°C` : ''}{forecast.weather.humidity_pct != null ? ` · ${forecast.weather.humidity_pct}% humidity` : ''}</p>
-                  <p className="text-[10px] text-zinc-500 font-mono mt-1">confidence {(forecast.weather.confidence * 100).toFixed(0)}%</p>
+                  <p className="text-[10px] text-zinc-400 font-mono mt-1">confidence {(forecast.weather.confidence * 100).toFixed(0)}%</p>
                 </section>
               )}
               {forecast.ecology && (
@@ -155,7 +155,7 @@ export default function ForecastPage() {
                     {forecast.events.map((e, i) => (
                       <li key={i} className="border-l-2 border-purple-500/50 pl-2">
                         <p className="text-zinc-100 italic">{e.summary}</p>
-                        <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{e.kind} · {(e.confidence * 100).toFixed(0)}% conf · {e.eta_hours ? `${e.eta_hours.toFixed(1)}h` : '—'}</p>
+                        <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">{e.kind} · {(e.confidence * 100).toFixed(0)}% conf · {e.eta_hours ? `${e.eta_hours.toFixed(1)}h` : '—'}</p>
                       </li>
                     ))}
                   </ul>
@@ -168,7 +168,7 @@ export default function ForecastPage() {
                 </section>
               )}
               {forecast.composedAt && (
-                <p className="text-[10px] text-zinc-600 font-mono text-right">composed {new Date(forecast.composedAt * 1000).toLocaleString()}</p>
+                <p className="text-[10px] text-zinc-400 font-mono text-right">composed {new Date(forecast.composedAt * 1000).toLocaleString()}</p>
               )}
             </div>
           )

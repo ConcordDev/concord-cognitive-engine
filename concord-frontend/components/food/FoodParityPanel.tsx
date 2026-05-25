@@ -39,7 +39,7 @@ export function FoodParityPanel() {
           <ScanBarcode className="w-4 h-4 text-cyan-400" />
           Nutrition & Recipe Workbench
         </h2>
-        <p className="text-[11px] text-gray-500 mt-0.5">
+        <p className="text-[11px] text-gray-400 mt-0.5">
           Barcode scan, calorie goals, recipe photos &amp; ratings, pantry-aware planning, restaurant map.
         </p>
       </header>

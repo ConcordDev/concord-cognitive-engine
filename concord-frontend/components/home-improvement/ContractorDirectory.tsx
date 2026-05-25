@@ -113,7 +113,7 @@ export function ContractorDirectory() {
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2 text-sm">
           <Wrench className="w-4 h-4 text-neon-cyan" /> Pro Directory
-          <span className="text-xs text-gray-500">({pros.length})</span>
+          <span className="text-xs text-gray-400">({pros.length})</span>
         </h3>
         <button onClick={() => setShowForm((v) => !v)} className="text-xs flex items-center gap-1 text-neon-cyan hover:text-cyan-300">
           <Plus className="w-3.5 h-3.5" /> Add contractor
@@ -139,9 +139,9 @@ export function ContractorDirectory() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading contractors...</div>
+        <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading contractors...</div>
       ) : pros.length === 0 ? (
-        <p className="text-xs text-gray-500">No contractors yet. Add pros to compare quotes and track reviews.</p>
+        <p className="text-xs text-gray-400">No contractors yet. Add pros to compare quotes and track reviews.</p>
       ) : (
         <div className="space-y-3">
           {pros.map((p) => (
@@ -158,7 +158,7 @@ export function ContractorDirectory() {
                     {p.quoteCount > 0 && <span className="text-neon-green">Lowest quote: ${p.lowestQuote.toLocaleString()}</span>}
                   </div>
                 </button>
-                <button onClick={() => removePro(p.id)} disabled={busy} className="text-gray-500 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                <button onClick={() => removePro(p.id)} disabled={busy} className="text-gray-400 hover:text-red-400 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
 
               {openPro === p.id && (
@@ -191,7 +191,7 @@ export function ContractorDirectory() {
                     <p className="text-xs font-semibold text-gray-300 mb-1 flex items-center gap-1"><Star className="w-3 h-3" /> Reviews</p>
                     {p.reviews.map((r) => (
                       <div key={r.id} className="text-xs py-1 border-b border-lattice-border/50">
-                        <div className="flex items-center gap-2"><Stars value={r.rating} />{r.project && <span className="text-gray-500">{r.project}</span>}</div>
+                        <div className="flex items-center gap-2"><Stars value={r.rating} />{r.project && <span className="text-gray-400">{r.project}</span>}</div>
                         {r.text && <p className="text-gray-300 mt-0.5">{r.text}</p>}
                       </div>
                     ))}

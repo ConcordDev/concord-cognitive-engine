@@ -58,7 +58,7 @@ export function HackerNewsReference() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Hacker News stories…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <label className="flex items-center gap-1 text-[11px] text-zinc-400">
@@ -77,7 +77,7 @@ export function HackerNewsReference() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <div className="line-clamp-1 text-sm text-white">{h.title || '(no title)'}</div>
-                <div className="mt-0.5 flex items-center gap-x-3 text-[10px] text-zinc-500">
+                <div className="mt-0.5 flex items-center gap-x-3 text-[10px] text-zinc-400">
                   <span className="flex items-center gap-0.5"><ArrowUp className="h-3 w-3" />{h.points || 0}</span>
                   <span><MessageSquare className="mr-0.5 inline h-3 w-3" />{h.num_comments || 0}</span>
                   <span>{h.author}</span>
@@ -85,12 +85,12 @@ export function HackerNewsReference() {
                 </div>
                 {h.story_text && <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-400">{h.story_text.replace(/<[^>]+>/g, '')}</p>}
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}
         {hits.length === 0 && !search.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">Search HN for context to drop into your chat.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">Search HN for context to drop into your chat.</div>
         )}
       </div>
     </div>

@@ -185,7 +185,7 @@ export function PharmacyActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -205,7 +205,7 @@ export function PharmacyActionPanel() {
           <div className={cn('rounded-md border p-2.5', interResult.interactionsFound > 0 ? 'border-red-500/30 bg-red-500/5' : 'border-green-500/30 bg-green-500/5')}>
             <div className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: interResult.interactionsFound > 0 ? '#fca5a5' : '#86efac' }}>Interaction screen</div>
             <div className="text-2xl font-bold" style={{ color: interResult.interactionsFound > 0 ? '#f87171' : '#34d399' }}>{interResult.interactionsFound}</div>
-            <div className="text-[10px] text-zinc-500">{interResult.medications.join(' + ')}</div>
+            <div className="text-[10px] text-zinc-400">{interResult.medications.join(' + ')}</div>
             {interResult.coMentions.map((p, i) => <div key={i} className="text-[10px] text-red-200 mt-0.5">{p.drug1} → {p.drug2}: {p.severity}</div>)}
           </div>
         )}
@@ -213,16 +213,16 @@ export function PharmacyActionPanel() {
           <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">FAERS · {adverseResult.drug}</div>
             <div className="text-2xl font-bold text-orange-300">{adverseResult.total ?? 0}</div>
-            <div className="text-[10px] text-zinc-500">reports</div>
-            {(adverseResult.topReactions ?? []).slice(0, 4).map((e, i) => <div key={i} className="text-[10px] text-orange-200 mt-0.5">{e.reaction} <span className="text-zinc-500">×{e.count}</span></div>)}
+            <div className="text-[10px] text-zinc-400">reports</div>
+            {(adverseResult.topReactions ?? []).slice(0, 4).map((e, i) => <div key={i} className="text-[10px] text-orange-200 mt-0.5">{e.reaction} <span className="text-zinc-400">×{e.count}</span></div>)}
           </div>
         )}
         {doseResult && (
           <div className={cn('rounded-md border p-2.5', doseResult.capped ? 'border-amber-500/30 bg-amber-500/5' : 'border-green-500/30 bg-green-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Dose · {doseResult.weightKg} kg @ {doseResult.dosePerKg} mg/kg</div>
             <div className="text-2xl font-bold text-green-300">{doseResult.singleDose}</div>
-            <div className="text-[10px] text-zinc-500">{doseResult.frequency} → {doseResult.dailyDose} / day</div>
-            <div className="text-[10px] text-zinc-500">cap {doseResult.maxDailyDose}{doseResult.capped ? ' (capped!)' : ''}</div>
+            <div className="text-[10px] text-zinc-400">{doseResult.frequency} → {doseResult.dailyDose} / day</div>
+            <div className="text-[10px] text-zinc-400">cap {doseResult.maxDailyDose}{doseResult.capped ? ' (capped!)' : ''}</div>
           </div>
         )}
       </div>

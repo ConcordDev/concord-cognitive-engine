@@ -75,7 +75,7 @@ export function ThemeClusters({
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Layers className="w-4 h-4 text-neon-green" /> Themes
-          <span className="text-xs text-gray-500">({themes.length})</span>
+          <span className="text-xs text-gray-400">({themes.length})</span>
           {(loading || busy) && <Loader2 className="w-4 h-4 animate-spin text-neon-cyan" />}
         </h3>
         <button
@@ -126,7 +126,7 @@ export function ThemeClusters({
             <div key={i} className="flex items-center gap-2 text-xs">
               <span className="flex-1">
                 <span className="font-medium capitalize">{s.suggestedName}</span>
-                <span className="text-gray-500 ml-1.5">— {s.painTitles.join(', ')}</span>
+                <span className="text-gray-400 ml-1.5">— {s.painTitles.join(', ')}</span>
               </span>
               <button
                 onClick={() => applySuggestion(s)}
@@ -139,11 +139,11 @@ export function ThemeClusters({
         </div>
       )}
       {suggestions && suggestions.length === 0 && (
-        <p className="text-xs text-gray-500 mb-3">No keyword clusters found among unthemed pain points.</p>
+        <p className="text-xs text-gray-400 mb-3">No keyword clusters found among unthemed pain points.</p>
       )}
 
       {themes.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-4">No themes yet.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No themes yet.</p>
       ) : (
         <div className="space-y-1.5">
           {themes.map((t) => (
@@ -154,7 +154,7 @@ export function ThemeClusters({
             >
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
               <span className="text-sm flex-1 truncate">{t.name}</span>
-              <span className="text-[11px] text-gray-500">{t.painCount} pains · {t.openCount} open</span>
+              <span className="text-[11px] text-gray-400">{t.painCount} pains · {t.openCount} open</span>
               <span className="text-xs font-bold text-neon-purple" title="Aggregate impact">{t.totalImpact}</span>
               <button
                 onClick={() => run('theme-delete', { id: t.id })}

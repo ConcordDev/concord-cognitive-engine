@@ -126,8 +126,7 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
   return (
     <div
       className={containerClasses}
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className={panelClasses}
         onClick={(e) => e.stopPropagation()}
@@ -158,16 +157,16 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
           {query.trim().length < 2 ? (
             <div className="px-4 py-12 text-center">
               <Search className="w-8 h-8 mx-auto text-gray-700 mb-2" />
-              <p className="text-xs text-gray-500">Start typing to search</p>
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-xs text-gray-400">Start typing to search</p>
+              <p className="text-[10px] text-gray-400 mt-1">
                 {totalIndexed} thread{totalIndexed === 1 ? '' : 's'} indexed
               </p>
             </div>
           ) : hits.length === 0 && !loading ? (
             <div className="px-4 py-12 text-center">
               <MessageSquare className="w-8 h-8 mx-auto text-gray-700 mb-2" />
-              <p className="text-xs text-gray-500">No matches</p>
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-xs text-gray-400">No matches</p>
+              <p className="text-[10px] text-gray-400 mt-1">
                 Try different keywords. Searching across {totalIndexed} threads.
               </p>
             </div>
@@ -195,11 +194,11 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
                             {h.title || 'Untitled conversation'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">{h.snippet}</p>
+                        <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{h.snippet}</p>
                       </div>
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
                         <span className="text-[10px] text-cyan-400 font-mono">×{h.score}</span>
-                        <span className="text-[10px] text-gray-600 inline-flex items-center gap-1">
+                        <span className="text-[10px] text-gray-400 inline-flex items-center gap-1">
                           <Clock className="w-2.5 h-2.5" />
                           {relativeTime(h.lastMsgAt)}
                         </span>
@@ -212,7 +211,7 @@ export function ThreadSearchOverlay({ open, onClose, onSelect, projectId }: Prop
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-600 bg-black/40">
+        <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-400 bg-black/40">
           <div className="flex items-center gap-3">
             <span><kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5">↑↓</kbd> navigate</span>
             <span><kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5">↵</kbd> open</span>

@@ -221,7 +221,7 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, className }: Wh
         <Trash2 className="w-3 h-3" /> Clear
       </button>
       {/* Zoom indicator */}
-      <div className="absolute bottom-4 right-4 text-[10px] text-gray-500 font-mono">
+      <div className="absolute bottom-4 right-4 text-[10px] text-gray-400 font-mono">
         {Math.round(zoom * 100)}%
       </div>
     </div>

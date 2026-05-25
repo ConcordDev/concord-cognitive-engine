@@ -34,7 +34,7 @@ export function CoverageAnalyzer() {
   const totalCostToFix = gaps.reduce((s, g) => s + g.monthlyCostToFix, 0);
   const criticalCount = gaps.filter(g => g.riskLevel === 'critical').length;
 
-  if (loading) return <div className="p-6 flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</div>;
+  if (loading) return <div className="p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Analyzing…</div>;
 
   return (
     <div className="bg-[#0d1117] border border-cyan-500/20 rounded-lg overflow-hidden">
@@ -47,15 +47,15 @@ export function CoverageAnalyzer() {
           <div className={cn('text-3xl font-bold tabular-nums',
             score >= 80 ? 'text-green-300' : score >= 60 ? 'text-cyan-300' : score >= 40 ? 'text-yellow-300' : 'text-red-300'
           )}>{Math.round(score)}</div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Coverage score</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Coverage score</div>
         </div>
         <div className="p-3 bg-white/[0.02] rounded">
           <div className={cn('text-3xl font-bold tabular-nums', criticalCount > 0 ? 'text-red-300' : 'text-green-300')}>{criticalCount}</div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Critical gaps</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Critical gaps</div>
         </div>
         <div className="p-3 bg-white/[0.02] rounded">
           <div className="text-3xl font-bold tabular-nums text-yellow-300">${totalCostToFix.toFixed(0)}</div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Cost to close all gaps/mo</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Cost to close all gaps/mo</div>
         </div>
       </div>
       <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">

@@ -198,7 +198,7 @@ export function MentalHealthActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -209,27 +209,27 @@ export function MentalHealthActionPanel() {
           <div className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5 md:col-span-2 max-h-44 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-red-300 font-semibold">{hotlineResult.country} crisis lines</div>
             {Object.entries(hotlineResult.hotlines).slice(0, 6).map(([k, h]) => <div key={k} className="text-[11px] text-zinc-200 mt-1"><strong className="text-red-300">{h.name}</strong> · <span className="font-mono">{h.phone}</span>{h.text ? ` · text: ${h.text}` : ''}{h.availability ? ` · ${h.availability}` : ''}</div>)}
-            {hotlineResult.disclaimer && <div className="text-[10px] text-zinc-500 italic mt-2">{hotlineResult.disclaimer}</div>}
+            {hotlineResult.disclaimer && <div className="text-[10px] text-zinc-400 italic mt-2">{hotlineResult.disclaimer}</div>}
           </div>
         )}
         {statsResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">CDC · {statsResult.stateAbbr} {statsResult.year}</div>
-            {statsResult.measures.slice(0, 4).map((m, i) => <div key={i} className="mt-1"><div className="text-[10px] text-zinc-400">{m.measure}</div><div className="text-2xl font-bold text-cyan-300">{m.value}%</div><div className="text-[10px] text-zinc-500">CI {m.confidenceLow}-{m.confidenceHigh}</div></div>)}
+            {statsResult.measures.slice(0, 4).map((m, i) => <div key={i} className="mt-1"><div className="text-[10px] text-zinc-400">{m.measure}</div><div className="text-2xl font-bold text-cyan-300">{m.value}%</div><div className="text-[10px] text-zinc-400">CI {m.confidenceLow}-{m.confidenceHigh}</div></div>)}
           </div>
         )}
         {moodResult && (
           <div className="rounded-md border border-pink-500/30 bg-pink-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-pink-300 font-semibold">Mood · {moodResult.trend}</div>
             <div className="text-2xl font-bold text-pink-300">{moodResult.avgMood}<span className="text-xs text-zinc-400">/10 avg</span></div>
-            <div className="text-[10px] text-zinc-500">range {moodResult.lowest}-{moodResult.highest} · variance {moodResult.variance}</div>
+            <div className="text-[10px] text-zinc-400">range {moodResult.lowest}-{moodResult.highest} · variance {moodResult.variance}</div>
           </div>
         )}
         {promptResult && (
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5 md:col-span-2">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Journal prompts · {promptResult.mood}</div>
             {promptResult.prompts.map((p, i) => <div key={i} className="text-[12px] text-zinc-200 mt-1.5 leading-snug">• {p}</div>)}
-            <div className="text-[10px] text-zinc-500 italic mt-1.5">{promptResult.instruction} · {promptResult.reminder}</div>
+            <div className="text-[10px] text-zinc-400 italic mt-1.5">{promptResult.instruction} · {promptResult.reminder}</div>
           </div>
         )}
       </div>

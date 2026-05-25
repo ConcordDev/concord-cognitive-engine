@@ -117,7 +117,7 @@ export function JobBoard() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
       ) : jobs.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">
+        <div className="text-center py-12 text-gray-400 text-sm">
           {view === 'mine' ? 'You have not posted any jobs.' : 'No open jobs right now.'}
         </div>
       ) : (
@@ -127,7 +127,7 @@ export function JobBoard() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="font-medium text-sm">{j.title}</h3>
-                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-500">
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-gray-400">
                     <span className="capitalize px-1.5 py-0.5 bg-white/5 rounded">{j.kind}</span>
                     <span className="capitalize">{j.discipline}</span>
                     {j.remote
@@ -140,7 +140,7 @@ export function JobBoard() {
                     )}
                   </div>
                 </div>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${j.status === 'open' ? 'bg-neon-green/10 text-neon-green' : 'bg-white/5 text-gray-500'}`}>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0 ${j.status === 'open' ? 'bg-neon-green/10 text-neon-green' : 'bg-white/5 text-gray-400'}`}>
                   {j.status}
                 </span>
               </div>
@@ -149,11 +149,11 @@ export function JobBoard() {
 
               {j.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {j.tags.map((t) => <span key={t} className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-500">#{t}</span>)}
+                  {j.tags.map((t) => <span key={t} className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded text-gray-400">#{t}</span>)}
                 </div>
               )}
 
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10 text-[11px] text-gray-500">
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/10 text-[11px] text-gray-400">
                 <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {j.applicationCount} applicant{j.applicationCount === 1 ? '' : 's'}</span>
                 <div className="flex items-center gap-2">
                   {view === 'mine' && j.status === 'open' && (
@@ -190,7 +190,7 @@ export function JobBoard() {
                         <span className="text-gray-300">{a.userId}</span>
                         {a.quote != null && <span className="text-neon-green">${a.quote}</span>}
                       </div>
-                      {a.message && <p className="text-gray-500 mt-0.5">{a.message}</p>}
+                      {a.message && <p className="text-gray-400 mt-0.5">{a.message}</p>}
                     </div>
                   ))}
                 </div>
@@ -202,8 +202,8 @@ export function JobBoard() {
 
       {/* Post job modal */}
       {showPost && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowPost(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowPost(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">Post a Job / Commission</h3>
               <button onClick={() => setShowPost(false)} aria-label="Close"><X className="w-4 h-4" /></button>

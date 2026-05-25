@@ -99,7 +99,7 @@ export function DrumRackPanel({ projectId }: { projectId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Grid3x3 className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Drum rack / sampler</span>
-        <span className="ml-auto text-[10px] text-gray-500">{racks.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{racks.length}</span>
       </header>
       {projectId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-4 gap-2">
@@ -114,11 +114,11 @@ export function DrumRackPanel({ projectId }: { projectId?: string }) {
         </div>
       )}
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !projectId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Open a project to build drum racks.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Open a project to build drum racks.</div>
       ) : racks.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No racks yet.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No racks yet.</div>
       ) : (
         <div>
           <div className="flex gap-1 px-3 py-2 border-b border-white/10 overflow-x-auto">
@@ -140,7 +140,7 @@ export function DrumRackPanel({ projectId }: { projectId?: string }) {
                       (pad.sampleUrl ? 'bg-violet-600/40 border-violet-500/50 text-white' : 'bg-white/[0.04] border-white/10 text-gray-400 hover:bg-white/[0.08]') +
                       (editPad === pad.index ? ' ring-2 ring-amber-400' : '')}>
                     <span className="truncate w-full px-0.5 text-center">{pad.label}</span>
-                    <span className="text-[8px] text-gray-500">{pad.rootNote}</span>
+                    <span className="text-[8px] text-gray-400">{pad.rootNote}</span>
                   </button>
                 ))}
               </div>

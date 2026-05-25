@@ -218,7 +218,7 @@ export function TelecommunicationsActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{act.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{act.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{act.desc}</div>
             </button>
           );
         })}
@@ -229,8 +229,8 @@ export function TelecommunicationsActionPanel() {
           <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-blue-300 font-semibold">Capacity · {capResult.status}</div>
             <div className={cn('text-2xl font-bold', STATUS_COLOR[capResult.status])}>{capResult.utilization}</div>
-            <div className="text-[10px] text-zinc-500">{capResult.totalBandwidth} → {capResult.availablePerUser}/user</div>
-            <div className="text-[10px] text-zinc-500">{capResult.activeUsers.toLocaleString()} users · headroom {capResult.headroom}</div>
+            <div className="text-[10px] text-zinc-400">{capResult.totalBandwidth} → {capResult.availablePerUser}/user</div>
+            <div className="text-[10px] text-zinc-400">{capResult.activeUsers.toLocaleString()} users · headroom {capResult.headroom}</div>
             <div className="text-[10px] text-blue-200 italic">{capResult.upgrade}</div>
           </div>
         )}
@@ -238,8 +238,8 @@ export function TelecommunicationsActionPanel() {
           <div className="rounded-md border border-green-500/30 bg-green-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-green-300 font-semibold">Signal · {sigResult.voiceQuality}</div>
             <div className={cn('text-2xl font-bold', VOICE_COLOR[sigResult.voiceQuality])}>{sigResult.mosScore}<span className="text-xs text-zinc-400"> MOS</span></div>
-            <div className="text-[10px] text-zinc-500">SNR {sigResult.snr} · BER {sigResult.bitErrorRate}</div>
-            <div className="text-[10px] text-zinc-500">{sigResult.latencyMs}ms · jitter {sigResult.jitterMs}ms</div>
+            <div className="text-[10px] text-zinc-400">SNR {sigResult.snr} · BER {sigResult.bitErrorRate}</div>
+            <div className="text-[10px] text-zinc-400">{sigResult.latencyMs}ms · jitter {sigResult.jitterMs}ms</div>
             <div className="text-[10px] text-green-200">video: {sigResult.videoCapable ? '✓ capable' : '✗ not capable'}</div>
           </div>
         )}
@@ -247,7 +247,7 @@ export function TelecommunicationsActionPanel() {
           <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
             <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Coverage</div>
             <div className="text-2xl font-bold text-purple-300">{covResult.totalCoverageKm2} <span className="text-xs text-zinc-400">km²</span></div>
-            <div className="text-[10px] text-zinc-500">{covResult.activeTowers}/{covResult.towers} active</div>
+            <div className="text-[10px] text-zinc-400">{covResult.activeTowers}/{covResult.towers} active</div>
             <div className="flex flex-wrap gap-1 mt-1">{covResult.technologies.map(t => <span key={t} className="text-[10px] bg-purple-500/10 text-purple-200 px-1.5 py-0.5 rounded font-mono">{t}</span>)}</div>
           </div>
         )}
@@ -255,8 +255,8 @@ export function TelecommunicationsActionPanel() {
           <div className={cn('rounded-md border p-2.5', costResult.profitable ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5')}>
             <div className="text-[10px] uppercase tracking-wider text-amber-300 font-semibold">Unit econ</div>
             <div className={cn('text-2xl font-bold', costResult.profitable ? 'text-emerald-300' : 'text-red-300')}>{costResult.marginPercent}% <span className="text-xs text-zinc-400">margin</span></div>
-            <div className="text-[10px] text-zinc-500">ARPU ${costResult.arpu} - cost ${costResult.costPerSubscriber} = ${costResult.margin}</div>
-            <div className="text-[10px] text-zinc-500">breakeven: {costResult.breakeven}</div>
+            <div className="text-[10px] text-zinc-400">ARPU ${costResult.arpu} - cost ${costResult.costPerSubscriber} = ${costResult.margin}</div>
+            <div className="text-[10px] text-zinc-400">breakeven: {costResult.breakeven}</div>
           </div>
         )}
       </div>

@@ -257,7 +257,7 @@ export default function GlobalLensPage() {
             <h2 className="font-semibold mb-1 flex items-center gap-2">
               <Compass className="w-4 h-4 text-neon-cyan" /> World Bank Data Explorer
             </h2>
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-gray-400 mb-4">
               Live World Bank Open Data — choropleth map, time series, country comparison, scatter explorer,
               indicator catalog, and country profiles. Save any view for a shareable link.
             </p>
@@ -295,7 +295,7 @@ export default function GlobalLensPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-500">Development Index</span>
+                      <span className="text-gray-400">Development Index</span>
                       <span className={getIndexColor(region.index)}>{region.index}/100</span>
                     </div>
                     <div className="h-2 bg-lattice-deep rounded-full overflow-hidden">
@@ -340,7 +340,7 @@ export default function GlobalLensPage() {
               <label className="space-y-2">
                 <span className="text-xs uppercase tracking-wider text-gray-400">Search</span>
                 <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     value={query}
                     onChange={(e) => { setOffset(0); setQuery(e.target.value); }}
@@ -378,7 +378,7 @@ export default function GlobalLensPage() {
                     <div className="min-w-0">
                       <h3 className="font-semibold text-white truncate">{dtu.title || 'Untitled DTU'}</h3>
                       <p className="text-sm text-gray-400 mt-1 line-clamp-2">{dtu.content || 'No content'}</p>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-gray-400 mt-2">
                         {dtu.id} {dtu.createdAt ? `\u2022 ${new Date(dtu.createdAt).toLocaleString()}` : ''}
                       </p>
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -510,7 +510,7 @@ export default function GlobalLensPage() {
                 ))}
               </div>
               {!globalArtifacts[0]?.id && (
-                <p className="text-xs text-gray-500 mt-3 text-center">Create a global-dataset artifact first to run actions.</p>
+                <p className="text-xs text-gray-400 mt-3 text-center">Create a global-dataset artifact first to run actions.</p>
               )}
             </div>
 
@@ -542,7 +542,7 @@ export default function GlobalLensPage() {
                       ))}
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-500">Diversity:</span>
+                      <span className="text-xs text-gray-400">Diversity:</span>
                       <span className={cn('text-xs px-2 py-0.5 rounded font-medium',
                         r.diversityScore > 0.7 ? 'bg-neon-green/10 text-neon-green' :
                         r.diversityScore > 0.4 ? 'bg-yellow-400/10 text-yellow-400' : 'bg-red-400/10 text-red-400'
@@ -551,13 +551,13 @@ export default function GlobalLensPage() {
                     </div>
                     {r.results.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Top Results</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Top Results</p>
                         {r.results.slice(0, 5).map((item, i) => (
                           <div key={i} className="lens-card flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-white truncate">{item.title || item.id}</p>
                               {item.text && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.text}</p>}
-                              <span className="text-xs text-gray-500 mt-1 inline-block">{item.domain}</span>
+                              <span className="text-xs text-gray-400 mt-1 inline-block">{item.domain}</span>
                             </div>
                             <span className="text-xs font-mono text-neon-cyan shrink-0">score: {item.relevanceScore}</span>
                           </div>
@@ -566,7 +566,7 @@ export default function GlobalLensPage() {
                     )}
                     {Object.keys(r.sourceDistribution).length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Source Distribution</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Source Distribution</p>
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(r.sourceDistribution).map(([src, cnt]) => (
                             <span key={src} className="text-xs px-2 py-1 rounded bg-neon-cyan/10 text-neon-cyan">{src}: {cnt}</span>
@@ -602,11 +602,11 @@ export default function GlobalLensPage() {
                     </div>
                     {r.rankings.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Domain Rankings</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Domain Rankings</p>
                         {r.rankings.map((rank) => (
                           <div key={rank.domain} className="lens-card flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="text-sm font-bold text-gray-500 w-5">#{rank.rank}</span>
+                              <span className="text-sm font-bold text-gray-400 w-5">#{rank.rank}</span>
                               <span className="text-sm text-white">{rank.domain}</span>
                             </div>
                             <div className="flex items-center gap-3">
@@ -674,7 +674,7 @@ export default function GlobalLensPage() {
                     </div>
                     {r.significantCorrelations.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider">Top Significant Correlations</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Top Significant Correlations</p>
                         {r.significantCorrelations.slice(0, 6).map((pair, i) => (
                           <div key={i} className="lens-card flex items-center justify-between gap-3">
                             <span className="text-sm text-white">{pair.var1} — {pair.var2}</span>
@@ -691,12 +691,12 @@ export default function GlobalLensPage() {
                     )}
                     {r.variableStatistics.length > 0 && (
                       <div>
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Variable Statistics</p>
+                        <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Variable Statistics</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {r.variableStatistics.map((v, i) => (
                             <div key={i} className="lens-card text-xs">
                               <p className="font-medium text-white">{v.name}</p>
-                              <p className="text-gray-500">{v.domain}</p>
+                              <p className="text-gray-400">{v.domain}</p>
                               <div className="flex justify-between mt-1">
                                 <span className="text-gray-400">mean: <span className="text-white">{v.mean}</span></span>
                                 <span className="text-gray-400">std: <span className="text-white">{v.std}</span></span>

@@ -74,6 +74,7 @@ export default function registerGlobalActions(registerLensAction) {
    * params.weights (domain weight overrides, e.g. { "finance": 1.5 })
    */
   registerLensAction("global", "crossDomainSearch", (ctx, artifact, params) => {
+  try {
     const sources = artifact.data?.sources || [];
     const query = (params.query || "").toLowerCase().trim();
     const maxResults = params.maxResults || 20;
@@ -207,7 +208,8 @@ export default function registerGlobalActions(registerLensAction) {
         sourcesSearched: sources.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * aggregateDashboard
@@ -218,6 +220,7 @@ export default function registerGlobalActions(registerLensAction) {
    * params.normalization: "min-max" | "z-score" | "percentile" (default: "min-max")
    */
   registerLensAction("global", "aggregateDashboard", (ctx, artifact, params) => {
+  try {
     const metrics = artifact.data?.metrics || [];
     if (metrics.length === 0) return { ok: false, error: "No metrics provided." };
 
@@ -351,7 +354,8 @@ export default function registerGlobalActions(registerLensAction) {
         metricStatistics: groupStats,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * correlationMatrix
@@ -362,6 +366,7 @@ export default function registerGlobalActions(registerLensAction) {
    * params.significanceThreshold (p-value threshold, default: 0.05)
    */
   registerLensAction("global", "correlationMatrix", (ctx, artifact, params) => {
+  try {
     const variables = artifact.data?.variables || [];
     if (variables.length < 2) return { ok: false, error: "Need at least 2 variables." };
 
@@ -545,7 +550,8 @@ export default function registerGlobalActions(registerLensAction) {
         significanceThreshold: sigThreshold,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ===========================================================================
   // LIVE WORLD BANK DATA-EXPLORATION MACROS

@@ -158,7 +158,7 @@ export function TradeWindow({ tradeId, myUserId, initiatorId, recipientId, onClo
           <h2 className="text-lg font-bold text-cyan-300">
             Trading with <span className="text-white">{otherUserId.slice(0, 8)}</span>
           </h2>
-          <span className="text-xs text-gray-500">{tradeId.slice(0, 8)}</span>
+          <span className="text-xs text-gray-400">{tradeId.slice(0, 8)}</span>
         </div>
 
         <div className="grid grid-cols-[auto_1fr_1fr] gap-4 mb-4">
@@ -269,14 +269,14 @@ function OfferPane({
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold text-gray-300">{title}</h3>
         {ready !== undefined && (
-          <span className={ready ? 'text-green-400 text-xs' : 'text-gray-500 text-xs'}>
+          <span className={ready ? 'text-green-400 text-xs' : 'text-gray-400 text-xs'}>
             {ready ? '✓ Ready' : 'Editing…'}
           </span>
         )}
       </div>
       <div className="space-y-1 text-xs text-gray-300 min-h-[60px]">
         {offer.items.length === 0 && offer.cc === 0 && offer.sparks === 0 && (
-          <div className="text-gray-500 italic">
+          <div className="text-gray-400 italic">
             {editable ? 'Drag items from your inventory →' : 'Nothing offered'}
           </div>
         )}

@@ -67,16 +67,16 @@ export function OpenFoodFactsSearch() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); setQuery(draft.trim()); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Search food (e.g. olive oil, coffee, granola)" className="w-full rounded border border-zinc-800 bg-zinc-950 pl-7 pr-2 py-1.5 text-xs text-white focus:border-amber-500/40 focus:outline-none" />
         </div>
         <button type="submit" className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-200 hover:bg-amber-500/20">search</button>
       </form>
       {products.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Open Food Facts unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Products</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">NutriScore A/B</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{(nutriDist.a || 0) + (nutriDist.b || 0)}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Avg NOVA</div><div className="mt-0.5 font-mono text-lg text-amber-300">{novaAvg > 0 ? novaAvg.toFixed(1) : '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Products</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">NutriScore A/B</div><div className="mt-0.5 font-mono text-lg text-emerald-300">{(nutriDist.a || 0) + (nutriDist.b || 0)}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Avg NOVA</div><div className="mt-0.5 font-mono text-lg text-amber-300">{novaAvg > 0 ? novaAvg.toFixed(1) : '—'}</div></div>
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((p) => (
@@ -84,20 +84,20 @@ export function OpenFoodFactsSearch() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-zinc-100">{p.product_name || '(unnamed)'}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-500">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 text-[10px] text-zinc-400">
                   {p.brands && <span>{p.brands}</span>}
                   {p.nutriscore_grade && <span className={`rounded px-1 font-mono ${NUTRI_COLOR[p.nutriscore_grade] || ''}`}>nutri {p.nutriscore_grade.toUpperCase()}</span>}
                   {p.nova_group && <span className="rounded bg-zinc-800 px-1 font-mono text-[9px] text-zinc-300">NOVA {p.nova_group}</span>}
                   {p.ecoscore_grade && <span className="rounded bg-emerald-500/15 px-1 font-mono text-[9px] text-emerald-200">eco {p.ecoscore_grade.toUpperCase()}</span>}
                 </div>
               </div>
-              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />
+              <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />
             </div>
           </a>
         ))}
-        {list.length === 0 && !products.isPending && !products.isError && query.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No products.</div>}
+        {list.length === 0 && !products.isPending && !products.isError && query.length >= 2 && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No products.</div>}
       </div>
-      {products.isPending && query.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Searching…</div>}
+      {products.isPending && query.length >= 2 && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Searching…</div>}
     </div>
   );
 }

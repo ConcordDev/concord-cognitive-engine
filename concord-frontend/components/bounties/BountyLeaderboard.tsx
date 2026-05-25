@@ -52,11 +52,11 @@ export function BountyLeaderboard({ refreshKey }: { refreshKey: number }) {
       </div>
 
       {loading ? (
-        <div className="py-6 text-center text-zinc-500">
+        <div className="py-6 text-center text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin mx-auto" />
         </div>
       ) : rows.length === 0 ? (
-        <div className="py-6 text-center text-zinc-500 text-xs">
+        <div className="py-6 text-center text-zinc-400 text-xs">
           <Trophy className="w-6 h-6 mx-auto mb-1 opacity-40" />
           No {tab} yet — resolve a bounty to appear here.
         </div>
@@ -64,7 +64,7 @@ export function BountyLeaderboard({ refreshKey }: { refreshKey: number }) {
         <ol className="space-y-1.5">
           {rows.map((r) => (
             <li key={r.userId} className="flex items-center gap-2 rounded-lg bg-zinc-900/70 px-2.5 py-1.5">
-              <span className={`text-sm font-bold w-5 text-center ${MEDAL[r.rank - 1] || 'text-zinc-500'}`}>
+              <span className={`text-sm font-bold w-5 text-center ${MEDAL[r.rank - 1] || 'text-zinc-400'}`}>
                 {r.rank}
               </span>
               <span className="text-xs text-zinc-200 truncate flex-1">{r.userId}</span>

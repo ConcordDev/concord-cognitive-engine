@@ -145,7 +145,7 @@ export default function MarketsPage() {
 
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Open Markets</h2>
         {markets.length === 0 ? (
-          <div className="text-center text-zinc-500 italic py-8 border border-zinc-800 rounded-xl mb-6">
+          <div className="text-center text-zinc-400 italic py-8 border border-zinc-800 rounded-xl mb-6">
             No open markets right now. Check back during raids or faction events.
           </div>
         ) : (
@@ -156,7 +156,7 @@ export default function MarketsPage() {
               return (
                 <li key={m.id} className="bg-zinc-900/80 border border-zinc-700/50 rounded-xl p-4">
                   <h3 className="text-sm font-bold text-zinc-100 mb-1">{m.question}</h3>
-                  <p className="text-[10px] text-zinc-500 font-mono mb-2">
+                  <p className="text-[10px] text-zinc-400 font-mono mb-2">
                     {m.resolution_kind} · pool {total} ⚡ · YES {yesPct}% NO {100 - yesPct}%
                   </p>
                   <div className="flex gap-2">
@@ -179,7 +179,7 @@ export default function MarketsPage() {
 
         <h2 className="text-sm font-bold text-zinc-300 uppercase tracking-wider mb-2">Your Positions</h2>
         {positions.length === 0 ? (
-          <div className="text-center text-zinc-500 italic py-6 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 italic py-6 border border-zinc-800 rounded-xl">
             No positions yet.
           </div>
         ) : (
@@ -195,7 +195,7 @@ export default function MarketsPage() {
                 {p.status === 'resolved' && (
                   <p className="mt-1 text-[10px] font-mono">
                     Resolved {p.resolved_outcome?.toUpperCase()} ·{' '}
-                    {p.payout_sparks ? <span className="text-amber-400">paid {p.payout_sparks} ⚡</span> : <span className="text-zinc-500">lost</span>}
+                    {p.payout_sparks ? <span className="text-amber-400">paid {p.payout_sparks} ⚡</span> : <span className="text-zinc-400">lost</span>}
                   </p>
                 )}
               </li>

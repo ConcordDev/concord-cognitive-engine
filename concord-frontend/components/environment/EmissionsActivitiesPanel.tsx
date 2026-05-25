@@ -65,7 +65,7 @@ export function EmissionsActivitiesPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Leaf className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Emissions activities</span>
-        <span className="ml-auto text-[10px] text-gray-500">{activities.length} entries · {totals.total.toFixed(1)} tCO₂e</span>
+        <span className="ml-auto text-[10px] text-gray-400">{activities.length} entries · {totals.total.toFixed(1)} tCO₂e</span>
         <select value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All scopes</option><option value="1">Scope 1</option><option value="2">Scope 2</option><option value="3">Scope 3</option>
         </select>
@@ -87,9 +87,9 @@ export function EmissionsActivitiesPanel() {
       </div>
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : activities.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Leaf className="w-6 h-6 mx-auto mb-2 opacity-30" />No activities logged yet. Pick a factor + amount above to start your inventory.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Leaf className="w-6 h-6 mx-auto mb-2 opacity-30" />No activities logged yet. Pick a factor + amount above to start your inventory.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {activities.map(a => {
@@ -99,7 +99,7 @@ export function EmissionsActivitiesPanel() {
                   <Icon className={cn('w-3.5 h-3.5', a.scope === 1 ? 'text-rose-300' : a.scope === 2 ? 'text-amber-300' : 'text-cyan-300')} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-white truncate">{a.factorKey.replace(/_/g, ' ')} · {a.amount.toLocaleString()} {a.unit}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{a.date}{a.facility && ` · ${a.facility}`} · {a.source}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{a.date}{a.facility && ` · ${a.facility}`} · {a.source}</div>
                   </div>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', SCOPE_COLOUR[a.scope])}>S{a.scope}</span>
                   <span className="text-sm font-mono tabular-nums text-emerald-300">{a.co2eTonnes.toFixed(2)}t</span>
@@ -118,7 +118,7 @@ function Tile({ label, value, tone }: { label: string; value: string; tone: stri
   const colour = tone === 'rose' ? 'text-rose-300 border-rose-500/30 bg-rose-500/5' : tone === 'amber' ? 'text-amber-300 border-amber-500/30 bg-amber-500/5' : tone === 'cyan' ? 'text-cyan-300 border-cyan-500/30 bg-cyan-500/5' : 'text-emerald-300 border-emerald-500/30 bg-emerald-500/5';
   return (
     <div className={cn('rounded border px-2 py-1.5', colour)}>
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-sm font-mono tabular-nums">{value}</div>
     </div>
   );

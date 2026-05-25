@@ -39,7 +39,7 @@ export function EpicAskBar({ patientId }: { patientId?: string | null }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder={patientId ? "Ask anything about the open chart (Epic Conversational Search parity)…" : "Open a chart to enable conversational search…"}
             disabled={!patientId}
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-500 outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none disabled:opacity-50"
           />
           {q && patientId && (
             <button type="submit" disabled={loading} className="text-cyan-300 hover:text-cyan-200 p-0.5">

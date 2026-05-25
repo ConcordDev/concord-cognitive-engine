@@ -9,6 +9,7 @@ export default function registerArtistryActions(registerLensAction) {
    * Returns dominant hues, harmony score, temperature, and contrast analysis.
    */
   registerLensAction("artistry", "colorPaletteAnalysis", (ctx, artifact, _params) => {
+  try {
     const raw = artifact.data?.palette || [];
     if (raw.length === 0) {
       return { ok: true, result: { message: "No palette data provided. Supply artifact.data.palette as an array of hex color strings or objects with { color, weight }.", colors: [], dominantHue: null, harmonyScore: 0 } };
@@ -119,7 +120,8 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.colorAnalysis = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * compositionScore
@@ -128,6 +130,7 @@ export default function registerArtistryActions(registerLensAction) {
    * artifact.data.canvas: { width, height }
    */
   registerLensAction("artistry", "compositionScore", (ctx, artifact, _params) => {
+  try {
     const elements = artifact.data?.elements || [];
     const canvas = artifact.data?.canvas || {};
     const canvasW = parseFloat(canvas.width) || 100;
@@ -216,7 +219,8 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.compositionScore = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * styleClassify
@@ -225,6 +229,7 @@ export default function registerArtistryActions(registerLensAction) {
    * artifact.data.tags: [string]
    */
   registerLensAction("artistry", "styleClassify", (ctx, artifact, _params) => {
+  try {
     const attrs = artifact.data?.attributes || {};
     const tags = (artifact.data?.tags || []).map((t) => (typeof t === "string" ? t.toLowerCase().trim() : ""));
 
@@ -300,7 +305,8 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.styleClassification = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * mediaInventory
@@ -308,6 +314,7 @@ export default function registerArtistryActions(registerLensAction) {
    * artifact.data.supplies: [{ name, category, quantity, unit, unitCost, reorderThreshold? }]
    */
   registerLensAction("artistry", "mediaInventory", (ctx, artifact, _params) => {
+  try {
     const supplies = artifact.data?.supplies || [];
 
     if (supplies.length === 0) {
@@ -392,7 +399,8 @@ export default function registerArtistryActions(registerLensAction) {
 
     artifact.data.mediaInventory = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Behance / ArtStation parity — social-portfolio core ────────────
   // Project case studies, follow graph + personalized feed, comments /

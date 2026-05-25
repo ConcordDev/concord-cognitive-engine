@@ -284,7 +284,7 @@ export function ReelRecorder({ onClose, onPosted }: ReelRecorderProps) {
         <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-zinc-900/60">
           <Camera className="w-4 h-4 text-rose-300" aria-hidden="true" />
           <h2 className="text-sm font-semibold text-zinc-100 flex-1">Record a reel</h2>
-          <span className="text-[10px] text-zinc-500 font-mono">max {MAX_DURATION_S}s</span>
+          <span className="text-[10px] text-zinc-400 font-mono">max {MAX_DURATION_S}s</span>
           <button type="button" onClick={onClose} className="p-1 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
@@ -396,7 +396,7 @@ export function ReelRecorder({ onClose, onPosted }: ReelRecorderProps) {
                   </button>
                 )}
 
-                <span className="w-9 text-center text-[11px] font-mono text-zinc-500">{Math.floor(elapsedMs / 1000)}s</span>
+                <span className="w-9 text-center text-[11px] font-mono text-zinc-400">{Math.floor(elapsedMs / 1000)}s</span>
               </div>
             ) : (
               <div className="space-y-3">

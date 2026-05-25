@@ -55,7 +55,7 @@ export function DebtTrendPanel({ scan }: { scan: CQScan | null }) {
   }));
 
   if (busy && !debt && !trend.length) {
-    return <p className="text-sm text-gray-500">Loading debt + trend…</p>;
+    return <p className="text-sm text-gray-400">Loading debt + trend…</p>;
   }
 
   return (
@@ -67,7 +67,7 @@ export function DebtTrendPanel({ scan }: { scan: CQScan | null }) {
           Issue trend over scan history
         </h3>
         {trendData.length < 2 ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-400">
             Run at least two analyses to chart a trend.
           </p>
         ) : (
@@ -138,7 +138,7 @@ export function DebtTrendPanel({ scan }: { scan: CQScan | null }) {
           <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-2">
             Duplication &amp; complexity hotspots
           </h3>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-gray-400 mb-2">
             File duplication: {hotspots.duplicationPct}% ·{' '}
             {hotspots.duplicateBlocks.length} duplicate block
             {hotspots.duplicateBlocks.length === 1 ? '' : 's'}
@@ -151,7 +151,7 @@ export function DebtTrendPanel({ scan }: { scan: CQScan | null }) {
                   className="rounded border border-gray-800 bg-black/30 px-2 py-1.5 flex flex-wrap items-center gap-3 text-xs"
                 >
                   <span className="font-mono text-gray-200">{fn.function}</span>
-                  <span className="font-mono text-gray-500">
+                  <span className="font-mono text-gray-400">
                     {fn.file}:{fn.startLine}
                   </span>
                   <span className="text-gray-400">cx {fn.complexity}</span>

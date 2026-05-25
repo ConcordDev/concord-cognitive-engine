@@ -84,7 +84,7 @@ export function OpenLibraryPanel({ domain, className }: OpenLibraryPanelProps) {
           type="button"
           onClick={() => void fetchData(query)}
           disabled={loading || !query.trim()}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors disabled:opacity-40"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -92,7 +92,7 @@ export function OpenLibraryPanel({ domain, className }: OpenLibraryPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -110,11 +110,11 @@ export function OpenLibraryPanel({ domain, className }: OpenLibraryPanelProps) {
       )}
 
       {!error && !loading && books.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No books match.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No books match.</div>
       )}
 
       {!error && !query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">Search Open Library.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">Search Open Library.</div>
       )}
 
       {books.length > 0 && (
@@ -142,11 +142,11 @@ export function OpenLibraryPanel({ domain, className }: OpenLibraryPanelProps) {
                     by {b.authors.slice(0, 2).join(', ')}{b.authors.length > 2 && ` +${b.authors.length - 2}`}
                   </div>
                 )}
-                <div className="text-[10px] text-zinc-500 truncate">
+                <div className="text-[10px] text-zinc-400 truncate">
                   {b.firstPublishYear || ''}{b.pages ? ` · ${b.pages}p` : ''}{b.isbn[0] ? ` · ISBN ${b.isbn[0]}` : ''}
                 </div>
                 {b.subjects.length > 0 && (
-                  <div className="text-[10px] text-zinc-500 truncate mt-0.5">
+                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
                     {b.subjects.slice(0, 3).join(' · ')}
                   </div>
                 )}
@@ -156,7 +156,7 @@ export function OpenLibraryPanel({ domain, className }: OpenLibraryPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Open Library · {total > 0 && `${total.toLocaleString()} total · `}{updatedAt && new Date(updatedAt * 1000).toLocaleTimeString()}
       </footer>
     </section>

@@ -88,6 +88,7 @@ export default function registerCalendarActions(registerLensAction) {
    * Returns: { ics: string, eventCount, contentType: "text/calendar" }
    */
   registerLensAction("calendar", "ical-export", (_ctx, artifact, params = {}) => {
+  try {
     const events = (artifact?.data?.events || params.events || []);
     if (!Array.isArray(events) || events.length === 0) {
       return { ok: false, error: "events array required" };
@@ -146,7 +147,8 @@ export default function registerCalendarActions(registerLensAction) {
         spec: "RFC 5545",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * ical-parse — Parses an RFC 5545 ICS document into a Concord
@@ -157,6 +159,7 @@ export default function registerCalendarActions(registerLensAction) {
    * params: { ics: string } — UTF-8 ICS document
    */
   registerLensAction("calendar", "ical-parse", (_ctx, _artifact, params = {}) => {
+  try {
     const ics = String(params.ics || "");
     if (!ics.trim()) return { ok: false, error: "ics string required" };
     if (!ics.includes("BEGIN:VCALENDAR")) return { ok: false, error: "input is not a VCALENDAR document" };
@@ -200,7 +203,8 @@ export default function registerCalendarActions(registerLensAction) {
         spec: "RFC 5545",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * timezone-convert — Converts a date/time from one IANA timezone to
@@ -388,6 +392,7 @@ export default function registerCalendarActions(registerLensAction) {
   // ── Events CRUD ────────────────────────────────────────────────
 
   registerLensAction("calendar", "events-list", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     ensureDefaultCalendars(s, userId);
@@ -403,9 +408,11 @@ export default function registerCalendarActions(registerLensAction) {
     }
     occurrences.sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
     return { ok: true, result: { events: occurrences, count: occurrences.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "events-create", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
@@ -446,7 +453,8 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.events, userId).push(event);
     saveCal();
     return { ok: true, result: { event } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "events-update", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -483,6 +491,7 @@ export default function registerCalendarActions(registerLensAction) {
   // ── Conflict detection (real, STATE-backed) ───────────────────
 
   registerLensAction("calendar", "conflicts-check", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const start = new Date(params.start || "");
@@ -503,11 +512,13 @@ export default function registerCalendarActions(registerLensAction) {
       }
     }
     return { ok: true, result: { hasConflict: conflicts.length > 0, conflicts } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Availability / free slots ─────────────────────────────────
 
   registerLensAction("calendar", "availability-find", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const day = String(params.day || new Date().toISOString().slice(0, 10));
@@ -536,7 +547,8 @@ export default function registerCalendarActions(registerLensAction) {
     }
     if (winEnd.getTime() - cursor >= durMs) slots.push({ start: new Date(cursor).toISOString(), end: winEnd.toISOString() });
     return { ok: true, result: { day, durationMin, freeSlots: slots, busyBlockCount: busy.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Tasks + time blocking ─────────────────────────────────────
 
@@ -594,6 +606,7 @@ export default function registerCalendarActions(registerLensAction) {
 
   // Time-block a task — drops it onto the calendar as an event.
   registerLensAction("calendar", "tasks-time-block", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
@@ -624,11 +637,13 @@ export default function registerCalendarActions(registerLensAction) {
     task.blockedEventId = event.id;
     saveCal();
     return { ok: true, result: { event, task } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Natural-language event create (Fantastical parity) ────────
 
   registerLensAction("calendar", "nl-parse-event", (ctx, _a, params = {}) => {
+  try {
     const text = String(params.text || "").trim();
     if (!text) return { ok: false, error: "text required" };
     const lower = text.toLowerCase();
@@ -695,11 +710,13 @@ export default function registerCalendarActions(registerLensAction) {
         sourceText: text,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── AI scheduling (Reclaim.ai parity — auto-place tasks in free slots) ─
 
   registerLensAction("calendar", "ai-auto-schedule", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     ensureDefaultCalendars(s, userId);
@@ -759,11 +776,13 @@ export default function registerCalendarActions(registerLensAction) {
         note: "Proposals only — call tasks-time-block to commit each one.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard summary ────────────────────────────────────────
 
   registerLensAction("calendar", "calendar-dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
@@ -791,7 +810,8 @@ export default function registerCalendarActions(registerLensAction) {
         unblockedTasks: tasks.filter(t => t.status === 'todo' && !t.blockedEventId).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Appointment schedules (Google Calendar 2026 booking pages) ───────
   // Publish bookable windows; let others reserve time slots.
@@ -799,6 +819,7 @@ export default function registerCalendarActions(registerLensAction) {
   const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   registerLensAction("calendar", "appointment-schedule-create", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = String(params.title || "").trim().slice(0, 120);
     if (!title) return { ok: false, error: "schedule title required" };
@@ -821,7 +842,8 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.appointmentSchedules, aidCal(ctx)).push(schedule);
     saveCal();
     return { ok: true, result: { schedule } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "appointment-schedule-list", (ctx, _a, _p = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -843,6 +865,7 @@ export default function registerCalendarActions(registerLensAction) {
   });
 
   registerLensAction("calendar", "appointment-slots", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
     if (!schedule) return { ok: false, error: "schedule not found" };
@@ -868,9 +891,11 @@ export default function registerCalendarActions(registerLensAction) {
       });
     }
     return { ok: true, result: { date: dateStr, weekday: WEEKDAY_NAMES[weekday], durationMin: schedule.durationMin, slots } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "appointment-book", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const schedule = listCal(s.appointmentSchedules, aidCal(ctx)).find((sc) => sc.id === params.scheduleId);
     if (!schedule) return { ok: false, error: "schedule not found" };
@@ -890,7 +915,8 @@ export default function registerCalendarActions(registerLensAction) {
     schedule.bookings.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
     saveCal();
     return { ok: true, result: { booking } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "appointment-bookings", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -932,6 +958,7 @@ export default function registerCalendarActions(registerLensAction) {
   // fetch + ical-parse, importing them into a dedicated calendar.
 
   registerLensAction("calendar", "accounts-connect", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
@@ -953,7 +980,8 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.connectedAccounts, userId).push(account);
     saveCal();
     return { ok: true, result: { account } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "accounts-list", (ctx, _a, _p = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1125,6 +1153,7 @@ export default function registerCalendarActions(registerLensAction) {
   // the firing window and emits them as persisted notifications.
 
   registerLensAction("calendar", "reminders-due", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
@@ -1166,7 +1195,8 @@ export default function registerCalendarActions(registerLensAction) {
     if (firedNow > 0) saveCal();
     const pending = queue.filter(n => !n.acknowledged).sort((a, b) => a.occurrenceStart.localeCompare(b.occurrenceStart));
     return { ok: true, result: { firedNow, pending, pendingCount: pending.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "reminders-acknowledge", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1191,6 +1221,7 @@ export default function registerCalendarActions(registerLensAction) {
   // an eventCategory tag, so they render distinctly and feed availability.
 
   registerLensAction("calendar", "status-event-create", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aidCal(ctx);
     const calendars = ensureDefaultCalendars(s, userId);
@@ -1229,7 +1260,8 @@ export default function registerCalendarActions(registerLensAction) {
     listCal(s.events, userId).push(event);
     saveCal();
     return { ok: true, result: { event } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "status-events-list", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1282,6 +1314,7 @@ export default function registerCalendarActions(registerLensAction) {
   // The ICS export already emits ATTENDEE lines so the invite is portable.
 
   registerLensAction("calendar", "invites-send", (ctx, _a, params = {}) => {
+  try {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };
     ensureBacklogMaps(s);
     const userId = aidCal(ctx);
@@ -1312,7 +1345,8 @@ export default function registerCalendarActions(registerLensAction) {
     event.attendees = [...new Set([...(event.attendees || []), ...guests])];
     saveCal();
     return { ok: true, result: { eventId: event.id, sent: created.length, invites: created, attendees: event.attendees } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("calendar", "invites-list", (ctx, _a, params = {}) => {
     const s = getCalState(); if (!s) return { ok: false, error: "STATE unavailable" };

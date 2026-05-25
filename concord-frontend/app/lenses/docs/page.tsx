@@ -349,7 +349,7 @@ export default function DocsLensPage() {
           <FileText className="w-5 h-5 text-neon-blue" />
           <div>
             <p className="text-lg font-bold">{docsStats?.pages ?? 0}</p>
-            <p className="text-xs text-gray-500">Workspace Pages</p>
+            <p className="text-xs text-gray-400">Workspace Pages</p>
           </div>
         </motion.div>
         <motion.div
@@ -361,7 +361,7 @@ export default function DocsLensPage() {
           <Layers className="w-5 h-5 text-neon-green" />
           <div>
             <p className="text-lg font-bold">{docsStats?.totalBlocks ?? 0}</p>
-            <p className="text-xs text-gray-500">Total Blocks</p>
+            <p className="text-xs text-gray-400">Total Blocks</p>
           </div>
         </motion.div>
         <motion.div
@@ -373,7 +373,7 @@ export default function DocsLensPage() {
           <CheckCircle2 className="w-5 h-5 text-neon-purple" />
           <div>
             <p className="text-lg font-bold">{docsStats?.openTodos ?? 0}</p>
-            <p className="text-xs text-gray-500">Open To-dos</p>
+            <p className="text-xs text-gray-400">Open To-dos</p>
           </div>
         </motion.div>
         <motion.div
@@ -385,7 +385,7 @@ export default function DocsLensPage() {
           <Clock className="w-5 h-5 text-neon-cyan" />
           <div>
             <p className="text-lg font-bold">{(docsStats?.words ?? 0).toLocaleString()}</p>
-            <p className="text-xs text-gray-500">Words Written</p>
+            <p className="text-xs text-gray-400">Words Written</p>
           </div>
         </motion.div>
       </div>
@@ -431,7 +431,7 @@ export default function DocsLensPage() {
                       (actionResult.metrics as Record<string, number>)?.fleschReadingEase ?? 0
                     )}
                   </p>
-                  <p className="text-[10px] text-gray-500">Flesch Ease</p>
+                  <p className="text-[10px] text-gray-400">Flesch Ease</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-cyan">
@@ -439,13 +439,13 @@ export default function DocsLensPage() {
                       (actionResult.summary as Record<string, unknown>)?.averageGradeLevel ?? 0
                     )}
                   </p>
-                  <p className="text-[10px] text-gray-500">Grade Level</p>
+                  <p className="text-[10px] text-gray-400">Grade Level</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-purple">
                     {String((actionResult.statistics as Record<string, unknown>)?.wordCount ?? 0)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Words</p>
+                  <p className="text-[10px] text-gray-400">Words</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-yellow-400">
@@ -454,12 +454,12 @@ export default function DocsLensPage() {
                     )}
                     m
                   </p>
-                  <p className="text-[10px] text-gray-500">Read Time</p>
+                  <p className="text-[10px] text-gray-400">Read Time</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-2 bg-lattice-surface rounded text-xs">
-                  <p className="text-gray-500 mb-1">Difficulty</p>
+                  <p className="text-gray-400 mb-1">Difficulty</p>
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                       (actionResult.summary as Record<string, string>)?.difficulty === 'elementary'
@@ -479,7 +479,7 @@ export default function DocsLensPage() {
                   </span>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-xs">
-                  <p className="text-gray-500 mb-1">Flesch Category</p>
+                  <p className="text-gray-400 mb-1">Flesch Category</p>
                   <span className="text-gray-300">
                     {String(
                       (actionResult.summary as Record<string, string>)?.fleschCategory ?? '—'
@@ -496,7 +496,7 @@ export default function DocsLensPage() {
                           ?.abbreviationCount ?? 0
                       )}
                     </p>
-                    <p className="text-[10px] text-gray-500">Abbrevs</p>
+                    <p className="text-[10px] text-gray-400">Abbrevs</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-red-400">
@@ -505,7 +505,7 @@ export default function DocsLensPage() {
                           ?.longSentenceCount ?? 0
                       )}
                     </p>
-                    <p className="text-[10px] text-gray-500">Long Sentences</p>
+                    <p className="text-[10px] text-gray-400">Long Sentences</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-yellow-400">
@@ -514,7 +514,7 @@ export default function DocsLensPage() {
                           ?.passiveVoiceInstances ?? 0
                       )}
                     </p>
-                    <p className="text-[10px] text-gray-500">Passive Voice</p>
+                    <p className="text-[10px] text-gray-400">Passive Voice</p>
                   </div>
                 </div>
               )}
@@ -531,13 +531,13 @@ export default function DocsLensPage() {
                   <p className="text-lg font-bold text-neon-cyan">
                     {String(actionResult.totalPages)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Pages</p>
+                  <p className="text-[10px] text-gray-400">Pages</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-lg font-bold text-neon-green">
                     {String(actionResult.totalLinks)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Links</p>
+                  <p className="text-[10px] text-gray-400">Links</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
@@ -545,7 +545,7 @@ export default function DocsLensPage() {
                   >
                     {String((actionResult.brokenLinks as Record<string, number>)?.count ?? 0)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Broken Links</p>
+                  <p className="text-[10px] text-gray-400">Broken Links</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
@@ -553,7 +553,7 @@ export default function DocsLensPage() {
                   >
                     {String(actionResult.healthScore ?? 0)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Health Score</p>
+                  <p className="text-[10px] text-gray-400">Health Score</p>
                 </div>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -594,7 +594,7 @@ export default function DocsLensPage() {
                   >
                     {String(actionResult.changeSignificance)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Significance</p>
+                  <p className="text-[10px] text-gray-400">Significance</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p
@@ -603,13 +603,13 @@ export default function DocsLensPage() {
                     {Number(actionResult.wordDelta) >= 0 ? '+' : ''}
                     {String(actionResult.wordDelta)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Word Delta</p>
+                  <p className="text-[10px] text-gray-400">Word Delta</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-xs font-bold text-neon-cyan capitalize">
                     {String(actionResult.significanceLabel ?? '—')}
                   </p>
-                  <p className="text-[10px] text-gray-500">Label</p>
+                  <p className="text-[10px] text-gray-400">Label</p>
                 </div>
               </div>
               {!!actionResult.summary && (
@@ -635,7 +635,7 @@ export default function DocsLensPage() {
                         >
                           {val}
                         </p>
-                        <p className="text-[10px] text-gray-500 capitalize">{key}</p>
+                        <p className="text-[10px] text-gray-400 capitalize">{key}</p>
                       </div>
                     )
                   )}
@@ -665,7 +665,7 @@ export default function DocsLensPage() {
           </div>
 
           {filteredSections.length === 0 && (
-            <p className="text-sm text-gray-500 px-3 py-2">No matching sections.</p>
+            <p className="text-sm text-gray-400 px-3 py-2">No matching sections.</p>
           )}
 
           {filteredSections.map((section, index) => (
@@ -771,7 +771,7 @@ export default function DocsLensPage() {
             <p className="text-2xl font-bold text-neon-cyan">
               {liveApiDocs?.endpoints?.length ?? 47}
             </p>
-            <p className="text-xs text-gray-500">Across {liveApiDocs?.domainCount ?? 12} domains</p>
+            <p className="text-xs text-gray-400">Across {liveApiDocs?.domainCount ?? 12} domains</p>
             <div className="flex items-center gap-1 text-xs text-neon-green">
               <CheckCircle2 className="w-3 h-3" />
               <span>All documented</span>
@@ -785,7 +785,7 @@ export default function DocsLensPage() {
             <p className="text-2xl font-bold text-neon-purple">
               {liveApiDocs?.version ?? 'v2.4.1'}
             </p>
-            <p className="text-xs text-gray-500">Released 3 days ago</p>
+            <p className="text-xs text-gray-400">Released 3 days ago</p>
             <div className="flex items-center gap-1 text-xs text-yellow-400">
               <AlertCircle className="w-3 h-3" />
               <span>2 deprecations pending</span>
@@ -797,7 +797,7 @@ export default function DocsLensPage() {
               <span className="text-sm font-semibold text-white">Schema Coverage</span>
             </div>
             <p className="text-2xl font-bold text-neon-green">98%</p>
-            <p className="text-xs text-gray-500">TypeScript types generated</p>
+            <p className="text-xs text-gray-400">TypeScript types generated</p>
             <div className="flex items-center gap-1 text-xs text-neon-green">
               <CheckCircle2 className="w-3 h-3" />
               <span>OpenAPI 3.1 compliant</span>
@@ -813,8 +813,8 @@ export default function DocsLensPage() {
               Auto-Generated API Reference
             </h3>
             <div className="flex items-center gap-2">
-              <RefreshCw className="w-3 h-3 text-gray-500" />
-              <span className="text-xs text-gray-500">Synced from source</span>
+              <RefreshCw className="w-3 h-3 text-gray-400" />
+              <span className="text-xs text-gray-400">Synced from source</span>
             </div>
           </div>
           <div className="divide-y divide-white/5">
@@ -900,7 +900,7 @@ export default function DocsLensPage() {
                     {endpoint.method}
                   </span>
                   <span className="text-sm font-mono text-gray-300 flex-1">{endpoint.path}</span>
-                  <span className="text-xs text-gray-500 hidden md:block">{endpoint.desc}</span>
+                  <span className="text-xs text-gray-400 hidden md:block">{endpoint.desc}</span>
                   <span
                     className={`text-xs px-2 py-0.5 rounded ${
                       endpoint.status === 'stable'
@@ -970,7 +970,7 @@ export default function DocsLensPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{v.date}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{v.date}</p>
                   <p className="text-xs text-gray-400 mt-1">{v.changes}</p>
                 </div>
               </div>

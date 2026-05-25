@@ -171,6 +171,7 @@ export default function registerOfflineActions(registerLensAction) {
    * params.cacheCapacity = max items (default 100)
    */
   registerLensAction("offline", "cacheStrategy", (ctx, artifact, params) => {
+  try {
     const accessLog = artifact.data?.accessLog || [];
     if (accessLog.length === 0) return { ok: true, result: { message: "No access log to analyze." } };
 
@@ -326,7 +327,8 @@ export default function registerOfflineActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * deltaCompute
@@ -615,6 +617,7 @@ export default function registerOfflineActions(registerLensAction) {
   });
 
   registerLensAction("offline", "deltaCompute", (ctx, artifact, params) => {
+  try {
     const baseState = artifact.data?.baseState || {};
     const currentState = artifact.data?.currentState || {};
     const compressionRatio = params.compressionRatio || 0.6;
@@ -754,5 +757,6 @@ export default function registerOfflineActions(registerLensAction) {
         recommendation: deltaSize < fullStateSize * 0.5 ? "delta_sync" : "full_sync",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

@@ -215,15 +215,15 @@ export function GarageSection() {
         </header>
         <ul className="flex-1 overflow-y-auto">
           {loading ? (
-            <li className="px-3 py-3 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+            <li className="px-3 py-3 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
           ) : vehicles.length === 0 ? (
-            <li className="px-3 py-6 text-xs text-gray-500 text-center italic">No vehicles. <button onClick={addVehicle} className="text-sky-300 underline">Add one</button></li>
+            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No vehicles. <button onClick={addVehicle} className="text-sky-300 underline">Add one</button></li>
           ) : vehicles.map(v => (
             <li key={v.id} onClick={() => setActiveId(v.id)} className={cn('group px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-white/[0.04]', activeId === v.id && 'bg-sky-500/10 border-l-2 border-sky-400')}>
-              <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-500')} />
+              <Car className={cn('w-4 h-4', activeId === v.id ? 'text-sky-300' : 'text-gray-400')} />
               <div className="flex-1 min-w-0">
                 <div className="text-xs text-white truncate">{v.name}</div>
-                <div className="text-[10px] text-gray-500 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
+                <div className="text-[10px] text-gray-400 truncate">{[v.year, v.make, v.model].filter(Boolean).join(' ') || 'no details'} · {v.odometer.toLocaleString()} {v.odometerUnit}</div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); delVehicle(v.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -234,12 +234,12 @@ export function GarageSection() {
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {!activeVehicle ? (
-          <div className="flex-1 flex items-center justify-center text-xs text-gray-500">Add a vehicle to start tracking.</div>
+          <div className="flex-1 flex items-center justify-center text-xs text-gray-400">Add a vehicle to start tracking.</div>
         ) : (
           <>
             <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
               <span className="text-sm font-semibold text-gray-200">{activeVehicle.name}</span>
-              <span className="text-[10px] text-gray-500">{activeVehicle.odometer.toLocaleString()} {activeVehicle.odometerUnit}</span>
+              <span className="text-[10px] text-gray-400">{activeVehicle.odometer.toLocaleString()} {activeVehicle.odometerUnit}</span>
               <nav className="ml-3 flex items-center gap-1">
                 {([['overview','Overview',Gauge],['fuel','Fuel',Fuel],['service','Service',Wrench],['expenses','Expenses',Receipt],['trips','Trips',Route],['documents','Docs',FileText]] as const).map(([id,label,Icon]) => (
                   <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded', tab === id ? 'bg-sky-500/15 text-sky-300 border border-sky-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
@@ -265,18 +265,18 @@ export function GarageSection() {
                   <div className="rounded border border-white/10 bg-black/30 p-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Bell className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold flex-1">Service reminders</span>
+                      <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold flex-1">Service reminders</span>
                       <button onClick={addSchedule} className="px-2 py-0.5 text-[11px] rounded bg-sky-500 text-white font-bold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Schedule</button>
                     </div>
                     {reminders.length === 0 ? (
-                      <div className="text-[11px] text-gray-500 italic py-1">No scheduled services. Add one to get mileage/date reminders.</div>
+                      <div className="text-[11px] text-gray-400 italic py-1">No scheduled services. Add one to get mileage/date reminders.</div>
                     ) : (
                       <ul className="space-y-1">
                         {reminders.map(r => (
                           <li key={r.scheduleId} className="flex items-center gap-2 text-xs">
                             {r.status === 'overdue' ? <AlertTriangle className="w-3.5 h-3.5 text-rose-400" /> : r.status === 'due_soon' ? <Bell className="w-3.5 h-3.5 text-amber-400" /> : <Wrench className="w-3.5 h-3.5 text-emerald-400" />}
                             <span className="text-white flex-1">{r.serviceType}</span>
-                            <span className={cn('text-[10px] font-mono', r.status === 'overdue' ? 'text-rose-300' : r.status === 'due_soon' ? 'text-amber-300' : 'text-gray-500')}>
+                            <span className={cn('text-[10px] font-mono', r.status === 'overdue' ? 'text-rose-300' : r.status === 'due_soon' ? 'text-amber-300' : 'text-gray-400')}>
                               {r.milesStatus ? (r.milesStatus.milesRemaining < 0 ? `${Math.abs(r.milesStatus.milesRemaining).toLocaleString()} mi overdue` : `${r.milesStatus.milesRemaining.toLocaleString()} mi left`) :
                                r.dateStatus ? (r.dateStatus.daysRemaining < 0 ? `${Math.abs(r.dateStatus.daysRemaining)} days overdue` : `${r.dateStatus.daysRemaining} days left`) : '—'}
                             </span>
@@ -288,7 +288,7 @@ export function GarageSection() {
                   {/* Expense pie */}
                   {pieData.length > 0 && (
                     <div className="rounded border border-white/10 bg-black/30 p-3">
-                      <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Spend by category · ${expenses?.total.toLocaleString()}</div>
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Spend by category · ${expenses?.total.toLocaleString()}</div>
                       <div className="h-44">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
@@ -308,12 +308,12 @@ export function GarageSection() {
               {tab === 'fuel' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{fuel.length} fill-up(s)</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{fuel.length} fill-up(s)</span>
                     <button onClick={logFuel} className="ml-auto px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log fill-up</button>
                   </div>
                   {fuel.length === 0 ? <Empty icon={Fuel} label="No fill-ups logged." /> : (
                     <table className="w-full text-xs">
-                      <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+                      <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                         <tr><th className="text-left py-1.5">Date</th><th className="text-right">Odometer</th><th className="text-right">Volume</th><th className="text-right">Cost</th><th className="text-right">$/unit</th><th className="text-right">MPG</th><th></th></tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -338,7 +338,7 @@ export function GarageSection() {
               {tab === 'service' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{service.length} service record(s)</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{service.length} service record(s)</span>
                     <button onClick={addSchedule} className="ml-auto px-2.5 py-1 text-xs rounded border border-sky-500/30 text-sky-300 hover:bg-sky-500/10 inline-flex items-center gap-1"><Bell className="w-3 h-3" />Add schedule</button>
                     <button onClick={logService} className="px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log service</button>
                   </div>
@@ -349,7 +349,7 @@ export function GarageSection() {
                           <Wrench className="w-3.5 h-3.5 text-sky-400" />
                           <div className="flex-1 min-w-0">
                             <div className="text-xs text-white">{sv.serviceType}</div>
-                            <div className="text-[10px] text-gray-500">{sv.date} · {sv.odometer.toLocaleString()} mi{sv.shop && ` · ${sv.shop}`}</div>
+                            <div className="text-[10px] text-gray-400">{sv.date} · {sv.odometer.toLocaleString()} mi{sv.shop && ` · ${sv.shop}`}</div>
                           </div>
                           <span className="text-xs font-mono text-white">{sv.cost > 0 ? `$${sv.cost.toFixed(2)}` : '—'}</span>
                           <button onClick={() => delService(sv.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
@@ -364,7 +364,7 @@ export function GarageSection() {
               {tab === 'expenses' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">${expenses?.total.toLocaleString() || 0} total</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">${expenses?.total.toLocaleString() || 0} total</span>
                     <button onClick={logExpense} className="ml-auto px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log expense</button>
                   </div>
                   {!expenses || expenses.expenses.length === 0 ? <Empty icon={Receipt} label="No expenses logged." /> : (
@@ -373,7 +373,7 @@ export function GarageSection() {
                         <li key={e.id} className="py-2 flex items-center gap-3 group">
                           <span className="w-2 h-2 rounded-full" style={{ background: CAT_COLOURS[e.category] || '#6b7280' }} />
                           <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400 w-20 text-center">{e.category}</span>
-                          <span className="text-[10px] text-gray-500 font-mono w-20">{e.date}</span>
+                          <span className="text-[10px] text-gray-400 font-mono w-20">{e.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{e.note}</span>
                           <span className="text-xs font-mono text-white">${e.amount.toFixed(2)}</span>
                           <button onClick={() => delExpense(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
@@ -388,7 +388,7 @@ export function GarageSection() {
               {tab === 'trips' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{trips?.totalMiles || 0} mi · {trips?.businessMiles || 0} business</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{trips?.totalMiles || 0} mi · {trips?.businessMiles || 0} business</span>
                     <button onClick={logTrip} className="ml-auto px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log trip</button>
                   </div>
                   {!trips || trips.trips.length === 0 ? <Empty icon={Route} label="No trips logged." /> : (
@@ -397,7 +397,7 @@ export function GarageSection() {
                         <li key={t.id} className="py-2 flex items-center gap-3 group">
                           <Route className="w-3.5 h-3.5 text-sky-400" />
                           <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400 w-16 text-center">{t.purpose}</span>
-                          <span className="text-[10px] text-gray-500 font-mono w-20">{t.date}</span>
+                          <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                           <span className="flex-1 text-xs text-gray-300 truncate">{[t.from, t.to].filter(Boolean).join(' → ') || '—'}</span>
                           <span className="text-xs font-mono text-white">{t.distance} mi</span>
                           <button onClick={() => delTrip(t.id)} className="opacity-0 group-hover:opacity-100 text-rose-300"><Trash2 className="w-3 h-3" /></button>
@@ -412,7 +412,7 @@ export function GarageSection() {
               {tab === 'documents' && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">{documents.length} document(s)</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{documents.length} document(s)</span>
                     <button onClick={addDoc} className="ml-auto px-2.5 py-1 text-xs rounded bg-sky-500 text-white font-semibold hover:bg-sky-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Add document</button>
                   </div>
                   {documents.length === 0 ? <Empty icon={FileText} label="No documents." /> : (
@@ -423,7 +423,7 @@ export function GarageSection() {
                           <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/5 text-gray-400 w-20 text-center">{d.kind}</span>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs text-white truncate">{d.title}</div>
-                            <div className="text-[10px] text-gray-500">{d.provider}{d.expiryDate && ` · expires ${d.expiryDate}`}</div>
+                            <div className="text-[10px] text-gray-400">{d.provider}{d.expiryDate && ` · expires ${d.expiryDate}`}</div>
                           </div>
                           {d.expired && <span className="text-[9px] uppercase text-rose-300">expired</span>}
                           {d.expiringSoon && <span className="text-[9px] uppercase text-amber-300">expiring</span>}
@@ -445,14 +445,14 @@ export function GarageSection() {
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded border border-white/10 bg-black/30 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className="text-lg font-mono text-white">{value}</div>
-      {sub && <div className="text-[10px] text-gray-500">{sub}</div>}
+      {sub && <div className="text-[10px] text-gray-400">{sub}</div>}
     </div>
   );
 }
 function Empty({ icon: Icon, label }: { icon: typeof Fuel; label: string }) {
-  return <div className="py-10 text-center text-xs text-gray-500"><Icon className="w-6 h-6 mx-auto mb-2 opacity-30" />{label}</div>;
+  return <div className="py-10 text-center text-xs text-gray-400"><Icon className="w-6 h-6 mx-auto mb-2 opacity-30" />{label}</div>;
 }
 
 export default GarageSection;

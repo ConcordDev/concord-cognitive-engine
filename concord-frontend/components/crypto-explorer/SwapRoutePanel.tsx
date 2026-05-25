@@ -79,7 +79,7 @@ export function SwapRoutePanel() {
 
       <div className="space-y-2 rounded-lg border border-cyan-500/20 bg-zinc-950/60 p-3">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Chain</span>
+          <span className="text-[10px] uppercase tracking-wider text-zinc-400">Chain</span>
           <div className="flex gap-1">
             {CHAINS.map((c) => (
               <button key={c.id} type="button" onClick={() => setChainId(c.id)} className={`rounded-full border px-2 py-0.5 text-[10px] ${chainId === c.id ? 'border-cyan-500/50 bg-cyan-500/15 text-cyan-200' : 'border-zinc-800 bg-zinc-900/60 text-zinc-400'}`}>{c.label}</button>
@@ -87,23 +87,23 @@ export function SwapRoutePanel() {
           </div>
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Sell token (address)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Sell token (address)</label>
           <input type="text" value={sellToken} onChange={(e) => setSellToken(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-white" />
         </div>
         <div className="flex justify-center">
           <button type="button" onClick={flip} className="rounded-full border border-cyan-500/30 bg-cyan-500/10 p-1.5 text-cyan-300 hover:bg-cyan-500/20"><ArrowDownUp className="h-3.5 w-3.5" /></button>
         </div>
         <div>
-          <label className="text-[10px] uppercase tracking-wider text-zinc-500">Buy token (address)</label>
+          <label className="text-[10px] uppercase tracking-wider text-zinc-400">Buy token (address)</label>
           <input type="text" value={buyToken} onChange={(e) => setBuyToken(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-[10px] text-white" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">Sell amount (base units)</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Sell amount (base units)</label>
             <input type="text" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white" />
           </div>
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500">Slippage (bps)</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400">Slippage (bps)</label>
             <input type="number" value={slippageBps} onChange={(e) => setSlippageBps(Number(e.target.value))} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white" />
           </div>
         </div>
@@ -137,7 +137,7 @@ export function SwapRoutePanel() {
           </dl>
           {quote.sources && quote.sources.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Route fills</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400">Route fills</div>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {quote.sources.map((s, i) => (
                   <span key={i} className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] text-cyan-200">
@@ -156,7 +156,7 @@ export function SwapRoutePanel() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="mt-0.5 truncate font-mono text-cyan-300">{value}</div>
     </div>
   );

@@ -39,7 +39,7 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
   const del = async (id: string) => { await lensRun('productivity', 'habit-delete', { id }); await refresh(); };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -56,7 +56,7 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
       </div>
 
       {habits.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No habits yet. Build a daily routine.
         </div>
       ) : (
@@ -70,7 +70,7 @@ export function ProductivityHabitsPanel({ onChange }: { onChange: () => void }) 
               </button>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-zinc-100">{h.name}</p>
-                <p className="text-[11px] text-zinc-500">{h.totalCheckins} check-ins · {h.cadence}</p>
+                <p className="text-[11px] text-zinc-400">{h.totalCheckins} check-ins · {h.cadence}</p>
               </div>
               <span className="flex items-center gap-1 text-xs font-bold text-amber-400 shrink-0">
                 <Flame className="w-3.5 h-3.5" />{h.streak}

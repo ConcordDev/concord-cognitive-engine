@@ -162,9 +162,9 @@ export function VirtualRooms() {
           </div>
 
           {loading ? (
-            <div className="py-6 text-center text-zinc-500"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
+            <div className="py-6 text-center text-zinc-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div>
           ) : rooms.length === 0 ? (
-            <div className="py-6 text-center text-[12px] text-zinc-500 italic">No rooms yet. Create one to preview artworks at scale on your wall.</div>
+            <div className="py-6 text-center text-[12px] text-zinc-400 italic">No rooms yet. Create one to preview artworks at scale on your wall.</div>
           ) : (
             <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {rooms.map((rm) => (
@@ -175,7 +175,7 @@ export function VirtualRooms() {
                   >
                     <div>
                       <div className="text-[12px] font-semibold text-zinc-100">{rm.name}</div>
-                      <div className="text-[10px] text-zinc-500">{rm.wallWidthM}×{rm.wallHeightM}m · {rm.placementCount} hung</div>
+                      <div className="text-[10px] text-zinc-400">{rm.wallWidthM}×{rm.wallHeightM}m · {rm.placementCount} hung</div>
                     </div>
                     <Home className="w-4 h-4 text-zinc-600" />
                   </button>
@@ -208,7 +208,7 @@ export function VirtualRooms() {
             {/* floor line */}
             <div className="absolute bottom-0 left-0 right-0 h-[8%] bg-zinc-950/70 border-t border-zinc-700" />
             {active.placements.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-500 italic">
+              <div className="absolute inset-0 flex items-center justify-center text-[11px] text-zinc-400 italic">
                 Empty wall — place an artwork below
               </div>
             )}

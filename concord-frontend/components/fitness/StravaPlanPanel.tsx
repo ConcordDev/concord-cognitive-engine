@@ -42,7 +42,7 @@ const TYPE_TONE: Record<string, string> = {
   intervals: 'text-rose-300 border-rose-800/60 bg-rose-950/30',
   recovery: 'text-zinc-300 border-zinc-700 bg-zinc-900/60',
   race: 'text-orange-300 border-orange-800/60 bg-orange-950/30',
-  rest: 'text-zinc-500 border-zinc-800 bg-zinc-950',
+  rest: 'text-zinc-400 border-zinc-800 bg-zinc-950',
   strength: 'text-violet-300 border-violet-800/60 bg-violet-950/30',
   cross: 'text-cyan-300 border-cyan-800/60 bg-cyan-950/30',
 };
@@ -118,7 +118,7 @@ export function StravaPlanPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -149,7 +149,7 @@ export function StravaPlanPanel() {
             <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           </div>
-          <p className="text-[11px] text-zinc-500 pt-1">Sessions</p>
+          <p className="text-[11px] text-zinc-400 pt-1">Sessions</p>
           {drafts.map((d, i) => (
             <div key={i} className="grid grid-cols-[1fr_1fr_1fr_0.7fr_auto] gap-2 items-center">
               <input type="date" value={d.date}
@@ -187,7 +187,7 @@ export function StravaPlanPanel() {
       )}
 
       {plans.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No training plans yet. Build a plan and track your sessions on a calendar.
         </div>
       ) : (
@@ -198,7 +198,7 @@ export function StravaPlanPanel() {
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{p.name}</p>
                   {p.goalRace && (
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-zinc-400">
                       Goal: {p.goalRace}{p.goalDate ? ` · ${p.goalDate}` : ''}
                     </p>
                   )}
@@ -245,7 +245,7 @@ export function StravaPlanPanel() {
                     </div>
                     <p className="capitalize truncate">{s.title || s.type}</p>
                     {s.targetDistanceKm > 0 && (
-                      <p className="text-zinc-500">
+                      <p className="text-zinc-400">
                         {s.status === 'completed' && s.actualDistanceKm != null
                           ? `${Math.round(s.actualDistanceKm * 10) / 10}/${s.targetDistanceKm} km`
                           : `${s.targetDistanceKm} km`}

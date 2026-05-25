@@ -145,14 +145,14 @@ export function MentorshipGoalsPanel() {
         <div className="panel p-4 space-y-2">
           <h4 className="font-semibold text-sm flex items-center gap-2"><MessageSquarePlus className="w-4 h-4 text-neon-blue" /> Check-ins</h4>
           {selected.checkIns.length === 0 ? (
-            <p className="text-xs text-zinc-500">No check-ins yet.</p>
+            <p className="text-xs text-zinc-400">No check-ins yet.</p>
           ) : selected.checkIns.slice().reverse().map((c) => (
             <div key={c.id} className="lens-card text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-zinc-300">{c.note}</span>
                 <span className="text-xs text-neon-cyan font-mono">{c.progress}%</span>
               </div>
-              <p className="text-[10px] text-zinc-500">{new Date(c.at).toLocaleString()}</p>
+              <p className="text-[10px] text-zinc-400">{new Date(c.at).toLocaleString()}</p>
             </div>
           ))}
           <div className="border-t border-zinc-800 pt-2 space-y-2">
@@ -209,9 +209,9 @@ export function MentorshipGoalsPanel() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></div>
       ) : goals.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-8">No goals yet. Create one to start tracking.</p>
+        <p className="text-sm text-zinc-400 text-center py-8">No goals yet. Create one to start tracking.</p>
       ) : (
         <div className="space-y-2">
           {goals.map((g) => (

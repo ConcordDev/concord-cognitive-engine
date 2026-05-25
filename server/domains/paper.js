@@ -201,6 +201,7 @@ export default function registerPaperActions(registerLensAction) {
   const READ_STATUS = ["to_read", "reading", "read"];
 
   registerLensAction("paper", "paper-save", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const title = ppClean(params.title, 400);
     if (!title) return { ok: false, error: "paper title required" };
@@ -227,9 +228,11 @@ export default function registerPaperActions(registerLensAction) {
     list.push(paper);
     savePaper();
     return { ok: true, result: { paper } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let papers = [...ppList(s, ppActor(ctx))];
     if (params.status && READ_STATUS.includes(params.status)) papers = papers.filter((p) => p.status === params.status);
@@ -242,16 +245,20 @@ export default function registerPaperActions(registerLensAction) {
     if (q) papers = papers.filter((p) => p.title.toLowerCase().includes(q) || p.abstract.toLowerCase().includes(q));
     papers.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
     return { ok: true, result: { papers, count: papers.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.id);
     if (!paper) return { ok: false, error: "paper not found" };
     return { ok: true, result: { paper } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.id);
     if (!paper) return { ok: false, error: "paper not found" };
@@ -261,7 +268,8 @@ export default function registerPaperActions(registerLensAction) {
     if (Array.isArray(params.tags)) paper.tags = params.tags.map((t) => ppClean(t, 30).toLowerCase()).filter(Boolean).slice(0, 8);
     savePaper();
     return { ok: true, result: { paper } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-delete", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -284,6 +292,7 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "collection-list", (ctx, _a, _params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
     const papers = ppList(s, userId);
@@ -291,7 +300,8 @@ export default function registerPaperActions(registerLensAction) {
       ...c, paperCount: papers.filter((p) => p.collectionIds.includes(c.id)).length,
     }));
     return { ok: true, result: { collections, count: collections.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "collection-assign", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -310,6 +320,7 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "library-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
     const papers = ppList(s, userId);
@@ -324,7 +335,8 @@ export default function registerPaperActions(registerLensAction) {
         withNotes: papers.filter((p) => p.notes && p.notes.trim()).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── PDF attachment + in-app reader (backlog item 1) ────────────────
   // Stores a PDF as a base64 payload on the paper record. Frontend reads
@@ -349,12 +361,14 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "paper-pdf-get", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     if (!paper.pdf) return { ok: true, result: { hasPdf: false } };
     return { ok: true, result: { hasPdf: true, ...paper.pdf } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-pdf-remove", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -373,6 +387,7 @@ export default function registerPaperActions(registerLensAction) {
   const ANNOT_COLORS = ["yellow", "green", "blue", "pink", "orange"];
 
   registerLensAction("paper", "paper-annotate", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
@@ -391,14 +406,17 @@ export default function registerPaperActions(registerLensAction) {
     paper.annotations.sort((a, b) => a.page - b.page || a.createdAt.localeCompare(b.createdAt));
     savePaper();
     return { ok: true, result: { annotation: annot, total: paper.annotations.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-annotations", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const paper = ppList(s, ppActor(ctx)).find((p) => p.id === params.paperId);
     if (!paper) return { ok: false, error: "paper not found" };
     return { ok: true, result: { annotations: paper.annotations || [], count: (paper.annotations || []).length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-annotation-delete", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -527,6 +545,7 @@ export default function registerPaperActions(registerLensAction) {
   const ppNormTitle = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
   registerLensAction("paper", "paper-find-duplicates", (ctx, _a, _params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const papers = ppList(s, ppActor(ctx));
     const byKey = new Map();
@@ -546,9 +565,11 @@ export default function registerPaperActions(registerLensAction) {
       });
     }
     return { ok: true, result: { duplicateGroups: groups, groupCount: groups.length, totalPapers: papers.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-merge-duplicates", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = ppList(s, ppActor(ctx));
     const ids = Array.isArray(params.ids) ? params.ids.filter(Boolean) : [];
@@ -577,7 +598,8 @@ export default function registerPaperActions(registerLensAction) {
     }
     savePaper();
     return { ok: true, result: { kept: keep, droppedIds: dropped.map((d) => d.id), droppedCount: dropped.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Shared/group libraries (backlog item 6) ────────────────────────
   // A group is owned by its creator; members join via a share code.
@@ -638,6 +660,7 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "group-add-paper", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = ppActor(ctx);
     const group = getGroups(s).get(params.groupId);
@@ -658,7 +681,8 @@ export default function registerPaperActions(registerLensAction) {
     group.papers.push(shared);
     savePaper();
     return { ok: true, result: { groupId: group.id, paper: shared, paperCount: group.papers.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "group-papers", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -726,6 +750,7 @@ export default function registerPaperActions(registerLensAction) {
   });
 
   registerLensAction("paper", "paper-alerts-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };
     // Alerts are stored per-state with a paperId that belongs to a user's
     // library; filter to only this user's papers.
@@ -734,7 +759,8 @@ export default function registerPaperActions(registerLensAction) {
     let alerts = (s.alerts || []).filter((a) => myIds.has(a.paperId));
     if (params.unreadOnly === true) alerts = alerts.filter((a) => !a.read);
     return { ok: true, result: { alerts, count: alerts.length, unread: alerts.filter((a) => !a.read).length, checkedAt: s.alertsCheckedAt || null } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("paper", "paper-alert-read", (ctx, _a, params = {}) => {
     const s = getPaperState(); if (!s) return { ok: false, error: "STATE unavailable" };

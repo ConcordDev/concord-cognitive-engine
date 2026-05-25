@@ -74,12 +74,12 @@ export function DownstreamBadge({ dtuId, sinceDays = 30, hideWhenEmpty = true, c
       <Eye className="w-2.5 h-2.5 text-emerald-400" aria-hidden="true" />
       <span className="font-mono">{total}</span>
       {!compact && (
-        <span className="text-zinc-500">
+        <span className="text-zinc-400">
           in {distinctLenses} lens{distinctLenses === 1 ? '' : 'es'}
         </span>
       )}
       {!compact && distinctLenses > 0 && distinctLenses <= 3 && (
-        <span className="text-zinc-500">·</span>
+        <span className="text-zinc-400">·</span>
       )}
       {!compact && [...lensSet].slice(0, 3).map((lensId, i) => (
         <Link

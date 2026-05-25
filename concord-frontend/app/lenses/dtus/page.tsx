@@ -184,7 +184,7 @@ export default function DTUBrowserPage() {
               </div>
               <div>
                 <h1 className="text-xl font-bold">DTU Browser</h1>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   {total} discrete thought units
                 </p>
               </div>
@@ -225,7 +225,7 @@ export default function DTUBrowserPage() {
           <div className="flex items-center gap-3 mt-4">
             <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2">
               <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-lattice-deep border border-lattice-border rounded-lg">
-                <Search className="w-4 h-4 text-gray-500" />
+                <Search className="w-4 h-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -238,7 +238,7 @@ export default function DTUBrowserPage() {
                   <button
                     type="button"
                     onClick={() => { setSearchQuery(''); setPage(0); }}
-                    className="text-gray-500 hover:text-white text-sm"
+                    className="text-gray-400 hover:text-white text-sm"
                   >
                     Clear
                   </button>
@@ -255,7 +255,7 @@ export default function DTUBrowserPage() {
 
             {/* Tier filter */}
             <div className="flex items-center gap-1">
-              <Filter className="w-4 h-4 text-gray-500 mr-1" />
+              <Filter className="w-4 h-4 text-gray-400 mr-1" />
               {(['all', 'regular', 'mega', 'hyper', 'shadow'] as const).map(tier => (
                 <button
                   key={tier}
@@ -278,7 +278,7 @@ export default function DTUBrowserPage() {
                 onClick={() => setViewMode('list')}
                 className={cn(
                   'p-1.5 transition-colors',
-                  viewMode === 'list' ? 'bg-lattice-surface text-white' : 'text-gray-500 hover:text-white'
+                  viewMode === 'list' ? 'bg-lattice-surface text-white' : 'text-gray-400 hover:text-white'
                 )}
               aria-label="List view">
                 <List className="w-4 h-4" />
@@ -287,7 +287,7 @@ export default function DTUBrowserPage() {
                 onClick={() => setViewMode('grid')}
                 className={cn(
                   'p-1.5 transition-colors',
-                  viewMode === 'grid' ? 'bg-lattice-surface text-white' : 'text-gray-500 hover:text-white'
+                  viewMode === 'grid' ? 'bg-lattice-surface text-white' : 'text-gray-400 hover:text-white'
                 )}
               aria-label="Layout grid">
                 <LayoutGrid className="w-4 h-4" />
@@ -374,16 +374,16 @@ export default function DTUBrowserPage() {
                         {dtu.tier}
                       </span>
                       {dtu.domain && (
-                        <span className="text-[10px] text-gray-500">{dtu.domain}</span>
+                        <span className="text-[10px] text-gray-400">{dtu.domain}</span>
                       )}
                     </div>
                     <h3 className="text-sm font-medium text-gray-200 line-clamp-1">
                       {dtu.title || dtu.summary || dtu.id.slice(0, 16)}
                     </h3>
-                    <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                    <p className="text-xs text-gray-400 line-clamp-2 mt-1">
                       {dtu.summary || dtu.content?.slice(0, 100)}
                     </p>
-                    <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-600">
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400">
                       <span>{new Date(dtu.timestamp).toLocaleDateString()}</span>
                       {dtu.tags?.length > 0 && (
                         <span>#{dtu.tags[0]}</span>
@@ -407,7 +407,7 @@ export default function DTUBrowserPage() {
 
             {/* Pagination */}
             <div className="flex items-center justify-between mt-4 px-2">
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 Showing {page * PAGE_SIZE + 1}--{Math.min((page + 1) * PAGE_SIZE, total)} of {total}
               </span>
               <div className="flex items-center gap-2">
@@ -500,10 +500,10 @@ export default function DTUBrowserPage() {
                     <span className="text-xs text-gray-400">{actionResult.title as string}</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.depth as number}</p><p className="text-[10px] text-gray-500">Depth</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.forkCount as number}</p><p className="text-[10px] text-gray-500">Forks</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalDescendants as number}</p><p className="text-[10px] text-gray-500">Descendants</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-white">{actionResult.isRoot ? 'Root' : actionResult.isLeaf ? 'Leaf' : 'Branch'}</p><p className="text-[10px] text-gray-500">Position</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.depth as number}</p><p className="text-[10px] text-gray-400">Depth</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.forkCount as number}</p><p className="text-[10px] text-gray-400">Forks</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.totalDescendants as number}</p><p className="text-[10px] text-gray-400">Descendants</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-white">{actionResult.isRoot ? 'Root' : actionResult.isLeaf ? 'Leaf' : 'Branch'}</p><p className="text-[10px] text-gray-400">Position</p></div>
                   </div>
                   {!!actionResult.oldestAncestor && <p className="text-xs text-gray-400">Oldest ancestor: <span className="text-white">{actionResult.oldestAncestor as string}</span></p>}
                 </div>
@@ -529,7 +529,7 @@ export default function DTUBrowserPage() {
                       <div key={key} className="p-2 bg-lattice-deep rounded">
                         <div className="h-1.5 bg-lattice-border rounded-full overflow-hidden mb-1"><div className="h-full bg-neon-cyan rounded-full" style={{ width: `${(val / 25) * 100}%` }} /></div>
                         <p className="text-xs font-bold text-white">{val}/25</p>
-                        <p className="text-[10px] text-gray-500 capitalize">{key}</p>
+                        <p className="text-[10px] text-gray-400 capitalize">{key}</p>
                       </div>
                     ))}
                   </div>
@@ -556,9 +556,9 @@ export default function DTUBrowserPage() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-500">Cited By</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-500">References</p></div>
-                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-500">Reciprocal</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-cyan">{actionResult.inDegree as number}</p><p className="text-[10px] text-gray-400">Cited By</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-purple">{actionResult.outDegree as number}</p><p className="text-[10px] text-gray-400">References</p></div>
+                    <div className="p-2 bg-lattice-deep rounded text-center"><p className="text-sm font-bold text-neon-green">{actionResult.reciprocalCount as number}</p><p className="text-[10px] text-gray-400">Reciprocal</p></div>
                   </div>
                   {(actionResult.topCiters as Array<{ title: string; count: number }>)?.length > 0 && (
                     <div>
@@ -591,7 +591,7 @@ export default function DTUBrowserPage() {
                       {Object.entries(actionResult.metrics as Record<string, number>).map(([key, val]) => (
                         <div key={key} className="p-2 bg-lattice-deep rounded text-center">
                           <p className="text-sm font-bold text-white">{val}</p>
-                          <p className="text-[10px] text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
+                          <p className="text-[10px] text-gray-400 capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
                         </div>
                       ))}
                     </div>
@@ -655,7 +655,7 @@ export default function DTUBrowserPage() {
           <h2 id="dtu-ops-heading" className="text-base font-semibold text-white">
             DTU operations
           </h2>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-gray-400">
             substrate macros · live probes
           </span>
         </header>

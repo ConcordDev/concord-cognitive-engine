@@ -50,7 +50,7 @@ export function SessionStepper({ steps, currentStepId, stepCount, onAdvance, cla
                 isCurrent && 'bg-indigo-500/15 text-indigo-200 ring-1 ring-indigo-500/40 font-medium',
                 isDone && 'text-zinc-400 hover:text-zinc-200',
                 !isCurrent && !isDone && !canAdvance && 'text-zinc-600',
-                canAdvance && 'text-zinc-500 hover:text-indigo-300 hover:bg-zinc-900/60 cursor-pointer',
+                canAdvance && 'text-zinc-400 hover:text-indigo-300 hover:bg-zinc-900/60 cursor-pointer',
               )}
               title={s.description}
               aria-current={isCurrent ? 'step' : undefined}
@@ -67,7 +67,7 @@ export function SessionStepper({ steps, currentStepId, stepCount, onAdvance, cla
         );
       })}
       {typeof stepCount === 'number' && (
-        <span className="ml-auto text-[10px] text-zinc-500 font-mono">
+        <span className="ml-auto text-[10px] text-zinc-400 font-mono">
           {stepCount} transition{stepCount === 1 ? '' : 's'}
         </span>
       )}

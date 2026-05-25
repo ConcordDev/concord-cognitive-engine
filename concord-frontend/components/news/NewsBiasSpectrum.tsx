@@ -57,7 +57,7 @@ export function NewsBiasSpectrum() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-amber-600/15 to-transparent">
         <Scale className="w-5 h-5 text-amber-400" />
         <h2 className="text-sm font-bold text-zinc-100">Bias Spectrum</h2>
-        <span className="text-[11px] text-zinc-500">Same story, left / center / right</span>
+        <span className="text-[11px] text-zinc-400">Same story, left / center / right</span>
       </header>
 
       <div className="p-3 border-b border-zinc-800">
@@ -65,7 +65,7 @@ export function NewsBiasSpectrum() {
           className="relative"
           onSubmit={(e) => { e.preventDefault(); void refresh(query); }}
         >
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
             value={query}
@@ -77,11 +77,11 @@ export function NewsBiasSpectrum() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : !result || result.count === 0 ? (
-        <div className="px-4 py-10 text-center text-zinc-500 text-sm italic">
+        <div className="px-4 py-10 text-center text-zinc-400 text-sm italic">
           No data yet — add articles in the news directory to compare coverage.
         </div>
       ) : (
@@ -100,7 +100,7 @@ export function NewsBiasSpectrum() {
                 ) : null,
               )}
             </div>
-            <div className="flex justify-between text-[10px] text-zinc-500 mt-1">
+            <div className="flex justify-between text-[10px] text-zinc-400 mt-1">
               <span>{result.coverage.left}% Left</span>
               <span>{result.coverage.center}% Center</span>
               <span>{result.coverage.right}% Right</span>
@@ -127,7 +127,7 @@ export function NewsBiasSpectrum() {
                     <span className="text-zinc-600">· {items.length}</span>
                   </h3>
                   {items.length === 0 ? (
-                    <p className="text-[11px] text-zinc-600 italic border border-dashed border-zinc-800 rounded-lg py-4 text-center">
+                    <p className="text-[11px] text-zinc-400 italic border border-dashed border-zinc-800 rounded-lg py-4 text-center">
                       No {style.label.toLowerCase()} coverage
                     </p>
                   ) : (
@@ -135,7 +135,7 @@ export function NewsBiasSpectrum() {
                       {items.map((a) => (
                         <li key={a.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5">
                           <p className="text-xs font-semibold text-zinc-100 line-clamp-2">{a.title}</p>
-                          <p className="text-[10px] text-zinc-500 mt-1">
+                          <p className="text-[10px] text-zinc-400 mt-1">
                             {a.source} · {String(a.publishedAt).slice(0, 10)}
                           </p>
                           {a.summary && (

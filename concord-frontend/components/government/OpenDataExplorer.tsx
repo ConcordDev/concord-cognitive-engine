@@ -34,7 +34,7 @@ export function OpenDataExplorer() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Database className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Open data search</span>
-        <span className="ml-auto text-[10px] text-gray-500">data.gov CKAN</span>
+        <span className="ml-auto text-[10px] text-gray-400">data.gov CKAN</span>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); search(); }} className="p-3 border-b border-white/10 flex items-center gap-2">
         <Search className="w-4 h-4 text-gray-400" />
@@ -46,9 +46,9 @@ export function OpenDataExplorer() {
       <div className="max-h-96 overflow-y-auto p-3">
         {error && <div className="px-3 py-3 text-center text-xs text-rose-300">{error}</div>}
         {!loading && !error && results.length === 0 && (
-          <div className="px-3 py-8 text-center text-xs text-gray-500"><Database className="w-6 h-6 mx-auto mb-2 opacity-30" />Search to explore federal/state/local open datasets.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400"><Database className="w-6 h-6 mx-auto mb-2 opacity-30" />Search to explore federal/state/local open datasets.</div>
         )}
-        {total > 0 && <div className="text-[10px] text-gray-500 mb-2">{total.toLocaleString()} matches · showing top {results.length}</div>}
+        {total > 0 && <div className="text-[10px] text-gray-400 mb-2">{total.toLocaleString()} matches · showing top {results.length}</div>}
         {results.length > 0 && (
           <ul className="space-y-2">
             {results.map(d => (
@@ -57,7 +57,7 @@ export function OpenDataExplorer() {
                   <Database className="w-3.5 h-3.5 text-cyan-300 mt-0.5" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white">{d.title}</div>
-                    <div className="text-[10px] text-gray-500">{d.organization}{d.lastModified && ` · updated ${d.lastModified.slice(0, 10)}`}</div>
+                    <div className="text-[10px] text-gray-400">{d.organization}{d.lastModified && ` · updated ${d.lastModified.slice(0, 10)}`}</div>
                     {d.notes && <p className="mt-1 text-[11px] text-gray-400 line-clamp-2">{d.notes}</p>}
                     {d.firstResourceUrl && (
                       <a href={d.firstResourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-0.5 text-[10px] text-cyan-300 hover:text-cyan-200">

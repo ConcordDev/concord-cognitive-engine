@@ -42,9 +42,9 @@ export function TimelineWiki() {
       </header>
       {data.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Wikipedia REST unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Events</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Oldest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{oldest || '—'}</div></div>
-        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-500">Newest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{newest || '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Events</div><div className="mt-0.5 font-mono text-lg text-amber-300">{list.length}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Oldest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{oldest || '—'}</div></div>
+        <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5"><div className="text-[10px] uppercase tracking-wider text-zinc-400">Newest</div><div className="mt-0.5 font-mono text-lg text-amber-300">{newest || '—'}</div></div>
       </div>
       <div className="space-y-1.5 max-h-[500px] overflow-y-auto">
         {list.map((e, i) => {
@@ -55,14 +55,14 @@ export function TimelineWiki() {
               <div className="flex items-start gap-2">
                 <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] text-amber-200"><Calendar className="inline h-2.5 w-2.5 mr-0.5" />{e.year}</span>
                 <p className="flex-1 text-[12px] text-zinc-100">{e.text}</p>
-                {url && <ExternalLink className="h-3 w-3 shrink-0 text-zinc-500" />}
+                {url && <ExternalLink className="h-3 w-3 shrink-0 text-zinc-400" />}
               </div>
             </Wrapper>
           );
         })}
-        {list.length === 0 && !data.isPending && !data.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No selected events for {month}/{day}.</div>}
+        {list.length === 0 && !data.isPending && !data.isError && <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No selected events for {month}/{day}.</div>}
       </div>
-      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
+      {data.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling…</div>}
     </div>
   );
 }

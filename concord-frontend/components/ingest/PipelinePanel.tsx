@@ -136,7 +136,7 @@ export function PipelinePanel() {
           <Plug className="w-5 h-5 text-neon-cyan" />
           ELT Pipeline
         </h2>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-gray-400">
           {connections.length} connection{connections.length !== 1 ? 's' : ''} ·{' '}
           {schedules.filter((s) => s.enabled).length} active schedule{schedules.filter((s) => s.enabled).length !== 1 ? 's' : ''}
         </span>
@@ -286,15 +286,15 @@ function ConnectorsTab({
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">OAuth</span>
                 )}
               </div>
-              <p className="text-xs text-gray-500 capitalize">{c.category} · {c.auth}</p>
-              <p className="text-[11px] text-gray-600">
+              <p className="text-xs text-gray-400 capitalize">{c.category} · {c.auth}</p>
+              <p className="text-[11px] text-gray-400">
                 {c.fieldCount} field{c.fieldCount !== 1 ? 's' : ''}
                 {c.incremental ? ' · incremental' : ''}
               </p>
             </button>
           ))}
           {connectors.length === 0 && (
-            <p className="text-xs text-gray-500 col-span-3 text-center py-4">
+            <p className="text-xs text-gray-400 col-span-3 text-center py-4">
               <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Loading catalog…
             </p>
           )}
@@ -306,7 +306,7 @@ function ConnectorsTab({
         <div className="p-4 rounded-lg bg-black/40 border border-neon-cyan/30 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neon-cyan">Configure {selected.name}</h3>
-            <button onClick={() => setSelected(null)} className="text-xs text-gray-500 hover:text-white">
+            <button onClick={() => setSelected(null)} className="text-xs text-gray-400 hover:text-white">
               Cancel
             </button>
           </div>
@@ -369,10 +369,10 @@ function ConnectorsTab({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-white">{c.connectorName}</span>
-                  <span className="text-[10px] text-gray-500">{c.status}</span>
+                  <span className="text-[10px] text-gray-400">{c.status}</span>
                   {c.incremental && <span className="text-[10px] text-neon-cyan">incremental</span>}
                 </div>
-                <p className="text-[11px] text-gray-600 truncate">
+                <p className="text-[11px] text-gray-400 truncate">
                   {c.id} · last sync {fmtTime(c.lastSyncAt)}
                   {c.cursor != null && ` · cursor ${String(c.cursor)}`}
                 </p>
@@ -385,7 +385,7 @@ function ConnectorsTab({
               <button
                 onClick={() => remove(c.id)}
                 disabled={busy}
-                className="p-1.5 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400 disabled:opacity-40"
+                className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
                 aria-label="Delete connection"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -393,7 +393,7 @@ function ConnectorsTab({
             </div>
           ))}
           {connections.length === 0 && (
-            <p className="text-xs text-gray-500 text-center py-4">
+            <p className="text-xs text-gray-400 text-center py-4">
               No connections yet — pick a connector above.
             </p>
           )}
@@ -501,7 +501,7 @@ function SchedulesTab({
               onClick={() => toggle(s.id)}
               disabled={busy}
               className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                s.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-500'
+                s.enabled ? 'bg-neon-green/20 text-neon-green' : 'bg-gray-500/20 text-gray-400'
               }`}
             >
               {s.enabled ? 'enabled' : 'paused'}
@@ -509,17 +509,17 @@ function SchedulesTab({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-white">{s.connectorName}</span>
-                <span className="text-[10px] text-gray-500">{s.cadence} · {s.mode}</span>
+                <span className="text-[10px] text-gray-400">{s.cadence} · {s.mode}</span>
                 {s.due && <span className="text-[10px] text-yellow-400">due</span>}
               </div>
-              <p className="text-[11px] text-gray-600">
+              <p className="text-[11px] text-gray-400">
                 Next run {s.enabled ? fmtDur(s.nextRunInMs) : '—'} · {s.runCount} run{s.runCount !== 1 ? 's' : ''}
               </p>
             </div>
             <button
               onClick={() => remove(s.id)}
               disabled={busy}
-              className="p-1.5 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400 disabled:opacity-40"
+              className="p-1.5 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400 disabled:opacity-40"
               aria-label="Delete schedule"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -527,7 +527,7 @@ function SchedulesTab({
           </div>
         ))}
         {schedules.length === 0 && (
-          <p className="text-xs text-gray-500 text-center py-4">No schedules configured.</p>
+          <p className="text-xs text-gray-400 text-center py-4">No schedules configured.</p>
         )}
       </div>
     </div>
@@ -611,7 +611,7 @@ function TransformsTab({
             <option key={c.id} value={c.id}>{c.connectorName} ({c.id.slice(0, 10)})</option>
           ))}
         </select>
-        <span className="text-xs text-gray-500">{rules.length} rule{rules.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-gray-400">{rules.length} rule{rules.length !== 1 ? 's' : ''}</span>
       </div>
 
       <div className="space-y-2">
@@ -665,7 +665,7 @@ function TransformsTab({
             )}
             <button
               onClick={() => removeRule(i)}
-              className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400"
+              className="p-1 rounded hover:bg-red-500/10 text-gray-400 hover:text-red-400"
               aria-label="Remove rule"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -887,10 +887,10 @@ function RunsTab({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-white">{r.connectorName}</span>
-                <span className="text-[10px] text-gray-500">{r.mode}</span>
+                <span className="text-[10px] text-gray-400">{r.mode}</span>
                 {r.replayOf && <span className="text-[10px] text-neon-purple">replay</span>}
               </div>
-              <p className="text-[11px] text-gray-600">
+              <p className="text-[11px] text-gray-400">
                 {r.recordsScanned} scanned → {r.recordsExtracted} extracted → {r.recordsLoaded} loaded
                 {r.duplicatesRemoved > 0 && ` · ${r.duplicatesRemoved} dedup`} · {fmtBytes(r.byteVolume)} · {fmtTime(r.finishedAt)}
               </p>
@@ -905,7 +905,7 @@ function RunsTab({
           </div>
         ))}
         {runs.length === 0 && (
-          <p className="text-xs text-gray-500 text-center py-4">No sync runs yet.</p>
+          <p className="text-xs text-gray-400 text-center py-4">No sync runs yet.</p>
         )}
       </div>
     </div>
@@ -954,7 +954,7 @@ function DedupTab({
 
   if (!cfg) {
     return (
-      <p className="text-xs text-gray-500 text-center py-4">
+      <p className="text-xs text-gray-400 text-center py-4">
         <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> Loading dedup config…
       </p>
     );
@@ -962,7 +962,7 @@ function DedupTab({
 
   return (
     <div className="space-y-4 max-w-md">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Dedup runs inside every sync — configure the strategy and similarity threshold here
         instead of relying on a fixed gate.
       </p>
@@ -1070,7 +1070,7 @@ function OcrTab({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Real OCR/PDF path — paste an extracted text layer (or load a file). The macro
         structures it into per-page word counts, headings, a confidence rollup, and
         DTU-ready chunks. Use a form-feed (\f) to separate pages.
@@ -1197,7 +1197,7 @@ function WebhookTab({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Mint a stable push endpoint so external systems can POST records straight into
         the ingest pipeline — no auth header, the URL token authenticates.
       </p>
@@ -1208,13 +1208,13 @@ function WebhookTab({
             <code className="text-xs text-neon-cyan break-all">{endpoint.url}</code>
             <button
               onClick={() => navigator.clipboard?.writeText(endpoint.url)}
-              className="p-1.5 rounded hover:bg-white/5 text-gray-500 hover:text-white flex-shrink-0"
+              className="p-1.5 rounded hover:bg-white/5 text-gray-400 hover:text-white flex-shrink-0"
               aria-label="Copy URL"
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
           </div>
-          <p className="text-[11px] text-gray-600">{endpoint.instructions}</p>
+          <p className="text-[11px] text-gray-400">{endpoint.instructions}</p>
           <div className="flex items-center gap-4 text-xs">
             <span className="text-gray-400">
               Received: <span className="text-neon-green">{endpoint.recordsReceived}</span>
@@ -1254,7 +1254,7 @@ function WebhookTab({
         <div className="space-y-1.5 max-h-64 overflow-y-auto">
           {records.map((rec) => (
             <div key={rec.id} className="p-2 rounded bg-black/30 border border-white/5">
-              <div className="flex items-center justify-between text-[10px] text-gray-500">
+              <div className="flex items-center justify-between text-[10px] text-gray-400">
                 <span>{rec.source}</span>
                 <span>{fmtTime(rec.receivedAt)}</span>
               </div>
@@ -1264,7 +1264,7 @@ function WebhookTab({
             </div>
           ))}
           {records.length === 0 && (
-            <p className="text-xs text-gray-500 text-center py-4">No records received yet.</p>
+            <p className="text-xs text-gray-400 text-center py-4">No records received yet.</p>
           )}
         </div>
       </div>

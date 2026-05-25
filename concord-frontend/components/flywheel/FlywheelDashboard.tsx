@@ -50,7 +50,7 @@ function FlywheelDashboard() {
 
   if (isLoading || !data?.metrics) {
     return (
-      <div className="p-6 text-center text-gray-500">
+      <div className="p-6 text-center text-gray-400">
         <Activity className="w-8 h-8 mx-auto mb-2 animate-pulse" />
         Loading flywheel metrics...
       </div>
@@ -81,7 +81,7 @@ function FlywheelDashboard() {
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-2xl font-bold text-white">{velocityPct}%</span>
-            <span className="text-xs text-zinc-500">velocity</span>
+            <span className="text-xs text-zinc-400">velocity</span>
           </div>
         </div>
       </div>
@@ -123,8 +123,8 @@ function FlywheelDashboard() {
             >
               <Icon className={cn('w-5 h-5 mx-auto mb-1', spoke.color)} />
               <p className="text-xl font-bold text-white">{value}</p>
-              <p className="text-xs text-zinc-500">{spoke.label}</p>
-              <p className="text-[10px] text-zinc-600 mt-1">{detail}</p>
+              <p className="text-xs text-zinc-400">{spoke.label}</p>
+              <p className="text-[10px] text-zinc-400 mt-1">{detail}</p>
             </div>
           );
         })}
@@ -132,7 +132,7 @@ function FlywheelDashboard() {
 
       {/* Reinforcement Loops */}
       <div className="bg-zinc-800/30 border border-zinc-700 rounded-lg p-4">
-        <p className="text-xs text-zinc-500 text-center">
+        <p className="text-xs text-zinc-400 text-center">
           More users &rarr; more substrate &rarr; better quality &rarr; more marketplace &rarr; more revenue &rarr; more users
         </p>
       </div>

@@ -220,7 +220,7 @@ export default function ReflectionLensPage() {
 
           {model.strengths?.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">Strengths</p>
+              <p className="text-xs text-gray-400 uppercase mb-1">Strengths</p>
               <div className="space-y-1">
                 {model.strengths.map((s: string, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-sm text-neon-green">
@@ -233,7 +233,7 @@ export default function ReflectionLensPage() {
 
           {model.weaknesses?.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">Weaknesses</p>
+              <p className="text-xs text-gray-400 uppercase mb-1">Weaknesses</p>
               <div className="space-y-1">
                 {model.weaknesses.map((w: string, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-sm text-yellow-400">
@@ -246,7 +246,7 @@ export default function ReflectionLensPage() {
 
           {model.biases?.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">Detected Biases</p>
+              <p className="text-xs text-gray-400 uppercase mb-1">Detected Biases</p>
               {model.biases.map((b: string, i: number) => (
                 <p key={i} className="text-sm text-red-400">{b}</p>
               ))}
@@ -254,21 +254,21 @@ export default function ReflectionLensPage() {
           )}
 
           {!model.strengths?.length && !model.weaknesses?.length && (
-            <p className="text-sm text-gray-500">Self-model builds over time as reflections accumulate</p>
+            <p className="text-sm text-gray-400">Self-model builds over time as reflections accumulate</p>
           )}
 
           <div className="border-t border-lattice-border pt-3 space-y-2">
-            <p className="text-xs text-gray-500 uppercase">Stats</p>
+            <p className="text-xs text-gray-400 uppercase">Stats</p>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Reflections run</span>
+              <span className="text-gray-400">Reflections run</span>
               <span className="text-gray-300">{stats.reflectionsRun || 0}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Self-corrections</span>
+              <span className="text-gray-400">Self-corrections</span>
               <span className="text-gray-300">{stats.selfCorrections || 0}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Quality improvements</span>
+              <span className="text-gray-400">Quality improvements</span>
               <span className="text-neon-green">{stats.qualityImprovements || 0}</span>
             </div>
           </div>
@@ -302,7 +302,7 @@ export default function ReflectionLensPage() {
               })}
             </div>
           ) : (
-            <p className="text-center py-8 text-gray-500 text-sm">No reflections yet — interact with the system to generate data</p>
+            <p className="text-center py-8 text-gray-400 text-sm">No reflections yet — interact with the system to generate data</p>
           )}
         </div>
 
@@ -312,7 +312,7 @@ export default function ReflectionLensPage() {
             <h2 className="font-semibold flex items-center gap-2">
               <Mirror className="w-4 h-4 text-neon-green" /> Recent Reflections
               {qualityBand !== 'all' && (
-                <span className="text-xs text-gray-500 font-normal">
+                <span className="text-xs text-gray-400 font-normal">
                   ({visibleReflections.length} of {reflections.length})
                 </span>
               )}
@@ -341,7 +341,7 @@ export default function ReflectionLensPage() {
             {visibleReflections.map((r, index) => (
               <motion.div key={r.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} className="lens-card">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{new Date(r.timestamp).toLocaleString()}</span>
+                  <span className="text-xs text-gray-400">{new Date(r.timestamp).toLocaleString()}</span>
                   <span className={`text-sm font-bold ${r.quality > 0.7 ? 'text-neon-green' : r.quality > 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
                     {(r.quality * 100).toFixed(0)}%
                   </span>
@@ -363,10 +363,10 @@ export default function ReflectionLensPage() {
               </motion.div>
             ))}
             {reflections.length === 0 && (
-              <p className="text-center py-4 text-gray-500 text-sm">No reflections recorded yet</p>
+              <p className="text-center py-4 text-gray-400 text-sm">No reflections recorded yet</p>
             )}
             {reflections.length > 0 && visibleReflections.length === 0 && (
-              <p className="text-center py-4 text-gray-500 text-sm">
+              <p className="text-center py-4 text-gray-400 text-sm">
                 No reflections in the <span className={qualityBand === 'low' ? 'text-red-400' : qualityBand === 'mid' ? 'text-yellow-400' : 'text-neon-green'}>{qualityBand}</span> band.
               </p>
             )}
@@ -414,7 +414,7 @@ export default function ReflectionLensPage() {
                   <span className="text-gray-400">Themes: <span className="text-neon-blue font-mono">{Array.isArray(reflActionResult.themes) ? (reflActionResult.themes as unknown[]).length : ''}</span></span>
                 </div>
                 {Array.isArray(reflActionResult.themes) && (
-                  <div className="flex flex-wrap gap-1">{(reflActionResult.themes as {theme:string;prevalence:number}[]).slice(0,8).map(({theme,prevalence}) => <span key={theme} className="px-2 py-0.5 bg-neon-blue/10 text-neon-blue rounded font-mono">{theme} <span className="text-gray-500">{Math.round(prevalence*100)}%</span></span>)}</div>
+                  <div className="flex flex-wrap gap-1">{(reflActionResult.themes as {theme:string;prevalence:number}[]).slice(0,8).map(({theme,prevalence}) => <span key={theme} className="px-2 py-0.5 bg-neon-blue/10 text-neon-blue rounded font-mono">{theme} <span className="text-gray-400">{Math.round(prevalence*100)}%</span></span>)}</div>
                 )}
               </div>
             )}
@@ -434,7 +434,7 @@ export default function ReflectionLensPage() {
                   <span className="text-gray-400">Consistency: <span className="text-neon-green font-mono">{String(Math.round(((reflActionResult.overallConsistency as number) ?? 0) * 100))}%</span></span>
                 </div>
                 {Array.isArray(reflActionResult.habitProfiles) && (
-                  <div className="space-y-0.5">{(reflActionResult.habitProfiles as {name:string;currentStreak:number;consistency:number}[]).slice(0,5).map(h => <div key={h.name} className="flex gap-3"><span className="text-gray-300">{h.name}</span><span className="text-neon-green font-mono">🔥{h.currentStreak}d</span><span className="text-gray-500">{Math.round(h.consistency*100)}%</span></div>)}</div>
+                  <div className="space-y-0.5">{(reflActionResult.habitProfiles as {name:string;currentStreak:number;consistency:number}[]).slice(0,5).map(h => <div key={h.name} className="flex gap-3"><span className="text-gray-300">{h.name}</span><span className="text-neon-green font-mono">🔥{h.currentStreak}d</span><span className="text-gray-400">{Math.round(h.consistency*100)}%</span></div>)}</div>
                 )}
               </div>
             )}

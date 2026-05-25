@@ -51,7 +51,7 @@ export function InspectionsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <ClipboardCheck className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Inspections</span>
-        <span className="ml-auto text-[10px] text-gray-500">{inspections.filter(i => i.status === 'scheduled').length} scheduled</span>
+        <span className="ml-auto text-[10px] text-gray-400">{inspections.filter(i => i.status === 'scheduled').length} scheduled</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <select value={form.permitId} onChange={e => setForm({ ...form, permitId: e.target.value })} className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
@@ -68,9 +68,9 @@ export function InspectionsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : inspections.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><ClipboardCheck className="w-6 h-6 mx-auto mb-2 opacity-30" />No inspections yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><ClipboardCheck className="w-6 h-6 mx-auto mb-2 opacity-30" />No inspections yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {inspections.map(i => {
@@ -80,7 +80,7 @@ export function InspectionsPanel() {
                   <ClipboardCheck className={cn('w-3.5 h-3.5', i.result === 'pass' ? 'text-emerald-400' : i.result === 'fail' ? 'text-rose-400' : 'text-cyan-300')} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-white">{permit?.recordNumber || '?'} · {i.kind}</div>
-                    <div className="text-[10px] text-gray-500">{i.date} · {i.timeSlot} · {i.inspectorName || 'unassigned'}</div>
+                    <div className="text-[10px] text-gray-400">{i.date} · {i.timeSlot} · {i.inspectorName || 'unassigned'}</div>
                   </div>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', i.result === 'pass' ? 'bg-emerald-500/15 text-emerald-300' : i.result === 'fail' ? 'bg-rose-500/15 text-rose-300' : i.result === 'needs_followup' ? 'bg-amber-500/15 text-amber-300' : 'bg-cyan-500/15 text-cyan-300')}>{i.result || i.status.replace('_', ' ')}</span>
                   {i.status === 'scheduled' && (

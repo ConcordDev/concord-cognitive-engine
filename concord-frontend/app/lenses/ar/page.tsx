@@ -345,7 +345,7 @@ export default function ARLensPage() {
               <div ref={viewportRef} className="w-full h-full" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <div className="text-center text-gray-500"><Glasses className="w-12 h-12 mx-auto mb-2 opacity-50" /><p className="text-sm">Enable AR to begin</p></div>
+                <div className="text-center text-gray-400"><Glasses className="w-12 h-12 mx-auto mb-2 opacity-50" /><p className="text-sm">Enable AR to begin</p></div>
               </div>
             )}
           </div>
@@ -353,7 +353,7 @@ export default function ARLensPage() {
             <div className="flex items-center gap-2 mt-2 px-1">
               <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
               <span className="text-xs text-neon-cyan">3D Viewport Active</span>
-              <span className="text-xs text-gray-500 ml-auto">Move pointer to orbit</span>
+              <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>
             </div>
           )}
         </div>
@@ -364,8 +364,8 @@ export default function ARLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)}>
-        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+        <div className={cn(ds.panel, 'w-full max-w-lg max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-center justify-between mb-4"><h3 className={ds.heading3}>{editingItem ? 'Edit' : 'New'} {activeArtifactType}</h3><button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-4 h-4" /></button></div>
           <div className="space-y-3">
             <div><label className={ds.label}>Name</label><input className={ds.input} value={formName} onChange={e => setFormName(e.target.value)} /></div>
@@ -432,7 +432,7 @@ export default function ARLensPage() {
   const renderLibrary = () => (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" /><input className={cn(ds.input, 'pl-10')} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
+        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><input className={cn(ds.input, 'pl-10')} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} /></div>
         <select className={cn(ds.select, 'w-auto')} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">All Status</option>{Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
         <button onClick={openCreate} className={ds.btnPrimary}><Plus className="w-4 h-4" /> New</button>
       </div>

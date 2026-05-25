@@ -79,7 +79,7 @@ export function EventDetailPanel({
         <h3 className="text-sm font-semibold text-zinc-100">Event #{eventId}</h3>
         <button
           onClick={onClose}
-          className="rounded p-1 text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
+          className="rounded p-1 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
           aria-label="Close detail"
         >
           <X className="h-4 w-4" />
@@ -88,7 +88,7 @@ export function EventDetailPanel({
 
       <div className="space-y-5 p-4">
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading event detail…
           </div>
         )}
@@ -102,20 +102,20 @@ export function EventDetailPanel({
         {!loading && ev && (
           <>
             <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-xs">
-              <dt className="text-zinc-500">Channel</dt>
+              <dt className="text-zinc-400">Channel</dt>
               <dd className="col-span-2 font-mono text-zinc-200">{ev.channel}</dd>
-              <dt className="text-zinc-500">World</dt>
+              <dt className="text-zinc-400">World</dt>
               <dd className="col-span-2 text-zinc-300">{ev.world_id || '—'}</dd>
-              <dt className="text-zinc-500">Actor</dt>
+              <dt className="text-zinc-400">Actor</dt>
               <dd className="col-span-2 text-zinc-300">
                 {ev.actor_id ? `${ev.actor_kind || '?'}:${ev.actor_id}` : '—'}
               </dd>
-              <dt className="text-zinc-500">Time</dt>
+              <dt className="text-zinc-400">Time</dt>
               <dd className="col-span-2 text-zinc-300">{fmt(ev.created_at)}</dd>
             </dl>
 
             <section>
-              <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+              <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 Full payload
               </h4>
               <pre className="max-h-72 overflow-auto rounded border border-zinc-800 bg-black/50 px-3 py-2 text-[11px] text-zinc-300">
@@ -124,7 +124,7 @@ export function EventDetailPanel({
             </section>
 
             <section>
-              <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+              <h4 className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 <Link2 className="h-3 w-3" /> Linked entities
               </h4>
               {data?.linkedEntities && data.linkedEntities.length > 0 ? (
@@ -134,18 +134,18 @@ export function EventDetailPanel({
                       key={`${le.field}-${i}`}
                       className="flex items-center justify-between rounded bg-zinc-900 px-2 py-1 text-[11px]"
                     >
-                      <span className="text-zinc-500">{le.field}</span>
+                      <span className="text-zinc-400">{le.field}</span>
                       <span className="font-mono text-zinc-200">{le.value}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-[11px] text-zinc-600">No entity references in this payload.</p>
+                <p className="text-[11px] text-zinc-400">No entity references in this payload.</p>
               )}
             </section>
 
             <section>
-              <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+              <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                 Nearby (±30s, same world)
               </h4>
               {data?.nearby && data.nearby.length > 0 ? (
@@ -168,7 +168,7 @@ export function EventDetailPanel({
                   ))}
                 </ul>
               ) : (
-                <p className="text-[11px] text-zinc-600">No surrounding events.</p>
+                <p className="text-[11px] text-zinc-400">No surrounding events.</p>
               )}
             </section>
           </>

@@ -59,7 +59,7 @@ export function SignalScanner({ onScanned }: { onScanned: () => void }) {
       <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
         <Radar className="h-4 w-4 text-rose-400" /> Multi-signal scan
       </h2>
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-zinc-400">
         Feed a sample population for any signal class. The console computes a true
         z-score per entity against the cohort and files an alert on every outlier
         above the rule&apos;s σ threshold.
@@ -103,7 +103,7 @@ export function SignalScanner({ onScanned }: { onScanned: () => void }) {
               type="button"
               onClick={() => setRows((prev) => (prev.length > 2 ? prev.filter((_, idx) => idx !== i) : prev))}
               disabled={rows.length <= 2}
-              className="rounded p-1 text-zinc-500 hover:text-rose-400 disabled:opacity-30"
+              className="rounded p-1 text-zinc-400 hover:text-rose-400 disabled:opacity-30"
               aria-label="remove row"
             >
               <Trash2 className="h-3.5 w-3.5" />

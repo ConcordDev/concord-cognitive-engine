@@ -41,13 +41,13 @@ export function SolarCarbonPanel() {
         buildArtifact: () => ({ data: solar }),
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Sun className="h-3 w-3" />Solar inputs</div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Sun className="h-3 w-3" />Solar inputs</div>
             <div className="grid grid-cols-1 gap-2">
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Roof area (sq ft)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Roof area (sq ft)</span>
                 <input type="number" min={100} max={10000} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.roofAreaSqFt} onChange={(e) => setSolar({ ...solar, roofAreaSqFt: Math.max(100, Math.min(10000, Number(e.target.value) || 1000)) })} /></label>
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Peak sun hours (avg/day)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Peak sun hours (avg/day)</span>
                 <input type="number" min={1} max={10} step={0.1} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.peakSunHours} onChange={(e) => setSolar({ ...solar, peakSunHours: Math.max(1, Math.min(10, Number(e.target.value) || 5)) })} /></label>
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Monthly usage (kWh)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Monthly usage (kWh)</span>
                 <input type="number" min={100} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={solar.monthlyUsageKWh} onChange={(e) => setSolar({ ...solar, monthlyUsageKWh: Math.max(100, Number(e.target.value) || 900) })} /></label>
             </div>
           </div>
@@ -58,15 +58,15 @@ export function SolarCarbonPanel() {
         buildArtifact: () => ({ data: carbon }),
         render: (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
-            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Leaf className="h-3 w-3" />Carbon inputs (monthly)</div>
+            <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Leaf className="h-3 w-3" />Carbon inputs (monthly)</div>
             <div className="grid grid-cols-2 gap-2">
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Electricity (kWh)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Electricity (kWh)</span>
                 <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.electricityKWh} onChange={(e) => setCarbon({ ...carbon, electricityKWh: Math.max(0, Number(e.target.value) || 0) })} /></label>
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Nat. gas (therms)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Nat. gas (therms)</span>
                 <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.naturalGasTherms} onChange={(e) => setCarbon({ ...carbon, naturalGasTherms: Math.max(0, Number(e.target.value) || 0) })} /></label>
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Gasoline (gal)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Gasoline (gal)</span>
                 <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.gasolineGallons} onChange={(e) => setCarbon({ ...carbon, gasolineGallons: Math.max(0, Number(e.target.value) || 0) })} /></label>
-              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-500">Flights (mi)</span>
+              <label className="block"><span className="block text-[9px] uppercase tracking-wider text-zinc-400">Flights (mi)</span>
                 <input type="number" min={0} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white font-mono" value={carbon.flightMiles} onChange={(e) => setCarbon({ ...carbon, flightMiles: Math.max(0, Number(e.target.value) || 0) })} /></label>
             </div>
           </div>
@@ -75,36 +75,36 @@ export function SolarCarbonPanel() {
       renderResults={(solarResult, carbonResult) => (
         <>
           <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Sun className="h-3 w-3" />Solar estimate</div>
-            {!solarResult && <div className="text-[11px] text-zinc-500">Analyze to estimate.</div>}
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Sun className="h-3 w-3" />Solar estimate</div>
+            {!solarResult && <div className="text-[11px] text-zinc-400">Analyze to estimate.</div>}
             {solarResult && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-baseline gap-2">
                   <span className={`font-mono text-2xl ${coverageColour(solarResult.coveragePercent)}`}>{solarResult.coveragePercent}%</span>
-                  <span className="text-zinc-500">of usage covered</span>
+                  <span className="text-zinc-400">of usage covered</span>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">System</div><div className="font-mono text-yellow-200">{solarResult.systemSizeKW} kW</div></div>
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Panels</div><div className="font-mono text-yellow-200">{solarResult.maxPanels}</div></div>
-                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Production</div><div className="font-mono text-yellow-200">{solarResult.monthlyProductionKWh} kWh/mo</div></div>
-                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-500">Savings</div><div className="font-mono text-emerald-200">${solarResult.annualSavings}/yr</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">System</div><div className="font-mono text-yellow-200">{solarResult.systemSizeKW} kW</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Panels</div><div className="font-mono text-yellow-200">{solarResult.maxPanels}</div></div>
+                  <div className="rounded border border-yellow-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Production</div><div className="font-mono text-yellow-200">{solarResult.monthlyProductionKWh} kWh/mo</div></div>
+                  <div className="rounded border border-emerald-500/15 bg-zinc-950/40 px-2 py-1"><div className="text-[9px] text-zinc-400">Savings</div><div className="font-mono text-emerald-200">${solarResult.annualSavings}/yr</div></div>
                 </div>
                 <div className="rounded border border-yellow-500/20 bg-zinc-950/40 px-2 py-1">
-                  <div className="text-[9px] text-zinc-500">Cost</div>
-                  <div className="font-mono text-yellow-200">${solarResult.estimatedCost?.toLocaleString()} <span className="text-[9px] text-zinc-500">(after 30% credit: ${solarResult.afterTaxCredit?.toLocaleString()})</span></div>
+                  <div className="text-[9px] text-zinc-400">Cost</div>
+                  <div className="font-mono text-yellow-200">${solarResult.estimatedCost?.toLocaleString()} <span className="text-[9px] text-zinc-400">(after 30% credit: ${solarResult.afterTaxCredit?.toLocaleString()})</span></div>
                   <div className="text-[10px] text-zinc-400">Payback: ~{solarResult.paybackYears} years</div>
                 </div>
               </div>
             )}
           </div>
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Leaf className="h-3 w-3" />Carbon footprint</div>
-            {!carbonResult && <div className="text-[11px] text-zinc-500">Analyze to compute.</div>}
+            <div className="mb-2 flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Leaf className="h-3 w-3" />Carbon footprint</div>
+            {!carbonResult && <div className="text-[11px] text-zinc-400">Analyze to compute.</div>}
             {carbonResult && (
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono text-2xl text-emerald-200">{carbonResult.annualEstimate}</span>
-                  <span className="text-zinc-500">tons CO₂/yr</span>
+                  <span className="text-zinc-400">tons CO₂/yr</span>
                 </div>
                 <div className="text-[10px] text-zinc-400">{carbonResult.vsUSAverage} · top source: <span className="text-rose-300">{carbonResult.topSource}</span></div>
                 {carbonResult.breakdown && (

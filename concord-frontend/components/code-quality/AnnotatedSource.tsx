@@ -63,9 +63,9 @@ export function AnnotatedSource({
   }
 
   if (!scan) {
-    return <p className="text-sm text-gray-500">Analyze a file to see per-line annotations.</p>;
+    return <p className="text-sm text-gray-400">Analyze a file to see per-line annotations.</p>;
   }
-  if (busy) return <p className="text-sm text-gray-500">Loading annotations…</p>;
+  if (busy) return <p className="text-sm text-gray-400">Loading annotations…</p>;
   if (error) return <p className="text-sm text-red-400">{error}</p>;
 
   return (
@@ -74,7 +74,7 @@ export function AnnotatedSource({
         <div key={f.file} className="rounded border border-gray-800">
           <div className="flex items-center justify-between border-b border-gray-800 px-3 py-1.5 bg-black/40">
             <span className="font-mono text-sm text-gray-200">{f.file}</span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               {f.annotationCount} annotated line{f.annotationCount === 1 ? '' : 's'} · {f.totalLines} lines
             </span>
           </div>
@@ -85,7 +85,7 @@ export function AnnotatedSource({
               {f.annotations.map((a) => (
                 <div key={a.line} className="px-3 py-2">
                   <div className="flex items-start gap-3">
-                    <span className="font-mono text-xs text-gray-600 mt-0.5 w-10 shrink-0 text-right">
+                    <span className="font-mono text-xs text-gray-400 mt-0.5 w-10 shrink-0 text-right">
                       L{a.line}
                     </span>
                     <pre className="font-mono text-xs text-gray-400 overflow-x-auto flex-1 whitespace-pre-wrap break-all">
@@ -103,7 +103,7 @@ export function AnnotatedSource({
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             <span className="font-mono uppercase tracking-wider">{iss.severity}</span>
                             <span className="font-mono text-gray-300">{iss.rule}</span>
-                            <span className="font-mono text-gray-500">col {iss.column}</span>
+                            <span className="font-mono text-gray-400">col {iss.column}</span>
                             <button
                               onClick={() => track(f.file, a.line, iss)}
                               disabled={tracking === key}

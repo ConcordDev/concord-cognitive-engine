@@ -80,7 +80,7 @@ export function PharmacyPanel() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-wide text-zinc-500">Active prescriptions</p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-400">Active prescriptions</p>
         <p className="font-mono text-lg text-green-300">{activeCount}</p>
       </div>
 
@@ -152,11 +152,11 @@ export function PharmacyPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading prescriptions…
         </div>
       ) : rxs.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-sm text-zinc-400">
           <Pill className="mx-auto mb-2 h-8 w-8 opacity-30" />
           No prescriptions on file.
         </div>
@@ -176,7 +176,7 @@ export function PharmacyPanel() {
                     {rx.status}
                   </span>
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-zinc-400">
                   {rx.patientName || 'unassigned'}
                   {rx.dosage && ` · ${rx.dosage}`}
                   {rx.frequency && ` · ${rx.frequency}`}

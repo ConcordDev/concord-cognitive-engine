@@ -19,6 +19,7 @@ export default function registerLawActions(registerLensAction) {
    * artifact.data.cases = [{ id, type, filedDate, closedDate, outcome, parties, judge, ... }]
    */
   registerLensAction("law", "caseAnalysis", (ctx, artifact, _params) => {
+  try {
     const cases = artifact.data?.cases || [];
     if (cases.length === 0) {
       return { ok: true, result: { message: "No case data provided. Supply artifact.data.cases as an array of case objects with fields: id, type, filedDate, closedDate, outcome." } };
@@ -130,7 +131,8 @@ export default function registerLawActions(registerLensAction) {
         judgeStats,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * statuteLookup
@@ -138,6 +140,7 @@ export default function registerLawActions(registerLensAction) {
    * artifact.data.statutes = [{ code, title, provisions: [{ section, text }], jurisdiction }]
    */
   registerLensAction("law", "statuteLookup", (ctx, artifact, _params) => {
+  try {
     const statutes = artifact.data?.statutes || [];
     const query = (artifact.data?.query || _params.query || "").toLowerCase().trim();
 
@@ -219,7 +222,8 @@ export default function registerLawActions(registerLensAction) {
         statuteSummary: Object.values(byCode).sort((a, b) => b.topScore - a.topScore),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * deadlineTracker
@@ -227,6 +231,7 @@ export default function registerLawActions(registerLensAction) {
    * artifact.data.deadlines = [{ id, description, dueDate, category, status, filingType }]
    */
   registerLensAction("law", "deadlineTracker", (ctx, artifact, _params) => {
+  try {
     const deadlines = artifact.data?.deadlines || [];
     if (deadlines.length === 0) {
       return { ok: true, result: { message: "No deadlines provided. Supply artifact.data.deadlines as an array with id, description, dueDate, category, and status fields." } };
@@ -314,7 +319,8 @@ export default function registerLawActions(registerLensAction) {
         allDeadlines: processed,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * billingCalculator
@@ -322,6 +328,7 @@ export default function registerLawActions(registerLensAction) {
    * artifact.data.timeEntries = [{ attorney, hours, rate, date, description, category, billable }]
    */
   registerLensAction("law", "billingCalculator", (ctx, artifact, _params) => {
+  try {
     const entries = artifact.data?.timeEntries || [];
     if (entries.length === 0) {
       return { ok: true, result: { message: "No time entries provided. Supply artifact.data.timeEntries as an array with attorney, hours, rate, date, description, category, and billable fields." } };
@@ -439,7 +446,8 @@ export default function registerLawActions(registerLensAction) {
         monthlyBreakdown,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * uspto-patent-search — Real US patent search via USPTO PatentsView.
@@ -840,6 +848,7 @@ export default function registerLawActions(registerLensAction) {
   });
 
   registerLensAction("law", "contract-diff", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
     if (!c) return { ok: false, error: "contract not found" };
@@ -864,7 +873,8 @@ export default function registerLawActions(registerLensAction) {
         ops, added, removed, unchanged: ops.length - added - removed,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog item 2: AI clause extraction from an uploaded contract ───
   // Parses raw pasted/uploaded contract text into structured clauses,
@@ -872,6 +882,7 @@ export default function registerLawActions(registerLensAction) {
   // deterministic heading + sentence segmentation so it is reproducible.
 
   registerLensAction("law", "clause-extract", (_ctx, _a, params = {}) => {
+  try {
     const text = String(params.text || "").trim();
     if (!text) return { ok: false, error: "contract text required" };
     if (text.length > 200000) return { ok: false, error: "text exceeds 200k chars" };
@@ -931,7 +942,8 @@ export default function registerLawActions(registerLensAction) {
         stats: { lines: lines.length, sentences: sentences.length, chars: text.length },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // clause-extract-apply — push extracted clauses straight onto a contract.
   registerLensAction("law", "clause-extract-apply", (ctx, _a, params = {}) => {
@@ -1080,6 +1092,7 @@ export default function registerLawActions(registerLensAction) {
   });
 
   registerLensAction("law", "obligation-tracker", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const cs = lwList(s, lwActor(ctx));
     const now = Date.now();
@@ -1130,7 +1143,8 @@ export default function registerLawActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog item 5: Cryptographic e-signature with audit certificate ───
   // Replaces the named-party ledger with a signature carrying a SHA-256
@@ -1145,6 +1159,7 @@ export default function registerLawActions(registerLensAction) {
   }
 
   registerLensAction("law", "contract-esign", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
     if (!c) return { ok: false, error: "contract not found" };
@@ -1173,9 +1188,11 @@ export default function registerLawActions(registerLensAction) {
     c.updatedAt = lwNow();
     saveLaw();
     return { ok: true, result: { contractId: c.id, certificate, status: c.status, signatureCount: c.signatures.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("law", "contract-verify", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const c = lwList(s, lwActor(ctx)).find((x) => x.id === params.id);
     if (!c) return { ok: false, error: "contract not found" };
@@ -1208,7 +1225,8 @@ export default function registerLawActions(registerLensAction) {
         checks,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog item 6: Contract templates / playbooks ───
   // Pre-approved language sets that, applied to a contract, drop in a
@@ -1282,6 +1300,7 @@ export default function registerLawActions(registerLensAction) {
   });
 
   registerLensAction("law", "playbook-apply", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const p = CONTRACT_PLAYBOOKS[String(params.playbookId || "").toLowerCase()];
     if (!p) return { ok: false, error: "playbook not found" };
@@ -1325,13 +1344,15 @@ export default function registerLawActions(registerLensAction) {
     contract.updatedAt = lwNow();
     saveLaw();
     return { ok: true, result: { contract, clausesAdded: added } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Backlog item 7: Full-text contract repository search ───
   // Searches across every contract a user owns — title, counterparty,
   // and the full text of every clause — with a snippet per match.
 
   registerLensAction("law", "repository-search", (ctx, _a, params = {}) => {
+  try {
     const s = getLawState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const query = lwClean(params.query, 200).toLowerCase();
     if (!query || query.length < 2) return { ok: false, error: "query of at least 2 chars required" };
@@ -1377,7 +1398,8 @@ export default function registerLawActions(registerLensAction) {
         results,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // feed — ingest recent federal/state court opinions (CourtListener) as DTUs.
   registerLensAction("law", "feed", async (ctx, _a, params = {}) => {

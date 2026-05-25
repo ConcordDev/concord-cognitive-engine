@@ -64,7 +64,7 @@ function TransactionHistory({ userId, limit = 20 }: { userId?: string; limit?: n
     return (
       <div className="text-center py-6">
         <Coins className="w-6 h-6 mx-auto mb-2 text-gray-600" />
-        <p className="text-xs text-gray-500">No transactions yet</p>
+        <p className="text-xs text-gray-400">No transactions yet</p>
       </div>
     );
   }
@@ -88,7 +88,7 @@ function TransactionHistory({ userId, limit = 20 }: { userId?: string; limit?: n
             {(tx.amount || 0) >= 0 ? '+' : ''}
             {tx.amount}
           </span>
-          <span className="text-[10px] text-gray-600 flex-shrink-0">
+          <span className="text-[10px] text-gray-400 flex-shrink-0">
             {(tx.timestamp || tx.created_at) &&
               new Date(tx.timestamp || tx.created_at || '').toLocaleDateString(undefined, {
                 month: 'short',

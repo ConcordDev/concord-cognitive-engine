@@ -142,7 +142,7 @@ const STATUS_COLORS: Record<string, string> = {
   on_scene: 'text-green-400 bg-green-400/10',
   transporting: 'text-cyan-400 bg-cyan-400/10',
   resolved: 'text-gray-400 bg-gray-400/10',
-  cancelled: 'text-gray-500 bg-gray-500/10',
+  cancelled: 'text-gray-400 bg-gray-500/10',
   available: 'text-green-400 bg-green-400/10',
   out_of_service: 'text-red-400 bg-red-400/10',
   returning: 'text-blue-400 bg-blue-400/10',
@@ -292,7 +292,7 @@ export default function EmergencyServicesLensPage() {
         transition={{ delay: 0.35 }}
         className="flex items-center gap-3 flex-wrap"
       >
-        <span className="text-xs text-gray-500 uppercase tracking-wide">Severity:</span>
+        <span className="text-xs text-gray-400 uppercase tracking-wide">Severity:</span>
         {[
           {
             label: 'Critical',
@@ -318,7 +318,7 @@ export default function EmergencyServicesLensPage() {
             {sev.label}: {sev.count}
           </span>
         ))}
-        <span className="ml-auto text-xs text-gray-500 flex items-center gap-1">
+        <span className="ml-auto text-xs text-gray-400 flex items-center gap-1">
           <Activity className="w-3 h-3" /> {stats.totalUnits} total units
         </span>
       </motion.div>
@@ -330,7 +330,7 @@ export default function EmergencyServicesLensPage() {
             onClick={() => setActiveMode(key)}
             className={cn(
               'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
-              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+              activeMode === key ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-zinc-300'
             )}
           >
             <Icon className="w-4 h-4" /> {label}
@@ -340,7 +340,7 @@ export default function EmergencyServicesLensPage() {
 
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             ref={searchInputRef}
               value={searchQuery}
@@ -382,7 +382,7 @@ export default function EmergencyServicesLensPage() {
             <div key={s.label} className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
               <p className={`text-2xl font-bold text-${s.color}-400`}>{s.value}</p>
               <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="text-xs text-gray-600">of {s.total} total</p>
+              <p className="text-xs text-gray-400">of {s.total} total</p>
             </div>
           ))}
         </div>
@@ -450,19 +450,19 @@ export default function EmergencyServicesLensPage() {
                       e.stopPropagation();
                       handleAction('analyze', item.id);
                     }}
-                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-neon-cyan"
+                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-neon-cyan"
                   aria-label="Activate">
                     <Zap className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => remove(item.id)}
-                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-500 hover:text-red-400"
+                    className="p-1.5 hover:bg-zinc-800 rounded text-gray-400 hover:text-red-400"
                   aria-label="Delete">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 {Boolean(d.location) && (
-                  <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                     <MapPin className="w-3 h-3" /> {String(d.location)}
                   </p>
                 )}
@@ -471,7 +471,7 @@ export default function EmergencyServicesLensPage() {
           })}
         </AnimatePresence>
         {items.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12 text-gray-400">
             <Siren className="w-10 h-10 mx-auto mb-3 opacity-30" />
             <p>No {currentType.toLowerCase()} records found</p>
           </div>

@@ -83,7 +83,7 @@ export function EnergyTouPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -95,7 +95,7 @@ export function EnergyTouPanel({ onChange }: { onChange: () => void }) {
           <Clock className="w-3.5 h-3.5 text-lime-400" /> Time-of-use plan
         </h3>
         {plan && (
-          <p className="text-[11px] text-zinc-500 mb-2">
+          <p className="text-[11px] text-zinc-400 mb-2">
             Active: peak ${plan.peakRate}/kWh ({plan.peakStartHour}:00&ndash;{plan.peakEndHour}:00),
             off-peak ${plan.offPeakRate}/kWh{plan.shoulderRate != null ? `, shoulder $${plan.shoulderRate}/kWh` : ''}
             {plan.utility ? ` · ${plan.utility}` : ''}
@@ -119,7 +119,7 @@ export function EnergyTouPanel({ onChange }: { onChange: () => void }) {
         <section>
           <h3 className="text-xs font-semibold text-zinc-300 mb-2">Peak vs off-peak (last 30 days)</h3>
           {breakdown.totalKwh === 0 ? (
-            <p className="text-[11px] text-zinc-500 italic">
+            <p className="text-[11px] text-zinc-400 italic">
               Log readings with an <span className="text-zinc-300">hour</span> field to see the TOU breakdown.
             </p>
           ) : (
@@ -144,7 +144,7 @@ export function EnergyTouPanel({ onChange }: { onChange: () => void }) {
                   accent={breakdown.savingsVsFlat >= 0 ? 'text-emerald-400' : 'text-rose-400'} />
               </div>
               {breakdown.untimedKwh > 0 && (
-                <p className="text-[10px] text-zinc-500 mt-1.5">
+                <p className="text-[10px] text-zinc-400 mt-1.5">
                   {breakdown.untimedKwh} kWh untimed (no hour) — billed at off-peak. Tag readings with an hour for accuracy.
                 </p>
               )}
@@ -161,7 +161,7 @@ function pctOf(v: number, total: number) { return total > 0 ? (v / total) * 100 
 function Field({ label, value, onChange, numeric = true }: { label: string; value: string; onChange: (v: string) => void; numeric?: boolean }) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-[9px] text-zinc-500 uppercase tracking-wide">{label}</span>
+      <span className="text-[9px] text-zinc-400 uppercase tracking-wide">{label}</span>
       <input value={value} inputMode={numeric ? 'decimal' : 'text'} onChange={(e) => onChange(e.target.value)}
         className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
     </label>
@@ -183,7 +183,7 @@ function Stat({ label, value, accent = 'text-zinc-100' }: { label: string; value
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
       <p className={`text-base font-bold ${accent}`}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

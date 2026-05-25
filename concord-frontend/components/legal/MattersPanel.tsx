@@ -89,7 +89,7 @@ export function MattersPanel() {
           <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
             <Briefcase className="w-4 h-4 text-amber-400" />
             <span className="text-sm font-semibold text-gray-200">Matters</span>
-            <span className="text-[10px] text-gray-500">{list.length}</span>
+            <span className="text-[10px] text-gray-400">{list.length}</span>
             <select value={filter} onChange={e => setFilter(e.target.value)} className="ml-2 text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
               <option value="open">Open</option>
               <option value="pending">Pending</option>
@@ -126,9 +126,9 @@ export function MattersPanel() {
 
           <div className="max-h-[28rem] overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+              <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
             ) : list.length === 0 ? (
-              <div className="px-3 py-10 text-center text-xs text-gray-500"><Briefcase className="w-6 h-6 mx-auto mb-2 opacity-30" />No matters yet.</div>
+              <div className="px-3 py-10 text-center text-xs text-gray-400"><Briefcase className="w-6 h-6 mx-auto mb-2 opacity-30" />No matters yet.</div>
             ) : (
               <ul className="divide-y divide-white/5">
                 {list.map(m => (
@@ -139,10 +139,10 @@ export function MattersPanel() {
                     )}>{m.status}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-white truncate flex items-center gap-2">
-                        <span className="text-[10px] text-gray-500 font-mono">{m.number}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">{m.number}</span>
                         <span>{m.name}</span>
                       </div>
-                      <div className="text-[10px] text-gray-500 truncate">
+                      <div className="text-[10px] text-gray-400 truncate">
                         {m.clientName && <span>{m.clientName} · </span>}
                         {m.matterType.replace(/_/g, ' ')} · {m.billingType.replace(/_/g, ' ')}
                         {m.hourlyRate > 0 && <span> · ${m.hourlyRate}/hr</span>}
@@ -153,7 +153,7 @@ export function MattersPanel() {
                         <Archive className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <ChevronRight className="w-3 h-3 text-gray-500" />
+                    <ChevronRight className="w-3 h-3 text-gray-400" />
                   </li>
                 ))}
               </ul>
@@ -178,21 +178,21 @@ export function MattersPanel() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-gray-500">Type:</span> <span className="text-white">{detail.matter.matterType.replace(/_/g, ' ')}</span></div>
-              <div><span className="text-gray-500">Status:</span> <span className="text-white">{detail.matter.status}</span></div>
-              <div><span className="text-gray-500">Court:</span> <span className="text-white">{detail.matter.court || '—'}</span></div>
-              <div><span className="text-gray-500">Case #:</span> <span className="text-white font-mono">{detail.matter.caseNumber || '—'}</span></div>
-              <div><span className="text-gray-500">Jurisdiction:</span> <span className="text-white">{detail.matter.jurisdiction || '—'}</span></div>
-              <div><span className="text-gray-500">Opened:</span> <span className="text-white">{detail.matter.openedAt}</span></div>
+              <div><span className="text-gray-400">Type:</span> <span className="text-white">{detail.matter.matterType.replace(/_/g, ' ')}</span></div>
+              <div><span className="text-gray-400">Status:</span> <span className="text-white">{detail.matter.status}</span></div>
+              <div><span className="text-gray-400">Court:</span> <span className="text-white">{detail.matter.court || '—'}</span></div>
+              <div><span className="text-gray-400">Case #:</span> <span className="text-white font-mono">{detail.matter.caseNumber || '—'}</span></div>
+              <div><span className="text-gray-400">Jurisdiction:</span> <span className="text-white">{detail.matter.jurisdiction || '—'}</span></div>
+              <div><span className="text-gray-400">Opened:</span> <span className="text-white">{detail.matter.openedAt}</span></div>
             </div>
 
             {detail.parties.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Parties</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Parties</div>
                 <div className="flex flex-wrap gap-1.5">
                   {detail.parties.map(p => (
                     <span key={p.id} className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-white">
-                      {p.name} <span className="text-gray-500">· {p.kind.replace(/_/g, ' ')}</span>
+                      {p.name} <span className="text-gray-400">· {p.kind.replace(/_/g, ' ')}</span>
                     </span>
                   ))}
                 </div>
@@ -201,14 +201,14 @@ export function MattersPanel() {
 
             {detail.time.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Recent time</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Recent time</div>
                 <ul className="text-xs space-y-0.5 max-h-32 overflow-y-auto">
                   {detail.time.slice(0, 8).map(t => (
                     <li key={t.id} className="flex items-center gap-2">
-                      <span className="text-[10px] text-gray-500 font-mono w-20">{t.date}</span>
+                      <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                       <span className="flex-1 truncate text-white">{t.description}</span>
                       <span className="text-gray-400 font-mono">{t.hours.toFixed(1)}h</span>
-                      <span className={cn('font-mono w-16 text-right', t.status === 'billed' ? 'text-gray-500' : 'text-amber-300')}>${t.amount.toFixed(0)}</span>
+                      <span className={cn('font-mono w-16 text-right', t.status === 'billed' ? 'text-gray-400' : 'text-amber-300')}>${t.amount.toFixed(0)}</span>
                     </li>
                   ))}
                 </ul>
@@ -217,11 +217,11 @@ export function MattersPanel() {
 
             {detail.invoices.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Bills</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Bills</div>
                 <ul className="text-xs space-y-0.5">
                   {detail.invoices.map(i => (
                     <li key={i.id} className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-gray-500 w-20">{i.number}</span>
+                      <span className="text-[10px] font-mono text-gray-400 w-20">{i.number}</span>
                       <span className="flex-1">{i.status}</span>
                       <span className="font-mono text-white">${i.total.toFixed(2)}</span>
                     </li>
@@ -232,11 +232,11 @@ export function MattersPanel() {
 
             {detail.events.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold mb-1">Upcoming events</div>
+                <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold mb-1">Upcoming events</div>
                 <ul className="text-xs space-y-0.5">
                   {detail.events.slice(0, 5).map(e => (
                     <li key={e.id} className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono text-gray-500 w-20">{e.date}</span>
+                      <span className="text-[10px] font-mono text-gray-400 w-20">{e.date}</span>
                       <span className="text-[9px] uppercase px-1 rounded bg-amber-500/15 text-amber-300">{e.kind}</span>
                       <span className="flex-1 truncate text-white">{e.title}</span>
                     </li>
@@ -255,9 +255,9 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub?:
   const c = tone === 'amber' ? 'text-amber-300' : tone === 'emerald' ? 'text-emerald-300' : tone === 'cyan' ? 'text-cyan-300' : 'text-gray-300';
   return (
     <div className="rounded border border-white/10 bg-black/30 p-2">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-lg font-mono tabular-nums', c)}>{value}</div>
-      {sub && <div className="text-[9px] text-gray-500">{sub}</div>}
+      {sub && <div className="text-[9px] text-gray-400">{sub}</div>}
     </div>
   );
 }

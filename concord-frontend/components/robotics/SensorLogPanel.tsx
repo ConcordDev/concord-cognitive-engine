@@ -75,7 +75,7 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
   };
 
   if (!robot) {
-    return <p className="text-gray-500 text-sm text-center py-6">Select a robot to log and play back sensor data.</p>;
+    return <p className="text-gray-400 text-sm text-center py-6">Select a robot to log and play back sensor data.</p>;
   }
 
   const chartData = (playback?.samples || []).map(s => ({ tick: s.tick, value: s.value }));
@@ -127,10 +127,10 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
       {playback && playback.stats.count > 0 ? (
         <>
           <div className="panel p-3 grid grid-cols-4 gap-3 text-center text-xs">
-            <div><p className="text-lg font-bold font-mono">{playback.stats.count}</p><p className="text-gray-500">Samples</p></div>
-            <div><p className="text-lg font-bold font-mono text-green-400">{playback.stats.min}</p><p className="text-gray-500">Min</p></div>
-            <div><p className="text-lg font-bold font-mono text-red-400">{playback.stats.max}</p><p className="text-gray-500">Max</p></div>
-            <div><p className="text-lg font-bold font-mono text-neon-cyan">{playback.stats.mean}</p><p className="text-gray-500">Mean</p></div>
+            <div><p className="text-lg font-bold font-mono">{playback.stats.count}</p><p className="text-gray-400">Samples</p></div>
+            <div><p className="text-lg font-bold font-mono text-green-400">{playback.stats.min}</p><p className="text-gray-400">Min</p></div>
+            <div><p className="text-lg font-bold font-mono text-red-400">{playback.stats.max}</p><p className="text-gray-400">Max</p></div>
+            <div><p className="text-lg font-bold font-mono text-neon-cyan">{playback.stats.mean}</p><p className="text-gray-400">Mean</p></div>
           </div>
           <div className="panel p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Playback trace</p>
@@ -139,7 +139,7 @@ export function SensorLogPanel({ robot }: { robot: RobotRow | null }) {
           </div>
         </>
       ) : (
-        <p className="text-gray-500 text-sm text-center py-4">No samples logged yet. Log a sample or a burst.</p>
+        <p className="text-gray-400 text-sm text-center py-4">No samples logged yet. Log a sample or a burst.</p>
       )}
     </div>
   );

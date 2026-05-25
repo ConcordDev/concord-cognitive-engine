@@ -30,7 +30,7 @@ export function FoodYelpSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-red-600/15 to-transparent">
         <Utensils className="w-5 h-5 text-red-400" />
         <h2 className="text-sm font-bold text-zinc-100">Restaurant Finder</h2>
-        <span className="text-[11px] text-zinc-500">Yelp shape — discover, review, reserve</span>
+        <span className="text-[11px] text-zinc-400">Yelp shape — discover, review, reserve</span>
       </header>
 
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">

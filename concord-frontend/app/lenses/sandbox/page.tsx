@@ -314,7 +314,7 @@ function CombatSandboxInner() {
       <div className="pointer-events-none absolute bottom-3 right-3 z-10 max-h-48 w-72 overflow-hidden rounded bg-black/55 p-2 text-[10px] backdrop-blur-sm">
         <div className="mb-1 font-semibold text-amber-200">Hit Log</div>
         {hitLog.length === 0 ? (
-          <div className="text-slate-500">Click a dummy to attack…</div>
+          <div className="text-slate-400">Click a dummy to attack…</div>
         ) : (
           <ul className="space-y-0.5">
             {hitLog.slice().reverse().map((h) => (

@@ -243,20 +243,20 @@ export function ReminderList({
                     <div className="flex-1 min-w-0">
                       <p className={cn(
                         'text-sm',
-                        reminder.completed ? 'text-gray-500 line-through' : 'text-white'
+                        reminder.completed ? 'text-gray-400 line-through' : 'text-white'
                       )}>
                         {reminder.title}
                       </p>
                       <div className="flex items-center gap-3 mt-1">
                         <span className={cn(
                           'flex items-center gap-1 text-xs',
-                          overdue ? 'text-red-400' : 'text-gray-500'
+                          overdue ? 'text-red-400' : 'text-gray-400'
                         )}>
                           <Clock className="w-3 h-3" />
                           {formatDueAt(reminder.dueAt)}
                         </span>
                         {reminder.repeat && (
-                          <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-1 text-xs text-gray-400">
                             <Repeat className="w-3 h-3" />
                             {reminder.repeat}
                           </span>

@@ -39,7 +39,7 @@ export function FmCommentTree({
   onSave: (postId: string) => void;
 }) {
   if (nodes.length === 0) {
-    return <p className="text-[11px] text-zinc-500 italic py-4 text-center">No replies yet.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-4 text-center">No replies yet.</p>;
   }
   return (
     <ul className="space-y-2">
@@ -83,25 +83,25 @@ function CommentNode({
       <div className="flex gap-2.5">
         <div className="flex flex-col items-center shrink-0">
           <button type="button" onClick={() => onVote(node.id, 1)}
-            className="text-zinc-500 hover:text-orange-400" aria-label="Upvote">
+            className="text-zinc-400 hover:text-orange-400" aria-label="Upvote">
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
           <span className="text-[11px] font-bold text-zinc-200">{node.score}</span>
           <button type="button" onClick={() => onVote(node.id, -1)}
-            className="text-zinc-500 hover:text-sky-400" aria-label="Downvote">
+            className="text-zinc-400 hover:text-sky-400" aria-label="Downvote">
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setCollapsed((c) => !c)}
-              className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-orange-300"
+              className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-orange-300"
               aria-label={collapsed ? 'Expand thread' : 'Collapse thread'}>
               {collapsed ? <Plus className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
             </button>
             <span className="text-[10px] font-medium text-orange-300">{node.author}</span>
             {kids.length > 0 && (
-              <span className="text-[10px] text-zinc-600">
+              <span className="text-[10px] text-zinc-400">
                 {countDescendants(node)} repl{countDescendants(node) === 1 ? 'y' : 'ies'}
               </span>
             )}
@@ -127,16 +127,16 @@ function CommentNode({
               <div className="flex items-center gap-3 mt-1.5">
                 {!locked && (
                   <button type="button" onClick={() => setReplying((r) => !r)}
-                    className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-orange-300">
+                    className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-orange-300">
                     <MessageSquare className="w-3 h-3" /> Reply
                   </button>
                 )}
                 <button type="button" onClick={() => onAward(node.id)}
-                  className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-amber-300">
+                  className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-300">
                   <Award className="w-3 h-3" /> Award
                 </button>
                 <button type="button" onClick={() => onSave(node.id)}
-                  className={`flex items-center gap-1 text-[10px] ${saved ? 'text-orange-400' : 'text-zinc-500 hover:text-orange-300'}`}>
+                  className={`flex items-center gap-1 text-[10px] ${saved ? 'text-orange-400' : 'text-zinc-400 hover:text-orange-300'}`}>
                   <Bookmark className="w-3 h-3" /> {saved ? 'Saved' : 'Save'}
                 </button>
               </div>

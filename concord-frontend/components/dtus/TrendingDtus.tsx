@@ -81,15 +81,15 @@ export function TrendingDtus() {
       {(trending.isError || facets.isError) && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Discovery macros unreachable.</div>}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Trending</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Trending</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{list.length}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Citations</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Citations</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{totalCitations.toLocaleString()}</div>
         </div>
         <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-          <div className="text-[10px] uppercase tracking-wider text-zinc-500">Creators</div>
+          <div className="text-[10px] uppercase tracking-wider text-zinc-400">Creators</div>
           <div className="mt-0.5 font-mono text-lg text-emerald-300">{uniqueCreators}</div>
         </div>
       </div>
@@ -109,7 +109,7 @@ export function TrendingDtus() {
               <span className="line-clamp-1 text-zinc-100">{x.title || x.id}</span>
               <span className="shrink-0 font-mono text-[10px] text-emerald-300">{x.citation_count ?? 0} cites</span>
             </div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-zinc-500">
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[10px] text-zinc-400">
               {x.kind && <span className="rounded bg-zinc-800 px-1 font-mono">{x.kind}</span>}
               {x.creator_id && <span className="font-mono">by {x.creator_id.slice(0, 8)}</span>}
               {x.created_at && <span>{new Date(x.created_at * 1000).toLocaleDateString()}</span>}
@@ -118,10 +118,10 @@ export function TrendingDtus() {
           </div>
         ))}
         {list.length === 0 && !trending.isPending && !trending.isError && (
-          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">No trending DTUs in this window.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">No trending DTUs in this window.</div>
         )}
       </div>
-      {trending.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling discovery…</div>}
+      {trending.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling discovery…</div>}
     </div>
   );
 }

@@ -283,6 +283,7 @@ export default function registerToolsActions(registerLensAction) {
 
   // Create a signing envelope for a document with one or more parties.
   registerLensAction("tools", "esign-create", (ctx, _artifact, params = {}) => {
+  try {
     const s = getToolsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
@@ -325,7 +326,8 @@ export default function registerToolsActions(registerLensAction) {
     clip(list, 100);
     saveToolsState();
     return { ok: true, result: { envelope } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // A party applies their signature. Produces a tamper-evident HMAC over
   // the document hash + signer identity + timestamp.
@@ -372,6 +374,7 @@ export default function registerToolsActions(registerLensAction) {
 
   // Verify every applied signature in an envelope against the platform key.
   registerLensAction("tools", "esign-verify", (ctx, _artifact, params = {}) => {
+  try {
     const s = getToolsState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = aid(ctx);
@@ -414,7 +417,8 @@ export default function registerToolsActions(registerLensAction) {
         verifiedAt: isoNow(),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // Verify a standalone signature token produced outside an envelope (or
   // copied from one) without needing the envelope on hand.

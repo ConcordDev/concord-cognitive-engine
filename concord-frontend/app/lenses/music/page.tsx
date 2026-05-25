@@ -758,7 +758,7 @@ export default function MusicLensPage() {
                       <div className="relative">
                         <s.icon className={`w-5 h-5 ${s.color} mb-2`} />
                         <p className="text-2xl font-bold">{s.value}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
                       </div>
                       {/* Waveform decoration */}
                       <div className="absolute bottom-0 right-0 flex items-end gap-[2px] h-8 px-2 pb-1 opacity-20">
@@ -846,7 +846,7 @@ export default function MusicLensPage() {
                     <h2 className="text-lg font-semibold flex items-center gap-2">
                       <Clock className="w-5 h-5 text-neon-cyan" /> New Releases
                     </h2>
-                    <span className="text-xs text-gray-500">Chronological — not algorithmic</span>
+                    <span className="text-xs text-gray-400">Chronological — not algorithmic</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                     {displayTracks.slice(0, 6).map((track) => (
@@ -909,14 +909,14 @@ export default function MusicLensPage() {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neon-purple/20 to-neon-cyan/20">
-                              <Music className="w-8 h-8 text-gray-500" />
+                              <Music className="w-8 h-8 text-gray-400" />
                             </div>
                           )}
                         </div>
                         <p className="text-sm mt-2 text-gray-300 group-hover:text-white transition-colors">
                           {artist.name}
                         </p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-gray-400">
                           {artist.stats.totalPlays.toLocaleString()} plays
                         </p>
                       </button>
@@ -940,7 +940,7 @@ export default function MusicLensPage() {
                           <ListMusic className="w-12 h-12 text-gray-600" />
                         </div>
                         <p className="text-sm font-medium truncate">{pl.name}</p>
-                        <p className="text-xs text-gray-500">{pl.tracks.length} tracks</p>
+                        <p className="text-xs text-gray-400">{pl.tracks.length} tracks</p>
                       </button>
                     ))}
                   </div>
@@ -984,7 +984,7 @@ export default function MusicLensPage() {
                       >
                         <item.icon className={cn('w-6 h-6 mb-2', item.color)} />
                         <h3 className="text-sm font-semibold mb-1">{item.label}</h3>
-                        <p className="text-xs text-gray-500">{item.desc}</p>
+                        <p className="text-xs text-gray-400">{item.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -1033,12 +1033,12 @@ export default function MusicLensPage() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h1 className="text-xl font-bold">Browse</h1>
-                  <span className="text-xs text-gray-500">Chronological, not algorithmic</span>
+                  <span className="text-xs text-gray-400">Chronological, not algorithmic</span>
                 </div>
 
                 {/* BPM + Tag filter bar */}
                 <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                  <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                  <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <label className="flex items-center gap-2 text-xs text-gray-400">
                     <input
                       type="checkbox"
@@ -1059,7 +1059,7 @@ export default function MusicLensPage() {
                         className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded"
                         placeholder="Min"
                       />
-                      <span className="text-xs text-gray-500">–</span>
+                      <span className="text-xs text-gray-400">–</span>
                       <input
                         type="number"
                         min={0}
@@ -1097,7 +1097,7 @@ export default function MusicLensPage() {
                         setBpmRange([0, 300]);
                         setFilterTag(null);
                       }}
-                      className="text-xs text-gray-500 hover:text-white"
+                      className="text-xs text-gray-400 hover:text-white"
                     >
                       Clear
                     </button>
@@ -1112,7 +1112,7 @@ export default function MusicLensPage() {
                       'px-3 py-1.5 rounded-full text-xs transition-colors border',
                       !browseGenre
                         ? 'bg-white/10 text-white border-white/20'
-                        : 'text-gray-500 border-white/5 hover:text-white'
+                        : 'text-gray-400 border-white/5 hover:text-white'
                     )}
                   >
                     All
@@ -1125,7 +1125,7 @@ export default function MusicLensPage() {
                         'px-3 py-1.5 rounded-full text-xs capitalize transition-colors border',
                         browseGenre === g
                           ? 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20'
-                          : 'text-gray-500 border-white/5 hover:text-white'
+                          : 'text-gray-400 border-white/5 hover:text-white'
                       )}
                     >
                       {g}
@@ -1159,7 +1159,7 @@ export default function MusicLensPage() {
             {view === 'search' && (
               <div className="space-y-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     ref={searchInputRef}
               value={searchQuery}
@@ -1171,7 +1171,7 @@ export default function MusicLensPage() {
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                     aria-label="Close">
                       <X className="w-4 h-4" />
                     </button>
@@ -1180,7 +1180,7 @@ export default function MusicLensPage() {
 
                 {searchQuery ? (
                   <div className="space-y-1">
-                    <p className="text-xs text-gray-500 mb-2">{searchResults.length} results</p>
+                    <p className="text-xs text-gray-400 mb-2">{searchResults.length} results</p>
                     {searchResults.map((track) => (
                       <TrackCard
                         key={track.id}
@@ -1191,7 +1191,7 @@ export default function MusicLensPage() {
                       />
                     ))}
                     {searchResults.length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-gray-400">
                         <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No results for &ldquo;{searchQuery}&rdquo;</p>
                       </div>
@@ -1316,11 +1316,11 @@ export default function MusicLensPage() {
                         className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-white/5 text-left transition-colors"
                       >
                         <div className="w-12 h-12 rounded bg-white/5 flex items-center justify-center flex-shrink-0">
-                          <ListMusic className="w-5 h-5 text-gray-500" />
+                          <ListMusic className="w-5 h-5 text-gray-400" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{pl.name}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-400">
                             {pl.tracks.length} tracks · {pl.creatorName}
                           </p>
                         </div>
@@ -1342,7 +1342,7 @@ export default function MusicLensPage() {
                         />
                       ))}
                     {likedTrackIds.size === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-gray-400">
                         <Heart className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No liked tracks yet</p>
                       </div>
@@ -1351,7 +1351,7 @@ export default function MusicLensPage() {
                 )}
 
                 {libraryTab === 'purchased' && (
-                  <div className="text-center py-12 text-gray-500">
+                  <div className="text-center py-12 text-gray-400">
                     <Headphones className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No purchased artifacts yet</p>
                     <p className="text-xs mt-1">
@@ -1430,7 +1430,7 @@ export default function MusicLensPage() {
                 {/* Filters (beats only) */}
                 {marketplaceTab === 'beats' && (
                   <div className="flex flex-wrap items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                    <Filter className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                    <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-400">BPM</span>
                       <input
@@ -1440,7 +1440,7 @@ export default function MusicLensPage() {
                         className="w-16 px-2 py-1 text-xs bg-white/5 border border-white/10 rounded"
                         placeholder="Min"
                       />
-                      <span className="text-xs text-gray-500">–</span>
+                      <span className="text-xs text-gray-400">–</span>
                       <input
                         type="number"
                         value={marketplaceBpmMax}
@@ -1523,7 +1523,7 @@ export default function MusicLensPage() {
 
                 {/* Loading */}
                 {marketplaceLoading && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-400">
                     <Disc3 className="w-8 h-8 mx-auto mb-2 animate-spin opacity-40" />
                     <p className="text-sm">Loading...</p>
                   </div>
@@ -1533,7 +1533,7 @@ export default function MusicLensPage() {
                 {!marketplaceLoading && marketplaceTab === 'beats' && (
                   <div className="space-y-2">
                     {marketplaceBeats.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-gray-400">
                         <Music className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">No beats listed yet</p>
                         <p className="text-xs mt-1">Upload your beats to the marketplace</p>
@@ -1599,9 +1599,9 @@ export default function MusicLensPage() {
                                 <span className="text-xs text-neon-cyan font-mono">
                                   {beat.bpm} BPM
                                 </span>
-                                <span className="text-xs text-gray-500">·</span>
+                                <span className="text-xs text-gray-400">·</span>
                                 <span className="text-xs text-gray-400">{beat.key}</span>
-                                <span className="text-xs text-gray-500">·</span>
+                                <span className="text-xs text-gray-400">·</span>
                                 <span className="text-xs text-gray-400 capitalize">
                                   {beat.genre}
                                 </span>
@@ -1611,7 +1611,7 @@ export default function MusicLensPage() {
                                   {beat.tags.slice(0, 4).map((tag) => (
                                     <span
                                       key={tag}
-                                      className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-500"
+                                      className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-400"
                                     >
                                       {tag}
                                     </span>
@@ -1676,7 +1676,7 @@ export default function MusicLensPage() {
                                 </button>
                               ))}
                             </div>
-                            <div className="text-xs text-gray-500 text-right">
+                            <div className="text-xs text-gray-400 text-right">
                               <p>{beat.totalPlays} plays</p>
                               <p>{beat.totalSales} sales</p>
                             </div>
@@ -1691,7 +1691,7 @@ export default function MusicLensPage() {
                 {!marketplaceLoading && marketplaceTab === 'samples' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {marketplaceSamples.length === 0 ? (
-                      <div className="col-span-full text-center py-12 text-gray-500">
+                      <div className="col-span-full text-center py-12 text-gray-400">
                         <Package className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">No sample packs yet</p>
                       </div>
@@ -1702,10 +1702,10 @@ export default function MusicLensPage() {
                           className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 transition-colors"
                         >
                           <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-neon-purple/10 to-neon-cyan/10 flex items-center justify-center mb-3">
-                            <Package className="w-10 h-10 text-gray-500" />
+                            <Package className="w-10 h-10 text-gray-400" />
                           </div>
                           <h3 className="text-sm font-medium truncate">{pack.title}</h3>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             {pack.sampleCount} samples · {pack.genre}
                           </p>
                           {pack.description && (
@@ -1718,7 +1718,7 @@ export default function MusicLensPage() {
                               {pack.tags.slice(0, 3).map((tag) => (
                                 <span
                                   key={tag}
-                                  className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-500"
+                                  className="px-1.5 py-0.5 text-[10px] rounded bg-white/5 text-gray-400"
                                 >
                                   {tag}
                                 </span>
@@ -1738,7 +1738,7 @@ export default function MusicLensPage() {
                 {!marketplaceLoading && marketplaceTab === 'stems' && (
                   <div className="space-y-2">
                     {marketplaceStems.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-gray-400">
                         <Layers className="w-8 h-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">No stem packs yet</p>
                         <p className="text-xs mt-1">Artists can release stems for their tracks</p>
@@ -1753,7 +1753,7 @@ export default function MusicLensPage() {
                             <Layers className="w-5 h-5 text-neon-purple flex-shrink-0" />
                             <div>
                               <p className="text-sm font-medium">{stem.title}</p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-gray-400">
                                 {stem.assetIds.length} stems · {stem.genre}
                               </p>
                             </div>
@@ -1781,7 +1781,7 @@ export default function MusicLensPage() {
                   </button>
                 </div>
                 {albumMegaDTUs.length === 0 && tracks.length === 0 ? (
-                  <div className="text-center py-16 text-gray-500">
+                  <div className="text-center py-16 text-gray-400">
                     <Disc3 className="w-12 h-12 mx-auto mb-3 opacity-40" />
                     <p className="text-sm font-medium">No albums yet</p>
                     <p className="text-xs mt-1">
@@ -1818,7 +1818,7 @@ export default function MusicLensPage() {
                                 <p className="text-xs text-neon-purple mt-0.5">
                                   MEGA DTU · {(m.sourceCount as number) || 0} tracks consolidated
                                 </p>
-                                <p className="text-[10px] text-gray-500 mt-1">
+                                <p className="text-[10px] text-gray-400 mt-1">
                                   1.5x relevance boost
                                 </p>
                               </div>
@@ -1854,10 +1854,10 @@ export default function MusicLensPage() {
                                 className="p-4 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/10 text-left transition-colors"
                               >
                                 <div className="w-full aspect-square rounded-lg bg-gradient-to-br from-neon-cyan/10 to-neon-purple/10 flex items-center justify-center mb-3">
-                                  <Music className="w-10 h-10 text-gray-500" />
+                                  <Music className="w-10 h-10 text-gray-400" />
                                 </div>
                                 <p className="text-sm font-medium truncate">{artist}</p>
-                                <p className="text-xs text-gray-500">{ts.length} tracks</p>
+                                <p className="text-xs text-gray-400">{ts.length} tracks</p>
                               </button>
                             ))}
                           </div>
@@ -1938,7 +1938,7 @@ export default function MusicLensPage() {
                         <stat.icon className={cn('w-4 h-4', stat.color)} />
                       </div>
                       <p className="text-xl font-bold">{stat.value}</p>
-                      <p className="text-xs text-gray-500">{stat.label}</p>
+                      <p className="text-xs text-gray-400">{stat.label}</p>
                     </div>
                   ))}
                 </div>
@@ -1958,7 +1958,7 @@ export default function MusicLensPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-gray-500 border-b border-white/5">
+                        <tr className="text-gray-400 border-b border-white/5">
                           <th className="text-left py-2 pr-4">Level</th>
                           <th className="text-left py-2 pr-4">Rate</th>
                           <th className="text-left py-2">Example ($10 sale)</th>
@@ -1982,7 +1982,7 @@ export default function MusicLensPage() {
                         </tr>
                         <tr>
                           <td className="py-2 pr-4">Below 1%</td>
-                          <td className="py-2 pr-4 text-gray-500">Floor</td>
+                          <td className="py-2 pr-4 text-gray-400">Floor</td>
                           <td className="py-2">Ancestor royalties cease</td>
                         </tr>
                       </tbody>
@@ -2029,10 +2029,10 @@ export default function MusicLensPage() {
                         className="flex items-center justify-between p-3 rounded-lg bg-white/[0.02] border border-white/5 text-xs"
                       >
                         <div className="flex items-center gap-3">
-                          <Music className="w-4 h-4 text-gray-500" />
+                          <Music className="w-4 h-4 text-gray-400" />
                           <div>
                             <p className="text-gray-300">{tx.track}</p>
-                            <p className="text-gray-500">
+                            <p className="text-gray-400">
                               {tx.buyer} · {tx.tier} tier
                             </p>
                           </div>
@@ -2041,7 +2041,7 @@ export default function MusicLensPage() {
                           <p
                             className={cn(
                               'font-mono',
-                              tx.amount > 0 ? 'text-neon-green' : 'text-gray-500'
+                              tx.amount > 0 ? 'text-neon-green' : 'text-gray-400'
                             )}
                           >
                             {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : 'Free'}
@@ -2067,7 +2067,7 @@ export default function MusicLensPage() {
                         >
                           <div>
                             <span className="text-gray-300">{ob.name}</span>
-                            <span className="text-gray-500 ml-2">({ob.title})</span>
+                            <span className="text-gray-400 ml-2">({ob.title})</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-gray-400">{ob.rate}</span>
@@ -2076,7 +2076,7 @@ export default function MusicLensPage() {
                         </div>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       Net to creator: ${royaltyPreview.breakdown.creatorNet.toFixed(2)} · Platform:
                       ${royaltyPreview.breakdown.platformFee.toFixed(2)}
                     </p>
@@ -2141,7 +2141,7 @@ export default function MusicLensPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate">{nowPlaying.track.title}</p>
-                  <p className="text-xs text-gray-500 truncate">{nowPlaying.track.artistName}</p>
+                  <p className="text-xs text-gray-400 truncate">{nowPlaying.track.artistName}</p>
                 </div>
               </div>
 
@@ -2153,7 +2153,7 @@ export default function MusicLensPage() {
                     'p-1.5 rounded transition-colors',
                     likedTrackIds.has(nowPlaying.track.id)
                       ? 'text-pink-400'
-                      : 'text-gray-500 hover:text-white'
+                      : 'text-gray-400 hover:text-white'
                   )}
                 aria-label="Like">
                   <Heart
@@ -2183,14 +2183,14 @@ export default function MusicLensPage() {
                 </button>
                 <button
                   onClick={() => addToQueue(nowPlaying.track!)}
-                  className="p-1.5 rounded text-gray-500 hover:text-white transition-colors"
+                  className="p-1.5 rounded text-gray-400 hover:text-white transition-colors"
                   title="Add to queue"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
 
                 {/* Time display */}
-                <span className="text-[10px] text-gray-500 font-mono w-20 text-center flex-shrink-0">
+                <span className="text-[10px] text-gray-400 font-mono w-20 text-center flex-shrink-0">
                   {Math.floor(nowPlaying.currentTime / 60)}:
                   {Math.floor(nowPlaying.currentTime % 60)
                     .toString()

@@ -58,18 +58,18 @@ export function NewsStoryClusters() {
         <Layers className="w-5 h-5 text-violet-400" />
         <h2 className="text-sm font-bold text-zinc-100">Story Clusters</h2>
         {result && (
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-400">
             {result.storyCount} {result.storyCount === 1 ? 'story' : 'stories'} · {result.multiSource} multi-source
           </span>
         )}
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : !result || result.clusters.length === 0 ? (
-        <div className="px-4 py-10 text-center text-zinc-500 text-sm italic">
+        <div className="px-4 py-10 text-center text-zinc-400 text-sm italic">
           No data yet — add articles to the news directory to see clustered stories.
         </div>
       ) : (
@@ -85,13 +85,13 @@ export function NewsStoryClusters() {
                   className="w-full flex items-start gap-2 px-4 py-3 text-left hover:bg-zinc-900/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
                 >
                   {open ? (
-                    <ChevronDown className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-zinc-500 mt-0.5 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-zinc-100 line-clamp-2">{c.headline}</p>
-                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                    <p className="text-[10px] text-zinc-400 mt-0.5">
                       {c.articleCount} {c.articleCount === 1 ? 'article' : 'articles'} ·{' '}
                       {c.sourceCount} {c.sourceCount === 1 ? 'source' : 'sources'} · latest{' '}
                       {String(c.latest).slice(0, 10)}
@@ -119,7 +119,7 @@ export function NewsStoryClusters() {
                           <Newspaper className="w-3.5 h-3.5 text-zinc-600 mt-0.5 shrink-0" />
                           <div className="min-w-0">
                             <p className="text-xs font-medium text-zinc-100">{a.title}</p>
-                            <p className="text-[10px] text-zinc-500">
+                            <p className="text-[10px] text-zinc-400">
                               {a.source} · {String(a.publishedAt).slice(0, 10)}
                             </p>
                             {a.summary && (

@@ -153,6 +153,7 @@ export default function registerAnonActions(registerLensAction) {
    * params.k = desired k-anonymity level (default 3)
    */
   registerLensAction("anon", "anonymize", (ctx, artifact, params) => {
+  try {
     const records = artifact.data?.records || [];
     if (records.length === 0) return { ok: true, result: { message: "No records to anonymize." } };
 
@@ -268,7 +269,8 @@ export default function registerAnonActions(registerLensAction) {
         anonymizedSample: anonymized.slice(0, 5),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * privacyRisk
@@ -278,6 +280,7 @@ export default function registerAnonActions(registerLensAction) {
    * artifact.data.quasiIdentifiers = ["field1", "field2"]
    */
   registerLensAction("anon", "privacyRisk", (ctx, artifact, params) => {
+  try {
     const records = artifact.data?.records || [];
     if (records.length === 0) return { ok: true, result: { message: "No records to assess." } };
 
@@ -369,7 +372,8 @@ export default function registerAnonActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * differentialPrivacy
@@ -380,6 +384,7 @@ export default function registerAnonActions(registerLensAction) {
    * params.sensitivity = global sensitivity (auto-computed if absent)
    */
   registerLensAction("anon", "differentialPrivacy", (ctx, artifact, params) => {
+  try {
     const epsilon = params.epsilon || 1.0;
     const queries = artifact.data?.queries || [];
     const rawValues = artifact.data?.values || [];
@@ -513,7 +518,8 @@ export default function registerAnonActions(registerLensAction) {
         },
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ═══════════════════════════════════════════════════════════════════
   //  E2E ENCRYPTED PSEUDONYMOUS MESSAGING

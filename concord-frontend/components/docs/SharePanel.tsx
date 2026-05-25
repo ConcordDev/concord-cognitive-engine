@@ -64,7 +64,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center py-4 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
   }
 
   return (
@@ -74,7 +74,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
       </h4>
 
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Visibility</p>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Visibility</p>
         <div className="space-y-1">
           {VIS.map(v => (
             <button key={v.id} onClick={() => setVisibility(v.id)}
@@ -91,7 +91,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
       {share && share.visibility !== 'private' && (
         <>
           <div>
-            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Link role</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Link role</p>
             <div className="flex gap-1">
               {(['view', 'edit'] as const).map(r => (
                 <button key={r} onClick={() => setRole(r)}
@@ -115,7 +115,7 @@ export function SharePanel({ pageId }: { pageId: string }) {
       )}
 
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Invite people</p>
+        <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Invite people</p>
         <div className="flex gap-1 mb-1">
           <input value={invitee} onChange={e => setInvitee(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void invite(); }}
@@ -130,14 +130,14 @@ export function SharePanel({ pageId }: { pageId: string }) {
             className="rounded bg-indigo-700 hover:bg-indigo-600 text-white text-[11px] px-2 disabled:opacity-50">Add</button>
         </div>
         {(share?.invites?.length ?? 0) === 0 ? (
-          <p className="text-[11px] text-zinc-600 italic">No collaborators invited.</p>
+          <p className="text-[11px] text-zinc-400 italic">No collaborators invited.</p>
         ) : (
           <div className="space-y-1">
             {share!.invites.map(iv => (
               <div key={iv.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1">
                 <span className="flex-1 text-[11px] text-zinc-200 truncate">{iv.invitee}</span>
                 <span className="text-[9px] uppercase rounded bg-zinc-800 px-1 text-zinc-400">{iv.role}</span>
-                <button onClick={() => revoke(iv.id)} className="text-zinc-500 hover:text-rose-400">
+                <button onClick={() => revoke(iv.id)} className="text-zinc-400 hover:text-rose-400">
                   <X className="w-3 h-3" />
                 </button>
               </div>

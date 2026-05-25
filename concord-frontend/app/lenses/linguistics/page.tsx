@@ -379,7 +379,7 @@ export default function LinguisticsLensPage() {
                       <div className="flex-1 h-2 bg-lattice-deep rounded-full overflow-hidden">
                         <div className="h-full bg-pink-400/60 rounded-full" style={{ width: `${Math.min(100, count * 20)}%` }} />
                       </div>
-                      <span className="text-xs text-gray-500 w-8 text-right">{count}</span>
+                      <span className="text-xs text-gray-400 w-8 text-right">{count}</span>
                     </div>
                   ))}
                 </div>
@@ -425,7 +425,7 @@ export default function LinguisticsLensPage() {
           {/* Toolbar */}
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 ref={searchInputRef}
               value={searchQuery}
@@ -455,7 +455,7 @@ export default function LinguisticsLensPage() {
             >
               <Plus className="w-4 h-4" /> New {currentType}
             </button>
-            <span className="text-sm text-gray-500 ml-auto">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="text-sm text-gray-400 ml-auto">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Create Form */}
@@ -527,7 +527,7 @@ export default function LinguisticsLensPage() {
                   {[1, 2, 3].map(i => <div key={i} className="h-20 bg-lattice-surface animate-pulse rounded-lg" />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="text-center py-16 text-gray-500">
+                <div className="text-center py-16 text-gray-400">
                   <Languages className="w-12 h-12 mx-auto mb-4 opacity-30" />
                   <p className="text-sm">No {currentType.toLowerCase()}s yet. Create one to get started.</p>
                 </div>
@@ -555,7 +555,7 @@ export default function LinguisticsLensPage() {
                             {item.data.subfield}
                           </span>
                           {item.data.language && (
-                            <span className="text-xs text-gray-500">{item.data.language}</span>
+                            <span className="text-xs text-gray-400">{item.data.language}</span>
                           )}
                         </div>
                       </div>
@@ -573,8 +573,8 @@ export default function LinguisticsLensPage() {
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-white">{selected.title}</h2>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleAction(selected.id)} className="text-gray-500 hover:text-pink-400" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
-                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<LinguisticsArtifact> })} className="text-gray-500 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => handleAction(selected.id)} className="text-gray-400 hover:text-pink-400" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<LinguisticsArtifact> })} className="text-gray-400 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300" aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -646,12 +646,12 @@ export default function LinguisticsLensPage() {
                       </ul>
                     </div>
                   )}
-                  <div className="text-xs text-gray-500 pt-2 border-t border-lattice-border">
+                  <div className="text-xs text-gray-400 pt-2 border-t border-lattice-border">
                     Created {new Date(selected.createdAt).toLocaleDateString()}
                   </div>
                 </>
               ) : (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-gray-400">
                   <Languages className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="text-sm">Select an item to view details</p>
                 </div>

@@ -53,27 +53,25 @@ export function EventDetailModal({ eventId, onClose }: { eventId: string; onClos
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
-    >
+      onClick={onClose} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-100">Event detail</h3>
-          <button onClick={onClose} aria-label="Close" className="text-zinc-500 hover:text-zinc-200">
+          <button onClick={onClose} aria-label="Close" className="text-zinc-400 hover:text-zinc-200">
             <X className="h-4 w-4" />
           </button>
         </div>
         {loading ? (
-          <div className="mt-4 flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Resolving event…</div>
+          <div className="mt-4 flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Resolving event…</div>
         ) : error ? (
           <div className="mt-4 rounded border border-rose-500/20 bg-rose-500/5 px-3 py-2 text-xs text-rose-300">{error}</div>
         ) : data ? (
           <div className="mt-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{data.event.role}</span>
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="font-mono text-[10px] text-zinc-400">
                 {data.event.ts ? new Date(data.event.ts).toLocaleString() : '—'}
               </span>
             </div>

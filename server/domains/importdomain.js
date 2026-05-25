@@ -10,6 +10,7 @@ export default function registerImportActions(registerLensAction) {
    * artifact.data.schema: { fieldName: { type: "string"|"number"|"boolean"|"date", required?: boolean } }
    */
   registerLensAction("import", "validateImport", (ctx, artifact, _params) => {
+  try {
     const rows = artifact.data?.rows || [];
     const schema = artifact.data?.schema || {};
 
@@ -130,7 +131,8 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.validationResult = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * mapFields
@@ -139,6 +141,7 @@ export default function registerImportActions(registerLensAction) {
    * artifact.data.targetFields: [string]
    */
   registerLensAction("import", "mapFields", (ctx, artifact, _params) => {
+  try {
     const sourceFields = artifact.data?.sourceFields || [];
     const targetFields = artifact.data?.targetFields || [];
 
@@ -282,7 +285,8 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.fieldMappings = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * detectDuplicates
@@ -292,6 +296,7 @@ export default function registerImportActions(registerLensAction) {
    * artifact.data.fuzzy: boolean (optional, use normalized comparison)
    */
   registerLensAction("import", "detectDuplicates", (ctx, artifact, _params) => {
+  try {
     const rows = artifact.data?.rows || [];
     const keyFields = artifact.data?.keyFields || [];
     const fuzzy = artifact.data?.fuzzy || false;
@@ -391,7 +396,8 @@ export default function registerImportActions(registerLensAction) {
 
     artifact.data.duplicateDetection = result;
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * transformPreview
@@ -585,6 +591,7 @@ export default function registerImportActions(registerLensAction) {
   // params.rows: [{...}]  — infers per-column type, nullability, sample values.
   // ---------------------------------------------------------------------------
   registerLensAction("import", "inferSchema", (ctx, artifact, params) => {
+  try {
     const rows = params.rows || artifact.data?.rows || [];
     if (!Array.isArray(rows) || rows.length === 0) {
       return { ok: true, result: { message: "No rows yet. Supply params.rows as an array of objects to infer a schema.", fields: [], rowCount: 0 } };
@@ -660,7 +667,8 @@ export default function registerImportActions(registerLensAction) {
       schema: Object.fromEntries(fields.map((f) => [f.suggestedTarget, { type: f.inferredType, required: f.required }])),
     };
     return { ok: true, result };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ---------------------------------------------------------------------------
   // [M] Interactive in-grid error correction.
@@ -698,13 +706,15 @@ export default function registerImportActions(registerLensAction) {
   });
 
   registerLensAction("import", "getCorrectionSession", (ctx, artifact, params) => {
+  try {
     const s = getImportState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const sessions = importList(s.sessions, importActId(ctx));
     const session = sessions.find((x) => x.id === params.id);
     if (!session) return { ok: false, error: "session not found" };
     return { ok: true, result: { session, validation: validateSessionRows(session) } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("import", "correctCell", (ctx, artifact, params) => {
     const s = getImportState();
@@ -973,6 +983,7 @@ export default function registerImportActions(registerLensAction) {
   // public CSV/JSON endpoint (works on link-shared sheets, no key required).
   // ---------------------------------------------------------------------------
   registerLensAction("import", "listConnectors", (ctx) => {
+  try {
     const s = getImportState();
     if (!s) return { ok: false, error: "STATE unavailable" };
     const saved = importList(s.connectors, importActId(ctx));
@@ -988,7 +999,8 @@ export default function registerImportActions(registerLensAction) {
         savedCount: saved.length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("import", "saveConnector", (ctx, artifact, params) => {
     const s = getImportState();

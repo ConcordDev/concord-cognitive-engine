@@ -24,7 +24,7 @@ import type { MountSpecies, MountGaitProfile } from "@/lib/concordia/mounts/moun
 // Three.js/R3F is heavy; lazy-load so the rest of the lens stays light.
 const MountPreviewCanvas = dynamic(
   () => import("./MountPreviewCanvas").then((m) => m.default),
-  { ssr: false, loading: () => <span className="text-zinc-500">Loading 3D preview…</span> },
+  { ssr: false, loading: () => <span className="text-zinc-400">Loading 3D preview…</span> },
 );
 
 type Slot = "saddle" | "bridle" | "barding";
@@ -146,7 +146,7 @@ export function MountDesigner() {
       {/* Left pane: companions */}
       <aside className="col-span-3 border-r border-zinc-800 pr-3">
         <h2 className="text-base font-semibold mb-2">Mounts</h2>
-        {loading && <p className="text-zinc-500">Loading…</p>}
+        {loading && <p className="text-zinc-400">Loading…</p>}
         {err && <p className="text-red-400">Error: {err}</p>}
         <ul className="space-y-1">
           {companions.map(c => (
@@ -168,11 +168,11 @@ export function MountDesigner() {
         <h2 className="text-base font-semibold mb-2">Preview</h2>
         <div className="aspect-video rounded bg-zinc-950 border border-zinc-800 overflow-hidden">
           {selectedId && species && gaitProfile ? (
-            <Suspense fallback={<div className="grid place-items-center h-full text-zinc-500">Loading 3D…</div>}>
+            <Suspense fallback={<div className="grid place-items-center h-full text-zinc-400">Loading 3D…</div>}>
               <MountPreviewCanvas species={species} gait={gaitProfile} />
             </Suspense>
           ) : (
-            <div className="grid place-items-center h-full text-zinc-500">
+            <div className="grid place-items-center h-full text-zinc-400">
               {selectedId ? "Loading mount…" : "Select a mount"}
             </div>
           )}
@@ -212,7 +212,7 @@ export function MountDesigner() {
           </div>
         )}
 
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-4 text-xs text-zinc-400">
           Author new gear via the Crafting lens (recipe kind <code>mount_gear</code>).
           B3 ships the validation + equip flow; the in-context author panel lands in B4 polish.
         </p>
@@ -229,7 +229,7 @@ function StatCard({ label, base, effective, unit = "" }: { label: string; base: 
     <div className="rounded border border-zinc-800 p-2">
       <div className="text-xs text-zinc-400">{label}</div>
       <div className="text-lg font-medium">{effective.toFixed(2)}{unit}</div>
-      <div className="text-xs text-zinc-500">base {base.toFixed(2)}{unit} ({sign}{dPct.toFixed(0)}%)</div>
+      <div className="text-xs text-zinc-400">base {base.toFixed(2)}{unit} ({sign}{dPct.toFixed(0)}%)</div>
     </div>
   );
 }
@@ -248,14 +248,14 @@ function GearRow({ slot, slotData, onUnequip }: { slot: Slot; slotData: GearSlot
       {slotData ? (
         <div className="mt-1">
           <div className="text-sm font-medium">{slotData.dtuId.slice(0, 14)}…</div>
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-zinc-400">
             {slotData.weight_kg} kg
             {slotData.stat_mods?.speed != null && ` · ${fmtMul(slotData.stat_mods.speed)} speed`}
             {slotData.stat_mods?.comfort != null && ` · +${slotData.stat_mods.comfort} comfort`}
           </div>
         </div>
       ) : (
-        <div className="mt-1 text-xs text-zinc-500">Empty</div>
+        <div className="mt-1 text-xs text-zinc-400">Empty</div>
       )}
     </div>
   );

@@ -68,7 +68,7 @@ export function TrackLogsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapPin className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Track logs · GPS recording</span>
-        <span className="ml-auto text-[10px] text-gray-500">{tracks.filter(t => !t.endedAt).length} active</span>
+        <span className="ml-auto text-[10px] text-gray-400">{tracks.filter(t => !t.endedAt).length} active</span>
       </header>
 
       <div className="border-b border-white/10">
@@ -86,9 +86,9 @@ export function TrackLogsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : tracks.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />No track logs yet. Start one above; use phone GPS to log positions.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />No track logs yet. Start one above; use phone GPS to log positions.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {tracks.map(t => (
@@ -97,7 +97,7 @@ export function TrackLogsPanel() {
                   <Activity className={cn('w-3.5 h-3.5', t.endedAt ? 'text-gray-400' : 'text-emerald-400 animate-pulse')} />
                   <span className="text-sm font-mono text-cyan-300">{t.tail}</span>
                   {t.from && t.to && <span className="text-[10px] font-mono text-gray-400">{t.from}→{t.to}</span>}
-                  <span className="ml-auto text-[10px] text-gray-500">
+                  <span className="ml-auto text-[10px] text-gray-400">
                     {t.points.length} pts · {t.totalDistanceNm.toFixed(1)}nm · {t.maxAltitudeFt}ft peak
                   </span>
                 </div>

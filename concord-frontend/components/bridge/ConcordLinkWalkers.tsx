@@ -66,7 +66,7 @@ export function ConcordLinkWalkers() {
                   <span className="text-white">{w.name || w.species || w.id}</span>
                   <span className="font-mono text-cyan-300">{w.costPerKm ?? '?'}/km</span>
                 </div>
-                <div className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                <div className="mt-0.5 font-mono text-[10px] text-zinc-400">
                   {w.speedMps != null && <span>v={w.speedMps}m/s · </span>}
                   {w.reliability != null && <span>rel={(w.reliability * 100).toFixed(0)}% · </span>}
                   {w.capacity != null && <span>cap={w.capacity} · </span>}
@@ -79,7 +79,7 @@ export function ConcordLinkWalkers() {
                 )}
               </div>
             ))}
-            {walkers.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No walkers registered.</div>}
+            {walkers.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No walkers registered.</div>}
           </div>
         </div>
         <div className="rounded-md border border-zinc-800 bg-zinc-950/40 p-3">
@@ -89,15 +89,15 @@ export function ConcordLinkWalkers() {
               <div key={a.id} className="rounded border border-zinc-800 bg-zinc-950 p-2 text-[11px]">
                 <div className="flex items-center justify-between">
                   <span className="text-white">{a.label || a.id}</span>
-                  <span className="font-mono text-[10px] text-zinc-500">({a.x?.toFixed(1) || '?'}, {a.y?.toFixed(1) || '?'}, {a.z?.toFixed(1) || '?'})</span>
+                  <span className="font-mono text-[10px] text-zinc-400">({a.x?.toFixed(1) || '?'}, {a.y?.toFixed(1) || '?'}, {a.z?.toFixed(1) || '?'})</span>
                 </div>
               </div>
             ))}
-            {anchors.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-500">No anchors in this world.</div>}
+            {anchors.data?.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-3 text-center text-[10px] text-zinc-400">No anchors in this world.</div>}
           </div>
         </div>
       </div>
-      {(walkers.isPending || anchors.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Polling Concord-Link…</div>}
+      {(walkers.isPending || anchors.isPending) && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Polling Concord-Link…</div>}
     </div>
   );
 }

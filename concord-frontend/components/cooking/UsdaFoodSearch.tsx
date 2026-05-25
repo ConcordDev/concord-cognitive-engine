@@ -91,7 +91,7 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
       </header>
 
       <div className="p-3 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={query}
@@ -109,7 +109,7 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
       )}
 
       {!error && foods.length === 0 && query.trim().length >= 2 && !loading && (
-        <div className="px-3 py-4 text-xs text-zinc-500 italic text-center">No matches in USDA database for &ldquo;{query.trim()}&rdquo;.</div>
+        <div className="px-3 py-4 text-xs text-zinc-400 italic text-center">No matches in USDA database for &ldquo;{query.trim()}&rdquo;.</div>
       )}
 
       {foods.length > 0 && (
@@ -134,7 +134,7 @@ export function UsdaFoodSearch({ domain = 'cooking', className, onSelect }: Usda
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: USDA FoodData Central · per 100 g unless otherwise noted
       </footer>
     </section>
@@ -145,17 +145,17 @@ function FoodRow({ f }: { f: Food }) {
   return (
     <>
       <div className="text-zinc-200 font-medium truncate">{f.description}</div>
-      <div className="text-[10px] text-zinc-500 font-mono mt-0.5 truncate">
+      <div className="text-[10px] text-zinc-400 font-mono mt-0.5 truncate">
         {f.brandOwner ? `${f.brandOwner} · ` : ''}{f.dataType}{f.servingSize ? ` · serving ${f.servingSize}` : ''}
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-zinc-400 font-mono">
-        {f.kcalPer100g != null && <span><span className="text-zinc-500">kcal</span> {f.kcalPer100g.toFixed(0)}</span>}
-        {f.proteinG != null && <span><span className="text-zinc-500">P</span> {f.proteinG.toFixed(1)}g</span>}
-        {f.fatG != null && <span><span className="text-zinc-500">F</span> {f.fatG.toFixed(1)}g</span>}
-        {f.carbsG != null && <span><span className="text-zinc-500">C</span> {f.carbsG.toFixed(1)}g</span>}
-        {f.fiberG != null && <span><span className="text-zinc-500">fib</span> {f.fiberG.toFixed(1)}g</span>}
-        {f.sugarsG != null && <span><span className="text-zinc-500">sug</span> {f.sugarsG.toFixed(1)}g</span>}
-        {f.sodiumMg != null && <span><span className="text-zinc-500">Na</span> {f.sodiumMg.toFixed(0)}mg</span>}
+        {f.kcalPer100g != null && <span><span className="text-zinc-400">kcal</span> {f.kcalPer100g.toFixed(0)}</span>}
+        {f.proteinG != null && <span><span className="text-zinc-400">P</span> {f.proteinG.toFixed(1)}g</span>}
+        {f.fatG != null && <span><span className="text-zinc-400">F</span> {f.fatG.toFixed(1)}g</span>}
+        {f.carbsG != null && <span><span className="text-zinc-400">C</span> {f.carbsG.toFixed(1)}g</span>}
+        {f.fiberG != null && <span><span className="text-zinc-400">fib</span> {f.fiberG.toFixed(1)}g</span>}
+        {f.sugarsG != null && <span><span className="text-zinc-400">sug</span> {f.sugarsG.toFixed(1)}g</span>}
+        {f.sodiumMg != null && <span><span className="text-zinc-400">Na</span> {f.sodiumMg.toFixed(0)}mg</span>}
       </div>
     </>
   );

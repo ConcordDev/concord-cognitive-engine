@@ -115,7 +115,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
           <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
         </div>
         {open && (
-          <div className="ml-5 mt-1 pl-2 border-l border-zinc-800 text-[11px] text-zinc-500">
+          <div className="ml-5 mt-1 pl-2 border-l border-zinc-800 text-[11px] text-zinc-400">
             Add child blocks below the toggle to fill it.
           </div>
         )}
@@ -176,7 +176,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
       <div className="group relative" onFocus={onFocus}>
         {presenceRail}
         <div className="flex items-center justify-between mb-0.5">
-          <span className="text-[10px] text-zinc-500">Table</span>
+          <span className="text-[10px] text-zinc-400">Table</span>
           <div className="flex items-center gap-1">
             <button onClick={addRow} className="text-[10px] text-zinc-400 hover:text-zinc-100 border border-zinc-800 rounded px-1">+ row</button>
             <button onClick={addCol} className="text-[10px] text-zinc-400 hover:text-zinc-100 border border-zinc-800 rounded px-1">+ col</button>
@@ -226,12 +226,12 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
         <input type="checkbox" checked={block.checked} onChange={e => onChange({ checked: e.target.checked })}
           className="mt-1.5 accent-emerald-500" />
       )}
-      {block.type === 'bulleted_list' && <span className="text-zinc-500 mt-1">•</span>}
-      {block.type === 'numbered_list' && <span className="text-zinc-500 mt-1 text-xs">#</span>}
+      {block.type === 'bulleted_list' && <span className="text-zinc-400 mt-1">•</span>}
+      {block.type === 'numbered_list' && <span className="text-zinc-400 mt-1 text-xs">#</span>}
       <textarea value={text} onFocus={onFocus} onChange={e => setText(e.target.value)} onBlur={commit} rows={1}
         placeholder={`Type ${block.type.replace('_', ' ')}…`}
         className={cn('flex-1 bg-transparent resize-none focus:outline-none focus:bg-zinc-800/40 rounded px-1',
-          cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-500')} />
+          cls[block.type] || cls.paragraph, block.type === 'todo' && block.checked && 'line-through text-zinc-400')} />
       <RowControls onDelete={onDelete} onUp={onUp} onDown={onDown} />
     </div>
   );

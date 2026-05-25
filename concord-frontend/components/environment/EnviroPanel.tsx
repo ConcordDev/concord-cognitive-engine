@@ -84,8 +84,8 @@ export function EnviroPanel() {
               <div key={`${o.parameterName}-${i}`} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-950 p-2 text-xs">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${aqiColor(o.aqi)}`}>{o.aqi}</span>
                 <span className="font-mono text-zinc-300">{o.parameterName}</span>
-                <span className="text-zinc-500">{o.category || ''}</span>
-                <span className="ml-auto text-[10px] text-zinc-500">{o.reportingArea}, {o.stateCode}</span>
+                <span className="text-zinc-400">{o.category || ''}</span>
+                <span className="ml-auto text-[10px] text-zinc-400">{o.reportingArea}, {o.stateCode}</span>
                 <SaveAsDtuButton
                   compact
                   apiSource="epa-airnow"
@@ -132,7 +132,7 @@ function SuperfundSearch() {
               <span className="truncate text-white">{s.siteName}</span>
               <span className="shrink-0 rounded bg-amber-500/15 px-1.5 text-[9px] text-amber-300">{s.nplStatus}</span>
             </div>
-            <div className="text-[10px] text-zinc-500">{s.city}, {s.state} · EPA ID {s.epaId}</div>
+            <div className="text-[10px] text-zinc-400">{s.city}, {s.state} · EPA ID {s.epaId}</div>
           </div>
         ))}
       </div>

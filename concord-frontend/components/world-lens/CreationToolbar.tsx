@@ -103,7 +103,7 @@ export default function CreationToolbar({
           >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <div className="flex-1 text-center text-xs text-gray-500 tabular-nums">
+          <div className="flex-1 text-center text-xs text-gray-400 tabular-nums">
             {Math.round(zoom * 100)}%
           </div>
           <button
@@ -161,7 +161,7 @@ export default function CreationToolbar({
               key={layer.key}
               onClick={() => onToggleLayer(layer.key)}
               className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                visibleLayers.has(layer.key) ? 'text-white' : 'text-gray-500'
+                visibleLayers.has(layer.key) ? 'text-white' : 'text-gray-400'
               } hover:bg-white/5`}
             >
               {visibleLayers.has(layer.key) ? (

@@ -44,7 +44,7 @@ function MatchCard({
         <span className="truncate">{aName}</span>
         <span className="ml-2 tabular-nums text-slate-400">{m.status !== 'pending' ? m.scoreA : ''}</span>
       </div>
-      <div className="my-1 text-center text-[10px] uppercase tracking-wider text-slate-600">
+      <div className="my-1 text-center text-[10px] uppercase tracking-wider text-slate-400">
         {m.status === 'bye' ? 'bye' : 'vs'}
       </div>
       <div className={`flex items-center justify-between ${bWin ? 'font-semibold text-emerald-300' : 'text-slate-200'}`}>
@@ -106,7 +106,7 @@ export function BracketView({
 }) {
   if (t.matches.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">
+      <div className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
         <Swords className="mx-auto mb-2 h-6 w-6 text-slate-700" />
         Bracket generates when the tournament starts.
       </div>
@@ -132,7 +132,7 @@ export function BracketView({
           .sort((m1, m2) => m1.slotIndex - m2.slotIndex);
         return (
           <div key={rk}>
-            <div className="mb-2 text-[10px] uppercase tracking-wider text-slate-500">
+            <div className="mb-2 text-[10px] uppercase tracking-wider text-slate-400">
               {bracket === 'grand_final' ? 'Grand Final' : `${bracket} · R${round}`}
             </div>
             <div className="space-y-2">

@@ -152,13 +152,13 @@ function AudioReadings({ poems }: { poems: MyPoem[] }) {
 
       <div className="space-y-1.5">
         {recordings.length === 0 && (
-          <p className="text-xs text-zinc-600 italic">No recordings yet.</p>
+          <p className="text-xs text-zinc-400 italic">No recordings yet.</p>
         )}
         {recordings.map(rec => (
           <div key={rec.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2">
             <div>
               <p className="text-xs font-semibold text-zinc-200 italic">{rec.poemTitle}</p>
-              <p className="text-[10px] text-zinc-500">
+              <p className="text-[10px] text-zinc-400">
                 {rec.durationSec}s · {new Date(rec.createdAt).toLocaleString()}
               </p>
             </div>
@@ -236,7 +236,7 @@ function FormTemplates() {
           </button>
         )}
       </div>
-      {rules && <p className="text-[11px] text-zinc-500 italic">{rules.hint}</p>}
+      {rules && <p className="text-[11px] text-zinc-400 italic">{rules.hint}</p>}
 
       <div className="grid sm:grid-cols-[1fr_180px] gap-3">
         <div>
@@ -266,10 +266,10 @@ function FormTemplates() {
           <p className="text-[11px] font-semibold text-zinc-400 inline-flex items-center gap-1 mb-1.5">
             <ListChecks className="w-3.5 h-3.5" /> Lines
           </p>
-          {!check && <p className="text-[10px] text-zinc-600 italic">No data yet.</p>}
+          {!check && <p className="text-[10px] text-zinc-400 italic">No data yet.</p>}
           {check && check.lineReports.map(lr => (
             <div key={lr.index} className="flex items-center justify-between text-[11px] py-0.5">
-              <span className="text-zinc-500">Line {lr.index + 1}</span>
+              <span className="text-zinc-400">Line {lr.index + 1}</span>
               <span className={cn('font-mono',
                 lr.target == null ? 'text-zinc-400'
                   : lr.ok ? 'text-emerald-400' : 'text-rose-400')}>
@@ -306,7 +306,7 @@ function FormTemplates() {
           </div>
         )}
         {bodyLines.length > 1 && (
-          <p className="text-[10px] text-zinc-600">{bodyLines.filter(l => l.trim()).length} lines drafted</p>
+          <p className="text-[10px] text-zinc-400">{bodyLines.filter(l => l.trim()).length} lines drafted</p>
         )}
       </div>
     </div>
@@ -370,10 +370,10 @@ function ChapbookExport({ poems }: { poems: MyPoem[] }) {
       </div>
 
       <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-2.5">
-        <p className="text-[11px] text-zinc-500 mb-1.5">
+        <p className="text-[11px] text-zinc-400 mb-1.5">
           Pick poems to include — leave all unchecked to export every finished poem.
         </p>
-        {poems.length === 0 && <p className="text-xs text-zinc-600 italic">No poems yet.</p>}
+        {poems.length === 0 && <p className="text-xs text-zinc-400 italic">No poems yet.</p>}
         <div className="space-y-1">
           {poems.map(p => (
             <label key={p.id} className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
@@ -446,7 +446,7 @@ export function PoetryStudio() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-4 text-zinc-500">
+        <div className="flex items-center justify-center py-4 text-zinc-400">
           <Loader2 className="w-4 h-4 animate-spin" />
         </div>
       ) : (

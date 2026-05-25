@@ -75,20 +75,20 @@ export function PaletteWorkshop() {
       </header>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Base color</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Base color</span>
           <div className="mt-1 flex items-center gap-1">
             <input type="color" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="h-8 w-12 cursor-pointer rounded border border-zinc-800 bg-zinc-950" />
             <input type="text" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white" />
           </div>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Harmony</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Harmony</span>
           <select value={harmony} onChange={(e) => setHarmony(e.target.value as typeof HARMONIES[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
             {HARMONIES.map((h) => <option key={h} value={h}>{h}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">Count</span>
+          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Count</span>
           <input type="number" min={2} max={12} value={count} onChange={(e) => setCount(Math.max(2, Math.min(12, Number(e.target.value) || 5)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
         </label>
         <button type="button" onClick={() => generate.mutate()} disabled={generate.isPending} className="mt-auto inline-flex items-center justify-center gap-1 rounded border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-1.5 text-xs font-mono text-fuchsia-200 hover:bg-fuchsia-500/25 disabled:opacity-50">
@@ -104,14 +104,14 @@ export function PaletteWorkshop() {
               <button key={`${c.hex}-${i}`} type="button" onClick={() => copyHex(c.hex)} className="group relative flex flex-col items-center gap-0.5 rounded border border-zinc-800 p-1 hover:border-zinc-600" title={`Click to copy ${c.hex}`}>
                 <span className="block h-12 w-16 rounded" style={{ backgroundColor: c.hex }} />
                 <span className="font-mono text-[10px] text-zinc-400">{c.hex}</span>
-                {c.role && <span className="font-mono text-[9px] text-zinc-500">{c.role}</span>}
+                {c.role && <span className="font-mono text-[9px] text-zinc-400">{c.role}</span>}
                 <Copy className="absolute right-1 top-1 h-3 w-3 text-zinc-600 opacity-0 group-hover:opacity-100" />
               </button>
             ))}
           </div>
           {harmonyAnalysis?.harmonies && harmonyAnalysis.harmonies.length > 0 && (
             <div className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/5 p-3 text-[11px]">
-              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-500">Harmony relationships ({harmonyAnalysis.harmonies.length})</div>
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Harmony relationships ({harmonyAnalysis.harmonies.length})</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(harmonyCounts).map(([type, n]) => (
                   <span key={type} className="rounded bg-fuchsia-500/20 px-1.5 py-0.5 font-mono text-fuchsia-200">{type} ×{n}</span>

@@ -197,7 +197,7 @@ export default function SavedLensPage() {
             <Bookmark className="w-5 h-5 text-amber-300" />
             <h1 className="text-base font-semibold">Saved</h1>
             {stats && (
-              <span className="text-[10px] text-zinc-500 font-mono">
+              <span className="text-[10px] text-zinc-400 font-mono">
                 {stats.total} items · {stats.byState.unread || 0} to read · {stats.folders} collections
               </span>
             )}
@@ -239,7 +239,7 @@ export default function SavedLensPage() {
 
             {tags.length > 0 && (
               <div>
-                <h2 className="text-[11px] uppercase tracking-wide text-zinc-500 mb-1">Tags</h2>
+                <h2 className="text-[11px] uppercase tracking-wide text-zinc-400 mb-1">Tags</h2>
                 <ul className="flex flex-wrap gap-1">
                   {tags.map((t) => (
                     <li key={t.tag}>
@@ -252,7 +252,7 @@ export default function SavedLensPage() {
                             : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
                         }`}
                       >
-                        #{t.tag} <span className="text-zinc-500">{t.count}</span>
+                        #{t.tag} <span className="text-zinc-400">{t.count}</span>
                       </button>
                     </li>
                   ))}
@@ -278,7 +278,7 @@ export default function SavedLensPage() {
             {/* Search + sort + filter bar */}
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-2 space-y-2">
               <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-zinc-500 shrink-0" />
+                <Search className="w-4 h-4 text-zinc-400 shrink-0" />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -337,7 +337,7 @@ export default function SavedLensPage() {
                     Clear filters
                   </button>
                 )}
-                <span className="text-[10px] text-zinc-500 ml-auto">
+                <span className="text-[10px] text-zinc-400 ml-auto">
                   {matched} of {total} shown
                 </span>
               </div>
@@ -345,14 +345,14 @@ export default function SavedLensPage() {
 
             {/* Item list */}
             {loading && items.length === 0 ? (
-              <p className="text-xs text-zinc-500 py-8 text-center">Loading…</p>
+              <p className="text-xs text-zinc-400 py-8 text-center">Loading…</p>
             ) : items.length === 0 ? (
               <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/40 py-10 text-center">
                 <Bookmark className="w-7 h-7 mx-auto text-zinc-700 mb-2" />
                 <p className="text-sm text-zinc-400">
                   {filtersActive ? 'No saved items match your filters.' : 'Nothing saved yet.'}
                 </p>
-                <p className="text-xs text-zinc-600 mt-1">
+                <p className="text-xs text-zinc-400 mt-1">
                   {filtersActive
                     ? 'Try clearing filters.'
                     : 'Bookmark posts, DTUs, articles, links — anything — to see it here.'}

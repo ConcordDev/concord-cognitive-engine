@@ -88,17 +88,17 @@ export function EnergyEstimator() {
               <Stat label="Capacity factor" value={`${(result.capacityFactor * 100).toFixed(0)}%`} accent="text-cyan-300" />
             </div>
             <div>
-              <p className="text-[10px] uppercase text-gray-500 tracking-wider mb-1">Monthly production (kWh)</p>
+              <p className="text-[10px] uppercase text-gray-400 tracking-wider mb-1">Monthly production (kWh)</p>
               <div className="flex items-end gap-1 h-20">
                 {result.monthlyKwh.map((v, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center">
                     <div className="bg-gradient-to-t from-yellow-500/60 to-yellow-300/40 w-full rounded-t" style={{ height: `${Math.max(4, (v / maxMonthly) * 100)}%` }} />
-                    <span className="text-[9px] text-gray-500 mt-0.5">{months[i]}</span>
+                    <span className="text-[9px] text-gray-400 mt-0.5">{months[i]}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <p className="text-[10px] text-gray-500">Source: {result.source} · grid emission factor 0.4 kgCO₂/kWh (US avg).</p>
+            <p className="text-[10px] text-gray-400">Source: {result.source} · grid emission factor 0.4 kgCO₂/kWh (US avg).</p>
           </div>
         )}
       </div>
@@ -109,7 +109,7 @@ export function EnergyEstimator() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="text-[10px] uppercase tracking-wider text-gray-500 block mb-0.5">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-gray-400 block mb-0.5">{label}</span>
       {children}
     </label>
   );
@@ -118,7 +118,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function Stat({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
     <div className="bg-white/[0.03] rounded px-2 py-2">
-      <div className="text-[10px] text-gray-500">{label}</div>
+      <div className="text-[10px] text-gray-400">{label}</div>
       <div className={`text-sm font-bold tabular-nums ${accent}`}>{value}</div>
     </div>
   );

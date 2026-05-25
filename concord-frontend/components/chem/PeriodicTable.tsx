@@ -116,7 +116,7 @@ export function PeriodicTable() {
       </header>
 
       {load.isPending && (
-        <div className="flex items-center justify-center py-6 text-xs text-zinc-500">
+        <div className="flex items-center justify-center py-6 text-xs text-zinc-400">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading periodic table…
         </div>
       )}
@@ -134,7 +134,7 @@ export function PeriodicTable() {
                   // Placeholder for La/Ac series gap in row 6/7 (col 3)
                   if ((row === 6 || row === 7) && col === 3) {
                     return (
-                      <div key={`${row}-${col}`} className="rounded border border-dashed border-zinc-800 bg-zinc-950/30 text-center text-[8px] text-zinc-600" style={{ gridRow: row, gridColumn: col }}>
+                      <div key={`${row}-${col}`} className="rounded border border-dashed border-zinc-800 bg-zinc-950/30 text-center text-[8px] text-zinc-400" style={{ gridRow: row, gridColumn: col }}>
                         {row === 6 ? '57-71' : '89-103'}
                       </div>
                     );
@@ -172,7 +172,7 @@ export function PeriodicTable() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-3">
-                <span className="font-mono text-xs text-zinc-500">Z={focus.z}</span>
+                <span className="font-mono text-xs text-zinc-400">Z={focus.z}</span>
                 <h3 className="text-2xl font-bold text-white">{focus.symbol}</h3>
                 <span className="text-base text-cyan-300">{focus.name}</span>
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${CATEGORY_COLOR[focus.category?.toLowerCase() || 'unknown']}`}>
@@ -215,7 +215,7 @@ export function PeriodicTable() {
                 extraTags={['chem', 'element', focus.symbol.toLowerCase(), focus.category || 'element']}
                 rawData={focus}
               />
-              <button type="button" onClick={() => setFocus(null)} className="rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="Close">
+              <button type="button" onClick={() => setFocus(null)} className="rounded-md p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -229,7 +229,7 @@ export function PeriodicTable() {
 function Cell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5">
-      <div className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className={`mt-0.5 text-sm text-white ${mono ? 'font-mono text-xs' : ''}`}>{value}</div>
     </div>
   );

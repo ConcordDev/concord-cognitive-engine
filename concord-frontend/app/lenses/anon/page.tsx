@@ -120,7 +120,7 @@ export default function AnonLensPage() {
             <Zap className="h-4 w-4 text-neon-green" />
             Privacy Compute Actions
           </h3>
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-3 text-xs text-gray-400">
             Run k-anonymity, re-identification risk and differential-privacy analytics on the
             first stored privacy dataset artifact.
           </p>
@@ -188,25 +188,25 @@ export default function AnonLensPage() {
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-green">{actionResult.k as number}</p>
-                      <p className="text-[10px] text-gray-500">K-Anonymity</p>
+                      <p className="text-[10px] text-gray-400">K-Anonymity</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-cyan">
                         {actionResult.generalizationLevel as number}
                       </p>
-                      <p className="text-[10px] text-gray-500">Gen Level</p>
+                      <p className="text-[10px] text-gray-400">Gen Level</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-purple">
                         {actionResult.equivalenceClasses as number}
                       </p>
-                      <p className="text-[10px] text-gray-500">Equiv Classes</p>
+                      <p className="text-[10px] text-gray-400">Equiv Classes</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-white">
                         {(actionResult.informationLoss as number).toFixed(1)}%
                       </p>
-                      <p className="text-[10px] text-gray-500">Info Loss</p>
+                      <p className="text-[10px] text-gray-400">Info Loss</p>
                     </div>
                   </div>
                   {(actionResult.quasiIdentifiers as string[])?.length > 0 && (
@@ -287,7 +287,7 @@ export default function AnonLensPage() {
                             ?.epsilon as number
                         }
                       </p>
-                      <p className="text-[10px] text-gray-500">Epsilon (ε)</p>
+                      <p className="text-[10px] text-gray-400">Epsilon (ε)</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-cyan">
@@ -296,7 +296,7 @@ export default function AnonLensPage() {
                             ?.privacyLevel as string
                         }
                       </p>
-                      <p className="text-[10px] text-gray-500">Privacy Level</p>
+                      <p className="text-[10px] text-gray-400">Privacy Level</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-neon-green">
@@ -305,7 +305,7 @@ export default function AnonLensPage() {
                             ?.cumulative as number
                         }
                       </p>
-                      <p className="text-[10px] text-gray-500">Budget Used</p>
+                      <p className="text-[10px] text-gray-400">Budget Used</p>
                     </div>
                     <div className="rounded bg-lattice-surface p-2 text-center">
                       <p className="text-sm font-bold text-white">
@@ -314,7 +314,7 @@ export default function AnonLensPage() {
                             ?.queriesProcessed as number
                         }
                       </p>
-                      <p className="text-[10px] text-gray-500">Queries</p>
+                      <p className="text-[10px] text-gray-400">Queries</p>
                     </div>
                   </div>
                 </div>

@@ -40,9 +40,9 @@ export function RemindersPanel() {
     >
       <div>
         <p className="text-sm font-semibold text-white">
-          {e.patientName} <span className="text-xs font-normal text-zinc-500">— {e.vaccine}</span>
+          {e.patientName} <span className="text-xs font-normal text-zinc-400">— {e.vaccine}</span>
         </p>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-zinc-400">
           {e.owner || 'no owner'} · due {e.nextDue}
         </p>
       </div>
@@ -76,7 +76,7 @@ export function RemindersPanel() {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Computing reminders…
         </div>
       ) : (
@@ -86,7 +86,7 @@ export function RemindersPanel() {
               <AlertOctagon className="h-4 w-4" /> Overdue ({overdue.length})
             </p>
             {overdue.length === 0 ? (
-              <p className="text-xs text-zinc-600">No overdue vaccinations.</p>
+              <p className="text-xs text-zinc-400">No overdue vaccinations.</p>
             ) : (
               <div className="space-y-2">
                 {overdue.map((e, i) => (
@@ -100,7 +100,7 @@ export function RemindersPanel() {
               <BellRing className="h-4 w-4" /> Due soon ({dueSoon.length})
             </p>
             {dueSoon.length === 0 ? (
-              <p className="text-xs text-zinc-600">Nothing due in the next {horizon} days.</p>
+              <p className="text-xs text-zinc-400">Nothing due in the next {horizon} days.</p>
             ) : (
               <div className="space-y-2">
                 {dueSoon.map((e, i) => (

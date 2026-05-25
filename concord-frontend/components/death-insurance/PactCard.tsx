@@ -52,7 +52,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-zinc-100">{pact.payoutSparks} ⚡ payout</p>
-          <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+          <p className="mt-0.5 font-mono text-[10px] text-zinc-400">
             {pact.id} · written {fmtDate(pact.writtenAt)} · expires {fmtDate(pact.expiresAt)}
           </p>
         </div>
@@ -65,7 +65,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
         {pact.beneficiaries.map((b) => (
           <li key={b.userId} className="flex items-center justify-between gap-2 text-[11px]">
             <span className="flex items-center gap-1 text-zinc-200">
-              <Users className="h-3 w-3 text-zinc-500" />
+              <Users className="h-3 w-3 text-zinc-400" />
               {b.userId.slice(0, 16)}
             </span>
             <span className="text-zinc-400">
@@ -75,14 +75,14 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
                   {b.accepted ? 'accepted' : 'pending'}
                 </span>
               ) : (
-                <span className="text-zinc-500">no handshake</span>
+                <span className="text-zinc-400">no handshake</span>
               )}
             </span>
           </li>
         ))}
       </ul>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-zinc-500">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[10px] text-zinc-400">
         <span>
           premium {pact.premiumSparks} ⚡ {pact.premiumFrequency}
         </span>

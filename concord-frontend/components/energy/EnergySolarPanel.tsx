@@ -65,7 +65,7 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const chartData = series.map((e) => ({ date: e.date.slice(5), kwh: e.kwh }));
@@ -78,19 +78,19 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-lime-400">{summary.producedKwh}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Produced kWh</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Produced kWh</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-zinc-100">{summary.consumedKwh}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Consumed kWh</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Consumed kWh</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-amber-400">{summary.offsetPct}%</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Offset</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Offset</p>
           </div>
           <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2 text-center">
             <p className="text-lg font-bold text-emerald-400">${summary.savings}</p>
-            <p className="text-[10px] text-zinc-500 uppercase">Saved</p>
+            <p className="text-[10px] text-zinc-400 uppercase">Saved</p>
           </div>
         </div>
       )}
@@ -121,7 +121,7 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-[11px] text-zinc-500 italic py-8 text-center">
+          <p className="text-[11px] text-zinc-400 italic py-8 text-center">
             Log solar production over several days to see the curve.
           </p>
         )}
@@ -133,14 +133,14 @@ export function EnergySolarPanel({ onChange }: { onChange: () => void }) {
           <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
             <Home className="w-3.5 h-3.5 text-lime-400" /> Self-consumption vs export
           </h3>
-          <label className="flex items-center gap-1 text-[10px] text-zinc-500">
+          <label className="flex items-center gap-1 text-[10px] text-zinc-400">
             Export $/kWh
             <input placeholder="rate" inputMode="decimal" value={exportRate} onChange={(e) => setExportRate(e.target.value)}
               className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
           </label>
         </div>
         {!selfCon || !selfCon.hasData ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">
             Log solar production (and matching readings) to see how much you use on-site vs export.
           </p>
         ) : (

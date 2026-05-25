@@ -100,7 +100,7 @@ export function ListingsBrowser({
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <MapPin className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Listings</span>
-        <span className="ml-auto text-[10px] text-gray-500">{listings.length} results</span>
+        <span className="ml-auto text-[10px] text-gray-400">{listings.length} results</span>
         <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} className="text-[10px] bg-lattice-deep border border-lattice-border rounded px-1.5 py-0.5 text-gray-300">
           <option value="newest">Newest</option>
           <option value="price_asc">Price ↑</option>
@@ -146,9 +146,9 @@ export function ListingsBrowser({
 
       <div className="max-h-[36rem] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : listings.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings. Hit + to add one or relax filters.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><MapPin className="w-6 h-6 mx-auto mb-2 opacity-30" />No listings. Hit + to add one or relax filters.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {listings.map(l => {
@@ -159,21 +159,21 @@ export function ListingsBrowser({
                   <div className="w-20 h-16 bg-gradient-to-br from-emerald-900/30 to-cyan-900/20 rounded flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-6 h-6 text-cyan-500/40" />
                   </div>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)}>
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect?.(l)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div className="flex items-baseline gap-2">
                       <span className="text-base font-mono font-semibold text-white">${l.price.toLocaleString()}</span>
                       <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{l.status.replace('_', ' ')}</span>
                       {l.daysOnMarket < 7 && <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300">{l.daysOnMarket}d on mkt</span>}
                     </div>
                     <div className="text-xs text-gray-300 truncate">{l.address}</div>
-                    <div className="text-[10px] text-gray-500 truncate">{l.city}{l.state ? `, ${l.state}` : ''} {l.zip}</div>
+                    <div className="text-[10px] text-gray-400 truncate">{l.city}{l.state ? `, ${l.state}` : ''} {l.zip}</div>
                     <div className="mt-1 flex items-center gap-3 text-[11px] text-gray-400">
                       <span className="inline-flex items-center gap-1"><BedDouble className="w-3 h-3" />{l.beds}</span>
                       <span className="inline-flex items-center gap-1"><Bath className="w-3 h-3" />{l.baths}</span>
                       <span className="inline-flex items-center gap-1"><Maximize2 className="w-3 h-3" />{l.sqft.toLocaleString()}</span>
                     </div>
                   </div>
-                  <button onClick={() => toggleFav(l.id)} className={cn('p-1.5 rounded hover:bg-white/10', fav ? 'text-rose-400' : 'text-gray-500')} aria-label={fav ? 'Unfavourite' : 'Favourite'}>
+                  <button onClick={() => toggleFav(l.id)} className={cn('p-1.5 rounded hover:bg-white/10', fav ? 'text-rose-400' : 'text-gray-400')} aria-label={fav ? 'Unfavourite' : 'Favourite'}>
                     <Heart className={cn('w-4 h-4', fav && 'fill-rose-400')} />
                   </button>
                   {onPickForCompare && (
@@ -181,7 +181,7 @@ export function ListingsBrowser({
                       {picked ? '✓' : 'Compare'}
                     </button>
                   )}
-                  <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               );
             })}

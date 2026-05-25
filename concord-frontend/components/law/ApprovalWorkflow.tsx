@@ -73,7 +73,7 @@ export function ApprovalWorkflow({ contractId, onChange }: { contractId: string;
 
       {all.length === 0 ? (
         <>
-          <p className="text-[11px] text-gray-500">Route this contract through named reviewers before signature.</p>
+          <p className="text-[11px] text-gray-400">Route this contract through named reviewers before signature.</p>
           <div className="flex flex-wrap gap-1">
             {reviewers.map((r) => (
               <span key={r} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-400/15 text-indigo-300 inline-flex items-center gap-1">
@@ -102,9 +102,9 @@ export function ApprovalWorkflow({ contractId, onChange }: { contractId: string;
         <ol className="space-y-1">
           {all.map((ap) => (
             <li key={ap.id} className="flex items-center gap-2 bg-black/40 rounded px-2 py-1.5">
-              <span className="text-[10px] text-gray-500">#{ap.order}</span>
+              <span className="text-[10px] text-gray-400">#{ap.order}</span>
               <span className="text-xs text-white flex-1 truncate">{ap.reviewer}</span>
-              {ap.note && <span className="text-[9px] text-gray-500 italic truncate max-w-[120px]">{ap.note}</span>}
+              {ap.note && <span className="text-[9px] text-gray-400 italic truncate max-w-[120px]">{ap.note}</span>}
               {ap.state === 'pending' ? (
                 <div className="flex gap-1">
                   <button onClick={() => decide(ap.id, 'approved')} disabled={busy}

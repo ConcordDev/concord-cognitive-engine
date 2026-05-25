@@ -110,7 +110,7 @@ export function BankFeedsInbox() {
       <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
         <Banknote className="w-4 h-4 text-emerald-400" />
         <span className="text-sm font-semibold text-gray-200">Banking</span>
-        <span className="text-[10px] text-gray-500">{txns.length} uncategorized</span>
+        <span className="text-[10px] text-gray-400">{txns.length} uncategorized</span>
 
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -176,9 +176,9 @@ export function BankFeedsInbox() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : txns.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><RefreshCw className="w-6 h-6 mx-auto mb-2 opacity-30" />Inbox clear. Import a bank txn to start.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><RefreshCw className="w-6 h-6 mx-auto mb-2 opacity-30" />Inbox clear. Import a bank txn to start.</div>
       ) : (
         <ul className="divide-y divide-white/5">
           {txns.map(t => {
@@ -187,7 +187,7 @@ export function BankFeedsInbox() {
             return (
               <li key={t.id} className="px-4 py-2.5 hover:bg-white/[0.02] group">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 font-mono w-20">{t.date}</span>
+                  <span className="text-[10px] text-gray-400 font-mono w-20">{t.date}</span>
                   <span className="text-xs text-white flex-1 truncate">{t.description}</span>
                   <span className={cn('text-xs font-mono tabular-nums w-24 text-right', isDeposit ? 'text-emerald-300' : 'text-rose-300')}>
                     {isDeposit ? '+' : ''}${Math.abs(t.amount).toFixed(2)}

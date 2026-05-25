@@ -256,13 +256,12 @@ function BOMTreeNode({ node, depth = 0 }: { node: BOMNode; depth?: number }) {
           depth === 0 && 'bg-lattice-elevated/30'
         )}
         style={{ paddingLeft: `${depth * 20 + 8}px` }}
-        onClick={() => hasChildren && setExpanded(!expanded)}
-      >
+        onClick={() => hasChildren && setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         {hasChildren ? (
           expanded ? (
-            <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
           )
         ) : (
           <CircleDot className="w-3 h-3 text-gray-600 flex-shrink-0 ml-0.5" />
@@ -275,7 +274,7 @@ function BOMTreeNode({ node, depth = 0 }: { node: BOMNode; depth?: number }) {
         >
           {node.part}
         </span>
-        <span className={cn(ds.textMono, 'text-xs text-gray-500 w-20')}>{node.partNumber}</span>
+        <span className={cn(ds.textMono, 'text-xs text-gray-400 w-20')}>{node.partNumber}</span>
         <span className="text-xs text-gray-400 w-12 text-right">{node.qtyPer}x</span>
         <span className="text-xs text-orange-500 w-20 text-right font-mono">
           ${rollupCost.toFixed(2)}
@@ -432,7 +431,7 @@ function ScheduleTimeline({ schedule }: { schedule: LensItem }) {
         {DAYS.map((day, i) => (
           <div key={day} className="flex-1 text-center">
             <span
-              className="text-[10px] text-gray-500"
+              className="text-[10px] text-gray-400"
               style={{ marginLeft: i === 0 ? '136px' : '0' }}
             >
               {day}
@@ -774,7 +773,7 @@ export default function ManufacturingLensPage() {
                       style={{ width: `${line.uptime}%` }}
                     />
                   </div>
-                  <span className="text-xs text-gray-500">{line.uptime}%</span>
+                  <span className="text-xs text-gray-400">{line.uptime}%</span>
                 </div>
               </motion.div>
             );
@@ -836,7 +835,7 @@ export default function ManufacturingLensPage() {
             <card.icon className={cn('w-4 h-4 mb-1', card.color)} />
             <p className={cn('text-2xl font-bold', card.color)}>{card.value}</p>
             <p className="text-xs text-gray-400">{card.label}</p>
-            <p className="text-xs text-gray-600">{card.desc}</p>
+            <p className="text-xs text-gray-400">{card.desc}</p>
           </motion.div>
         ))}
       </div>
@@ -878,7 +877,7 @@ export default function ManufacturingLensPage() {
           >
             {metrics.avgOEE.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-500 mt-1">World-class: 85%+</p>
+          <p className="text-xs text-gray-400 mt-1">World-class: 85%+</p>
         </motion.div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -901,7 +900,7 @@ export default function ManufacturingLensPage() {
           >
             {metrics.qcPassRate.toFixed(1)}%
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-400 mt-1">
             First pass yield: {firstPassYield.toFixed(1)}%
           </p>
         </div>
@@ -914,7 +913,7 @@ export default function ManufacturingLensPage() {
             <span className={ds.textMuted}>Safety Incidents MTD</span>
           </div>
           <p className="text-2xl font-bold text-white">{metrics.safetyMTD}</p>
-          <p className="text-xs text-gray-500 mt-1">OSHA recordable: {metrics.oshaRecordables}</p>
+          <p className="text-xs text-gray-400 mt-1">OSHA recordable: {metrics.oshaRecordables}</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -936,7 +935,7 @@ export default function ManufacturingLensPage() {
             <span className={ds.textMuted}>Lost Time Days</span>
           </div>
           <p className="text-2xl font-bold text-white">{metrics.totalLostDays}</p>
-          <p className="text-xs text-gray-500 mt-1">MTD incident rate</p>
+          <p className="text-xs text-gray-400 mt-1">MTD incident rate</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -944,7 +943,7 @@ export default function ManufacturingLensPage() {
             <span className={ds.textMuted}>Machine Uptime</span>
           </div>
           <p className="text-2xl font-bold text-green-400">87.5%</p>
-          <p className="text-xs text-gray-500 mt-1">4/5 machines running</p>
+          <p className="text-xs text-gray-400 mt-1">4/5 machines running</p>
         </div>
       </div>
 
@@ -1009,7 +1008,7 @@ export default function ManufacturingLensPage() {
                   )}
                   style={{ height: `${(d.rate - 90) * 10}%` }}
                 />
-                <span className="text-[10px] text-gray-600">{d.day}</span>
+                <span className="text-[10px] text-gray-400">{d.day}</span>
               </div>
             ))}
           </div>
@@ -1045,7 +1044,7 @@ export default function ManufacturingLensPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-500 text-left border-b border-lattice-border">
+              <tr className="text-gray-400 text-left border-b border-lattice-border">
                 <th className="pb-2 pr-4 font-medium">WO #</th>
                 <th className="pb-2 pr-4 font-medium">Product</th>
                 <th className="pb-2 pr-4 font-medium">Status</th>
@@ -1139,8 +1138,7 @@ export default function ManufacturingLensPage() {
             >
               <div
                 className="flex items-start justify-between mb-3 cursor-pointer"
-                onClick={() => setDetailItem(isDetail ? null : item.id)}
-              >
+                onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>
@@ -1171,9 +1169,9 @@ export default function ManufacturingLensPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                   {isDetail ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
                   )}
                 </div>
               </div>
@@ -1242,7 +1240,7 @@ export default function ManufacturingLensPage() {
                                 'bg-orange-500/20 border-orange-500/40 text-orange-500 animate-pulse',
                               !isComplete &&
                                 !isCurrent &&
-                                'bg-lattice-elevated border-lattice-border text-gray-500'
+                                'bg-lattice-elevated border-lattice-border text-gray-400'
                             )}
                           >
                             {isComplete ? (
@@ -1307,14 +1305,14 @@ export default function ManufacturingLensPage() {
         </div>
         {showBOMTree && (
           <div className="border border-lattice-border rounded-lg p-2">
-            <div className="flex items-center gap-4 text-xs text-gray-500 pb-2 mb-2 border-b border-lattice-border px-2">
+            <div className="flex items-center gap-4 text-xs text-gray-400 pb-2 mb-2 border-b border-lattice-border px-2">
               <span className="flex-1">Component</span>
               <span className="w-20">Part #</span>
               <span className="w-12 text-right">Qty</span>
               <span className="w-20 text-right">Cost Rollup</span>
             </div>
             {BOM_TREE.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-400 text-center py-4">
                 No BOM tree data available. Create BOMs to see the component breakdown.
               </p>
             ) : (
@@ -1371,7 +1369,7 @@ export default function ManufacturingLensPage() {
               revB: String(previous.approvedDate ?? '-'),
               revC: String(current.approvedDate ?? '-'),
               delta: '-',
-              color: 'text-gray-500',
+              color: 'text-gray-400',
             },
           ];
           return (
@@ -1380,7 +1378,7 @@ export default function ManufacturingLensPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-gray-500 text-left border-b border-lattice-border">
+                    <tr className="text-gray-400 text-left border-b border-lattice-border">
                       <th className="pb-2 pr-4 font-medium">Attribute</th>
                       <th className="pb-2 pr-4 font-medium">
                         Rev {String(previous.revision ?? 'B')} (Previous)
@@ -1413,7 +1411,7 @@ export default function ManufacturingLensPage() {
           const d = item.data as Record<string, unknown>;
           const status = item.meta?.status || 'active';
           return (
-            <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+            <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-start justify-between mb-2">
                 <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
                 <span className={ds.badge(STATUS_COLORS[status as string])}>
@@ -1513,7 +1511,7 @@ export default function ManufacturingLensPage() {
             <span className={ds.textMuted}>SPC Status</span>
           </div>
           <p className="text-lg font-bold text-amber-400">1 OOC</p>
-          <p className="text-xs text-gray-500">PG-7 OD dimension</p>
+          <p className="text-xs text-gray-400">PG-7 OD dimension</p>
         </div>
       </div>
 
@@ -1530,8 +1528,7 @@ export default function ManufacturingLensPage() {
           <div key={item.id} className={ds.panel}>
             <div
               className="flex items-start justify-between mb-3 cursor-pointer"
-              onClick={() => setDetailItem(isDetail ? null : item.id)}
-            >
+              onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h3 className={ds.heading3}>{item.title}</h3>
@@ -1557,9 +1554,9 @@ export default function ManufacturingLensPage() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 {isDetail ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 )}
               </div>
             </div>
@@ -1606,7 +1603,7 @@ export default function ManufacturingLensPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="text-gray-500 text-left border-b border-lattice-border">
+                          <tr className="text-gray-400 text-left border-b border-lattice-border">
                             <th className="pb-2 pr-3 font-medium">Parameter</th>
                             <th className="pb-2 pr-3 font-medium">Nominal</th>
                             <th className="pb-2 pr-3 font-medium">Tolerance</th>
@@ -1647,7 +1644,7 @@ export default function ManufacturingLensPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+                  <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                     <p>
                       No quality measurements yet. Add measurements to track manufacturing quality.
                     </p>
@@ -1686,7 +1683,7 @@ export default function ManufacturingLensPage() {
                               </span>
                             </div>
                             <p className="text-xs text-gray-300">{def.desc as string}</p>
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-gray-400 mt-1">
                               Root Cause: {def.rootCause as string}
                             </p>
                           </div>
@@ -1735,7 +1732,7 @@ export default function ManufacturingLensPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-gray-500 text-left border-b border-lattice-border">
+              <tr className="text-gray-400 text-left border-b border-lattice-border">
                 <th className="pb-2 pr-4 font-medium">Work Order</th>
                 <th className="pb-2 pr-4 font-medium">Product</th>
                 <th className="pb-2 pr-4 font-medium">Line</th>
@@ -1847,7 +1844,7 @@ export default function ManufacturingLensPage() {
               >
                 {oeeCalcResult.toFixed(1)}%
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-400">
                 {oeeCalcResult >= 85
                   ? 'World Class'
                   : oeeCalcResult >= 65
@@ -1878,8 +1875,7 @@ export default function ManufacturingLensPage() {
           >
             <div
               className="flex items-start justify-between mb-3 cursor-pointer"
-              onClick={() => setDetailItem(isDetail ? null : item.id)}
-            >
+              onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="flex items-center gap-3">
                 <div
                   className={cn(
@@ -1912,9 +1908,9 @@ export default function ManufacturingLensPage() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 {isDetail ? (
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 )}
               </div>
             </div>
@@ -1964,7 +1960,7 @@ export default function ManufacturingLensPage() {
                   <div>
                     <h4 className="text-sm font-semibold text-gray-300 mb-2">
                       Downtime Log{' '}
-                      <span className="text-gray-500 font-normal">({totalDowntime} min total)</span>
+                      <span className="text-gray-400 font-normal">({totalDowntime} min total)</span>
                     </h4>
                     <div className="space-y-1">
                       {downtimeLog.map((entry, i) => (
@@ -2042,7 +2038,7 @@ export default function ManufacturingLensPage() {
               <span className={ds.textMuted}>OSHA Recordable Rate</span>
             </div>
             <p className="text-2xl font-bold text-amber-400">{oshaRate}</p>
-            <p className="text-xs text-gray-500">per 200,000 hrs</p>
+            <p className="text-xs text-gray-400">per 200,000 hrs</p>
           </div>
           <div className={ds.panel}>
             <div className="flex items-center gap-2 mb-1">
@@ -2098,7 +2094,7 @@ export default function ManufacturingLensPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-white font-medium">{emp.name}</span>
-                    <span className="text-xs text-gray-500">{emp.role}</span>
+                    <span className="text-xs text-gray-400">{emp.role}</span>
                   </div>
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {emp.certs.map((c) => (
@@ -2133,7 +2129,7 @@ export default function ManufacturingLensPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-500 text-left border-b border-lattice-border">
+                <tr className="text-gray-400 text-left border-b border-lattice-border">
                   <th className="pb-2 pr-4 font-medium">Area</th>
                   <th className="pb-2 pr-4 font-medium">Last Audit</th>
                   <th className="pb-2 pr-4 font-medium">Next Due</th>
@@ -2219,8 +2215,7 @@ export default function ManufacturingLensPage() {
             >
               <div
                 className="flex items-start justify-between mb-2 cursor-pointer"
-                onClick={() => setDetailItem(isDetail ? null : item.id)}
-              >
+                onClick={() => setDetailItem(isDetail ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className={ds.heading3}>{item.title}</h3>
@@ -2257,9 +2252,9 @@ export default function ManufacturingLensPage() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                   {isDetail ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
                   )}
                 </div>
               </div>
@@ -2280,13 +2275,13 @@ export default function ManufacturingLensPage() {
               {isDetail && (
                 <div className="mt-3 pt-3 border-t border-lattice-border space-y-3">
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase mb-1">
                       Root Cause
                     </h4>
                     <p className="text-sm text-gray-300">{d.rootCause as string}</p>
                   </div>
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase mb-1">
                       Corrective Action
                     </h4>
                     <p className="text-sm text-gray-300">{d.correctiveAction as string}</p>
@@ -2294,7 +2289,7 @@ export default function ManufacturingLensPage() {
                   </div>
                   {Boolean(d.trainingRequired) && (
                     <div>
-                      <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      <h4 className="text-xs font-semibold text-gray-400 uppercase mb-1">
                         Training Required
                       </h4>
                       <span className={ds.badge('neon-blue')}>{d.trainingRequired as string}</span>
@@ -2410,7 +2405,7 @@ export default function ManufacturingLensPage() {
       {mode !== 'dashboard' && (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -2419,7 +2414,7 @@ export default function ManufacturingLensPage() {
             />
           </div>
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -2500,8 +2495,8 @@ export default function ManufacturingLensPage() {
                         {wo.position}
                       </span>
                       <span className="text-gray-300 flex-1">{wo.id}</span>
-                      <span className="text-gray-500">P{wo.priority}</span>
-                      {wo.dueDate && <span className="text-gray-500">{wo.dueDate}</span>}
+                      <span className="text-gray-400">P{wo.priority}</span>
+                      {wo.dueDate && <span className="text-gray-400">{wo.dueDate}</span>}
                     </div>
                   ))}
               </div>
@@ -2514,13 +2509,13 @@ export default function ManufacturingLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       ${String(actionResult.totalCost)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Total Cost</p>
+                    <p className="text-[10px] text-gray-400">Total Cost</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.componentCount)}
                     </p>
-                    <p className="text-[10px] text-gray-500">Components</p>
+                    <p className="text-[10px] text-gray-400">Components</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.components) &&
@@ -2553,7 +2548,7 @@ export default function ManufacturingLensPage() {
                     >
                       {String(actionResult.oee)}% OEE
                     </p>
-                    <p className="text-[10px] text-gray-500 capitalize">
+                    <p className="text-[10px] text-gray-400 capitalize">
                       {String(actionResult.rating).replace(/_/g, ' ')}
                     </p>
                   </div>
@@ -2561,19 +2556,19 @@ export default function ManufacturingLensPage() {
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.availability)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Availability</p>
+                    <p className="text-[10px] text-gray-400">Availability</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.performance)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Performance</p>
+                    <p className="text-[10px] text-gray-400">Performance</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center col-span-2">
                     <p className="text-sm font-bold text-neon-cyan">
                       {String(actionResult.quality)}%
                     </p>
-                    <p className="text-[10px] text-gray-500">Quality</p>
+                    <p className="text-[10px] text-gray-400">Quality</p>
                   </div>
                 </div>
               </div>
@@ -2587,19 +2582,19 @@ export default function ManufacturingLensPage() {
                   >
                     {String(actionResult.incidentRate)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Incident Rate</p>
+                  <p className="text-[10px] text-gray-400">Incident Rate</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan">
                     {String(actionResult.recordableIncidents)}
                   </p>
-                  <p className="text-[10px] text-gray-500">Recordable</p>
+                  <p className="text-[10px] text-gray-400">Recordable</p>
                 </div>
                 <div className="p-2 bg-lattice-surface rounded text-center">
                   <p className="text-sm font-bold text-neon-cyan capitalize">
                     {String(actionResult.benchmark).replace(/_/g, ' ')}
                   </p>
-                  <p className="text-[10px] text-gray-500">Benchmark</p>
+                  <p className="text-[10px] text-gray-400">Benchmark</p>
                 </div>
               </div>
             )}
@@ -2610,7 +2605,7 @@ export default function ManufacturingLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

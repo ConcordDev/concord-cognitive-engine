@@ -429,7 +429,7 @@ export function ForgeStudio() {
                   type="button"
                   onClick={() => setTab(t.id)}
                   className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 ${
-                    tab === t.id ? 'bg-zinc-800 text-amber-200' : 'text-slate-500 hover:text-slate-300'
+                    tab === t.id ? 'bg-zinc-800 text-amber-200' : 'text-slate-400 hover:text-slate-300'
                   }`}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -440,7 +440,7 @@ export function ForgeStudio() {
             <button
               type="button"
               onClick={() => setProject(null)}
-              className="ml-auto rounded-md px-2 py-1 text-xs text-slate-500 hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="ml-auto rounded-md px-2 py-1 text-xs text-slate-400 hover:text-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               New project
             </button>
@@ -451,7 +451,7 @@ export function ForgeStudio() {
             <div className="flex flex-col p-4">
               <div className="mb-3 max-h-72 space-y-2 overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-900/50 p-3">
                 {thread.length === 0 && (
-                  <p className="py-6 text-center text-xs text-slate-500">
+                  <p className="py-6 text-center text-xs text-slate-400">
                     No refinements yet. Describe a change below — Forge applies a concrete edit and forks a version.
                   </p>
                 )}
@@ -525,7 +525,7 @@ export function ForgeStudio() {
                       >
                         <FileCode className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
                         <span className="truncate font-mono">{f.path}</span>
-                        <span className="ml-auto text-[10px] text-slate-600">{f.lines}</span>
+                        <span className="ml-auto text-[10px] text-slate-400">{f.lines}</span>
                       </button>
                     </li>
                   ))}
@@ -558,7 +558,7 @@ export function ForgeStudio() {
                     {files.find((f) => f.path === openFile)?.content || '(empty)'}
                   </pre>
                 ) : (
-                  <div className="flex h-40 items-center justify-center text-xs text-slate-500">
+                  <div className="flex h-40 items-center justify-center text-xs text-slate-400">
                     Select a file to view its contents.
                   </div>
                 )}
@@ -586,9 +586,9 @@ export function ForgeStudio() {
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-slate-200">
                         v{v.versionId}
-                        {v.derivedFrom && <span className="ml-1.5 text-slate-500">← v{v.derivedFrom}</span>}
+                        {v.derivedFrom && <span className="ml-1.5 text-slate-400">← v{v.derivedFrom}</span>}
                       </div>
-                      <div className="truncate text-slate-500">{v.label}</div>
+                      <div className="truncate text-slate-400">{v.label}</div>
                     </div>
                     <span className="shrink-0 text-slate-600">{v.lines} ln · {v.files} files</span>
                     {v.versionId !== project.versionId && (
@@ -615,7 +615,7 @@ export function ForgeStudio() {
                     >
                       {versions.map((v) => <option key={v.versionId} value={v.versionId}>v{v.versionId}</option>)}
                     </select>
-                    <span className="text-slate-500">→</span>
+                    <span className="text-slate-400">→</span>
                     <select
                       value={diffTo}
                       onChange={(e) => setDiffTo(e.target.value)}
@@ -637,7 +637,7 @@ export function ForgeStudio() {
                       <div className="flex gap-3 text-xs">
                         <span className="text-emerald-400">+{diff.addedLines} added</span>
                         <span className="text-rose-400">-{diff.removedLines} removed</span>
-                        <span className="text-slate-500">{diff.oldLineCount} → {diff.newLineCount} lines</span>
+                        <span className="text-slate-400">{diff.oldLineCount} → {diff.newLineCount} lines</span>
                       </div>
                       <pre className="max-h-56 overflow-auto rounded bg-zinc-950 p-2 font-mono text-[11px] leading-5">
                         {diff.removed.map((l, i) => (
@@ -698,7 +698,7 @@ export function ForgeStudio() {
                   className="h-96 w-full rounded-lg border border-zinc-800 bg-white"
                 />
               ) : (
-                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-slate-500">
+                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-slate-400">
                   Build a live preview to render the project manifest in a sandboxed iframe.
                 </div>
               )}
@@ -747,7 +747,7 @@ export function ForgeStudio() {
                         <button
                           type="button"
                           onClick={() => setLabels((prev) => prev.filter((x) => x !== l))}
-                          className="text-slate-500 hover:text-rose-400 focus:outline-none"
+                          className="text-slate-400 hover:text-rose-400 focus:outline-none"
                           aria-label={`remove ${l}`}
                         >
                           ×
@@ -778,7 +778,7 @@ export function ForgeStudio() {
                     <div className="mb-1">Domain tables: {imageResult.domainTables.join(', ')}</div>
                   )}
                   {imageResult.matchedConcepts.length > 0 && (
-                    <div className="mb-2 text-slate-500">Matched: {imageResult.matchedConcepts.join(', ')}</div>
+                    <div className="mb-2 text-slate-400">Matched: {imageResult.matchedConcepts.join(', ')}</div>
                   )}
                   <button
                     type="button"

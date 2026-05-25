@@ -109,8 +109,8 @@ function PostCompose({
         onClick={() => setIsOpen(true)}
         className="w-full flex items-center gap-3 p-4 rounded-xl bg-lattice-deep border border-lattice-border hover:border-neon-cyan/30 transition-all text-left"
       >
-        <PenSquare className="w-5 h-5 text-gray-500" />
-        <span className="text-sm text-gray-500">Post something to the group...</span>
+        <PenSquare className="w-5 h-5 text-gray-400" />
+        <span className="text-sm text-gray-400">Post something to the group...</span>
       </button>
     );
   }
@@ -129,7 +129,7 @@ function PostCompose({
         autoFocus
       />
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-lattice-border">
-        <span className="text-[10px] text-gray-600">
+        <span className="text-[10px] text-gray-400">
           {content.length}/2000
         </span>
         <div className="flex items-center gap-2">
@@ -188,7 +188,7 @@ function GroupPostCard({ post }: { post: GroupPost }) {
             <span className="text-sm text-white font-medium">
               {post.authorName}
             </span>
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-gray-400">
               {formatRelativeTime(post.createdAt)}
             </span>
           </div>
@@ -199,7 +199,7 @@ function GroupPostCard({ post }: { post: GroupPost }) {
           </p>
 
           {/* Engagement */}
-          <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+          <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
             <button className="flex items-center gap-1 hover:text-neon-pink transition-colors">
               <Heart className="w-3.5 h-3.5" />
               {post.reactions > 0 && formatNumber(post.reactions)}
@@ -246,8 +246,7 @@ function MembersSidebar({
           {/* Mobile backdrop */}
           <div
             className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-            onClick={onClose}
-          />
+            onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <motion.div
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
@@ -261,7 +260,7 @@ function MembersSidebar({
               </h3>
               <button
                 onClick={onClose}
-                className="text-gray-500 hover:text-white"
+                className="text-gray-400 hover:text-white"
               aria-label="Close">
                 <X className="w-4 h-4" />
               </button>
@@ -319,7 +318,7 @@ function MembersSidebar({
                   );
                 })
               ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
+                <p className="text-sm text-gray-400 text-center py-4">
                   No members found
                 </p>
               )}
@@ -419,7 +418,7 @@ export default function GroupDetailPage() {
             <div>
               <Link
                 href="/groups"
-                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-white transition-colors mb-2"
+                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors mb-2"
               >
                 <ChevronLeft className="w-3 h-3" />
                 All Groups
@@ -509,9 +508,9 @@ export default function GroupDetailPage() {
           ) : (
             <div className="text-center py-16">
               <MessageSquare className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-              <p className="text-sm text-gray-500">No posts in this group yet</p>
+              <p className="text-sm text-gray-400">No posts in this group yet</p>
               {group.isMember && (
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-xs text-gray-400 mt-1">
                   Be the first to share something
                 </p>
               )}

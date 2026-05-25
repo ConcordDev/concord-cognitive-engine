@@ -422,7 +422,7 @@ function ItemCard({
           {audio ? (
             <WaveformBars playing={isPlaying} small />
           ) : (
-            <Icon className="w-6 h-6 text-gray-500" />
+            <Icon className="w-6 h-6 text-gray-400" />
           )}
           {audio && (
             <button
@@ -472,7 +472,7 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-1">
           {starRating(item.rating)}
-          <span className="text-xs text-gray-500 ml-1">{item.rating}</span>
+          <span className="text-xs text-gray-400 ml-1">{item.rating}</span>
         </div>
         <span className="text-neon-green font-bold">{formatPrice(item.prices.basic)}</span>
         {onToggleStar && (
@@ -482,7 +482,7 @@ function ItemCard({
             title={isStarred ? 'In watchlist' : 'Save to watchlist'}
             className={cn(
               'p-1.5 rounded transition-colors',
-              isStarred ? 'text-neon-yellow' : 'text-gray-500 hover:text-neon-yellow'
+              isStarred ? 'text-neon-yellow' : 'text-gray-400 hover:text-neon-yellow'
             )}
           >
             <Star className={cn('w-3.5 h-3.5', isStarred && 'fill-current')} />
@@ -571,10 +571,10 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-1">
           {starRating(item.rating)}
-          <span className="text-[10px] text-gray-500 ml-1">({item.ratingCount})</span>
+          <span className="text-[10px] text-gray-400 ml-1">({item.ratingCount})</span>
         </div>
         {(item.version || item.key || item.genre) && (
-          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <div className="flex items-center gap-2 text-[10px] text-gray-400">
             {item.genre && <span>{item.genre}</span>}
             {item.version && <span>v{item.version}</span>}
             {item.key && <span>{item.key}</span>}
@@ -646,7 +646,7 @@ function AudioPreviewBar({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-semibold truncate">{item.title}</span>
-            <span className="text-xs text-gray-500">by {item.creator.name}</span>
+            <span className="text-xs text-gray-400">by {item.creator.name}</span>
           </div>
           <WaveformBars playing={playing} small />
         </div>
@@ -1415,7 +1415,7 @@ export default function MarketplaceLensPage() {
                       ) : (
                         (() => {
                           const I = typeIcon(featuredItems[featuredIdx].type);
-                          return <I className="w-12 h-12 text-gray-500" />;
+                          return <I className="w-12 h-12 text-gray-400" />;
                         })()
                       )}
                     </div>
@@ -1441,7 +1441,7 @@ export default function MarketplaceLensPage() {
                         <div className="flex items-center gap-1">
                           {starRating(featuredItems[featuredIdx].rating)}
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {featuredItems[featuredIdx].sales} sales
                         </span>
                       </div>
@@ -1518,7 +1518,7 @@ export default function MarketplaceLensPage() {
             {/* Search + Filters */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="relative flex-1 min-w-[220px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -1555,7 +1555,7 @@ export default function MarketplaceLensPage() {
                     'p-2 rounded-l-lg transition-colors',
                     viewMode === 'grid'
                       ? 'bg-neon-purple/20 text-neon-purple'
-                      : 'text-gray-500 hover:text-white'
+                      : 'text-gray-400 hover:text-white'
                   )}
                 aria-label="Grid3 x3">
                   <Grid3X3 className="w-4 h-4" />
@@ -1566,7 +1566,7 @@ export default function MarketplaceLensPage() {
                     'p-2 rounded-r-lg transition-colors',
                     viewMode === 'list'
                       ? 'bg-neon-purple/20 text-neon-purple'
-                      : 'text-gray-500 hover:text-white'
+                      : 'text-gray-400 hover:text-white'
                   )}
                 aria-label="List view">
                   <List className="w-4 h-4" />
@@ -1575,7 +1575,7 @@ export default function MarketplaceLensPage() {
             </div>
 
             {/* Results count */}
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-400">
               {filteredItems.length} item{filteredItems.length !== 1 ? 's' : ''} found
             </p>
 
@@ -1605,7 +1605,7 @@ export default function MarketplaceLensPage() {
               </AnimatePresence>
             </div>
             {filteredItems.length === 0 && (
-              <div className="text-center py-16 text-gray-500">
+              <div className="text-center py-16 text-gray-400">
                 <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
                 <p className="mb-1 font-medium text-gray-400">No items match your filters</p>
                 <p className="text-sm mb-5 text-gray-600">
@@ -1657,7 +1657,7 @@ export default function MarketplaceLensPage() {
                   </motion.div>
                 ))}
                 {recentTrades.length === 0 && recentListings.length === 0 && (
-                  <p className="text-xs text-gray-600 italic">Waiting for activity...</p>
+                  <p className="text-xs text-gray-400 italic">Waiting for activity...</p>
                 )}
               </div>
             </div>
@@ -1735,12 +1735,12 @@ export default function MarketplaceLensPage() {
                 <div className="w-10 h-10 rounded-lg bg-lattice-deep flex items-center justify-center">
                   {(() => {
                     const I = typeIcon(item.type);
-                    return <I className="w-5 h-5 text-gray-500" />;
+                    return <I className="w-5 h-5 text-gray-400" />;
                   })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{item.title}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-400">
                     {item.type} -- {item.sales} sales -- ${item.prices.basic}+
                   </p>
                 </div>
@@ -1861,7 +1861,7 @@ export default function MarketplaceLensPage() {
                         );
                       })}
                     </div>
-                    <div className="flex items-center gap-2 p-4 border-2 border-dashed border-lattice-border rounded-lg justify-center text-gray-500 text-sm cursor-pointer hover:border-neon-purple/50 transition-colors">
+                    <div className="flex items-center gap-2 p-4 border-2 border-dashed border-lattice-border rounded-lg justify-center text-gray-400 text-sm cursor-pointer hover:border-neon-purple/50 transition-colors">
                       <Upload className="w-5 h-5" /> Upload files
                     </div>
                   </div>
@@ -1959,7 +1959,7 @@ export default function MarketplaceLensPage() {
                       </label>
                       <div className="max-h-48 overflow-y-auto border border-lattice-border rounded-lg divide-y divide-lattice-border">
                         {marketDTUs.length === 0 && (
-                          <p className="text-xs text-gray-500 p-3 text-center">
+                          <p className="text-xs text-gray-400 p-3 text-center">
                             No DTUs available. Ingest content first.
                           </p>
                         )}
@@ -2008,7 +2008,7 @@ export default function MarketplaceLensPage() {
                     </p>
                   )}
                   <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-400">
                       {packSelectedDTUs.length} DTU{packSelectedDTUs.length !== 1 ? 's' : ''} in
                       pack
                     </span>
@@ -2054,7 +2054,7 @@ export default function MarketplaceLensPage() {
       {tab === 'cart' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {cart.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
+            <div className="text-center py-16 text-gray-400">
               <ShoppingCart className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-medium">Your cart is empty</p>
               <p className="text-sm mt-1">Browse the marketplace to find creative assets.</p>
@@ -2070,11 +2070,11 @@ export default function MarketplaceLensPage() {
                   return (
                     <div key={ci.item.id} className="panel p-4 flex items-center gap-4">
                       <div className="w-12 h-12 rounded-lg bg-lattice-deep flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-gray-500" />
+                        <Icon className="w-5 h-5 text-gray-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{ci.item.title}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-400">
                           {ci.item.creator.name} -- {ci.item.type}
                         </p>
                       </div>
@@ -2121,7 +2121,7 @@ export default function MarketplaceLensPage() {
                     {formatPrice(cartTotal)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center justify-between text-xs text-gray-400">
                   <span>Your balance</span>
                   <span className={cn(userBalance < cartTotal ? 'text-red-400' : 'text-gray-400')}>
                     {formatPrice(userBalance)}
@@ -2242,7 +2242,7 @@ export default function MarketplaceLensPage() {
       {tab === 'watchlist' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {watchlist.size === 0 ? (
-            <div className="text-center py-16 text-gray-500">
+            <div className="text-center py-16 text-gray-400">
               <Star className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-medium text-gray-400 mb-1">Watchlist empty</p>
               <p className="text-sm text-gray-600 mb-5">
@@ -2256,7 +2256,7 @@ export default function MarketplaceLensPage() {
             <>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-white">
-                  Your watchlist <span className="text-gray-500 text-sm font-normal">({watchlist.size})</span>
+                  Your watchlist <span className="text-gray-400 text-sm font-normal">({watchlist.size})</span>
                 </h3>
                 <button
                   onClick={() => {
@@ -2302,11 +2302,11 @@ export default function MarketplaceLensPage() {
                 const orphans = [...watchlist].filter((id) => !visibleIds.has(id));
                 if (orphans.length === 0) return null;
                 return (
-                  <div className="mt-6 p-4 rounded-lg border border-lattice-border bg-lattice-deep/30 text-xs text-gray-500">
+                  <div className="mt-6 p-4 rounded-lg border border-lattice-border bg-lattice-deep/30 text-xs text-gray-400">
                     <div className="text-gray-400 mb-2 font-medium">
                       {orphans.length} starred item{orphans.length === 1 ? '' : 's'} not loaded in current view
                     </div>
-                    <div className="font-mono text-[10px] text-gray-600 break-all">{orphans.join(', ')}</div>
+                    <div className="font-mono text-[10px] text-gray-400 break-all">{orphans.join(', ')}</div>
                     <button
                       onClick={() => setTab('browse')}
                       className="mt-2 text-[11px] text-neon-purple hover:underline"
@@ -2327,7 +2327,7 @@ export default function MarketplaceLensPage() {
       {tab === 'purchases' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
           {purchases.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
+            <div className="text-center py-16 text-gray-400">
               <Download className="w-10 h-10 mx-auto mb-3 opacity-40" />
               <p className="font-medium">No purchases yet</p>
             </div>
@@ -2338,11 +2338,11 @@ export default function MarketplaceLensPage() {
               return (
                 <div key={p.id} className="panel p-4 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-lg bg-lattice-deep flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-gray-500" />
+                    <Icon className="w-5 h-5 text-gray-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{p.item.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex items-center gap-2 text-xs text-gray-400">
                       <span>{p.item.creator.name}</span>
                       <span className="text-gray-600">|</span>
                       <span className={tier?.color}>{tier?.name} License</span>
@@ -2406,7 +2406,7 @@ export default function MarketplaceLensPage() {
             <h3 className="font-semibold flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-neon-cyan" /> Revenue Over Time
             </h3>
-            <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
+            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
               No revenue data yet
             </div>
           </div>
@@ -2424,10 +2424,10 @@ export default function MarketplaceLensPage() {
                   key={item.id}
                   className="flex items-center gap-3 py-2 border-b border-lattice-border last:border-0"
                 >
-                  <span className="text-xs text-gray-600 w-5 text-right font-mono">{i + 1}</span>
+                  <span className="text-xs text-gray-400 w-5 text-right font-mono">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.title}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-400">
                       {item.type} by {item.creator.name}
                     </p>
                   </div>
@@ -2473,7 +2473,7 @@ export default function MarketplaceLensPage() {
               <div key={s.label} className="lens-card p-4 space-y-1">
                 <p className="text-xs text-gray-400">{s.label}</p>
                 <p className={cn('text-xl font-bold', s.color)}>{s.value}</p>
-                <p className="text-[10px] text-gray-500">{s.sub}</p>
+                <p className="text-[10px] text-gray-400">{s.sub}</p>
               </div>
             ))}
           </div>
@@ -2660,7 +2660,7 @@ export default function MarketplaceLensPage() {
                   Array.isArray(actionResult.tips) &&
                   actionResult.tips.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider">Tips</p>
+                      <p className="text-xs text-gray-400 uppercase tracking-wider">Tips</p>
                       {(actionResult.tips as string[]).map((t, i) => (
                         <p key={i} className="text-xs text-gray-300">
                           • {t}
@@ -2684,7 +2684,7 @@ export default function MarketplaceLensPage() {
                     </span>
                   </span>
                 </div>
-                <div className="flex gap-4 text-xs text-gray-500">
+                <div className="flex gap-4 text-xs text-gray-400">
                   <span>
                     Margin: <span className="text-neon-cyan">{String(actionResult.margin)}%</span>
                   </span>
@@ -2815,12 +2815,10 @@ export default function MarketplaceLensPage() {
           onClick={() => setPaletteOpen(false)}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search marketplace"
-        >
+          aria-label="Quick search marketplace" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div
             className="bg-[#0d1117] border border-emerald-500/40 rounded-xl w-full max-w-xl shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={(e) => e.stopPropagation()} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
               <ShoppingBag className="w-4 h-4 text-emerald-400" />
               <input

@@ -235,7 +235,7 @@ function FacetGroup({
   if (buckets.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-[11px] font-medium uppercase text-gray-500">{title}</p>
+      <p className="mb-1 text-[11px] font-medium uppercase text-gray-400">{title}</p>
       <div className="flex flex-wrap gap-1.5">
         {buckets.map((b) => {
           const on = selected.includes(b.value);

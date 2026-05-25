@@ -74,7 +74,7 @@ export function LegalAskBar() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Ask anything (deadlines, trust balance, unbilled time, or a legal question…)"
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-500 outline-none"
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none"
           />
           {q && (
             <button type="submit" disabled={loading} className="text-amber-300 hover:text-amber-200 p-0.5">

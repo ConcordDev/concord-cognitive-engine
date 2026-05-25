@@ -106,7 +106,7 @@ export function NewsAudioMode() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-emerald-600/15 to-transparent">
         <Headphones className="w-5 h-5 text-emerald-400" />
         <h2 className="text-sm font-bold text-zinc-100">Audio Mode</h2>
-        <span className="text-[11px] text-zinc-500">Listen to any article hands-free</span>
+        <span className="text-[11px] text-zinc-400">Listen to any article hands-free</span>
       </header>
 
       {!supported && (
@@ -119,7 +119,7 @@ export function NewsAudioMode() {
       {script && (
         <div className="px-4 py-3 border-b border-zinc-800 bg-zinc-900/40">
           <p className="text-sm font-semibold text-zinc-100">{script.title}</p>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-zinc-400">
             {script.source} · {script.wordCount} words · ~{fmtDuration(script.estimatedSeconds)}
           </p>
           <div className="flex items-center gap-2 mt-2">
@@ -147,7 +147,7 @@ export function NewsAudioMode() {
                 key={i}
                 className={cn(
                   'text-[11px] leading-snug px-2 py-0.5 rounded',
-                  i === segmentIdx ? 'bg-emerald-500/15 text-emerald-200' : 'text-zinc-500',
+                  i === segmentIdx ? 'bg-emerald-500/15 text-emerald-200' : 'text-zinc-400',
                 )}
               >
                 {seg}
@@ -159,11 +159,11 @@ export function NewsAudioMode() {
 
       {/* Article picker */}
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : articles.length === 0 ? (
-        <div className="px-4 py-10 text-center text-zinc-500 text-sm italic">
+        <div className="px-4 py-10 text-center text-zinc-400 text-sm italic">
           No data yet — add articles to the news directory to listen to them.
         </div>
       ) : (
@@ -181,7 +181,7 @@ export function NewsAudioMode() {
                 <Play className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-zinc-100 truncate">{a.title}</p>
-                  <p className="text-[10px] text-zinc-500">{a.source}</p>
+                  <p className="text-[10px] text-zinc-400">{a.source}</p>
                 </div>
               </button>
             </li>

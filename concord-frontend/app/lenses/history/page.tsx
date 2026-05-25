@@ -273,7 +273,7 @@ export default function HistoryLensPage() {
         const eras = [...new Set(items.map(i => i.data.era).filter(Boolean))];
         return eras.length > 0 ? (
           <div className="flex gap-2 flex-wrap">
-            <Scroll className="w-4 h-4 text-gray-500 mt-0.5" />
+            <Scroll className="w-4 h-4 text-gray-400 mt-0.5" />
             {eras.map(era => (
               <button
                 key={era}
@@ -310,7 +310,7 @@ export default function HistoryLensPage() {
                   <span className="text-gray-300 truncate">{e.title}</span>
                 </div>
               ))}
-              {events.filter(e => e.data.date).length === 0 && <p className="text-xs text-gray-500">No dated events yet.</p>}
+              {events.filter(e => e.data.date).length === 0 && <p className="text-xs text-gray-400">No dated events yet.</p>}
             </div>
           </div>
           <div className="panel p-4">
@@ -335,7 +335,7 @@ export default function HistoryLensPage() {
       {activeTab === 'Timeline' && (
         <div className="space-y-1">
           {timelineItems.length === 0 ? (
-            <div className="text-center py-16 text-gray-500">
+            <div className="text-center py-16 text-gray-400">
               <Clock className="w-12 h-12 mx-auto mb-4 opacity-30" />
               <p className="text-sm">No events with dates yet. Add events with dates to see a timeline.</p>
             </div>
@@ -355,7 +355,7 @@ export default function HistoryLensPage() {
                   <div className="p-3 rounded-lg bg-lattice-surface/50 border border-lattice-border hover:border-neon-cyan/30 transition-colors">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-mono text-neon-cyan">{item.data.date}</span>
-                      {item.data.endDate && <span className="text-xs text-gray-500">to {item.data.endDate}</span>}
+                      {item.data.endDate && <span className="text-xs text-gray-400">to {item.data.endDate}</span>}
                       <span className={cn('text-xs', REGION_COLORS[item.data.region] || 'text-gray-400')}>
                         {item.data.region?.replace(/_/g, ' ')}
                       </span>
@@ -375,7 +375,7 @@ export default function HistoryLensPage() {
           {/* Toolbar */}
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 ref={searchInputRef}
               value={searchQuery}
@@ -404,7 +404,7 @@ export default function HistoryLensPage() {
             >
               <Plus className="w-4 h-4" /> New {currentType}
             </button>
-            <span className="text-sm text-gray-500 ml-auto">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
+            <span className="text-sm text-gray-400 ml-auto">{filtered.length} item{filtered.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Create Form */}
@@ -473,7 +473,7 @@ export default function HistoryLensPage() {
                   {[1, 2, 3].map(i => <div key={i} className="h-20 bg-lattice-surface animate-pulse rounded-lg" />)}
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="text-center py-16 text-gray-500">
+                <div className="text-center py-16 text-gray-400">
                   <Clock className="w-12 h-12 mx-auto mb-4 opacity-30" />
                   <p className="text-sm">No {currentType.toLowerCase()}s yet. Create one to get started.</p>
                 </div>
@@ -502,7 +502,7 @@ export default function HistoryLensPage() {
                             {item.data.region?.replace(/_/g, ' ')}
                           </span>
                           {item.data.location && (
-                            <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                            <span className="text-xs text-gray-400 flex items-center gap-0.5">
                               <MapPin className="w-3 h-3" /> {item.data.location}
                             </span>
                           )}
@@ -522,8 +522,8 @@ export default function HistoryLensPage() {
                   <div className="flex items-center justify-between">
                     <h2 className="font-semibold text-white">{selected.title}</h2>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleAction(selected.id)} className="text-gray-500 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
-                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<HistoryArtifact> })} className="text-gray-500 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
+                      <button onClick={() => handleAction(selected.id)} className="text-gray-400 hover:text-neon-cyan" title="Run AI analysis"><Zap className="w-4 h-4" /></button>
+                      <button onClick={() => update(selected.id, { data: { ...selected.data, lastReviewed: new Date().toISOString() } as unknown as Partial<HistoryArtifact> })} className="text-gray-400 hover:text-blue-400" title="Update"><Eye className="w-4 h-4" /></button>
                       <button onClick={() => remove(selected.id)} className="text-red-400 hover:text-red-300" aria-label="Delete">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -531,7 +531,7 @@ export default function HistoryLensPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {selected.data.date && <span className="text-xs font-mono text-neon-cyan">{selected.data.date}</span>}
-                    {selected.data.endDate && <span className="text-xs text-gray-500">to {selected.data.endDate}</span>}
+                    {selected.data.endDate && <span className="text-xs text-gray-400">to {selected.data.endDate}</span>}
                     <span className={cn('text-xs', REGION_COLORS[selected.data.region] || 'text-gray-400')}>
                       {selected.data.region?.replace(/_/g, ' ')}
                     </span>
@@ -594,12 +594,12 @@ export default function HistoryLensPage() {
                       )}
                     </div>
                   )}
-                  <div className="text-xs text-gray-500 pt-2 border-t border-lattice-border">
+                  <div className="text-xs text-gray-400 pt-2 border-t border-lattice-border">
                     Created {new Date(selected.createdAt).toLocaleDateString()}
                   </div>
                 </>
               ) : (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-gray-400">
                   <Clock className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p className="text-sm">Select an item to view details</p>
                 </div>

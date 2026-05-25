@@ -22,7 +22,7 @@ interface Diff {
 }
 
 const LINE_STYLE: Record<DiffLine['type'], string> = {
-  equal: 'text-zinc-500',
+  equal: 'text-zinc-400',
   added: 'text-emerald-300 bg-emerald-950/40',
   removed: 'text-rose-300 bg-rose-950/40 line-through decoration-rose-700/60',
 };
@@ -79,10 +79,10 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (!scenes.length) {
-    return <p className="text-[11px] text-zinc-500 italic py-8 text-center">No scenes yet. Add scenes in the Binder.</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-8 text-center">No scenes yet. Add scenes in the Binder.</p>;
   }
 
   return (
@@ -99,7 +99,7 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
           </button>
         </div>
         {snapshots.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No snapshots for this scene yet. Take one to start versioning.</p>
+          <p className="text-[11px] text-zinc-400 italic">No snapshots for this scene yet. Take one to start versioning.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
             <label className="text-[11px] text-zinc-400">
@@ -134,7 +134,7 @@ export function CwSnapshotDiffPanel({ projectId }: { projectId: string }) {
             <span className="ml-auto flex gap-2">
               <span className="text-emerald-400">+{diff.addedLines}</span>
               <span className="text-rose-400">−{diff.removedLines}</span>
-              <span className="text-zinc-500">={diff.unchangedLines}</span>
+              <span className="text-zinc-400">={diff.unchangedLines}</span>
               <span className={cn(diff.wordDelta >= 0 ? 'text-emerald-400' : 'text-rose-400')}>
                 {diff.wordDelta >= 0 ? '+' : ''}{diff.wordDelta}w
               </span>

@@ -50,7 +50,7 @@ export function MouseSensitivitySlider() {
         />
         <span className="text-xs font-mono text-cyan-300 w-12 text-right">{displayPercent}%</span>
       </div>
-      <p className="text-[11px] text-gray-500 mt-2">
+      <p className="text-[11px] text-gray-400 mt-2">
         Default is 0.0025 rad/px (~12% of slider). Higher = faster turn.
       </p>
     </div>

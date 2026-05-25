@@ -86,7 +86,7 @@ export function UpcomingLaunches() {
         <div className="flex items-center gap-2">
           <div className="flex rounded-md border border-zinc-800 bg-zinc-950 p-0.5 text-[10px]">
             {(['all', 'spacex'] as const).map((p) => (
-              <button key={p} onClick={() => setProvider(p)} className={`rounded px-2 py-0.5 font-mono uppercase ${provider === p ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-500 hover:text-zinc-300'}`}>{p === 'all' ? 'All providers' : 'SpaceX'}</button>
+              <button key={p} onClick={() => setProvider(p)} className={`rounded px-2 py-0.5 font-mono uppercase ${provider === p ? 'bg-cyan-500/20 text-cyan-200' : 'text-zinc-400 hover:text-zinc-300'}`}>{p === 'all' ? 'All providers' : 'SpaceX'}</button>
             ))}
           </div>
           {all.length > 0 && (
@@ -105,7 +105,7 @@ export function UpcomingLaunches() {
 
       {error && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">{error}</div>}
 
-      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Fetching launch manifest…</div>}
+      {load.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Fetching launch manifest…</div>}
 
       <div className="space-y-2">
         {all.map((l) => {
@@ -132,7 +132,7 @@ export function UpcomingLaunches() {
                     {l.orbit && <span className="rounded bg-zinc-800 px-1 font-mono text-[10px] text-zinc-300">{l.orbit}</span>}
                     {l.status && <span className="text-cyan-300/80">{l.status}</span>}
                   </div>
-                  {l.missionDescription && <p className="mt-1 line-clamp-2 text-[11px] text-zinc-500">{l.missionDescription}</p>}
+                  {l.missionDescription && <p className="mt-1 line-clamp-2 text-[11px] text-zinc-400">{l.missionDescription}</p>}
                   <div className="mt-1 flex gap-2 text-[11px]">
                     {l.webcast && <a href={l.webcast} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-red-300 hover:underline"><Tv className="h-3 w-3" /> webcast</a>}
                     {l.article && <a href={l.article} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-cyan-300 hover:underline"><ExternalLink className="h-3 w-3" /> article</a>}
@@ -144,7 +144,7 @@ export function UpcomingLaunches() {
           );
         })}
         {all.length === 0 && !load.isPending && !error && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-500">No launches in window.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-400">No launches in window.</div>
         )}
       </div>
     </div>

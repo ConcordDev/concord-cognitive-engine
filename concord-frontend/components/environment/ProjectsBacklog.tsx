@@ -55,7 +55,7 @@ export function ProjectsBacklog() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Lightbulb className="w-4 h-4 text-emerald-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Reduction projects</span>
-        <span className="ml-auto text-[10px] text-gray-500">{totalAnnualReduction.toFixed(0)} t/yr expected · ${(totalInvestment / 1000).toFixed(0)}K total</span>
+        <span className="ml-auto text-[10px] text-gray-400">{totalAnnualReduction.toFixed(0)} t/yr expected · ${(totalInvestment / 1000).toFixed(0)}K total</span>
       </header>
       <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
         <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Project name" className="col-span-2 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -67,9 +67,9 @@ export function ProjectsBacklog() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : projects.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Lightbulb className="w-6 h-6 mx-auto mb-2 opacity-30" />No reduction projects yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Lightbulb className="w-6 h-6 mx-auto mb-2 opacity-30" />No reduction projects yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {projects.map(p => (
@@ -79,9 +79,9 @@ export function ProjectsBacklog() {
                   <span className="text-sm text-white">{p.name}</span>
                   <span className="ml-auto inline-flex items-center gap-1 text-xs">
                     <span className="font-mono text-emerald-300">-{p.expectedReductionTonnesPerYear}t/yr</span>
-                    <span className="text-gray-500">·</span>
+                    <span className="text-gray-400">·</span>
                     <span className="font-mono text-gray-400">${(p.costUsd / 1000).toFixed(0)}K</span>
-                    {p.paybackYears && <><span className="text-gray-500">·</span><span className="font-mono text-cyan-300">{p.paybackYears}y payback</span></>}
+                    {p.paybackYears && <><span className="text-gray-400">·</span><span className="font-mono text-cyan-300">{p.paybackYears}y payback</span></>}
                   </span>
                 </div>
                 {p.description && <div className="text-[11px] text-gray-400 ml-5 mb-1">{p.description}</div>}

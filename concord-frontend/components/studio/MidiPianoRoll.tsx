@@ -50,7 +50,7 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Music className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Piano roll {clipId && `· ${clipId.slice(0, 12)}`}</span>
-        <span className="ml-auto text-[10px] text-gray-500">{notes.length} notes</span>
+        <span className="ml-auto text-[10px] text-gray-400">{notes.length} notes</span>
       </header>
       {clipId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -62,9 +62,9 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
         </div>
       )}
       {!clipId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a MIDI clip to edit notes.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400"><Music className="w-6 h-6 mx-auto mb-2 opacity-30" />Select a MIDI clip to edit notes.</div>
       ) : loading ? (
-        <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : (
         <>
           <div className="relative bg-[#080a0e] border-b border-white/10" style={{ height: 180 }}>
@@ -93,8 +93,8 @@ export function MidiPianoRoll({ clipId }: { clipId?: string }) {
             {notes.map(n => (
               <li key={n.id} className="px-3 py-1 text-xs flex items-center gap-3 hover:bg-white/[0.03] group">
                 <span className="font-mono text-violet-300 w-12">{noteName(n.pitch)}</span>
-                <span className="text-gray-500">vel {n.velocity}</span>
-                <span className="text-gray-500">@{n.startBeats}b · {n.lengthBeats}b</span>
+                <span className="text-gray-400">vel {n.velocity}</span>
+                <span className="text-gray-400">@{n.startBeats}b · {n.lengthBeats}b</span>
                 <button onClick={() => remove(n.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}

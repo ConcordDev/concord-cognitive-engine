@@ -140,6 +140,7 @@ export default function registerSpaceActions(registerLensAction) {
   });
 
   registerLensAction("space", "launch-watchlist", (ctx, _a, _params = {}) => {
+  try {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const now = Date.now();
     const items = [...spWatch(s, spActor(ctx))]
@@ -160,7 +161,8 @@ export default function registerSpaceActions(registerLensAction) {
         upcoming: items.filter((i) => i.status === "upcoming" || i.status === "today").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("space", "launch-mark-watched", (ctx, _a, params = {}) => {
     const s = getSpaceState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -567,6 +569,7 @@ export default function registerSpaceActions(registerLensAction) {
    * observer's alt/azimuth. No external API.
    */
   registerLensAction("space", "sky-map", (_ctx, _artifact, params = {}) => {
+  try {
     const lat = Number(params.latitude);
     const lon = Number(params.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
@@ -669,7 +672,8 @@ export default function registerSpaceActions(registerLensAction) {
         note: "Approximate ephemeris from J2000 mean orbital elements.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * launches-filtered — Universal upcoming launches with server-side

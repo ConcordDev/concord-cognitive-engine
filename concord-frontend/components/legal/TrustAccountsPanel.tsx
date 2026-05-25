@@ -135,15 +135,15 @@ export function TrustAccountsPanel() {
                 recon.reconciled ? 'border-emerald-500/30 bg-emerald-500/[0.04]' : 'border-rose-500/30 bg-rose-500/[0.04]',
               )}>
                 <div className="col-span-3">
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500">Book (ledger)</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400">Book (ledger)</div>
                   <div className="text-base font-mono text-white">${recon.bookBalance.toFixed(2)}</div>
                 </div>
                 <div className="col-span-3">
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500">Client ledgers</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400">Client ledgers</div>
                   <div className="text-base font-mono text-white">${recon.clientLedgerTotal.toFixed(2)}</div>
                 </div>
                 <div className="col-span-3">
-                  <div className="text-[10px] uppercase tracking-wider text-gray-500">Bank statement</div>
+                  <div className="text-[10px] uppercase tracking-wider text-gray-400">Bank statement</div>
                   <div className="text-base font-mono text-white">${recon.bankBalance.toFixed(2)}</div>
                 </div>
                 <div className="col-span-3 text-right">
@@ -169,7 +169,7 @@ export function TrustAccountsPanel() {
 
             {/* Transaction entry */}
             <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Client ledgers · ${balance?.total.toFixed(2) || '0.00'} total</div>
+              <div className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Client ledgers · ${balance?.total.toFixed(2) || '0.00'} total</div>
               <button onClick={() => setShowTxnForm(v => !v)} className="px-2.5 py-1 text-xs rounded bg-amber-500 text-black font-semibold hover:bg-amber-400 inline-flex items-center gap-1">
                 <Plus className="w-3 h-3" />Transaction
               </button>
@@ -199,12 +199,12 @@ export function TrustAccountsPanel() {
             )}
 
             <table className="w-full text-xs">
-              <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5">
+              <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5">
                 <tr><th className="text-left py-1.5">Matter</th><th className="text-left">Client</th><th className="text-right">Deposits</th><th className="text-right">Disbursements</th><th className="text-right">Balance</th></tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {balance?.byMatter.length === 0 && (
-                  <tr><td colSpan={5} className="py-6 text-center text-gray-500 italic">No trust ledger activity yet.</td></tr>
+                  <tr><td colSpan={5} className="py-6 text-center text-gray-400 italic">No trust ledger activity yet.</td></tr>
                 )}
                 {balance?.byMatter.map(b => (
                   <tr key={b.matterId} className="hover:bg-white/[0.03]">
@@ -219,9 +219,9 @@ export function TrustAccountsPanel() {
             </table>
           </div>
         ) : !loading && accounts.length === 0 ? (
-          <div className="p-10 text-center text-xs text-gray-500"><Scale className="w-6 h-6 mx-auto mb-2 opacity-30" />Create a trust account to start managing client funds.</div>
+          <div className="p-10 text-center text-xs text-gray-400"><Scale className="w-6 h-6 mx-auto mb-2 opacity-30" />Create a trust account to start managing client funds.</div>
         ) : (
-          <div className="flex items-center justify-center py-10 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-10 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         )}
       </div>
     </div>

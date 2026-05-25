@@ -114,6 +114,7 @@ export default function registerMarketsActions(registerLensAction) {
   // ── Options chain (BSM-derived greeks) ──
 
   registerLensAction("markets", "options-chain", (_ctx, _artifact, params = {}) => {
+  try {
     const symbol = String(params.symbol || "SPY").toUpperCase();
     const spot = Number(params.spot) || 450;
     const iv = Number(params.iv) || 0.18;
@@ -156,7 +157,8 @@ export default function registerMarketsActions(registerLensAction) {
         notes: "Greeks derived from Black-Scholes. IV input is required (use realized vol if no live IV).",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Futures board (CME contracts with simulated bid/ask) ──
 

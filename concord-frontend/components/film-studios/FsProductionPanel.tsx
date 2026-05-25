@@ -80,7 +80,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
   const daysInMonth = new Date(year, month, 0).getUTCDate();
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -101,8 +101,8 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
             {locations.map((l) => (
               <li key={l.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-100 flex-1">{l.name}
-                  {l.address && <span className="text-zinc-500"> · {l.address}</span>}</span>
-                {l.contact && <span className="text-[10px] text-zinc-500">{l.contact}</span>}
+                  {l.address && <span className="text-zinc-400"> · {l.address}</span>}</span>
+                {l.contact && <span className="text-[10px] text-zinc-400">{l.contact}</span>}
                 <button type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
@@ -133,7 +133,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
                   {t.status.replace(/_/g, ' ')}
                 </button>
                 <span className="text-xs text-zinc-100 flex-1">{t.title}</span>
-                <span className="text-[10px] text-zinc-500">{t.department}{t.dueDate && ` · ${t.dueDate}`}</span>
+                <span className="text-[10px] text-zinc-400">{t.department}{t.dueDate && ` · ${t.dueDate}`}</span>
                 <button type="button" onClick={() => lensRun('film-studios', 'task-delete', { id: t.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
@@ -161,7 +161,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
             return (
               <div key={d} className={cn('min-h-[44px] rounded border p-1',
                 items.length ? 'border-fuchsia-900/50 bg-fuchsia-950/20' : 'border-zinc-800 bg-zinc-900/40')}>
-                <p className="text-[9px] text-zinc-500">{i + 1}</p>
+                <p className="text-[9px] text-zinc-400">{i + 1}</p>
                 {items.slice(0, 2).map((it, j) => (
                   <p key={j} className={cn('text-[8px] truncate', it.type === 'shoot_day' ? 'text-fuchsia-300' : 'text-zinc-400')}>
                     {it.label}
@@ -183,8 +183,8 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
             <table className="text-[10px]">
               <thead>
                 <tr>
-                  <th className="text-left text-zinc-500 px-2 py-1">Cast</th>
-                  {dood.days.map((d) => <th key={d} className="text-zinc-500 px-1 py-1 w-7">{d}</th>)}
+                  <th className="text-left text-zinc-400 px-2 py-1">Cast</th>
+                  {dood.days.map((d) => <th key={d} className="text-zinc-400 px-1 py-1 w-7">{d}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -201,7 +201,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
               </tbody>
             </table>
           </div>
-          <p className="text-[9px] text-zinc-600 mt-1">S start · W work · H hold · F finish · SWF single day</p>
+          <p className="text-[9px] text-zinc-400 mt-1">S start · W work · H hold · F finish · SWF single day</p>
         </section>
       )}
     </div>
@@ -210,4 +210,4 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
 
 const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
 const btn = 'flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg';
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-zinc-500 italic">{text}</p>; }
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-zinc-400 italic">{text}</p>; }

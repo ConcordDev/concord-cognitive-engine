@@ -92,7 +92,7 @@ export function NewsAlerts() {
             {unread}
           </span>
         )}
-        <span className="text-[11px] text-zinc-500 ml-auto">Breaking + followed-topic push</span>
+        <span className="text-[11px] text-zinc-400 ml-auto">Breaking + followed-topic push</span>
       </header>
 
       {/* Subscribe form */}
@@ -138,7 +138,7 @@ export function NewsAlerts() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-10 text-zinc-500">
+        <div className="flex items-center justify-center py-10 text-zinc-400">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
@@ -149,7 +149,7 @@ export function NewsAlerts() {
               Active subscriptions <span className="text-zinc-600">· {subs.length}</span>
             </h3>
             {subs.length === 0 ? (
-              <p className="text-[11px] text-zinc-600 italic">No alert subscriptions yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">No alert subscriptions yet.</p>
             ) : (
               <ul className="flex flex-wrap gap-1.5">
                 {subs.map((sub) => {
@@ -195,7 +195,7 @@ export function NewsAlerts() {
               )}
             </div>
             {alerts.length === 0 ? (
-              <p className="text-[11px] text-zinc-600 italic">
+              <p className="text-[11px] text-zinc-400 italic">
                 No alerts yet — alerts appear when new articles match a subscription.
               </p>
             ) : (
@@ -211,7 +211,7 @@ export function NewsAlerts() {
                     {!a.read && <span className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0" />}
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-zinc-100">{a.title}</p>
-                      <p className="text-[10px] text-zinc-500">
+                      <p className="text-[10px] text-zinc-400">
                         <span className="capitalize">{a.kind}</span> · {a.source} ·{' '}
                         {String(a.deliveredAt).slice(0, 16).replace('T', ' ')}
                       </p>

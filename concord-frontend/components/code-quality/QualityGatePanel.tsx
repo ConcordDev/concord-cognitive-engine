@@ -53,7 +53,7 @@ export function QualityGatePanel({ scan }: { scan: CQScan | null }) {
     else setError(r.data.error || 'evaluateGate failed');
   }
 
-  if (!gate) return <p className="text-sm text-gray-500">Loading gate config…</p>;
+  if (!gate) return <p className="text-sm text-gray-400">Loading gate config…</p>;
 
   return (
     <div className="space-y-4">
@@ -139,7 +139,7 @@ export function QualityGatePanel({ scan }: { scan: CQScan | null }) {
                   {c.pass ? 'PASS' : 'FAIL'}
                 </span>
                 <span className="font-mono text-gray-300">{c.name}</span>
-                <span className="text-gray-500 text-xs">{c.detail}</span>
+                <span className="text-gray-400 text-xs">{c.detail}</span>
               </div>
             ))}
           </div>

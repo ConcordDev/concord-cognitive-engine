@@ -49,7 +49,7 @@ export function BggHotList() {
         )}
       </header>
       {games.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">BGG unreachable.</div>}
-      {games.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling BGG hot list…</div>}
+      {games.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling BGG hot list…</div>}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 max-h-[520px] overflow-y-auto">
         {(games.data || []).map((g) => (
           <a key={g.id} href={`https://boardgamegeek.com/boardgame/${g.id}`} target="_blank" rel="noopener noreferrer" className="group block rounded border border-zinc-800 bg-zinc-950 overflow-hidden hover:border-cyan-500/30">
@@ -64,7 +64,7 @@ export function BggHotList() {
                 <span className="rounded bg-cyan-500/20 px-1 font-mono text-[9px] text-cyan-300">#{g.rank}</span>
                 <span className="line-clamp-1 text-[11px] text-white group-hover:text-cyan-300">{g.name}</span>
               </div>
-              <div className="mt-0.5 flex items-center justify-between text-[10px] text-zinc-500">
+              <div className="mt-0.5 flex items-center justify-between text-[10px] text-zinc-400">
                 <span>{g.yearPublished || '—'}</span>
                 <ExternalLink className="h-2.5 w-2.5" />
               </div>

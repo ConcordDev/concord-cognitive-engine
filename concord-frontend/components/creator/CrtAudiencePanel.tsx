@@ -66,7 +66,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -87,7 +87,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
       </section>
 
       {platforms.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic py-6 text-center">No platforms yet. Add one to track your audience.</p>
+        <p className="text-[11px] text-zinc-400 italic py-6 text-center">No platforms yet. Add one to track your audience.</p>
       ) : (
         <ul className="space-y-2">
           {platforms.map((p) => (
@@ -116,7 +116,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
               </div>
               {expanded === p.platformId && (
                 <div className="mt-2.5 pt-2.5 border-t border-zinc-800">
-                  <p className="flex items-center gap-1 text-[10px] text-zinc-500 mb-1.5">
+                  <p className="flex items-center gap-1 text-[10px] text-zinc-400 mb-1.5">
                     <TrendingUp className="w-3 h-3" /> Follower history
                   </p>
                   {history.length > 1 ? (
@@ -130,7 +130,7 @@ export function CrtAudiencePanel({ onChange }: { onChange: () => void }) {
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-[10px] text-zinc-600 italic">Log at least two snapshots to see a trend.</p>
+                    <p className="text-[10px] text-zinc-400 italic">Log at least two snapshots to see a trend.</p>
                   )}
                 </div>
               )}

@@ -94,7 +94,7 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
           {SUPPORTED_COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
         </select>
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
           <input
             type="text"
             value={postalCode}
@@ -127,7 +127,7 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
             {places.map((p, i) => (
               <li key={i} className="px-3 py-2 text-xs">
                 <div className="text-zinc-200 font-medium">{p.placeName || '—'}</div>
-                <div className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
                   {p.state}{p.stateAbbrev ? ` (${p.stateAbbrev})` : ''}
                   {p.latitude != null && p.longitude != null && (
                     <>  · {p.latitude.toFixed(4)}, {p.longitude.toFixed(4)}</>
@@ -139,7 +139,7 @@ export function ZippopotamPanel({ domain, className }: ZippopotamPanelProps) {
         </div>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Zippopotam.us · zippopotam.us
       </footer>
     </section>

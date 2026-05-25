@@ -46,7 +46,7 @@ export function StrategyLibrary() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12 text-gray-500 gap-2">
+      <div className="flex items-center justify-center py-12 text-gray-400 gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading thinking strategies...
       </div>
     );
@@ -60,7 +60,7 @@ export function StrategyLibrary() {
       <h3 className="font-semibold flex items-center gap-2">
         <BrainCircuit className="w-4 h-4 text-neon-purple" /> Thinking-Strategy Library
       </h3>
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Named reasoning techniques. Pick a category, then expand a strategy for
         when and how to apply it.
       </p>
@@ -86,15 +86,14 @@ export function StrategyLibrary() {
             <div key={s.id} className="lens-card">
               <div
                 className="flex items-center gap-2 cursor-pointer"
-                onClick={() => setExpanded(isExp ? null : s.id)}
-              >
+                onClick={() => setExpanded(isExp ? null : s.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-200">{s.name}</p>
                   <span className="inline-block text-xs bg-neon-purple/10 text-neon-purple px-2 py-0.5 rounded mt-1 capitalize">
                     {s.category}
                   </span>
                 </div>
-                {isExp ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+                {isExp ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
               </div>
               {isExp && (
                 <div className="mt-3 pt-3 border-t border-gray-700/30 space-y-2 text-xs">
@@ -106,7 +105,7 @@ export function StrategyLibrary() {
           );
         })}
         {strategies.length === 0 && (
-          <p className="text-center py-6 text-gray-500 text-sm">No strategies in this category.</p>
+          <p className="text-center py-6 text-gray-400 text-sm">No strategies in this category.</p>
         )}
       </div>
     </div>

@@ -143,7 +143,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Insurance coverage</span>
-          <span className="text-[10px] text-gray-500">{policies.length}</span>
+          <span className="text-[10px] text-gray-400">{policies.length}</span>
           <button onClick={() => setAddingPolicy(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />Add policy
           </button>
@@ -164,9 +164,9 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : policies.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No coverage on file.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No coverage on file.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {policies.map(p => (
@@ -176,8 +176,8 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
                   p.eligibilityStatus === 'incomplete' ? 'bg-rose-500/20 text-rose-300' :
                   'bg-gray-500/20 text-gray-300')}>{p.eligibilityStatus}</span>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white truncate">{p.payer} <span className="text-[10px] text-gray-500">{p.planType}{p.planName && ` · ${p.planName}`}</span></div>
-                  <div className="text-[10px] text-gray-500 truncate">
+                  <div className="text-sm text-white truncate">{p.payer} <span className="text-[10px] text-gray-400">{p.planType}{p.planName && ` · ${p.planName}`}</span></div>
+                  <div className="text-[10px] text-gray-400 truncate">
                     Member {p.memberId}
                     {p.copayUsd != null && ` · copay $${p.copayUsd}`}
                     {p.deductibleUsd != null && ` · deductible $${p.deductibleUsd}`}
@@ -195,7 +195,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
         <header className="px-4 py-2.5 border-b border-white/10 flex items-center gap-2">
           <FileText className="w-4 h-4 text-cyan-400" />
           <span className="text-sm font-semibold text-gray-200">Claims &amp; billing</span>
-          <span className="text-[10px] text-gray-500">{claims.length}</span>
+          <span className="text-[10px] text-gray-400">{claims.length}</span>
           {outstanding > 0 && <span className="text-[10px] text-amber-300">outstanding ${outstanding.toFixed(2)}</span>}
           <button onClick={() => setAddingClaim(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-cyan-500 text-black font-semibold hover:bg-cyan-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />New claim
@@ -224,7 +224,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
         )}
 
         {claims.length === 0 ? (
-          <div className="px-3 py-8 text-center text-xs text-gray-500">No claims yet.</div>
+          <div className="px-3 py-8 text-center text-xs text-gray-400">No claims yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {claims.map(c => (
@@ -233,7 +233,7 @@ export function InsurancePanel({ patientId }: { patientId: string }) {
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded font-mono', CLAIM_STATUS_STYLE[c.status])}>{c.status}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white truncate font-mono">{c.claimNumber}</div>
-                    <div className="text-[10px] text-gray-500 truncate">
+                    <div className="text-[10px] text-gray-400 truncate">
                       {c.lines.length} line{c.lines.length === 1 ? '' : 's'} · charge ${c.totalChargeUsd.toFixed(2)}
                       {c.paidUsd != null && ` · paid $${c.paidUsd.toFixed(2)}`}
                       {c.patientResponsibilityUsd != null && c.patientResponsibilityUsd > 0 && ` · patient $${c.patientResponsibilityUsd.toFixed(2)}`}

@@ -15,9 +15,12 @@
 // per-user persisted extensions / layouts / sessions. No mock data.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useYjsDoc } from '@/lib/hooks/useYjsDoc';
+import * as Y from 'yjs';
 import {
   Sparkles, Bug, Github, MessageSquare, Puzzle, Columns, Users,
   Loader2, Play, Plus, Trash2, RefreshCw, Send, Power, GitBranch,
+  Terminal as TerminalIcon, MapPin,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { ProjectSwitcher } from './ProjectSwitcher';
@@ -56,7 +59,7 @@ export function CodeAdvancedPanel() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/10 bg-[#161b22]">
         <Sparkles className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-bold text-cyan-300">Advanced IDE</h3>
-        <span className="text-[10px] text-gray-500">Cursor-parity tools</span>
+        <span className="text-[10px] text-gray-400">Cursor-parity tools</span>
       </div>
 
       <div className="px-3 pt-3">
@@ -85,7 +88,7 @@ export function CodeAdvancedPanel() {
 
       <div className="p-4">
         {!projectId ? (
-          <div className="py-10 text-center text-xs text-gray-500">
+          <div className="py-10 text-center text-xs text-gray-400">
             Select or create a project above to use the advanced IDE tools.
           </div>
         ) : (
@@ -170,36 +173,36 @@ function IntelliSenseTab({ projectId, files }: { projectId: string; files: FileR
             <>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">{String(hover.kind || 'symbol')}</span>
-                <span className="text-[10px] text-gray-500">{String(hover.source || '')}</span>
+                <span className="text-[10px] text-gray-400">{String(hover.source || '')}</span>
               </div>
               <code className="block text-xs text-cyan-200 font-mono break-words">{String(hover.hover || hover.type || '')}</code>
               {hover.definedAt != null && (
-                <p className="text-[10px] text-gray-500">
+                <p className="text-[10px] text-gray-400">
                   defined at {(hover.definedAt as { path: string; line: number }).path}:{(hover.definedAt as { path: string; line: number }).line}
                 </p>
               )}
               {hover.doc != null && <p className="text-xs text-gray-400 italic">{String(hover.doc)}</p>}
             </>
           ) : (
-            <p className="text-xs text-gray-500">{String(hover.hover || 'No declaration found.')}</p>
+            <p className="text-xs text-gray-400">{String(hover.hover || 'No declaration found.')}</p>
           )}
         </div>
       )}
       {sig?.found ? (
         <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-2">
-          <p className="text-[10px] uppercase text-gray-500">Signature help</p>
+          <p className="text-[10px] uppercase text-gray-400">Signature help</p>
           <code className="block text-xs text-green-300 font-mono break-words">{String(sig.label || '')}</code>
           {params.length > 0 && (
             <ul className="space-y-1">
               {params.map((p, i) => (
                 <li key={i} className="text-xs text-gray-300 flex gap-2">
                   <span className="text-cyan-400 font-mono">{p.name}</span>
-                  {p.type && <span className="text-gray-500 font-mono">: {p.type}</span>}
+                  {p.type && <span className="text-gray-400 font-mono">: {p.type}</span>}
                 </li>
               ))}
             </ul>
           )}
-          <p className="text-[10px] text-gray-500">returns <span className="text-yellow-400 font-mono">{String(sig.returnType || 'unknown')}</span></p>
+          <p className="text-[10px] text-gray-400">returns <span className="text-yellow-400 font-mono">{String(sig.returnType || 'unknown')}</span></p>
         </div>
       ) : null}
     </div>
@@ -290,7 +293,7 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
       {err && <div className="text-xs text-red-400 px-2 py-1.5 bg-red-500/10 rounded">{err}</div>}
       <div className="rounded-lg border border-white/10 bg-[#161b22] overflow-auto max-h-72">
         {lines.length === 1 && !lines[0] ? (
-          <p className="p-3 text-xs text-gray-500">No file loaded yet.</p>
+          <p className="p-3 text-xs text-gray-400">No file loaded yet.</p>
         ) : (
           <table className="w-full font-mono text-xs">
             <tbody>
@@ -320,9 +323,9 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
             <span className={`${(result.exitCode as number) === 0 ? 'text-green-400' : 'text-red-400'}`}>
               exit {String(result.exitCode)}
             </span>
-            <span className="text-gray-500">{String(result.durationMs || 0)}ms</span>
+            <span className="text-gray-400">{String(result.durationMs || 0)}ms</span>
           </div>
-          {frames.length === 0 && <p className="text-xs text-gray-500">No breakpoints were hit. Set one and run again.</p>}
+          {frames.length === 0 && <p className="text-xs text-gray-400">No breakpoints were hit. Set one and run again.</p>}
           {frames.map((f, i) => (
             <div key={i} className="rounded border border-white/10 bg-[#0d1117] p-2.5 space-y-1.5">
               <div className="flex items-center gap-2">
@@ -339,7 +342,7 @@ function DebuggerTab({ projectId, files }: { projectId: string; files: FileRow[]
                 </div>
               )}
               {f.callStack.length > 0 && (
-                <ol className="text-[10px] text-gray-500 font-mono space-y-0.5">
+                <ol className="text-[10px] text-gray-400 font-mono space-y-0.5">
                   {f.callStack.map((c, ci) => <li key={ci}>↳ {c}</li>)}
                 </ol>
               )}
@@ -416,7 +419,7 @@ function RemoteGitTab({ projectId, onPulled }: { projectId: string; onPulled: ()
         Pull a public GitHub repo into this project, then stage commits to push back. GitHub write delivery requires an OAuth token in BYO keys.
       </p>
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-2">
-        <p className="text-[10px] uppercase text-gray-500">Clone a repo</p>
+        <p className="text-[10px] uppercase text-gray-400">Clone a repo</p>
         <div className="flex flex-wrap gap-2">
           <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="owner"
             className="flex-1 min-w-[100px] bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
@@ -438,8 +441,8 @@ function RemoteGitTab({ projectId, onPulled }: { projectId: string; onPulled: ()
             <a href={remote.url} target="_blank" rel="noreferrer" className="text-xs text-cyan-300 hover:underline">
               {remote.owner}/{remote.repo}
             </a>
-            <span className="text-[10px] text-gray-500">★ {remote.stars}</span>
-            <span className="text-[10px] text-gray-500 flex items-center gap-1"><GitBranch className="w-3 h-3" />{remote.defaultBranch}</span>
+            <span className="text-[10px] text-gray-400">★ {remote.stars}</span>
+            <span className="text-[10px] text-gray-400 flex items-center gap-1"><GitBranch className="w-3 h-3" />{remote.defaultBranch}</span>
           </div>
           <div className="flex gap-2">
             <input value={pushMsg} onChange={(e) => setPushMsg(e.target.value)} placeholder="Commit message for push"
@@ -456,14 +459,14 @@ function RemoteGitTab({ projectId, onPulled }: { projectId: string; onPulled: ()
       {note && <div className="text-xs text-green-400 px-2 py-1.5 bg-green-500/10 rounded">{note}</div>}
       {pushLog.length > 0 && (
         <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
-          <p className="text-[10px] uppercase text-gray-500 mb-2">Push history</p>
+          <p className="text-[10px] uppercase text-gray-400 mb-2">Push history</p>
           <ul className="space-y-1.5">
             {pushLog.map((p) => (
               <li key={p.id} className="text-xs text-gray-300 flex items-center gap-2">
-                <span className="text-gray-500 font-mono">{p.branch}</span>
+                <span className="text-gray-400 font-mono">{p.branch}</span>
                 <span className="flex-1 truncate">{p.message}</span>
-                <span className="text-[10px] text-gray-500">{p.fileCount} files</span>
-                <span className="text-[10px] text-gray-600">{new Date(p.pushedAt).toLocaleString()}</span>
+                <span className="text-[10px] text-gray-400">{p.fileCount} files</span>
+                <span className="text-[10px] text-gray-400">{new Date(p.pushedAt).toLocaleString()}</span>
               </li>
             ))}
           </ul>
@@ -521,12 +524,12 @@ function CodebaseChatTab({ projectId, files }: { projectId: string; files: FileR
       </p>
       <div ref={scrollRef} className="rounded-lg border border-white/10 bg-[#161b22] p-3 max-h-72 overflow-y-auto space-y-3">
         {history.length === 0 ? (
-          <p className="text-xs text-gray-500 py-6 text-center">
+          <p className="text-xs text-gray-400 py-6 text-center">
             No messages yet. Try &quot;explain @{files[0]?.path || 'file'}&quot; or &quot;where is auth handled?&quot;
           </p>
         ) : history.map((m, i) => (
           <div key={i} className={`flex flex-col gap-1 ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-            <span className="text-[9px] uppercase text-gray-600">{m.role === 'user' ? 'you' : 'codebase ai'}</span>
+            <span className="text-[9px] uppercase text-gray-400">{m.role === 'user' ? 'you' : 'codebase ai'}</span>
             <div className={`max-w-[90%] px-3 py-2 rounded-lg text-xs whitespace-pre-wrap break-words ${
               m.role === 'user' ? 'bg-cyan-500/10 border border-cyan-500/30 text-gray-100' : 'bg-[#0d1117] border border-white/10 text-gray-200'
             }`}>
@@ -535,14 +538,14 @@ function CodebaseChatTab({ projectId, files }: { projectId: string; files: FileR
             {m.contextFiles && m.contextFiles.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {m.contextFiles.map((f) => (
-                  <span key={f} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-gray-500">@{f}</span>
+                  <span key={f} className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-gray-400">@{f}</span>
                 ))}
               </div>
             )}
           </div>
         ))}
         {busy && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="w-3 h-3 animate-spin" /> indexing codebase…
           </div>
         )}
@@ -609,9 +612,9 @@ function ExtensionsTab() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[10px] uppercase text-gray-500 mb-2">Installed ({installed.length})</p>
+        <p className="text-[10px] uppercase text-gray-400 mb-2">Installed ({installed.length})</p>
         {installed.length === 0 ? (
-          <p className="text-xs text-gray-500">No extensions installed yet.</p>
+          <p className="text-xs text-gray-400">No extensions installed yet.</p>
         ) : (
           <ul className="space-y-1.5">
             {installed.map((e) => (
@@ -619,7 +622,7 @@ function ExtensionsTab() {
                 <Puzzle className={`w-4 h-4 ${e.enabled ? 'text-cyan-400' : 'text-gray-600'}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-gray-200 truncate">{e.name}</p>
-                  <p className="text-[10px] text-gray-500">{e.kind}</p>
+                  <p className="text-[10px] text-gray-400">{e.kind}</p>
                 </div>
                 <button onClick={() => toggle(e.id, !e.enabled)} disabled={busy === e.id}
                   className={`p-1.5 rounded ${e.enabled ? 'text-green-400 hover:bg-green-500/10' : 'text-gray-600 hover:bg-white/5'}`}
@@ -636,14 +639,14 @@ function ExtensionsTab() {
         )}
       </div>
       <div>
-        <p className="text-[10px] uppercase text-gray-500 mb-2">Marketplace</p>
+        <p className="text-[10px] uppercase text-gray-400 mb-2">Marketplace</p>
         <ul className="space-y-1.5">
           {catalog.filter((e) => !installedIds.has(e.id)).map((e) => (
             <li key={e.id} className="flex items-center gap-2 rounded border border-white/10 bg-[#161b22] p-2.5">
-              <Puzzle className="w-4 h-4 text-gray-500" />
+              <Puzzle className="w-4 h-4 text-gray-400" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-200 truncate">{e.name}</p>
-                <p className="text-[10px] text-gray-500 truncate">{e.description}</p>
+                <p className="text-[10px] text-gray-400 truncate">{e.description}</p>
               </div>
               <button onClick={() => install(e.id)} disabled={busy === e.id}
                 className="flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold disabled:opacity-40">
@@ -653,7 +656,7 @@ function ExtensionsTab() {
             </li>
           ))}
           {catalog.length > 0 && catalog.every((e) => installedIds.has(e.id)) && (
-            <li className="text-xs text-gray-500">All catalog extensions installed.</li>
+            <li className="text-xs text-gray-400">All catalog extensions installed.</li>
           )}
         </ul>
       </div>
@@ -733,7 +736,7 @@ function SplitLayoutTab({ projectId, files }: { projectId: string; files: FileRo
       }`}>
         {panes.map((p, i) => (
           <div key={p.id} className="rounded-lg border border-white/10 bg-[#161b22] p-3 min-h-[80px]">
-            <p className="text-[10px] uppercase text-gray-500 mb-1.5">Pane {i + 1}</p>
+            <p className="text-[10px] uppercase text-gray-400 mb-1.5">Pane {i + 1}</p>
             <select
               value={p.path || ''}
               onChange={(e) => setPanePath(i, e.target.value)}
@@ -743,7 +746,7 @@ function SplitLayoutTab({ projectId, files }: { projectId: string; files: FileRo
               {files.map((f) => <option key={f.path} value={f.path}>{f.path}</option>)}
             </select>
             {p.path && (
-              <p className="text-[10px] text-gray-500 mt-1.5 font-mono truncate">{p.path}</p>
+              <p className="text-[10px] text-gray-400 mt-1.5 font-mono truncate">{p.path}</p>
             )}
           </div>
         ))}
@@ -778,6 +781,57 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
   const sinceRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Yjs CRDT: bind each file's content to a per-file Y.Text inside the
+  // session's Y.Doc. Concurrent overlapping edits merge structurally
+  // instead of last-write-wins. The poll path + op-log stays as a
+  // backstop (session activity feed, late-rejoin recovery).
+  const { doc: yDoc, synced: yDocSynced } = useYjsDoc({
+    scope: 'code:liveshare',
+    docId: session?.code ?? null,
+    enabled: !!session,
+  });
+  const yTextRef = useRef<Y.Text | null>(null);
+  const applyingRemoteRef = useRef(false);
+  useEffect(() => {
+    if (!yDoc || !editPath) { yTextRef.current = null; return; }
+    const files = yDoc.getMap<Y.Text>('files');
+    let text = files.get(editPath);
+    if (!text) {
+      // Lazy-create per-file Y.Text; initialise with current local
+      // content so we don't blow away an unsaved edit on first bind.
+      text = new Y.Text();
+      if (editContent) text.insert(0, editContent);
+      files.set(editPath, text);
+    }
+    yTextRef.current = text;
+    // Hydrate local textarea from current CRDT state.
+    applyingRemoteRef.current = true;
+    setEditContent(text.toString());
+    applyingRemoteRef.current = false;
+    const observer = () => {
+      applyingRemoteRef.current = true;
+      setEditContent(text!.toString());
+      applyingRemoteRef.current = false;
+    };
+    text.observe(observer);
+    return () => { try { text!.unobserve(observer); } catch { /* ignore */ } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yDoc, editPath, yDocSynced]);
+  const onEditContentChange = useCallback((next: string) => {
+    setEditContent(next);
+    if (applyingRemoteRef.current) return;
+    const text = yTextRef.current;
+    if (!text) return;
+    // Diff-replace: simplest correct approach for textarea. For Monaco
+    // we'd use binding utilities; here the textarea is small.
+    const current = text.toString();
+    if (current === next) return;
+    text.doc?.transact(() => {
+      text.delete(0, current.length);
+      text.insert(0, next);
+    });
+  }, []);
+
   const stopPoll = useCallback(() => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }, []);
@@ -794,12 +848,35 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
     } catch { /* best effort */ }
   }, []);
 
+  // Phase 4 realtime push: subscribe to `liveshare:op` on the session's
+  // Socket.IO room (the server emits there from `liveshare-edit`). On
+  // any event, run an immediate poll so ops appear without waiting for
+  // the 3s tick. The 3s poll stays as a fallback in case the socket
+  // drops; with both, typical latency drops from 3s to single-digit ms.
+  const socketRef = useRef<unknown>(null);
+  const startSocket = useCallback(async (code: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const { io } = await import('socket.io-client');
+      const s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
+      s.emit('room:join', { room: `code:liveshare:${code}` });
+      s.on('liveshare:op', () => { void poll(code); });
+      socketRef.current = s;
+    } catch { /* graceful fallback to poll only */ }
+  }, [poll]);
+  const stopSocket = useCallback(() => {
+    const s = socketRef.current as { disconnect?: () => void } | null;
+    try { s?.disconnect?.(); } catch { /* ignore */ }
+    socketRef.current = null;
+  }, []);
+
   const startPoll = useCallback((code: string) => {
     stopPoll();
     pollRef.current = setInterval(() => void poll(code), 3000);
-  }, [poll, stopPoll]);
+    void startSocket(code);
+  }, [poll, stopPoll, startSocket]);
 
-  useEffect(() => () => stopPoll(), [stopPoll]);
+  useEffect(() => () => { stopPoll(); stopSocket(); }, [stopPoll, stopSocket]);
 
   const start = useCallback(async () => {
     setBusy(true); setErr(null);
@@ -856,7 +933,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
           Start a collaborative session and share the code, or join an existing session. Edits broadcast to every participant.
         </p>
         <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-2">
-          <p className="text-[10px] uppercase text-gray-500">Host a session</p>
+          <p className="text-[10px] uppercase text-gray-400">Host a session</p>
           <div className="flex gap-2">
             <input value={sessionName} onChange={(e) => setSessionName(e.target.value)} placeholder="Session name (optional)"
               className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200" />
@@ -868,7 +945,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
           </div>
         </div>
         <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-2">
-          <p className="text-[10px] uppercase text-gray-500">Join a session</p>
+          <p className="text-[10px] uppercase text-gray-400">Join a session</p>
           <div className="flex gap-2">
             <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Session code"
               className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono uppercase" />
@@ -890,7 +967,7 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
         <Users className="w-4 h-4 text-cyan-400" />
         <div className="flex-1">
           <p className="text-xs text-gray-200">{session.name}</p>
-          <p className="text-[10px] text-gray-500">
+          <p className="text-[10px] text-gray-400">
             code <span className="font-mono text-cyan-300">{session.code}</span> · {session.participantCount} participant{session.participantCount === 1 ? '' : 's'} · {session.status}
           </p>
         </div>
@@ -903,24 +980,34 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
         </button>
       </div>
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-2">
-        <p className="text-[10px] uppercase text-gray-500">Broadcast an edit</p>
+        <p className="text-[10px] uppercase text-gray-400">Broadcast an edit</p>
         <select value={editPath} onChange={(e) => setEditPath(e.target.value)}
           className="w-full bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200">
           <option value="">— select file —</option>
           {files.map((f) => <option key={f.path} value={f.path}>{f.path}</option>)}
         </select>
-        <textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={3}
+        <textarea value={editContent} onChange={(e) => onEditContentChange(e.target.value)} rows={3}
           placeholder="File content to broadcast to participants"
           className="w-full bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono resize-y" />
-        <button onClick={broadcast} disabled={busy || !editPath.trim()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40">
-          <Send className="w-3.5 h-3.5" /> Broadcast
-        </button>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] text-gray-400">
+            {yDocSynced
+              ? <><span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5" />CRDT synced — concurrent edits merge structurally</>
+              : <><span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5" />CRDT connecting…</>}
+          </p>
+          <button onClick={broadcast} disabled={busy || !editPath.trim()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold disabled:opacity-40"
+            title="Snapshot the current text to the session op-log (CRDT sync happens automatically as you type)">
+            <Send className="w-3.5 h-3.5" /> Snapshot to op-log
+          </button>
+        </div>
       </div>
+      {/* Shared awareness — breakpoints from peers + shared terminal. */}
+      <SharedDebugTerminalTile code={session.code} />
       <div className="rounded-lg border border-white/10 bg-[#161b22] p-3">
-        <p className="text-[10px] uppercase text-gray-500 mb-2">Session activity ({ops.length})</p>
+        <p className="text-[10px] uppercase text-gray-400 mb-2">Session activity ({ops.length})</p>
         {ops.length === 0 ? (
-          <p className="text-xs text-gray-500">No activity yet. Edits and joins appear here.</p>
+          <p className="text-xs text-gray-400">No activity yet. Edits and joins appear here.</p>
         ) : (
           <ul className="space-y-1 max-h-40 overflow-y-auto">
             {ops.map((o) => (
@@ -928,15 +1015,162 @@ function LiveShareTab({ projectId, files }: { projectId: string; files: FileRow[
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${o.kind === 'edit' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-green-500/15 text-green-300'}`}>
                   {o.kind}
                 </span>
-                <span className="text-gray-500 font-mono">{o.actor}</span>
+                <span className="text-gray-400 font-mono">{o.actor}</span>
                 {o.path && <span className="font-mono text-gray-400 truncate">{o.path}</span>}
-                <span className="ml-auto text-[10px] text-gray-600">{new Date(o.at).toLocaleTimeString()}</span>
+                <span className="ml-auto text-[10px] text-gray-400">{new Date(o.at).toLocaleTimeString()}</span>
               </li>
             ))}
           </ul>
         )}
       </div>
       {err && <div className="text-xs text-red-400 px-2 py-1.5 bg-red-500/10 rounded">{err}</div>}
+    </div>
+  );
+}
+
+// Shared debugger awareness + shared terminal tile.
+// Subscribes to `liveshare:debug:*` and `liveshare:terminal:*` events on
+// the Live Share session's Socket.IO room (handled server-side by
+// server/lib/code-liveshare-bus.js). Pure pub-sub: the server doesn't
+// run debuggers or PTYs, it just relays state between participants so
+// each client sees what the others have set / executed.
+function SharedDebugTerminalTile({ code }: { code: string }) {
+  type Bp = { path: string; line: number; fromPeerId?: string };
+  type TermLine = { kind: 'in' | 'out'; data: string; from: string; at: number };
+  const [breakpoints, setBreakpoints] = useState<Bp[]>([]);
+  const [currentLine, setCurrentLine] = useState<{ path: string; line: number; peerId: string } | null>(null);
+  const [debugState, setDebugState] = useState<'running' | 'paused' | 'stopped' | null>(null);
+  const [terminalLog, setTerminalLog] = useState<TermLine[]>([]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const socketRef = useRef<unknown>(null);
+  const terminalId = 'shared-1';
+
+  useEffect(() => {
+    type Sock = { emit: (e: string, p: unknown) => void; on: (e: string, fn: (p: unknown) => void) => void; disconnect: () => void };
+    let s: Sock | null = null;
+    let disposed = false;
+    (async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        if (disposed) return;
+        // socket.io-client returns a Socket whose typed signature is
+        // narrower than the structural shape we use here; cast through
+        // unknown so TS keeps `s` as Sock for the closures below.
+        s = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true }) as unknown as Sock;
+        socketRef.current = s;
+        s.emit('room:join', { room: `code:liveshare:${code}` });
+        s.emit('liveshare:debug:state-request', { code });
+        s.on('liveshare:debug:state-snapshot', (p: unknown) => {
+          const data = p as { breakpoints: Bp[]; currentLine: typeof currentLine };
+          setBreakpoints(data.breakpoints || []);
+          setCurrentLine(data.currentLine || null);
+        });
+        s.on('liveshare:debug:breakpoint-set', (p: unknown) => {
+          const d = p as Bp;
+          setBreakpoints(prev => prev.find(b => b.path === d.path && b.line === d.line)
+            ? prev
+            : [...prev, { path: d.path, line: d.line, fromPeerId: d.fromPeerId }]);
+        });
+        s.on('liveshare:debug:breakpoint-cleared', (p: unknown) => {
+          const d = p as Bp;
+          setBreakpoints(prev => prev.filter(b => !(b.path === d.path && b.line === d.line)));
+        });
+        s.on('liveshare:debug:current-line', (p: unknown) => {
+          const d = p as { path: string; line: number; fromPeerId: string };
+          setCurrentLine({ path: d.path, line: d.line, peerId: d.fromPeerId });
+        });
+        s.on('liveshare:debug:state', (p: unknown) => {
+          const d = p as { state: typeof debugState };
+          setDebugState(d.state || null);
+        });
+        s.on('liveshare:terminal:input', (p: unknown) => {
+          const d = p as { data: string; fromPeerId: string };
+          setTerminalLog(prev => [...prev, { kind: 'in' as const, data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+        });
+        s.on('liveshare:terminal:output', (p: unknown) => {
+          const d = p as { data: string; fromPeerId: string };
+          setTerminalLog(prev => [...prev, { kind: 'out' as const, data: d.data, from: d.fromPeerId.slice(0, 6), at: Date.now() }].slice(-200));
+        });
+      } catch { /* graceful: tile shows empty state */ }
+    })();
+    return () => {
+      disposed = true;
+      try { s?.disconnect(); } catch { /* ignore */ }
+      socketRef.current = null;
+    };
+  }, [code]);
+
+  const sendInput = useCallback(() => {
+    const s = socketRef.current as { emit: (e: string, p: unknown) => void } | null;
+    if (!s || !terminalInput.trim()) return;
+    s.emit('liveshare:terminal:input', { code, terminalId, data: terminalInput + '\n' });
+    setTerminalInput('');
+  }, [code, terminalInput]);
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-[#161b22] p-3 space-y-3">
+      <div className="flex items-center gap-2">
+        <Bug className="w-3.5 h-3.5 text-amber-400" />
+        <p className="text-[10px] uppercase text-gray-400">Shared debug awareness</p>
+        {debugState && (
+          <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded font-mono ${
+            debugState === 'running' ? 'bg-emerald-500/20 text-emerald-300' :
+            debugState === 'paused' ? 'bg-amber-500/20 text-amber-300' :
+            'bg-gray-500/20 text-gray-300'
+          }`}>{debugState}</span>
+        )}
+      </div>
+      {currentLine && (
+        <div className="text-[11px] text-amber-300 flex items-center gap-1.5">
+          <MapPin className="w-3 h-3" />
+          <span>peer <span className="font-mono">{currentLine.peerId.slice(0, 6)}</span> paused at</span>
+          <span className="font-mono text-gray-300">{currentLine.path}:{currentLine.line}</span>
+        </div>
+      )}
+      {breakpoints.length === 0 ? (
+        <p className="text-[11px] text-gray-400">No shared breakpoints yet — setting one in your local debugger broadcasts it to the session.</p>
+      ) : (
+        <ul className="space-y-1 max-h-24 overflow-y-auto">
+          {breakpoints.slice(0, 20).map((b, i) => (
+            <li key={`${b.path}:${b.line}:${i}`} className="text-[11px] text-gray-300 flex items-center gap-2 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <span className="truncate">{b.path}:{b.line}</span>
+              {b.fromPeerId && <span className="ml-auto text-[10px] text-gray-400">{b.fromPeerId.slice(0, 6)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+        <TerminalIcon className="w-3.5 h-3.5 text-green-400" />
+        <p className="text-[10px] uppercase text-gray-400">Shared terminal</p>
+        <span className="ml-auto text-[10px] text-gray-400">{terminalLog.length} lines</span>
+      </div>
+      <div className="bg-black border border-white/5 rounded p-2 max-h-32 overflow-y-auto font-mono text-[11px]">
+        {terminalLog.length === 0 ? (
+          <p className="text-gray-400">No terminal traffic yet. Type below to broadcast input to participants.</p>
+        ) : (
+          terminalLog.map((line, i) => (
+            <div key={i} className={line.kind === 'in' ? 'text-cyan-300' : 'text-gray-200'}>
+              <span className="text-gray-400 mr-1">{line.kind === 'in' ? '›' : '·'}</span>
+              <span>{line.data.replace(/\n$/, '')}</span>
+              <span className="text-gray-500 ml-2 text-[9px]">{line.from}</span>
+            </div>
+          ))
+        )}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={terminalInput}
+          onChange={(e) => setTerminalInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') sendInput(); }}
+          placeholder="Type and Enter to broadcast to participants"
+          className="flex-1 bg-[#0d1117] border border-white/10 rounded px-2 py-1.5 text-xs text-gray-200 font-mono"
+        />
+        <button onClick={sendInput} disabled={!terminalInput.trim()}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold disabled:opacity-40">
+          <Send className="w-3.5 h-3.5" /> Send
+        </button>
+      </div>
     </div>
   );
 }

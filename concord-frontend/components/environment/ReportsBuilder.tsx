@@ -95,9 +95,9 @@ export function ReportsBuilder() {
       </div>
       <div className="p-3">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : !summary ? (
-          <div className="text-center text-xs text-gray-500 py-6">No data yet.</div>
+          <div className="text-center text-xs text-gray-400 py-6">No data yet.</div>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2 mb-3">
@@ -130,7 +130,7 @@ function Tile({ label, value, tone }: { label: string; value: string; tone?: str
   const colour = tone === 'emerald' ? 'text-emerald-300' : tone === 'rose' ? 'text-rose-300' : 'text-cyan-300';
   return (
     <div className="rounded border border-white/10 bg-white/[0.03] p-2">
-      <div className="text-[9px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-gray-400">{label}</div>
       <div className={cn('text-base font-mono tabular-nums', colour)}>{value}</div>
     </div>
   );

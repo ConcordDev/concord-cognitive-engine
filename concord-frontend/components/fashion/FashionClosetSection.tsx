@@ -54,11 +54,11 @@ export function FashionClosetSection() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-fuchsia-600/15 to-transparent">
         <Shirt className="w-5 h-5 text-fuchsia-400" />
         <h2 className="text-sm font-bold text-zinc-100">Digital Closet</h2>
-        <span className="text-[11px] text-zinc-500">Stylebook shape — wardrobe, outfits, wear tracking</span>
+        <span className="text-[11px] text-zinc-400">Stylebook shape — wardrobe, outfits, wear tracking</span>
       </header>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : dash && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 px-4 py-3 border-b border-zinc-800">
           <Stat label="Items" value={dash.items} />
@@ -103,7 +103,7 @@ function Stat({ label, value, alert }: { label: string; value: string | number; 
   return (
     <div className="text-center">
       <p className={cn('text-base font-bold', alert ? 'text-amber-400' : 'text-zinc-100')}>{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

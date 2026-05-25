@@ -53,7 +53,7 @@ export function AccountingAskBar() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Ask anything about your books… (e.g. show me overdue invoices)"
-            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-500 outline-none"
+            className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none"
           />
           {q && (
             <button type="submit" disabled={loading} className="text-emerald-300 hover:text-emerald-200 p-0.5">

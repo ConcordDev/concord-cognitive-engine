@@ -127,7 +127,7 @@ export function ImportParityWorkbench() {
 function DataInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">
+      <label className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">
         Paste rows — JSON array or CSV
       </label>
       <textarea
@@ -136,7 +136,7 @@ function DataInput({ value, onChange }: { value: string; onChange: (v: string) =
         rows={6}
         spellCheck={false}
         placeholder={'[{"name":"Ada","age":37}, ...]\n\nor\n\nname,age\nAda,37'}
-        className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-600"
+        className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-400"
       />
     </div>
   );
@@ -164,7 +164,7 @@ function ErrBox({ msg }: { msg: string }) {
 }
 
 function Empty({ msg }: { msg: string }) {
-  return <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-500">{msg}</div>;
+  return <div className="rounded border border-dashed border-zinc-800 p-4 text-center text-[11px] text-zinc-400">{msg}</div>;
 }
 
 // ===========================================================================
@@ -215,7 +215,7 @@ function SchemaInferencePanel() {
           <p className="text-xs text-zinc-400">{fields.length} columns inferred from {rowCount} rows</p>
           <div className="overflow-x-auto rounded border border-zinc-800">
             <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
+              <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
                 <tr>
                   <th className="px-2.5 py-1.5">Source</th>
                   <th className="px-2.5 py-1.5">Suggested target</th>
@@ -240,7 +240,7 @@ function SchemaInferencePanel() {
                       </span>
                     </td>
                     <td className="px-2.5 py-1.5 text-zinc-400">{f.nullable ? `yes (${f.nullRate}%)` : 'no'}</td>
-                    <td className="px-2.5 py-1.5 font-mono text-[10px] text-zinc-500">{f.uniqueSamples.map(cellStr).join(', ')}</td>
+                    <td className="px-2.5 py-1.5 font-mono text-[10px] text-zinc-400">{f.uniqueSamples.map(cellStr).join(', ')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -353,26 +353,26 @@ function ErrorCorrectionPanel() {
       <div className="space-y-3 lg:col-span-1">
         <DataInput value={raw} onChange={setRaw} />
         <div>
-          <label className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-500">Schema (optional JSON)</label>
+          <label className="mb-1 block text-[11px] uppercase tracking-wider text-zinc-400">Schema (optional JSON)</label>
           <textarea
             value={schemaText}
             onChange={(e) => setSchemaText(e.target.value)}
             rows={3}
             spellCheck={false}
             placeholder='{"name":{"type":"string","required":true}}'
-            className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-600"
+            className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-400"
           />
         </div>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Session name (optional)"
-          className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600"
+          className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400"
         />
         <SubmitBtn busy={busy} label="Start Correction Session" onClick={start} />
         {err && <ErrBox msg={err} />}
         <div className="space-y-1.5">
-          <p className="text-[11px] uppercase tracking-wider text-zinc-500">Sessions</p>
+          <p className="text-[11px] uppercase tracking-wider text-zinc-400">Sessions</p>
           {sessions.length === 0 && <Empty msg="No correction sessions yet." />}
           {sessions.map((s) => (
             <button
@@ -388,7 +388,7 @@ function ErrorCorrectionPanel() {
                   ? <span className="text-emerald-400">committed</span>
                   : <span className={s.invalidRows > 0 ? 'text-red-400' : 'text-yellow-400'}>{s.invalidRows} bad</span>}
               </div>
-              <p className="text-[10px] text-zinc-500">{s.rowCount} rows · {s.correctedCount} corrected</p>
+              <p className="text-[10px] text-zinc-400">{s.rowCount} rows · {s.correctedCount} corrected</p>
             </button>
           ))}
         </div>
@@ -408,7 +408,7 @@ function ErrorCorrectionPanel() {
             </div>
             <div className="overflow-x-auto rounded border border-zinc-800">
               <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
+                <thead className="bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
                   <tr>
                     <th className="px-2 py-1.5">#</th>
                     {fieldsOf(active).map((f) => <th key={f} className="px-2 py-1.5">{f}</th>)}
@@ -417,7 +417,7 @@ function ErrorCorrectionPanel() {
                 <tbody>
                   {active.rows.map((row) => (
                     <tr key={row.rowIndex} className="border-t border-zinc-800/60">
-                      <td className="px-2 py-1 text-zinc-500">{row.rowIndex}</td>
+                      <td className="px-2 py-1 text-zinc-400">{row.rowIndex}</td>
                       {fieldsOf(active).map((f) => {
                         const bad = cellHasError(row.rowIndex, f);
                         return (
@@ -521,7 +521,7 @@ function TransformRulesPanel() {
       <DataInput value={raw} onChange={setRaw} />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-wider text-zinc-500">Transform rules</p>
+          <p className="text-[11px] uppercase tracking-wider text-zinc-400">Transform rules</p>
           <button onClick={addRule} className="flex items-center gap-1 rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:text-white">
             <Plus className="h-3 w-3" /> Add rule
           </button>
@@ -533,7 +533,7 @@ function TransformRulesPanel() {
               value={rule.field}
               onChange={(e) => updateRule(i, { field: e.target.value })}
               placeholder="field"
-              className="w-28 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600"
+              className="w-28 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-400"
             />
             <select
               value={rule.kind}
@@ -553,23 +553,23 @@ function TransformRulesPanel() {
             )}
             {rule.kind === 'find_replace' && (
               <>
-                <input value={rule.find || ''} onChange={(e) => updateRule(i, { find: e.target.value })} placeholder="find" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600" />
-                <input value={rule.replace || ''} onChange={(e) => updateRule(i, { replace: e.target.value })} placeholder="replace" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600" />
+                <input value={rule.find || ''} onChange={(e) => updateRule(i, { find: e.target.value })} placeholder="find" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-400" />
+                <input value={rule.replace || ''} onChange={(e) => updateRule(i, { replace: e.target.value })} placeholder="replace" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-400" />
                 <label className="flex items-center gap-1 text-[10px] text-zinc-400">
                   <input type="checkbox" checked={!!rule.regex} onChange={(e) => updateRule(i, { regex: e.target.checked })} /> regex
                 </label>
               </>
             )}
             {rule.kind === 'formula' && (
-              <input value={rule.expression || ''} onChange={(e) => updateRule(i, { expression: e.target.value })} placeholder="{price} * {qty}" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+              <input value={rule.expression || ''} onChange={(e) => updateRule(i, { expression: e.target.value })} placeholder="{price} * {qty}" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
             )}
             {rule.kind === 'set_default' && (
-              <input value={rule.value || ''} onChange={(e) => updateRule(i, { value: e.target.value })} placeholder="default value" className="w-32 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600" />
+              <input value={rule.value || ''} onChange={(e) => updateRule(i, { value: e.target.value })} placeholder="default value" className="w-32 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-400" />
             )}
             {rule.kind === 'regex_extract' && (
-              <input value={rule.pattern || ''} onChange={(e) => updateRule(i, { pattern: e.target.value })} placeholder="(\\d+)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+              <input value={rule.pattern || ''} onChange={(e) => updateRule(i, { pattern: e.target.value })} placeholder="(\\d+)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
             )}
-            <button onClick={() => removeRule(i)} className="text-zinc-500 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+            <button onClick={() => removeRule(i)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
           </div>
         ))}
       </div>
@@ -601,7 +601,7 @@ function OutputTable({ rows, caption }: { rows: Row[]; caption: string }) {
       <p className="mb-1 text-xs text-zinc-400">{caption}</p>
       <div className="max-h-80 overflow-auto rounded border border-zinc-800">
         <table className="w-full text-left text-xs">
-          <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-500">
+          <thead className="sticky top-0 bg-zinc-900 text-[10px] uppercase tracking-wider text-zinc-400">
             <tr>{cols.map((c) => <th key={c} className="px-2.5 py-1.5">{c}</th>)}</tr>
           </thead>
           <tbody>
@@ -683,33 +683,33 @@ function TemplatesPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">New mapping preset</p>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">New mapping preset</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
+        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description (optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         <div>
-          <label className="mb-1 block text-[10px] text-zinc-500">Field mappings — one per line, &quot;Source =&gt; target&quot;</label>
-          <textarea value={mappingsText} onChange={(e) => setMappingsText(e.target.value)} rows={4} spellCheck={false} placeholder={'First Name => name\nEmail Address => email'} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+          <label className="mb-1 block text-[10px] text-zinc-400">Field mappings — one per line, &quot;Source =&gt; target&quot;</label>
+          <textarea value={mappingsText} onChange={(e) => setMappingsText(e.target.value)} rows={4} spellCheck={false} placeholder={'First Name => name\nEmail Address => email'} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
         </div>
-        <input value={keyFieldsText} onChange={(e) => setKeyFieldsText(e.target.value)} placeholder="Key fields (comma-separated)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+        <input value={keyFieldsText} onChange={(e) => setKeyFieldsText(e.target.value)} placeholder="Key fields (comma-separated)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         <SubmitBtn busy={busy} label="Save Template" onClick={save} />
         {err && <ErrBox msg={err} />}
       </div>
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Saved templates</p>
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Saved templates</p>
         {templates.length === 0 && <Empty msg="No saved templates yet." />}
         {templates.map((t) => (
           <div key={t.id} className="rounded border border-zinc-800 bg-zinc-950 p-2.5">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-medium text-zinc-200">{t.name}</p>
-                {t.description && <p className="text-[10px] text-zinc-500">{t.description}</p>}
+                {t.description && <p className="text-[10px] text-zinc-400">{t.description}</p>}
               </div>
               <div className="flex items-center gap-1.5">
                 <button onClick={() => apply(t.id)} className="rounded bg-cyan-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-cyan-500">Apply</button>
-                <button onClick={() => del(t.id)} className="text-zinc-500 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button onClick={() => del(t.id)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
-            <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-zinc-500">
+            <div className="mt-1 flex flex-wrap gap-1.5 text-[10px] text-zinc-400">
               <span>{t.mappings.length} mappings</span>
               <span>·</span>
               <span>{t.keyFields.length} key fields</span>
@@ -727,7 +727,7 @@ function TemplatesPanel() {
                   <p key={i} className="font-mono text-[10px] text-zinc-300">{m.source} → <span className="text-cyan-300">{m.target}</span></p>
                 ))}
               </div>
-            ) : <p className="mt-1 text-[10px] text-zinc-500">No field mappings in this template.</p>}
+            ) : <p className="mt-1 text-[10px] text-zinc-400">No field mappings in this template.</p>}
           </div>
         )}
       </div>
@@ -801,38 +801,38 @@ function ConnectorsPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Add a connector</p>
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Add a connector</p>
         <select value={kind} onChange={(e) => setKind(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100">
           {catalog.map((c) => <option key={c.kind} value={c.kind}>{c.label}</option>)}
         </select>
         {catalog.find((c) => c.kind === kind)?.note && (
-          <p className="text-[10px] text-zinc-500">{catalog.find((c) => c.kind === kind)?.note}</p>
+          <p className="text-[10px] text-zinc-400">{catalog.find((c) => c.kind === kind)?.note}</p>
         )}
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Connector name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Connector name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         {kind === 'google_sheets' && (
           <>
-            <input value={sheetId} onChange={(e) => setSheetId(e.target.value)} placeholder="Sheet ID (from the share URL)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
-            <input value={gid} onChange={(e) => setGid(e.target.value)} placeholder="gid (tab id, optional — defaults 0)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+            <input value={sheetId} onChange={(e) => setSheetId(e.target.value)} placeholder="Sheet ID (from the share URL)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
+            <input value={gid} onChange={(e) => setGid(e.target.value)} placeholder="gid (tab id, optional — defaults 0)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
           </>
         )}
         {(kind === 'rest_api' || kind === 'csv_url') && (
-          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… (public, keyless endpoint)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+          <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… (public, keyless endpoint)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
         )}
         {kind === 'rest_api' && (
-          <input value={rootPath} onChange={(e) => setRootPath(e.target.value)} placeholder="rootPath (e.g. data.items, optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+          <input value={rootPath} onChange={(e) => setRootPath(e.target.value)} placeholder="rootPath (e.g. data.items, optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
         )}
         <SubmitBtn busy={busy} label="Save Connector" onClick={save} />
         {err && <ErrBox msg={err} />}
       </div>
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Saved connectors</p>
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Saved connectors</p>
         {saved.length === 0 && <Empty msg="No connectors yet. Add a Google Sheet, REST API, or CSV URL." />}
         {saved.map((c) => (
           <div key={c.id} className="rounded border border-zinc-800 bg-zinc-950 p-2.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-zinc-200">{c.name}</p>
-                <p className="text-[10px] text-zinc-500">{c.kind} {c.lastFetchedAt ? `· last fetch ${new Date(c.lastFetchedAt).toLocaleString()} (${c.lastRowCount} rows)` : '· never fetched'}</p>
+                <p className="text-[10px] text-zinc-400">{c.kind} {c.lastFetchedAt ? `· last fetch ${new Date(c.lastFetchedAt).toLocaleString()} (${c.lastRowCount} rows)` : '· never fetched'}</p>
               </div>
               <button
                 onClick={() => runFetch(c.id)}
@@ -922,8 +922,8 @@ function SchedulesPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">New sync schedule</p>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Schedule name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">New sync schedule</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Schedule name" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         <div className="flex gap-2">
           <select value={cadence} onChange={(e) => setCadence(e.target.value)} className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100">
             {['hourly', 'daily', 'weekly', 'manual'].map((c) => <option key={c} value={c}>{c}</option>)}
@@ -933,18 +933,18 @@ function SchedulesPanel() {
           </select>
         </div>
         {mode === 'incremental' && (
-          <input value={keyField} onChange={(e) => setKeyField(e.target.value)} placeholder="Key field for de-dup (e.g. id)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+          <input value={keyField} onChange={(e) => setKeyField(e.target.value)} placeholder="Key field for de-dup (e.g. id)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         )}
         <SubmitBtn busy={busy} label="Create Schedule" onClick={create} />
         {err && <ErrBox msg={err} />}
 
         <div className="mt-3 space-y-2 border-t border-zinc-800 pt-3">
-          <p className="text-[11px] uppercase tracking-wider text-zinc-500">Run a sync pass</p>
+          <p className="text-[11px] uppercase tracking-wider text-zinc-400">Run a sync pass</p>
           <select value={runId} onChange={(e) => setRunId(e.target.value)} className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100">
             <option value="">Select schedule…</option>
             {schedules.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <textarea value={runRows} onChange={(e) => setRunRows(e.target.value)} rows={4} spellCheck={false} placeholder="Fetched rows — JSON array or CSV" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-600" />
+          <textarea value={runRows} onChange={(e) => setRunRows(e.target.value)} rows={4} spellCheck={false} placeholder="Fetched rows — JSON array or CSV" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-2 font-mono text-xs text-zinc-100 placeholder:text-zinc-400" />
           <SubmitBtn busy={busy} label="Run Sync" onClick={run} />
           {runResult && (
             <div className="rounded border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1.5 text-xs text-emerald-300">
@@ -954,14 +954,14 @@ function SchedulesPanel() {
         </div>
       </div>
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Schedules</p>
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Schedules</p>
         {schedules.length === 0 && <Empty msg="No sync schedules yet." />}
         {schedules.map((s) => (
           <div key={s.id} className="rounded border border-zinc-800 bg-zinc-950 p-2.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-zinc-200">{s.name}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {s.cadence} · {s.mode}{s.keyField ? ` · key=${s.keyField}` : ''} · {s.runCount} runs
                 </p>
               </div>
@@ -975,7 +975,7 @@ function SchedulesPanel() {
               </button>
             </div>
             {s.lastRunAt && (
-              <p className="mt-1 text-[10px] text-zinc-500">
+              <p className="mt-1 text-[10px] text-zinc-400">
                 Last run {new Date(s.lastRunAt).toLocaleString()} — {s.lastNewCount} new of {s.lastRowCount}
               </p>
             )}
@@ -1036,21 +1036,21 @@ function RollbackPanel() {
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Snapshot an import for rollback</p>
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Snapshot label (optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-600" />
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Snapshot an import for rollback</p>
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Snapshot label (optional)" className="w-full rounded border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100 placeholder:text-zinc-400" />
         <DataInput value={raw} onChange={setRaw} />
         <SubmitBtn busy={busy} label="Snapshot Import" onClick={snapshot} />
         {err && <ErrBox msg={err} />}
       </div>
       <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-zinc-500">Import snapshots</p>
+        <p className="text-[11px] uppercase tracking-wider text-zinc-400">Import snapshots</p>
         {snapshots.length === 0 && <Empty msg="No import snapshots yet." />}
         {snapshots.map((s) => (
           <div key={s.id} className="rounded border border-zinc-800 bg-zinc-950 p-2.5">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-zinc-200">{s.label}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {s.rowCount} rows · {s.source} · {new Date(s.createdAt).toLocaleString()}
                 </p>
               </div>

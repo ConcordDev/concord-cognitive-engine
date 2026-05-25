@@ -63,7 +63,7 @@ export default function HomePage() {
               <span className="px-4 py-2 rounded-lg bg-neon-purple/10 border border-neon-purple/20 text-neon-purple text-center">No data extraction.</span>
               <span className="px-4 py-2 rounded-lg bg-neon-green/10 border border-neon-green/20 text-neon-green text-center">Free for all services.</span>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
+            <p className="text-xs text-gray-400 mt-2">Not a promise — it&apos;s architecture. The sovereignty lock makes it mathematically enforced.</p>
           </div>
 
           <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-20">

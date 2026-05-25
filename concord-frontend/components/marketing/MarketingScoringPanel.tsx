@@ -114,7 +114,7 @@ export function MarketingScoringPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -132,7 +132,7 @@ export function MarketingScoringPanel() {
       </div>
 
       {models.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No scoring models. Define rules mapping signals to points.</p>
+        <p className="text-[11px] text-zinc-400 italic">No scoring models. Define rules mapping signals to points.</p>
       ) : (
         <ul className="space-y-2">
           {models.map((m) => (
@@ -140,7 +140,7 @@ export function MarketingScoringPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{m.name}</p>
-                  <p className="text-[11px] text-zinc-500">{m.ruleCount} rules · max {m.maxScore} pts · qualified ≥ {m.threshold}</p>
+                  <p className="text-[11px] text-zinc-400">{m.ruleCount} rules · max {m.maxScore} pts · qualified ≥ {m.threshold}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => openApply(m)}
@@ -167,9 +167,9 @@ export function MarketingScoringPanel() {
 
       {/* Editor modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} scoring model</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -210,9 +210,9 @@ export function MarketingScoringPanel() {
 
       {/* Apply modal */}
       {applyModel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setApplyModel(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setApplyModel(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Apply &ldquo;{applyModel.name}&rdquo;</h4>
               <button type="button" onClick={() => setApplyModel(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>

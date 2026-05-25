@@ -49,10 +49,10 @@ export function PgSchedulePanel({ childId }: { childId: string }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
   if (error || !sched) {
-    return <p className="text-[11px] text-zinc-500 italic py-6 text-center">{error || 'No schedule available.'}</p>;
+    return <p className="text-[11px] text-zinc-400 italic py-6 text-center">{error || 'No schedule available.'}</p>;
   }
 
   return (
@@ -93,7 +93,7 @@ export function PgSchedulePanel({ childId }: { childId: string }) {
           </li>
         ))}
       </ol>
-      <p className="text-[10px] text-zinc-500">{sched.note}</p>
+      <p className="text-[10px] text-zinc-400">{sched.note}</p>
     </div>
   );
 }
@@ -102,7 +102,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-2.5 text-center">
       <p className="text-base font-bold text-zinc-100">{value}</p>
-      <p className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[10px] text-zinc-400 uppercase tracking-wide">{label}</p>
     </div>
   );
 }

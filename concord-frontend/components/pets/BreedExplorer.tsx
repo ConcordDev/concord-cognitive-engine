@@ -50,13 +50,13 @@ export function BreedExplorer() {
         </div>
         <div className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
           {(['dog', 'cat'] as const).map((s) => (
-            <button key={s} type="button" onClick={() => setSpecies(s)} className={`rounded px-2.5 py-1 text-[11px] font-medium uppercase ${species === s ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-500 hover:text-zinc-300'}`}>{s}</button>
+            <button key={s} type="button" onClick={() => setSpecies(s)} className={`rounded px-2.5 py-1 text-[11px] font-medium uppercase ${species === s ? 'bg-cyan-500/15 text-cyan-300' : 'text-zinc-400 hover:text-zinc-300'}`}>{s}</button>
           ))}
         </div>
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (name.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder={species === 'dog' ? 'Golden Retriever, Husky…' : 'Maine Coon, Persian…'} className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white placeholder-zinc-600 focus:border-cyan-500/40 focus:outline-none" />
         </div>
         <button type="submit" disabled={!name.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -86,7 +86,7 @@ export function BreedExplorer() {
                 rawData={b}
               />
             </div>
-            <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-zinc-500">
+            <div className="mt-1 grid grid-cols-2 gap-1 text-[10px] text-zinc-400">
               {b.lifeSpan && <Cell label="Life span" value={b.lifeSpan} />}
               {b.bredFor && <Cell label="Bred for" value={b.bredFor} />}
               {b.weightMetric && <Cell label="Weight (kg)" value={b.weightMetric} />}
@@ -104,7 +104,7 @@ export function BreedExplorer() {
 function Cell({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1">
-      <div className="text-[9px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="text-[9px] uppercase tracking-wider text-zinc-400">{label}</div>
       <div className="font-mono text-cyan-300">{value}</div>
     </div>
   );

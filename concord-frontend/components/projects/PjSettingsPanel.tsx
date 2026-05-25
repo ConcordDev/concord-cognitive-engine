@@ -87,7 +87,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -140,7 +140,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
             {fields.map((f) => (
               <li key={f.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-200 flex-1">{f.name}</span>
-                <span className="text-[10px] text-zinc-500">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
+                <span className="text-[10px] text-zinc-400">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
                 <button type="button" onClick={() => lensRun('projects', 'custom-field-delete', { id: f.id }).then(refresh)}
                   className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
@@ -173,10 +173,10 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
             {rules.map((r) => (
               <li key={r.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-200 flex-1">
-                  {r.name} <span className="text-zinc-500">— when {r.trigger.replace(/_/g, ' ')} → {r.action.replace(/_/g, ' ')} {r.actionValue}</span>
+                  {r.name} <span className="text-zinc-400">— when {r.trigger.replace(/_/g, ' ')} → {r.action.replace(/_/g, ' ')} {r.actionValue}</span>
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'rule-toggle', { id: r.id, enabled: !r.enabled }).then(refresh)}
-                  className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-500')}>
+                  className={cn('text-[10px] px-1.5 py-0.5 rounded', r.enabled ? 'bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-400')}>
                   {r.enabled ? 'on' : 'off'}
                 </button>
                 <button type="button" onClick={() => lensRun('projects', 'rule-delete', { id: r.id }).then(refresh)}
@@ -206,7 +206,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
             {templates.map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
                 <span className="text-xs text-zinc-200 flex-1">{t.name}
-                  <span className="text-[10px] text-zinc-500"> · {t.subtasks.length} subtasks</span>
+                  <span className="text-[10px] text-zinc-400"> · {t.subtasks.length} subtasks</span>
                 </span>
                 <button type="button" onClick={() => lensRun('projects', 'template-apply', { id: t.id }).then(refresh)}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded">Apply</button>
@@ -224,7 +224,7 @@ export function PjSettingsPanel({ projectId, onChange }: { projectId: string; on
 const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
 const btn = 'flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg';
 function Empty({ text }: { text: string }) {
-  return <p className="text-[11px] text-zinc-500 italic">{text}</p>;
+  return <p className="text-[11px] text-zinc-400 italic">{text}</p>;
 }
 function cssColor(c: string): string {
   const map: Record<string, string> = {

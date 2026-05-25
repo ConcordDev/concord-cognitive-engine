@@ -563,7 +563,7 @@ export default function AccountingLensPage() {
                 ) : (
                   <table className="w-full">
                     <thead>
-                      <tr className="text-left text-xs text-gray-500 border-b border-lattice-border/30">
+                      <tr className="text-left text-xs text-gray-400 border-b border-lattice-border/30">
                         <th className="pb-2 pr-4">Account #</th>
                         <th className="pb-2 pr-4">Name</th>
                         <th className="pb-2 pr-4">Institution</th>
@@ -629,7 +629,7 @@ export default function AccountingLensPage() {
 
         <table className="w-full mb-4">
           <thead>
-            <tr className="text-left text-xs text-gray-500 border-b border-lattice-border/30">
+            <tr className="text-left text-xs text-gray-400 border-b border-lattice-border/30">
               <th className="pb-2 pr-3">Account</th>
               <th className="pb-2 pr-3 text-right w-36">Debit</th>
               <th className="pb-2 pr-3 text-right w-36">Credit</th>
@@ -698,7 +698,7 @@ export default function AccountingLensPage() {
                       <span className="text-sm text-white font-medium">{d.description || txn.title}</span>
                       {renderStatusBadge(txn.meta.status, 'Transaction')}
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
                       <span>Acct: {d.account || '-'}</span>
                       {d.contraAccount && <span>Contra: {d.contraAccount}</span>}
                       <span>Ref: {d.reference || '-'}</span>
@@ -707,11 +707,11 @@ export default function AccountingLensPage() {
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p className={cn(ds.textMono, 'text-green-400')}>{fmt(d.debit || 0)}</p>
-                      <p className="text-xs text-gray-500">Debit</p>
+                      <p className="text-xs text-gray-400">Debit</p>
                     </div>
                     <div className="text-right">
                       <p className={cn(ds.textMono, 'text-red-400')}>{fmt(d.credit || 0)}</p>
-                      <p className="text-xs text-gray-500">Credit</p>
+                      <p className="text-xs text-gray-400">Credit</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={() => openEdit(txn as unknown as LensItem<ArtifactData>)} aria-label="Edit"><Edit3 className="w-3 h-3" /></button>
@@ -762,7 +762,7 @@ export default function AccountingLensPage() {
           {Array.isArray(trialBalanceResult.accounts) && (trialBalanceResult.accounts as Array<Record<string, unknown>>).length > 0 && (
             <table className="w-full mb-4">
               <thead>
-                <tr className="text-left text-xs text-gray-500 border-b border-lattice-border">
+                <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
                   <th className="pb-2 pr-4">Account #</th>
                   <th className="pb-2 pr-4">Name</th>
                   <th className="pb-2 pr-4">Type</th>
@@ -820,7 +820,7 @@ export default function AccountingLensPage() {
       <div className={ds.panel}>
         <table className="w-full">
           <thead>
-            <tr className="text-left text-xs text-gray-500 border-b border-lattice-border">
+            <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
               <th className="pb-3 pr-4">Account #</th>
               <th className="pb-3 pr-4">Account Name</th>
               <th className="pb-3 pr-4">Type</th>
@@ -1417,7 +1417,7 @@ export default function AccountingLensPage() {
             ) : (
               <table className="w-full mt-3">
                 <thead>
-                  <tr className="text-left text-xs text-gray-500 border-b border-lattice-border/30">
+                  <tr className="text-left text-xs text-gray-400 border-b border-lattice-border/30">
                     <th className="pb-2 pr-4">Date</th>
                     <th className="pb-2 pr-4">Description</th>
                     <th className="pb-2 pr-4">Reference</th>
@@ -1506,7 +1506,7 @@ export default function AccountingLensPage() {
         <h3 className={cn(ds.heading3, 'mb-3')}>Line Items</h3>
         <table className="w-full mb-4">
           <thead>
-            <tr className="text-left text-xs text-gray-500 border-b border-lattice-border/30">
+            <tr className="text-left text-xs text-gray-400 border-b border-lattice-border/30">
               <th className="pb-2 pr-3">Description</th>
               <th className="pb-2 pr-3 text-right w-24">Qty</th>
               <th className="pb-2 pr-3 text-right w-32">Unit Price</th>
@@ -1550,7 +1550,7 @@ export default function AccountingLensPage() {
               <div className="flex items-center gap-2">
                 <span className={ds.textMuted}>Tax</span>
                 <input type="number" step="0.5" min="0" max="100" className={cn(ds.input, 'w-20 text-right text-xs py-1')} value={invoiceTaxRate} onChange={e => setInvoiceTaxRate(parseFloat(e.target.value) || 0)} />
-                <Percent className="w-3 h-3 text-gray-500" />
+                <Percent className="w-3 h-3 text-gray-400" />
               </div>
               <span className={cn(ds.textMono, 'text-white')}>{fmt(invoiceTax)}</span>
             </div>
@@ -1637,7 +1637,7 @@ export default function AccountingLensPage() {
                   <div key={key} className={cn('text-center p-3 rounded-lg border', colorMap[key] || 'border-gray-400/30')}>
                     <p className={ds.textMuted}>{key === 'current' ? 'Current' : `${key} Days`}</p>
                     <p className={cn(ds.heading3, colorMap[key]?.split(' ')[0])}>{fmt(bucket.total as number || 0)}</p>
-                    <p className="text-xs text-gray-500">{(bucket.invoices as Array<unknown>)?.length || 0} invoices</p>
+                    <p className="text-xs text-gray-400">{(bucket.invoices as Array<unknown>)?.length || 0} invoices</p>
                   </div>
                 );
               })}
@@ -1687,7 +1687,7 @@ export default function AccountingLensPage() {
         ) : (
           <table className="w-full">
             <thead>
-              <tr className="text-left text-xs text-gray-500 border-b border-lattice-border/30">
+              <tr className="text-left text-xs text-gray-400 border-b border-lattice-border/30">
                 <th className="pb-2 pr-4">Invoice #</th>
                 <th className="pb-2 pr-4">Client</th>
                 <th className="pb-2 pr-4">Due Date</th>
@@ -1772,7 +1772,7 @@ export default function AccountingLensPage() {
               <span className={cn(ds.textMono, 'text-white')}>{fmt(calcGross)}</span>
             </div>
             <div className="border-t border-lattice-border/30 pt-2 space-y-2">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Deductions</p>
+              <p className="text-xs text-gray-400 uppercase tracking-wider">Deductions</p>
               <div className="flex items-center justify-between py-1">
                 <span className={ds.textMuted}>Federal Tax ({calcFedRate}%)</span>
                 <span className={cn(ds.textMono, 'text-red-400')}>-{fmt(calcFedTax)}</span>
@@ -1887,7 +1887,7 @@ export default function AccountingLensPage() {
             {Array.isArray(backendVarianceResult.lineItems) && (backendVarianceResult.lineItems as Array<Record<string, unknown>>).length > 0 && (
               <table className="w-full mt-4">
                 <thead>
-                  <tr className="text-left text-xs text-gray-500 border-b border-lattice-border">
+                  <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
                     <th className="pb-2 pr-4">Category</th>
                     <th className="pb-2 text-right pr-4">Planned</th>
                     <th className="pb-2 text-right pr-4">Actual</th>
@@ -1952,7 +1952,7 @@ export default function AccountingLensPage() {
         <div className={ds.panel}>
           <table className="w-full">
             <thead>
-              <tr className="text-left text-xs text-gray-500 border-b border-lattice-border">
+              <tr className="text-left text-xs text-gray-400 border-b border-lattice-border">
                 <th className="pb-3 pr-4">Category</th>
                 <th className="pb-3 pr-4">Department</th>
                 <th className="pb-3 text-right pr-4">Budget</th>
@@ -2056,7 +2056,7 @@ export default function AccountingLensPage() {
                 <div key={inv.id} className="flex items-center justify-between py-2 border-b border-lattice-border/20">
                   <div>
                     <p className="text-sm text-white">{d.client || inv.title}</p>
-                    <p className="text-xs text-gray-500">Due: {d.dueDate || '-'}</p>
+                    <p className="text-xs text-gray-400">Due: {d.dueDate || '-'}</p>
                   </div>
                   <div className="text-right">
                     <p className={cn(ds.textMono, 'text-white')}>{fmt(d.amount || 0)}</p>
@@ -2401,7 +2401,7 @@ export default function AccountingLensPage() {
         <div className="mt-2 space-y-1">
           {currentType === 'Account' && (
             <>
-              <p className={cn(ds.textMono, 'text-gray-500')}>{d.accountNumber as string} | {d.type as string}</p>
+              <p className={cn(ds.textMono, 'text-gray-400')}>{d.accountNumber as string} | {d.type as string}</p>
               <p className={cn(ds.heading3, (d.type as string) === 'Liability' || (d.type as string) === 'Expense' ? 'text-red-400' : 'text-green-400')}>{fmt(d.balance as number)}</p>
               <p className={ds.textMuted}>{d.institution as string}</p>
               {d.parentAccount && <p className={cn(ds.textMuted, 'text-xs')}>Sub-account of: {d.parentAccount as string}</p>}
@@ -2769,15 +2769,15 @@ export default function AccountingLensPage() {
                 {accounts.length > 0 && (
                   <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                     <div>
-                      <div className="text-[10px] text-zinc-500 uppercase">Assets</div>
+                      <div className="text-[10px] text-zinc-400 uppercase">Assets</div>
                       <div className="text-zinc-200 font-medium">${totalAssetsAccts.toLocaleString()}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-zinc-500 uppercase">Liabilities</div>
+                      <div className="text-[10px] text-zinc-400 uppercase">Liabilities</div>
                       <div className="text-zinc-200 font-medium">${totalLiabsAccts.toLocaleString()}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-zinc-500 uppercase">Net worth</div>
+                      <div className="text-[10px] text-zinc-400 uppercase">Net worth</div>
                       <div className={cn('font-medium', netWorth >= 0 ? 'text-emerald-300' : 'text-rose-300')}>
                         ${netWorth.toLocaleString()}
                       </div>
@@ -2819,7 +2819,7 @@ export default function AccountingLensPage() {
       {/* Macro context — World Bank economic indicators. Demoted from
           hero (per research) to context strip below the action queue. */}
       <details className="rounded-xl border border-white/10 bg-zinc-900/30 backdrop-blur-sm overflow-hidden">
-        <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-500 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
+        <summary className="px-4 py-2 text-[10px] uppercase tracking-wider text-zinc-400 cursor-pointer hover:bg-white/[0.02] flex items-center justify-between">
           <span>Macro context — World Bank indicators</span>
           <span className="text-zinc-600">expand</span>
         </summary>
@@ -2902,7 +2902,7 @@ export default function AccountingLensPage() {
                         <div className="w-2 h-2 rounded-full bg-neon-cyan shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-white truncate">{d.description || t.title}</p>
-                          <p className="text-xs text-gray-500">{d.date || ''} {d.account ? `- ${d.account}` : ''}</p>
+                          <p className="text-xs text-gray-400">{d.date || ''} {d.account ? `- ${d.account}` : ''}</p>
                         </div>
                         <div className="text-right shrink-0">
                           {d.debit > 0 && <span className="text-xs text-green-400">DR {fmt(d.debit)}</span>}
@@ -2914,7 +2914,7 @@ export default function AccountingLensPage() {
                 </div>
               </motion.div>
             ) : (
-              <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+              <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
                 <p>No transactions recorded yet. Add transactions to see your financial ledger.</p>
               </div>
             )}
@@ -3021,9 +3021,9 @@ export default function AccountingLensPage() {
 
       {/* Editor modal */}
       {showEditor && (
-        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)}>
+        <div className={ds.modalBackdrop} onClick={() => setShowEditor(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className={ds.modalContainer}>
-            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()}>
+            <div className={cn(ds.modalPanel, 'max-w-2xl')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
               <div className="p-6 border-b border-lattice-border">
                 <div className={ds.sectionHeader}>
                   <h2 className={ds.heading2}>{editingId ? 'Edit' : 'New'} {currentType}</h2>

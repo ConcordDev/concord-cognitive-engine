@@ -150,7 +150,7 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-400" />
           <span className="text-sm font-semibold text-gray-200">Scheduled</span>
-          <span className="text-[10px] text-gray-500 ml-1">{pending.length} pending</span>
+          <span className="text-[10px] text-gray-400 ml-1">{pending.length} pending</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -184,7 +184,7 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
             />
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 inline-flex items-center gap-1">
+                <span className="text-[10px] uppercase tracking-wider text-gray-400 inline-flex items-center gap-1">
                   <Calendar className="w-3 h-3" /> Run at
                 </span>
                 <input
@@ -195,7 +195,7 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wider text-gray-500 inline-flex items-center gap-1">
+                <span className="text-[10px] uppercase tracking-wider text-gray-400 inline-flex items-center gap-1">
                   <Repeat className="w-3 h-3" /> Repeat
                 </span>
                 <select
@@ -235,14 +235,14 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
           </div>
         ) : pending.length === 0 && !creating ? (
           <div className="text-center py-8 px-4">
             <Clock className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-            <p className="text-xs text-gray-500">No scheduled tasks</p>
-            <p className="text-[10px] text-gray-600 mt-1">
+            <p className="text-xs text-gray-400">No scheduled tasks</p>
+            <p className="text-[10px] text-gray-400 mt-1">
               Schedule a prompt to run at a future time. Recurring options: daily, weekly, monthly.
             </p>
           </div>
@@ -256,7 +256,7 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-100 line-clamp-3">{t.prompt}</p>
-                    <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-500 flex-wrap">
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-gray-400 flex-wrap">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="w-2.5 h-2.5" />
                         {formatRunAt(t.runAt)}
@@ -279,7 +279,7 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
                   <button
                     type="button"
                     onClick={() => cancel(t.id)}
-                    className="p-1 text-gray-500 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition"
+                    className="p-1 text-gray-400 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition"
                     aria-label="Cancel scheduled task"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -289,14 +289,14 @@ export function ScheduledTasksPanel({ open, onClose, activeProjectId }: Props) {
             ))}
             {cancelled.length > 0 && (
               <details className="mt-4">
-                <summary className="text-[10px] uppercase tracking-wider text-gray-600 cursor-pointer hover:text-gray-400">
+                <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-400">
                   {cancelled.length} cancelled / completed
                 </summary>
                 <div className="mt-2 space-y-1.5">
                   {cancelled.map((t) => (
                     <div key={t.id} className="rounded-md border border-white/5 bg-black/10 p-2 opacity-60">
                       <p className="text-[11px] text-gray-400 line-clamp-2">{t.prompt}</p>
-                      <span className="text-[9px] text-gray-600 mt-1 block">
+                      <span className="text-[9px] text-gray-400 mt-1 block">
                         {t.status} · {formatRunAt(t.runAt)}
                       </span>
                     </div>

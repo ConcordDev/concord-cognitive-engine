@@ -119,7 +119,7 @@ export function MarketingPagesPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -137,7 +137,7 @@ export function MarketingPagesPanel() {
       </div>
 
       {pages.length === 0 ? (
-        <p className="text-[11px] text-zinc-500 italic">No landing pages. Build a page with a form to capture leads.</p>
+        <p className="text-[11px] text-zinc-400 italic">No landing pages. Build a page with a form to capture leads.</p>
       ) : (
         <ul className="space-y-2">
           {pages.map((p) => (
@@ -145,7 +145,7 @@ export function MarketingPagesPanel() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-zinc-100 truncate">{p.name}</p>
-                  <p className="text-[11px] text-zinc-500 truncate">/{p.slug} · {p.fieldCount} fields · {p.submissions} submissions · {p.conversionRate}% conv · {p.status}</p>
+                  <p className="text-[11px] text-zinc-400 truncate">/{p.slug} · {p.fieldCount} fields · {p.submissions} submissions · {p.conversionRate}% conv · {p.status}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button type="button" onClick={() => openEdit(p)}
@@ -172,9 +172,9 @@ export function MarketingPagesPanel() {
 
       {/* Builder modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setCreating(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">{editing ? 'Edit' : 'New'} landing page</h4>
               <button type="button" onClick={() => setCreating(false)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
@@ -194,7 +194,7 @@ export function MarketingPagesPanel() {
               ))}
             </div>
             {fFields.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">Add form fields to capture submissions.</p>
+              <p className="text-[11px] text-zinc-400 italic">Add form fields to capture submissions.</p>
             ) : (
               <ul className="space-y-1.5">
                 {fFields.map((fl, i) => (
@@ -234,9 +234,9 @@ export function MarketingPagesPanel() {
 
       {/* Submit form modal */}
       {submitFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubmitFor(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubmitFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-sm max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <h4 className="text-sm font-semibold text-white">{submitFor.headline}</h4>
             {submitFor.subhead && <p className="text-[11px] text-zinc-400">{submitFor.subhead}</p>}
             {submitFor.fields.map((fl) => (
@@ -276,22 +276,22 @@ export function MarketingPagesPanel() {
 
       {/* Submissions inbox */}
       {subsFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubsFor(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setSubsFor(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="w-full max-w-md max-h-[85vh] overflow-y-auto bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-3"
-            onClick={(ev) => ev.stopPropagation()}>
+            onClick={(ev) => ev.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-semibold text-white">Submissions ({subs.length})</h4>
               <button type="button" onClick={() => setSubsFor(null)} aria-label="Close"><X className="w-4 h-4 text-zinc-400" /></button>
             </div>
             {subs.length === 0 ? (
-              <p className="text-[11px] text-zinc-500 italic">No submissions captured yet.</p>
+              <p className="text-[11px] text-zinc-400 italic">No submissions captured yet.</p>
             ) : (
               <ul className="space-y-2">
                 {subs.map((sub) => (
                   <li key={sub.id} className="bg-zinc-900 border border-zinc-800 rounded-lg p-2">
-                    <p className="text-[10px] text-zinc-500 mb-1">{new Date(sub.submittedAt).toLocaleString()}</p>
+                    <p className="text-[10px] text-zinc-400 mb-1">{new Date(sub.submittedAt).toLocaleString()}</p>
                     {Object.entries(sub.values).map(([k, v]) => (
-                      <p key={k} className="text-[11px] text-zinc-300"><span className="text-zinc-500">{k}:</span> {v || '—'}</p>
+                      <p key={k} className="text-[11px] text-zinc-300"><span className="text-zinc-400">{k}:</span> {v || '—'}</p>
                     ))}
                   </li>
                 ))}

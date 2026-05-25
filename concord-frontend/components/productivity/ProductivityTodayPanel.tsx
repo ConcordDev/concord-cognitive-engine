@@ -34,7 +34,7 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   const weekday = (d: string) => new Date(d + 'T00:00:00Z').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -47,7 +47,7 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
           {overdue > 0 && <span className="text-[10px] text-rose-400">· {overdue} overdue</span>}
         </h3>
         {todayTasks.length === 0 ? (
-          <div className="text-center text-zinc-500 text-sm italic py-8 border border-zinc-800 rounded-xl">
+          <div className="text-center text-zinc-400 text-sm italic py-8 border border-zinc-800 rounded-xl">
             Nothing due today. Enjoy the clear deck.
           </div>
         ) : (
@@ -64,9 +64,9 @@ export function ProductivityTodayPanel({ onChange }: { onChange: () => void }) {
         <div className="space-y-3">
           {days.map((d) => (
             <div key={d.date}>
-              <p className="text-[11px] text-zinc-500 mb-1">{weekday(d.date)}</p>
+              <p className="text-[11px] text-zinc-400 mb-1">{weekday(d.date)}</p>
               {d.tasks.length === 0 ? (
-                <p className="text-[10px] text-zinc-600 italic pl-1">No tasks</p>
+                <p className="text-[10px] text-zinc-400 italic pl-1">No tasks</p>
               ) : (
                 <ul className="space-y-1">
                   {d.tasks.map((t) => <ProductivityTaskRow key={t.id} task={t} onChange={refresh} />)}

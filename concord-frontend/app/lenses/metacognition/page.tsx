@@ -540,14 +540,14 @@ export default function MetacognitionLensPage() {
                     style={{ width: `${cognitiveLoad * 100}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-xs text-gray-500">
+                <div className="flex justify-between text-xs text-gray-400">
                   <span>Low</span>
                   <span>Moderate</span>
                   <span>High</span>
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-400">
                 Cognitive load data not yet available. Run introspection to generate metrics.
               </p>
             )}
@@ -594,7 +594,7 @@ export default function MetacognitionLensPage() {
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
+              <p className="text-sm text-gray-400 text-center py-4">
                 No domain confidence data yet. Make predictions across different domains to build the map.
               </p>
             )}
@@ -640,7 +640,7 @@ export default function MetacognitionLensPage() {
                           </p>
                         )}
                         {!!spot.detected_at && (
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-gray-400 mt-1">
                             Detected: {formatTimestamp(spot.detected_at)}
                           </p>
                         )}
@@ -649,7 +649,7 @@ export default function MetacognitionLensPage() {
                   })}
                 </div>
               ) : (
-                <p className="text-center py-6 text-gray-500 text-sm">
+                <p className="text-center py-6 text-gray-400 text-sm">
                   No blind spots detected. Run introspection to discover potential gaps.
                 </p>
               )}
@@ -695,7 +695,7 @@ export default function MetacognitionLensPage() {
                   </div>
                 </div>
               ) : (
-                <p className="text-center py-6 text-gray-500 text-sm">
+                <p className="text-center py-6 text-gray-400 text-sm">
                   Make predictions and resolve them to build calibration data.
                 </p>
               )}
@@ -843,7 +843,7 @@ export default function MetacognitionLensPage() {
                   )}
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 No introspection results yet. Click &quot;Run Introspection&quot; to begin.
               </p>
             )}
@@ -863,7 +863,7 @@ export default function MetacognitionLensPage() {
                       <span className="font-medium text-gray-300">
                         {String(entry.focus || entry.type || 'General')}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         {formatTimestamp(entry.timestamp || entry.created_at || entry.date)}
                       </span>
                     </div>
@@ -879,7 +879,7 @@ export default function MetacognitionLensPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 Past introspection results will appear here after running introspections.
               </p>
             )}
@@ -976,7 +976,7 @@ export default function MetacognitionLensPage() {
               </h2>
               <div className="relative h-48 bg-lattice-deep rounded-lg overflow-hidden border border-gray-700/30">
                 {/* Y-axis labels */}
-                <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between py-2 text-xs text-gray-500">
+                <div className="absolute left-0 top-0 bottom-0 w-10 flex flex-col justify-between py-2 text-xs text-gray-400">
                   <span>100%</span>
                   <span>50%</span>
                   <span>0%</span>
@@ -1030,13 +1030,13 @@ export default function MetacognitionLensPage() {
                     })}
                 </div>
                 {/* X-axis labels */}
-                <div className="absolute bottom-0 left-10 right-0 flex justify-between px-2 text-xs text-gray-500">
+                <div className="absolute bottom-0 left-10 right-0 flex justify-between px-2 text-xs text-gray-400">
                   <span>0%</span>
                   <span>50%</span>
                   <span>100%</span>
                 </div>
               </div>
-              <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+              <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
                   Correct
@@ -1052,7 +1052,7 @@ export default function MetacognitionLensPage() {
               </div>
             </div>
           ) : (
-            <div className="text-center py-6 text-gray-500 text-sm border border-dashed border-white/10 rounded-lg">
+            <div className="text-center py-6 text-gray-400 text-sm border border-dashed border-white/10 rounded-lg">
               <p>No predictions yet. Create cognitive predictions to see pattern analysis here.</p>
             </div>
           )}
@@ -1077,8 +1077,7 @@ export default function MetacognitionLensPage() {
                     <div key={id} className="lens-card">
                       <div
                         className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setExpandedPrediction(expanded ? null : id)}
-                      >
+                        onClick={() => setExpandedPrediction(expanded ? null : id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                         {isResolved ? (
                           isCorrect ? (
                             <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
@@ -1092,7 +1091,7 @@ export default function MetacognitionLensPage() {
                           <p className="text-sm font-medium truncate">
                             {String(p.claim || p.description || p.prediction || 'Prediction')}
                           </p>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
                             {typeof p.confidence === 'number' && (
                               <span>Conf: {(p.confidence * 100).toFixed(0)}%</span>
                             )}
@@ -1129,9 +1128,9 @@ export default function MetacognitionLensPage() {
                           </div>
                         )}
                         {expanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-500 shrink-0" />
+                          <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+                          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                         )}
                       </div>
                       {expanded && (
@@ -1143,7 +1142,7 @@ export default function MetacognitionLensPage() {
                             )
                             .map(([k, v]) => (
                               <div key={k} className="flex justify-between">
-                                <span className="text-gray-500">{k.replace(/_/g, ' ')}</span>
+                                <span className="text-gray-400">{k.replace(/_/g, ' ')}</span>
                                 <span className="font-mono">
                                   {typeof v === 'number'
                                     ? v.toFixed(3)
@@ -1160,7 +1159,7 @@ export default function MetacognitionLensPage() {
                 })}
               </div>
             ) : (
-              <p className="text-center py-8 text-gray-500 text-sm">
+              <p className="text-center py-8 text-gray-400 text-sm">
                 No predictions yet. Use the form above to record your first prediction.
               </p>
             )}
@@ -1234,12 +1233,12 @@ export default function MetacognitionLensPage() {
                           )}
                         </p>
                         {!!insight.domain && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-400">
                             Domain: {String(insight.domain)}
                           </span>
                         )}
                         {!!(insight.timestamp || insight.learned_at) && (
-                          <span className="text-xs text-gray-500 ml-2">
+                          <span className="text-xs text-gray-400 ml-2">
                             {formatTimestamp(insight.timestamp || insight.learned_at)}
                           </span>
                         )}
@@ -1249,7 +1248,7 @@ export default function MetacognitionLensPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 Learning insights will appear as the system processes new information.
               </p>
             )}
@@ -1289,7 +1288,7 @@ export default function MetacognitionLensPage() {
                         </div>
                       )}
                       {!!pattern.occurrences && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-gray-400 mt-1">
                           Occurrences: {String(pattern.occurrences)}
                         </p>
                       )}
@@ -1303,7 +1302,7 @@ export default function MetacognitionLensPage() {
                 })}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 Pattern recognition data will populate as the system identifies recurring themes.
               </p>
             )}
@@ -1361,7 +1360,7 @@ export default function MetacognitionLensPage() {
                 })}
               </div>
             ) : (
-              <p className="text-center py-6 text-gray-500 text-sm">
+              <p className="text-center py-6 text-gray-400 text-sm">
                 Skill improvements will be tracked as the system operates across different domains.
               </p>
             )}

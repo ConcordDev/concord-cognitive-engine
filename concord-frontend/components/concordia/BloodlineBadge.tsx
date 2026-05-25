@@ -78,7 +78,7 @@ export function BloodlineBadge({ bloodline, dilution, compact = false }: Bloodli
     // they don't have.
     return (
       <span
-        className={`inline-flex items-center gap-1 ${compact ? 'text-[10px]' : 'text-xs'} text-zinc-500`}
+        className={`inline-flex items-center gap-1 ${compact ? 'text-[10px]' : 'text-xs'} text-zinc-400`}
         data-testid="bloodline-badge"
         data-bloodline="none"
         role="tooltip"

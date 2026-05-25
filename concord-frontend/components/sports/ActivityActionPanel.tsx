@@ -318,7 +318,7 @@ export function ActivityActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[12px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -339,9 +339,9 @@ export function ActivityActionPanel() {
               <ClipboardList className="w-3 h-3" /> {planResult.sport} plan
             </div>
             {planResult.schedule?.map((d, i) => (
-              <div key={i} className="text-[11px] text-zinc-300"><span className="font-mono text-emerald-300">D{d.day}</span> {d.workout} <span className="text-[9px] text-zinc-500">({d.intensity})</span></div>
+              <div key={i} className="text-[11px] text-zinc-300"><span className="font-mono text-emerald-300">D{d.day}</span> {d.workout} <span className="text-[9px] text-zinc-400">({d.intensity})</span></div>
             ))}
-            {planResult.principle && <p className="text-[10px] text-zinc-500 italic">{planResult.principle}</p>}
+            {planResult.principle && <p className="text-[10px] text-zinc-400 italic">{planResult.principle}</p>}
           </div>
         )}
         {riskResult && (

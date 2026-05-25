@@ -119,14 +119,14 @@ export function NdviLayersPanel({
 
   if (fieldsLoading) {
     return (
-      <div className="flex items-center justify-center py-10 text-xs text-gray-500">
+      <div className="flex items-center justify-center py-10 text-xs text-gray-400">
         <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading fields…
       </div>
     );
   }
   if (fields.length === 0) {
     return (
-      <div className="py-10 text-center text-xs text-gray-500">
+      <div className="py-10 text-center text-xs text-gray-400">
         <Satellite className="w-6 h-6 mx-auto mb-2 opacity-30" />
         No fields yet. Add a field (with coordinates) to pull satellite imagery.
       </div>
@@ -179,11 +179,11 @@ export function NdviLayersPanel({
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400">
           <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading layers…
         </div>
       ) : layers.length === 0 ? (
-        <div className="py-8 text-center text-xs text-gray-500">
+        <div className="py-8 text-center text-xs text-gray-400">
           No imagery layers captured for this field yet.
         </div>
       ) : (
@@ -205,7 +205,7 @@ export function NdviLayersPanel({
                 >
                   {layer.vigorClass}
                 </span>
-                <span className="text-[10px] text-gray-500">
+                <span className="text-[10px] text-gray-400">
                   {new Date(layer.capturedAt).toLocaleString()}
                 </span>
                 <button
@@ -229,7 +229,7 @@ export function NdviLayersPanel({
                     <div className="text-sm font-bold text-emerald-300">
                       {m.v.toFixed(3)}
                     </div>
-                    <div className="text-[10px] text-gray-500">{m.k}</div>
+                    <div className="text-[10px] text-gray-400">{m.k}</div>
                   </div>
                 ))}
               </div>
@@ -241,7 +241,7 @@ export function NdviLayersPanel({
                 height={160}
                 showLegend={false}
               />
-              <div className="mt-1 text-[10px] text-gray-500">
+              <div className="mt-1 text-[10px] text-gray-400">
                 {layer.windowDays}-day window · source: {layer.source}
               </div>
             </div>

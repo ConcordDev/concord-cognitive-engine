@@ -288,12 +288,12 @@ export default function MessageLensPage() {
               </div>
             </article>
           ) : loadingMessages ? (
-            <p className="text-sm text-gray-500 inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading messages…</p>
+            <p className="text-sm text-gray-400 inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading messages…</p>
           ) : activeThread ? (
             <article className="prose dark:prose-invert max-w-none">
               <header className="mb-4 not-prose">
                 <h1 className="text-xl font-semibold">{activeThread.subject}</h1>
-                <div className="text-sm text-gray-500 mt-1">
+                <div className="text-sm text-gray-400 mt-1">
                   From {activeThread.from} · {new Date(activeThread.timestamp).toLocaleString()}
                 </div>
               </header>
@@ -306,10 +306,10 @@ export default function MessageLensPage() {
                       key={m.id}
                       className="border border-white/10 rounded p-3 sm:p-5 bg-white/5"
                     >
-                      <div className="text-xs text-gray-500 mb-1">{m.fromUserId}</div>
+                      <div className="text-xs text-gray-400 mb-1">{m.fromUserId}</div>
                       <div className="text-sm text-gray-200 whitespace-pre-wrap">{m.content}</div>
                       {m.createdAt && (
-                        <div className="text-[10px] text-gray-600 mt-1">
+                        <div className="text-[10px] text-gray-400 mt-1">
                           {typeof m.createdAt === 'number'
                             ? new Date(m.createdAt).toLocaleString()
                             : new Date(m.createdAt).toLocaleString()}
@@ -324,7 +324,7 @@ export default function MessageLensPage() {
                   block the thread view; the user can scroll back up to
                   re-read while typing. */}
               <div className="mt-4 not-prose border-t border-white/10 pt-4">
-                <div className="text-xs text-gray-500 mb-2 flex items-center justify-between">
+                <div className="text-xs text-gray-400 mb-2 flex items-center justify-between">
                   <span>
                     Replying to <span className="text-gray-300 font-medium">{activeThread.from}</span>
                   </span>
@@ -363,11 +363,11 @@ export default function MessageLensPage() {
               </div>
             </article>
           ) : loadingConvos ? (
-            <p className="text-sm text-gray-500 inline-flex items-center gap-2">
+            <p className="text-sm text-gray-400 inline-flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading conversations…
             </p>
           ) : conversations.length === 0 ? (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-400">
               <p>No conversations yet.</p>
               <button
                 onClick={() => setComposing(true)}
@@ -377,7 +377,7 @@ export default function MessageLensPage() {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-gray-500">Select a conversation from the inbox.</p>
+            <p className="text-sm text-gray-400">Select a conversation from the inbox.</p>
           )}
         </InboxShell>
       </div>

@@ -127,9 +127,9 @@ export function ArtPalettesPanel() {
       <section>
         <h3 className="text-xs font-semibold text-zinc-300 mb-2">Saved palettes</h3>
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+          <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
         ) : palettes.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic">No palettes saved yet.</p>
+          <p className="text-[11px] text-zinc-400 italic">No palettes saved yet.</p>
         ) : (
           <ul className="space-y-2">
             {palettes.map((p) => (

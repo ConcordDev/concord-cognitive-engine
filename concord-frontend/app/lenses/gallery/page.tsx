@@ -222,10 +222,10 @@ export default function GalleryPage() {
           <section>
             <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-zinc-200">
               <ImageIcon className="w-4 h-4 text-purple-400" /> Sigil gallery
-              <span className="text-[11px] font-normal text-zinc-500">— your consolidated knowledge, rendered</span>
+              <span className="text-[11px] font-normal text-zinc-400">— your consolidated knowledge, rendered</span>
             </h2>
             {sigils.length === 0 ? (
-              <div className="text-center text-zinc-500 italic py-10 border border-zinc-800 rounded-xl">
+              <div className="text-center text-zinc-400 italic py-10 border border-zinc-800 rounded-xl">
                 No sigils yet. They appear automatically as your DTUs consolidate into MEGA tiers.
               </div>
             ) : (
@@ -238,7 +238,7 @@ export default function GalleryPage() {
                         <div className="w-full h-full p-2"><SigilSvg shape={shape} /></div>
                       </div>
                       <h3 className="text-xs font-medium text-zinc-100 truncate">{s.title || s.mega_dtu_id}</h3>
-                      <p className="text-[10px] text-zinc-500 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5 font-mono">{s.tier} · {s.dominant_element || '—'}</p>
                     </li>
                   );
                 })}

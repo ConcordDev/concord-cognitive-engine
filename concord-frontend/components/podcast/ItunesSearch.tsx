@@ -39,7 +39,7 @@ export function ItunesSearch() {
       </header>
       <form onSubmit={(e) => { e.preventDefault(); if (query.trim()) search.mutate(); }} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Show name or topic — Lex Fridman, 99% Invisible, hardcore history…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
         <button type="submit" disabled={!query.trim() || search.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
@@ -57,7 +57,7 @@ export function ItunesSearch() {
             <div className="min-w-0 flex-1">
               <div className="font-medium text-white line-clamp-2 text-sm">{p.title}</div>
               <div className="text-[11px] text-zinc-400">{p.artist}</div>
-              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-500">
+              <div className="mt-0.5 flex items-center gap-2 text-[10px] text-zinc-400">
                 {p.genre && <span className="rounded bg-zinc-800 px-1.5">{p.genre}</span>}
                 {p.episodeCount != null && <span>{p.episodeCount} episodes</span>}
                 {p.contentAdvisory === 'Explicit' && <span className="text-rose-400">explicit</span>}
@@ -73,7 +73,7 @@ export function ItunesSearch() {
                 extraTags={['podcast', 'itunes', (p.genre || 'podcast').toLowerCase().replace(/\s+/g, '-')]}
                 rawData={p}
               />
-              {p.collectionUrl && <a href={p.collectionUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200" aria-label="apple"><ExternalLink className="h-3 w-3" /></a>}
+              {p.collectionUrl && <a href={p.collectionUrl} target="_blank" rel="noopener noreferrer" className="flex h-6 w-6 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200" aria-label="apple"><ExternalLink className="h-3 w-3" /></a>}
             </div>
           </motion.div>
         ))}

@@ -49,9 +49,9 @@ export function VersionHistoryPanel({ pageId, onRestored }: {
         <History className="w-3.5 h-3.5" /> Version history
       </h4>
       {loading ? (
-        <div className="flex items-center justify-center py-4 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>
+        <div className="flex items-center justify-center py-4 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>
       ) : snaps.length === 0 ? (
-        <p className="text-[11px] text-zinc-600 italic">No snapshots yet — use &ldquo;Save version&rdquo;.</p>
+        <p className="text-[11px] text-zinc-400 italic">No snapshots yet — use &ldquo;Save version&rdquo;.</p>
       ) : (
         <div className="space-y-2">
           <TimelineView events={events} height={90} />
@@ -60,7 +60,7 @@ export function VersionHistoryPanel({ pageId, onRestored }: {
               <div key={s.id} className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900/40 px-2 py-1">
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-zinc-200 truncate">{s.icon} {s.label}</p>
-                  <p className="text-[10px] text-zinc-500">{new Date(s.createdAt).toLocaleString()}</p>
+                  <p className="text-[10px] text-zinc-400">{new Date(s.createdAt).toLocaleString()}</p>
                 </div>
                 <button onClick={() => restore(s.id)} disabled={restoring !== null}
                   className="flex items-center gap-1 text-[10px] text-indigo-300 border border-indigo-800 rounded px-1.5 py-0.5 hover:bg-indigo-900/40 disabled:opacity-50">

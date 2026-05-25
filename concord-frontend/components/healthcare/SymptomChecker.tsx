@@ -69,11 +69,11 @@ export function SymptomChecker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Stethoscope className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Symptom checker · AI triage</span>
-        <span className="ml-auto text-[10px] text-gray-500">Protocol-constrained, cites guidelines</span>
+        <span className="ml-auto text-[10px] text-gray-400">Protocol-constrained, cites guidelines</span>
       </header>
       <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-3">
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">Tap a body region (or multiple)</div>
+          <div className="text-[10px] uppercase tracking-wider text-gray-400">Tap a body region (or multiple)</div>
           <svg viewBox="0 0 100 100" className="w-full max-w-[280px] mx-auto">
             {/* Stylized human silhouette */}
             <ellipse cx="50" cy="8" rx="6" ry="6" fill="#1e293b" stroke="#475569" strokeWidth="0.5" />
@@ -112,11 +112,11 @@ export function SymptomChecker() {
           />
           <div className="grid grid-cols-2 gap-3 text-xs">
             <label>
-              <span className="block text-[10px] uppercase text-gray-500 mb-0.5">Age</span>
+              <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Age</span>
               <input type="number" min={0} max={120} value={age} onChange={e => setAge(Number(e.target.value) || 0)} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white" />
             </label>
             <label>
-              <span className="block text-[10px] uppercase text-gray-500 mb-0.5">Sex assigned at birth</span>
+              <span className="block text-[10px] uppercase text-gray-400 mb-0.5">Sex assigned at birth</span>
               <select value={sex} onChange={e => setSex(e.target.value as 'M' | 'F' | 'X')} className="w-full px-2 py-1 bg-lattice-deep border border-lattice-border rounded text-white">
                 <option value="F">Female</option>
                 <option value="M">Male</option>
@@ -129,14 +129,14 @@ export function SymptomChecker() {
             Get triage guidance
           </button>
           {error && <p className="text-xs text-red-400">{error}</p>}
-          <p className="text-[10px] text-gray-500 leading-relaxed">
+          <p className="text-[10px] text-gray-400 leading-relaxed">
             This is decision-support, not a diagnosis. If you have chest pain, difficulty breathing, sudden weakness, or thoughts of self-harm, call 911 or go to the nearest ER.
           </p>
         </div>
 
         <div>
           {!result ? (
-            <div className="flex items-center justify-center h-full text-xs text-gray-500 italic">
+            <div className="flex items-center justify-center h-full text-xs text-gray-400 italic">
               Triage result will appear here.
             </div>
           ) : (
@@ -162,7 +162,7 @@ export function SymptomChecker() {
               </div>
 
               <div>
-                <h3 className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Possible conditions (not a diagnosis)</h3>
+                <h3 className="text-[10px] uppercase tracking-wider text-gray-400 mb-2">Possible conditions (not a diagnosis)</h3>
                 <ul className="space-y-2">
                   {result.candidates.map((c, i) => (
                     <li key={i} className="bg-white/[0.02] border border-white/10 rounded p-2.5">

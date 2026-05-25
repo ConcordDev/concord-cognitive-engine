@@ -72,9 +72,9 @@ export function DuplicatePanel({ questionId, duplicateOf, onLinkChanged, onOpenQ
       )}
 
       {loading ? (
-        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-500" /></div>
+        <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-zinc-400" /></div>
       ) : matches.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic py-3 text-center">No similar questions found.</p>
+        <p className="text-xs text-zinc-400 italic py-3 text-center">No similar questions found.</p>
       ) : (
         <ul className="space-y-1.5">
           {matches.map((m) => (
@@ -84,7 +84,7 @@ export function DuplicatePanel({ questionId, duplicateOf, onLinkChanged, onOpenQ
                 className="min-w-0 flex-1 text-left"
               >
                 <p className="text-[12px] text-orange-300 truncate">{m.title}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {m.votes} votes · {m.answerCount} answers · {(m.similarity * 100).toFixed(0)}% similar
                 </p>
               </button>

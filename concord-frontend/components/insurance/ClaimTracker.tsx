@@ -63,7 +63,7 @@ export function ClaimTracker() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <FileText className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Claims</span>
-        <span className="ml-auto text-[10px] text-gray-500">{claims.length} claims</span>
+        <span className="ml-auto text-[10px] text-gray-400">{claims.length} claims</span>
         <button onClick={() => setAdding(v => !v)} className="p-1 text-gray-400 hover:text-white" title="File new claim">
           <Plus className="w-4 h-4" />
         </button>
@@ -97,9 +97,9 @@ export function ClaimTracker() {
 
       <div className="max-h-[500px] overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : claims.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" /> No claims filed. Hit + when you need to file one.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><FileText className="w-6 h-6 mx-auto mb-2 opacity-30" /> No claims filed. Hit + when you need to file one.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {claims.map(c => {
@@ -123,7 +123,7 @@ export function ClaimTracker() {
                     </span>
                   </div>
                   <p className="text-xs text-gray-300 mt-1 line-clamp-2">{c.description}</p>
-                  <div className="text-[10px] text-gray-500 mt-1 flex items-center gap-3">
+                  <div className="text-[10px] text-gray-400 mt-1 flex items-center gap-3">
                     <span>{c.kind} · incident {new Date(c.incidentDate).toLocaleDateString()}</span>
                     {c.daysSinceSubmit != null && <span>{c.daysSinceSubmit}d in pipeline</span>}
                     {c.adjusterName && <span>Adjuster: {c.adjusterName}</span>}

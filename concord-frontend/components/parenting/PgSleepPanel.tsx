@@ -50,7 +50,7 @@ export function PgSleepPanel({ childId }: { childId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -67,7 +67,7 @@ export function PgSleepPanel({ childId }: { childId: string }) {
               <p className="text-xs text-zinc-400 mt-0.5">
                 Ideal nap window {timeOf(spot.predictedNap.earliest)} – {timeOf(spot.predictedNap.latest)}
               </p>
-              <p className="text-[10px] text-zinc-500 mt-1.5">
+              <p className="text-[10px] text-zinc-400 mt-1.5">
                 Age-based wake window ≈ {spot.wakeWindow.typical} min · based on last wake at {spot.lastWakeAt ? timeOf(spot.lastWakeAt) : '—'}
               </p>
             </>
@@ -99,7 +99,7 @@ export function PgSleepPanel({ childId }: { childId: string }) {
           <Moon className="w-3.5 h-3.5 text-indigo-400" /> Sleep history (7d)
         </h3>
         {history.length === 0 ? (
-          <p className="text-[11px] text-zinc-500 italic py-6 text-center">No sleep logged yet.</p>
+          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No sleep logged yet.</p>
         ) : (
           <ul className="space-y-1">
             {history.map((e) => (

@@ -405,6 +405,7 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   registerLensAction("government", "service-requests-create", (ctx, _a, params = {}) => {
+  try {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = govActor(ctx);
     const category = String(params.category || "").trim();
@@ -437,7 +438,8 @@ export default function registerGovernmentActions(registerLensAction) {
     all.push(request);
     saveGovState();
     return { ok: true, result: { request } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "service-requests-assign", (ctx, _a, params = {}) => {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -861,6 +863,7 @@ export default function registerGovernmentActions(registerLensAction) {
   });
 
   registerLensAction("government", "payments-confirm", (ctx, _a, params = {}) => {
+  try {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = govActor(ctx);
     const paymentId = String(params.paymentId || "");
@@ -889,7 +892,8 @@ export default function registerGovernmentActions(registerLensAction) {
     });
     saveGovState();
     return { ok: true, result: { payment } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("government", "payments-refund", (ctx, _a, params = {}) => {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1317,6 +1321,7 @@ export default function registerGovernmentActions(registerLensAction) {
   // ── Dashboard summary (CityGovShell data source) ────────────
 
   registerLensAction("government", "dashboard-summary", (ctx, _a, _p = {}) => {
+  try {
     const s = ensureGovState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = govActor(ctx);
     const requests = ensureGovBucket(s, "serviceRequests", userId);
@@ -1351,7 +1356,8 @@ export default function registerGovernmentActions(registerLensAction) {
         brokenAssets: assets.filter(a => a.condition === "broken" || a.condition === "poor").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 };
 
 async function fetchJsonGov(url, headers = {}) {

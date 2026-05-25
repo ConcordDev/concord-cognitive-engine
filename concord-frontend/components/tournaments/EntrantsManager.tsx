@@ -122,7 +122,7 @@ export function EntrantsManager({
 
       <ul className="space-y-1">
         {sorted.length === 0 && (
-          <li className="rounded border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
+          <li className="rounded border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">
             No entrants yet.
           </li>
         )}
@@ -173,14 +173,14 @@ function EntrantRow({
     <li className={`flex items-center gap-2 rounded border px-2 py-1.5 text-xs ${
       e.eliminated ? 'border-rose-900/40 bg-rose-950/20 opacity-60' : 'border-slate-800 bg-slate-950/40'
     }`}>
-      <span className="w-6 shrink-0 text-center font-mono text-slate-500">#{e.seed}</span>
+      <span className="w-6 shrink-0 text-center font-mono text-slate-400">#{e.seed}</span>
       <div className="flex-1 truncate">
         <span className="font-medium text-slate-100">{e.name}</span>
         {e.roster.length > 0 && (
-          <span className="ml-1 text-[10px] text-slate-500">[{e.roster.join(', ')}]</span>
+          <span className="ml-1 text-[10px] text-slate-400">[{e.roster.join(', ')}]</span>
         )}
       </div>
-      <span className="shrink-0 font-mono text-[10px] text-slate-500">{e.rating} elo</span>
+      <span className="shrink-0 font-mono text-[10px] text-slate-400">{e.rating} elo</span>
       {checkinPhase && (
         e.checkedIn ? (
           <span className="flex shrink-0 items-center gap-0.5 text-[10px] text-emerald-300">
@@ -202,7 +202,7 @@ function EntrantRow({
             onClick={onUp}
             disabled={busy || index === 0}
             aria-label={`Move ${e.name} up`}
-            className="rounded p-0.5 text-slate-500 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-20"
+            className="rounded p-0.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-20"
           >
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
@@ -210,7 +210,7 @@ function EntrantRow({
             onClick={onDown}
             disabled={busy || index === total - 1}
             aria-label={`Move ${e.name} down`}
-            className="rounded p-0.5 text-slate-500 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-20"
+            className="rounded p-0.5 text-slate-400 hover:bg-slate-700 hover:text-slate-200 disabled:opacity-20"
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </button>

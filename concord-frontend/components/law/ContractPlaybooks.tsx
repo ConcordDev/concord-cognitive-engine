@@ -57,21 +57,21 @@ export function ContractPlaybooks({ onApplied }: { onApplied?: (contractId: stri
       <div className="flex items-center gap-2 mb-3">
         <BookCheck className="w-4 h-4 text-neon-green" />
         <h2 className="font-semibold text-white">Contract Playbooks</h2>
-        <span className="text-[10px] text-gray-500">guided drafting · pre-approved language</span>
+        <span className="text-[10px] text-gray-400">guided drafting · pre-approved language</span>
       </div>
 
       {!detail ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {playbooks.length === 0 && <p className="text-xs text-gray-500 italic">No playbooks available.</p>}
+          {playbooks.length === 0 && <p className="text-xs text-gray-400 italic">No playbooks available.</p>}
           {playbooks.map((p) => (
             <button key={p.id} onClick={() => openDetail(p.id)}
               className="text-left bg-black/40 border border-white/10 rounded-lg p-3 hover:border-neon-green/30 transition-colors">
               <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-xs font-semibold text-white flex-1">{p.name}</span>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-400 capitalize">{p.contractType}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-500" />
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
               </div>
-              <p className="text-[10px] text-gray-500">{p.description}</p>
+              <p className="text-[10px] text-gray-400">{p.description}</p>
               <p className="text-[9px] text-neon-green mt-1">{p.clauseCount} pre-approved clauses</p>
             </button>
           ))}
@@ -80,15 +80,15 @@ export function ContractPlaybooks({ onApplied }: { onApplied?: (contractId: stri
         <div className="bg-black/40 border border-neon-green/20 rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold text-white flex-1">{detail.name}</h3>
-            <button onClick={() => setDetail(null)} className="text-[10px] text-gray-500 hover:text-white">Back</button>
+            <button onClick={() => setDetail(null)} className="text-[10px] text-gray-400 hover:text-white">Back</button>
           </div>
-          <p className="text-[11px] text-gray-500">{detail.description}</p>
+          <p className="text-[11px] text-gray-400">{detail.description}</p>
           <div className="space-y-1 max-h-44 overflow-y-auto">
             {detail.clauses.map((cl, i) => (
               <div key={i} className="bg-black/50 rounded px-2 py-1.5">
                 <p className="text-xs font-semibold text-white">{cl.title}
-                  <span className="text-[9px] text-gray-600 ml-1">{cl.category}</span></p>
-                <p className="text-[10px] text-gray-500 line-clamp-2">{cl.text}</p>
+                  <span className="text-[9px] text-gray-400 ml-1">{cl.category}</span></p>
+                <p className="text-[10px] text-gray-400 line-clamp-2">{cl.text}</p>
               </div>
             ))}
           </div>

@@ -16,6 +16,7 @@ export default function registerMaterialsActions(registerLensAction) {
    * artifact.data: { materials: [{ name, density, tensileStrength, thermalConductivity, meltingPoint, youngsModulus, hardness, cost }] }
    */
   registerLensAction("materials", "compareProperties", (ctx, artifact, _params) => {
+  try {
     const materials = artifact.data?.materials || [];
     if (materials.length < 2) {
       return { ok: true, result: { message: "Add at least 2 materials to compare properties." } };
@@ -76,7 +77,8 @@ export default function registerMaterialsActions(registerLensAction) {
         bestOverall: scores[0]?.name || "N/A",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * selectMaterial
@@ -84,6 +86,7 @@ export default function registerMaterialsActions(registerLensAction) {
    * artifact.data: { requirements: { minTensile?, maxDensity?, minMelting?, maxCost?, application? }, candidates: [material objects] }
    */
   registerLensAction("materials", "selectMaterial", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const requirements = data.requirements || {};
     const candidates = data.candidates || [];
@@ -143,7 +146,8 @@ export default function registerMaterialsActions(registerLensAction) {
         application: requirements.application || "General purpose",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * compositeAnalysis
@@ -151,6 +155,7 @@ export default function registerMaterialsActions(registerLensAction) {
    * artifact.data: { components: [{ name, volumeFraction, density, tensileStrength, youngsModulus }] }
    */
   registerLensAction("materials", "compositeAnalysis", (ctx, artifact, _params) => {
+  try {
     const components = artifact.data?.components || [];
     if (components.length < 2) {
       return { ok: true, result: { message: "Add at least 2 components with volume fractions and properties." } };
@@ -202,7 +207,8 @@ export default function registerMaterialsActions(registerLensAction) {
         ],
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * corrosionRisk
@@ -210,6 +216,7 @@ export default function registerMaterialsActions(registerLensAction) {
    * artifact.data: { material, category, environment, temperature, humidity, exposure }
    */
   registerLensAction("materials", "corrosionRisk", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const material = (data.name || data.material || "").toLowerCase();
     const category = (data.category || "metal").toLowerCase();
@@ -268,7 +275,8 @@ export default function registerMaterialsActions(registerLensAction) {
         estimatedLifespan: riskLevel === "low" ? "20+ years" : riskLevel === "moderate" ? "10-20 years" : riskLevel === "high" ? "3-10 years" : "< 3 years without protection",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * thermalAnalysis
@@ -276,6 +284,7 @@ export default function registerMaterialsActions(registerLensAction) {
    * artifact.data: { name, thermalConductivity, meltingPoint, thermalExpansion, operatingTemp, application }
    */
   registerLensAction("materials", "thermalAnalysis", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const thermalK = parseFloat(data.thermalConductivity) || 0;
     const meltingPoint = parseFloat(data.meltingPoint) || 0;
@@ -320,7 +329,8 @@ export default function registerMaterialsActions(registerLensAction) {
         warnings,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * mp-search — Materials Project search by chemical formula or
@@ -472,11 +482,13 @@ export default function registerMaterialsActions(registerLensAction) {
   });
 
   registerLensAction("materials", "shortlist-list", (ctx, _a, params = {}) => {
+  try {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     let list = [...mtSaved(s, mtActor(ctx))];
     if (params.category) list = list.filter((m) => m.category === params.category);
     return { ok: true, result: { materials: list, count: list.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("materials", "shortlist-remove", (ctx, _a, params = {}) => {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -491,6 +503,7 @@ export default function registerMaterialsActions(registerLensAction) {
   // shortlist-compare — side-by-side property table + the best material
   // per property (Granta MI's core selection workflow).
   registerLensAction("materials", "shortlist-compare", (ctx, _a, _params = {}) => {
+  try {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = mtSaved(s, mtActor(ctx));
     if (list.length < 2) return { ok: false, error: "shortlist at least 2 materials to compare" };
@@ -514,15 +527,18 @@ export default function registerMaterialsActions(registerLensAction) {
       return { property: p.label, key: p.key, values: vals, best: best ? best.name : null };
     });
     return { ok: true, result: { materials: list.map((m) => ({ id: m.id, name: m.name, formula: m.formula })), comparison } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("materials", "shortlist-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getMaterialsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = mtSaved(s, mtActor(ctx));
     const byCategory = {};
     for (const m of list) byCategory[m.category] = (byCategory[m.category] || 0) + 1;
     return { ok: true, result: { shortlisted: list.length, byCategory } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Ashby chart / property plot ────────────────────────────────────
   // Build a 2D material-selection scatter from the user's shortlist.

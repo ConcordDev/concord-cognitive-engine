@@ -119,7 +119,7 @@ function MaturityBar({ maturity, level }: { maturity: number; level: number }) {
           style={{ width: `${Math.round(maturity * 100)}%` }}
         />
       </div>
-      <span className="text-[10px] text-gray-500 w-8 text-right">
+      <span className="text-[10px] text-gray-400 w-8 text-right">
         {Math.round(maturity * 100)}%
       </span>
     </div>
@@ -149,7 +149,7 @@ function Gauge({
           style={{ width: `${Math.round(value * 100)}%` }}
         />
       </div>
-      <span className="text-gray-500 w-8 text-right">{(value * 100).toFixed(0)}%</span>
+      <span className="text-gray-400 w-8 text-right">{(value * 100).toFixed(0)}%</span>
     </div>
   );
 }
@@ -173,7 +173,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
           </div>
           <div className="min-w-0 text-left">
             <div className="text-sm font-semibold text-white truncate">{resolved.displayName}</div>
-            <div className="text-[10px] text-gray-500 truncate">
+            <div className="text-[10px] text-gray-400 truncate">
               {resolved.fullTitle} · #{resolved.shortId}
             </div>
           </div>
@@ -181,7 +181,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
             {entity.species}
           </span>
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           <span>Age: {entity.age}</span>
           <span>{entity.totalDTUs} DTUs</span>
           {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
@@ -219,12 +219,12 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
         <div className="mt-3 space-y-3 border-t border-lattice-border pt-3">
           {/* Domain exposure */}
           <div>
-            <h4 className="text-[10px] uppercase text-gray-500 mb-1">Domain Exposure</h4>
+            <h4 className="text-[10px] uppercase text-gray-400 mb-1">Domain Exposure</h4>
             <div className="grid grid-cols-5 gap-1">
               {Object.entries(entity.domainExposure).map(([domain, count]) => (
                 <div key={domain} className="text-center p-1 rounded bg-lattice-deep">
                   <div className="text-[10px] text-neon-cyan">{count}</div>
-                  <div className="text-[9px] text-gray-500 truncate">{domain}</div>
+                  <div className="text-[9px] text-gray-400 truncate">{domain}</div>
                 </div>
               ))}
             </div>
@@ -233,7 +233,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
           {/* Full organ heatmap */}
           {Object.entries(ORGAN_CATEGORIES).map(([cat, organs]) => (
             <div key={cat}>
-              <h4 className="text-[10px] uppercase text-gray-500 mb-1">{cat} Organs</h4>
+              <h4 className="text-[10px] uppercase text-gray-400 mb-1">{cat} Organs</h4>
               <div className="space-y-0.5">
                 {organs.map((organ) => {
                   const data = entity.organLevels[organ];
@@ -241,7 +241,7 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
                   return (
                     <div key={organ} className="flex items-center gap-2">
                       <span className="text-[10px] text-gray-400 w-20 truncate">{organ}</span>
-                      <span className="text-[9px] text-gray-600 w-16">
+                      <span className="text-[9px] text-gray-400 w-16">
                         {LEVEL_LABELS[data.level]}
                       </span>
                       <MaturityBar maturity={data.maturity} level={data.level} />
@@ -254,13 +254,13 @@ function EntityGrowthCard({ entity }: { entity: GrowthEntity }) {
 
           {/* Recent growth events */}
           <div>
-            <h4 className="text-[10px] uppercase text-gray-500 mb-1">Recent Growth</h4>
+            <h4 className="text-[10px] uppercase text-gray-400 mb-1">Recent Growth</h4>
             <div className="space-y-1 max-h-32 overflow-y-auto">
               {entity.recentGrowth.map((event, i) => (
                 <div key={i} className="flex items-center gap-2 text-[10px]">
                   <span className="text-gray-600">{new Date(event.at).toLocaleTimeString()}</span>
                   <span className="text-neon-cyan">{event.event}</span>
-                  <span className="text-gray-500 truncate">{JSON.stringify(event.data)}</span>
+                  <span className="text-gray-400 truncate">{JSON.stringify(event.data)}</span>
                 </div>
               ))}
             </div>
@@ -294,18 +294,18 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
         ].map((s) => (
           <div key={s.label} className="text-center p-2 rounded bg-lattice-deep">
             <div className="text-sm font-bold text-white">{s.value}</div>
-            <div className="text-[9px] text-gray-500">{s.label}</div>
+            <div className="text-[9px] text-gray-400">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Processing path distribution */}
-      <h4 className="text-[10px] uppercase text-gray-500 mb-1">Processing Paths</h4>
+      <h4 className="text-[10px] uppercase text-gray-400 mb-1">Processing Paths</h4>
       <div className="grid grid-cols-4 gap-1 mb-3">
         {Object.entries(metrics.processingPathDistribution).map(([path, count]) => (
           <div key={path} className="text-center p-1 rounded bg-lattice-deep">
             <div className="text-xs text-neon-cyan">{count}</div>
-            <div className="text-[9px] text-gray-500 truncate">{path}</div>
+            <div className="text-[9px] text-gray-400 truncate">{path}</div>
           </div>
         ))}
       </div>
@@ -313,7 +313,7 @@ function HiveCascadeSection({ metrics }: { metrics: HiveMetrics }) {
       {/* Recent cascades */}
       {metrics.recentCascades.length > 0 && (
         <>
-          <h4 className="text-[10px] uppercase text-gray-500 mb-1">Recent Cascades</h4>
+          <h4 className="text-[10px] uppercase text-gray-400 mb-1">Recent Cascades</h4>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {metrics.recentCascades
               .slice(-5)
@@ -356,7 +356,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
         ].map((s) => (
           <div key={s.label} className="text-center p-2 rounded bg-lattice-deep">
             <div className="text-sm font-bold text-white">{s.value}</div>
-            <div className="text-[9px] text-gray-500">{s.label}</div>
+            <div className="text-[9px] text-gray-400">{s.label}</div>
           </div>
         ))}
       </div>
@@ -364,12 +364,12 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       {/* Source visits */}
       {Object.keys(metrics.sourceVisits).length > 0 && (
         <>
-          <h4 className="text-[10px] uppercase text-gray-500 mb-1">Sources Visited</h4>
+          <h4 className="text-[10px] uppercase text-gray-400 mb-1">Sources Visited</h4>
           <div className="grid grid-cols-3 gap-1 mb-2">
             {Object.entries(metrics.sourceVisits).map(([src, count]) => (
               <div key={src} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-green">{count}</div>
-                <div className="text-[9px] text-gray-500 truncate">{src}</div>
+                <div className="text-[9px] text-gray-400 truncate">{src}</div>
               </div>
             ))}
           </div>
@@ -379,12 +379,12 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       {/* Domain heatmap */}
       {Object.keys(metrics.domainHeatmap).length > 0 && (
         <>
-          <h4 className="text-[10px] uppercase text-gray-500 mb-1">Domain Heatmap</h4>
+          <h4 className="text-[10px] uppercase text-gray-400 mb-1">Domain Heatmap</h4>
           <div className="grid grid-cols-4 gap-1">
             {Object.entries(metrics.domainHeatmap).map(([domain, count]) => (
               <div key={domain} className="text-center p-1 rounded bg-lattice-deep">
                 <div className="text-xs text-neon-cyan">{count}</div>
-                <div className="text-[9px] text-gray-500 truncate">{domain}</div>
+                <div className="text-[9px] text-gray-400 truncate">{domain}</div>
               </div>
             ))}
           </div>
@@ -392,7 +392,7 @@ function ExplorationSection({ metrics }: { metrics: ExplorationMetrics }) {
       )}
 
       {metrics.lastExplorationAt && (
-        <div className="text-[10px] text-gray-600 mt-2">
+        <div className="text-[10px] text-gray-400 mt-2">
           Last exploration: {new Date(metrics.lastExplorationAt).toLocaleString()}
         </div>
       )}
@@ -415,7 +415,7 @@ function EntityQualiaSection({ entityId }: { entityId: string }) {
 
   return (
     <div>
-      <h4 className="text-[10px] uppercase text-gray-500 mb-1">Qualia Sensory Feed</h4>
+      <h4 className="text-[10px] uppercase text-gray-400 mb-1">Qualia Sensory Feed</h4>
       <QualiaSensoryFeed entityId={entityId} channels={channels} />
     </div>
   );
@@ -455,7 +455,7 @@ function EntityGrowthDashboard() {
           <Brain className="w-4 h-4 text-neon-cyan" />
           Entity Growth &amp; Hive Intelligence
         </h2>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-400">
           <span>{entities.length} entities</span>
           <span className="flex items-center gap-1">
             <Network className="w-3 h-3" />
@@ -480,8 +480,8 @@ function EntityGrowthDashboard() {
       ) : entities.length === 0 ? (
         <div className="text-center py-8 rounded-lg border border-lattice-border bg-lattice-surface/50">
           <Dna className="w-8 h-8 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm text-gray-500">No entities born yet</p>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-sm text-gray-400">No entities born yet</p>
+          <p className="text-xs text-gray-400 mt-1">
             The first entity will be auto-birthed during the next exploration window (:50-:59)
           </p>
         </div>

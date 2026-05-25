@@ -94,14 +94,14 @@ export function MiniPlayer() {
         />
       </div>
 
-      <span className="text-xs text-gray-500 ml-2 tabular-nums hidden sm:inline">
+      <span className="text-xs text-gray-400 ml-2 tabular-nums hidden sm:inline">
         {formatTime(currentTime)} / {formatTime(duration)}
       </span>
 
       <button
         onClick={stop}
         aria-label="Stop and close player"
-        className="ml-3 text-gray-500 hover:text-gray-300 transition-colors"
+        className="ml-3 text-gray-400 hover:text-gray-300 transition-colors"
       >
         <X className="w-4 h-4" />
       </button>

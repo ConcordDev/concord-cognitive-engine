@@ -17,7 +17,7 @@ interface TravelDoc {
 
 const KINDS = ['passport', 'visa', 'insurance', 'ticket', 'reservation', 'vaccination', 'other'];
 const STATUS_COLOR: Record<string, string> = {
-  expired: 'text-rose-400', expiring_soon: 'text-amber-400', valid: 'text-emerald-400', none: 'text-zinc-500',
+  expired: 'text-rose-400', expiring_soon: 'text-amber-400', valid: 'text-emerald-400', none: 'text-zinc-400',
 };
 
 export function TravelDocsPanel() {
@@ -47,7 +47,7 @@ export function TravelDocsPanel() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-500"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   return (
@@ -72,7 +72,7 @@ export function TravelDocsPanel() {
       </div>
 
       {docs.length === 0 ? (
-        <div className="text-center text-zinc-500 text-sm italic py-10 border border-zinc-800 rounded-xl">
+        <div className="text-center text-zinc-400 text-sm italic py-10 border border-zinc-800 rounded-xl">
           No travel documents. Track passports, visas and insurance with expiry alerts.
         </div>
       ) : (
@@ -84,7 +84,7 @@ export function TravelDocsPanel() {
                 <FileText className="w-4 h-4 text-sky-400" />
                 <div>
                   <p className="text-sm font-semibold text-zinc-100">{d.title}</p>
-                  <p className="text-[11px] text-zinc-500 capitalize">
+                  <p className="text-[11px] text-zinc-400 capitalize">
                     {d.kind}{d.number ? ` · ${d.number}` : ''}{d.expiryDate ? ` · expires ${d.expiryDate}` : ''}
                   </p>
                 </div>

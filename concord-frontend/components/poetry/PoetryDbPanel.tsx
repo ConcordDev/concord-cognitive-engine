@@ -75,7 +75,7 @@ export function PoetryDbPanel({ className }: PoetryDbPanelProps) {
           type="button"
           onClick={() => void fetchData(query, kind)}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -84,7 +84,7 @@ export function PoetryDbPanel({ className }: PoetryDbPanelProps) {
 
       <div className="px-3 py-2 border-b border-zinc-800/40 flex gap-2 items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
           <input
             type="search"
             value={query}
@@ -109,7 +109,7 @@ export function PoetryDbPanel({ className }: PoetryDbPanelProps) {
       )}
 
       {!error && !loading && poems.length === 0 && query.trim() && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No poems match.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No poems match.</div>
       )}
 
       {poems.length > 0 && (
@@ -118,7 +118,7 @@ export function PoetryDbPanel({ className }: PoetryDbPanelProps) {
             <li key={`${p.title}-${p.author}-${idx}`} className="px-4 py-3 text-xs">
               <header className="mb-2">
                 <h4 className="text-sm font-semibold text-zinc-100">{p.title}</h4>
-                <div className="text-[11px] text-zinc-500">— {p.author} · {p.lineCount} lines</div>
+                <div className="text-[11px] text-zinc-400">— {p.author} · {p.lineCount} lines</div>
               </header>
               <details>
                 <summary className="text-[11px] text-zinc-400 hover:text-purple-300 cursor-pointer">Read poem</summary>
@@ -131,7 +131,7 @@ export function PoetryDbPanel({ className }: PoetryDbPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: PoetryDB · poetrydb.org
       </footer>
     </section>

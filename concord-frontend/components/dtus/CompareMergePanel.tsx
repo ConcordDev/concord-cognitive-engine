@@ -75,10 +75,10 @@ export function CompareMergePanel({
 
   if (!a || !b) {
     return (
-      <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-500">
+      <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-lattice-border bg-lattice-deep text-gray-400">
         <GitMerge className="mb-2 h-7 w-7" />
         <p className="text-sm">Pick two DTUs to compare and merge.</p>
-        <p className="text-xs text-gray-600">Use the checkboxes in the list — exactly 2.</p>
+        <p className="text-xs text-gray-400">Use the checkboxes in the list — exactly 2.</p>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export function CompareMergePanel({
         <h3 className="flex items-center gap-2 text-sm font-semibold">
           <GitMerge className="h-4 w-4 text-neon-pink" /> Compare &amp; Merge
         </h3>
-        <button onClick={onClear} className="text-gray-500 hover:text-white" aria-label="Clear selection">
+        <button onClick={onClear} className="text-gray-400 hover:text-white" aria-label="Clear selection">
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -125,7 +125,7 @@ export function CompareMergePanel({
               {compare.recommendation.replace('_', ' ')}
             </span>
             <span className="text-2xl font-bold text-white">{compare.similarity.overall}%</span>
-            <span className="text-xs text-gray-500">similarity</span>
+            <span className="text-xs text-gray-400">similarity</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -193,19 +193,19 @@ export function CompareMergePanel({
           <p className="text-xs font-medium text-green-400">{merge.summary}</p>
           <div className="space-y-1 text-[11px] text-gray-300">
             <p>
-              <span className="text-gray-500">Title:</span>{' '}
+              <span className="text-gray-400">Title:</span>{' '}
               {String(merge.merged.title || '')}
             </p>
             <p>
-              <span className="text-gray-500">Tier:</span>{' '}
+              <span className="text-gray-400">Tier:</span>{' '}
               {String(merge.merged.tier || '')}
             </p>
             <p>
-              <span className="text-gray-500">Tags:</span>{' '}
+              <span className="text-gray-400">Tags:</span>{' '}
               {(merge.merged.tags as string[] | undefined)?.join(', ') || '—'}
             </p>
             <p>
-              <span className="text-gray-500">Citations:</span>{' '}
+              <span className="text-gray-400">Citations:</span>{' '}
               {String(merge.merged.citationCount ?? 0)}
             </p>
             <p className="text-yellow-400">
@@ -231,7 +231,7 @@ function DtuColumn({ dtu, label }: { dtu: CompareDtu; label: string }) {
       <p className="mt-1 line-clamp-2 text-xs font-medium text-white">
         {dtu.title || dtu.id}
       </p>
-      <p className="mt-1 line-clamp-2 text-[11px] text-gray-500">{dtu.summary || ''}</p>
+      <p className="mt-1 line-clamp-2 text-[11px] text-gray-400">{dtu.summary || ''}</p>
       <span className="mt-1 inline-block rounded bg-lattice-deep px-1.5 py-0.5 text-[10px] uppercase text-gray-400">
         {dtu.tier || 'regular'}
       </span>
@@ -245,7 +245,7 @@ function Bar({ label, value }: { label: string; value: number }) {
       <div className="mb-1 h-1.5 overflow-hidden rounded-full bg-lattice-border">
         <div className="h-full rounded-full bg-neon-cyan" style={{ width: `${value}%` }} />
       </div>
-      <p className="text-[10px] text-gray-500">
+      <p className="text-[10px] text-gray-400">
         {label} {value}%
       </p>
     </div>

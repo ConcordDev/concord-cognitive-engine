@@ -121,7 +121,7 @@ function SystemGuidePanel() {
         </span>
         <button
           onClick={() => setCollapsed(true)}
-          className="text-gray-500 hover:text-white"
+          className="text-gray-400 hover:text-white"
           aria-label="Collapse guide panel"
         >
           <Minimize2 className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ function SystemGuidePanel() {
           )}
         </div>
         {health?.counts && (
-          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
             {Object.entries(health.counts).map(([k, v]) => (
               <span key={k}>
                 {k}: {v}
@@ -167,7 +167,7 @@ function SystemGuidePanel() {
                   <Circle className="w-3.5 h-3.5 text-gray-600" />
                 )}
                 <span
-                  className={cn(step.completed ? 'text-gray-500 line-through' : 'text-gray-300')}
+                  className={cn(step.completed ? 'text-gray-400 line-through' : 'text-gray-300')}
                 >
                   {step.label}
                 </span>
@@ -190,7 +190,7 @@ function SystemGuidePanel() {
                 <ChevronRight className="w-3 h-3 text-neon-blue mt-0.5 flex-shrink-0" />
                 <div>
                   <div className="text-white font-medium">{s.title}</div>
-                  <div className="text-gray-500 mt-0.5">{s.description}</div>
+                  <div className="text-gray-400 mt-0.5">{s.description}</div>
                 </div>
               </div>
             ))}
@@ -205,7 +205,7 @@ function SystemGuidePanel() {
           Recent Activity
         </div>
         {events.length === 0 ? (
-          <p className="text-xs text-gray-600">No recent events</p>
+          <p className="text-xs text-gray-400">No recent events</p>
         ) : (
           <div className="space-y-1">
             {events.map((evt) => (
@@ -237,7 +237,7 @@ function HealthDot({ ok, label }: { ok?: boolean; label: string }) {
           ok === true ? 'bg-neon-green' : ok === false ? 'bg-red-500' : 'bg-gray-600'
         )}
       />
-      <span className="text-gray-500">{label}</span>
+      <span className="text-gray-400">{label}</span>
     </span>
   );
 }

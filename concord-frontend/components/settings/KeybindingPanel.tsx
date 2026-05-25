@@ -118,7 +118,7 @@ export function KeybindingPanel() {
       )}
       {categories.map((cat) => (
         <div key={cat}>
-          <h4 className="text-[11px] uppercase tracking-wide text-gray-500 mb-1.5">{cat}</h4>
+          <h4 className="text-[11px] uppercase tracking-wide text-gray-400 mb-1.5">{cat}</h4>
           <div className="space-y-1.5">
             {bindings.filter((b) => b.category === cat).map((b) => (
               <div
@@ -153,7 +153,7 @@ export function KeybindingPanel() {
                     disabled={busy === b.id}
                     aria-label={`Reset ${b.label} keybinding`}
                     title="Reset to default"
-                    className="text-gray-500 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
+                    className="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>

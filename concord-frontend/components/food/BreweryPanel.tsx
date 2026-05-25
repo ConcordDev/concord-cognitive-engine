@@ -40,7 +40,7 @@ const TYPE_COLOR: Record<string, string> = {
   regional: 'text-emerald-300',
   brewpub:  'text-rose-300',
   large:    'text-blue-300',
-  planning: 'text-zinc-500',
+  planning: 'text-zinc-400',
   closed:   'text-zinc-600',
   contract: 'text-purple-300',
 };
@@ -86,7 +86,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
           type="button"
           onClick={() => void fetchData(city)}
           disabled={loading}
-          className="p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+          className="p-1 text-zinc-400 hover:text-zinc-200 transition-colors"
           aria-label="Refresh"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
@@ -94,7 +94,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
       </header>
 
       <div className="px-3 py-2 border-b border-zinc-800/40 relative">
-        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500" aria-hidden="true" />
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
         <input
           type="search"
           value={city}
@@ -111,7 +111,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
       )}
 
       {!error && breweries.length === 0 && !loading && (
-        <div className="px-3 py-6 text-xs text-zinc-500 italic text-center">No breweries match.</div>
+        <div className="px-3 py-6 text-xs text-zinc-400 italic text-center">No breweries match.</div>
       )}
 
       {breweries.length > 0 && (
@@ -123,12 +123,12 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-zinc-200 font-medium truncate">{b.name}</span>
                     {b.type && (
-                      <span className={cn('text-[10px] font-mono', TYPE_COLOR[b.type] || 'text-zinc-500')}>
+                      <span className={cn('text-[10px] font-mono', TYPE_COLOR[b.type] || 'text-zinc-400')}>
                         {b.type}
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-zinc-500 truncate flex items-center gap-1 mt-0.5">
+                  <div className="text-[10px] text-zinc-400 truncate flex items-center gap-1 mt-0.5">
                     <MapPin className="w-2.5 h-2.5 shrink-0" />
                     {b.street ? `${b.street}, ` : ''}{b.city}, {b.state} {b.postalCode || ''}
                   </div>
@@ -137,7 +137,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
                   <a
                     href={b.websiteUrl}
                     target="_blank" rel="noopener noreferrer"
-                    className="text-zinc-500 hover:text-amber-300 shrink-0 mt-0.5"
+                    className="text-zinc-400 hover:text-amber-300 shrink-0 mt-0.5"
                     aria-label="Open website"
                   >
                     <ExternalLink className="w-3 h-3" />
@@ -149,7 +149,7 @@ export function BreweryPanel({ domain, className }: BreweryPanelProps) {
         </ul>
       )}
 
-      <footer className="px-3 py-1.5 text-[10px] text-zinc-500 border-t border-zinc-800/40">
+      <footer className="px-3 py-1.5 text-[10px] text-zinc-400 border-t border-zinc-800/40">
         Source: Open Brewery DB · openbrewerydb.org
       </footer>
     </section>

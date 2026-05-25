@@ -61,7 +61,7 @@ export default function LibraryPage() {
             Browse canonical knowledge units from the global lattice. Sync DTUs to your universe or submit them for Council review.
           </p>
           {!isLoading && (
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1">
               {total.toLocaleString()} DTUs available
             </p>
           )}
@@ -72,7 +72,7 @@ export default function LibraryPage() {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search input */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
                 value={search}
@@ -169,7 +169,7 @@ export default function LibraryPage() {
             <div className="text-center space-y-3">
               <Globe className="w-12 h-12 text-gray-600 mx-auto" />
               <h3 className="text-xl font-semibold text-gray-300">No DTUs found</h3>
-              <p className="text-gray-500">
+              <p className="text-gray-400">
                 Try adjusting your search or filters to find what you&apos;re looking for.
               </p>
             </div>
@@ -227,7 +227,7 @@ export default function LibraryPage() {
                       </span>
                     ))}
                     {dtu.tags.length > 5 && (
-                      <span className="px-2 py-0.5 rounded text-xs text-gray-500">
+                      <span className="px-2 py-0.5 rounded text-xs text-gray-400">
                         +{dtu.tags.length - 5}
                       </span>
                     )}

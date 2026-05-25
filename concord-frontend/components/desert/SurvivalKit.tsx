@@ -167,7 +167,7 @@ export function SurvivalKit() {
             <span className="text-sm font-semibold text-white">
               {active.name} · {active.teamSize} pax · {active.days} d
             </span>
-            <button onClick={() => remove(active.id)} className="p-1 text-zinc-500 hover:text-red-400" aria-label="Delete kit">
+            <button onClick={() => remove(active.id)} className="p-1 text-zinc-400 hover:text-red-400" aria-label="Delete kit">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -201,20 +201,20 @@ export function SurvivalKit() {
                 ) : (
                   <Circle className="h-4 w-4 text-zinc-600 shrink-0" />
                 )}
-                <span className={`text-sm ${it.packed ? 'text-zinc-500 line-through' : 'text-white'}`}>{it.item}</span>
+                <span className={`text-sm ${it.packed ? 'text-zinc-400 line-through' : 'text-white'}`}>{it.item}</span>
                 {it.critical && (
                   <span className="rounded bg-red-500/15 px-1.5 py-0.5 text-[10px] text-red-300">critical</span>
                 )}
-                <span className="ml-auto font-mono text-xs text-zinc-500">
+                <span className="ml-auto font-mono text-xs text-zinc-400">
                   {it.qty} {it.unit}
                 </span>
-                <span className="text-[10px] uppercase tracking-wider text-zinc-600">{it.category}</span>
+                <span className="text-[10px] uppercase tracking-wider text-zinc-400">{it.category}</span>
               </button>
             ))}
           </div>
         </div>
       )}
-      {kits.length === 0 && <p className="text-center text-sm text-zinc-500 py-6">No kits yet — generate one above.</p>}
+      {kits.length === 0 && <p className="text-center text-sm text-zinc-400 py-6">No kits yet — generate one above.</p>}
     </div>
   );
 }

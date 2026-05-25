@@ -44,7 +44,7 @@ export function AchievementShowcase({ refreshKey }: { refreshKey?: number }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+      <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading achievements…
       </div>
     );
@@ -86,7 +86,7 @@ export function AchievementShowcase({ refreshKey }: { refreshKey?: number }) {
 
       {sc.unlocked.length > 0 && (
         <div>
-          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Unlocked</p>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Unlocked</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {sc.unlocked.map((a) => (
               <div key={a.id}
@@ -109,16 +109,16 @@ export function AchievementShowcase({ refreshKey }: { refreshKey?: number }) {
 
       {sc.locked.length > 0 && (
         <div>
-          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-500">Locked</p>
+          <p className="mb-1.5 text-[10px] uppercase tracking-wider text-zinc-400">Locked</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {sc.locked.map((a) => (
               <div key={a.id}
                 className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-2.5 opacity-60">
                 <div className="flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-zinc-500" />
+                  <Lock className="h-3.5 w-3.5 text-zinc-400" />
                   <span className="truncate text-xs font-medium text-zinc-400">{a.name}</span>
                 </div>
-                <p className="mt-0.5 text-[9px] text-zinc-600">{a.rarity}</p>
+                <p className="mt-0.5 text-[9px] text-zinc-400">{a.rarity}</p>
               </div>
             ))}
           </div>

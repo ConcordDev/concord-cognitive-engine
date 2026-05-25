@@ -103,7 +103,7 @@ export function InlineCompletion({
         {/* Actions */}
         {!loading && suggestion && (
           <div className="flex items-center justify-between pt-2 border-t border-lattice-border mt-2">
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400">
               Press Tab to accept
             </span>
             <div className="flex items-center gap-1">

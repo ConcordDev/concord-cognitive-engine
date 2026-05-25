@@ -57,7 +57,7 @@ const RSVP_COLOR: Record<string, string> = {
   accepted: 'text-emerald-400',
   declined: 'text-rose-400',
   tentative: 'text-amber-400',
-  pending: 'text-zinc-500',
+  pending: 'text-zinc-400',
 };
 
 function fmt(iso: string): string {
@@ -189,7 +189,7 @@ function SyncPanel() {
               <Link2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{a.label}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   {a.provider} · {a.direction} ·{' '}
                   {a.lastSyncAt ? `synced ${fmt(a.lastSyncAt)} (${a.lastSyncCount} events)` : 'never synced'}
                 </p>
@@ -279,7 +279,7 @@ function SharingPanel() {
             <li key={s.id} className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-800 rounded-lg px-3 py-2">
               <Users2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <span className="text-xs text-zinc-100 truncate flex-1">{s.sharedWith}</span>
-              <span className="text-[10px] text-zinc-500">{s.calendarName}</span>
+              <span className="text-[10px] text-zinc-400">{s.calendarName}</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-600/20 text-blue-300">{s.role}</span>
               <button onClick={() => unshare(s.id)} className="p-1 text-rose-400 hover:text-rose-300" aria-label="Unshare">
                 <X className="w-3.5 h-3.5" />
@@ -361,7 +361,7 @@ function RemindersPanel() {
               <BellRing className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{r.eventTitle}</p>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-zinc-400">
                   starts {fmt(r.occurrenceStart)} · {r.offsetMin} min reminder
                 </p>
               </div>
@@ -467,7 +467,7 @@ function StatusPanel() {
               <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-zinc-100 truncate">{e.title}</p>
-                <p className="text-[10px] text-zinc-500">{fmt(e.start)} → {fmt(e.end)}</p>
+                <p className="text-[10px] text-zinc-400">{fmt(e.start)} → {fmt(e.end)}</p>
               </div>
               <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
                 e.blocksAvailability ? 'bg-rose-600/20 text-rose-300' : 'bg-zinc-700/40 text-zinc-300')}>
@@ -546,7 +546,7 @@ function ConferencePanel() {
                 {e.conferenceLink
                   ? <a href={e.conferenceLink} target="_blank" rel="noreferrer"
                       className="text-[10px] text-blue-400 hover:underline truncate block">{e.conferenceLink}</a>
-                  : <p className="text-[10px] text-zinc-600">no video link</p>}
+                  : <p className="text-[10px] text-zinc-400">no video link</p>}
               </div>
               {e.conferenceLink ? (
                 <button onClick={() => clear(e.id)} disabled={busy === e.id}
@@ -705,13 +705,13 @@ function InvitesPanel() {
 // ── Shared primitives ─────────────────────────────────────────────────
 function Spin() {
   return (
-    <div className="flex items-center justify-center py-6 text-zinc-500">
+    <div className="flex items-center justify-center py-6 text-zinc-400">
       <Loader2 className="w-4 h-4 animate-spin" />
     </div>
   );
 }
 function Empty({ msg }: { msg: string }) {
-  return <p className="text-xs text-zinc-500 italic py-2">{msg}</p>;
+  return <p className="text-xs text-zinc-400 italic py-2">{msg}</p>;
 }
 function ErrLine({ msg }: { msg: string }) {
   return (

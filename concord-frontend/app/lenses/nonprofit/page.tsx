@@ -431,7 +431,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>Donor Retention Rate</span>
           </div>
           <p className="text-2xl font-bold text-neon-cyan">{metrics.retentionRate}%</p>
-          <p className="text-xs text-gray-500 mt-1">{metrics.activeDonors} of {metrics.totalDonors} donors active</p>
+          <p className="text-xs text-gray-400 mt-1">{metrics.activeDonors} of {metrics.totalDonors} donors active</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -439,7 +439,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>Volunteer Hours (Month)</span>
           </div>
           <p className="text-2xl font-bold">{metrics.totalVolunteerHours.toLocaleString()}</p>
-          <p className="text-xs text-gray-500 mt-1">Valued at {fmtCurrency(metrics.volunteerValue)}</p>
+          <p className="text-xs text-gray-400 mt-1">Valued at {fmtCurrency(metrics.volunteerValue)}</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -449,7 +449,7 @@ export default function NonprofitLensPage() {
           <p className={cn("text-2xl font-bold", metrics.pendingAcks > 0 ? "text-amber-400" : "text-green-400")}>
             {metrics.pendingAcks}
           </p>
-          <p className="text-xs text-gray-500 mt-1">{metrics.pendingAcks > 0 ? 'Require attention' : 'All caught up'}</p>
+          <p className="text-xs text-gray-400 mt-1">{metrics.pendingAcks > 0 ? 'Require attention' : 'All caught up'}</p>
         </div>
       </div>
 
@@ -461,7 +461,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>Grant Pipeline</span>
           </div>
           <p className="text-2xl font-bold">{fmtCurrency(metrics.totalGrantPipeline)}</p>
-          <p className="text-xs text-gray-500 mt-1">{SEED.Grant.length} grants tracked</p>
+          <p className="text-xs text-gray-400 mt-1">{SEED.Grant.length} grants tracked</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -469,7 +469,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>LYBUNT / SYBUNT</span>
           </div>
           <p className="text-2xl font-bold text-red-400">{metrics.lybuntDonors + metrics.sybuntDonors}</p>
-          <p className="text-xs text-gray-500 mt-1">{metrics.lybuntDonors} LYBUNT, {metrics.sybuntDonors} SYBUNT</p>
+          <p className="text-xs text-gray-400 mt-1">{metrics.lybuntDonors} LYBUNT, {metrics.sybuntDonors} SYBUNT</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -477,7 +477,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>Outstanding Pledges</span>
           </div>
           <p className="text-2xl font-bold">{fmtCurrency(metrics.totalPledgeBalance)}</p>
-          <p className="text-xs text-gray-500 mt-1">Across all donors</p>
+          <p className="text-xs text-gray-400 mt-1">Across all donors</p>
         </div>
         <div className={ds.panel}>
           <div className="flex items-center gap-2 mb-1">
@@ -485,7 +485,7 @@ export default function NonprofitLensPage() {
             <span className={ds.textMuted}>Total Fund Balance</span>
           </div>
           <p className="text-2xl font-bold">{fmtCurrency(metrics.totalFundBalance)}</p>
-          <p className="text-xs text-gray-500 mt-1">{SEED.Fund.length} funds</p>
+          <p className="text-xs text-gray-400 mt-1">{SEED.Fund.length} funds</p>
         </div>
       </div>
 
@@ -515,7 +515,7 @@ export default function NonprofitLensPage() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
                       <span>{c.data.donors as number} donors</span>
                       {(c.data.avgGift as number) > 0 && <span>Avg: {fmtCurrency(c.data.avgGift as number)}</span>}
                       {(c.data.newDonors as number) > 0 && <span>{c.data.newDonors as number} new</span>}
@@ -625,7 +625,7 @@ export default function NonprofitLensPage() {
                     <p className="text-sm font-medium text-gray-200">{action.label}</p>
                     <p className={ds.textMuted}>{action.description}</p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
                 </button>
               );
             })}
@@ -689,7 +689,7 @@ export default function NonprofitLensPage() {
     const isLybunt = d.lybunt as boolean;
     const isSybunt = d.sybunt as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className={cn(
@@ -714,19 +714,19 @@ export default function NonprofitLensPage() {
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3 text-xs">
           <div>
-            <span className="text-gray-500">Lifetime:</span>
+            <span className="text-gray-400">Lifetime:</span>
             <span className="text-green-400 ml-1 font-medium">{fmtCurrency(d.totalGiven as number)}</span>
           </div>
           <div>
-            <span className="text-gray-500">Last Gift:</span>
+            <span className="text-gray-400">Last Gift:</span>
             <span className="text-gray-300 ml-1">{fmtDate(d.lastGift as string)}</span>
           </div>
           <div>
-            <span className="text-gray-500">Frequency:</span>
+            <span className="text-gray-400">Frequency:</span>
             <span className="text-gray-300 ml-1">{d.frequency as string}</span>
           </div>
           <div>
-            <span className="text-gray-500">Gifts:</span>
+            <span className="text-gray-400">Gifts:</span>
             <span className="text-gray-300 ml-1">{d.giftCount as number}</span>
           </div>
         </div>
@@ -764,7 +764,7 @@ export default function NonprofitLensPage() {
         )}
 
         {/* Communication preference */}
-        <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+        <div className="flex items-center gap-3 text-xs text-gray-400 mb-2">
           {!!d.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {d.communicationPref as string}</span>}
           {!!d.assignedTo && <span className="flex items-center gap-1"><User className="w-3 h-3" /> {d.assignedTo as string}</span>}
         </div>
@@ -795,7 +795,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const acked = d.acknowledged as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{d.donorName as string}</h3>
@@ -806,16 +806,16 @@ export default function NonprofitLensPage() {
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3 text-xs">
           <div>
-            <span className="text-gray-500">Fund:</span>
+            <span className="text-gray-400">Fund:</span>
             <span className="text-gray-300 ml-1">{d.fund as string}</span>
           </div>
           <div>
-            <span className="text-gray-500">Method:</span>
+            <span className="text-gray-400">Method:</span>
             <span className="text-gray-300 ml-1">{(d.paymentMethod as string).replace(/_/g, ' ')}</span>
           </div>
           {!!d.campaign && (
             <div className="col-span-2">
-              <span className="text-gray-500">Campaign:</span>
+              <span className="text-gray-400">Campaign:</span>
               <span className="text-gray-300 ml-1">{d.campaign as string}</span>
             </div>
           )}
@@ -876,8 +876,7 @@ export default function NonprofitLensPage() {
       <div key={item.id} className={ds.panel}>
         <div
           className="cursor-pointer"
-          onClick={() => setExpandedGrant(isExpanded ? null : item.id)}
-        >
+          onClick={() => setExpandedGrant(isExpanded ? null : item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1 min-w-0">
               <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -885,7 +884,7 @@ export default function NonprofitLensPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className={ds.badge(STATUS_COLORS[stage] || 'gray-400')}>{stage}</span>
-              {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+              {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
             </div>
           </div>
 
@@ -935,30 +934,30 @@ export default function NonprofitLensPage() {
           <div className="mt-3 pt-3 border-t border-lattice-border space-y-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
               <div>
-                <span className="text-gray-500">Program:</span>
+                <span className="text-gray-400">Program:</span>
                 <span className="text-gray-300 ml-1">{d.program as string}</span>
               </div>
               <div>
-                <span className="text-gray-500">Contact:</span>
+                <span className="text-gray-400">Contact:</span>
                 <span className="text-gray-300 ml-1">{d.contactName as string}</span>
               </div>
               <div>
-                <span className="text-gray-500">Received:</span>
+                <span className="text-gray-400">Received:</span>
                 <span className="text-green-400 ml-1">{fmtCurrency(d.amountReceived as number)}</span>
               </div>
               <div>
-                <span className="text-gray-500">Reporting:</span>
+                <span className="text-gray-400">Reporting:</span>
                 <span className="text-gray-300 ml-1">{d.reportingFrequency as string}</span>
               </div>
               {!!d.matchRequired && (
                 <div className="col-span-2">
-                  <span className="text-gray-500">Match Required:</span>
+                  <span className="text-gray-400">Match Required:</span>
                   <span className="text-amber-400 ml-1">{fmtCurrency(d.matchAmount as number)}</span>
                 </div>
               )}
               {nextReport && (
                 <div className="col-span-2">
-                  <span className="text-gray-500">Next Report Due:</span>
+                  <span className="text-gray-400">Next Report Due:</span>
                   <span className={cn(
                     'ml-1',
                     daysUntil(nextReport) <= 30 ? 'text-amber-400' : 'text-gray-300'
@@ -987,13 +986,13 @@ export default function NonprofitLensPage() {
 
             {/* Deliverables */}
             <div>
-              <p className="text-xs text-gray-500 mb-1">Deliverables:</p>
+              <p className="text-xs text-gray-400 mb-1">Deliverables:</p>
               <p className="text-xs text-gray-300">{d.deliverables as string}</p>
             </div>
 
             {!!d.notes && (
               <div>
-                <p className="text-xs text-gray-500 mb-1">Notes:</p>
+                <p className="text-xs text-gray-400 mb-1">Notes:</p>
                 <p className="text-xs text-gray-300">{d.notes as string}</p>
               </div>
             )}
@@ -1019,7 +1018,7 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const pct = progressPct(d.raised as number, d.goal as number);
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1047,38 +1046,38 @@ export default function NonprofitLensPage() {
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3 text-xs">
           <div>
-            <span className="text-gray-500">Donors:</span>
+            <span className="text-gray-400">Donors:</span>
             <span className="text-gray-300 ml-1">{d.donors as number}</span>
           </div>
           <div>
-            <span className="text-gray-500">Avg Gift:</span>
+            <span className="text-gray-400">Avg Gift:</span>
             <span className="text-gray-300 ml-1">{(d.avgGift as number) > 0 ? fmtCurrency(d.avgGift as number) : 'N/A'}</span>
           </div>
           <div>
-            <span className="text-gray-500">New Donors:</span>
+            <span className="text-gray-400">New Donors:</span>
             <span className="text-gray-300 ml-1">{d.newDonors as number}</span>
           </div>
           <div>
-            <span className="text-gray-500">Response Rate:</span>
+            <span className="text-gray-400">Response Rate:</span>
             <span className="text-gray-300 ml-1">{(d.responseRate as number) > 0 ? `${d.responseRate}%` : 'N/A'}</span>
           </div>
           <div>
-            <span className="text-gray-500">Channel:</span>
+            <span className="text-gray-400">Channel:</span>
             <span className="text-gray-300 ml-1">{d.channel as string}</span>
           </div>
           <div>
-            <span className="text-gray-500">Net Revenue:</span>
+            <span className="text-gray-400">Net Revenue:</span>
             <span className="text-green-400 ml-1">{fmtCurrency(d.netRevenue as number)}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+        <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
           <Calendar className="w-3 h-3" />
           {fmtDate(d.startDate as string)} - {fmtDate(d.endDate as string)}
         </div>
 
         {!!d.appealsSent && (d.appealsSent as number) > 0 && (
-          <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
+          <div className="flex items-center gap-1 text-xs text-gray-400 mb-2">
             <Send className="w-3 h-3" />
             {d.appealsSent as number} appeals sent
           </div>
@@ -1106,14 +1105,14 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const checkedIn = d.checkedIn as boolean;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className={cn(
               'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
               checkedIn ? 'bg-green-400/20' : 'bg-gray-600/20'
             )}>
-              <UserCheck className={cn('w-4 h-4', checkedIn ? 'text-green-400' : 'text-gray-500')} />
+              <UserCheck className={cn('w-4 h-4', checkedIn ? 'text-green-400' : 'text-gray-400')} />
             </div>
             <div className="min-w-0">
               <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1129,25 +1128,25 @@ export default function NonprofitLensPage() {
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3 text-xs">
           <div>
-            <span className="text-gray-500">Hours (Year):</span>
+            <span className="text-gray-400">Hours (Year):</span>
             <span className="text-gray-300 ml-1">{d.hoursThisYear as number}</span>
           </div>
           <div>
-            <span className="text-gray-500">Lifetime:</span>
+            <span className="text-gray-400">Lifetime:</span>
             <span className="text-gray-300 ml-1">{d.hoursLifetime as number} hrs</span>
           </div>
           <div>
-            <span className="text-gray-500">Availability:</span>
+            <span className="text-gray-400">Availability:</span>
             <span className="text-gray-300 ml-1">{d.availability as string}</span>
           </div>
           <div>
-            <span className="text-gray-500">Value:</span>
+            <span className="text-gray-400">Value:</span>
             <span className="text-green-400 ml-1">{fmtCurrency((d.hoursThisYear as number) * (d.hourValuation as number))}</span>
           </div>
         </div>
 
         <div className="mb-2">
-          <p className="text-xs text-gray-500 mb-1">Skills:</p>
+          <p className="text-xs text-gray-400 mb-1">Skills:</p>
           <div className="flex flex-wrap gap-1">
             {(d.skills as string).split(',').map((s: string) => (
               <span key={s.trim()} className="text-xs bg-lattice-elevated px-1.5 py-0.5 rounded text-gray-400">
@@ -1172,7 +1171,7 @@ export default function NonprofitLensPage() {
         )}
 
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-400">
             <Mail className="w-3 h-3" />
             <span>{d.email as string}</span>
           </div>
@@ -1197,7 +1196,7 @@ export default function NonprofitLensPage() {
     const pct = progressPct(d.value as number, d.target as number);
     const trend = d.trend as string;
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1233,7 +1232,7 @@ export default function NonprofitLensPage() {
         {/* Year over year */}
         {(d.previousYear as number) > 0 && (
           <div className="flex items-center gap-1 mb-2 text-xs">
-            <span className="text-gray-500">Prior year:</span>
+            <span className="text-gray-400">Prior year:</span>
             <span className="text-gray-300">{(d.previousYear as number).toLocaleString()}</span>
           </div>
         )}
@@ -1241,7 +1240,7 @@ export default function NonprofitLensPage() {
         {/* Outputs */}
         {!!d.outputs && (
           <div className="mb-2">
-            <p className="text-xs text-gray-500 mb-1">Key outputs:</p>
+            <p className="text-xs text-gray-400 mb-1">Key outputs:</p>
             <p className="text-xs text-gray-400">{d.outputs as string}</p>
           </div>
         )}
@@ -1249,7 +1248,7 @@ export default function NonprofitLensPage() {
         {/* Success story */}
         {!!d.successStory && (
           <div className="mb-2 p-2 bg-lattice-elevated rounded-lg">
-            <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+            <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-400" /> Success Story
             </p>
             <p className="text-xs text-gray-300 italic">&ldquo;{d.successStory as string}&rdquo;</p>
@@ -1285,7 +1284,7 @@ export default function NonprofitLensPage() {
     const pct = budgeted > 0 ? progressPct(spent, budgeted) : 0;
 
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openDetail(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <h3 className={cn(ds.heading3, 'text-sm truncate')}>{item.title}</h3>
@@ -1300,11 +1299,11 @@ export default function NonprofitLensPage() {
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 my-3 text-xs">
           <div>
-            <span className="text-gray-500">YTD Revenue:</span>
+            <span className="text-gray-400">YTD Revenue:</span>
             <span className="text-green-400 ml-1">{fmtCurrency(d.ytdRevenue as number)}</span>
           </div>
           <div>
-            <span className="text-gray-500">YTD Expenses:</span>
+            <span className="text-gray-400">YTD Expenses:</span>
             <span className="text-red-400 ml-1">{fmtCurrency(d.ytdExpenses as number)}</span>
           </div>
         </div>
@@ -1329,14 +1328,14 @@ export default function NonprofitLensPage() {
 
         {!!d.restrictions && fundType !== 'unrestricted' && (
           <div className="mb-2 p-2 bg-lattice-elevated rounded-lg">
-            <p className="text-xs text-gray-500 mb-1">Restrictions:</p>
+            <p className="text-xs text-gray-400 mb-1">Restrictions:</p>
             <p className="text-xs text-gray-300">{d.restrictions as string}</p>
           </div>
         )}
 
         {!!d.allocations && (
           <div className="mb-2">
-            <p className="text-xs text-gray-500 mb-1">Allocations:</p>
+            <p className="text-xs text-gray-400 mb-1">Allocations:</p>
             <p className="text-xs text-gray-400">{d.allocations as string}</p>
           </div>
         )}
@@ -1369,14 +1368,14 @@ export default function NonprofitLensPage() {
     const d = item.data as Record<string, unknown>;
     const status = item.meta?.status || 'active';
     return (
-      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)}>
+      <div key={item.id} className={ds.panelHover} onClick={() => openEdit(item.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-start justify-between mb-2">
           <h3 className={cn(ds.heading3, 'truncate flex-1')}>{item.title}</h3>
           <span className={ds.badge(STATUS_COLORS[status] || 'gray-400')}>{String(status)}</span>
         </div>
         <div className="space-y-1 mb-3">
           {Object.entries(d).slice(0, 4).map(([k, v]) => (
-            <p key={k} className={ds.textMuted}><span className="text-gray-500">{k}:</span> {String(v)}</p>
+            <p key={k} className={ds.textMuted}><span className="text-gray-400">{k}:</span> {String(v)}</p>
           ))}
         </div>
         <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
@@ -1515,7 +1514,7 @@ export default function NonprofitLensPage() {
                 >
                   <Icon className="w-5 h-5 text-neon-blue mb-1" />
                   <p className="text-sm font-medium text-gray-200">{action.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{action.description}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{action.description}</p>
                 </button>
               );
             })}
@@ -1532,7 +1531,7 @@ export default function NonprofitLensPage() {
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px] max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -1541,7 +1540,7 @@ export default function NonprofitLensPage() {
               />
             </div>
             <div className="relative">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
@@ -1627,18 +1626,18 @@ export default function NonprofitLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className={`text-sm font-bold ${Number(actionResult.retentionRate) >= 70 ? 'text-green-400' : Number(actionResult.retentionRate) >= 50 ? 'text-amber-400' : 'text-red-400'}`}>{String(actionResult.retentionRate)}%</p>
-                    <p className="text-[10px] text-gray-500">Retention Rate</p>
+                    <p className="text-[10px] text-gray-400">Retention Rate</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.retained)}</p>
-                    <p className="text-[10px] text-gray-500">Retained</p>
+                    <p className="text-[10px] text-gray-400">Retained</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.priorTotal)}</p>
-                    <p className="text-[10px] text-gray-500">Prior Year</p>
+                    <p className="text-[10px] text-gray-400">Prior Year</p>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-500 text-center">{String(actionResult.period)}</p>
+                <p className="text-[10px] text-gray-400 text-center">{String(actionResult.period)}</p>
               </div>
             )}
             {/* grantReporting */}
@@ -1652,7 +1651,7 @@ export default function NonprofitLensPage() {
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, Number(actionResult.deliverableProgress))}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-500">{String(actionResult.completedDeliverables)}/{String(actionResult.totalDeliverables)} completed</p>
+                <p className="text-[10px] text-gray-400">{String(actionResult.completedDeliverables)}/{String(actionResult.totalDeliverables)} completed</p>
               </div>
             )}
             {/* volunteerMatch */}
@@ -1661,7 +1660,7 @@ export default function NonprofitLensPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center col-span-2">
                     <p className={`text-sm font-bold ${Number(actionResult.matchScore) >= 75 ? 'text-green-400' : Number(actionResult.matchScore) >= 50 ? 'text-amber-400' : 'text-red-400'}`}>{String(actionResult.matchScore)}% Match</p>
-                    <p className="text-[10px] text-gray-500">{String(actionResult.volunteer)}</p>
+                    <p className="text-[10px] text-gray-400">{String(actionResult.volunteer)}</p>
                   </div>
                 </div>
                 {Array.isArray(actionResult.matches) && (actionResult.matches as {program:string;matched:boolean;availabilityMatch:boolean}[]).map((m, i) => (
@@ -1678,21 +1677,21 @@ export default function NonprofitLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">${Number(actionResult.raised).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Raised</p>
+                    <p className="text-[10px] text-gray-400">Raised</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-gray-400">${Number(actionResult.goal).toLocaleString()}</p>
-                    <p className="text-[10px] text-gray-500">Goal</p>
+                    <p className="text-[10px] text-gray-400">Goal</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.donorCount)}</p>
-                    <p className="text-[10px] text-gray-500">Donors</p>
+                    <p className="text-[10px] text-gray-400">Donors</p>
                   </div>
                 </div>
                 <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-neon-cyan rounded-full" style={{ width: `${Math.min(100, Number(actionResult.percentComplete))}%` }} />
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-gray-500">
+                <div className="flex items-center justify-between text-[10px] text-gray-400">
                   <span>{String(actionResult.percentComplete)}% complete</span>
                   <span className={actionResult.onTrack ? 'text-green-400' : 'text-red-400'}>{actionResult.onTrack ? 'On Track' : 'Behind'}</span>
                 </div>
@@ -1705,7 +1704,7 @@ export default function NonprofitLensPage() {
       {/* Detail Modal */}
       {detailItem && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setDetailItem(null)} />
+          <div className={ds.modalBackdrop} onClick={() => setDetailItem(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-2xl')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1804,7 +1803,7 @@ export default function NonprofitLensPage() {
       {/* Gift Entry Modal */}
       {showGiftEntry && (
         <>
-          <div className={ds.modalBackdrop} onClick={() => setShowGiftEntry(false)} />
+          <div className={ds.modalBackdrop} onClick={() => setShowGiftEntry(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">
@@ -1887,7 +1886,7 @@ export default function NonprofitLensPage() {
       {/* Editor Modal */}
       {showEditor && (
         <>
-          <div className={ds.modalBackdrop} onClick={resetForm} />
+          <div className={ds.modalBackdrop} onClick={resetForm} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           <div className={ds.modalContainer}>
             <div className={cn(ds.modalPanel, 'max-w-lg')}>
               <div className="flex items-center justify-between p-4 border-b border-lattice-border">

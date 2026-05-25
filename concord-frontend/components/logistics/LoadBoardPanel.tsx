@@ -59,7 +59,7 @@ export function LoadBoardPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Layers className="w-4 h-4 text-violet-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Load board</span>
-        <span className="ml-auto text-[10px] text-gray-500">{loads.filter(l => l.status === 'available').length} available · {loads.filter(l => l.status === 'booked').length} booked</span>
+        <span className="ml-auto text-[10px] text-gray-400">{loads.filter(l => l.status === 'available').length} available · {loads.filter(l => l.status === 'booked').length} booked</span>
       </header>
 
       <div className="p-3 border-b border-white/10 grid grid-cols-6 gap-2">
@@ -76,21 +76,21 @@ export function LoadBoardPanel() {
 
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : loads.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Layers className="w-6 h-6 mx-auto mb-2 opacity-30" />No loads posted yet.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Layers className="w-6 h-6 mx-auto mb-2 opacity-30" />No loads posted yet.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {loads.map(l => (
               <li key={l.id} className={cn('px-3 py-2 hover:bg-white/[0.03]', l.status === 'booked' && 'bg-emerald-500/5')}>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-white truncate flex-1">{l.origin}</span>
-                  <ArrowRight className="w-3 h-3 text-gray-500" />
+                  <ArrowRight className="w-3 h-3 text-gray-400" />
                   <span className="text-xs text-white truncate flex-1">{l.destination}</span>
                   <span className="font-mono text-sm tabular-nums text-violet-300">${l.ratePerMile.toFixed(2)}/mi</span>
                   <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', l.status === 'available' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>{l.status}</span>
                 </div>
-                <div className="text-[10px] text-gray-500 mt-0.5">{l.equipment.replace('_', ' ')} · {l.weightLbs}lbs {l.pickupDate ? `· pickup ${l.pickupDate}` : ''}</div>
+                <div className="text-[10px] text-gray-400 mt-0.5">{l.equipment.replace('_', ' ')} · {l.weightLbs}lbs {l.pickupDate ? `· pickup ${l.pickupDate}` : ''}</div>
                 {l.status === 'available' && (
                   <div className="mt-1">
                     {bidFor === l.id ? (

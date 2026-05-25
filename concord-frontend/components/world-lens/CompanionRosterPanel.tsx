@@ -105,7 +105,7 @@ export function CompanionRosterPanel({ worldId }: Props) {
         {open && (
           <div className="max-h-80 overflow-y-auto border-t border-pink-500/20">
             {companions.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[11px] text-slate-500">
+              <div className="px-3 py-6 text-center text-[11px] text-slate-400">
                 No companions yet. Get close to a creature, build trust, then press <span className="font-mono">J</span> to attempt a tame.
               </div>
             ) : (
@@ -127,7 +127,7 @@ export function CompanionRosterPanel({ worldId }: Props) {
                               className="flex-1 rounded bg-slate-800 px-1.5 py-0.5 text-[11px]"
                             />
                             <button onClick={() => rename(c.id)} className="text-[10px] text-emerald-300">save</button>
-                            <button onClick={() => setEditing(null)} className="text-[10px] text-slate-500" aria-label="Close"><X className="h-3 w-3" /></button>
+                            <button onClick={() => setEditing(null)} className="text-[10px] text-slate-400" aria-label="Close"><X className="h-3 w-3" /></button>
                           </div>
                         ) : (
                           <>

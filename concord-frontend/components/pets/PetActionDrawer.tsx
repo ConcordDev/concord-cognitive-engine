@@ -340,7 +340,7 @@ export function PetActionDrawer({ profile, onClose }: PetActionDrawerProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-gray-100">{a.label}</div>
-                  <div className="text-xs text-gray-500 leading-tight mt-0.5">{a.desc}</div>
+                  <div className="text-xs text-gray-400 leading-tight mt-0.5">{a.desc}</div>
                 </div>
               </button>
             );

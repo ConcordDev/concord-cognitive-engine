@@ -61,13 +61,13 @@ export function OpenRouterCatalog() {
       </header>
       <form onSubmit={(e) => e.preventDefault()} className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter (e.g. opus, claude, gpt-4, qwen, llama)…" className="w-full rounded-md border border-zinc-800 bg-zinc-950 py-1.5 pl-8 pr-3 text-sm text-white" />
         </div>
-        <span className="font-mono text-[10px] text-zinc-500">{filtered.length} / {models.data?.length ?? '—'}</span>
+        <span className="font-mono text-[10px] text-zinc-400">{filtered.length} / {models.data?.length ?? '—'}</span>
       </form>
       {models.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">OpenRouter unreachable.</div>}
-      {models.isPending && <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Pulling provider catalog…</div>}
+      {models.isPending && <div className="flex items-center gap-2 text-xs text-zinc-400"><Loader2 className="h-4 w-4 animate-spin" /> Pulling provider catalog…</div>}
       <div className="space-y-1 max-h-[500px] overflow-y-auto">
         {filtered.map((m) => (
           <div key={m.id} className="rounded border border-zinc-800 bg-zinc-950 p-2">
@@ -79,7 +79,7 @@ export function OpenRouterCatalog() {
                 <span className="text-amber-300">out {fmtPrice(m.pricing?.completion)}</span>
               </div>
             </div>
-            {m.name && m.name !== m.id && <div className="text-[10px] text-zinc-500">{m.name}</div>}
+            {m.name && m.name !== m.id && <div className="text-[10px] text-zinc-400">{m.name}</div>}
             {m.description && <p className="line-clamp-2 text-[11px] text-zinc-400">{m.description}</p>}
             <div className="mt-0.5 flex flex-wrap gap-1 text-[9px]">
               {m.architecture?.modality && <span className="rounded bg-zinc-800 px-1 font-mono text-zinc-300"><Cpu className="mr-0.5 inline h-2.5 w-2.5" />{m.architecture.modality}</span>}
@@ -89,7 +89,7 @@ export function OpenRouterCatalog() {
           </div>
         ))}
         {filtered.length === 0 && !models.isPending && (
-          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No matching models.</div>
+          <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No matching models.</div>
         )}
       </div>
     </div>

@@ -67,22 +67,20 @@ export function ModelPickerModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
+      onClick={onClose} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
       <div
         className="w-full max-w-lg rounded-xl bg-zinc-900 ring-1 ring-zinc-700 p-5 max-h-[80vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
+        onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <h3 className="text-sm font-semibold text-zinc-100">
               Pick a model — {slot} slot
             </h3>
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-zinc-400">
               {provider} · {source === 'openrouter' ? 'live catalog' : 'bundled defaults'}
             </p>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">×</button>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-300 text-lg leading-none">×</button>
         </div>
 
         <input
@@ -93,10 +91,10 @@ export function ModelPickerModal({
           className="w-full px-3 py-1.5 mb-3 rounded-md bg-zinc-950 text-zinc-100 text-sm ring-1 ring-zinc-700 focus:ring-amber-500 focus:outline-none"
         />
 
-        {loading && <div className="text-xs text-zinc-500">Loading model catalog…</div>}
+        {loading && <div className="text-xs text-zinc-400">Loading model catalog…</div>}
 
         {!loading && filtered.length === 0 && (
-          <div className="text-xs text-zinc-500 text-center py-6">No matching models.</div>
+          <div className="text-xs text-zinc-400 text-center py-6">No matching models.</div>
         )}
 
         <div className="overflow-y-auto space-y-1.5">
@@ -117,7 +115,7 @@ export function ModelPickerModal({
                   <span className="text-[9px] text-amber-300 font-mono">current</span>
                 )}
               </div>
-              <div className="mt-0.5 flex flex-wrap gap-2 text-[10px] text-zinc-500 font-mono">
+              <div className="mt-0.5 flex flex-wrap gap-2 text-[10px] text-zinc-400 font-mono">
                 {m.contextLength != null && <span>ctx {m.contextLength.toLocaleString()}</span>}
                 {m.promptUsdPerM != null && (
                   <span className="text-emerald-400">in ${m.promptUsdPerM.toFixed(2)}/M</span>

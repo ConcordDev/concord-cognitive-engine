@@ -255,8 +255,7 @@ function StoryViewer({
             const x = e.clientX - rect.left;
             if (x < rect.width / 3) goPrev();
             else goNext();
-          }}
-        >
+          }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
           {currentStory.imageUrl ? (
             <Image src={currentStory.imageUrl} alt="" fill className="object-cover" />
           ) : currentStory.content ? (
@@ -361,9 +360,9 @@ function StoriesBar({ currentUserId, onCreateStory, className }: StoriesBarProps
             className="flex flex-col items-center gap-1 flex-shrink-0 w-[72px]"
           >
             <div className="w-16 h-16 rounded-full bg-lattice-deep border-2 border-dashed border-gray-600 flex items-center justify-center hover:border-neon-cyan/50 transition-colors">
-              <Plus className="w-6 h-6 text-gray-500" />
+              <Plus className="w-6 h-6 text-gray-400" />
             </div>
-            <span className="text-[10px] text-gray-500">Your Story</span>
+            <span className="text-[10px] text-gray-400">Your Story</span>
           </button>
 
           {/* Other users' stories */}

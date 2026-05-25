@@ -239,14 +239,14 @@ export function MiroSection() {
         </header>
         <ul className="flex-1 overflow-y-auto">
           {loading ? (
-            <li className="px-3 py-2 text-xs text-gray-500"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
+            <li className="px-3 py-2 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin inline mr-1" />Loading…</li>
           ) : boards.length === 0 ? (
-            <li className="px-3 py-6 text-xs text-gray-500 text-center italic">No boards yet. <button onClick={createBoard} className="text-pink-300 underline">Create one</button></li>
+            <li className="px-3 py-6 text-xs text-gray-400 text-center italic">No boards yet. <button onClick={createBoard} className="text-pink-300 underline">Create one</button></li>
           ) : boards.map(b => (
             <li key={b.id} className={cn('group px-3 py-1.5 flex items-center gap-2 cursor-pointer text-xs hover:bg-white/[0.04]', activeId === b.id && 'bg-pink-500/10 text-pink-200 border-l-2 border-pink-400')} onClick={() => openBoard(b.id)}>
               <div className="flex-1 min-w-0">
                 <div className="truncate text-white">{b.title}</div>
-                <div className="text-[10px] text-gray-500">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
+                <div className="text-[10px] text-gray-400">{b.elementCount} elements · {b.updatedAt.slice(0, 10)}</div>
               </div>
               <button onClick={(e) => { e.stopPropagation(); deleteBoard(b.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 text-rose-300 hover:bg-rose-500/20 rounded"><Trash2 className="w-3 h-3" /></button>
             </li>
@@ -264,7 +264,7 @@ export function MiroSection() {
                 onChange={e => renameBoard(e.target.value)}
                 className="bg-transparent text-sm font-semibold text-white outline-none border-b border-transparent focus:border-pink-500/40 flex-1 max-w-[400px]"
               />
-              <span className="text-[10px] text-gray-500">{activeShapes.length} elements</span>
+              <span className="text-[10px] text-gray-400">{activeShapes.length} elements</span>
               {dirty && <span className="text-[10px] text-amber-300">● unsaved</span>}
               <BoardTimer boardId={activeId} />
               <button onClick={save} disabled={saving || !dirty} className="px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300 hover:bg-white/[0.05] disabled:opacity-40 inline-flex items-center gap-1">
@@ -283,7 +283,7 @@ export function MiroSection() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-xs text-gray-500 gap-3">
+          <div className="flex-1 flex flex-col items-center justify-center text-xs text-gray-400 gap-3">
             <div>No board open.</div>
             <button onClick={createBoard} className="px-3 py-1.5 text-xs rounded bg-pink-500 text-white font-bold hover:bg-pink-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New board</button>
           </div>
@@ -420,7 +420,7 @@ function ClusterTab({ clusters, loading, onRun, active, stickyCount }: { cluster
         {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}Cluster {stickyCount} sticky note{stickyCount === 1 ? '' : 's'}
       </button>
       {clusters && clusters.length === 0 && (
-        <div className="text-gray-500 italic">No themes found (need at least 2 sticky notes with overlapping words).</div>
+        <div className="text-gray-400 italic">No themes found (need at least 2 sticky notes with overlapping words).</div>
       )}
       {clusters && clusters.length > 0 && (
         <ul className="space-y-2">
@@ -465,7 +465,7 @@ function SummarizeTab({ summary, loading, onRun, active }: { summary: SummaryRes
               </ul>
             </div>
           )}
-          <div className="text-[10px] text-gray-500 italic">source: {summary.source}</div>
+          <div className="text-[10px] text-gray-400 italic">source: {summary.source}</div>
         </div>
       )}
     </div>
@@ -496,9 +496,9 @@ function GenerateTab({ prompt, setPrompt, kind, setKind, loading, onRun }: { pro
 function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeId: string | null; shapes: Shape[]; comments: Record<string, Comment[]>; onAdd: (elementId: string, body: string) => void; onResolve: (id: string) => void }) {
   const [expandedEl, setExpandedEl] = useState<string | null>(null);
   const [draftBody, setDraftBody] = useState('');
-  if (!activeId) return <div className="text-gray-500 italic">No board open.</div>;
+  if (!activeId) return <div className="text-gray-400 italic">No board open.</div>;
   const elementsWithText = shapes.filter(s => s.kind === 'sticky' || (s.kind === 'rect' && s.text));
-  if (elementsWithText.length === 0) return <div className="text-gray-500 italic">No sticky notes or labelled shapes to comment on.</div>;
+  if (elementsWithText.length === 0) return <div className="text-gray-400 italic">No sticky notes or labelled shapes to comment on.</div>;
   return (
     <div className="space-y-2">
       <p className="text-gray-400">Add notes to any sticky or labelled rectangle on the board.</p>
@@ -521,7 +521,7 @@ function CommentsTab({ activeId, shapes, comments, onAdd, onResolve }: { activeI
                     <div key={c.id} className={cn('rounded p-1.5 text-[11px]', c.resolved ? 'bg-white/5 text-gray-400 line-through' : 'bg-pink-500/[0.06] text-pink-100')}>
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold">{c.authorName}</span>
-                        <span className="text-[9px] text-gray-500 font-mono">{c.createdAt.slice(0, 16).replace('T', ' ')}</span>
+                        <span className="text-[9px] text-gray-400 font-mono">{c.createdAt.slice(0, 16).replace('T', ' ')}</span>
                         {!c.resolved && <button onClick={() => onResolve(c.id)} className="ml-auto text-[10px] text-emerald-300 hover:text-emerald-200">resolve</button>}
                       </div>
                       <div>{c.body}</div>

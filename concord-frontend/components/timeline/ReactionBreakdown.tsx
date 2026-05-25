@@ -101,11 +101,11 @@ export function ReactionBreakdown({ postId, onClose }: { postId: string; onClose
 
         <div className="flex-1 overflow-y-auto p-3 space-y-1">
           {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-gray-500 py-3">
+            <div className="flex items-center gap-2 text-sm text-gray-400 py-3">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading…
             </div>
           ) : reactors.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-6">No reactions yet.</p>
+            <p className="text-sm text-gray-400 text-center py-6">No reactions yet.</p>
           ) : (
             reactors.map((r, i) => {
               const meta = KINDS.find((k) => k.id === r.kind);
@@ -120,7 +120,7 @@ export function ReactionBreakdown({ postId, onClose }: { postId: string; onClose
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white font-medium truncate">{r.userId}</p>
-                    <p className="text-[11px] text-gray-500">{new Date(r.at).toLocaleString()}</p>
+                    <p className="text-[11px] text-gray-400">{new Date(r.at).toLocaleString()}</p>
                   </div>
                 </div>
               );

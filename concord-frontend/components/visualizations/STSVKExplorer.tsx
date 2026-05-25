@@ -354,7 +354,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-neon-purple animate-pulse" />
           <h3 className="text-sm font-semibold text-white">STSVK Theorem Explorer</h3>
-          <span className="text-xs text-gray-500">{theorems.length} theorems</span>
+          <span className="text-xs text-gray-400">{theorems.length} theorems</span>
         </div>
         <div className="flex items-center gap-2 text-[10px] flex-wrap">
           <button
@@ -363,7 +363,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
               'px-2 py-0.5 rounded border transition-colors',
               !selectedDomain
                 ? 'bg-white/10 border-white/20 text-white'
-                : 'bg-transparent border-lattice-border text-gray-500 hover:text-white hover:border-white/20'
+                : 'bg-transparent border-lattice-border text-gray-400 hover:text-white hover:border-white/20'
             )}
           >
             All
@@ -376,7 +376,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
                 'px-2 py-0.5 rounded border transition-colors',
                 selectedDomain === domain
                   ? 'border-white/20 text-white'
-                  : 'bg-transparent border-lattice-border text-gray-500 hover:text-white hover:border-white/20'
+                  : 'bg-transparent border-lattice-border text-gray-400 hover:text-white hover:border-white/20'
               )}
               style={selectedDomain === domain ? { backgroundColor: getDomainColor(domain) + '20' } : undefined}
             >
@@ -398,7 +398,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
 
       {/* Slider control */}
       <div className="flex items-center gap-3 px-4 py-2 border-t border-b border-lattice-border/50 bg-lattice-deep/50">
-        <span className="text-[10px] text-gray-500 font-mono w-16">x = {sliderX.toFixed(2)}</span>
+        <span className="text-[10px] text-gray-400 font-mono w-16">x = {sliderX.toFixed(2)}</span>
         <input
           type="range"
           min="-0.5"
@@ -408,7 +408,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
           onChange={(e) => setSliderX(parseFloat(e.target.value))}
           className="flex-1 h-1 appearance-none bg-gradient-to-r from-purple-500 via-cyan-400 to-pink-500 rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-lg"
         />
-        <span className="text-[10px] text-gray-500 font-mono w-24">
+        <span className="text-[10px] text-gray-400 font-mono w-24">
           f(x) = {(sliderX * sliderX - sliderX).toFixed(4)}
         </span>
       </div>
@@ -425,7 +425,7 @@ export default function STSVKExplorer({ theorems: theoremsProp, className }: STS
               <h4 className="text-xs font-semibold text-white uppercase tracking-wider">
                 {domain}
               </h4>
-              <span className="text-[10px] text-gray-600">{domainTheorems.length} theorem{domainTheorems.length !== 1 ? 's' : ''}</span>
+              <span className="text-[10px] text-gray-400">{domainTheorems.length} theorem{domainTheorems.length !== 1 ? 's' : ''}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {domainTheorems.map((theorem) => (

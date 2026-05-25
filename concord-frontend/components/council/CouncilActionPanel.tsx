@@ -198,7 +198,7 @@ export function CouncilActionPanel() {
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
               <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-500 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
@@ -208,7 +208,7 @@ export function CouncilActionPanel() {
         {deliberateResult && (
           <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5 max-h-40 overflow-y-auto">
             <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Positions</div>
-            {deliberateResult.positions?.map((p, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{p.member}:</strong> <span className="capitalize">{p.position}</span>{p.reasoning && <span className="text-zinc-500"> — {p.reasoning}</span>}</div>)}
+            {deliberateResult.positions?.map((p, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-cyan-200">{p.member}:</strong> <span className="capitalize">{p.position}</span>{p.reasoning && <span className="text-zinc-400"> — {p.reasoning}</span>}</div>)}
             {deliberateResult.consensus && <div className="text-[11px] text-cyan-300 italic mt-1">Consensus: {deliberateResult.consensus}</div>}
           </div>
         )}
@@ -228,7 +228,7 @@ export function CouncilActionPanel() {
             {minutesResult.summary && <p className="text-[11px] text-zinc-300 mt-1">{minutesResult.summary}</p>}
             {minutesResult.decisions?.length ? <ul className="text-[11px] text-zinc-300 list-disc list-inside">{minutesResult.decisions.map((d, i) => <li key={i}>{d}</li>)}</ul> : null}
             {minutesResult.actionItems?.length ? <div className="mt-1 text-[10px] text-purple-300 font-semibold uppercase tracking-wider">Action items</div> : null}
-            {minutesResult.actionItems?.map((a, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{a.owner}:</strong> {a.task}{a.due && <span className="text-zinc-500"> · {a.due}</span>}</div>)}
+            {minutesResult.actionItems?.map((a, i) => <div key={i} className="text-[11px] text-zinc-300"><strong className="text-purple-200">{a.owner}:</strong> {a.task}{a.due && <span className="text-zinc-400"> · {a.due}</span>}</div>)}
           </div>
         )}
         {resolveResult && (
@@ -236,7 +236,7 @@ export function CouncilActionPanel() {
             <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Resolution</div>
             <p className="text-[11px] text-zinc-300 mt-1">{resolveResult.resolution}</p>
             {resolveResult.nextSteps?.length ? <ol className="text-[11px] text-zinc-300 list-decimal list-inside mt-1">{resolveResult.nextSteps.slice(0, 4).map((s, i) => <li key={i}>{s}</li>)}</ol> : null}
-            {resolveResult.mediator && <div className="text-[10px] text-zinc-500">Mediator: {resolveResult.mediator}</div>}
+            {resolveResult.mediator && <div className="text-[10px] text-zinc-400">Mediator: {resolveResult.mediator}</div>}
           </div>
         )}
       </div>

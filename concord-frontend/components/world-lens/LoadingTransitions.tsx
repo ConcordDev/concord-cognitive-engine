@@ -134,7 +134,7 @@ function AnimatedArrival({ name }: { name: string }) {
   return (
     <span className="text-lg font-semibold text-white">
       Arriving at {name}
-      <span className="text-gray-500">{dots}</span>
+      <span className="text-gray-400">{dots}</span>
     </span>
   );
 }
@@ -253,7 +253,7 @@ function AssemblyProgress({ phase, progress }: { phase: AssemblyPhase; progress:
                   {cfg.label}
                 </span>
                 {isActive && (
-                  <span className="text-[9px] text-gray-500">
+                  <span className="text-[9px] text-gray-400">
                     {Math.round(phaseProgress * 100)}%
                   </span>
                 )}
@@ -349,7 +349,7 @@ export default function LoadingTransitions({
 
         {/* Destination description */}
         {destination.description && (
-          <p className="text-xs text-gray-500 text-center max-w-xs">{destination.description}</p>
+          <p className="text-xs text-gray-400 text-center max-w-xs">{destination.description}</p>
         )}
 
         {/* District stats */}
@@ -390,7 +390,7 @@ export default function LoadingTransitions({
                 style={{ width: `${progress * 100}%` }}
               />
             </div>
-            <div className="flex justify-between mt-1 text-[9px] text-gray-600">
+            <div className="flex justify-between mt-1 text-[9px] text-gray-400">
               <span>Loading</span>
               <span>{Math.round(progress * 100)}%</span>
             </div>
@@ -424,7 +424,7 @@ export default function LoadingTransitions({
 
         {/* Destination preview info */}
         {(destination.playerCount !== undefined || destination.buildingCount !== undefined) && (
-          <div className="flex items-center gap-3 text-[10px] text-gray-600">
+          <div className="flex items-center gap-3 text-[10px] text-gray-400">
             {destination.playerCount !== undefined && (
               <span className="flex items-center gap-1">
                 <Users className="w-3 h-3" />

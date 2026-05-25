@@ -94,7 +94,7 @@ export function InboxShell({
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1 text-left truncate">{label.label}</span>
                   {label.count !== undefined && (
-                    <span className="text-[11px] font-mono text-gray-500">{label.count}</span>
+                    <span className="text-[11px] font-mono text-gray-400">{label.count}</span>
                   )}
                 </button>
               </li>
@@ -128,7 +128,7 @@ export function InboxShell({
                     </span>
                     {t.starred && <Star className="w-3 h-3 text-amber-400 fill-current" />}
                     {t.hasAttachment && <Paperclip className="w-3 h-3 text-gray-400" />}
-                    <span className="text-[11px] text-gray-500 font-mono whitespace-nowrap">
+                    <span className="text-[11px] text-gray-400 font-mono whitespace-nowrap">
                       {new Date(t.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
@@ -138,7 +138,7 @@ export function InboxShell({
                   )}>
                     {t.subject}
                   </div>
-                  <div className="truncate text-xs text-gray-500 mt-0.5">{t.snippet}</div>
+                  <div className="truncate text-xs text-gray-400 mt-0.5">{t.snippet}</div>
                   {t.labels && t.labels.length > 0 && (
                     <div className="mt-1 flex gap-1 flex-wrap">
                       {t.labels.slice(0, 3).map((l) => (
@@ -172,14 +172,14 @@ export function InboxShell({
               <button type="button" className="inline-flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5">
                 <Archive className="w-3.5 h-3.5" /> Archive
               </button>
-              <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm text-gray-500 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5" aria-label="Expand">
+              <button type="button" className="ml-auto inline-flex items-center gap-1 text-sm text-gray-400 px-3 py-1.5 rounded hover:bg-black/5 dark:hover:bg-white/5" aria-label="Expand">
                 <ChevronDown className="w-3.5 h-3.5" />
               </button>
             </div>
             {children}
           </div>
         ) : (
-          <div className="h-full flex items-center justify-center text-sm text-gray-500 italic">
+          <div className="h-full flex items-center justify-center text-sm text-gray-400 italic">
             Select a thread to read.
           </div>
         )}

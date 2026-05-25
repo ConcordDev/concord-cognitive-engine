@@ -78,8 +78,8 @@ export default function AtlasPrivacyMonitor({ data, loading }: AtlasPrivacyMonit
     return (
       <div className="rounded-lg bg-zinc-800/50 border border-zinc-700/50 p-4">
         <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-zinc-500" />
-          <span className="text-sm text-zinc-500">
+          <ShieldCheck size={16} className="text-zinc-400" />
+          <span className="text-sm text-zinc-400">
             {data?.error || 'No privacy data available'}
           </span>
         </div>
@@ -104,10 +104,10 @@ function ZonesView({ data }: { data: NonNullable<PrivacyMonitorData['zones']> })
           <ShieldCheck size={16} className="text-red-400" />
           <span className="text-sm font-medium text-zinc-200">Privacy Zones</span>
         </div>
-        <span className="text-xs text-zinc-500">{data.count} zones</span>
+        <span className="text-xs text-zinc-400">{data.count} zones</span>
       </div>
       {data.count === 0 ? (
-        <p className="text-xs text-zinc-500">No privacy zones established</p>
+        <p className="text-xs text-zinc-400">No privacy zones established</p>
       ) : (
         <div className="space-y-1.5">
           {data.zones.slice(0, 10).map((zone) => {

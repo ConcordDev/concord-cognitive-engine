@@ -75,6 +75,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   const UNIT_KINDS = ["ambulance", "fire_engine", "ladder", "patrol", "rescue", "command", "hazmat"];
 
   registerLensAction("emergency-services", "incident-create", (ctx, _a, params = {}) => {
+  try {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const summary = emClean(params.summary, 200);
     if (!summary) return { ok: false, error: "incident summary required" };
@@ -91,7 +92,8 @@ export default function registerEmergencyServicesActions(registerLensAction) {
     emList(s.incidents, emActor(ctx)).push(incident);
     saveEms();
     return { ok: true, result: { incident } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("emergency-services", "incident-list", (ctx, _a, params = {}) => {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -135,6 +137,7 @@ export default function registerEmergencyServicesActions(registerLensAction) {
   });
 
   registerLensAction("emergency-services", "ems-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getEmsState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const incidents = emList(s.incidents, emActor(ctx));
     const units = emList(s.units, emActor(ctx));
@@ -150,7 +153,8 @@ export default function registerEmergencyServicesActions(registerLensAction) {
         byKind,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── CAD operational layer (live map, dispatch lifecycle, triage ────
   //     queue, incident timeline, nearest-unit, readiness, alerting) ───

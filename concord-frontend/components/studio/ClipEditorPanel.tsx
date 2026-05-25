@@ -115,11 +115,11 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Clip editor — warp · slice · fades</span>
       </header>
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+        <div className="flex items-center justify-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
       ) : !projectId ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">Open a project to edit clips.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">Open a project to edit clips.</div>
       ) : clips.length === 0 ? (
-        <div className="px-3 py-10 text-center text-xs text-gray-500">No clips yet. Create a clip on the Clips tab first.</div>
+        <div className="px-3 py-10 text-center text-xs text-gray-400">No clips yet. Create a clip on the Clips tab first.</div>
       ) : (
         <div className="grid md:grid-cols-[200px_1fr]">
           <ul className="border-r border-white/10 max-h-96 overflow-y-auto">
@@ -130,7 +130,7 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
                   className={'w-full text-left px-3 py-2 text-xs ' + (selectedId === c.id ? 'bg-violet-500/15 text-violet-200' : 'text-gray-400 hover:bg-white/[0.03]')}
                 >
                   <div className="font-medium text-white truncate">{c.name}</div>
-                  <div className="text-[10px] text-gray-500">{c.kind} · {c.lengthBeats} beats</div>
+                  <div className="text-[10px] text-gray-400">{c.kind} · {c.lengthBeats} beats</div>
                 </button>
               </li>
             ))}
@@ -161,7 +161,7 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
                       </li>
                     ))}
                   </ul>
-                ) : <div className="mt-2 text-[10px] text-gray-600">No warp markers — add 2+ to enable warping.</div>}
+                ) : <div className="mt-2 text-[10px] text-gray-400">No warp markers — add 2+ to enable warping.</div>}
               </section>
 
               <section>
@@ -199,7 +199,7 @@ export function ClipEditorPanel({ projectId, trackId }: { projectId?: string; tr
                     onMouseUp={(e) => setFade({ gainDb: Number((e.target as HTMLInputElement).value) })}
                     onTouchEnd={(e) => setFade({ gainDb: Number((e.target as HTMLInputElement).value) })}
                     className="w-full accent-violet-500" />
-                  <div className="text-[10px] text-gray-500">{selected.gainDb ?? 0} dB</div>
+                  <div className="text-[10px] text-gray-400">{selected.gainDb ?? 0} dB</div>
                 </div>
               </section>
             </div>

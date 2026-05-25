@@ -60,16 +60,16 @@ export function ThreadPane({
       )}
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {loading ? (
-          <div className="text-xs text-gray-500 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Loading…</div>
+          <div className="text-xs text-gray-400 inline-flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Loading…</div>
         ) : replies.length === 0 ? (
-          <div className="text-xs text-gray-500 italic">Start a thread.</div>
+          <div className="text-xs text-gray-400 italic">Start a thread.</div>
         ) : replies.map(r => (
           <div key={r.id} className="flex items-start gap-2">
             <div className="w-6 h-6 rounded bg-violet-500/15 text-violet-200 flex items-center justify-center text-[10px] font-bold flex-shrink-0">{r.senderName.slice(0, 2).toUpperCase()}</div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 text-[10px]">
                 <span className="font-semibold text-white">{r.senderName}</span>
-                <span className="text-gray-500 font-mono">{new Date(r.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="text-gray-400 font-mono">{new Date(r.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <div className="text-xs text-white whitespace-pre-wrap">{r.body}</div>
             </div>

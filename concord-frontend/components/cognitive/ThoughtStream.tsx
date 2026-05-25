@@ -113,7 +113,7 @@ export function ThoughtStream({
           {realtime && (
             <span className={cn(
               'flex items-center gap-1 text-xs',
-              isPaused ? 'text-gray-500' : 'text-green-400'
+              isPaused ? 'text-gray-400' : 'text-green-400'
             )}>
               <span className={cn(
                 'w-2 h-2 rounded-full',
@@ -171,7 +171,7 @@ export function ThoughtStream({
       <div ref={streamRef} className="flex-1 overflow-y-auto">
         <AnimatePresence initial={false}>
           {filteredEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <Activity className="w-8 h-8 mb-2 opacity-50" />
               <p className="text-sm">No activity yet</p>
             </div>
@@ -191,7 +191,7 @@ export function ThoughtStream({
       </div>
 
       {/* Stats footer */}
-      <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-500">
+      <div className="px-4 py-2 border-t border-lattice-border bg-lattice-surface/50 text-xs text-gray-400">
         <div className="flex items-center justify-between">
           <span>{events.length} events</span>
           <span>Last: {events[0] ? formatRelativeTime(events[0].timestamp) : 'Never'}</span>
@@ -238,7 +238,7 @@ const ThoughtEventItem = React.memo(function ThoughtEventItem({ event, isExpande
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-400 mt-0.5">
             {formatRelativeTime(event.timestamp)}
           </p>
         </div>
@@ -246,7 +246,7 @@ const ThoughtEventItem = React.memo(function ThoughtEventItem({ event, isExpande
           animate={{ rotate: isExpanded ? 90 : 0 }}
           transition={{ duration: 0.15 }}
         >
-          <ChevronRight className="w-4 h-4 text-gray-500" />
+          <ChevronRight className="w-4 h-4 text-gray-400" />
         </motion.div>
       </button>
 
@@ -303,7 +303,7 @@ const FilterTab = React.memo(function FilterTab({
       )}
     >
       {label}
-      <span className={cn('ml-1', color || 'text-gray-500')}>({count})</span>
+      <span className={cn('ml-1', color || 'text-gray-400')}>({count})</span>
     </button>
   );
 });

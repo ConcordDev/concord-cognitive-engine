@@ -132,7 +132,7 @@ export function BottomSheet({
                   onClick={() => setActiveSnap(s)}
                   className={cn(
                     'text-[10px] font-mono px-1.5 py-0.5 rounded',
-                    activeSnap === s ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300',
+                    activeSnap === s ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-400 hover:text-zinc-300',
                   )}
                   aria-label={`Snap to ${s}%`}
                 >
@@ -142,7 +142,7 @@ export function BottomSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="ml-1 text-zinc-500 hover:text-zinc-200 p-1"
+                className="ml-1 text-zinc-400 hover:text-zinc-200 p-1"
                 aria-label="Close sheet"
               >
                 <X className="w-4 h-4" />

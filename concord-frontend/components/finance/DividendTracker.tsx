@@ -44,7 +44,7 @@ export function DividendTracker() {
         <Coins className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Dividends & earnings</span>
         {summary && (
-          <span className="ml-auto text-[10px] font-mono text-gray-500">
+          <span className="ml-auto text-[10px] font-mono text-gray-400">
             ${summary.totalAnnual.toFixed(0)}/yr · {summary.portfolioYieldPct.toFixed(2)}% yield
           </span>
         )}
@@ -52,7 +52,7 @@ export function DividendTracker() {
 
       <div className="flex border-b border-white/10 text-[11px]">
         {(['summary', 'div-cal', 'earnings'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={cn('px-3 py-1.5 transition', tab === t ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-gray-500 hover:text-gray-300')}>
+          <button key={t} onClick={() => setTab(t)} className={cn('px-3 py-1.5 transition', tab === t ? 'text-cyan-300 border-b-2 border-cyan-400' : 'text-gray-400 hover:text-gray-300')}>
             {t === 'summary' ? 'Summary' : t === 'div-cal' ? 'Dividend calendar' : 'Earnings'}
           </button>
         ))}
@@ -60,11 +60,11 @@ export function DividendTracker() {
 
       <div className="max-h-96 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : tab === 'summary' ? (
           summary && summary.perHolding.length > 0 ? (
             <table className="w-full text-xs">
-              <thead className="text-[10px] uppercase text-gray-500 border-b border-white/5"><tr><th className="text-left px-3 py-1.5">Symbol</th><th className="text-right">Yield</th><th className="text-right">Annual</th><th className="text-right pr-3">Monthly</th></tr></thead>
+              <thead className="text-[10px] uppercase text-gray-400 border-b border-white/5"><tr><th className="text-left px-3 py-1.5">Symbol</th><th className="text-right">Yield</th><th className="text-right">Annual</th><th className="text-right pr-3">Monthly</th></tr></thead>
               <tbody className="divide-y divide-white/5">
                 {summary.perHolding.map(p => (
                   <tr key={p.symbol} className="hover:bg-white/[0.03]">
@@ -77,11 +77,11 @@ export function DividendTracker() {
               </tbody>
             </table>
           ) : (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Coins className="w-6 h-6 mx-auto mb-2 opacity-30" />No dividend-paying holdings yet.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Coins className="w-6 h-6 mx-auto mb-2 opacity-30" />No dividend-paying holdings yet.</div>
           )
         ) : tab === 'div-cal' ? (
           calendar.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming dividend events.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming dividend events.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {calendar.slice(0, 50).map((e, i) => (
@@ -95,7 +95,7 @@ export function DividendTracker() {
           )
         ) : (
           earnings.length === 0 ? (
-            <div className="px-3 py-10 text-center text-xs text-gray-500"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming earnings.</div>
+            <div className="px-3 py-10 text-center text-xs text-gray-400"><Calendar className="w-6 h-6 mx-auto mb-2 opacity-30" />No upcoming earnings.</div>
           ) : (
             <ul className="divide-y divide-white/5">
               {earnings.map(e => (
@@ -103,7 +103,7 @@ export function DividendTracker() {
                   <div className="w-12 text-[10px] text-amber-300 font-mono">{e.date.slice(5)}</div>
                   <div className="flex-1">
                     <div className="text-sm font-mono font-semibold text-white">{e.symbol}</div>
-                    <div className="text-[10px] text-gray-500">{e.name} · {e.when.replace('_', ' ')}</div>
+                    <div className="text-[10px] text-gray-400">{e.name} · {e.when.replace('_', ' ')}</div>
                   </div>
                   <div className="text-xs font-mono tabular-nums text-gray-300">est EPS ${e.estimateEps.toFixed(2)}</div>
                 </li>

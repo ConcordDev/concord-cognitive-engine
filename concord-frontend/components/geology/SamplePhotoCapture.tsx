@@ -73,18 +73,18 @@ export function SamplePhotoCapture() {
     await refresh();
   }, [refresh]);
 
-  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center py-6 text-zinc-400"><Loader2 className="w-4 h-4 animate-spin" /></div>;
 
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Camera className="w-4 h-4 text-fuchsia-400" />
         <h3 className="text-sm font-bold text-zinc-100">Sample Photos &amp; Geotags</h3>
-        <span className="text-[11px] text-zinc-500">EXIF GPS</span>
+        <span className="text-[11px] text-zinc-400">EXIF GPS</span>
       </div>
 
       {observations.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic">Log a field observation first, then attach photos to it.</p>
+        <p className="text-xs text-zinc-400 italic">Log a field observation first, then attach photos to it.</p>
       ) : (
         <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 space-y-1.5">
           <div className="flex gap-1.5">
@@ -104,14 +104,14 @@ export function SamplePhotoCapture() {
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}Capture
             </button>
           </div>
-          <p className="text-[10px] text-zinc-600">GPS coordinates are read from the photo&apos;s EXIF data and backfill the observation if it has none.</p>
+          <p className="text-[10px] text-zinc-400">GPS coordinates are read from the photo&apos;s EXIF data and backfill the observation if it has none.</p>
         </div>
       )}
 
       {error && <p className="text-xs text-rose-400 mb-2">{error}</p>}
 
       {photos.length === 0 ? (
-        <p className="text-xs text-zinc-500 italic flex items-center gap-1"><ImageOff className="w-3 h-3" />No photos attached yet.</p>
+        <p className="text-xs text-zinc-400 italic flex items-center gap-1"><ImageOff className="w-3 h-3" />No photos attached yet.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {photos.map((p) => (
@@ -131,10 +131,10 @@ export function SamplePhotoCapture() {
                     <MapPin className="w-2.5 h-2.5" />{p.exifLat.toFixed(4)}, {p.exifLon.toFixed(4)}
                   </p>
                 ) : (
-                  <p className="text-[10px] text-zinc-600">No EXIF geotag</p>
+                  <p className="text-[10px] text-zinc-400">No EXIF geotag</p>
                 )}
-                {p.exifTakenAt && <p className="text-[10px] text-zinc-500">{p.exifTakenAt.replace('T', ' ')}</p>}
-                {p.cameraModel && <p className="text-[10px] text-zinc-600 truncate">{p.cameraModel}</p>}
+                {p.exifTakenAt && <p className="text-[10px] text-zinc-400">{p.exifTakenAt.replace('T', ' ')}</p>}
+                {p.cameraModel && <p className="text-[10px] text-zinc-400 truncate">{p.cameraModel}</p>}
               </div>
             </div>
           ))}

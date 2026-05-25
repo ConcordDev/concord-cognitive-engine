@@ -88,7 +88,7 @@ export function OrgDesigner() {
           <Users className="w-4 h-4 text-neon-cyan" />
           Org Designer
           {roster && (
-            <span className="text-xs text-gray-500 font-normal">
+            <span className="text-xs text-gray-400 font-normal">
               {roster.activeCount} active · {roster.openReqCount} open reqs
             </span>
           )}
@@ -122,7 +122,7 @@ export function OrgDesigner() {
       )}
 
       {loading && !roster ? (
-        <div className="flex items-center justify-center py-12 text-gray-500">
+        <div className="flex items-center justify-center py-12 text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading org data…
         </div>
       ) : (
@@ -162,7 +162,7 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           {employees.length} people · click a chart node to inspect, reassign, or remove
         </p>
         <button
@@ -176,7 +176,7 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
       {msg && <div className="text-xs text-neon-cyan">{msg}</div>}
 
       {employees.length === 0 ? (
-        <div className="text-center py-10 text-gray-500 panel">
+        <div className="text-center py-10 text-gray-400 panel">
           <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No roster yet — add people or import from HRIS.</p>
         </div>
@@ -196,7 +196,7 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
       {employees.length > 0 && (
         <div className="panel p-0 overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="text-gray-500 border-b border-lattice-border">
+            <thead className="text-gray-400 border-b border-lattice-border">
               <tr>
                 <th className="text-left p-2">Name</th>
                 <th className="text-left p-2">Title</th>
@@ -227,13 +227,13 @@ function ChartTab({ roster, onChange }: { roster: RosterResult | null; onChange:
                   <td className="p-2 text-right font-mono">{e.compensation ? usd(e.compensation) : '—'}</td>
                   <td className="p-2">
                     <div className="flex gap-1 justify-end">
-                      <button onClick={() => setReassigning(e)} className="p-1 text-gray-500 hover:text-neon-cyan" aria-label="Reassign">
+                      <button onClick={() => setReassigning(e)} className="p-1 text-gray-400 hover:text-neon-cyan" aria-label="Reassign">
                         <ArrowRightLeft className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => setEditing(e)} className="p-1 text-gray-500 hover:text-white" aria-label="Edit">
+                      <button onClick={() => setEditing(e)} className="p-1 text-gray-400 hover:text-white" aria-label="Edit">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => remove(e.id)} disabled={busy} className="p-1 text-gray-500 hover:text-red-400" aria-label="Remove">
+                      <button onClick={() => remove(e.id)} disabled={busy} className="p-1 text-gray-400 hover:text-red-400" aria-label="Remove">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -319,7 +319,7 @@ function EmployeeModal({
       <div className="panel p-5 max-w-md w-full space-y-3 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-bold">{employee ? 'Edit Person' : 'Add Person'}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -410,7 +410,7 @@ function ReassignModal({
               <option key={m.id} value={m.id}>{m.name} ({m.title || 'no title'})</option>
             ))}
           </select>
-          <p className="text-[10px] text-gray-500 mt-1">Reporting cycles are rejected by the backend.</p>
+          <p className="text-[10px] text-gray-400 mt-1">Reporting cycles are rejected by the backend.</p>
         </div>
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-400 hover:text-white">Cancel</button>
@@ -474,7 +474,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-gray-400">
         Import a roster CSV exported from BambooHR, Workday, or any HRIS. Columns are matched
         case-insensitively: name, title, department, manager / managerId, email, location,
         compensation / salary, startDate / hireDate, level, status, skills.
@@ -510,7 +510,7 @@ function ImportTab({ onImported }: { onImported: () => void }) {
           <p className="text-neon-green">
             Imported {result.imported} rows · roster now has {result.totalCount} people ({result.mode}).
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Detected columns: {(result.columnsDetected || []).join(', ')}
           </p>
         </div>
@@ -565,7 +565,7 @@ function CompTab() {
       </div>
       <div className="panel p-0 overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-gray-500 border-b border-lattice-border">
+          <thead className="text-gray-400 border-b border-lattice-border">
             <tr>
               <th className="text-left p-2">Department</th>
               <th className="text-right p-2">Headcount</th>
@@ -661,7 +661,7 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
       <div className="panel p-3 space-y-3">
         <h3 className="text-sm font-semibold">New Headcount Scenario</h3>
         {roster && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Modeled on top of {roster.activeCount + roster.openReqCount} current live positions.
           </p>
         )}
@@ -681,7 +681,7 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
               onChange={(e) => setLoadFactor(e.target.value)}
               className="w-24 px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm"
             />
-            <span className="text-[10px] text-gray-500 ml-1">load factor</span>
+            <span className="text-[10px] text-gray-400 ml-1">load factor</span>
           </div>
         </div>
         <div className="space-y-2">
@@ -721,7 +721,7 @@ function ScenarioTab({ roster }: { roster: RosterResult | null }) {
             <div key={s.id} className="panel p-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold text-sm">{s.name}</h4>
-                <button onClick={() => del(s.id)} className="text-gray-500 hover:text-red-400" aria-label="Delete scenario">
+                <button onClick={() => del(s.id)} className="text-gray-400 hover:text-red-400" aria-label="Delete scenario">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -786,13 +786,13 @@ function TenureTab() {
         />
       </div>
       {data.unknownStartDates > 0 && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-400">
           {data.unknownStartDates} active people have no start date — add one for a tenure score.
         </p>
       )}
       <div className="panel p-0 overflow-x-auto">
         <table className="w-full text-xs">
-          <thead className="text-gray-500 border-b border-lattice-border">
+          <thead className="text-gray-400 border-b border-lattice-border">
             <tr>
               <th className="text-left p-2">Name</th>
               <th className="text-left p-2">Department</th>
@@ -873,7 +873,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
       <div className="panel p-3 space-y-2">
         <h3 className="text-sm font-semibold">Capture Snapshot</h3>
         {roster && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-400">
             Freezes the current roster ({roster.activeCount} active) as a dated record.
           </p>
         )}
@@ -896,7 +896,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
         <>
           <div className="panel p-0 overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="text-gray-500 border-b border-lattice-border">
+              <thead className="text-gray-400 border-b border-lattice-border">
                 <tr>
                   <th className="text-left p-2">Label</th>
                   <th className="text-left p-2">Captured</th>
@@ -906,7 +906,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
               </thead>
               <tbody>
                 {snapshots.length === 0 ? (
-                  <tr><td colSpan={4} className="p-3 text-center text-gray-500">No snapshots captured yet.</td></tr>
+                  <tr><td colSpan={4} className="p-3 text-center text-gray-400">No snapshots captured yet.</td></tr>
                 ) : snapshots.map((s) => (
                   <tr key={s.id} className="border-b border-lattice-border/50">
                     <td className="p-2 font-medium">{s.label}</td>
@@ -927,7 +927,7 @@ function SnapshotTab({ roster }: { roster: RosterResult | null }) {
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   {snapshots.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
-                <span className="text-gray-500">→</span>
+                <span className="text-gray-400">→</span>
                 <select value={toId} onChange={(e) => setToId(e.target.value)}
                   className="px-2 py-1.5 bg-lattice-surface border border-lattice-border rounded text-sm">
                   <option value="live">Live roster</option>
@@ -993,14 +993,14 @@ function DiffCol({ title, tone, items }: { title: string; tone: string; items: s
 function Stat({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
     <div className="bg-lattice-deep rounded-lg p-2 text-center">
-      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="text-[10px] text-gray-400">{label}</p>
       <p className={`font-bold ${small ? 'text-base' : 'text-xl'} text-neon-cyan`}>{value}</p>
     </div>
   );
 }
 
 const Spinner = () => (
-  <div className="flex items-center justify-center py-10 text-gray-500">
+  <div className="flex items-center justify-center py-10 text-gray-400">
     <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading…
   </div>
 );
@@ -1012,7 +1012,7 @@ const ErrLine = ({ msg }: { msg: string }) => (
 );
 
 const EmptyMsg = ({ msg }: { msg: string }) => (
-  <div className="text-center py-10 text-gray-500 panel">
+  <div className="text-center py-10 text-gray-400 panel">
     <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
     <p className="text-sm">{msg}</p>
   </div>

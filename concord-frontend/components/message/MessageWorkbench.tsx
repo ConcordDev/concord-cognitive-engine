@@ -113,16 +113,16 @@ function SavedTab() {
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[10px] text-gray-500">Starred messages. Star any message via /api/lens/run domain=message action=save-message.</p>
-      {loading ? <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
-        saved.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No saved messages.</p> :
+      <p className="text-[10px] text-gray-400">Starred messages. Star any message via /api/lens/run domain=message action=save-message.</p>
+      {loading ? <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div> :
+        saved.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No saved messages.</p> :
         saved.map((s) => (
           <div key={s.id} className="rounded border border-white/10 bg-black/20 p-3 group">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-500">{s.sender} · {new Date(s.savedAt).toLocaleDateString()}</p>
+                <p className="text-[10px] text-gray-400">{s.sender} · {new Date(s.savedAt).toLocaleDateString()}</p>
                 <p className="text-xs text-gray-200 mt-1">{s.body}</p>
-                {s.note && <p className="text-[10px] text-gray-500 mt-1 italic">Note: {s.note}</p>}
+                {s.note && <p className="text-[10px] text-gray-400 mt-1 italic">Note: {s.note}</p>}
               </div>
               <button type="button" onClick={() => unsave(s.messageId)}
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
@@ -172,14 +172,14 @@ function SearchTab() {
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Search'}
           </button>
         </div>
-        <p className="text-[10px] text-gray-600">{totalIndexed} messages indexed in your local search corpus.</p>
+        <p className="text-[10px] text-gray-400">{totalIndexed} messages indexed in your local search corpus.</p>
       </div>
 
       {hits.length > 0 && (
         <div className="space-y-1">
           {hits.map((h, i) => (
             <div key={i} className="rounded border border-white/10 bg-black/20 p-2">
-              <p className="text-[10px] text-gray-500">{h.sender} · {new Date(h.ts).toLocaleString()} · score ×{h.score}</p>
+              <p className="text-[10px] text-gray-400">{h.sender} · {new Date(h.ts).toLocaleString()} · score ×{h.score}</p>
               <p className="text-xs text-gray-200 mt-0.5">{h.body}</p>
             </div>
           ))}
@@ -203,18 +203,18 @@ function VoiceTab() {
     })();
   }, []);
 
-  if (loading) return <div className="text-center py-8 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
+  if (loading) return <div className="text-center py-8 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin inline mr-2" />Loading…</div>;
 
   return (
     <div className="p-3 space-y-2">
-      <p className="text-[10px] text-gray-500">Voice message metadata + transcripts. Audio files persisted separately via DM substrate.</p>
-      {voices.length === 0 ? <p className="text-center text-xs text-gray-500 py-8">No voice messages yet.</p> :
+      <p className="text-[10px] text-gray-400">Voice message metadata + transcripts. Audio files persisted separately via DM substrate.</p>
+      {voices.length === 0 ? <p className="text-center text-xs text-gray-400 py-8">No voice messages yet.</p> :
         voices.map((v) => (
           <div key={v.messageId} className="rounded border border-white/10 bg-black/20 p-3">
             <div className="flex items-center gap-2 text-xs">
               <Mic className="w-3 h-3 text-sky-400" />
               <span className="text-gray-400">{(v.durationMs / 1000).toFixed(1)}s</span>
-              <span className="text-[10px] text-gray-600 ml-auto">{new Date(v.registeredAt).toLocaleDateString()}</span>
+              <span className="text-[10px] text-gray-400 ml-auto">{new Date(v.registeredAt).toLocaleDateString()}</span>
             </div>
             {v.transcript && <p className="text-xs text-gray-300 mt-2 italic">"{v.transcript}"</p>}
           </div>
@@ -249,7 +249,7 @@ function ReactionsTab() {
 
   return (
     <div className="p-3 space-y-3">
-      <p className="text-[10px] text-gray-500">Add reactions to any message by messageId.</p>
+      <p className="text-[10px] text-gray-400">Add reactions to any message by messageId.</p>
       <div className="flex gap-2">
         <input type="text" value={messageId} onChange={(e) => setMessageId(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') load(); }}

@@ -65,7 +65,7 @@ export function AssetsPanel() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Wrench className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Infrastructure assets</span>
-        <span className="ml-auto text-[10px] text-gray-500">{filtered.length} / {assets.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{filtered.length} / {assets.length}</span>
         <select value={filter} onChange={e => setFilter(e.target.value)} className="text-[10px] px-1.5 py-0.5 bg-lattice-deep border border-lattice-border rounded text-white">
           <option value="">All kinds</option>
           {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
@@ -85,17 +85,17 @@ export function AssetsPanel() {
       </div>
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : filtered.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><Wrench className="w-6 h-6 mx-auto mb-2 opacity-30" />No assets in this view.</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><Wrench className="w-6 h-6 mx-auto mb-2 opacity-30" />No assets in this view.</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {filtered.map(a => (
               <li key={a.id} className="px-3 py-2 hover:bg-white/[0.03] group flex items-center gap-3">
                 {(a.condition === 'broken' || a.condition === 'poor') ? <AlertTriangle className="w-3.5 h-3.5 text-rose-300" /> : <CheckCircle className="w-3.5 h-3.5 text-emerald-300" />}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white">{a.label || a.kind} <span className="text-[10px] text-gray-500">· {a.kind.replace(/_/g, ' ')}</span></div>
-                  <div className="text-[10px] text-gray-500 font-mono">{a.lat.toFixed(4)},{a.lng.toFixed(4)} · {a.maintenanceLog.length} maint logs</div>
+                  <div className="text-sm text-white">{a.label || a.kind} <span className="text-[10px] text-gray-400">· {a.kind.replace(/_/g, ' ')}</span></div>
+                  <div className="text-[10px] text-gray-400 font-mono">{a.lat.toFixed(4)},{a.lng.toFixed(4)} · {a.maintenanceLog.length} maint logs</div>
                 </div>
                 <span className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded', CONDITION_COLOUR[a.condition])}>{a.condition}</span>
                 <button onClick={() => logMaint(a.id)} className="px-2 py-0.5 text-[10px] rounded bg-cyan-500/30 text-cyan-300 hover:bg-cyan-500/50">Log work</button>

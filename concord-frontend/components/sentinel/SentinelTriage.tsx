@@ -32,7 +32,7 @@ const STATE_TONE: Record<string, string> = {
   investigating: 'text-amber-300',
   contained: 'text-sky-300',
   resolved: 'text-emerald-300',
-  dismissed: 'text-zinc-500',
+  dismissed: 'text-zinc-400',
 };
 
 interface IntelLink {

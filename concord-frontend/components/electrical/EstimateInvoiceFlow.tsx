@@ -165,7 +165,7 @@ export function EstimateInvoiceFlow() {
               <div className="flex flex-wrap gap-1.5">
                 {estimates.map((e) => (
                   <button key={e.id} type="button" onClick={() => setActiveId(e.id)} className={`rounded px-2.5 py-1 text-xs ${activeId === e.id ? 'bg-teal-500/20 text-teal-200 border border-teal-500/40' : 'border border-zinc-800 text-zinc-400 hover:text-white'}`}>
-                    {e.client} <span className="font-mono text-[10px] text-zinc-500">${(e.total || 0).toFixed(0)}</span>
+                    {e.client} <span className="font-mono text-[10px] text-zinc-400">${(e.total || 0).toFixed(0)}</span>
                     {e.status === 'invoiced' && <span className="ml-1 text-[9px] text-emerald-400">&#10003;</span>}
                   </button>
                 ))}
@@ -187,18 +187,18 @@ export function EstimateInvoiceFlow() {
               </div>
             )}
 
-            {estimates.length === 0 && !showNew && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No estimates yet. Create one to build labor + material line items.</div>}
+            {estimates.length === 0 && !showNew && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No estimates yet. Create one to build labor + material line items.</div>}
 
             {active && (
               <div className="space-y-3">
                 <div className="rounded-lg border border-teal-500/15 bg-zinc-950/40 p-2">
                   <div className="text-[11px] font-semibold text-teal-200">{active.title} — {active.client}</div>
-                  {active.address && <div className="text-[10px] text-zinc-500">{active.address}</div>}
+                  {active.address && <div className="text-[10px] text-zinc-400">{active.address}</div>}
                 </div>
 
                 {/* labor lines */}
                 <div className="space-y-1">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">Labor</div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-400">Labor</div>
                   {active.laborLines.map((l) => (
                     <div key={l.id} className="grid grid-cols-[1fr_56px_56px_72px_28px] gap-1.5 rounded border border-teal-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
                       <span className="truncate text-zinc-100">{l.description}</span>
@@ -218,7 +218,7 @@ export function EstimateInvoiceFlow() {
 
                 {/* material lines */}
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500"><Package className="h-3 w-3" />Materials</div>
+                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-400"><Package className="h-3 w-3" />Materials</div>
                   {active.materialLines.map((m) => (
                     <div key={m.id} className="grid grid-cols-[1fr_56px_64px_72px_28px] gap-1.5 rounded border border-teal-500/10 bg-zinc-950/40 px-2 py-1 text-[10px]">
                       <span className="truncate text-zinc-100">{m.description}</span>
@@ -256,7 +256,7 @@ export function EstimateInvoiceFlow() {
                       {convertToInvoice.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Convert to invoice<ArrowRight className="h-3 w-3" /></>}
                     </button>
                   )}
-                  <button type="button" onClick={() => deleteEstimate.mutate(active.id)} className="text-[10px] text-zinc-600 hover:text-rose-400">Delete estimate</button>
+                  <button type="button" onClick={() => deleteEstimate.mutate(active.id)} className="text-[10px] text-zinc-400 hover:text-rose-400">Delete estimate</button>
                 </div>
               </div>
             )}
@@ -267,19 +267,19 @@ export function EstimateInvoiceFlow() {
           <>
             {invSummary && (
               <div className="grid grid-cols-3 gap-2 text-[11px]">
-                <div className="rounded border border-teal-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-500">Total billed</div><div className="font-mono text-teal-200">${invSummary.totalBilled.toFixed(2)}</div></div>
+                <div className="rounded border border-teal-500/15 bg-zinc-950/40 px-2 py-1.5"><div className="text-[9px] text-zinc-400">Total billed</div><div className="font-mono text-teal-200">${invSummary.totalBilled.toFixed(2)}</div></div>
                 <div className="rounded border border-amber-500/20 bg-amber-500/5 px-2 py-1.5"><div className="text-[9px] text-amber-300">Outstanding</div><div className="font-mono text-amber-200">${invSummary.outstanding.toFixed(2)}</div></div>
                 <div className="rounded border border-emerald-500/20 bg-emerald-500/5 px-2 py-1.5"><div className="text-[9px] text-emerald-300">Paid</div><div className="font-mono text-emerald-200">${invSummary.paid.toFixed(2)}</div></div>
               </div>
             )}
-            {invoices.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-500">No invoices yet. Convert an estimate to generate one.</div>}
+            {invoices.length === 0 && <div className="rounded border border-dashed border-zinc-800 p-6 text-center text-[11px] text-zinc-400">No invoices yet. Convert an estimate to generate one.</div>}
             {invoices.map((inv) => (
               <div key={inv.id} className="flex items-center justify-between rounded-lg border border-teal-500/10 bg-zinc-950/40 px-3 py-2">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-teal-400" />
                   <div>
                     <div className="text-[11px] font-semibold text-white">{inv.invoiceNumber} — {inv.client}</div>
-                    <div className="text-[10px] text-zinc-500">{inv.title} · issued {new Date(inv.issuedDate).toLocaleDateString()}</div>
+                    <div className="text-[10px] text-zinc-400">{inv.title} · issued {new Date(inv.issuedDate).toLocaleDateString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

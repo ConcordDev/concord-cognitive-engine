@@ -297,7 +297,7 @@ function AIAssistPanel({
                           <Icon className="w-4 h-4 text-neon-purple" />
                           <div>
                             <p className="text-sm text-white">{config.label}</p>
-                            <p className="text-xs text-gray-500">{config.description}</p>
+                            <p className="text-xs text-gray-400">{config.description}</p>
                           </div>
                         </button>
                       );
@@ -392,7 +392,7 @@ function AIAssistPanel({
                   'p-3 rounded-lg transition-colors',
                   input.trim() && !isLoading
                     ? 'bg-neon-purple text-white hover:bg-neon-purple/80'
-                    : 'bg-lattice-surface text-gray-500 cursor-not-allowed'
+                    : 'bg-lattice-surface text-gray-400 cursor-not-allowed'
                 )}
               >
                 {isLoading ? (

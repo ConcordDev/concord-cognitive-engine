@@ -9,6 +9,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { species, breed, age, vaccinations: [{ type, date, expiry }] }
    */
   registerLensAction("pets", "vaccinationSchedule", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const ageYears = parseFloat(data.age) || 1;
@@ -106,7 +107,8 @@ export default function registerPetsActions(registerLensAction) {
           : "All vaccinations current",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * weightTracker
@@ -114,6 +116,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { species, breed, weight, weightHistory: [{ date, weight }] }
    */
   registerLensAction("pets", "weightTracker", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const currentWeight = parseFloat(data.weight) || 0;
@@ -174,7 +177,8 @@ export default function registerPetsActions(registerLensAction) {
           : "Weight appears healthy — continue current care routine",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * feedingPlan
@@ -182,6 +186,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { species, weight, age, activityLevel, food, currentPortions }
    */
   registerLensAction("pets", "feedingPlan", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const weight = parseFloat(data.weight) || 10;
@@ -242,7 +247,8 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * vetCostAnalysis
@@ -250,6 +256,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { expenses: [{ date, category, amount, vendor, description }] }
    */
   registerLensAction("pets", "vetCostAnalysis", (ctx, artifact, _params) => {
+  try {
     const expenses = artifact.data?.expenses || [];
     if (expenses.length === 0) {
       return { ok: true, result: { message: "No expense data — add vet visits and purchases to analyze costs." } };
@@ -304,7 +311,8 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * medicationReminder
@@ -312,6 +320,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { medications: string (comma-separated), schedules: [{ med, frequency, lastDose }] }
    */
   registerLensAction("pets", "medicationReminder", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const medList = (data.medications || "").split(",").map(m => m.trim()).filter(Boolean);
     const schedules = data.schedules || [];
@@ -354,7 +363,8 @@ export default function registerPetsActions(registerLensAction) {
         onTrack: reminders.filter(r => r.status === "on-track").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * activityScore
@@ -362,6 +372,7 @@ export default function registerPetsActions(registerLensAction) {
    * artifact.data: { species, age, weight, activities: [{ type, duration, date }] }
    */
   registerLensAction("pets", "activityScore", (ctx, artifact, _params) => {
+  try {
     const data = artifact.data || {};
     const species = (data.species || "dog").toLowerCase();
     const age = parseFloat(data.age) || 3;
@@ -411,7 +422,8 @@ export default function registerPetsActions(registerLensAction) {
         ].filter(Boolean),
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Real breed APIs (The Dog API + The Cat API) ──
   // Both run by TheCatAPI/TheDogAPI; no API key needed for breed
@@ -598,6 +610,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "pet-detail", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const pet = findPet(s, paid(ctx), params.id);
     if (!pet) return { ok: false, error: "pet not found" };
@@ -617,7 +630,8 @@ export default function registerPetsActions(registerLensAction) {
         openReminders: reminders.filter((r) => !r.done).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Vaccinations ────────────────────────────────────────────────────
   registerLensAction("pets", "vaccine-record", (ctx, _a, params = {}) => {
@@ -875,6 +889,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "reminder-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const pets = s.pets.get(userId) || [];
@@ -897,7 +912,8 @@ export default function registerPetsActions(registerLensAction) {
         dueSoon: reminders.filter((r) => r.status === "due_soon").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "reminder-complete", (ctx, _a, params = {}) => {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1022,6 +1038,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "booking-create", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const caregiver = s.caregivers.get(String(params.caregiverId));
@@ -1045,7 +1062,8 @@ export default function registerPetsActions(registerLensAction) {
     plistB(s.bookings, userId).push(booking);
     savePetState();
     return { ok: true, result: { booking } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "booking-list", (ctx, _a, _params = {}) => {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1066,6 +1084,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "booking-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     let booking = null;
@@ -1091,10 +1110,12 @@ export default function registerPetsActions(registerLensAction) {
     }
     savePetState();
     return { ok: true, result: { booking } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Dashboard ───────────────────────────────────────────────────────
   registerLensAction("pets", "pets-dashboard", (ctx, _a, _params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const pets = s.pets.get(userId) || [];
@@ -1119,7 +1140,8 @@ export default function registerPetsActions(registerLensAction) {
         activeBookings: (s.bookings.get(userId) || []).filter((b) => ["requested", "confirmed", "in_progress"].includes(b.status)).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── 2026 feature-parity backlog — 11pets / Pawprint ────────────────
   // Vaccine ICS export · shareable record · multi-caregiver access ·
@@ -1155,6 +1177,7 @@ export default function registerPetsActions(registerLensAction) {
 
   // ── Vaccine due-date reminders + calendar (ICS) export ──────────────
   registerLensAction("pets", "vaccine-due-export", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const ownPets = s.pets.get(userId) || [];
@@ -1207,10 +1230,12 @@ export default function registerPetsActions(registerLensAction) {
         filename: `vaccine-schedule-${pday(pnow())}.ics`,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Shareable / portable health record export ───────────────────────
   registerLensAction("pets", "health-record-export", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const { pet } = resolveSharedPet(s, userId, String(params.petId));
@@ -1269,7 +1294,8 @@ export default function registerPetsActions(registerLensAction) {
     tx.push(`SYMPTOM HISTORY (${symptoms.length})`);
     for (const x of symptoms) tx.push(`  - ${x.date || "-"}: ${x.symptom} [${x.severity}]`);
     return { ok: true, result: { record, text: tx.join("\n"), filename: `health-record-${pet.name.replace(/\s+/g, "-").toLowerCase()}.json` } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Multi-caregiver shared household access ──────────────────────────
   const ACCESS_ROLES = ["co_owner", "caregiver", "viewer"];
@@ -1302,6 +1328,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "access-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     if (params.petId) {
@@ -1321,7 +1348,8 @@ export default function registerPetsActions(registerLensAction) {
       }
     }
     return { ok: true, result: { sharedWithMe: shared, count: shared.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "access-revoke", (ctx, _a, params = {}) => {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1356,6 +1384,7 @@ export default function registerPetsActions(registerLensAction) {
   });
 
   registerLensAction("pets", "photo-timeline", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const { pet } = resolveSharedPet(s, userId, String(params.petId));
@@ -1377,7 +1406,8 @@ export default function registerPetsActions(registerLensAction) {
         milestones: photos.filter((p) => p.milestone).length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "photo-delete", (ctx, _a, params = {}) => {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -1396,6 +1426,7 @@ export default function registerPetsActions(registerLensAction) {
   // ── Vet appointment booking ─────────────────────────────────────────
   const APPT_REASONS = ["checkup", "vaccination", "illness", "surgery", "dental", "grooming", "emergency", "follow_up", "other"];
   registerLensAction("pets", "appointment-book", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
@@ -1424,9 +1455,11 @@ export default function registerPetsActions(registerLensAction) {
     });
     savePetState();
     return { ok: true, result: { appointment: appt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "appointment-list", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     let appts = [];
@@ -1447,9 +1480,11 @@ export default function registerPetsActions(registerLensAction) {
         overdue: appts.filter((a) => a.status === "scheduled" && dueState(a.date) === "overdue").length,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "appointment-update", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
@@ -1483,7 +1518,8 @@ export default function registerPetsActions(registerLensAction) {
     }
     savePetState();
     return { ok: true, result: { appointment: appt } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── Breed-specific care guidance ────────────────────────────────────
   // Surfaces health-risk + care guidance derived from real breed data
@@ -1576,6 +1612,7 @@ export default function registerPetsActions(registerLensAction) {
 
   // ── Lost-pet / microchip public ID card ─────────────────────────────
   registerLensAction("pets", "lost-card-create", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = paid(ctx);
     const { pet, role } = resolveSharedPet(s, userId, String(params.petId));
@@ -1608,9 +1645,11 @@ export default function registerPetsActions(registerLensAction) {
     s.lostProfiles.set(pet.id, card);
     savePetState();
     return { ok: true, result: { card } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "lost-card-get", (ctx, _a, params = {}) => {
+  try {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };
     // Lookup by public token (shareable, no auth needed) OR by petId for the owner.
     if (params.publicToken) {
@@ -1625,7 +1664,8 @@ export default function registerPetsActions(registerLensAction) {
     const card = s.lostProfiles.get(pet.id);
     if (!card) return { ok: false, error: "no lost-pet card for this pet" };
     return { ok: true, result: { card } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("pets", "lost-card-list", (ctx, _a, _params = {}) => {
     const s = getPetState(); if (!s) return { ok: false, error: "STATE unavailable" };

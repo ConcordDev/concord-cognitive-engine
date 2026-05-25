@@ -157,7 +157,7 @@ export default function ProgressionPanel({
           <h2 className="text-sm font-semibold">Progression</h2>
         </div>
         {onClose && (
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors" aria-label="Close">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -167,14 +167,14 @@ export default function ProgressionPanel({
       <div className="flex items-center gap-4 px-4 py-3 border-b border-white/5">
         <div className="flex-1 text-center">
           <p className="text-2xl font-bold text-cyan-400">{profile.totalCitations}</p>
-          <p className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
+          <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">
             <Star className="w-3 h-3" /> Total Citations
           </p>
         </div>
         <div className="w-px h-8 bg-white/10" />
         <div className="flex-1 text-center">
           <p className="text-2xl font-bold text-yellow-400">{profile.totalRoyalties.toLocaleString()}</p>
-          <p className="text-[10px] text-gray-500 flex items-center justify-center gap-1">
+          <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">
             <Coins className="w-3 h-3" /> Royalties Earned
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function ProgressionPanel({
             className={`px-3 py-1 text-[10px] rounded capitalize transition-colors ${
               activeTab === tab
                 ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
-                : 'text-gray-500 hover:text-gray-300'
+                : 'text-gray-400 hover:text-gray-300'
             }`}
           >
             {tab}
@@ -232,7 +232,7 @@ export default function ProgressionPanel({
                             style={{ width: `${Math.min(100, pct)}%` }}
                           />
                         </div>
-                        <span className="text-[9px] text-gray-500 shrink-0">
+                        <span className="text-[9px] text-gray-400 shrink-0">
                           {dr.citations}/{dr.citationsToNextTier}
                         </span>
                       </div>
@@ -246,7 +246,7 @@ export default function ProgressionPanel({
                         {dr.citations} citation{dr.citations !== 1 ? 's' : ''} earned in {meta.label}.
                       </p>
                       {nextTier && (
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-gray-400">
                           {dr.citationsToNextTier - dr.citations} more citations to reach{' '}
                           <span className={TIER_COLORS[nextTier].split(' ')[0]}>{nextTier}</span>.
                         </p>
@@ -281,7 +281,7 @@ export default function ProgressionPanel({
             {profile.badges.length === 0 ? (
               <div className="flex flex-col items-center py-8 text-center">
                 <Trophy className="w-8 h-8 text-gray-700 mb-2" />
-                <p className="text-xs text-gray-500">No badges earned yet.</p>
+                <p className="text-xs text-gray-400">No badges earned yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -293,7 +293,7 @@ export default function ProgressionPanel({
                     </div>
                     <p className="text-[9px] text-gray-400">{badge.description}</p>
                     {badge.earnedDate && (
-                      <p className="text-[8px] text-gray-600 mt-1">Earned {badge.earnedDate}</p>
+                      <p className="text-[8px] text-gray-400 mt-1">Earned {badge.earnedDate}</p>
                     )}
                   </div>
                 ))}
@@ -343,7 +343,7 @@ export default function ProgressionPanel({
                           style={{ width: `${pct}%` }}
                         />
                       </div>
-                      <span className="text-[9px] text-gray-500">
+                      <span className="text-[9px] text-gray-400">
                         {currentCitations}/{u.citationsRequired}
                       </span>
                     </div>
@@ -357,7 +357,7 @@ export default function ProgressionPanel({
 
       {/* Recent milestones */}
       <div className="border-t border-white/5 px-3 py-2">
-        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Recent Milestones</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">Recent Milestones</p>
         <div className="space-y-1">
           {milestones.slice(0, 3).map((m) => (
             <div key={m.id} className="flex items-center gap-2 text-[10px]">

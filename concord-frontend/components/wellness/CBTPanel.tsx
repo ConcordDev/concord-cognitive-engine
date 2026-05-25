@@ -90,9 +90,9 @@ export function CBTPanel() {
       <header className="flex items-center gap-2 border-b border-indigo-500/10 pb-2">
         <Brain className="h-4 w-4 text-indigo-400" />
         <h3 className="text-sm font-semibold text-white">Guided CBT thought records</h3>
-        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-500" />}
+        {loading && <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />}
         {list && (
-          <span className="ml-auto text-[10px] text-zinc-500">
+          <span className="ml-auto text-[10px] text-zinc-400">
             {list.completed}/{list.total} completed
             {list.avgRelief !== null && ` · avg relief ${list.avgRelief}`}
           </span>
@@ -107,7 +107,7 @@ export function CBTPanel() {
       ) : (
         <div className="rounded border border-white/10 bg-black/30 p-3 space-y-2">
           <div>
-            <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold block mb-1">Distortion to work on</label>
+            <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold block mb-1">Distortion to work on</label>
             <select value={form.fieldKind} onChange={e => setForm({ ...form, fieldKind: e.target.value })}
               className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white">
               {kinds.map(k => <option key={k.fieldKind} value={k.fieldKind}>{k.label}</option>)}
@@ -117,7 +117,7 @@ export function CBTPanel() {
           {prompts && (
             <div className="rounded bg-indigo-500/5 border border-indigo-500/20 p-2 space-y-1.5">
               <div className="text-[10px] text-indigo-300 italic">{prompts.distortion}</div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Socratic challenges</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold">Socratic challenges</div>
               <ul className="space-y-0.5">
                 {prompts.challenges.map((c, i) => (
                   <li key={i} className="text-[11px] text-zinc-300 flex gap-1.5">
@@ -159,7 +159,7 @@ export function CBTPanel() {
             className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-white resize-none" />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex justify-between">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex justify-between">
                 <span>Intensity before</span><span className="text-zinc-300 font-mono">{form.intensityBefore}</span>
               </label>
               <input type="range" min={0} max={100} value={form.intensityBefore}
@@ -167,7 +167,7 @@ export function CBTPanel() {
                 className="w-full accent-rose-500" />
             </div>
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold flex justify-between">
+              <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold flex justify-between">
                 <span>Intensity after</span><span className="text-zinc-300 font-mono">{form.intensityAfter}</span>
               </label>
               <input type="range" min={0} max={100} value={form.intensityAfter}
@@ -193,9 +193,9 @@ export function CBTPanel() {
           {list.records.slice(0, 8).map(r => (
             <li key={r.id} className="rounded border border-white/10 bg-black/30 p-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-mono text-zinc-500">{r.number}</span>
+                <span className="text-[9px] font-mono text-zinc-400">{r.number}</span>
                 <span className="text-[11px] text-indigo-300 flex-1 truncate">{r.distortionLabel}</span>
-                <span className="text-[9px] font-mono text-zinc-500">{r.date}</span>
+                <span className="text-[9px] font-mono text-zinc-400">{r.date}</span>
                 {r.relief !== null && (
                   <span className={cn('text-[10px] font-mono px-1.5 py-0.5 rounded',
                     r.relief > 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/5 text-zinc-400')}>

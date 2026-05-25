@@ -252,9 +252,9 @@ export default function ArtistryLensPage() {
               {actionResult.harmonyScore !== undefined && actionResult.dominantHue !== undefined && (
                 <div className="space-y-2">
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-500">Harmony</p></div>
-                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan capitalize">{actionResult.dominantHue as string}</p><p className="text-[10px] text-gray-500">Dominant</p></div>
-                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.contrastRange as number}</p><p className="text-[10px] text-gray-500">Contrast</p></div>
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-pink">{actionResult.harmonyScore as number}</p><p className="text-[10px] text-gray-400">Harmony</p></div>
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-neon-cyan capitalize">{actionResult.dominantHue as string}</p><p className="text-[10px] text-gray-400">Dominant</p></div>
+                    <div className="p-2 bg-white/5 rounded text-center"><p className="text-sm font-bold text-yellow-400">{actionResult.contrastRange as number}</p><p className="text-[10px] text-gray-400">Contrast</p></div>
                   </div>
                   {(actionResult.colors as Array<{ hex: string }>)?.slice(0, 8).map((c, i) => (
                     <span key={i} className="inline-block w-6 h-6 rounded-sm border border-white/20 mr-1" style={{ backgroundColor: c.hex }} title={c.hex} />
@@ -298,7 +298,7 @@ export default function ArtistryLensPage() {
             <motion.div key={stat.label} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.07 }} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:border-neon-pink/30 transition-colors group">
               <stat.icon className={cn('w-4 h-4 mb-1 group-hover:scale-110 transition-transform', stat.color)} />
               <div className="text-xl font-bold">{stat.value}</div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-wider">{stat.label}</div>
+              <div className="text-[10px] text-gray-400 uppercase tracking-wider">{stat.label}</div>
             </motion.div>
           ))}
         </div>
@@ -331,14 +331,14 @@ export default function ArtistryLensPage() {
               <button onClick={() => setFeedMode('discovery')} className={cn('text-xs px-3 py-1 rounded', feedMode === 'discovery' ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400')}>Discover</button>
             </div>
             {contextDTUs.length === 0 && !dtusLoading ? (
-              <div className="text-center py-16 text-gray-500 text-sm">No artistry content yet. Upload your first creation.</div>
+              <div className="text-center py-16 text-gray-400 text-sm">No artistry content yet. Upload your first creation.</div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {contextDTUs.slice(0, 12).map(dtu => (
                   <div key={dtu.id} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-neon-pink/30 transition-colors">
                     <h3 className="font-medium text-sm mb-1">{dtu.title || dtu.id}</h3>
-                    <p className="text-xs text-gray-500 line-clamp-2">{typeof dtu.content === 'string' ? dtu.content.slice(0, 100) : ''}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                    <p className="text-xs text-gray-400 line-clamp-2">{typeof dtu.content === 'string' ? dtu.content.slice(0, 100) : ''}</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
                       <Eye className="w-3 h-3" />
                       <span>{dtu.tier || 'standard'}</span>
                     </div>
@@ -374,7 +374,7 @@ export default function ArtistryLensPage() {
         {tab === 'assets' && (
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input ref={searchInputRef}
               value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search assets..." className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm focus:outline-none focus:border-neon-pink/50" />
             </div>
@@ -382,7 +382,7 @@ export default function ArtistryLensPage() {
               {(assets as Record<string, unknown>[]).map((asset: Record<string, unknown>) => (
                 <div key={asset.id as string} className="bg-white/5 border border-white/10 rounded-lg p-4">
                   <h3 className="font-medium text-sm">{asset.title as string || 'Untitled'}</h3>
-                  <div className="text-xs text-gray-500 mt-1">{asset.type as string}</div>
+                  <div className="text-xs text-gray-400 mt-1">{asset.type as string}</div>
                   <div className="flex gap-1 mt-2">
                     {((asset.tags as string[]) || []).slice(0, 3).map((tag: string) => (
                       <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-white/5 rounded">{tag}</span>
@@ -391,7 +391,7 @@ export default function ArtistryLensPage() {
                 </div>
               ))}
               {!isLoading && (assets as Record<string, unknown>[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No assets found.</div>
+                <div className="col-span-full text-center py-12 text-gray-400 text-sm">No assets found.</div>
               )}
             </div>
           </div>
@@ -405,9 +405,9 @@ export default function ArtistryLensPage() {
               {(marketplaceArt as Record<string, unknown>[]).map((item: Record<string, unknown>) => (
                 <div key={item.id as string} className="bg-white/5 border border-white/10 rounded-lg p-4 hover:border-neon-pink/30 transition-colors">
                   <h3 className="font-medium text-sm">{item.title as string}</h3>
-                  <div className="text-xs text-gray-500 mt-1">{item.medium as string || item.type as string || 'Mixed Media'}</div>
+                  <div className="text-xs text-gray-400 mt-1">{item.medium as string || item.type as string || 'Mixed Media'}</div>
                   <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <div className="flex items-center gap-1 text-xs text-gray-400">
                       <Eye className="w-3 h-3" /> {(item.views as number) || 0}
                     </div>
                     <div className="flex items-center gap-1 text-xs text-neon-pink">
@@ -417,7 +417,7 @@ export default function ArtistryLensPage() {
                 </div>
               ))}
               {(marketplaceArt as Record<string, unknown>[]).length === 0 && (
-                <div className="col-span-full text-center py-12 text-gray-500 text-sm">No artworks listed yet. Share your creations.</div>
+                <div className="col-span-full text-center py-12 text-gray-400 text-sm">No artworks listed yet. Share your creations.</div>
               )}
             </div>
           </div>
@@ -447,7 +447,7 @@ export default function ArtistryLensPage() {
                   {(studioProjects as Record<string, unknown>[]).map((proj: Record<string, unknown>) => (
                     <div key={proj.id as string} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:border-neon-pink/30 transition-colors">
                       <h4 className="font-medium text-sm">{proj.title as string || 'Untitled Project'}</h4>
-                      <div className="text-xs text-gray-500 mt-1">{proj.medium as string || proj.status as string || 'In Progress'}</div>
+                      <div className="text-xs text-gray-400 mt-1">{proj.medium as string || proj.status as string || 'In Progress'}</div>
                     </div>
                   ))}
                 </div>
@@ -460,15 +460,15 @@ export default function ArtistryLensPage() {
         {tab === 'stats' && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Total Assets</div>
+              <div className="text-xs text-gray-400 mb-1">Total Assets</div>
               <div className="text-2xl font-bold">{(assets as unknown[]).length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Artistry DTUs</div>
+              <div className="text-xs text-gray-400 mb-1">Artistry DTUs</div>
               <div className="text-2xl font-bold">{contextDTUs.length}</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <div className="text-xs text-gray-500 mb-1">Styles</div>
+              <div className="text-xs text-gray-400 mb-1">Styles</div>
               <div className="text-2xl font-bold">{(styles as unknown[]).length}</div>
             </div>
           </div>

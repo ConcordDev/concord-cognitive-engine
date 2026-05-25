@@ -589,9 +589,9 @@ export default function FoodLensPage() {
     const scaledCost = (d.cost || 0) * scaleFactor;
 
     return (
-      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)}>
+      <div className={ds.modalBackdrop} onClick={() => setRecipeScaleId(null)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <div>
                 <h2 className={ds.heading2}>Recipe Scaler</h2>
@@ -640,7 +640,7 @@ export default function FoodLensPage() {
                 <h3 className={cn(ds.heading3, 'mb-3')}>Scaled Ingredients</h3>
                 {ingredients.length > 0 ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-4 gap-3 text-xs text-gray-500 px-3">
+                    <div className="grid grid-cols-4 gap-3 text-xs text-gray-400 px-3">
                       <span>Ingredient</span><span>Original</span><span>Scaled</span><span>Cost</span>
                     </div>
                     {ingredients.map((ing, idx) => (
@@ -730,7 +730,7 @@ export default function FoodLensPage() {
                     {quadrants[q].map(({ item, data }) => {
                       const foodCostPct = data.price > 0 ? (data.cost / data.price) * 100 : 0;
                       return (
-                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)}>
+                        <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                           <div>
                             <p className="text-sm font-medium">{item.title}</p>
                             <p className={cn(ds.textMuted, 'text-xs')}>{data.section || data.category}</p>
@@ -923,7 +923,7 @@ export default function FoodLensPage() {
                   );
                 })}
                 {invItems.length === 0 && (
-                  <tr><td colSpan={7} className="py-8 text-center text-gray-500">No inventory items. Add items to start counting.</td></tr>
+                  <tr><td colSpan={7} className="py-8 text-center text-gray-400">No inventory items. Add items to start counting.</td></tr>
                 )}
               </tbody>
             </table>
@@ -1043,7 +1043,7 @@ export default function FoodLensPage() {
                     {p.completed && <CheckCircle2 className="w-3 h-3 text-black" />}
                   </button>
                   <div className="flex-1">
-                    <p className={cn('font-medium', p.completed && 'line-through text-gray-500')}>{p.item}</p>
+                    <p className={cn('font-medium', p.completed && 'line-through text-gray-400')}>{p.item}</p>
                     <p className={ds.textMuted}>{p.recipe} - {p.qty} {p.unit}</p>
                   </div>
                   <span className={ds.textMuted}>{p.assignedTo || 'Unassigned'}</span>
@@ -1162,7 +1162,7 @@ export default function FoodLensPage() {
             {waitlist.map((w, idx) => (
               <div key={w.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-gray-500">#{idx + 1}</span>
+                  <span className="text-lg font-bold text-gray-400">#{idx + 1}</span>
                   <div>
                     <p className="font-medium">{w.name}</p>
                     <p className={ds.textMuted}>Party of {w.partySize} - Added {w.addedAt}</p>
@@ -1376,14 +1376,14 @@ export default function FoodLensPage() {
                     <div key={`${day}-${mealType}`}
                       className={cn('p-2 rounded-lg border border-lattice-border bg-lattice-surface min-h-[70px]',
                         'hover:border-neon-cyan/30 transition-colors cursor-pointer')}
-                      onClick={() => addMealQuick(day, mealType)}>
+                      onClick={() => addMealQuick(day, mealType)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       {meals.length > 0 ? meals.map(m => {
                         const md = m.data as unknown as FoodArtifact;
                         return (
                           <div key={m.id} className="group/meal flex items-center gap-1 text-xs p-1.5 rounded bg-neon-cyan/10 text-neon-cyan mb-1"
-                            onClick={e => { e.stopPropagation(); openEdit(m); }}>
+                            onClick={e => { e.stopPropagation(); openEdit(m); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                             <span className="truncate flex-1">{m.title}</span>
-                            {md.calories ? <span className="text-gray-500">{md.calories}cal</span> : null}
+                            {md.calories ? <span className="text-gray-400">{md.calories}cal</span> : null}
                             <button
                               className="opacity-0 group-hover/meal:opacity-100 text-red-400 hover:text-red-300 transition-opacity flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-500"
                               onClick={e => { e.stopPropagation(); removeMealPlan(m.id); }}
@@ -1409,7 +1409,7 @@ export default function FoodLensPage() {
           <h3 className={cn(ds.heading3, 'mb-3')}>Daily Nutrition Totals</h3>
           <div className="overflow-x-auto">
             <div className="grid grid-cols-8 gap-2 min-w-[700px]">
-              <div className="text-sm text-gray-500" />
+              <div className="text-sm text-gray-400" />
               {DAYS_OF_WEEK.map(day => {
                 let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
                 MEAL_TYPES.forEach(mt => {
@@ -1560,7 +1560,7 @@ export default function FoodLensPage() {
                         {isChecked && <CheckCircle2 className="w-3 h-3 text-black" />}
                       </button>
                       <div className="flex-1">
-                        <p className={cn('font-medium', isChecked && 'line-through text-gray-500')}>{item.title}</p>
+                        <p className={cn('font-medium', isChecked && 'line-through text-gray-400')}>{item.title}</p>
                         <p className={ds.textMuted}>{d.quantity || 1} {d.shoppingUnit || 'ea'}</p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -1679,7 +1679,7 @@ export default function FoodLensPage() {
               {recipesWithNutrition.map(recipe => {
                 const d = recipe.data as unknown as FoodArtifact;
                 return (
-                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)}>
+                  <div key={recipe.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(recipe)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                     <div>
                       <p className="font-medium text-white">{recipe.title}</p>
                       <p className={ds.textMuted}>{d.servings || 1} servings - {d.category}</p>
@@ -1796,7 +1796,7 @@ export default function FoodLensPage() {
                   const d = item.data as unknown as FoodArtifact;
                   const daysLeft = d.expiryDate ? Math.ceil((new Date(d.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 999;
                   return (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)}>
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-lattice-elevated/50 hover:bg-lattice-elevated cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-white">{item.title}</p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
@@ -1922,15 +1922,15 @@ export default function FoodLensPage() {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">{String(actionResult.targetYield)}</p>
-                      <p className="text-[10px] text-gray-500">Target Yield</p>
+                      <p className="text-[10px] text-gray-400">Target Yield</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">{String(actionResult.scaleFactor)}x</p>
-                      <p className="text-[10px] text-gray-500">Scale Factor</p>
+                      <p className="text-[10px] text-gray-400">Scale Factor</p>
                     </div>
                     <div className="p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-neon-cyan">{String(actionResult.yieldUnit)}</p>
-                      <p className="text-[10px] text-gray-500">Unit</p>
+                      <p className="text-[10px] text-gray-400">Unit</p>
                     </div>
                   </div>
                   {Array.isArray(actionResult.ingredients) && (actionResult.ingredients as {name:string;scaledQuantity:number;unit:string}[]).slice(0,6).map((ing, i) => (
@@ -1946,13 +1946,13 @@ export default function FoodLensPage() {
                 <div className="space-y-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.avgFoodCostPct)}%</p>
-                    <p className="text-[10px] text-gray-500">Avg Food Cost %</p>
+                    <p className="text-[10px] text-gray-400">Avg Food Cost %</p>
                   </div>
                   {(actionResult.items as {name:string;foodCostPct:number;menuPrice:number;status:string}[]).map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-lattice-surface rounded">
                       <div>
                         <p className="text-xs font-semibold text-white">{item.name}</p>
-                        <p className="text-[10px] text-gray-500">${item.menuPrice} menu price</p>
+                        <p className="text-[10px] text-gray-400">${item.menuPrice} menu price</p>
                       </div>
                       <span className={`text-xs font-bold ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.foodCostPct}%</span>
                     </div>
@@ -1964,20 +1964,20 @@ export default function FoodLensPage() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-red-400">{String(actionResult.expiredCount)}</p>
-                    <p className="text-[10px] text-gray-500">Expired</p>
+                    <p className="text-[10px] text-gray-400">Expired</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-amber-400">{String(actionResult.expiringSoonCount)}</p>
-                    <p className="text-[10px] text-gray-500">Expiring Soon</p>
+                    <p className="text-[10px] text-gray-400">Expiring Soon</p>
                   </div>
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-green-400">{String(actionResult.okCount)}</p>
-                    <p className="text-[10px] text-gray-500">OK</p>
+                    <p className="text-[10px] text-gray-400">OK</p>
                   </div>
                   {Number(actionResult.estimatedSpoilageLoss) > 0 && (
                     <div className="col-span-3 p-2 bg-lattice-surface rounded text-center">
                       <p className="text-sm font-bold text-red-400">${String(actionResult.estimatedSpoilageLoss)}</p>
-                      <p className="text-[10px] text-gray-500">Estimated Loss</p>
+                      <p className="text-[10px] text-gray-400">Estimated Loss</p>
                     </div>
                   )}
                 </div>
@@ -1987,13 +1987,13 @@ export default function FoodLensPage() {
                 <div className="space-y-2">
                   <div className="p-2 bg-lattice-surface rounded text-center">
                     <p className="text-sm font-bold text-neon-cyan">{String(actionResult.avgPourCostPct)}%</p>
-                    <p className="text-[10px] text-gray-500">Avg Pour Cost %</p>
+                    <p className="text-[10px] text-gray-400">Avg Pour Cost %</p>
                   </div>
                   {(actionResult.items as {name:string;pourCostPct:number;profit:number;status:string}[]).map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-2 bg-lattice-surface rounded">
                       <div>
                         <p className="text-xs font-semibold text-white">{item.name}</p>
-                        <p className="text-[10px] text-gray-500">${item.profit} profit</p>
+                        <p className="text-[10px] text-gray-400">${item.profit} profit</p>
                       </div>
                       <span className={`text-xs font-bold ${item.status === 'on-target' ? 'text-green-400' : 'text-red-400'}`}>{item.pourCostPct}%</span>
                     </div>
@@ -2121,7 +2121,7 @@ export default function FoodLensPage() {
                       {d.shiftStart && d.shiftEnd && (
                         <>
                           <p className="flex items-center gap-1 text-gray-400"><Clock className="w-3 h-3" /> {d.shiftStart.slice(11, 16)} - {d.shiftEnd.slice(11, 16)}</p>
-                          <p className="text-gray-500 text-xs">{calcShiftHours(d.shiftStart, d.shiftEnd).toFixed(1)}h @ ${d.hourlyRate || 15}/hr = ${calcLaborCost(calcShiftHours(d.shiftStart, d.shiftEnd), d.hourlyRate || 15).toFixed(2)}</p>
+                          <p className="text-gray-400 text-xs">{calcShiftHours(d.shiftStart, d.shiftEnd).toFixed(1)}h @ ${d.hourlyRate || 15}/hr = ${calcLaborCost(calcShiftHours(d.shiftStart, d.shiftEnd), d.hourlyRate || 15).toFixed(2)}</p>
                         </>
                       )}
                     </div>
@@ -2156,9 +2156,9 @@ export default function FoodLensPage() {
   const renderEditor = () => {
     if (!editorOpen) return null;
     return (
-      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)}>
+      <div className={ds.modalBackdrop} onClick={() => setEditorOpen(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
         <div className={ds.modalContainer}>
-          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()}>
+          <div className={cn(ds.modalPanel, 'max-w-2xl max-h-[85vh] overflow-y-auto')} onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex items-center justify-between p-6 border-b border-lattice-border">
               <h2 className={ds.heading2}>{editingItem ? `Edit ${activeArtifactType}` : `New ${activeArtifactType}`}</h2>
               <button onClick={() => setEditorOpen(false)} className={ds.btnGhost} aria-label="Close"><X className="w-5 h-5" /></button>
@@ -2612,13 +2612,13 @@ export default function FoodLensPage() {
           {items.slice(0, 5).map(item => {
             const d = item.data as unknown as FoodArtifact;
             return (
-              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)}>
+              <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-lattice-surface/50 hover:bg-lattice-surface cursor-pointer" onClick={() => openEdit(item)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{item.title}</p>
                   <p className={ds.textMuted}>{d.type} {d.category ? `- ${d.category}` : ''}</p>
                 </div>
                 {renderStatusBadge(d.status)}
-                <ArrowUpRight className="w-4 h-4 text-gray-500" />
+                <ArrowUpRight className="w-4 h-4 text-gray-400" />
               </div>
             );
           })}

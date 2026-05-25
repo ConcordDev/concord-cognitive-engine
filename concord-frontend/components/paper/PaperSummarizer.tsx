@@ -44,7 +44,7 @@ export function PaperSummarizer() {
         </div>
         <div>
           {!summary ? (
-            <div className="text-xs text-gray-500 italic text-center py-10">Paste a paper to get a structured summary.</div>
+            <div className="text-xs text-gray-400 italic text-center py-10">Paste a paper to get a structured summary.</div>
           ) : (
             <div className="space-y-3 text-xs">
               {(['problem', 'approach', 'results', 'limitations', 'whyItMatters'] as const).map(k => (

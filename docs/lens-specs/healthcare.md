@@ -11,7 +11,7 @@ Backend: `healthcare` domain — very deep (~60 macros): symptom triage, medicat
 
 ## Missing — buildable feature backlog
 - [x] `[M]` Patient portal results release with provider commentary + abnormal flagging
-- [x] `[M]` Telehealth video visit integration
+- [x] `[M]` Telehealth video visit integration — *visit scheduling in `healthcare.telehealth-create` (`server/domains/healthcare.js:1734`) plus in-lens WebRTC video tile (`concord-frontend/components/healthcare/TelehealthVideoCall.tsx`). The tile uses `simple-peer` for the peer connection and Concord's Socket.IO signalling layer (`server/lib/webrtc-signalling.js`) for SDP/ICE relay — no external client handoff for `concord-webrtc` visits. Camera/mic permissions are requested on Start; local + remote tiles + mute/camera-off controls + clean tear-down on End. Daily.co room URLs still open externally when `DAILY_API_KEY` is set, for orgs that prefer Daily's SFU.*
 - [x] `[S]` Wearable / device data ingestion (HR, glucose, BP from home)
 - [x] `[M]` Insurance eligibility + claims/billing workflow
 - [x] `[S]` Clinical decision support alerts at order entry (beyond drug interactions)
@@ -19,6 +19,6 @@ Backend: `healthcare` domain — very deep (~60 macros): symptom triage, medicat
 - [x] `[S]` Family / proxy access to another patient's chart
 
 ## Parity
-~95% of the combined MyChart+EHR surface. Clinical depth (SOAP, e-sign, orders, care gaps, AI scribe) and patient tools (triage, meds, appointments, messaging) plus patient-portal results release, telehealth video visits, wearable/device ingestion, insurance eligibility + claims, clinical decision support, FHIR R4 sharing, and family/proxy access all ship front-to-back.
+~97% of the combined MyChart+EHR surface. Clinical depth (SOAP, e-sign, orders, care gaps, AI scribe) and patient tools (triage, meds, appointments, messaging) plus patient-portal results release, wearable/device ingestion, insurance eligibility + claims, clinical decision support, FHIR R4 sharing, family/proxy access, and **in-lens telehealth video visits** (WebRTC peer-to-peer via Concord's Socket.IO signalling, or Daily.co handoff when env-configured) all ship front-to-back.
 
-_Full backlog implemented — every item above shipped backend + real UI + tests._
+_Full backlog implemented — every item above ships backend + real UI + tests._

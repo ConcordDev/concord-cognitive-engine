@@ -44,7 +44,7 @@ export function RxPriceCompare() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <DollarSign className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Rx price compare</span>
-        <span className="ml-auto text-[10px] text-gray-500">GoodRx-style</span>
+        <span className="ml-auto text-[10px] text-gray-400">GoodRx-style</span>
       </header>
       <div className="p-3 border-b border-white/10 flex items-center gap-2 text-xs">
         <input value={drug} onChange={e => setDrug(e.target.value)} placeholder="Drug name + strength" className="flex-1 px-2 py-1.5 bg-lattice-deep border border-lattice-border rounded text-white" />
@@ -61,9 +61,9 @@ export function RxPriceCompare() {
       )}
       <ul className="divide-y divide-white/5 max-h-96 overflow-y-auto">
         {loading ? (
-          <li className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Querying pharmacies…</li>
+          <li className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Querying pharmacies…</li>
         ) : sorted.length === 0 ? (
-          <li className="px-3 py-8 text-center text-xs text-gray-500">No prices found.</li>
+          <li className="px-3 py-8 text-center text-xs text-gray-400">No prices found.</li>
         ) : (
           sorted.map((p, i) => (
             <li key={`${p.pharmacy}-${i}`} className={cn('px-3 py-2', i === 0 && 'bg-green-500/5')}>
@@ -74,11 +74,11 @@ export function RxPriceCompare() {
                 <div className="ml-auto text-right">
                   <div className="text-lg font-bold text-cyan-300 tabular-nums">${p.cashPrice.toFixed(2)}</div>
                   {p.withInsuranceCopay != null && (
-                    <div className="text-[10px] text-gray-500">copay ${p.withInsuranceCopay.toFixed(2)}</div>
+                    <div className="text-[10px] text-gray-400">copay ${p.withInsuranceCopay.toFixed(2)}</div>
                   )}
                 </div>
               </div>
-              <div className="text-[10px] text-gray-500 mt-0.5 inline-flex items-center gap-1">
+              <div className="text-[10px] text-gray-400 mt-0.5 inline-flex items-center gap-1">
                 <MapPin className="w-3 h-3" /> {p.address} · {p.distanceMi.toFixed(1)} mi
                 {p.couponCode && <span className="ml-2 text-cyan-300">code {p.couponCode}</span>}
               </div>

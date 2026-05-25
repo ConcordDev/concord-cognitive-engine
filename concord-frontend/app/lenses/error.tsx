@@ -40,7 +40,7 @@ export default function LensError({
               {error.message || 'An unexpected error occurred in this lens.'}
             </p>
             {error.digest && (
-              <p className="text-gray-500 text-xs mt-2">
+              <p className="text-gray-400 text-xs mt-2">
                 ID: {error.digest}
               </p>
             )}
@@ -66,7 +66,7 @@ export default function LensError({
 
           {/* Helpful tips */}
           <div className="mt-6 pt-6 border-t border-lattice-border">
-            <p className="text-gray-500 text-xs mb-2">Try these:</p>
+            <p className="text-gray-400 text-xs mb-2">Try these:</p>
             <ul className="text-gray-400 text-xs space-y-1">
               <li>* Refresh the page</li>
               <li>* Check if the backend server is running</li>

@@ -4,6 +4,7 @@
 
 export default function registerWalletActions(registerLensAction) {
   registerLensAction("wallet", "portfolioBalance", (ctx, artifact, _params) => {
+  try {
     const assets = artifact.data?.assets || artifact.data?.holdings || [];
     if (assets.length === 0) {
       return { ok: true, result: { message: "Provide an assets array with {name, quantity, currentPrice, costBasis} per asset." } };
@@ -62,9 +63,11 @@ export default function registerWalletActions(registerLensAction) {
         assets: withAllocation,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "transactionCategorize", (ctx, artifact, _params) => {
+  try {
     const transactions = artifact.data?.transactions || [];
     if (transactions.length === 0) {
       return { ok: true, result: { message: "Provide a transactions array with {merchant, amount, date} per transaction." } };
@@ -129,9 +132,11 @@ export default function registerWalletActions(registerLensAction) {
         transactions: results,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "budgetCheck", (ctx, artifact, _params) => {
+  try {
     const budgets = artifact.data?.budgets || artifact.data?.categories || [];
     const transactions = artifact.data?.transactions || [];
     if (budgets.length === 0) {
@@ -194,9 +199,11 @@ export default function registerWalletActions(registerLensAction) {
         categories: checked,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "spendingTrend", (ctx, artifact, _params) => {
+  try {
     const transactions = artifact.data?.transactions || [];
     if (transactions.length === 0) {
       return { ok: true, result: { message: "Provide a transactions array with {amount, date, category} to analyze spending trends." } };
@@ -276,7 +283,8 @@ export default function registerWalletActions(registerLensAction) {
         categoryTrends: categoryGrowth,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ─── Parity-sprint macros (Venmo/PayPal feature backlog) ──
   // State-backed via globalThis._concordSTATE, keyed by ctx.userId.
@@ -332,6 +340,7 @@ export default function registerWalletActions(registerLensAction) {
   });
 
   registerLensAction("wallet", "requestCreate", (ctx, _artifact, params = {}) => {
+  try {
     const state = getWalletState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = uid(ctx);
@@ -370,7 +379,8 @@ export default function registerWalletActions(registerLensAction) {
     if (!payerList.some(r => r.id === request.id)) payerList.push(request);
     saveWalletState();
     return { ok: true, result: { request } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "requestUpdate", (ctx, _artifact, params = {}) => {
     const state = getWalletState();
@@ -529,6 +539,7 @@ export default function registerWalletActions(registerLensAction) {
   });
 
   registerLensAction("wallet", "feedList", (ctx, _artifact, params = {}) => {
+  try {
     const state = getWalletState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = uid(ctx);
@@ -546,7 +557,8 @@ export default function registerWalletActions(registerLensAction) {
     entries.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
     const limit = Math.min(Number(params.limit) || 50, 200);
     return { ok: true, result: { entries: entries.slice(0, limit), count: entries.length } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "feedLike", (ctx, _artifact, params = {}) => {
     const state = getWalletState();
@@ -576,6 +588,7 @@ export default function registerWalletActions(registerLensAction) {
   // ── Split-the-bill ─────────────────────────────────────────────────────────
 
   registerLensAction("wallet", "splitCreate", (ctx, _artifact, params = {}) => {
+  try {
     const state = getWalletState();
     if (!state) return { ok: false, error: "STATE unavailable" };
     const userId = uid(ctx);
@@ -622,7 +635,8 @@ export default function registerWalletActions(registerLensAction) {
     listFor(state.splits, userId).push(split);
     saveWalletState();
     return { ok: true, result: { split } };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("wallet", "splitList", (ctx, _artifact, _params = {}) => {
     const state = getWalletState();
@@ -796,6 +810,7 @@ export default function registerWalletActions(registerLensAction) {
   // page (built from the real /api/economy/history feed) into a chart-ready shape.
 
   registerLensAction("wallet", "spendingInsights", (_ctx, artifact, params = {}) => {
+  try {
     const transactions = params.transactions || artifact?.data?.transactions || [];
     if (!Array.isArray(transactions) || transactions.length === 0) {
       return { ok: true, result: { hasData: false, message: "No transactions yet" } };
@@ -871,5 +886,6 @@ export default function registerWalletActions(registerLensAction) {
         topCategory: byCategory[0] || null,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 }

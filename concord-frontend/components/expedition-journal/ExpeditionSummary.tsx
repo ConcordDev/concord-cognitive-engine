@@ -65,7 +65,7 @@ const WORLD_LABELS: Record<string, string> = {
 
 export function ExpeditionSummary({ data, badges }: { data: SummaryData | null; badges: Badge[] }) {
   if (!data) {
-    return <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-xs text-gray-500">Loading summary…</div>;
+    return <div className="rounded-lg border border-white/10 bg-white/5 p-4 text-xs text-gray-400">Loading summary…</div>;
   }
 
   const chartData = data.worlds.map((w) => ({
@@ -85,7 +85,7 @@ export function ExpeditionSummary({ data, badges }: { data: SummaryData | null; 
       </div>
 
       <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-        <h3 className="mb-2 text-xs uppercase tracking-wide text-gray-500">Stages by world</h3>
+        <h3 className="mb-2 text-xs uppercase tracking-wide text-gray-400">Stages by world</h3>
         <ChartKit
           kind="bar"
           data={chartData}
@@ -100,11 +100,11 @@ export function ExpeditionSummary({ data, badges }: { data: SummaryData | null; 
       </div>
 
       <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-        <h3 className="mb-3 flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-500">
+        <h3 className="mb-3 flex items-center gap-1.5 text-xs uppercase tracking-wide text-gray-400">
           <Trophy className="h-3.5 w-3.5 text-amber-400" /> Badge ledger ({badges.length})
         </h3>
         {badges.length === 0 ? (
-          <p className="text-xs text-gray-600">Complete a full expedition to earn your first badge.</p>
+          <p className="text-xs text-gray-400">Complete a full expedition to earn your first badge.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {badges.map((b) => {
@@ -131,9 +131,9 @@ export function ExpeditionSummary({ data, badges }: { data: SummaryData | null; 
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-      <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-gray-400">{label}</p>
       <p className="mt-0.5 text-xl font-semibold text-emerald-200">{value}</p>
-      <p className="text-[10px] text-gray-500">{sub}</p>
+      <p className="text-[10px] text-gray-400">{sub}</p>
     </div>
   );
 }

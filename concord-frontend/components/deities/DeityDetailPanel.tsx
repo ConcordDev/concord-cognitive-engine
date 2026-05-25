@@ -180,7 +180,7 @@ export function DeityDetailPanel({
   };
 
   if (loading) {
-    return <div className="text-sm text-zinc-500 italic py-6">Summoning deity…</div>;
+    return <div className="text-sm text-zinc-400 italic py-6">Summoning deity…</div>;
   }
   if (error && !detail) {
     return (
@@ -213,7 +213,7 @@ export function DeityDetailPanel({
           <button type="button" onClick={onClose} className="mb-1 text-xs text-zinc-400 hover:text-zinc-200">← Pantheon</button>
           <h2 className="text-xl font-bold text-zinc-100">{deity.name}</h2>
           <p className="text-xs text-purple-300">{deity.domainTitle}</p>
-          <p className="mt-0.5 text-[10px] font-mono text-zinc-500">
+          <p className="mt-0.5 text-[10px] font-mono text-zinc-400">
             rev {deity.revision} · {deity.pilgrim_count} pilgrims · by {deity.author_user_id.slice(0, 8)}
           </p>
         </div>
@@ -276,7 +276,7 @@ export function DeityDetailPanel({
             height={180}
             showLegend={false}
           />
-          <p className="mt-2 text-[10px] text-zinc-500">
+          <p className="mt-2 text-[10px] text-zinc-400">
             Commune ≥ {deity.alignmentThresholds.commune.toFixed(2)} · Refuse &lt; {deity.alignmentThresholds.refuse.toFixed(2)}
           </p>
         </section>
@@ -286,13 +286,13 @@ export function DeityDetailPanel({
           <h3 className="mb-2 text-sm font-bold text-zinc-200">My devotion</h3>
           {myDevotion ? (
             <dl className="grid grid-cols-2 gap-2 text-xs">
-              <div><dt className="text-zinc-500">Pilgrimages</dt><dd className="text-lg font-bold text-purple-300">{myDevotion.pilgrimages}</dd></div>
-              <div><dt className="text-zinc-500">Devotion</dt><dd className="text-lg font-bold text-purple-300">{myDevotion.devotionScore.toFixed(1)}</dd></div>
-              <div><dt className="text-zinc-500">Alignment</dt><dd className="text-lg font-bold text-emerald-300">{myDevotion.alignment.toFixed(2)}</dd></div>
-              <div><dt className="text-zinc-500">Communes</dt><dd className="text-lg font-bold text-zinc-200">{myDevotion.communeCount}</dd></div>
+              <div><dt className="text-zinc-400">Pilgrimages</dt><dd className="text-lg font-bold text-purple-300">{myDevotion.pilgrimages}</dd></div>
+              <div><dt className="text-zinc-400">Devotion</dt><dd className="text-lg font-bold text-purple-300">{myDevotion.devotionScore.toFixed(1)}</dd></div>
+              <div><dt className="text-zinc-400">Alignment</dt><dd className="text-lg font-bold text-emerald-300">{myDevotion.alignment.toFixed(2)}</dd></div>
+              <div><dt className="text-zinc-400">Communes</dt><dd className="text-lg font-bold text-zinc-200">{myDevotion.communeCount}</dd></div>
             </dl>
           ) : (
-            <p className="text-xs italic text-zinc-500">No devotion yet — make a pilgrimage or commune.</p>
+            <p className="text-xs italic text-zinc-400">No devotion yet — make a pilgrimage or commune.</p>
           )}
         </section>
       </div>
@@ -344,7 +344,7 @@ export function DeityDetailPanel({
       {blessings && (
         <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <h3 className="mb-2 text-sm font-bold text-zinc-200">Blessings &amp; boons</h3>
-          <p className="mb-3 text-[10px] text-zinc-500">
+          <p className="mb-3 text-[10px] text-zinc-400">
             Devotion {blessings.devotion.score} · Alignment {blessings.devotion.alignment}
           </p>
           <ul className="space-y-2">
@@ -359,7 +359,7 @@ export function DeityDetailPanel({
               >
                 <div>
                   <p className="text-sm font-medium text-zinc-100">{t.label}</p>
-                  <p className="text-[10px] text-zinc-500">
+                  <p className="text-[10px] text-zinc-400">
                     +{t.effect.magnitude} {t.effect.stat} · needs devotion {t.minDevotion} / alignment {t.minAlignment}
                   </p>
                 </div>
@@ -370,7 +370,7 @@ export function DeityDetailPanel({
                     Claim
                   </button>
                 ) : (
-                  <span className="text-[11px] text-zinc-600">Locked</span>
+                  <span className="text-[11px] text-zinc-400">Locked</span>
                 )}
               </li>
             ))}
@@ -385,7 +385,7 @@ export function DeityDetailPanel({
           {rosterEvents.length > 0 ? (
             <TimelineView events={rosterEvents} height={120} />
           ) : (
-            <p className="text-xs italic text-zinc-500">No pilgrims yet.</p>
+            <p className="text-xs italic text-zinc-400">No pilgrims yet.</p>
           )}
         </section>
 
@@ -397,7 +397,7 @@ export function DeityDetailPanel({
               {communeLog.map((u) => (
                 <li key={u.id} className="text-[11px] leading-snug">
                   <span className={`mr-1.5 font-mono ${
-                    u.reception === 'received' ? 'text-emerald-400' : u.reception === 'refused' ? 'text-rose-400' : 'text-zinc-500'
+                    u.reception === 'received' ? 'text-emerald-400' : u.reception === 'refused' ? 'text-rose-400' : 'text-zinc-400'
                   }`}>
                     [{u.intent}]
                   </span>
@@ -406,7 +406,7 @@ export function DeityDetailPanel({
               ))}
             </ul>
           ) : (
-            <p className="text-xs italic text-zinc-500">No communes recorded.</p>
+            <p className="text-xs italic text-zinc-400">No communes recorded.</p>
           )}
         </section>
       </div>

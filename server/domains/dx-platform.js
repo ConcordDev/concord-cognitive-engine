@@ -112,6 +112,7 @@ export default function registerDxPlatformActions(registerLensAction) {
   // ── 1. chat-with-codebase: index files ──────────────────────────────
   // params: { codebaseId, name?, files: [{path, content}] }
   registerLensAction("dx-platform", "indexCodebase", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const files = Array.isArray(params.files) ? params.files : [];
@@ -152,7 +153,8 @@ export default function registerDxPlatformActions(registerLensAction) {
         indexedAt: cb.indexedAt,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("dx-platform", "listCodebases", (ctx) => {
     const userId = actor(ctx);
@@ -177,6 +179,7 @@ export default function registerDxPlatformActions(registerLensAction) {
   // ranks indexed files/lines by token overlap with the question and
   // returns the matching excerpts as the answer's evidence.
   registerLensAction("dx-platform", "chatWithCodebase", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const question = String(params.question || "").trim();
@@ -224,12 +227,14 @@ export default function registerDxPlatformActions(registerLensAction) {
         citations: top,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 2. PR / diff review ─────────────────────────────────────────────
   // params: { codebaseId?, diff } — diff is a unified-diff string.
   // Detectors run over the ADDED (+) lines only.
   registerLensAction("dx-platform", "reviewDiff", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const diff = String(params.diff || "");
@@ -290,7 +295,8 @@ export default function registerDxPlatformActions(registerLensAction) {
         verdict: blocking > 0 ? "changes_requested" : findings.length > 0 ? "advisory" : "clean",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 3. Team dashboard ───────────────────────────────────────────────
   registerLensAction("dx-platform", "createTeam", (ctx, _a, params = {}) => {
@@ -435,6 +441,7 @@ export default function registerDxPlatformActions(registerLensAction) {
 
   // ── 5. Detector configuration ───────────────────────────────────────
   registerLensAction("dx-platform", "getDetectorConfig", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const s = getState();
@@ -457,7 +464,8 @@ export default function registerDxPlatformActions(registerLensAction) {
       ok: true,
       result: { codebaseId, detectors, enabledCount: detectors.filter((d) => d.enabled).length, totalCount: detectors.length },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   registerLensAction("dx-platform", "setDetectorConfig", (ctx, _a, params = {}) => {
     const userId = actor(ctx);
@@ -516,6 +524,7 @@ export default function registerDxPlatformActions(registerLensAction) {
 
   // usageAnalytics — which detectors fire most + fix-acceptance rate.
   registerLensAction("dx-platform", "usageAnalytics", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const s = getState();
@@ -562,12 +571,14 @@ export default function registerDxPlatformActions(registerLensAction) {
         acceptanceTrend,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ── 7. CI integration ───────────────────────────────────────────────
   // generateCiConfig — emit a GitHub Action workflow YAML that runs the
   // detector pass as a pre-merge gate.
   registerLensAction("dx-platform", "generateCiConfig", (ctx, _a, params = {}) => {
+  try {
     const userId = actor(ctx);
     if (!userId) return { ok: false, error: "auth_required" };
     const codebaseId = String(params.codebaseId || "").trim();
@@ -608,7 +619,8 @@ export default function registerDxPlatformActions(registerLensAction) {
         workflowYaml: yaml,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ciGateCheck — turn a reviewDiff-style result into a pre-merge verdict.
   // params: { findings: [{severity}], failOn? }

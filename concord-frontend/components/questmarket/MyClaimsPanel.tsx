@@ -95,11 +95,11 @@ export function MyClaimsPanel({ onChanged }: { onChanged?: () => void }) {
       )}
 
       {loading ? (
-        <div className="flex items-center gap-2 py-6 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 py-6 text-xs text-zinc-400">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading…
         </div>
       ) : claims.length === 0 ? (
-        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-500">
+        <div className="rounded border border-dashed border-zinc-800 py-8 text-center text-xs text-zinc-400">
           No claims yet. Accept a quest from the board to start.
         </div>
       ) : (
@@ -125,7 +125,7 @@ export function MyClaimsPanel({ onChanged }: { onChanged?: () => void }) {
                     </p>
                   )}
                   {c.verdictNote && (
-                    <p className="mt-1 text-[11px] text-zinc-500">Verdict: {c.verdictNote}</p>
+                    <p className="mt-1 text-[11px] text-zinc-400">Verdict: {c.verdictNote}</p>
                   )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">

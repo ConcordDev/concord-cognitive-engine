@@ -12,6 +12,7 @@ export default function registerMetalearningActions(registerLensAction) {
    * params.k — number of nearest neighbors (default 5)
    */
   registerLensAction("metalearning", "strategySelection", (ctx, artifact, params) => {
+  try {
     const taskFeatures = artifact.data?.taskFeatures || {};
     const landmarks = artifact.data?.landmarkTasks || [];
     const k = Math.min(params.k || 5, landmarks.length);
@@ -139,7 +140,8 @@ export default function registerMetalearningActions(registerLensAction) {
         featureNormalization: featureStats,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * transferAnalysis
@@ -149,6 +151,7 @@ export default function registerMetalearningActions(registerLensAction) {
    * artifact.data.targetDomain = { name, concepts: [string], skills: [string], vocabulary: [string] }
    */
   registerLensAction("metalearning", "transferAnalysis", (ctx, artifact, params) => {
+  try {
     const source = artifact.data?.sourceDomain || {};
     const target = artifact.data?.targetDomain || {};
 
@@ -254,7 +257,8 @@ export default function registerMetalearningActions(registerLensAction) {
             : "Limited transfer. Treat target domain as largely new learning.",
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   /**
    * performanceProfile
@@ -264,6 +268,7 @@ export default function registerMetalearningActions(registerLensAction) {
    * params.targetSuccessRate — desired success rate for optimal difficulty (default 0.75)
    */
   registerLensAction("metalearning", "performanceProfile", (ctx, artifact, params) => {
+  try {
     const assessments = artifact.data?.assessments || [];
     if (assessments.length === 0) {
       return { ok: true, result: { message: "No assessment data to profile." } };
@@ -429,7 +434,8 @@ export default function registerMetalearningActions(registerLensAction) {
         categoryScores,
       },
     };
-  });
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 
   // ──────────────────────────────────────────────────────────────────────
   // Learning-science practice substrate (per-user, STATE-backed)

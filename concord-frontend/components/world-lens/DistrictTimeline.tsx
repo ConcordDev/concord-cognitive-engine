@@ -43,7 +43,7 @@ export default function DistrictTimeline({ districtId: _districtId }: DistrictTi
           onChange={e => setSelectedWeek(parseInt(e.target.value))}
           className="w-full h-1.5 accent-cyan-500"
         />
-        <div className="flex justify-between text-[9px] text-gray-600 mt-0.5">
+        <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
           {SEED_SNAPSHOTS.map((s, i) => (
             <span key={i} className={i === selectedWeek ? 'text-cyan-400' : ''}>
               {s.timestamp.slice(5)}
@@ -58,28 +58,28 @@ export default function DistrictTimeline({ districtId: _districtId }: DistrictTi
           <Building2 className="w-3.5 h-3.5 text-cyan-400" />
           <div>
             <p className="text-xs font-bold text-white">{snapshot.buildingCount}</p>
-            <p className="text-[9px] text-gray-500">Buildings</p>
+            <p className="text-[9px] text-gray-400">Buildings</p>
           </div>
         </div>
         <div className="p-2 rounded bg-white/5 flex items-center gap-2">
           <Users className="w-3.5 h-3.5 text-purple-400" />
           <div>
             <p className="text-xs font-bold text-white">{snapshot.populationCapacity.toLocaleString()}</p>
-            <p className="text-[9px] text-gray-500">Pop. Capacity</p>
+            <p className="text-[9px] text-gray-400">Pop. Capacity</p>
           </div>
         </div>
         <div className="p-2 rounded bg-white/5 flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-yellow-400" />
           <div>
             <p className="text-xs font-bold text-white">{snapshot.powerCapacity.toLocaleString()} kW</p>
-            <p className="text-[9px] text-gray-500">Power</p>
+            <p className="text-[9px] text-gray-400">Power</p>
           </div>
         </div>
         <div className="p-2 rounded bg-white/5 flex items-center gap-2">
           <Leaf className="w-3.5 h-3.5 text-green-400" />
           <div>
             <p className="text-xs font-bold text-white">{snapshot.environmentalScore}/100</p>
-            <p className="text-[9px] text-gray-500">Environment</p>
+            <p className="text-[9px] text-gray-400">Environment</p>
           </div>
         </div>
       </div>
@@ -96,12 +96,11 @@ export default function DistrictTimeline({ districtId: _districtId }: DistrictTi
               }`}
               style={{ height: `${Math.max(4, h)}%` }}
               onClick={() => setSelectedWeek(i)}
-              title={`Week ${i + 1}: ${s.populationCapacity} pop`}
-            />
+              title={`Week ${i + 1}: ${s.populationCapacity} pop`} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }} />
           );
         })}
       </div>
-      <p className="text-[9px] text-gray-600 text-center">Population capacity over time</p>
+      <p className="text-[9px] text-gray-400 text-center">Population capacity over time</p>
     </div>
   );
 }

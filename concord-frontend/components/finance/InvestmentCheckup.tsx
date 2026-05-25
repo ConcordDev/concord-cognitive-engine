@@ -50,10 +50,10 @@ export function InvestmentCheckup() {
   }
 
   if (loading) {
-    return <div className="p-6 flex items-center gap-2 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin" /> Running checkup…</div>;
+    return <div className="p-6 flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin" /> Running checkup…</div>;
   }
   if (!data) {
-    return <div className="p-6 text-xs text-gray-500">No investment data. Add holdings via the Portfolio tab.</div>;
+    return <div className="p-6 text-xs text-gray-400">No investment data. Add holdings via the Portfolio tab.</div>;
   }
 
   return (
@@ -61,7 +61,7 @@ export function InvestmentCheckup() {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <Target className="w-4 h-4 text-cyan-400" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Investment checkup</span>
-        <span className="ml-auto text-[10px] text-gray-500">Empower-style</span>
+        <span className="ml-auto text-[10px] text-gray-400">Empower-style</span>
       </header>
 
       <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -72,14 +72,14 @@ export function InvestmentCheckup() {
       </div>
 
       <div className="px-4 py-3 border-t border-white/10">
-        <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Allocation drift</h3>
+        <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Allocation drift</h3>
         <div className="space-y-2">
           {data.allocation.map(a => (
             <div key={a.assetClass}>
               <div className="flex items-center gap-2 text-xs mb-1">
                 <span className="text-white w-24">{a.assetClass}</span>
                 <span className="font-mono tabular-nums text-cyan-300">{a.current.toFixed(1)}%</span>
-                <span className="text-gray-500">→</span>
+                <span className="text-gray-400">→</span>
                 <span className="font-mono tabular-nums text-gray-400">{a.target.toFixed(1)}%</span>
                 <span className="ml-auto inline-flex items-center gap-1 text-[10px]">
                   <span className={cn('px-1.5 py-0.5 rounded font-bold uppercase',
@@ -104,7 +104,7 @@ export function InvestmentCheckup() {
 
       {data.fees.length > 0 && (
         <div className="px-4 py-3 border-t border-white/10">
-          <h3 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Fee benchmarks</h3>
+          <h3 className="text-xs uppercase tracking-wider text-gray-400 mb-2">Fee benchmarks</h3>
           <ul className="space-y-1 text-xs">
             {data.fees.map(f => (
               <li key={f.symbol} className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/[0.03]">
@@ -146,7 +146,7 @@ function ScoreCard({ score }: { score: number }) {
     <div className="p-3 bg-white/[0.02] rounded text-center">
       <Icon className={cn('w-6 h-6 mx-auto mb-1', color)} />
       <div className={cn('text-3xl font-bold tabular-nums', color)}>{Math.round(score)}</div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">Health score</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">Health score</div>
     </div>
   );
 }
@@ -155,7 +155,7 @@ function Stat({ label, value, accent }: { label: string; value: string; accent: 
   return (
     <div className="p-3 bg-white/[0.02] rounded text-center">
       <div className={cn('text-2xl font-bold tabular-nums', accent)}>{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-gray-400">{label}</div>
     </div>
   );
 }

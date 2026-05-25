@@ -114,7 +114,7 @@ export function ProjectStudio() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
       ) : projects.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 text-sm">No projects yet. Create a multi-image case study.</div>
+        <div className="text-center py-12 text-gray-400 text-sm">No projects yet. Create a multi-image case study.</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((p) => (
@@ -127,8 +127,8 @@ export function ProjectStudio() {
                 </div>
                 <div className="p-3">
                   <h3 className="font-medium text-sm truncate">{p.title}</h3>
-                  <div className="text-[11px] text-gray-500 capitalize mt-0.5">{p.discipline}</div>
-                  <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-500">
+                  <div className="text-[11px] text-gray-400 capitalize mt-0.5">{p.discipline}</div>
+                  <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
                     <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.views}</span>
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.appreciations ?? 0}</span>
                     <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{p.commentCount ?? 0}</span>
@@ -137,7 +137,7 @@ export function ProjectStudio() {
                 </div>
               </button>
               <div className="px-3 pb-2">
-                <button onClick={() => remove(p.id)} className="text-[11px] text-gray-500 hover:text-red-400 flex items-center gap-1">
+                <button onClick={() => remove(p.id)} className="text-[11px] text-gray-400 hover:text-red-400 flex items-center gap-1">
                   <Trash2 className="w-3 h-3" /> Delete
                 </button>
               </div>
@@ -148,8 +148,8 @@ export function ProjectStudio() {
 
       {/* Create form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowForm(false)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg p-6 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">New Project Case Study</h3>
               <button onClick={() => setShowForm(false)} aria-label="Close"><X className="w-4 h-4" /></button>
@@ -175,8 +175,8 @@ export function ProjectStudio() {
 
       {/* Detail modal */}
       {openId && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }}>
-          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => { setOpenId(null); setDetail(null); }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
+          <div className="bg-gray-900 border border-white/10 rounded-lg w-full max-w-2xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click(); } }}>
             {!detail ? (
               <div className="flex justify-center py-16"><Loader2 className="w-5 h-5 animate-spin text-neon-pink" /></div>
             ) : (
@@ -190,7 +190,7 @@ export function ProjectStudio() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-bold">{detail.project.title}</h3>
-                      <div className="text-xs text-gray-500 capitalize">{detail.project.discipline}</div>
+                      <div className="text-xs text-gray-400 capitalize">{detail.project.discipline}</div>
                     </div>
                     <button onClick={() => { setOpenId(null); setDetail(null); }} aria-label="Close"><X className="w-4 h-4" /></button>
                   </div>
@@ -212,7 +212,7 @@ export function ProjectStudio() {
                       {detail.project.images.sort((a, b) => a.order - b.order).map((im, i) => (
                         <figure key={i}>
                           <img src={im.url} alt={im.caption || `image ${i + 1}`} className="w-full rounded-lg border border-white/10" />
-                          {im.caption && <figcaption className="text-[11px] text-gray-500 mt-1">{im.caption}</figcaption>}
+                          {im.caption && <figcaption className="text-[11px] text-gray-400 mt-1">{im.caption}</figcaption>}
                         </figure>
                       ))}
                     </div>
@@ -242,7 +242,7 @@ export function ProjectStudio() {
                     <h4 className="text-sm font-semibold flex items-center gap-1.5"><MessageSquare className="w-4 h-4" /> Comments ({detail.comments.length})</h4>
                     {detail.comments.map((c) => (
                       <div key={c.id} className="bg-white/5 border border-white/10 rounded-lg p-2.5">
-                        <div className="text-[11px] text-gray-500">{c.userId} · {new Date(c.createdAt).toLocaleDateString()}</div>
+                        <div className="text-[11px] text-gray-400">{c.userId} · {new Date(c.createdAt).toLocaleDateString()}</div>
                         <p className="text-sm text-gray-300 mt-0.5">{c.body}</p>
                       </div>
                     ))}

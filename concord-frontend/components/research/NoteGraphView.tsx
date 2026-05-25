@@ -164,11 +164,11 @@ export function NoteGraphView({ onOpenNote }: { onOpenNote: (id: string) => void
         style={{ height: 420 }}
       >
         {loading ? (
-          <div className="absolute inset-0 grid place-items-center text-xs text-gray-500">
+          <div className="absolute inset-0 grid place-items-center text-xs text-gray-400">
             <Loader2 className="w-4 h-4 animate-spin" />
           </div>
         ) : nodes.length === 0 ? (
-          <div className="absolute inset-0 grid place-items-center text-xs text-gray-500 text-center px-6">
+          <div className="absolute inset-0 grid place-items-center text-xs text-gray-400 text-center px-6">
             No notes yet. Create notes with [[wikilinks]] to build a graph.
           </div>
         ) : (
@@ -224,7 +224,7 @@ export function NoteGraphView({ onOpenNote }: { onOpenNote: (id: string) => void
           </svg>
         )}
       </div>
-      <p className="text-[10px] text-gray-500">
+      <p className="text-[10px] text-gray-400">
         Node size scales with link count. Click a node to open the note.
       </p>
     </div>

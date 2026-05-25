@@ -52,7 +52,7 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
       <header className="px-4 py-2 border-b border-white/10 flex items-center gap-2">
         <StickyNote className="w-4 h-4 text-amber-300" />
         <span className="text-xs uppercase font-semibold text-gray-300 tracking-wider">Lesson notes{lessonId ? ` · ${lessonId.slice(0, 12)}` : ' (all)'}</span>
-        <span className="ml-auto text-[10px] text-gray-500">{notes.length}</span>
+        <span className="ml-auto text-[10px] text-gray-400">{notes.length}</span>
       </header>
       {lessonId && (
         <div className="p-3 border-b border-white/10 grid grid-cols-5 gap-2">
@@ -65,9 +65,9 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
       )}
       <div className="max-h-80 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6 text-xs text-gray-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
+          <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
         ) : notes.length === 0 ? (
-          <div className="px-3 py-10 text-center text-xs text-gray-500"><StickyNote className="w-6 h-6 mx-auto mb-2 opacity-30" />{lessonId ? 'No notes for this lesson.' : 'Pick a lesson to add notes.'}</div>
+          <div className="px-3 py-10 text-center text-xs text-gray-400"><StickyNote className="w-6 h-6 mx-auto mb-2 opacity-30" />{lessonId ? 'No notes for this lesson.' : 'Pick a lesson to add notes.'}</div>
         ) : (
           <ul className="divide-y divide-white/5">
             {notes.map(n => (
@@ -78,9 +78,9 @@ export function LessonNotes({ lessonId }: { lessonId?: string }) {
                     <div className="text-[10px] text-cyan-300 font-mono inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{fmtTs(n.videoTimestampSec)}</div>
                   )}
                   <div className="text-xs text-gray-100 whitespace-pre-wrap break-words">{n.text}</div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">{new Date(n.createdAt).toLocaleString()}</div>
+                  <div className="text-[10px] text-gray-400 mt-0.5">{new Date(n.createdAt).toLocaleString()}</div>
                 </div>
-                <button onClick={() => remove(n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                <button onClick={() => remove(n.id)} className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </li>
             ))}
           </ul>
