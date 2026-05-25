@@ -10266,6 +10266,9 @@ async function runMacro(domain, name, input, ctx) {
     "/api/world/weather", "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state",
     "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
+    // Added 2026-05-25 — kept in sync with Gate 1 additions for the
+    // WebRTC TURN minter and cross-world crisis banner.
+    "/api/webrtc/ice-servers", "/api/worlds/crises",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
   const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
