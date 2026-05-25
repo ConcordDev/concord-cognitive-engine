@@ -3999,7 +3999,7 @@ export default function ChatLensPage() {
           the 2026-05-25 collision audit. */}
       <button
         onClick={() => setAgentPanelOpen(true)}
-        className="fixed bottom-24 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
+        className="fixed bottom-56 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
         title="Agent Mode — give Concord a task. It will use any of 200+ apps + web + compute to complete it."
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

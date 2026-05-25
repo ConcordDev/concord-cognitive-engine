@@ -1,11 +1,6 @@
 {
   "fresh": [
     {
-      "area": 2240,
-      "a": "BUTTON[Agent Mode] @1285,836 132x40 z=30",
-      "b": "BUTTON[Quick Capture] @1360,820 56x56 z=40"
-    },
-    {
       "area": 442,
       "a": "DIV[Fallback/4] @16,80 115x26 z=40",
       "b": "BUTTON[📖 ] @16,64 34x29 z=9300"
@@ -17,11 +12,6 @@
     }
   ],
   "postOnboarding": [
-    {
-      "area": 2240,
-      "a": "BUTTON[Agent Mode] @1285,836 132x40 z=30",
-      "b": "BUTTON[Quick Capture] @1360,820 56x56 z=40"
-    },
     {
       "area": 442,
       "a": "DIV[Fallback/4] @16,80 115x26 z=40",
@@ -35,11 +25,6 @@
   ],
   "withToast": [
     {
-      "area": 2240,
-      "a": "BUTTON[Agent Mode] @1285,836 132x40 z=30",
-      "b": "BUTTON[Quick Capture] @1360,820 56x56 z=40"
-    },
-    {
       "area": 442,
       "a": "DIV[Fallback/4] @16,80 115x26 z=40",
       "b": "BUTTON[📖 ] @16,64 34x29 z=9300"
@@ -52,11 +37,6 @@
   ],
   "steady": [
     {
-      "area": 2240,
-      "a": "BUTTON[Agent Mode] @1285,836 132x40 z=30",
-      "b": "BUTTON[Quick Capture] @1360,820 56x56 z=40"
-    },
-    {
       "area": 442,
       "a": "DIV[Fallback/4] @16,80 115x26 z=40",
       "b": "BUTTON[📖 ] @16,64 34x29 z=9300"
@@ -68,11 +48,6 @@
     }
   ],
   "maxChrome": [
-    {
-      "area": 2240,
-      "a": "BUTTON[Agent Mode] @1285,836 132x40 z=30",
-      "b": "BUTTON[Quick Capture] @1360,820 56x56 z=40"
-    },
     {
       "area": 442,
       "a": "DIV[Fallback/4] @16,80 115x26 z=40",

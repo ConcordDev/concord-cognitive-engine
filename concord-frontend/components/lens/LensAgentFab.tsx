@@ -34,12 +34,15 @@ interface LensAgentFabProps {
 export default function LensAgentFab({ lensId, lensPrompt, label, position = 'bottom-right' }: LensAgentFabProps) {
   const [open, setOpen] = useState(false);
 
-  // Stack above QuickCapture (which lives at bottom-6 right-6 z-40,
-  // w-14 h-14). bottom-24 = 96px clears QuickCapture's 56px button
-  // + ~24px gap. Without this offset the two FABs visually overlap.
+  // The right-edge FAB stack (bottom → top):
+  //   bottom-6  : QuickCapture (circular, w-14 h-14)
+  //   bottom-24 : DomainAssistant (pill)
+  //   bottom-40 : CrossDomainConnections (pill)
+  //   bottom-56 : Agent Mode (this FAB)
+  // Verified non-overlapping via the 2026-05-25 collision audit.
   const posClass = position === 'bottom-left'
-    ? 'fixed bottom-24 left-6'
-    : 'fixed bottom-24 right-6';
+    ? 'fixed bottom-56 left-6'
+    : 'fixed bottom-56 right-6';
 
   return (
     <>
