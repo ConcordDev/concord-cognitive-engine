@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 
 const CONSENT_KEY = 'concord_cookie_consent';
+// Suppress the cookie banner until the user is past the initial
+// onboarding wizard — otherwise the banner overlaps the modal and
+// competes with the welcome flow. The wizard writes this key when
+// dismissed or completed (see OnboardingWizard.tsx).
+const ONBOARDING_DONE_KEY = 'concord_onboarding_complete';
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -10,7 +15,16 @@ export function CookieConsent() {
   useEffect(() => {
     try {
       const consent = localStorage.getItem(CONSENT_KEY);
-      if (!consent) setVisible(true);
+      if (consent) return;
+      // Defer until onboarding is done. Re-check every 2s; cheap and
+      // means we don't need a global event bus.
+      const check = () => {
+        const onboardingDone = localStorage.getItem(ONBOARDING_DONE_KEY) === 'true';
+        if (onboardingDone) setVisible(true);
+      };
+      check();
+      const id = setInterval(check, 2000);
+      return () => clearInterval(id);
     } catch {
       // SSR or localStorage unavailable
     }
@@ -29,24 +43,27 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-[200] p-4 animate-in slide-in-from-bottom">
-      <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm text-white/80 font-medium">Cookie Notice</p>
-            <p className="text-xs text-white/50 mt-1">
-              Concord uses essential cookies for authentication and session management.
-              We do not use tracking cookies or sell your data. See our{' '}
-              <a href="/legal/privacy" className="text-neon-cyan/70 hover:text-neon-cyan underline">
+    // Bottom-LEFT corner toast. Bottom-right is the home of the
+    // FirstWinWizard (z-40, fixed bottom-4 right-4) so collision-avoid
+    // by sitting on the opposite corner. Doesn't overlap the centered
+    // onboarding modal either, since we defer rendering until the
+    // wizard's completion flag is set.
+    <div className="fixed bottom-4 left-4 z-[200] max-w-sm animate-in slide-in-from-bottom-2">
+      <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-3.5 shadow-2xl">
+        <div className="flex flex-col gap-2.5">
+          <div>
+            <p className="text-sm text-white/90 font-medium">Cookie Notice</p>
+            <p className="text-xs text-white/60 mt-1 leading-relaxed">
+              Concord uses essential cookies for auth + sessions. No tracking, no data sales.{' '}
+              <a href="/legal/privacy" className="text-neon-cyan/80 hover:text-neon-cyan underline underline-offset-2">
                 Privacy Policy
-              </a>{' '}
-              for details.
+              </a>
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 justify-end">
             <button
               onClick={reject}
-              className="px-3 py-1.5 text-xs text-white/50 hover:text-white/80 border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+              className="px-3 py-1.5 text-xs text-white/60 hover:text-white/90 border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
             >
               Reject
             </button>

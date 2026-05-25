@@ -45,7 +45,7 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'chat',
     title: 'Chat — Think Out Loud',
-    description: 'AI conversations with 6 modes: overview, deep analysis, creative, code, research, and CRETI. Every conversation becomes a DTU in your knowledge graph.',
+    description: 'AI conversations across six reasoning modes. Every exchange becomes a citable thought in your knowledge graph.',
     icon: MessageSquare,
     color: 'neon-cyan',
     action: 'openChat',
@@ -72,7 +72,7 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'code',
     title: 'Code — Build and Ship',
-    description: 'Full code editor with MIDI scripting, debugging tools, database explorer, and repository browser. Write, run, and iterate.',
+    description: 'A real editor with live debugging, database browser, and repo integration. Multiplayer-ready when you want to pair.',
     icon: Code,
     color: 'neon-blue',
     action: 'openCode',
@@ -325,6 +325,9 @@ export function useOnboarding() {
         if (cancelled) return;
         if (json?.completed) {
           localStorage.setItem('concord-onboarding-completed', 'true');
+        // Mirror to the cookie-banner trigger key so CookieConsent can
+        // surface after the wizard, not over it.
+        localStorage.setItem('concord_onboarding_complete', 'true');
           setHasCompleted(true);
           setIsOpen(false);
         }
@@ -336,6 +339,9 @@ export function useOnboarding() {
 
   const complete = () => {
     localStorage.setItem('concord-onboarding-completed', 'true');
+    // Mirror to the cookie-banner trigger key so CookieConsent can
+    // surface after the wizard, not over it.
+    localStorage.setItem('concord_onboarding_complete', 'true');
     setHasCompleted(true);
     setIsOpen(false);
     // Best-effort server sync — survives logout/login/cache-clear.
@@ -355,7 +361,14 @@ export function useOnboarding() {
     isOpen,
     hasCompleted,
     open: () => setIsOpen(true),
-    close: () => setIsOpen(false),
+    close: () => {
+      // Mark onboarding "done" even on skip so the cookie banner
+      // surfaces afterward — the user has seen the wizard, even if
+      // they didn't read every step. Doesn't set the server-synced
+      // completion key so the wizard can re-open from another device.
+      try { localStorage.setItem('concord_onboarding_complete', 'true'); } catch { /* ignore */ }
+      setIsOpen(false);
+    },
     complete,
     reset
   };
