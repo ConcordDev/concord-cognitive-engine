@@ -11,7 +11,7 @@
  * - Quick actions
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import {
@@ -68,7 +68,20 @@ interface EventItem {
 }
 
 function SystemGuidePanel() {
-  const [collapsed, setCollapsed] = useState(false);
+  // Default-collapsed so the panel doesn't compete for attention on
+  // first load. Lives as a small lightbulb in the top-right; one click
+  // expands. Persists across reloads via localStorage so power users
+  // who expand it stay expanded.
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = window.localStorage.getItem('concord:guide-panel:collapsed');
+    return saved === null ? true : saved === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('concord:guide-panel:collapsed', collapsed ? '1' : '0');
+    }
+  }, [collapsed]);
 
   const { data: health } = useQuery<HealthData>({
     queryKey: ['system-health'],

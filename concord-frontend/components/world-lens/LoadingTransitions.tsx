@@ -296,6 +296,28 @@ export default function LoadingTransitions({
     () => Math.floor(Math.random() * tips.length),
   );
 
+  // Determinate-feeling fallback animation. When the caller passes a
+  // real progress value (>0), we use it directly. When they pass 0
+  // (e.g. the world lens hard-codes `progress={0}` because nothing
+  // hooks the asset loader), we ease from 0 → 0.85 over 6 seconds and
+  // hold so users see motion instead of a frozen bar. The 0.85 cap
+  // means "still working, not done" — when real progress arrives or
+  // the screen unmounts (world ready) the bar can leap to 100%.
+  const [autoProgress, setAutoProgress] = useState(0);
+  useEffect(() => {
+    if (progress > 0) return;
+    const start = Date.now();
+    const id = setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / 6000);
+      // Ease-out cubic so the early growth is fast and it crawls near
+      // the cap — matches the "loading" perceptual model.
+      const eased = 1 - Math.pow(1 - t, 3);
+      setAutoProgress(eased * 0.85);
+    }, 100);
+    return () => clearInterval(id);
+  }, [progress]);
+  const effectiveProgress = progress > 0 ? progress : autoProgress;
+
   // Rotate tips every 4 seconds (polish-pass cadence)
   useEffect(() => {
     const interval = setInterval(() => {
@@ -374,11 +396,11 @@ export default function LoadingTransitions({
         {transition === 'portal' && <PortalArchway destination={destination} />}
 
         {/* Fast travel map */}
-        {transition === 'fast-travel' && <FastTravelMap progress={progress} />}
+        {transition === 'fast-travel' && <FastTravelMap progress={effectiveProgress} />}
 
         {/* Assembly progress */}
         {transition === 'assembly' && (
-          <AssemblyProgress phase={phase} progress={progress} />
+          <AssemblyProgress phase={phase} progress={effectiveProgress} />
         )}
 
         {/* General progress bar (for district and portal transitions) */}
@@ -387,12 +409,12 @@ export default function LoadingTransitions({
             <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-300"
-                style={{ width: `${progress * 100}%` }}
+                style={{ width: `${effectiveProgress * 100}%` }}
               />
             </div>
             <div className="flex justify-between mt-1 text-[9px] text-gray-400">
               <span>Loading</span>
-              <span>{Math.round(progress * 100)}%</span>
+              <span>{Math.round(effectiveProgress * 100)}%</span>
             </div>
           </div>
         )}

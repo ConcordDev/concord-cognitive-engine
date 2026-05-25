@@ -677,11 +677,12 @@ const SubLensTreeSection = memo(function SubLensTreeSection({
   }
 
   if (error || !tree || tree.length === 0) {
-    return (
-      <div className="px-3 py-2 text-xs text-gray-400 italic">
-        Sub-lens tree unavailable
-      </div>
-    );
+    // Silently render nothing instead of leaking "unavailable" — anon
+    // visitors and transient API errors trip this branch and the
+    // implementation-detail message reads as "broken" even when it's
+    // just an empty/loading state. The user can still expand again
+    // later; the sidebar toggle remains visible regardless.
+    return null;
   }
 
   return (
