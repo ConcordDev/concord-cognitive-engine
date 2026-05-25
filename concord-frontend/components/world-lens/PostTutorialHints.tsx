@@ -21,7 +21,7 @@ interface Hint {
 const HINTS: Hint[] = [
   { id: 'marketplace',  title: 'Visit the bazaar',          body: 'Top-tier DTUs are listed as vendor stalls in the Exchange district. Click a stall to inspect.' },
   { id: 'party',        title: 'Form a party',              body: 'Press the Players button. Cooperative build sites, shared stash, and cross-world raids unlock when you party up.' },
-  { id: 'lens',         title: 'Try a lens',                body: 'Beyond Concordia there are 175 specialized lenses — agriculture, council, music studio. Each runs its own backend macros.' },
+  { id: 'lens',         title: 'Try a lens',                body: 'Beyond Concordia there are 236 specialized lenses — agriculture, council, music studio. Each runs its own backend macros.' },
   { id: 'council',      title: 'Watch the council',         body: 'Every 30 min the Council Live Theater streams a deliberation. Voices speak one at a time.' },
   { id: 'fork',         title: 'Fork a DTU',                body: 'Cite an existing DTU when authoring your own. Original creators get 95% of any future earnings on your derivative.' },
   { id: 'federation',   title: 'Peer with another node',    body: 'Open the Federation lens and probe a peer URL. Cross-instance search fans your queries across all peers.' },

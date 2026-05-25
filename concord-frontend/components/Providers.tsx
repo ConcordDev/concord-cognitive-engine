@@ -90,7 +90,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         MotionConfig with reducedMotion="user" — framer-motion respects
         the OS-level prefers-reduced-motion media query for every motion
         component nested below. Users with the pref set get instant
-        transitions instead of animations across all 175 lenses + the
+        transitions instead of animations across all 236 lenses + the
         utility pages. Without this, every framer-motion call site
         (~100s of them across the codebase) would need its own
         useReducedMotion guard.

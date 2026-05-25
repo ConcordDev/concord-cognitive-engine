@@ -105,7 +105,7 @@ export function LandingPage(_props: LandingPageProps) {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20">
-          <Stat value="175" label="Domain Lenses" />
+          <Stat value="236" label="Domain Lenses" />
           <Stat value="110+" label="Neural Organs" />
           <Stat value="70%" label="Sovereignty Lock" />
           <Stat value="100%" label="Local Control" />
@@ -132,7 +132,7 @@ export function LandingPage(_props: LandingPageProps) {
             />
             <FeatureCard
               icon={<Network className="w-6 h-6" />}
-              title="175 Domain Lenses"
+              title="236 Domain Lenses"
               description="View your knowledge through different perspectives: healthcare, education, legal, trades, creative arts, science, AI, finance, and 160+ more specialized lenses."
               color="blue"
             />

@@ -40,6 +40,44 @@ export function Sidebar() {
   const [showExtensions, setShowExtensions] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => new Set());
+  // Progressive disclosure — Sub-Lenses + Systems are collapsed by default
+  // so a first-time visitor sees only Dashboard + Workspaces + Lens Hub. The
+  // dense substrate surfaces are one click away but don't compete for
+  // attention during onboarding. Persisted to localStorage once the user
+  // opens them so they stay open on return visits.
+  const [showSubLenses, setShowSubLenses] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('concord:sidebar:sub-lenses') === '1';
+  });
+  const [showSystems, setShowSystems] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('concord:sidebar:systems') === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('concord:sidebar:sub-lenses', showSubLenses ? '1' : '0');
+    }
+  }, [showSubLenses]);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('concord:sidebar:systems', showSystems ? '1' : '0');
+    }
+  }, [showSystems]);
+  // Auto-open the relevant section when the user is already on a
+  // sub-lens or systems route — otherwise the active link is hidden,
+  // which is more confusing than the noise we're avoiding.
+  useEffect(() => {
+    if (!pathname) return;
+    const isSystemRoute = ['/global', '/profile', '/hypothesis-lab', '/research', '/council', '/agents', '/cri', '/ingest']
+      .some(p => pathname.startsWith(p));
+    if (isSystemRoute) setShowSystems(true);
+    if (pathname.startsWith('/lenses/')) {
+      // Only flip the Sub-Lenses section open for non-core lenses (the
+      // core 5 already render in their own section above).
+      const core = ['/lenses/chat', '/lenses/board', '/lenses/graph', '/lenses/code', '/lenses/studio'];
+      if (!core.some(p => pathname.startsWith(p))) setShowSubLenses(true);
+    }
+  }, [pathname]);
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -189,13 +227,20 @@ export function Sidebar() {
             ))}
           </div>
 
-          {/* Sub-Lens Tree — 234 sub-lenses under 15 roots */}
+          {/* Sub-Lens Tree — 234 sub-lenses under 15 roots.
+              Collapsed by default so first-time visitors aren't faced
+              with the full substrate surface in their first 30 seconds. */}
           {showLabel && (
             <>
-              <p className="px-3 py-1 text-xs uppercase tracking-widest text-gray-400 font-medium mb-1">
-                Sub-Lenses
-              </p>
-              <SubLensTreeSection pathname={pathname} />
+              <button
+                onClick={() => setShowSubLenses(v => !v)}
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs uppercase tracking-wider text-gray-400 hover:text-gray-300 transition-colors mb-1"
+                aria-expanded={showSubLenses}
+              >
+                <span>Sub-Lenses</span>
+                <ChevronDown className={cn('w-3 h-3 ml-auto transition-transform', showSubLenses && 'rotate-180')} />
+              </button>
+              {showSubLenses && <SubLensTreeSection pathname={pathname} />}
             </>
           )}
 
@@ -219,13 +264,21 @@ export function Sidebar() {
             </Link>
           </div>
 
-          {/* System Pages */}
+          {/* System Pages — collapsed by default. New users meet these
+              piecemeal as their workflow demands; Hypothesis Lab / CRI /
+              Ingest etc. are advanced surfaces that overwhelm an
+              uninitiated visitor when shown all at once. */}
           {showLabel && (
-            <p className="px-3 py-1 text-xs uppercase tracking-widest text-gray-400 font-medium mb-1">
-              Systems
-            </p>
+            <button
+              onClick={() => setShowSystems(v => !v)}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs uppercase tracking-wider text-gray-400 hover:text-gray-300 transition-colors mb-1"
+              aria-expanded={showSystems}
+            >
+              <span>Systems</span>
+              <ChevronDown className={cn('w-3 h-3 ml-auto transition-transform', showSystems && 'rotate-180')} />
+            </button>
           )}
-          <div className="space-y-0.5 mb-4">
+          <div className={cn('space-y-0.5 mb-4', showLabel && !showSystems && 'hidden')}>
             {[
               { href: '/global', label: 'Global Library', Icon: Globe },
               { href: '/profile', label: 'Profile', Icon: Brain },
