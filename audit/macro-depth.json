@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-05-24T17:49:43.044Z",
-  "head": "666d28dfd79c9a4865a841ac010095a32094d918",
+  "generatedAt": "2026-05-25T01:01:09.875Z",
+  "head": "b9894eee5ae5e448d35f0a576db9f2c937d2d0d1",
   "totals": {
     "stub": 0,
     "functional": 0,
-    "utility": 4572,
-    "production-grade": 3870
+    "utility": 4573,
+    "production-grade": 3872
   },
-  "total": 8442,
+  "total": 8445,
   "weightedScore": 1,
   "tierWeights": {
     "stub": 0.2,
@@ -432,9 +432,9 @@
     "collab": {
       "stub": 0,
       "functional": 0,
-      "utility": 19,
-      "production-grade": 13,
-      "total": 32
+      "utility": 20,
+      "production-grade": 15,
+      "total": 35
     },
     "combat_polish": {
       "stub": 0,
@@ -28586,6 +28586,60 @@
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "collab",
+      "macro": "docCrdtRestore",
+      "file": "server/domains/collab.js",
+      "tier": "production-grade",
+      "handlerLoc": 47,
+      "combinedLoc": 61,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": true,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "collab",
+      "macro": "docCrdtSnapshot",
+      "file": "server/domains/collab.js",
+      "tier": "production-grade",
+      "handlerLoc": 40,
+      "combinedLoc": 70,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": true,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "collab",
+      "macro": "docCrdtSnapshotList",
+      "file": "server/domains/collab.js",
+      "tier": "utility",
+      "handlerLoc": 16,
+      "combinedLoc": 29,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
