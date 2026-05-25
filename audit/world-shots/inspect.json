@@ -1,0 +1,51 @@
+{
+  "title": "Concord OS — Sovereign Cognitive Engine",
+  "url": "http://127.0.0.1:3000/lenses/world",
+  "canvasCount": 7,
+  "canvases": [
+    {
+      "width": 888,
+      "height": 227,
+      "displayed": true,
+      "contextType": "webgl2"
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "displayed": true,
+      "contextType": "2d"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "displayed": true,
+      "contextType": "webgl2"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "displayed": true,
+      "contextType": "webgl2"
+    },
+    {
+      "width": 80,
+      "height": 48,
+      "displayed": true,
+      "contextType": "2d"
+    },
+    {
+      "width": 80,
+      "height": 48,
+      "displayed": false,
+      "contextType": "2d"
+    },
+    {
+      "width": 80,
+      "height": 48,
+      "displayed": false,
+      "contextType": "2d"
+    }
+  ],
+  "hudVisible": false,
+  "bodySample": "Skip to main content | 🧠 | Concord | Dashboard | WORKSPACES | Chat | Board | Graph | Code | Studio | SUB-LENSES | Math | 14 | Physics | 15 | Chem | 11 | Healthcare | 18 | Code | 26 | Bio | 12 | Music | 18 | Art | 15 | Linguistics | 18 | Engineering | 12 | Philosophy | 17 | Legal | 15 | Finance | 12 | History | 15 | Sports | 16 | Lens Hub | SYSTEMS | EXTENSIONS | Concord OS v5.0 | 70% Sovereign | World Lens | Search... | K | Online | 0.00 | 🌙 | Dark | ☰ | New Conversation | 1 issue | 0 | DTUs | Ask about World Lens | Export | Live | World Lens | Disconnected | Design, validate, and publish DTU-based creations in"
+}
