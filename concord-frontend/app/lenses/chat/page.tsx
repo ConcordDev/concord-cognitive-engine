@@ -3993,12 +3993,13 @@ export default function ChatLensPage() {
           />
         </div>
       )}
-      {/* Sprint 11B — Agent Mode floating action button (bottom-right) +
-          slide-over panel + initiative bell. All three are self-contained;
-          they don't touch existing chat state. */}
+      {/* Sprint 11B — Agent Mode floating action button. Stacked
+          above the globally-mounted QuickCapture FAB (bottom-6 right-6
+          z-40 w-14 h-14) so they don't visually overlap. Verified via
+          the 2026-05-25 collision audit. */}
       <button
         onClick={() => setAgentPanelOpen(true)}
-        className="fixed bottom-6 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
+        className="fixed bottom-24 right-6 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-400 text-amber-50 shadow-2xl ring-2 ring-amber-700/30 text-sm font-medium"
         title="Agent Mode — give Concord a task. It will use any of 200+ apps + web + compute to complete it."
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

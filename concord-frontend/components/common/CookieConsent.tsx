@@ -43,12 +43,12 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    // Bottom-LEFT corner toast. Bottom-right is the home of the
-    // FirstWinWizard (z-40, fixed bottom-4 right-4) so collision-avoid
-    // by sitting on the opposite corner. Doesn't overlap the centered
-    // onboarding modal either, since we defer rendering until the
-    // wizard's completion flag is set.
-    <div className="fixed bottom-4 left-4 z-[200] max-w-sm animate-in slide-in-from-bottom-2">
+    // Bottom-center toast. Bottom-right is the home of the
+    // FirstWinWizard + toast queue; bottom-left is INSIDE the 256px
+    // sidebar (verified via the collision audit). Center-bottom keeps
+    // the banner clear of both. Defer rendering until onboarding is
+    // dismissed so it doesn't overlap the centered welcome modal.
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] max-w-md animate-in slide-in-from-bottom-2">
       <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-3.5 shadow-2xl">
         <div className="flex flex-col gap-2.5">
           <div>
