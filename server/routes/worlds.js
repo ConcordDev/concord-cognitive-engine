@@ -108,6 +108,31 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // ─── Crisis surface — hoisted ABOVE /:id catch-all so /crises isn't
+  //     captured as a world id. Backs `CrisisBanner.tsx` which polls
+  //     every ~10s for active world_crises rows. Frontend response
+  //     shape: { crises: [{ id, type, description, originWorldId, endsAt }] }.
+  router.get("/crises", async (req, res) => {
+    try {
+      const { getActiveCrises } = await import("../lib/world-crisis.js");
+      const list = getActiveCrises(db);
+      res.json({ ok: true, crises: list || [] });
+    } catch (e) { serverError(res, e); }
+  });
+  router.post("/crises/:id/respond", requireAuth, async (req, res) => {
+    try {
+      const { resolveCrisis } = await import("../lib/world-crisis.js");
+      const result = await resolveCrisis(db, req.params.id, {
+        resolvedBy: req.user.id,
+        outcome: req.body?.outcome || "Resolved by player intervention.",
+      }, () => {});
+      try {
+        req.app?.locals?.io?.emit('world:crisis-resolved', { id: req.params.id, resolvedBy: req.user.id });
+      } catch { /* best-effort */ }
+      res.json({ ok: true, ...(result || {}) });
+    } catch (e) { serverError(res, e); }
+  });
+
   // GET /api/worlds/:id — single world detail
   router.get("/:id", (req, res) => {
     try {
@@ -448,26 +473,9 @@ export default function createWorldsRouter({ requireAuth, db }) {
     } catch (e) { serverError(res, e); }
   });
 
-  // GET /api/worlds/crises — active civilization crises
-  router.get("/crises", async (req, res) => {
-    try {
-      const { getActiveCrises } = await import("../lib/world-crisis.js");
-      res.json({ crises: getActiveCrises(db) });
-    } catch (e) { serverError(res, e); }
-  });
-
-  // POST /api/worlds/crises/:id/respond — player contributes to crisis resolution
-  router.post("/crises/:id/respond", requireAuth, async (req, res) => {
-    try {
-      const { resolveCrisis } = await import("../lib/world-crisis.js");
-      // For now: any response contributes to resolution
-      const result = await resolveCrisis(db, req.params.id, {
-        resolvedBy: req.user.id,
-        outcome: req.body.outcome || "Resolved by player intervention.",
-      }, () => {});
-      res.json(result);
-    } catch (e) { serverError(res, e); }
-  });
+  // /crises routes hoisted above the /:id catch-all (line ~112).
+  // The duplicate that used to live here was removed in the 2026-05-25
+  // smoke pass after it was found to be shadowed by /:id.
 
   // POST /api/worlds/loot/:nodeId — claim a loot node
   router.post("/loot/:nodeId/claim", requireAuth, (req, res) => {
@@ -500,54 +508,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
   });
 
   // ─── Crisis surface (cross-world, no :worldId scope) ──────────────────
-  // GET /api/worlds/crises — list active crises (across all worlds).
-  // Backs `concord-frontend/components/concordia/world/CrisisBanner.tsx`
-  // which polls every ~10s and renders pinned banners with a countdown
-  // and a "Respond" CTA. The world_crises table is seeded by the
-  // nemesis/crises substrate (migration 046); routes were missing.
-  router.get("/crises", (req, res) => {
-    try {
-      const rows = db.prepare(`
-        SELECT id, type, description, origin_world_id, started_at, ends_at, status, outcome
-        FROM world_crises
-        WHERE status = 'active' AND (ends_at IS NULL OR ends_at > ?)
-        ORDER BY started_at DESC
-        LIMIT 20
-      `).all(Date.now());
-      const crises = rows.map(r => ({
-        id: r.id,
-        type: r.type,
-        description: r.description,
-        originWorldId: r.origin_world_id,
-        startedAt: r.started_at,
-        endsAt: r.ends_at,
-        status: r.status,
-      }));
-      res.json({ ok: true, crises });
-    } catch (e) { serverError(res, e); }
-  });
-
-  // POST /api/worlds/crises/:id/respond — record a player response and
-  // resolve the crisis. Body: { outcome: string } describing how the
-  // community responded. Auth required so we can attribute the resolver.
-  router.post("/crises/:id/respond", requireAuth, (req, res) => {
-    try {
-      const id = String(req.params.id || '');
-      const outcome = String(req.body?.outcome || '').slice(0, 500);
-      const existing = db.prepare("SELECT id, status FROM world_crises WHERE id = ?").get(id);
-      if (!existing) return res.status(404).json({ ok: false, error: 'crisis not found' });
-      if (existing.status !== 'active') return res.json({ ok: true, alreadyResolved: true });
-      db.prepare(`
-        UPDATE world_crises SET status = 'resolved', resolved_by = ?, outcome = ?
-        WHERE id = ?
-      `).run(req.user.id, outcome, id);
-      // Realtime broadcast so other clients hide the banner immediately.
-      try {
-        req.app?.locals?.io?.emit('world:crisis-resolved', { id, resolvedBy: req.user.id, outcome });
-      } catch { /* best-effort */ }
-      res.json({ ok: true, id, status: 'resolved' });
-    } catch (e) { serverError(res, e); }
-  });
+  // The pre-existing /crises routes live below; the smoke-test caught a
+  // duplicate I added earlier. Removed 2026-05-25 dev-sweep.
 
   // GET /api/worlds/:worldId/difficulty — player's effective resistance curve
   router.get("/:worldId/difficulty", requireAuth, async (req, res) => {

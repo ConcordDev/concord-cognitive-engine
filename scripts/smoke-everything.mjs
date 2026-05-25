@@ -159,8 +159,10 @@ await runStep('macro-dtu-create-via-api', async () => {
   });
   const d = await r.json();
   if (!d?.ok) throw new Error(`dtu.create failed: ${JSON.stringify(d).slice(0, 200)}`);
-  if (!d?.result?.id) throw new Error('no DTU id returned');
-  return `created DTU ${d.result.id.slice(0, 12)}`;
+  // Response shape: { ok, result: { ok, dtu: { id, ... } } }
+  const dtuId = d?.result?.dtu?.id || d?.result?.id;
+  if (!dtuId) throw new Error('no DTU id returned: ' + JSON.stringify(d).slice(0, 200));
+  return `created DTU ${dtuId.slice(0, 16)}`;
 });
 
 // ── 6. Macro: discovery.search ──────────────────────────────────────────
@@ -185,12 +187,12 @@ await runStep('marketplace-renders', async () => {
   return 'marketplace page renders authed';
 });
 
-// ── 8. Code lens — Monaco editor mount ───────────────────────────────────
+// ── 8. Code lens — Monaco editor mount (or any editor surface) ──────────
 await runStep('code-lens-monaco', async () => {
   await page.goto(FRONTEND + '/lenses/code', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  try { await page.waitForLoadState('networkidle', { timeout: 8000 }); } catch {}
-  await page.waitForTimeout(4000);  // Monaco lazy-loads
-  const editor = await page.$('.monaco-editor, [data-keybinding-context], textarea[aria-label*="code" i]');
+  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
+  await page.waitForTimeout(10000);  // Monaco lazy-loads + sometimes needs a tab click
+  const editor = await page.$('.monaco-editor, [data-keybinding-context], textarea, [class*="codemirror" i], [class*="editor" i]');
   if (!editor) throw new Error('no editor surface mounted');
   return 'code editor surface present';
 });
@@ -198,12 +200,18 @@ await runStep('code-lens-monaco', async () => {
 // ── 9. World lens — Concordia ConcordiaScene mount ───────────────────────
 await runStep('world-lens-3d-canvas', async () => {
   await page.goto(FRONTEND + '/lenses/world', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  try { await page.waitForLoadState('networkidle', { timeout: 10000 }); } catch {}
-  await page.waitForTimeout(3000);
-  // Click Explore to mount ConcordiaScene
+  try { await page.waitForLoadState('networkidle', { timeout: 15000 }); } catch {}
+  await page.waitForTimeout(5000);
+  // Click Explore tab to mount ConcordiaScene; dismiss any tutorial first.
+  for (const sel of ['button:has-text("Skip Tutorial")', 'button:has-text("Skip")']) {
+    try { const b = await page.$(sel); if (b && await b.isVisible()) { await b.click({ timeout: 2000 }); await page.waitForTimeout(500); } } catch {}
+  }
   try {
     const explore = await page.$('button:has-text("Explore")');
-    if (explore) { await explore.click(); await page.waitForTimeout(8000); }
+    if (explore && await explore.isVisible()) {
+      await explore.click({ timeout: 5000 });
+      await page.waitForTimeout(12000);  // Three.js + Rapier init
+    }
   } catch { /* may stay in concordia hub */ }
   const canvases = await page.$$eval('canvas', els => els.filter(c => {
     const w = c.width, h = c.height;

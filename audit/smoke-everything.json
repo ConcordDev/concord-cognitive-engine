@@ -1,0 +1,190 @@
+{
+  "generatedAt": "2026-05-25T23:48:36.894Z",
+  "totalSteps": 18,
+  "passed": 16,
+  "failed": 2,
+  "totalConsoleErrors": 24,
+  "totalNetworkErrors": 28,
+  "results": [
+    {
+      "step": "auth-landing-authed",
+      "outcome": "pass",
+      "detail": "authed shell rendered",
+      "durationMs": 11844,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "sidebar-toggle-sublens",
+      "outcome": "fail",
+      "detail": "elementHandle.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n",
+      "durationMs": 30093,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "chat-send-message",
+      "outcome": "pass",
+      "detail": "user message rendered (LLM reply not asserted; no Ollama in dev container)",
+      "durationMs": 9719,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "global-library-renders",
+      "outcome": "pass",
+      "detail": "heading: \"Global\"",
+      "durationMs": 5395,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Server error: {error: Internal server error}",
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "macro-dtu-create-via-api",
+      "outcome": "pass",
+      "detail": "created DTU dtu_c3791205772d",
+      "durationMs": 98,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "macro-discovery-search",
+      "outcome": "pass",
+      "detail": "returned 0 results",
+      "durationMs": 82,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "marketplace-renders",
+      "outcome": "pass",
+      "detail": "marketplace page renders authed",
+      "durationMs": 10068,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+        "Server error: {error: Internal server error}"
+      ],
+      "networkErrors": [
+        "GET http://127.0.0.1:3000/api/ct/search?q=&lensId=global — net::ERR_ABORTED"
+      ]
+    },
+    {
+      "step": "code-lens-monaco",
+      "outcome": "pass",
+      "detail": "code editor surface present",
+      "durationMs": 14071,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "networkErrors": [
+        "GET http://127.0.0.1:3000/api/lens-actions/marketplace — net::ERR_ABORTED",
+        "POST http://127.0.0.1:3000/api/lens/run — net::ERR_ABORTED",
+        "POST http://127.0.0.1:3000/api/lens/run — net::ERR_ABORTED"
+      ]
+    },
+    {
+      "step": "world-lens-3d-canvas",
+      "outcome": "fail",
+      "detail": "no WebGL canvas mounted in world lens",
+      "durationMs": 17105,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Failed to load resource: the server responded with a status of 503 ()",
+        "Failed to load resource: the server responded with a status of 503 ()"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "studio-lens-renders",
+      "outcome": "pass",
+      "detail": "studio renders",
+      "durationMs": 7923,
+      "consoleErrors": [],
+      "networkErrors": [
+        "GET http://127.0.0.1:3000/api/brain/health — net::ERR_ABORTED",
+        "GET http://127.0.0.1:3000/api/worlds/district-demo-001/loot-bags — net::ERR_ABORTED",
+        "GET http://127.0.0.1:3000/api/tutorial/first-cycle — net::ERR_ABORTED"
+      ]
+    },
+    {
+      "step": "macro-accounting-trial-balance",
+      "outcome": "pass",
+      "detail": "accounting.trial-balance returned ok",
+      "durationMs": 79,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "macro-healthcare-telehealth-list",
+      "outcome": "pass",
+      "detail": "telehealth-list ok",
+      "durationMs": 72,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "federation-status",
+      "outcome": "pass",
+      "detail": "concord-link renders",
+      "durationMs": 5918,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "settings-page",
+      "outcome": "pass",
+      "detail": "settings renders",
+      "durationMs": 6037,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "profile-page",
+      "outcome": "pass",
+      "detail": "profile renders",
+      "durationMs": 6174,
+      "consoleErrors": [
+        "Query data cannot be undefined. Please make sure to return a value other than undefined from your query function. Affected query key: [\"my-social-profile\"]"
+      ],
+      "networkErrors": []
+    },
+    {
+      "step": "webrtc-ice-servers-route",
+      "outcome": "pass",
+      "detail": "source=stun-only, 2 servers",
+      "durationMs": 132,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "worlds-crises-route",
+      "outcome": "pass",
+      "detail": "ok, 0 active crises",
+      "durationMs": 132,
+      "consoleErrors": [],
+      "networkErrors": []
+    },
+    {
+      "step": "system-health",
+      "outcome": "pass",
+      "detail": "health=unknown",
+      "durationMs": 306,
+      "consoleErrors": [],
+      "networkErrors": []
+    }
+  ]
+}
