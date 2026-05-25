@@ -61,11 +61,14 @@ function CrisisItem({ crisis, onDismiss }: { crisis: Crisis; onDismiss: () => vo
 export function CrisisBanner() {
   const [crises, setCrises] = useState<Crisis[]>([]);
 
-  // Load active crises on mount
+  // Load active crises on mount. Hard-guard against 404/5xx — older
+  // boots without the /api/worlds/crises route registered would 404
+  // here and the .json() throw would swallow silently but still pile
+  // up issues in the dev-server log. Skip parsing on non-2xx.
   useEffect(() => {
     fetch('/api/worlds/crises')
-      .then(r => r.json())
-      .then(d => setCrises(d.crises || []))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCrises(d.crises || []); })
       .catch(() => {});
   }, []);
 

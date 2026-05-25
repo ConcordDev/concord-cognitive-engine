@@ -5632,6 +5632,8 @@ function authMiddleware(req, res, next) {
     "/api/chat", "/api/ask", "/api/forge",
     // WebRTC ICE-server config — short-lived TURN creds minted per request.
     "/api/webrtc/ice-servers",
+    // Cross-world crisis banner — polled by the world lens, no PII.
+    "/api/worlds/crises",
     // Atlas & Signal Cortex
     "/api/atlas",
     "/api/atlas/signals", "/api/atlas/privacy",
@@ -9186,8 +9188,10 @@ async function tryLoadSeedDTUs() {
           if (!fs.existsSync(packPath)) { errors++; continue; }
           const content = fs.readFileSync(packPath, "utf-8");
           const hash = crypto.createHash("sha256").update(content).digest("hex");
-          if (hash !== pack.sha256) {
-            console.warn(`[Seed-Pack] Hash mismatch: ${pack.file} (expected ${pack.sha256.slice(0,12)}, got ${hash.slice(0,12)})`);
+          // pack.sha256 may be missing on legacy manifest entries — treat
+          // absence as "skip hash check" rather than throwing on `.slice`.
+          if (typeof pack.sha256 === "string" && hash !== pack.sha256) {
+            console.warn(`[Seed-Pack] Hash mismatch: ${pack.file} (expected ${(pack.sha256 || "").slice(0,12)}, got ${(hash || "").slice(0,12)})`);
             errors++;
             continue;
           }
