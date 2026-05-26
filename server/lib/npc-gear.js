@@ -7,6 +7,7 @@
 
 import crypto from 'crypto';
 import logger from '../logger.js';
+import { WEAPON_CLASS_INFO, inferWeaponClass } from './combat/loadout.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,149 @@ const ARCHETYPE_SLOTS = {
   default:    ['weapon'],
 };
 
+// ── Archetype → preferred weapon classes ───────────────────────────────────
+//
+// Each archetype declares a ranked list of weapon_class values (from
+// WEAPON_CLASS_INFO). pickWeaponClassForArchetype() deterministically picks
+// one per NPC by hashing npcId, so the same NPC always gets the same weapon
+// across save/restore. The chosen class is rendered as a human-readable item
+// name that round-trips through inferWeaponClass() — e.g. "Hunter Longbow
+// Lv3" parses back to weapon_class='longbow'.
+//
+// Keep this list using only canonical WEAPON_CLASS_INFO keys — the
+// archetype-coverage test pins that contract.
+const ARCHETYPE_WEAPON_CLASSES = {
+  // Frontline melee
+  warrior:    ['greatsword', 'greataxe', 'sword',     'mace'],
+  guard:      ['spear',      'halberd',  'sword',     'mace'],
+  guardian:   ['halberd',    'spear',    'tower_shield', 'mace'],
+  knight:     ['sword',      'lance',    'mace'],
+  soldier:    ['rifle',      'carbine',  'pistol',    'sword'],
+  enforcer:   ['mace',       'hammer',   'flail',     'club'],
+  fanatic:    ['scythe',     'flail',    'club'],
+  raider:     ['cutlass',    'mace',     'hatchet',   'dagger'],
+
+  // Ranged / stealth
+  hunter:     ['longbow',    'crossbow', 'shortbow',  'dagger'],
+  scout:      ['shortbow',   'crossbow', 'dagger'],
+  ranger:     ['longbow',    'crossbow', 'shortbow'],
+  archer:     ['longbow',    'shortbow', 'bow'],
+  // Note: "knife" class is intentionally absent — the inferWeaponClass
+  // regex groups knife/dagger/stiletto/dirk/kris under class=dagger, so
+  // naming an NPC's item "Knife" would round-trip to class=dagger and
+  // break the round-trip contract. Use "dagger" as the canonical short-blade.
+  rogue:      ['dagger',     'rapier',   'kukri'],
+  assassin:   ['dagger',     'katana',   'kukri',     'sai'],
+  thief:      ['dagger',     'sai'],
+  ninja:      ['katana',     'thrown',   'sai',       'kusarigama'],
+
+  // Brute
+  thug:       ['club',       'hammer',   'mace',      'knuckles'],
+  predator:   ['claw',       'fist',     'knuckles'],
+  berserker:  ['greataxe',   'scythe',   'maul'],
+
+  // Magic / focus
+  mage:       ['staff',      'wand',     'orb',       'grimoire'],
+  mystic:     ['staff',      'orb',      'talisman',  'scepter'],
+  wizard:     ['staff',      'wand',     'grimoire'],
+  sorcerer:   ['wand',       'orb',      'crystal'],
+  warlock:    ['scepter',    'wand',     'grimoire'],
+  shaman:     ['staff',      'talisman', 'rod'],
+  cleric:     ['mace',       'staff',    'talisman'],
+  priest:     ['scepter',    'staff'],
+
+  // Tech / cyber
+  hacker:     ['smart_gun',  'emp_gun',  'pistol'],
+  pilot:      ['pistol',     'smart_gun', 'laser_pistol'],
+  engineer:   ['tech_gun',   'hammer',   'pistol'],
+  cyborg:     ['mantis_blades', 'gorilla_arms', 'tech_gun'],
+  marksman:   ['sniper',     'rifle',    'pistol'],
+  gunslinger: ['revolver',   'pistol',   'shotgun'],
+
+  // Civilian
+  vigilante:  ['fist',       'kanabo',   'pistol'],
+  security:   ['shield',     'mace',     'pistol'],
+  trader:     ['pistol',     'dagger'],
+  blacksmith: ['hammer',     'mace'],
+  miner:      ['hammer',     'pickaxe',  'mace'],   // pickaxe → falls through, mace fallback
+  farmer:     ['sickle',     'scythe',   'hatchet'],
+  medic:      ['fist',       'dagger'],
+  scientist:  ['fist'],
+  journalist: ['fist'],
+  entertainer:['fan',        'whip'],
+  citizen:    ['fist',       'club'],
+  wanderer:   ['dagger',     'quarterstaff', 'sling'],
+  investigator: ['pistol',   'sword'],
+  official:   ['sword',      'scepter'],
+
+  default:    ['fist'],
+};
+
+// ── Item-name templates per weapon_class ───────────────────────────────────
+// Mapping a class → human-readable noun. The noun MUST be a keyword that
+// inferWeaponClass() matches, so the round-trip resolves: e.g. for class
+// "longbow", the noun "Longbow" matches /longbow/i and resolves back.
+// Keep nouns single-word where possible so the prefix/suffix templating
+// stays readable.
+const WEAPON_CLASS_NOUNS = {
+  // Firearms
+  pistol: 'Pistol', revolver: 'Revolver', derringer: 'Derringer',
+  machine_pistol: 'Machine Pistol', smg: 'SMG', carbine: 'Carbine',
+  rifle: 'Rifle', shotgun: 'Shotgun', sniper: 'Sniper Rifle',
+  anti_material: 'Anti-Material Rifle', lmg: 'LMG', hand_cannon: 'Hand Cannon',
+  blunderbuss: 'Blunderbuss', flamethrower: 'Flamethrower',
+  // Energy
+  energy_rifle: 'Energy Rifle', plasma: 'Plasma Cannon',
+  railgun: 'Railgun', gauss_rifle: 'Gauss Rifle', bolter: 'Bolter',
+  laser_pistol: 'Laser Pistol', beam_rifle: 'Beam Rifle',
+  particle_beam: 'Particle Beam', ion_cannon: 'Ion Cannon',
+  microwave_gun: 'Microwave Gun', emp_gun: 'EMP Gun',
+  disruptor: 'Disruptor', blaster: 'Blaster',
+  arc_thrower: 'Arc Thrower', freeze_gun: 'Freeze Gun',
+  // Heavy
+  grenade_launcher: 'Grenade Launcher', rocket_launcher: 'Rocket Launcher',
+  rpg: 'RPG-7', missile_launcher: 'Missile Launcher', mortar: 'Mortar',
+  recoilless_rifle: 'Recoilless Rifle',
+  // Projectile
+  bow: 'Bow', longbow: 'Longbow', shortbow: 'Shortbow',
+  crossbow: 'Crossbow', sling: 'Sling', blowgun: 'Blowgun',
+  thrown: 'Throwing Knife', javelin: 'Javelin', harpoon: 'Harpoon',
+  boomerang: 'Boomerang', atlatl: 'Atlatl', chakram: 'Chakram',
+  // Blades 1h
+  sword: 'Sword', saber: 'Saber', rapier: 'Rapier', katana: 'Katana',
+  tachi: 'Tachi', jian: 'Jian', cutlass: 'Cutlass', falx: 'Falx',
+  shotel: 'Shotel', machete: 'Machete', dagger: 'Dagger', knife: 'Knife',
+  katar: 'Katar', kukri: 'Kukri', sickle: 'Sickle', hatchet: 'Hatchet',
+  tomahawk: 'Tomahawk',
+  // Blades 2h
+  greatsword: 'Greatsword', greataxe: 'Greataxe', scythe: 'Scythe',
+  // Polearms
+  spear: 'Spear', lance: 'Lance', pike: 'Pike', trident: 'Trident',
+  bardiche: 'Bardiche', glaive: 'Glaive', naginata: 'Naginata',
+  halberd: 'Halberd', guan_dao: 'Guan Dao', tepoztopilli: 'Tepoztopilli',
+  pole_hammer: 'Pole Hammer', taiaha: 'Taiaha', quarterstaff: 'Quarterstaff',
+  // Blunt
+  mace: 'Mace', club: 'Club', flail: 'Flail',
+  hammer: 'Hammer', maul: 'Maul',
+  // Exotic
+  whip: 'Whip', chain: 'Chain Whip', kusarigama: 'Kusarigama',
+  nunchaku: 'Nunchaku', tonfa: 'Tonfa', sai: 'Sai', fan: 'War Fan',
+  kama: 'Kama', urumi: 'Urumi', meteor_hammer: 'Meteor Hammer',
+  kanabo: 'Kanabo', macuahuitl: 'Macuahuitl', wahaika: 'Wahaika',
+  gunblade: 'Gunblade',
+  // Fist
+  fist: 'Bare Fist', gauntlet: 'Gauntlet', claw: 'Claw', knuckles: 'Brass Knuckles',
+  // Focus
+  wand: 'Wand', rod: 'Rod', staff: 'Staff', scepter: 'Scepter',
+  orb: 'Orb', talisman: 'Talisman', grimoire: 'Grimoire', crystal: 'Crystal',
+  // Shield
+  shield: 'Shield', buckler: 'Buckler', bulwark: 'Bulwark', tower_shield: 'Tower Shield',
+  // Cyberware
+  mantis_blades: 'Mantis Blades', gorilla_arms: 'Gorilla Arms',
+  monomolecular_whip: 'Mono Whip', smart_gun: 'Smart Gun',
+  tech_gun: 'Tech Rifle', cyber_implant: 'Cyber Arm',
+};
+
 // Leader faction wealth transfer: fraction of leader's surplus given per undergeared member
 const LEADER_TRANSFER_FRACTION = 0.15;
 // Member is "undergeared" if their gear_level < leader_gear_level - 2
@@ -67,26 +211,76 @@ export function accumulateWealth(db, npcId, occupation) {
 // ── Gear Initialisation ───────────────────────────────────────────────────────
 
 /**
+ * Pick a weapon_class for an archetype deterministically from npcId.
+ * The same (archetype, npcId) always yields the same class — important for
+ * save/restore consistency. Returns { class, name } where name is a
+ * round-trippable string that inferWeaponClass() resolves back to `class`.
+ *
+ * Returns null when archetype has no weapon preferences (e.g. blacksmith,
+ * which uses tool slot, not weapon). Caller falls back to the generic
+ * "{archetype} {slot} Lv{n}" naming in that case.
+ */
+export function pickWeaponClassForArchetype(archetype, npcId, level = 1) {
+  const prefs = ARCHETYPE_WEAPON_CLASSES[archetype] ?? ARCHETYPE_WEAPON_CLASSES.default;
+  if (!prefs || prefs.length === 0) return null;
+  // Filter out any class without registry metadata (defensive — e.g. "pickaxe"
+  // is a tool that doesn't appear in WEAPON_CLASS_INFO, so it falls through
+  // to the next preference).
+  const valid = prefs.filter((c) => WEAPON_CLASS_INFO[c]);
+  if (valid.length === 0) return null;
+  // Deterministic pick keyed by npcId so the same NPC always gets the same
+  // weapon. SHA1 → modulo for a stable index.
+  const h = crypto.createHash('sha1').update(`${archetype}:${npcId}`).digest();
+  const idx = h.readUInt32BE(0) % valid.length;
+  const cls = valid[idx];
+  const noun = WEAPON_CLASS_NOUNS[cls] ?? _capitalize(cls);
+  return { class: cls, name: `${_capitalize(archetype)}'s ${noun} Lv${level}` };
+}
+
+/**
  * Seed a freshly spawned NPC with starter gear for its archetype.
- * Called once by NPCSimulator._spawnNpc().
+ * Called once by NPCSimulator._spawnNpc(). Weapon slots use the archetype-
+ * preferred class via pickWeaponClassForArchetype so a guard spawns with a
+ * spear or halberd (melee_polearm), a hunter with a longbow, a wizard with
+ * a staff. Tool / armor / accessory slots use the legacy generic naming.
  */
 export function seedStarterGear(db, npcId, archetype, startLevel = 1) {
   const slots = ARCHETYPE_SLOTS[archetype] ?? ARCHETYPE_SLOTS.default;
   for (const slot of slots) {
     const stats = SLOT_STATS[slot]?.(startLevel) ?? {};
+    let itemId = `${archetype}-${slot}-lv${startLevel}`;
+    let itemName = `${_capitalize(archetype)} ${_capitalize(slot)} Lv${startLevel}`;
+    let weaponClass = null;
+    if (slot === 'weapon') {
+      const pick = pickWeaponClassForArchetype(archetype, npcId, startLevel);
+      if (pick) {
+        itemId = `${archetype}-${pick.class}-lv${startLevel}`;
+        itemName = pick.name;
+        weaponClass = pick.class;
+      }
+    }
+    // Persist weapon_class in stats JSON so downstream readers (combat,
+    // loot, dialogue colour) can read it without re-inferring.
+    const statsWithClass = weaponClass ? { ...stats, weapon_class: weaponClass } : stats;
     db.prepare(`
       INSERT OR IGNORE INTO npc_gear (id, npc_id, slot, item_id, item_name, item_type, gear_level, stats)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       crypto.randomUUID(), npcId, slot,
-      `${archetype}-${slot}-lv${startLevel}`,
-      `${_capitalize(archetype)} ${_capitalize(slot)} Lv${startLevel}`,
-      slot,
-      startLevel,
-      JSON.stringify(stats),
+      itemId, itemName, slot, startLevel,
+      JSON.stringify(statsWithClass),
     );
   }
   db.prepare('UPDATE world_npcs SET gear_level = ? WHERE id = ?').run(startLevel, npcId);
+}
+
+/**
+ * Lookup the canonical preference list for an archetype (read-only). Used
+ * by the loadout-test harness and by faction-strategy "what does this
+ * archetype carry?" prompts.
+ */
+export function getArchetypeWeaponPreferences(archetype) {
+  return ARCHETYPE_WEAPON_CLASSES[archetype] ?? ARCHETYPE_WEAPON_CLASSES.default;
 }
 
 // ── Gear Upgrade Evaluation ───────────────────────────────────────────────────
