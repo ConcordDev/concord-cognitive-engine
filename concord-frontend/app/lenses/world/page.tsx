@@ -421,6 +421,22 @@ const CharacterSheet = dynamic(
   () => import('@/components/world/CharacterSheet'),
   { ssr: false },
 );
+const CompassStrip = dynamic(
+  () => import('@/components/world/CompassStrip'),
+  { ssr: false },
+);
+const HandReadyIndicators = dynamic(
+  () => import('@/components/world/HandReadyIndicators'),
+  { ssr: false },
+);
+const FavoritesWheel = dynamic(
+  () => import('@/components/world/FavoritesWheel'),
+  { ssr: false },
+);
+const PerkConstellation = dynamic(
+  () => import('@/components/world/PerkConstellation'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -1798,6 +1814,8 @@ export default function WorldLensPage() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [equipmentOpen, setEquipmentOpen] = useState(false);
   const [characterSheetOpen, setCharacterSheetOpen] = useState(false);
+  const [favoritesWheelOpen, setFavoritesWheelOpen] = useState(false);
+  const [perkConstellationOpen, setPerkConstellationOpen] = useState(false);
   // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
   // refreshed whenever equipment changes. Drives Biomutant-style left/right/
   // two-hand routing in the input controller.
@@ -2327,14 +2345,15 @@ export default function WorldLensPage() {
     }
   }, [playerAvatar.position, rawWorldNPCs]);
 
-  // C key: toggle Character Sheet (categorised loadout + spells + powers + skills).
-  // Skipped when an input field is focused so it doesn't intercept typing.
+  // C / Q / K hotkeys — Character Sheet, Favorites Wheel, Perk Constellation.
+  // Skipped when an input field is focused so they don't intercept typing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'c' && e.key !== 'C') return;
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      setCharacterSheetOpen((v) => !v);
+      if (e.key === 'c' || e.key === 'C') setCharacterSheetOpen((v) => !v);
+      else if (e.key === 'q' || e.key === 'Q') setFavoritesWheelOpen((v) => !v);
+      else if (e.key === 'k' || e.key === 'K') setPerkConstellationOpen((v) => !v);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -4029,6 +4048,29 @@ export default function WorldLensPage() {
               <CharacterSheet onClose={() => setCharacterSheetOpen(false)} />
             </div>
           )}
+          <CompassStrip
+            playerX={playerAvatar.position.x}
+            playerZ={playerAvatar.position.y}
+            playerYaw={playerAvatar.rotation}
+            markers={[
+              ...portals.map((p) => ({ id: p.id, x: p.x, z: p.y, kind: 'portal' as const, label: p.label })),
+              ...rawWorldNPCs
+                .filter((npc) => {
+                  const d = Math.hypot(npc.position.x - playerAvatar.position.x, npc.position.y - playerAvatar.position.y);
+                  return d < 30;
+                })
+                .map((npc) => ({ id: npc.id, x: npc.position.x, z: npc.position.y, kind: 'npc' as const, label: npc.name })),
+            ]}
+          />
+          <HandReadyIndicators />
+          <FavoritesWheel
+            open={favoritesWheelOpen}
+            onClose={() => setFavoritesWheelOpen(false)}
+          />
+          <PerkConstellation
+            open={perkConstellationOpen}
+            onClose={() => setPerkConstellationOpen(false)}
+          />
           <PauseMenu
             onOpenControls={() => setControlsOpen(true)}
             onOpenLoadout={() => setEquipmentOpen(true)}
