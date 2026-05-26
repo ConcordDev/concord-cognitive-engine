@@ -450,6 +450,10 @@ const SettlementEditor = dynamic(
   () => import('@/components/world/SettlementEditor'),
   { ssr: false },
 );
+const SecondCycleWizard = dynamic(
+  () => import('@/components/world/SecondCycleWizard'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -2364,17 +2368,36 @@ export default function WorldLensPage() {
     }
   }, [playerAvatar.position, rawWorldNPCs]);
 
-  // C / Q / K hotkeys — Character Sheet, Favorites Wheel, Perk Constellation.
-  // Skipped when an input field is focused so they don't intercept typing.
+  // C / Q / K / B / T hotkeys — Character Sheet, Favorites Wheel,
+  // Perk Constellation, Bestiary, Settlement Editor.
+  // Each opener stamps a tutorial signal so the SecondCycleWizard
+  // checklist auto-completes the relevant step.
   useEffect(() => {
+    const stamp = (uiKey: string) => {
+      try {
+        fetch('/api/tutorial/ui-opened', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ uiKey }),
+        }).catch(() => { /* best-effort */ });
+        window.dispatchEvent(new CustomEvent('concordia:ui-opened', { detail: { uiKey } }));
+      } catch { /* never block hotkey */ }
+    };
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.key === 'c' || e.key === 'C') setCharacterSheetOpen((v) => !v);
-      else if (e.key === 'q' || e.key === 'Q') setFavoritesWheelOpen((v) => !v);
-      else if (e.key === 'k' || e.key === 'K') setPerkConstellationOpen((v) => !v);
-      else if (e.key === 'b' || e.key === 'B') setBestiaryOpen((v) => !v);
-      else if (e.key === 't' || e.key === 'T') setSettlementOpen((v) => !v);
+      if (e.key === 'c' || e.key === 'C') {
+        setCharacterSheetOpen((v) => { if (!v) stamp('character_sheet'); return !v; });
+      } else if (e.key === 'q' || e.key === 'Q') {
+        setFavoritesWheelOpen((v) => { if (!v) stamp('favorites_wheel'); return !v; });
+      } else if (e.key === 'k' || e.key === 'K') {
+        setPerkConstellationOpen((v) => { if (!v) stamp('perk_constellation'); return !v; });
+      } else if (e.key === 'b' || e.key === 'B') {
+        setBestiaryOpen((v) => { if (!v) stamp('bestiary'); return !v; });
+      } else if (e.key === 't' || e.key === 'T') {
+        setSettlementOpen((v) => { if (!v) stamp('settlement_editor'); return !v; });
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -4085,6 +4108,7 @@ export default function WorldLensPage() {
             </div>
           )}
           <WhileYouWereAwayPanel worldId="concordia-hub" />
+          <SecondCycleWizard />
           <CompassStrip
             playerX={playerAvatar.position.x}
             playerZ={playerAvatar.position.y}
