@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
 import { useCombatHitSfx } from '@/hooks/useCombatHitSfx';
+import { useMountedRide } from '@/hooks/useMountedRide';
 import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -452,6 +453,10 @@ const SettlementEditor = dynamic(
 );
 const SecondCycleWizard = dynamic(
   () => import('@/components/world/SecondCycleWizard'),
+  { ssr: false },
+);
+const MountStatusHUD = dynamic(
+  () => import('@/components/world/MountStatusHUD'),
   { ssr: false },
 );
 const PauseMenu = dynamic(
@@ -1479,6 +1484,17 @@ export default function WorldLensPage() {
   // Subscribes to combat:hit-sfx and dispatches via SoundscapeEngine.
   useCombatHitSfx();
 
+  // Wave 4b — mounted-ride tracking. When mounted, we
+  //   (a) pin the mount's procedural mesh to the player's avatar position
+  //       via concordia:mount-pose events (read by attachHybridCreatures)
+  //   (b) unlock Y-axis input (Space/Shift) when the mount is winged
+  //   (c) bind F to dismount
+  const mountedRide = useMountedRide();
+  const flightYRef = useRef<number>(0); // Y offset applied above the ground
+
+  // (mount-pose dispatch + flight controls — moved below where
+  // playerAvatar is declared, since we read its position+rotation)
+
   const releaseAllHeld = useCallback(() => {
     for (const code of [...heldKeysRef.current]) {
       heldKeysRef.current.delete(code);
@@ -1831,6 +1847,81 @@ export default function WorldLensPage() {
   // Shift modifier held — the 5th key. Tracked locally so each keypress
   // can consult it without a re-render dependency.
   const modifierHeldRef = useRef(false);
+
+  // Wave 4b — per-frame mount-pose dispatch. Pins the mount's procedural
+  // mesh to the rider's avatar position so the mount visually follows
+  // the player. Stops when dismounted; sends a single `mount-unpin`
+  // so the hybrid resumes its idle bob.
+  useEffect(() => {
+    if (!mountedRide.mounted || !mountedRide.creatureId) {
+      window.dispatchEvent(new CustomEvent('concordia:mount-unpin'));
+      flightYRef.current = 0;
+      return;
+    }
+    let raf: number | null = null;
+    const dispatch = () => {
+      const groundY = playerAvatar.position.y;
+      const mountY = groundY + flightYRef.current - mountedRide.riderOffsetY;
+      window.dispatchEvent(new CustomEvent('concordia:mount-pose', {
+        detail: {
+          creatureId: mountedRide.creatureId,
+          x: playerAvatar.position.x,
+          y: mountY,
+          z: playerAvatar.position.z,
+          yaw: playerAvatar.rotation,
+        },
+      }));
+      raf = requestAnimationFrame(dispatch);
+    };
+    raf = requestAnimationFrame(dispatch);
+    return () => { if (raf != null) cancelAnimationFrame(raf); };
+  }, [mountedRide.mounted, mountedRide.creatureId, mountedRide.riderOffsetY, playerAvatar]);
+
+  // Wave 4b — flight controls + F-to-dismount when mounted.
+  useEffect(() => {
+    if (!mountedRide.mounted) return;
+    const keysDown = new Set<string>();
+    const onKeyDown = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (e.key === 'f' || e.key === 'F') {
+        void mountedRide.dismount();
+        return;
+      }
+      if (mountedRide.isWinged) {
+        if (e.code === 'Space' || e.key === ' ') keysDown.add('up');
+        else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keysDown.add('down');
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') keysDown.delete('up');
+      else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keysDown.delete('down');
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    // Flight Y integrator. 8 m/s ascent / descent, clamped to [0, 60m].
+    // Passive descent at 1.5 m/s when no input — feels like gliding.
+    let raf: number | null = null;
+    let lastT = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.1, (now - lastT) / 1000);
+      lastT = now;
+      if (keysDown.has('up'))   flightYRef.current = Math.min(60, flightYRef.current + 8 * dt);
+      if (keysDown.has('down')) flightYRef.current = Math.max(0,  flightYRef.current - 8 * dt);
+      if (!keysDown.has('up') && !keysDown.has('down') && flightYRef.current > 0) {
+        flightYRef.current = Math.max(0, flightYRef.current - 1.5 * dt);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [mountedRide.mounted, mountedRide.isWinged, mountedRide.dismount]);
   // Controls remap menu open/close + Equipment slot panel toggle
   const [controlsOpen, setControlsOpen] = useState(false);
   const [equipmentOpen, setEquipmentOpen] = useState(false);
@@ -3937,7 +4028,14 @@ export default function WorldLensPage() {
             cameraMode={cameraMode}
             getPlayerPose={() => ({
               x: playerAvatar.position.x,
-              y: playerAvatar.position.y,
+              // Wave 4b — when mounted on a winged hybrid, lift the
+              // pose's height by flightYRef so the camera orbits at
+              // flight altitude. The mount mesh is pinned to this
+              // position via the concordia:mount-pose event dispatched
+              // in the effect below.
+              y: mountedRide.mounted
+                ? playerAvatar.position.y + flightYRef.current
+                : playerAvatar.position.y,
               z: playerAvatar.position.z,
               yaw: playerAvatar.rotation,
             })}
@@ -4109,6 +4207,7 @@ export default function WorldLensPage() {
           )}
           <WhileYouWereAwayPanel worldId="concordia-hub" />
           <SecondCycleWizard />
+          <MountStatusHUD />
           <CompassStrip
             playerX={playerAvatar.position.x}
             playerZ={playerAvatar.position.y}

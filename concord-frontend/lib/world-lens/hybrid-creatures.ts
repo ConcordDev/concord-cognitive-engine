@@ -263,15 +263,40 @@ export function attachHybridCreatures(scene: SceneLike, opts: AttachOptions = {}
     add(payload);
   });
 
+  // ── 2.5 Mount-ride pose pin (Wave 4b) ───────────────────────────
+  // When the player is riding a hybrid, the world page dispatches
+  // `concordia:mount-pose` every frame with the player's position + yaw.
+  // The hybrid mesh whose id matches is teleported to that position so
+  // the rider visibly sits on top.
+  let mountedCreatureId: string | null = null;
+  const onMountPose = (ev: Event) => {
+    const ce = ev as CustomEvent<{ creatureId: string; x: number; y: number; z: number; yaw: number }>;
+    if (!ce.detail) return;
+    mountedCreatureId = ce.detail.creatureId;
+    const h = active.get(ce.detail.creatureId);
+    if (h) {
+      h.group.position.set(ce.detail.x, ce.detail.y, ce.detail.z);
+      h.group.rotation.y = ce.detail.yaw;
+      h.group.userData.baseY = ce.detail.y;
+    }
+  };
+  const onMountUnpin = () => { mountedCreatureId = null; };
+  window.addEventListener('concordia:mount-pose', onMountPose as EventListener);
+  window.addEventListener('concordia:mount-unpin', onMountUnpin);
+
   // ── 3. Idle animation loop ──────────────────────────────────────
   const tick = () => {
     if (disposed) return;
     const now = performance.now();
-    for (const [, h] of active) {
+    for (const [id, h] of active) {
+      // Skip idle bob for the mounted mount — its position is driven
+      // by the mount-pose pin so it stays glued to the rider.
+      if (id === mountedCreatureId) continue;
       const t = (now - h.spawnedAt) / 1000;
       // Subtle vertical bob
       h.group.position.y = (h.group.userData.baseY ?? 0) + Math.sin(t * 1.3 + h.wingPhase) * 0.08;
-      // Wing flap (if any wing children)
+      // Wing flap (if any wing children) — accelerate when mounted so
+      // riding feels active vs idle hovering.
       h.group.traverse((c) => {
         const w = (c as THREE.Object3D & { userData?: { isWing?: number } }).userData?.isWing;
         if (typeof w === 'number') {
@@ -288,6 +313,8 @@ export function attachHybridCreatures(scene: SceneLike, opts: AttachOptions = {}
     disposed = true;
     if (animFrame != null) cancelAnimationFrame(animFrame);
     try { unsub(); } catch { /* ok */ }
+    try { window.removeEventListener('concordia:mount-pose', onMountPose as EventListener); } catch { /* ok */ }
+    try { window.removeEventListener('concordia:mount-unpin', onMountUnpin); } catch { /* ok */ }
     for (const [, h] of active) {
       try { scene.remove(h.group); } catch { /* ok */ }
       h.group.traverse((c) => {

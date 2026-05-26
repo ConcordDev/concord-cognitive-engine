@@ -1992,6 +1992,30 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // ── Wave 4b: cavalry damage scalar ─────────────────────────────────────
+      // When the attacker is mounted on a companion (player_companions.mounted=1),
+      // apply +20% to the final damage. Encourages mount usage in combat and
+      // makes the "I trained this thing" moment matter mechanically.
+      // Cheap single-row check — safe to run on every hit.
+      try {
+        const mountedRow = db.prepare(`
+          SELECT id, blueprint_json FROM player_companions
+          WHERE owner_id = ? AND mounted = 1
+          LIMIT 1
+        `).get(userId);
+        if (mountedRow && Number.isFinite(damageResult.finalDamage)) {
+          // 1.2× base; +0.1× more if mount has winged topology (flight = stoop attacks).
+          let cavalryMul = 1.2;
+          try {
+            const bp = mountedRow.blueprint_json ? JSON.parse(mountedRow.blueprint_json) : null;
+            if (typeof bp?.topology === 'string' && bp.topology.startsWith('winged_')) cavalryMul = 1.3;
+          } catch { /* blueprint optional */ }
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * cavalryMul * 10) / 10;
+          damageResult.cavalryMultiplier = cavalryMul;
+          damageResult.mountedCompanionId = mountedRow.id;
+        }
+      } catch { /* player_companions table may not exist on minimal builds */ }
+
       // ── Concordia Phase 3: mass-based combat physics ───────────────────────
       // After env amplification, fold in attacker/target mass ratio clamped
       // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder
