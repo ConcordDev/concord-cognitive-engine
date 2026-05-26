@@ -118,15 +118,121 @@ export function claimLootBag(db, { bagId, claimerId }) {
         db.prepare(`UPDATE player_inventory SET quantity = quantity + ? WHERE id = ?`).run(item.quantity, existingId);
       } else {
         db.prepare(`
-          INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(crypto.randomUUID(), claimerId, item.item_type, item.item_id, item.item_name, item.quantity, item.quality);
+          INSERT INTO player_inventory (id, user_id, item_type, item_id, item_name, quantity, quality, world_id, weapon_class, handedness)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          crypto.randomUUID(),
+          claimerId,
+          item.item_type,
+          item.item_id,
+          item.item_name,
+          item.quantity,
+          item.quality,
+          bag.world_id,
+          item.weapon_class ?? null,
+          item.handedness ?? 'either',
+        );
       }
     }
   }
 
   db.prepare(`UPDATE death_loot_bags SET claimed_by = ?, claimed_at = ? WHERE id = ?`).run(claimerId, now, bagId);
   return { ok: true, sparks: bag.sparks, items };
+}
+
+// ── NPC-gear loot drops ──────────────────────────────────────────────
+//
+// When an NPC dies in combat, fork their equipped npc_gear rows into a
+// death_loot_bag so the player can claim the EXACT item the NPC carried —
+// a Rare Hunter's Crossbow Lv5 drops as that same item, weapon_class +
+// handedness + rarity preserved into player_inventory on claim.
+//
+// Drop probability scales with gear_level (Lv1 30% → Lv9 90%) so loot
+// quality tracks NPC difficulty. Items with `stats.weapon_class` set are
+// always candidates; tool/armor slots roll separately.
+
+const NPC_LOOT_BAG_TTL_MS = 5 * 60 * 1000;   // mirror player loot TTL
+const NPC_KILLER_PRIORITY_MS = 2 * 60 * 1000;
+
+function _dropProbabilityForLevel(level) {
+  // Lv1 → 0.30, Lv5 → 0.60, Lv9 → 0.90. Linear ramp clamped [0.30, 0.90].
+  return Math.max(0.30, Math.min(0.90, 0.30 + (level - 1) * 0.075));
+}
+
+/**
+ * Roll the equipped NPC gear rows into a list of loot items.
+ * Returns items in the shape death_loot_bags.items_json expects.
+ */
+export function rollNpcGearLoot(db, npcId) {
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT id, slot, item_id, item_name, item_type, gear_level, stats
+      FROM npc_gear WHERE npc_id = ? AND equipped = 1
+    `).all(npcId);
+  } catch { return []; }
+
+  const items = [];
+  for (const r of rows) {
+    const p = _dropProbabilityForLevel(r.gear_level ?? 1);
+    if (Math.random() > p) continue;
+    let stats = {};
+    try { stats = JSON.parse(r.stats || '{}'); } catch { /* malformed */ }
+    items.push({
+      item_id:      r.item_id,
+      item_name:    r.item_name,
+      item_type:    r.item_type ?? r.slot ?? 'weapon',
+      quantity:     1,
+      quality:      Math.min(100, (r.gear_level ?? 1) * 10),
+      weapon_class: stats.weapon_class ?? null,
+      handedness:   stats.handedness ?? 'either',
+      rarity:       stats.rarity ?? null,
+      rarity_color: stats.rarity_color ?? null,
+      gear_level:   r.gear_level ?? 1,
+    });
+  }
+  return items;
+}
+
+/**
+ * Create a death_loot_bag from a slain NPC's equipped gear + a small
+ * sparks tip (10×gear_level). Returns { bagId, items, sparks } or null
+ * if nothing rolled.
+ */
+export function dropNpcGearAsLoot(db, { npc, killerId, x = 0, y = 0, z = 0, worldId }) {
+  if (!npc?.id) return null;
+  const items = rollNpcGearLoot(db, npc.id);
+  if (items.length === 0) return null;
+
+  const totalLevel = items.reduce((s, it) => s + (it.gear_level ?? 1), 0);
+  const sparksTip = totalLevel * 10;
+
+  const bagId = crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    db.prepare(`
+      INSERT INTO death_loot_bags (id, world_id, x, y, z, owner_id, killer_id, sparks, items_json, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      bagId,
+      worldId ?? npc.world_id ?? 'concordia-hub',
+      x, y, z,
+      npc.id,
+      killerId || null,
+      sparksTip,
+      JSON.stringify(items),
+      now + NPC_LOOT_BAG_TTL_MS / 1000,
+    );
+  } catch {
+    return null;
+  }
+
+  return {
+    bagId,
+    items,
+    sparks: sparksTip,
+    killerPriorityMs: NPC_KILLER_PRIORITY_MS,
+  };
 }
 
 /**

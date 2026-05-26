@@ -93,6 +93,50 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
     message:     `${_npcName(npc)} has been slain. Their story continues to echo.`,
   });
 
+  // ── Loot drop — fork equipped NPC gear into a death_loot_bag ──────
+  // Drop is gear-level-scaled probability per slot (Lv1 30% → Lv9 90%).
+  // Items preserve weapon_class + rarity so the player loots the EXACT
+  // tiered gear the NPC was carrying (e.g. Rare Hunter's Crossbow Lv5).
+  try {
+    const { dropNpcGearAsLoot } = await import("./pvp-loot.js");
+    const drop = dropNpcGearAsLoot(db, {
+      npc,
+      killerId,
+      x: npc.x ?? 0,
+      y: 0,
+      z: npc.z ?? 0,
+      worldId: npc.world_id,
+    });
+    if (drop) {
+      realtimeEmit?.('world:loot-dropped', {
+        worldId: npc.world_id,
+        bagId:   drop.bagId,
+        sourceNpcId: npc.id,
+        sourceName:  _npcName(npc),
+        killerId,
+        position: { x: npc.x ?? 0, y: 0, z: npc.z ?? 0 },
+        items:    drop.items,
+        sparks:   drop.sparks,
+        killerPriorityMs: drop.killerPriorityMs,
+      });
+      consequence.lootBagId = drop.bagId;
+    }
+  } catch (err) {
+    logger.warn('npc-consequences', 'loot_drop_failed', { npcId, error: err?.message });
+  }
+
+  // ── Death emit (for ragdoll VFX + animation queue) ────────────────
+  // Separate from world:npc-event so frontends that only want to render
+  // the visual don't need to filter the broader event channel.
+  realtimeEmit?.('world:npc-death', {
+    worldId:  npc.world_id,
+    npcId,
+    position: { x: npc.x ?? 0, y: 0, z: npc.z ?? 0 },
+    impulse:  { x: 0, y: 1, z: 0 },        // upward bump; per-hit direction
+    archetype: npc.archetype,
+    isCreature: typeof npc.archetype === 'string' && npc.archetype.startsWith('creature:'),
+  });
+
   logger.info('npc-consequences', 'npc_died', { npcId, worldId: npc.world_id, killer: killerId, archetype: npc.archetype });
 
   return { died: true, migrated: false, consequence };

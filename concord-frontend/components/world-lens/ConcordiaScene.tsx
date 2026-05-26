@@ -248,6 +248,8 @@ export default function ConcordiaScene({
   // invoked during teardown so the listener disposes with the scene.
   const domeCleanupRef = useRef<(() => void) | null>(null);
   const hybridCleanupRef = useRef<(() => void) | null>(null);
+  const lootCleanupRef = useRef<(() => void) | null>(null);
+  const deathVfxCleanupRef = useRef<(() => void) | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -732,6 +734,29 @@ export default function ConcordiaScene({
       try {
         const { attachHybridCreatures } = await import('@/lib/world-lens/hybrid-creatures');
         hybridCleanupRef.current = attachHybridCreatures(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+          { worldId: 'concordia-hub' },
+        );
+      } catch { /* best-effort */ }
+
+      // ── Loot piles (Wave 1 / T1.1) ──────────────────────────────
+      // Listens for world:loot-dropped; renders a glowing ground disc +
+      // floating cubes tinted by item rarity. Auto-decays on TTL.
+      try {
+        const { attachLootPiles } = await import('@/lib/world-lens/loot-piles');
+        lootCleanupRef.current = attachLootPiles(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+          { worldId: 'concordia-hub' },
+        );
+      } catch { /* best-effort */ }
+
+      // ── Death VFX (Wave 1 / T2.3) ───────────────────────────────
+      // Listens for world:npc-death; renders slump + mist + ground disc
+      // at the kill point for 6s. Primitives only, works for both
+      // authored NPCs and procedural hybrids.
+      try {
+        const { attachDeathVFX } = await import('@/lib/world-lens/death-vfx');
+        deathVfxCleanupRef.current = attachDeathVFX(
           scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
           { worldId: 'concordia-hub' },
         );
@@ -1316,6 +1341,10 @@ export default function ConcordiaScene({
       domeCleanupRef.current = null;
       try { hybridCleanupRef.current?.(); } catch { /* ignore */ }
       hybridCleanupRef.current = null;
+      try { lootCleanupRef.current?.(); } catch { /* ignore */ }
+      lootCleanupRef.current = null;
+      try { deathVfxCleanupRef.current?.(); } catch { /* ignore */ }
+      deathVfxCleanupRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

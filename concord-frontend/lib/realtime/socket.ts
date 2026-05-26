@@ -346,6 +346,12 @@ export type SocketEvent =
   // Combat hit + kill — server broadcasts on damage applied.
   | 'combat:hit'
   | 'combat:kill'
+  // Weapon-category SFX trigger — emitted on every hit (T1.4)
+  | 'combat:hit-sfx'
+  // NPC death — drives ragdoll + death animation (T2.3)
+  | 'world:npc-death'
+  // NPC drops a death_loot_bag from equipped gear (T1.1)
+  | 'world:loot-dropped'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
   | 'combat:combo-evolved'
   // Combat lightning-chain — server emits per chain target (existing)

@@ -2047,6 +2047,43 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // ── Hit SFX emit (every hit, not just kills) ─────────────────
+      // SoundscapeEngine on the frontend picks a sound by element first
+      // (fire crackle, ice shatter, lightning zap), falling back to the
+      // weapon's category (firearm crack, blade ring, focus shimmer).
+      // Both fields included so the picker can be category-aware.
+      try {
+        const io = req.app?.locals?.io;
+        if (io) {
+          let weaponClass = null;
+          let weaponCategory = null;
+          try {
+            const eq = db.prepare(`
+              SELECT pi.weapon_class FROM player_equipment pe
+              LEFT JOIN player_inventory pi ON pi.id = pe.right_hand_id
+              WHERE pe.user_id = ?
+            `).get(userId);
+            weaponClass = eq?.weapon_class || null;
+            if (weaponClass) {
+              const { getWeaponClassInfo } = await import("../lib/combat/loadout.js");
+              weaponCategory = getWeaponClassInfo(weaponClass)?.category || null;
+            }
+          } catch { /* loadout-lookup best-effort */ }
+          const pos = db.prepare(`SELECT x, y, z FROM world_npcs WHERE id = ?`).get(npcId);
+          io.to(`world:${worldId}`).emit("combat:hit-sfx", {
+            worldId,
+            attackerId: userId,
+            targetId: npcId,
+            weaponClass,
+            weaponCategory,
+            element: skillData.element || null,
+            isCrit: !!damageResult.isCrit,
+            damage: damageResult.finalDamage || 0,
+            position: pos || { x: 0, y: 0, z: 0 },
+          });
+        }
+      } catch { /* SFX emit never blocks combat */ }
+
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at
       // resisting (combat skill bumps). NPCs that out-grind players
@@ -2107,6 +2144,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
             }
           }
         } catch { /* socket optional */ }
+
       }
 
       // Phase 1 + 1.5: emit skill:tier-witnessed when an evolved skill

@@ -115,6 +115,39 @@ const SFX_MAP: Record<string, SFXDef> = {
   'hit-transient':     { freq: 1800, type: 'triangle', duration: 0.04, attack: 0.001, decay: 0.035 },
   'hit-thump-deep':    { freq: 38,   type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20 },
   'bone-crack':        { freq: 360,  type: 'sawtooth', duration: 0.06, attack: 0.001, decay: 0.055, semitones: [0, -3] },
+  // ── Per weapon-category hit SFX (T1.4) — picked by useCombatHitSfx
+  // hook from the combat:hit-sfx socket event. Each is a short distinct
+  // transient so the ear separates a shotgun crack from a sword swing
+  // from a focus-spell shimmer.
+  'hit-firearm':         { freq: 2200, type: 'sawtooth', duration: 0.07, attack: 0.001, decay: 0.060, semitones: [0, -14] },
+  'hit-energy':          { freq: 1500, type: 'sine',     duration: 0.30, attack: 0.001, decay: 0.28,  semitones: [0, -7, -14] },
+  'hit-heavy-explosive': { freq: 48,   type: 'square',   duration: 0.40, attack: 0.001, decay: 0.36 },
+  'hit-projectile':      { freq: 420,  type: 'triangle', duration: 0.10, attack: 0.001, decay: 0.090, semitones: [0, 4] },
+  'hit-melee-blade-1h':  { freq: 980,  type: 'triangle', duration: 0.09, attack: 0.001, decay: 0.080, semitones: [0, 7] },
+  'hit-melee-blade-2h':  { freq: 720,  type: 'triangle', duration: 0.14, attack: 0.001, decay: 0.125, semitones: [0, -3] },
+  'hit-melee-polearm':   { freq: 320,  type: 'triangle', duration: 0.12, attack: 0.001, decay: 0.110 },
+  'hit-melee-blunt-1h':  { freq: 130,  type: 'sawtooth', duration: 0.10, attack: 0.001, decay: 0.085 },
+  'hit-melee-blunt-2h':  { freq: 75,   type: 'sawtooth', duration: 0.18, attack: 0.001, decay: 0.165, semitones: [0, -5] },
+  'hit-melee-exotic':    { freq: 1320, type: 'sine',     duration: 0.18, attack: 0.001, decay: 0.16,  semitones: [0, 5, 9] },
+  'hit-fist':            { freq: 180,  type: 'triangle', duration: 0.10, attack: 0.001, decay: 0.085 },
+  'hit-focus':           { freq: 1760, type: 'sine',     duration: 0.35, attack: 0.01,  decay: 0.32,  semitones: [0, 7, 12, 19] },
+  'hit-cyberware':       { freq: 880,  type: 'sawtooth', duration: 0.12, attack: 0.001, decay: 0.105, semitones: [0, -7] },
+  'hit-hybrid':          { freq: 600,  type: 'square',   duration: 0.18, attack: 0.001, decay: 0.16,  semitones: [0, 5] },
+  // Element overlays — layered on top of the weapon SFX when the cast has
+  // an explicit element. Picked element-first; falls back to weapon when null.
+  'hit-element-fire':      { freq: 240,  type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20 },
+  'hit-element-ice':       { freq: 1400, type: 'triangle', duration: 0.18, attack: 0.001, decay: 0.16, semitones: [0, -7] },
+  'hit-element-lightning': { freq: 2400, type: 'square',   duration: 0.08, attack: 0.001, decay: 0.075, semitones: [0, -12] },
+  'hit-element-water':     { freq: 520,  type: 'sine',     duration: 0.14, attack: 0.001, decay: 0.130 },
+  'hit-element-earth':     { freq: 110,  type: 'triangle', duration: 0.18, attack: 0.001, decay: 0.16 },
+  'hit-element-wind':      { freq: 1100, type: 'sine',     duration: 0.16, attack: 0.001, decay: 0.14, semitones: [0, 5] },
+  'hit-element-holy':      { freq: 1320, type: 'sine',     duration: 0.40, attack: 0.02,  decay: 0.36, semitones: [0, 7, 12] },
+  'hit-element-dark':      { freq: 90,   type: 'sawtooth', duration: 0.25, attack: 0.01,  decay: 0.22, semitones: [0, -3] },
+  'hit-element-void':      { freq: 60,   type: 'sine',     duration: 0.35, attack: 0.05,  decay: 0.30 },
+  'hit-element-bio':       { freq: 380,  type: 'triangle', duration: 0.14, attack: 0.001, decay: 0.125 },
+  'hit-element-poison':    { freq: 220,  type: 'sawtooth', duration: 0.18, attack: 0.001, decay: 0.16 },
+  'hit-element-arcane':    { freq: 1480, type: 'sine',     duration: 0.30, attack: 0.005, decay: 0.27, semitones: [0, 7, 14] },
+  'hit-element-psychic':   { freq: 1900, type: 'sine',     duration: 0.22, attack: 0.005, decay: 0.20, semitones: [0, 5, 12] },
   // Movement footsteps — quick low-decay percussives. Each surface gets a
   // different timbre + frequency so the ear distinguishes grass/stone/wood/water.
   'footstep-grass':    { freq: 180,  type: 'triangle', duration: 0.06, attack: 0.001, decay: 0.055 },

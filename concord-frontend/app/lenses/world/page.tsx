@@ -15,6 +15,7 @@ import {
   Radio as MTabStreams,
 } from 'lucide-react';
 import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
+import { useCombatHitSfx } from '@/hooks/useCombatHitSfx';
 import { useConsolePing } from '@/hooks/useConsolePing';
 import { useLensData } from '@/lib/hooks/use-lens-data';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -1458,6 +1459,10 @@ export default function WorldLensPage() {
       dispatchKey(code, false);
     }
   }, [dispatchKey]);
+  // Wave 1 / T1.4 — per-weapon-category combat hit SFX.
+  // Subscribes to combat:hit-sfx and dispatches via SoundscapeEngine.
+  useCombatHitSfx();
+
   const releaseAllHeld = useCallback(() => {
     for (const code of [...heldKeysRef.current]) {
       heldKeysRef.current.delete(code);
