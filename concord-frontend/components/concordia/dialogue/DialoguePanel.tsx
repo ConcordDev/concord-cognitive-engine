@@ -4,6 +4,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { DialogueState, SkillCheckOption } from '@/hooks/useDialogue';
 import { SPECIALStats } from '@/lib/concordia/player-stats';
 import { modeManager } from '@/lib/concordia/mode-manager';
+import { Volume2, VolumeX } from 'lucide-react';
+import { useNpcVoice } from '@/hooks/useNpcVoice';
 
 // ── Relationship badge ───────────────────────────────────────────────
 
@@ -112,9 +114,13 @@ export function DialoguePanel({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [state.messages]);
 
-  // Phase B4 — lip-sync. When the NPC speaks a new line, dispatch
+  // Wave 3 / T3.3 — NPC voice via Web Speech API.
+  const voice = useNpcVoice();
+
+  // Phase B4 — lip-sync + TTS. When the NPC speaks a new line, dispatch
   // `concordia:lip-sync` so AvatarSystem3D can drive phonemes on the
-  // NPC's FacialController (set up in createAvatarMeshSmart).
+  // NPC's FacialController, AND speak the line through the browser TTS
+  // so the player hears a distinct voice per NPC.
   const lastNpcMessageIdRef = useRef<string | null>(null);
   useEffect(() => {
     const msgs = state.messages;
@@ -130,7 +136,14 @@ export function DialoguePanel({
     window.dispatchEvent(new CustomEvent('concordia:lip-sync', {
       detail: { npcId: state.npcId, text, wpm: 180 },
     }));
-  }, [state.messages, state.npcId]);
+    voice.play({ npcId: state.npcId, text });
+  }, [state.messages, state.npcId, voice]);
+
+  // Stop TTS when the panel unmounts so a closed dialogue doesn't
+  // keep speaking.
+  useEffect(() => {
+    return () => { try { voice.stop(); } catch { /* ok */ } };
+  }, [voice]);
 
   const handleSend = useCallback((text: string, skillCheck?: SkillCheckOption) => {
     if (!text.trim()) return;
@@ -204,6 +217,16 @@ export function DialoguePanel({
               </>
             )}
           </div>
+          {voice.supported && (
+            <button
+              onClick={() => voice.setMuted(!voice.muted)}
+              className={`ml-2 ${voice.muted ? 'text-white/30 hover:text-white/60' : 'text-amber-300 hover:text-amber-200'}`}
+              title={voice.muted ? 'Unmute NPC voice' : 'Mute NPC voice'}
+              aria-label={voice.muted ? 'Unmute NPC voice' : 'Mute NPC voice'}
+            >
+              {voice.muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          )}
           <button onClick={handleClose} className="text-white/40 hover:text-white text-xl ml-3">✕</button>
         </div>
 

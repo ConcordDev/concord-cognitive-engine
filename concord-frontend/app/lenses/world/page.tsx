@@ -442,6 +442,10 @@ const BestiaryPanel = dynamic(
   () => import('@/components/world/BestiaryPanel'),
   { ssr: false },
 );
+const WhileYouWereAwayPanel = dynamic(
+  () => import('@/components/world/WhileYouWereAwayPanel'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -4064,6 +4068,7 @@ export default function WorldLensPage() {
               <BestiaryPanel onClose={() => setBestiaryOpen(false)} />
             </div>
           )}
+          <WhileYouWereAwayPanel worldId="concordia-hub" />
           <CompassStrip
             playerX={playerAvatar.position.x}
             playerZ={playerAvatar.position.y}

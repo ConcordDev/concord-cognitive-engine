@@ -29929,6 +29929,10 @@ app.use("/api/character-sheet", createCharacterSheetRouter({ db, requireAuth }))
 import createCompanionsBreedingRouter from "./routes/companions-breeding.js";
 app.use("/api/companions", createCompanionsBreedingRouter({ db, requireAuth }));
 
+// Wave 3 / T2.2 — "while you were away" offline events digest.
+import createDigestRouter from "./routes/digest.js";
+app.use("/api/world", createDigestRouter({ db, requireAuth }));
+
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
