@@ -247,6 +247,7 @@ export default function ConcordiaScene({
   // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
   // invoked during teardown so the listener disposes with the scene.
   const domeCleanupRef = useRef<(() => void) | null>(null);
+  const hybridCleanupRef = useRef<(() => void) | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -721,6 +722,20 @@ export default function ConcordiaScene({
           remove: (mesh: unknown) => void;
         });
       } catch { /* dome VFX is best-effort */ }
+
+      // ── Procedural hybrid creatures ─────────────────────────────
+      // Crossbreed-spawn-cycle heartbeat persists hybrids to
+      // world_hybrid_creatures with full 3D blueprints; the helper
+      // hydrates existing ones via REST and subscribes to
+      // world:hybrid-spawned for new ones, building Three.js meshes
+      // procedurally from each blueprint's topology + mass.
+      try {
+        const { attachHybridCreatures } = await import('@/lib/world-lens/hybrid-creatures');
+        hybridCleanupRef.current = attachHybridCreatures(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+          { worldId: 'concordia-hub' },
+        );
+      } catch { /* best-effort */ }
 
       // ── Clock & Raycaster ───────────────────────────────────────
       clock = new THREE.Clock();
@@ -1299,6 +1314,8 @@ export default function ConcordiaScene({
 
       try { domeCleanupRef.current?.(); } catch { /* ignore */ }
       domeCleanupRef.current = null;
+      try { hybridCleanupRef.current?.(); } catch { /* ignore */ }
+      hybridCleanupRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

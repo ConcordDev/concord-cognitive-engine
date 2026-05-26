@@ -102,6 +102,17 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// Crossbreed spawn — every ~100 ticks (~25 min). When two creatures have
+// accumulated enough bond via the flock-cycle, this runs generateHybrid
+// and persists the offspring into world_hybrid_creatures with the full
+// 3D blueprint embedded. Emits world:hybrid-spawned so frontend renderer
+// attaches a procedural Three.js mesh on the fly.
+import { runCrossbreedSpawnCycle } from "./emergent/crossbreed-spawn-cycle.js";
+registerHeartbeat("crossbreed-spawn-cycle", {
+  frequency: 100,
+  handler: runCrossbreedSpawnCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
@@ -29756,6 +29767,11 @@ import { startAtrophyCycle } from "./lib/skill-atrophy.js";
 import { startCrisisWatch } from "./lib/world-crisis.js";
 import { processDisrepairTick, DISREPAIR_TICK_INTERVAL } from "./lib/npc-consequences.js";
 app.use("/api/worlds", createWorldsRouter({ requireAuth, db }));
+
+// Hybrid creatures — procedurally crossbred offspring with embedded 3D
+// blueprints. Frontend renderer reads this and builds Three.js meshes.
+import createHybridCreaturesRouter from "./routes/hybrid-creatures.js";
+app.use("/api/worlds", createHybridCreaturesRouter({ db }));
 
 import createCityAssetsRouter from "./routes/city-assets.js";
 app.use("/api/city-assets", createCityAssetsRouter({ requireAuth }));

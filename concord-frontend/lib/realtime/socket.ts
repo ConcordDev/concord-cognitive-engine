@@ -302,6 +302,8 @@ export type SocketEvent =
   | 'reputation:badge-earned'
   // Refusal Field — Sovereign / quest beats / Mass Raid declare gates per world
   | 'world:refusal-field'
+  // Crossbreeding — procedurally generated offspring spawned into the world
+  | 'world:hybrid-spawned'
   // EvoAsset evolution scheduler — promoted version notification
   | 'evo:asset-promoted'
   // Council Live Theater stream
