@@ -1,0 +1,10 @@
+Poly Haven CC0 (Creative Commons Zero)
+
+All assets here are downloaded from https://polyhaven.com/ which licenses
+its entire library as CC0:
+  https://polyhaven.com/license
+
+CC0 = public domain dedication. No attribution required, no permission
+needed, commercial use OK, modifications OK. The Poly Haven team funds
+its operation via Patreon — consider supporting if you use their work
+extensively, but it is not legally required.

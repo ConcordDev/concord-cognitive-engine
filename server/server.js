@@ -30974,17 +30974,27 @@ import createWorldTravelRouter from "./routes/world-travel.js";
 app.use("/api/world-travel", createWorldTravelRouter({ requireAuth, db, emitToUser }));
 
 // Bootstrap CC0 asset sources at startup. Best-effort — if network is
-// unavailable, the registry stays at whatever's already there.
+// unavailable, the local-authored loader still seeds whatever's in
+// `content/world/_shared/{models,textures,hdris}/`, so the world has
+// asset content even on an air-gapped Blackwell deploy.
+//
+// Operator env vars (all optional):
+//   AUTHORED_ASSET_DIR    — defaults to `content/world/_shared`
+//   KENNEY_BUNDLE_DIR     — path to extracted Kenney mega-bundle
+//   QUATERNIUS_DIR        — path to extracted Quaternius CC0 packs
 setTimeout(() => {
   (async () => {
     try {
       const { bootstrapAllSources } = await import("./lib/evo-asset/source-loaders.js");
       const result = await bootstrapAllSources(db, {
+        authored:  {}, // always-on local scan; env AUTHORED_ASSET_DIR overrides root
         polyhaven: { limit: 30 },
         ambientcg: { limit: 30 },
         os3a:      { limit: 50 },
         kenneyDir: process.env.KENNEY_BUNDLE_DIR,
         kenney:    { limit: 200 },
+        quaterniusDir: process.env.QUATERNIUS_DIR,
+        quaternius:    { limit: 500 },
       });
       structuredLog("info", "evo_asset_bootstrap", result);
     } catch (e) {

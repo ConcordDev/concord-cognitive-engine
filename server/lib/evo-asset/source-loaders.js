@@ -231,16 +231,152 @@ export async function bootstrapKenneyFromDir(db, dir, { limit = 200 } = {}) {
 }
 
 /**
+ * Bootstrap from a Quaternius ZIP that the operator pre-downloads.
+ * Quaternius doesn't expose a stable JSON manifest API, so we don't
+ * auto-fetch — instead we accept a directory path (env QUATERNIUS_DIR
+ * or opts.dir) where the operator extracted their CC0 packs.
+ *
+ * Each .glb / .gltf in the tree is registered as a mesh. Source-id is
+ * the path relative to `dir` (path separators normalised to underscore)
+ * so re-runs are idempotent.
+ *
+ * Quaternius packs live at https://quaternius.com/packs/ — they're free
+ * CC0 and require no attribution. Download workflow documented at
+ * `docs/AUTHORING_ASSETS.md`.
+ */
+export async function bootstrapQuaterniusFromDir(db, dir, { limit = 500 } = {}) {
+  const stats = { found: 0, registered: 0 };
+  if (!dir || !fs.existsSync(dir)) return stats;
+  const walk = (d) => {
+    let out = [];
+    try {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, f.name);
+        if (f.isDirectory()) out = out.concat(walk(p));
+        else if (/\.(glb|gltf|obj|fbx)$/i.test(f.name)) out.push(p);
+      }
+    } catch { /* unreadable dir */ }
+    return out;
+  };
+  const files = walk(dir).slice(0, limit);
+  for (const file of files) {
+    stats.found += 1;
+    const id = path.relative(dir, file).replace(/[\\/]/g, "_");
+    const existing = db.prepare(
+      `SELECT id FROM evo_assets WHERE source = 'authored' AND source_id = ?`
+    ).get(`quaternius:${id}`);
+    if (existing) continue;
+    // Quaternius is CC0 — register as authored with quaternius: prefix
+    // so the asset's licensing provenance is clear without needing a
+    // new source enum value.
+    registerAsset(db, {
+      kind: "mesh",
+      source: "authored",
+      sourceId: `quaternius:${id}`,
+      localPath: file,
+      category: path.dirname(path.relative(dir, file)).split(path.sep)[0] || "quaternius",
+      tags: ["cc0", "quaternius", "low-poly", "stylized"],
+      qualityLevel: 1,
+    });
+    stats.registered += 1;
+  }
+  return stats;
+}
+
+/**
+ * Bootstrap from the project-local authored asset directory.
+ * Walks `content/world/_shared/{models,textures,hdris}/` and registers
+ * every recognized 3D/texture file as `source='authored'`. This is the
+ * canonical drop-zone for hand-authored content + the seed pool for
+ * the procedural + evo systems.
+ *
+ * License: the project owner is responsible for the license of files
+ * placed here. CC0 / public-domain packs should be dropped directly;
+ * use a per-pack `LICENSE.txt` for everything else.
+ */
+const _DEFAULT_AUTHORED_ROOT = path.resolve(
+  process.cwd(),
+  process.env.AUTHORED_ASSET_DIR || "content/world/_shared"
+);
+const _ASSET_KIND_BY_DIR = {
+  models: "mesh",
+  meshes: "mesh",
+  textures: "texture",
+  materials: "material",
+  hdris: "hdri",
+  hdr: "hdri",
+  sprites: "sprite",
+  sprite: "sprite",
+};
+const _ASSET_KIND_BY_EXT = {
+  ".glb": "mesh", ".gltf": "mesh", ".obj": "mesh", ".fbx": "mesh",
+  ".png": "texture", ".jpg": "texture", ".jpeg": "texture", ".webp": "texture", ".ktx2": "texture",
+  ".hdr": "hdri", ".exr": "hdri",
+};
+
+export async function bootstrapAuthoredLocal(db, opts = {}) {
+  const root = opts.dir || _DEFAULT_AUTHORED_ROOT;
+  const stats = { found: 0, registered: 0, skipped: 0, byKind: {} };
+  if (!fs.existsSync(root)) return stats;
+
+  const walk = (d) => {
+    let out = [];
+    try {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const p = path.join(d, f.name);
+        if (f.isDirectory()) out = out.concat(walk(p));
+        else if (/\.(glb|gltf|obj|fbx|png|jpe?g|webp|ktx2|hdr|exr)$/i.test(f.name)) out.push(p);
+      }
+    } catch { /* unreadable dir */ }
+    return out;
+  };
+  const files = walk(root);
+  for (const file of files) {
+    stats.found += 1;
+    const rel = path.relative(root, file);
+    const firstSeg = rel.split(path.sep)[0]?.toLowerCase() || "";
+    const ext = path.extname(file).toLowerCase();
+    const kind = _ASSET_KIND_BY_DIR[firstSeg] || _ASSET_KIND_BY_EXT[ext] || null;
+    if (!kind) { stats.skipped += 1; continue; }
+    // Source-id is the file path under the authored root, normalised.
+    // Ensures re-runs are idempotent + cross-platform stable.
+    const sourceId = `local:${rel.replace(/[\\/]/g, "_")}`;
+    const existing = db.prepare(
+      `SELECT id FROM evo_assets WHERE source = 'authored' AND source_id = ?`
+    ).get(sourceId);
+    if (existing) { stats.skipped += 1; continue; }
+    registerAsset(db, {
+      kind,
+      source: "authored",
+      sourceId,
+      localPath: file,
+      category: firstSeg || null,
+      tags: ["authored", "seed"],
+      qualityLevel: 2,
+    });
+    stats.byKind[kind] = (stats.byKind[kind] || 0) + 1;
+    stats.registered += 1;
+  }
+  return stats;
+}
+
+/**
  * Run all available bootstrappers. Caller controls ordering + limits.
  * Designed to be invoked once at server boot (best-effort, behind try/catch).
  */
 export async function bootstrapAllSources(db, opts = {}) {
   const out = {};
+  // Local authored runs FIRST — fastest, no network, and gives the world
+  // immediate seed content even when external sources are unreachable.
+  try { out.authored = await bootstrapAuthoredLocal(db, opts.authored ?? {}); } catch { out.authored = { error: true }; }
   try { out.polyhaven = await bootstrapPolyHaven(db, opts.polyhaven ?? {}); } catch { out.polyhaven = { error: true }; }
   try { out.ambientcg = await bootstrapAmbientCG(db, opts.ambientcg ?? {}); } catch { out.ambientcg = { error: true }; }
   try { out.os3a      = await bootstrapOS3A(db, opts.os3a ?? {}); } catch { out.os3a = { error: true }; }
   if (opts.kenneyDir) {
     try { out.kenney = await bootstrapKenneyFromDir(db, opts.kenneyDir, opts.kenney ?? {}); } catch { out.kenney = { error: true }; }
+  }
+  if (opts.quaterniusDir) {
+    try { out.quaternius = await bootstrapQuaterniusFromDir(db, opts.quaterniusDir, opts.quaternius ?? {}); } catch { out.quaternius = { error: true }; }
   }
   return out;
 }

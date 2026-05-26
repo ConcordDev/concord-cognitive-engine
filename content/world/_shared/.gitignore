@@ -1,0 +1,21 @@
+# Big binary asset files don't go in git. Distribute separately.
+*.glb
+*.gltf
+*.obj
+*.fbx
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.ktx2
+*.hdr
+*.exr
+*.zip
+
+# Keep the directory structure + READMEs + manifests.
+!README.md
+!.gitignore
+!LICENSE.txt
+!**/LICENSE.txt
+!**/README.md
+!**/*.json

@@ -1,0 +1,5 @@
+Quaternius CC0 (Creative Commons Zero)
+
+All packs here originate from https://quaternius.com/ which licenses
+its entire library as CC0. Quaternius funds development via Patreon —
+consider supporting if you use heavily; not required.
