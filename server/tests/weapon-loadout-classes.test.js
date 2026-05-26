@@ -58,7 +58,7 @@ describe("inferWeaponClass — projectile / physics", () => {
     ["javelin",            "javelin"],
     ["whaling harpoon",    "harpoon"],
     ["boomerang",          "boomerang"],
-    ["chakram",            "boomerang"],
+    ["chakram",            "chakram"],
     ["throwing knife",     "thrown"],
     ["throwing axe",       "thrown"],
     ["shuriken",           "thrown"],
@@ -197,6 +197,104 @@ describe("inferWeaponClass — handedness contract", () => {
   });
 });
 
+describe("inferWeaponClass — heavy explosive launchers", () => {
+  const cases = [
+    ["grenade launcher",   "grenade_launcher"],
+    ["RPG-7",              "rpg"],
+    ["RPG",                "rpg"],
+    ["rocket launcher",    "rocket_launcher"],
+    ["missile launcher",   "missile_launcher"],
+    ["ATGM",               "missile_launcher"],
+    ["mortar",             "mortar"],
+    ["Carl Gustaf",        "recoilless_rifle"],
+    ["recoilless rifle",   "recoilless_rifle"],
+    ["anti-material rifle","anti_material"],
+    ["Barrett M82",        "anti_material"],
+  ];
+  for (const [name, expected] of cases) {
+    it(`"${name}" → ${expected}`, () => {
+      assert.equal(inferWeaponClass(name).weaponClass, expected);
+    });
+  }
+});
+
+describe("inferWeaponClass — directed-energy / sci-fi", () => {
+  const cases = [
+    ["laser pistol",       "laser_pistol"],
+    ["beam rifle",         "beam_rifle"],
+    ["particle beam",      "particle_beam"],
+    ["particle cannon",    "particle_beam"],
+    ["ion cannon",         "ion_cannon"],
+    ["microwave gun",      "microwave_gun"],
+    ["EMP gun",            "emp_gun"],
+    ["disruptor",          "disruptor"],
+    ["blaster",            "blaster"],
+    ["arc thrower",        "arc_thrower"],
+    ["lightning gun",      "arc_thrower"],
+    ["Tesla cannon",       "arc_thrower"],
+    ["freeze ray",         "freeze_gun"],
+    ["cryo cannon",        "freeze_gun"],
+    ["gauss rifle",        "gauss_rifle"],
+  ];
+  for (const [name, expected] of cases) {
+    it(`"${name}" → ${expected}`, () => {
+      assert.equal(inferWeaponClass(name).weaponClass, expected);
+    });
+  }
+});
+
+describe("inferWeaponClass — cyberware / implants", () => {
+  const cases = [
+    ["mantis blades",      "mantis_blades"],
+    ["gorilla arms",       "gorilla_arms"],
+    ["monomolecular whip", "monomolecular_whip"],
+    ["mono whip",          "monomolecular_whip"],
+    ["smart gun",          "smart_gun"],
+    ["smart rifle",        "smart_gun"],
+    ["tech rifle",         "tech_gun"],
+    ["cyber arm",          "cyber_implant"],
+    ["cyber weapon",       "cyber_implant"],
+  ];
+  for (const [name, expected] of cases) {
+    it(`"${name}" → ${expected}`, () => {
+      assert.equal(inferWeaponClass(name).weaponClass, expected);
+    });
+  }
+});
+
+describe("inferWeaponClass — additional exotic / cultural", () => {
+  const cases = [
+    ["urumi",              "urumi"],
+    ["meteor hammer",      "meteor_hammer"],
+    ["kanabo",             "kanabo"],
+    ["tetsubo",            "kanabo"],
+    ["macuahuitl",         "macuahuitl"],
+    ["wahaika",            "wahaika"],
+    ["gunblade",           "gunblade"],
+    ["gun sword",          "gunblade"],
+    ["katar",              "katar"],
+    ["shotel",             "shotel"],
+    ["falx",               "falx"],
+    ["jian",               "jian"],
+    ["tachi",              "tachi"],
+    ["bardiche",           "bardiche"],
+    ["guan dao",           "guan_dao"],
+    ["kwan dao",           "guan_dao"],
+    ["tepoztopilli",       "tepoztopilli"],
+    ["taiaha",             "taiaha"],
+    ["atlatl",             "atlatl"],
+    ["chakram",            "chakram"],
+    ["derringer",          "derringer"],
+    ["machine pistol",     "machine_pistol"],
+    ["carbine",            "carbine"],
+  ];
+  for (const [name, expected] of cases) {
+    it(`"${name}" → ${expected}`, () => {
+      assert.equal(inferWeaponClass(name).weaponClass, expected);
+    });
+  }
+});
+
 describe("inferWeaponClass — amorphous shortcut", () => {
   it("itemMeta.amorphous=true → amorphous class regardless of name", () => {
     const r = inferWeaponClass("Ordinary Sword", { amorphous: true });
@@ -243,20 +341,44 @@ describe("inferWeaponClass — unknown name fallback", () => {
 describe("WEAPON_CLASS_INFO — registry coverage", () => {
   it("every class emitted by inferWeaponClass is keyed in WEAPON_CLASS_INFO", () => {
     const emitters = [
-      "pistol", "revolver", "smg", "rifle", "shotgun", "sniper", "lmg",
-      "hand_cannon", "blunderbuss", "energy_rifle", "plasma", "railgun",
-      "bolter", "flamethrower",
+      // firearms — kinetic
+      "pistol", "revolver", "derringer", "machine_pistol", "smg", "carbine",
+      "rifle", "shotgun", "sniper", "anti_material", "lmg",
+      "hand_cannon", "blunderbuss", "flamethrower",
+      // firearms — energy / directed-energy
+      "energy_rifle", "plasma", "railgun", "gauss_rifle", "bolter",
+      "laser_pistol", "beam_rifle", "particle_beam", "ion_cannon",
+      "microwave_gun", "emp_gun", "disruptor", "blaster", "arc_thrower",
+      "freeze_gun",
+      // heavy / explosive launchers
+      "grenade_launcher", "rocket_launcher", "rpg", "missile_launcher",
+      "mortar", "recoilless_rifle",
+      // projectiles
       "bow", "longbow", "shortbow", "crossbow", "sling", "blowgun",
-      "thrown", "javelin", "harpoon", "boomerang",
-      "sword", "saber", "rapier", "katana", "cutlass", "machete",
-      "dagger", "kukri", "sickle", "hatchet", "tomahawk",
+      "thrown", "javelin", "harpoon", "boomerang", "atlatl", "chakram",
+      // blades
+      "sword", "saber", "rapier", "katana", "tachi", "jian", "cutlass",
+      "falx", "shotel", "machete", "dagger", "knife", "katar",
+      "kukri", "sickle", "hatchet", "tomahawk",
       "greatsword", "greataxe", "scythe",
-      "glaive", "naginata", "halberd", "spear", "lance", "pike", "trident",
+      // polearms
+      "glaive", "naginata", "halberd", "bardiche", "guan_dao", "tepoztopilli",
+      "pole_hammer", "taiaha", "spear", "lance", "pike", "trident",
+      // blunt
       "mace", "club", "flail", "hammer", "maul", "quarterstaff",
+      // exotic
       "whip", "chain", "kusarigama", "nunchaku", "tonfa", "sai", "fan", "kama",
+      "urumi", "meteor_hammer", "kanabo", "macuahuitl", "wahaika",
+      // fist
       "fist", "gauntlet", "claw", "knuckles",
+      // focus
       "wand", "rod", "staff", "scepter", "orb", "talisman", "grimoire", "crystal",
+      // shield
       "shield", "buckler", "bulwark", "tower_shield",
+      // hybrid + cyber + amorphous
+      "gunblade",
+      "mantis_blades", "gorilla_arms", "monomolecular_whip",
+      "projectile_launch", "smart_gun", "tech_gun", "cyber_implant",
       "amorphous",
     ];
     for (const cls of emitters) {
@@ -265,9 +387,16 @@ describe("WEAPON_CLASS_INFO — registry coverage", () => {
     }
   });
 
+  it("≥100 distinct weapon classes registered (massive plethora)", () => {
+    assert.ok(Object.keys(WEAPON_CLASS_INFO).length >= 100,
+      `expected ≥100 classes, got ${Object.keys(WEAPON_CLASS_INFO).length}`);
+  });
+
   it("category groupings are consistent", () => {
     assert.equal(WEAPON_CLASS_INFO.shotgun.category, "firearm");
-    assert.equal(WEAPON_CLASS_INFO.energy_rifle.category, "firearm");
+    assert.equal(WEAPON_CLASS_INFO.energy_rifle.category, "energy");
+    assert.equal(WEAPON_CLASS_INFO.plasma.category, "energy");
+    assert.equal(WEAPON_CLASS_INFO.rpg.category, "heavy_explosive");
     assert.equal(WEAPON_CLASS_INFO.longbow.category, "projectile");
     assert.equal(WEAPON_CLASS_INFO.scythe.category, "melee_blade_2h");
     assert.equal(WEAPON_CLASS_INFO.glaive.category, "melee_polearm");
@@ -275,6 +404,8 @@ describe("WEAPON_CLASS_INFO — registry coverage", () => {
     assert.equal(WEAPON_CLASS_INFO.gauntlet.category, "fist");
     assert.equal(WEAPON_CLASS_INFO.orb.category, "focus");
     assert.equal(WEAPON_CLASS_INFO.buckler.category, "shield");
+    assert.equal(WEAPON_CLASS_INFO.mantis_blades.category, "cyberware");
+    assert.equal(WEAPON_CLASS_INFO.gunblade.category, "hybrid");
     assert.equal(WEAPON_CLASS_INFO.amorphous.category, "amorphous");
   });
 

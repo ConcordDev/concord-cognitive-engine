@@ -33,21 +33,46 @@ import logger from "../../logger.js";
 //   amorphous  — true when the weapon's behavior is data-driven from the
 //                item itself rather than the class template
 export const WEAPON_CLASS_INFO = Object.freeze({
-  // ── Firearms ──────────────────────────────────────────────────────
+  // ── Firearms — kinetic ────────────────────────────────────────────
   pistol:        { category: "firearm",  defaultHand: "either", reach_m: 30 },
   revolver:      { category: "firearm",  defaultHand: "either", reach_m: 30 },
+  derringer:     { category: "firearm",  defaultHand: "either", reach_m: 12 },
+  machine_pistol:{ category: "firearm",  defaultHand: "either", reach_m: 35 },
   smg:           { category: "firearm",  defaultHand: "either", reach_m: 40 },
+  carbine:       { category: "firearm",  defaultHand: "two",    reach_m: 65 },
   rifle:         { category: "firearm",  defaultHand: "two",    reach_m: 80 },
   shotgun:       { category: "firearm",  defaultHand: "two",    reach_m: 20 },
   sniper:        { category: "firearm",  defaultHand: "two",    reach_m: 80 },
+  anti_material: { category: "firearm",  defaultHand: "two",    reach_m: 80 },  // .50 BMG class
   lmg:           { category: "firearm",  defaultHand: "two",    reach_m: 60 },
   hand_cannon:   { category: "firearm",  defaultHand: "either", reach_m: 25 },
   blunderbuss:   { category: "firearm",  defaultHand: "two",    reach_m: 15 },
-  energy_rifle:  { category: "firearm",  defaultHand: "two",    reach_m: 80 },
-  plasma:        { category: "firearm",  defaultHand: "two",    reach_m: 50 },
-  railgun:       { category: "firearm",  defaultHand: "two",    reach_m: 80 },
-  bolter:        { category: "firearm",  defaultHand: "either", reach_m: 40 },
   flamethrower:  { category: "firearm",  defaultHand: "two",    reach_m: 12 },
+
+  // ── Firearms — energy / sci-fi (directed energy) ──────────────────
+  energy_rifle:  { category: "energy",   defaultHand: "two",    reach_m: 80 },
+  plasma:        { category: "energy",   defaultHand: "two",    reach_m: 50 },
+  railgun:       { category: "energy",   defaultHand: "two",    reach_m: 80 },
+  gauss_rifle:   { category: "energy",   defaultHand: "two",    reach_m: 80 },
+  bolter:        { category: "energy",   defaultHand: "either", reach_m: 40 },
+  laser_pistol:  { category: "energy",   defaultHand: "either", reach_m: 60 },
+  beam_rifle:    { category: "energy",   defaultHand: "two",    reach_m: 80 },
+  particle_beam: { category: "energy",   defaultHand: "two",    reach_m: 80 },
+  ion_cannon:    { category: "energy",   defaultHand: "two",    reach_m: 70 },
+  microwave_gun: { category: "energy",   defaultHand: "two",    reach_m: 50 },
+  emp_gun:       { category: "energy",   defaultHand: "either", reach_m: 40 },
+  disruptor:     { category: "energy",   defaultHand: "either", reach_m: 50 },
+  blaster:       { category: "energy",   defaultHand: "either", reach_m: 60 },
+  arc_thrower:   { category: "energy",   defaultHand: "two",    reach_m: 30 },  // lightning gun
+  freeze_gun:    { category: "energy",   defaultHand: "either", reach_m: 25 },
+
+  // ── Heavy / explosive launchers ───────────────────────────────────
+  grenade_launcher:  { category: "heavy_explosive", defaultHand: "two", reach_m: 50 },
+  rocket_launcher:   { category: "heavy_explosive", defaultHand: "two", reach_m: 80 },
+  rpg:               { category: "heavy_explosive", defaultHand: "two", reach_m: 80 },
+  missile_launcher:  { category: "heavy_explosive", defaultHand: "two", reach_m: 80 },
+  mortar:            { category: "heavy_explosive", defaultHand: "two", reach_m: 80 },  // indirect, capped at sim reach
+  recoilless_rifle:  { category: "heavy_explosive", defaultHand: "two", reach_m: 80 },
 
   // ── Projectile (physics-driven) ────────────────────────────────────
   bow:           { category: "projectile", defaultHand: "two",    reach_m: 60 },
@@ -66,10 +91,15 @@ export const WEAPON_CLASS_INFO = Object.freeze({
   saber:         { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.5 },
   rapier:        { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.8 },
   katana:        { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.6 },
+  tachi:         { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.7 },  // curved cavalry sword
+  jian:          { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.4 },  // Chinese straight sword
   cutlass:       { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.3 },
+  falx:          { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.2 },  // Dacian inward-curved
+  shotel:        { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.5 },  // Ethiopian sickle-sword
   machete:       { category: "melee_blade_1h", defaultHand: "either", reach_m: 2.0 },
   dagger:        { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.5 },
   knife:         { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.4 },
+  katar:         { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.4 },  // Indian push-dagger
   kukri:         { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.8 },
   sickle:        { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.6 },
   hatchet:       { category: "melee_blade_1h", defaultHand: "either", reach_m: 1.7 },
@@ -96,6 +126,11 @@ export const WEAPON_CLASS_INFO = Object.freeze({
   lance:         { category: "melee_polearm", defaultHand: "two",    reach_m: 4.0 },
   pike:          { category: "melee_polearm", defaultHand: "two",    reach_m: 4.5 },
   trident:       { category: "melee_polearm", defaultHand: "either", reach_m: 3.2 },
+  bardiche:      { category: "melee_polearm", defaultHand: "two",    reach_m: 3.8 },
+  guan_dao:      { category: "melee_polearm", defaultHand: "two",    reach_m: 3.6 },  // Chinese sword-on-pole
+  tepoztopilli:  { category: "melee_polearm", defaultHand: "two",    reach_m: 3.2 },  // obsidian-edged Aztec polearm
+  pole_hammer:   { category: "melee_polearm", defaultHand: "two",    reach_m: 3.5 },
+  taiaha:        { category: "melee_polearm", defaultHand: "two",    reach_m: 2.8 },  // Maori club-spear
 
   // ── Exotic melee ──────────────────────────────────────────────────
   whip:          { category: "melee_exotic", defaultHand: "either", reach_m: 4.5 },
@@ -106,6 +141,14 @@ export const WEAPON_CLASS_INFO = Object.freeze({
   sai:           { category: "melee_exotic", defaultHand: "either", reach_m: 1.5 },
   fan:           { category: "melee_exotic", defaultHand: "either", reach_m: 1.4 },
   kama:          { category: "melee_exotic", defaultHand: "either", reach_m: 1.6 },
+  urumi:         { category: "melee_exotic", defaultHand: "either", reach_m: 4.2 },  // Indian whip-sword
+  meteor_hammer: { category: "melee_exotic", defaultHand: "either", reach_m: 4.5 },  // Chinese chain-ball
+  kanabo:        { category: "melee_exotic", defaultHand: "two",    reach_m: 2.5 },  // Japanese iron club
+  macuahuitl:    { category: "melee_exotic", defaultHand: "either", reach_m: 2.4 },  // Aztec obsidian club
+  wahaika:       { category: "melee_exotic", defaultHand: "either", reach_m: 1.6 },  // Maori short club
+  atlatl:        { category: "projectile",   defaultHand: "either", reach_m: 35 },   // spear-thrower
+  chakram:       { category: "projectile",   defaultHand: "either", reach_m: 30 },   // Sikh thrown ring
+  gunblade:      { category: "hybrid",       defaultHand: "either", reach_m: 25 },   // sword + firearm
 
   // ── Fist / claw ───────────────────────────────────────────────────
   fist:          { category: "fist", defaultHand: "either", reach_m: 1.2 },
@@ -129,6 +172,19 @@ export const WEAPON_CLASS_INFO = Object.freeze({
   bulwark:       { category: "shield", defaultHand: "left",  reach_m: 1.6 },
   tower_shield:  { category: "shield", defaultHand: "left",  reach_m: 1.8 },
 
+  // ── Cyberware / implants (arm-mounted, body-integrated) ───────────
+  // Implant weapons attach to the avatar, not a hand slot. defaultHand
+  // stays "either" so the equip system treats them like one-handers,
+  // but the renderer/animation system reads category=cyberware to skip
+  // the held-weapon mesh and play the deploy animation instead.
+  mantis_blades:    { category: "cyberware", defaultHand: "either", reach_m: 2.5 },
+  gorilla_arms:     { category: "cyberware", defaultHand: "either", reach_m: 1.5 },
+  monomolecular_whip:{ category: "cyberware", defaultHand: "either", reach_m: 5.5 },
+  projectile_launch:{ category: "cyberware", defaultHand: "either", reach_m: 30 },  // arm-mount projectile
+  smart_gun:        { category: "cyberware", defaultHand: "either", reach_m: 40 },  // smart-targeting firearm
+  tech_gun:         { category: "cyberware", defaultHand: "either", reach_m: 50 },  // railgun-class firearm
+  cyber_implant:    { category: "cyberware", defaultHand: "either", reach_m: 2.0 },
+
   // ── Amorphous (shape-shifting / player-invented / AI-modulated) ───
   // Behaviour comes from item meta, not the class template. Used when
   // a player crafts a weapon that doesn't fit any archetype — the item
@@ -142,24 +198,69 @@ export const WEAPON_CLASS_INFO = Object.freeze({
 // Order matters: more specific patterns first (e.g. "greatsword" before
 // "sword"). The matcher returns on first hit.
 const NAME_TO_CLASS = [
-  // Firearms — energy / sci-fi first (more specific keywords)
-  [/energy[ _-]?rifle|laser[ _-]?rifle|beam[ _-]?rifle/i,  "energy_rifle", "two"],
-  [/plasma\b/i,                                            "plasma",       "two"],
-  [/railgun|rail[ _-]?gun/i,                               "railgun",      "two"],
-  [/bolter|bolt[ _-]?gun/i,                                "bolter",       "either"],
-  [/flamethrower|flame[ _-]?gun/i,                         "flamethrower", "two"],
-  [/sniper|marksman\s+rifle|long\s+rifle/i,                "sniper",       "two"],
-  [/shotgun|scattergun|pump[ _-]?action/i,                 "shotgun",      "two"],
-  [/smg|submachine|machine\s+pistol|uzi/i,                 "smg",          "either"],
-  [/lmg|light\s+machine\s+gun|hmg|heavy\s+machine\s+gun/i, "lmg",          "two"],
-  [/hand[ _-]?cannon/i,                                    "hand_cannon",  "either"],
-  [/blunderbuss|musket|arquebus|hand\s+gonne/i,            "blunderbuss",  "two"],
-  [/rifle|carbine|battle\s+rifle|assault\s+rifle/i,        "rifle",        "two"],
+  // ── Compound exotics (terms containing generic class words) ─────
+  // Must match BEFORE generic firearm / blunt / blade patterns:
+  // "gun sword" would match `gun\b` (pistol) without this; "meteor
+  // hammer" would match `hammer` (maul) without this.
+  [/gunblade|gun[ _-]?sword/i,                             "gunblade",     "either"],
+  [/meteor[ _-]?hammer/i,                                  "meteor_hammer","either"],
+
+  // ── Heavy explosive launchers (before all rifles — RPG contains "RP") ──
+  [/grenade[ _-]?launcher/i,                               "grenade_launcher", "two"],
+  [/rocket[ _-]?launcher/i,                                "rocket_launcher",  "two"],
+  [/\brpg(?:-\d+)?\b/i,                                    "rpg",              "two"],
+  [/missile[ _-]?launcher|atgm|man[ _-]?portable\s+missile/i, "missile_launcher", "two"],
+  [/mortar\b/i,                                            "mortar",           "two"],
+  [/recoilless(?:[ _-]?rifle)?|carl[ _-]?gustaf/i,         "recoilless_rifle", "two"],
+  [/anti[ _-]?material|\.50\s*BMG|barrett(?:\s+m82)?/i,    "anti_material",    "two"],
+
+  // ── Cyberware (matched before firearm patterns to preempt smart-gun → pistol) ──
+  [/mantis[ _-]?blade/i,                                   "mantis_blades",     "either"],
+  [/gorilla[ _-]?arm/i,                                    "gorilla_arms",      "either"],
+  [/monomolecular[ _-]?(whip|wire)|mono[ _-]?whip/i,       "monomolecular_whip","either"],
+  [/projectile[ _-]?launch(er)?\s+(arm|implant)|arm[ _-]?launcher/i,
+                                                            "projectile_launch","either"],
+  [/smart[ _-]?(gun|link[ _-]?weapon|rifle|pistol)/i,      "smart_gun",         "either"],
+  [/tech[ _-]?(gun|rifle|pistol|weapon)/i,                 "tech_gun",          "either"],
+  [/cyber[ _-]?(arm|implant|weapon)/i,                     "cyber_implant",     "either"],
+
+  // ── Firearms — energy / sci-fi (specific keywords first) ──────────
+  [/disruptor/i,                                           "disruptor",     "either"],
+  [/blaster/i,                                             "blaster",       "either"],
+  [/freeze[ _-]?(gun|ray)|cryo[ _-]?(gun|cannon)/i,        "freeze_gun",    "either"],
+  [/arc[ _-]?thrower|lightning[ _-]?gun|tesla[ _-]?(gun|cannon)/i,
+                                                            "arc_thrower",  "two"],
+  [/microwave[ _-]?(gun|cannon|emitter)/i,                 "microwave_gun", "two"],
+  [/emp[ _-]?(gun|rifle|grenade)/i,                        "emp_gun",       "either"],
+  [/ion[ _-]?cannon/i,                                     "ion_cannon",    "two"],
+  [/particle[ _-]?(beam|cannon)/i,                         "particle_beam", "two"],
+  [/laser[ _-]?(pistol|sidearm)/i,                         "laser_pistol",  "either"],
+  [/beam[ _-]?rifle/i,                                     "beam_rifle",    "two"],
+  [/energy[ _-]?rifle|laser[ _-]?rifle/i,                  "energy_rifle",  "two"],
+  [/plasma\b/i,                                            "plasma",        "two"],
+  [/gauss[ _-]?(rifle|gun)/i,                              "gauss_rifle",   "two"],
+  [/railgun|rail[ _-]?gun/i,                               "railgun",       "two"],
+  [/bolter|bolt[ _-]?gun/i,                                "bolter",        "either"],
+  [/flamethrower|flame[ _-]?gun/i,                         "flamethrower",  "two"],
+
+  // ── Firearms — kinetic (modern + historical) ──────────────────────
+  [/sniper|marksman\s+rifle|long\s+rifle/i,                "sniper",        "two"],
+  [/shotgun|scattergun|pump[ _-]?action/i,                 "shotgun",       "two"],
+  [/derringer|pocket[ _-]?pistol/i,                        "derringer",     "either"],
+  [/machine[ _-]?pistol\b/i,                               "machine_pistol","either"],
+  [/smg|submachine|uzi/i,                                  "smg",           "either"],
+  [/lmg|light\s+machine\s+gun|hmg|heavy\s+machine\s+gun/i, "lmg",           "two"],
+  [/hand[ _-]?cannon/i,                                    "hand_cannon",   "either"],
+  [/blunderbuss|musket|arquebus|hand\s+gonne/i,            "blunderbuss",   "two"],
+  [/\bcarbine\b/i,                                         "carbine",       "two"],
+  [/rifle|battle\s+rifle|assault\s+rifle/i,                "rifle",         "two"],
   // blowgun before pistol — pistol's `gun\b` greedy-matches "blowgun"
-  [/blowgun|blow[ _-]?pipe/i,                              "blowgun",      "either"],
-  [/pistol|revolver|sidearm|gun\b/i,                       "pistol",       "either"],
+  [/blowgun|blow[ _-]?pipe/i,                              "blowgun",       "either"],
+  [/pistol|revolver|sidearm|gun\b/i,                       "pistol",        "either"],
 
   // Projectile / physics
+  [/atlatl|spear[ _-]?thrower/i,                           "atlatl",       "either"],
+  [/chakram\b/i,                                           "chakram",      "either"],
   [/longbow/i,                                             "longbow",      "two"],
   [/shortbow/i,                                            "shortbow",     "two"],
   [/heavy[ _-]?crossbow|repeating[ _-]?crossbow|arbalest/i,"crossbow",     "two"],
@@ -168,14 +269,19 @@ const NAME_TO_CLASS = [
   [/sling\b/i,                                             "sling",        "either"],
   [/javelin/i,                                             "javelin",      "either"],
   [/harpoon/i,                                             "harpoon",      "two"],
-  [/boomerang|chakram/i,                                   "boomerang",    "either"],
+  [/boomerang/i,                                           "boomerang",    "either"],
   [/throwing[ _-]?(knife|axe|star|dagger|spike|shuriken)|shuriken/i,
                                                            "thrown",       "either"],
 
   // Melee polearms (before "sword" / "axe" because halberd contains neither but glaive could conflict)
   [/halberd|poleaxe|pole[ _-]?axe/i,                       "halberd",      "two"],
+  [/bardiche/i,                                            "bardiche",     "two"],
   [/naginata/i,                                            "naginata",     "two"],
   [/glaive/i,                                              "glaive",       "two"],
+  [/guan[ _-]?dao|kwan[ _-]?dao/i,                         "guan_dao",     "two"],
+  [/tepoztopilli/i,                                        "tepoztopilli", "two"],
+  [/pole[ _-]?hammer/i,                                    "pole_hammer",  "two"],
+  [/taiaha/i,                                              "taiaha",       "two"],
   [/pike\b/i,                                              "pike",         "two"],
   [/lance/i,                                               "lance",        "two"],
   [/trident/i,                                             "trident",      "either"],
@@ -194,15 +300,19 @@ const NAME_TO_CLASS = [
   [/mace|cudgel/i,                                         "mace",         "either"],
   [/club\b/i,                                              "club",         "either"],
 
-  // Exotic melee
+  // Exotic melee (gunblade + meteor_hammer matched at top of table)
+  [/urumi/i,                                               "urumi",        "either"],
+  [/kanabo|tetsubo/i,                                      "kanabo",       "two"],
+  [/macuahuitl/i,                                          "macuahuitl",   "either"],
+  [/wahaika/i,                                             "wahaika",      "either"],
   [/kusarigama/i,                                          "kusarigama",   "either"],
   [/nunchaku|nunchuck/i,                                   "nunchaku",     "either"],
   [/tonfa/i,                                               "tonfa",        "either"],
   [/sai\b/i,                                               "sai",          "either"],
   [/kama\b/i,                                              "kama",         "either"],
   [/war[ _-]?fan|tessen|iron\s+fan/i,                      "fan",          "either"],
-  [/whip\b/i,                                              "whip",         "either"],
   [/chain[ _-]?whip|spiked\s+chain/i,                      "chain",        "either"],
+  [/whip\b/i,                                              "whip",         "either"],
 
   // Fist / claw
   [/gauntlet/i,                                            "gauntlet",     "either"],
@@ -211,6 +321,11 @@ const NAME_TO_CLASS = [
   [/fist\b|punch/i,                                        "fist",         "either"],
 
   // Blades (after specific subtypes)
+  [/katar\b/i,                                             "katar",        "either"],
+  [/shotel/i,                                              "shotel",       "either"],
+  [/falx\b/i,                                              "falx",         "either"],
+  [/jian\b/i,                                              "jian",         "either"],
+  [/tachi\b/i,                                             "tachi",        "either"],
   [/dagger|knife|stiletto|dirk|kris/i,                     "dagger",       "either"],
   [/machete/i,                                             "machete",      "either"],
   [/kukri/i,                                               "kukri",        "either"],
@@ -219,7 +334,7 @@ const NAME_TO_CLASS = [
   [/sickle/i,                                              "sickle",       "either"],
   [/cutlass/i,                                             "cutlass",      "either"],
   [/rapier|épée|epee|estoc/i,                              "rapier",       "either"],
-  [/katana|wakizashi|tachi/i,                              "katana",       "either"],
+  [/katana|wakizashi/i,                                    "katana",       "either"],
   [/saber|sabre|scimitar|falchion/i,                       "saber",        "either"],
   [/sword|blade|gladius|longsword/i,                       "sword",        "either"],
 
