@@ -1,0 +1,160 @@
+{
+  "generatedAt": "2026-05-26T01:44:39.359Z",
+  "worldId": "concordia-hub",
+  "userId": "d3def7b1-e7c6-4c76-8baa-9e1ecd42766a",
+  "totalSteps": 25,
+  "passed": 23,
+  "failed": 2,
+  "results": [
+    {
+      "step": "list-worlds",
+      "outcome": "pass",
+      "durationMs": 22,
+      "detail": "world id: concordia-hub, 14 total"
+    },
+    {
+      "step": "get-world-detail",
+      "outcome": "pass",
+      "durationMs": 11,
+      "detail": "world=concordia-hub, kind=n/a"
+    },
+    {
+      "step": "list-npcs-in-world",
+      "outcome": "pass",
+      "durationMs": 12,
+      "detail": "200 NPCs in world; first=wraith_alpha"
+    },
+    {
+      "step": "npc-dialogue-open",
+      "outcome": "pass",
+      "durationMs": 8,
+      "detail": "npc=wraith_a replied (0 chars, len cap=120 → \"…\")"
+    },
+    {
+      "step": "list-resource-nodes",
+      "outcome": "pass",
+      "durationMs": 10,
+      "detail": "236 resource nodes within 200m"
+    },
+    {
+      "step": "gather-resource",
+      "outcome": "pass",
+      "durationMs": 9,
+      "detail": "gathered n/a from undefined"
+    },
+    {
+      "step": "player-inventory",
+      "outcome": "pass",
+      "durationMs": 6,
+      "detail": "2 items in inventory"
+    },
+    {
+      "step": "active-quests",
+      "outcome": "pass",
+      "durationMs": 4,
+      "detail": "0 active quests"
+    },
+    {
+      "step": "world-events",
+      "outcome": "pass",
+      "durationMs": 4,
+      "detail": "0 world events scheduled"
+    },
+    {
+      "step": "combat-attack",
+      "outcome": "pass",
+      "durationMs": 5,
+      "detail": "attack response: status=400, hit=n/a, damage=n/a"
+    },
+    {
+      "step": "place-player-sign",
+      "outcome": "pass",
+      "durationMs": 20,
+      "detail": "placed via world.place-sign"
+    },
+    {
+      "step": "loot-bags",
+      "outcome": "pass",
+      "durationMs": 2,
+      "detail": "0 loot bags"
+    },
+    {
+      "step": "crafting-recipes",
+      "outcome": "pass",
+      "durationMs": 15,
+      "detail": "n/a recipes via tools.recipes"
+    },
+    {
+      "step": "skill-state",
+      "outcome": "pass",
+      "durationMs": 8,
+      "detail": "skills shape ok: {\"ok\":false,\"output\":\"fetch failed\",\"source\":\"utility-brain\",\"action\":\"list\",\"do"
+    },
+    {
+      "step": "wallet-balance",
+      "outcome": "fail",
+      "durationMs": 23,
+      "detail": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+    },
+    {
+      "step": "npc-routine",
+      "outcome": "pass",
+      "durationMs": 9,
+      "detail": "current activity: n/a"
+    },
+    {
+      "step": "npc-opinions-of-me",
+      "outcome": "fail",
+      "durationMs": 19,
+      "detail": "Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON"
+    },
+    {
+      "step": "world-market",
+      "outcome": "pass",
+      "durationMs": 6,
+      "detail": "2 listings"
+    },
+    {
+      "step": "personal-beats",
+      "outcome": "pass",
+      "durationMs": 5,
+      "detail": "0 personal beats"
+    },
+    {
+      "step": "glyph-spells",
+      "outcome": "pass",
+      "durationMs": 8,
+      "detail": "n/a glyph components"
+    },
+    {
+      "step": "heartbeat-ticking",
+      "outcome": "pass",
+      "durationMs": 7,
+      "detail": "tick counter = 0"
+    },
+    {
+      "step": "affect-state",
+      "outcome": "pass",
+      "durationMs": 5,
+      "detail": "affect=calm"
+    },
+    {
+      "step": "mount-list",
+      "outcome": "pass",
+      "durationMs": 10,
+      "detail": "n/a mounts"
+    },
+    {
+      "step": "world-move",
+      "outcome": "pass",
+      "durationMs": 3,
+      "detail": "move endpoint status=200"
+    },
+    {
+      "step": "world-emergents",
+      "outcome": "pass",
+      "durationMs": 3,
+      "detail": "0 emergent agents"
+    }
+  ]
+}

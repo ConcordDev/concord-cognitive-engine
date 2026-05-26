@@ -32764,9 +32764,15 @@ function _startGovernorHeartbeat() {
     if (process.env.CONCORD_DISABLE_HEARTBEAT === "true") return { ok:false, reason:"heartbeat_disabled_env" };
     const s = STATE.settings || {};
     const ms = clamp(Number(s.heartbeatMs ?? 60000), 15000, 10*60*1000);
-    if (s.heartbeatEnabled === false) return { ok:false, reason:"heartbeat_disabled" };
+    // Env override — CONCORD_FORCE_HEARTBEAT=true ignores the persisted
+    // settings.heartbeatEnabled flag. Useful when concord_state.json was
+    // left with engines off from an earlier test run and you don't want
+    // to hand-edit JSON to recover.
+    const persistedOff = s.heartbeatEnabled === false;
+    const forceOn = process.env.CONCORD_FORCE_HEARTBEAT === "true";
+    if (persistedOff && !forceOn) return { ok:false, reason:"heartbeat_disabled" };
     __governorTimer = setInterval(() => { governorTick("interval").catch(()=>{}); }, ms);
-    structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2) });
+    structuredLog("info", "governor_heartbeat_active", { intervalSec: (ms/1000).toFixed(2), forceOn });
     // fire once on boot (after a short delay so macros/STATE are warmed)
     setTimeout(() => { governorTick("boot").catch(()=>{}); }, 2000);
     return { ok:true, intervalMs: ms };
