@@ -538,7 +538,15 @@ NPC Name: ${npcTraits.name || "Citizen"}
 Personality: ${npcTraits.personality || "reserved"}
 Role: ${npcTraits.role || "resident"}
 Player Relationship: ${playerRelationship}
-Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})
+Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})${
+  npcTraits.persistent_grudge ? `
+Persistent grudge against this player or their faction: ${npcTraits.persistent_grudge}` : ''}${
+  npcTraits.current_preoccupation ? `
+Current preoccupation that colors this conversation: ${npcTraits.current_preoccupation}` : ''}${
+  npcTraits.desire_for_this_player ? `
+What you privately want from this player: ${npcTraits.desire_for_this_player}` : ''}${
+  typeof npcTraits.current_opinion === "number" ? `
+Your current opinion of this player on a scale from -1 hostile to +1 trusted: ${npcTraits.current_opinion.toFixed(2)}` : ''}
 ${policyLine}
 Output this exact JSON structure:
 {

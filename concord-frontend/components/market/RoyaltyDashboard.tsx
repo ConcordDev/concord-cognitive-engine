@@ -59,8 +59,33 @@ function RoyaltyDashboard({ userId }: RoyaltyDashboardProps) {
   const { data: royalties, isLoading } = useQuery<RoyaltyData>({
     queryKey: ['royalties', userId],
     queryFn: async () => {
-      const { data } = await api.get(`/api/marketplace/royalties/${userId}`);
-      return data as RoyaltyData;
+      // Canonical endpoint is /api/economy/royalties/dashboard — returns
+      // { lifetime: { totalEarned, ... }, recent: [...], passive: {...} }.
+      // We adapt that shape to the local RoyaltyData interface so the rest
+      // of the component (which expects totalEarned / thisMonth / etc.)
+      // keeps working unchanged. Falls back to zeros on any failure so the
+      // dashboard never crashes when the route is unavailable.
+      try {
+        const { data } = await api.get(`/api/economy/royalties/dashboard`);
+        const lifetime = data?.lifetime ?? {};
+        const recent: Array<{ id?: string; created_at?: string; amount?: number; metadata?: { contentId?: string; generation?: number } }> = data?.recent ?? [];
+        const recentPayments: RoyaltyPayment[] = recent.slice(0, 50).map((p, i) => ({
+          id: p.id || `ledger_${i}`,
+          date: p.created_at || new Date().toISOString(),
+          amount: p.amount || 0,
+          derivativeTitle: p.metadata?.contentId || 'unknown',
+          citationType: `gen_${p.metadata?.generation ?? '?'}`,
+        }));
+        return {
+          ok: true,
+          totalEarned: lifetime.totalEarned ?? 0,
+          thisMonth: data?.passive?.sinceLastLogin ?? 0,
+          streams: data?.streams ?? [],
+          recentPayments,
+        };
+      } catch {
+        return { ok: false, totalEarned: 0, thisMonth: 0, streams: [], recentPayments: [] };
+      }
     },
     staleTime: 30_000,
     enabled: !!userId,

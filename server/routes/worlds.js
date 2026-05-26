@@ -1020,6 +1020,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue" });
 
+      // Phase 2 asymmetry — pull the NPC's grudge / preoccupation / desire
+      // for THIS specific player so the LLM threads concrete history through
+      // the reply. Without this the dialogue feels generic even when the
+      // world's been running for months. buildNPCTraits handles its own
+      // try/catch + degrades to plain traits if the asymmetry tables are
+      // empty.
+      let asymmetryTraits = null;
+      try {
+        const bridge = await import("../lib/narrative-bridge.js");
+        asymmetryTraits = bridge.buildNPCTraits?.(npcId, db, {
+          userId: playerId,
+          playerMetrics: reputation || null,
+        }) || null;
+      } catch { /* asymmetry optional — fall back to neutral prompt */ }
+
       const promptLines = [
         TASK_PROMPTS.worldNpcPersonaHeader({
           npcName, archetype: npc.archetype, worldId,
@@ -1031,6 +1046,17 @@ export default function createWorldsRouter({ requireAuth, db }) {
         `Your current goals: ${JSON.stringify(state.goals || []).slice(0, 200)}`,
         `Player world reputation: ${reputation.tier} (avg opinion: ${reputation.avg_opinion?.toFixed(2)}).`,
         `Your opinion of this player: ${interactResult.opinion?.toFixed(2)} (mood: ${interactResult.mood}).`,
+        // Asymmetry fields — only emitted when the tables have data so the
+        // prompt stays terse for fresh NPCs.
+        asymmetryTraits?.persistent_grudge
+          ? `Persistent grudge against this player or their faction: ${asymmetryTraits.persistent_grudge}`
+          : '',
+        asymmetryTraits?.current_preoccupation
+          ? `Current preoccupation that colors this conversation: ${asymmetryTraits.current_preoccupation}`
+          : '',
+        asymmetryTraits?.desire_for_this_player
+          ? `What you privately want from this player: ${asymmetryTraits.desire_for_this_player}`
+          : '',
         quests.length > 0 ? `You have ${quests.length} quest(s) available to offer.` : '',
         ``,
         `A player has approached you to talk.`,

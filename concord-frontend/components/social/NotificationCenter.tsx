@@ -35,7 +35,8 @@ type NotificationType =
   | 'mention'
   | 'system'
   | 'achievement'
-  | 'content_update';
+  | 'content_update'
+  | 'royalty';
 
 type NotificationFilter = 'all' | 'unread' | NotificationType;
 
@@ -123,6 +124,13 @@ const NOTIFICATION_CONFIG: Record<
     icon: AlertCircle,
     color: 'text-neon-blue',
     bgColor: 'bg-neon-blue/10',
+  },
+  // Royalty cascade payout — fires when a downstream citation credits the
+  // original author. Coins icon + emerald to distinguish from direct `tip`.
+  royalty: {
+    icon: Coins,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-400/10',
   },
 };
 

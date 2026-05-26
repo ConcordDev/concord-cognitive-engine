@@ -407,6 +407,63 @@ export function distributeRoyalties(db, { contentId, transactionAmount, sourceTx
 
   try {
     const results = doRoyalties();
+
+    // ── Surface the credit so authors can see it arrive in real time. ──
+    // Before this hook, royalty payouts landed silently in the ledger and
+    // creators only noticed when they happened to refresh their wallet.
+    // Now: one in-memory notification + one realtime socket emit per
+    // recipient. Both are best-effort; ledger durability is unaffected.
+    try {
+      const STATE = globalThis._concordSTATE;
+      const REALTIME = globalThis._concordREALTIME;
+      const totals = new Map(); // recipientId → { amount, count, deepestGen }
+      for (const p of payouts) {
+        const cur = totals.get(p.recipientId) || { amount: 0, count: 0, deepestGen: 0 };
+        cur.amount += p.amount;
+        cur.count += 1;
+        if (p.generation > cur.deepestGen) cur.deepestGen = p.generation;
+        totals.set(p.recipientId, cur);
+      }
+      for (const [recipientId, agg] of totals.entries()) {
+        if (!recipientId || recipientId === PLATFORM_ACCOUNT_ID) continue;
+        // 1. In-memory notification row (read by /api/social/notifications).
+        if (STATE) {
+          if (!STATE.notifications) STATE.notifications = new Map();
+          const id = `royalty_${batchId}_${recipientId}`;
+          STATE.notifications.set(id, {
+            id,
+            type: "royalty",
+            userId: recipientId,
+            targetUserId: recipientId,
+            title: "Royalty credited",
+            message: agg.count === 1
+              ? `+${agg.amount.toFixed(4)} CC from a citation`
+              : `+${agg.amount.toFixed(4)} CC from ${agg.count} citations (deepest gen ${agg.deepestGen})`,
+            amount: agg.amount,
+            targetId: contentId,
+            read: false,
+            createdAt: new Date().toISOString(),
+            metadata: { batchId, sourceTxId, contentId, deepestGen: agg.deepestGen },
+          });
+        }
+        // 2. Realtime push so the wallet badge + bell update instantly.
+        try {
+          REALTIME?.io?.to(`user:${recipientId}`)?.emit("royalty:credited", {
+            recipientId,
+            amount: agg.amount,
+            count: agg.count,
+            deepestGeneration: agg.deepestGen,
+            contentId,
+            sourceTxId,
+            batchId,
+          });
+        } catch { /* socket best-effort */ }
+      }
+    } catch (notifErr) {
+      // Notification path must never break the cascade.
+      try { console.warn("[royalty-cascade] notification emit failed", notifErr?.message); } catch {}
+    }
+
     return {
       ok: true,
       batchId,

@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -170,7 +171,38 @@ function layoutGraph(citations: Citation[]): { nodes: LayoutNode[]; edges: Layou
 // ---------------------------------------------------------------------------
 
 export default function RoyaltyCascadeViz({ citations: citationsProp, selectedDtuId, className }: RoyaltyCascadeVizProps) {
-  const citations = citationsProp && citationsProp.length > 0 ? citationsProp : DEMO_CITATIONS;
+  // When a selectedDtuId is provided, fetch the real ancestor chain so the
+  // viz reflects actual cascade activity instead of demo nodes. Falls back
+  // to citationsProp (caller-provided) → DEMO_CITATIONS (no caller, no id).
+  const { data: chainData } = useQuery({
+    queryKey: ['royalty-chain', selectedDtuId],
+    queryFn: async () => {
+      if (!selectedDtuId) return null;
+      const r = await fetch(`/api/economy/royalties/chain/${encodeURIComponent(selectedDtuId)}`);
+      if (!r.ok) return null;
+      return r.json();
+    },
+    enabled: !!selectedDtuId && !citationsProp,
+    staleTime: 30_000,
+  });
+
+  const liveCitations: Citation[] = useMemo(() => {
+    const ancestors = chainData?.ancestors;
+    if (!Array.isArray(ancestors) || ancestors.length === 0 || !selectedDtuId) return [];
+    // Render each ancestor as one citation edge into the selected DTU. The
+    // amount field surfaces the per-generation rate so the canvas's edge
+    // weighting reflects actual royalty distribution semantics.
+    return ancestors.map((a: { contentId: string; rate?: number; generation?: number; creatorId?: string }) => ({
+      from: a.contentId,
+      to: selectedDtuId,
+      amount: (a.rate ?? 0) * 100,
+      timestamp: new Date().toISOString(),
+    }));
+  }, [chainData, selectedDtuId]);
+
+  const citations =
+    citationsProp && citationsProp.length > 0 ? citationsProp
+    : (liveCitations.length > 0 ? liveCitations : DEMO_CITATIONS);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animFrameRef = useRef<number>(0);

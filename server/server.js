@@ -23753,6 +23753,12 @@ registerVoiceTTSMacros(register);
 import registerLandClaimsMacros from "./domains/land-claims.js";
 registerLandClaimsMacros(register);
 
+// Evo-asset lineage — surfaces evo_assets + evo_asset_versions to the
+// frontend so players can see how the seed pool diversifies over time.
+// Read-only macros; promotion happens in evo-asset/scheduler.js.
+import registerEvoMacros from "./domains/evo.js";
+registerEvoMacros(register);
+
 // Phase 5d — Magic Glyph Composition. Players compose spells from base-6
 // glyph components. The composed spell is minted as a kind='spell_recipe'
 // DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
