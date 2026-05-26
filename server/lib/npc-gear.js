@@ -47,83 +47,321 @@ const ARCHETYPE_SLOTS = {
   default:    ['weapon'],
 };
 
-// ── Archetype → preferred weapon classes ───────────────────────────────────
+// ── Archetype → tiered weapon classes (level → class list) ─────────────────
 //
-// Each archetype declares a ranked list of weapon_class values (from
-// WEAPON_CLASS_INFO). pickWeaponClassForArchetype() deterministically picks
-// one per NPC by hashing npcId, so the same NPC always gets the same weapon
-// across save/restore. The chosen class is rendered as a human-readable item
-// name that round-trips through inferWeaponClass() — e.g. "Hunter Longbow
-// Lv3" parses back to weapon_class='longbow'.
+// Each archetype has 5 tier bands keyed by minimum level:
+//   1 = novice   (club, knife, hatchet — improvised / starter)
+//   3 = trained  (sword, mace, bow — journeyman gear)
+//   5 = veteran  (halberd, longbow, staff — full-kit professional)
+//   7 = elite    (greatsword, energy_rifle, gunblade — top-of-class)
+//   9 = legendary (scythe, railgun, mantis_blades — pinnacle / unique)
 //
-// Keep this list using only canonical WEAPON_CLASS_INFO keys — the
-// archetype-coverage test pins that contract.
-const ARCHETYPE_WEAPON_CLASSES = {
+// pickWeaponClassForArchetype(archetype, npcId, level) walks down the
+// keys, picks the highest tier ≤ level, then deterministically picks
+// one class from that tier band keyed by npcId.
+//
+// Each band is curated so the picked class CATEGORY upgrades coherently
+// (e.g. warrior stays melee_*, mage stays focus). Coverage test pins
+// the contract.
+const ARCHETYPE_WEAPON_TIERS = {
   // Frontline melee
-  warrior:    ['greatsword', 'greataxe', 'sword',     'mace'],
-  guard:      ['spear',      'halberd',  'sword',     'mace'],
-  guardian:   ['halberd',    'spear',    'tower_shield', 'mace'],
-  knight:     ['sword',      'lance',    'mace'],
-  soldier:    ['rifle',      'carbine',  'pistol',    'sword'],
-  enforcer:   ['mace',       'hammer',   'flail',     'club'],
-  fanatic:    ['scythe',     'flail',    'club'],
-  raider:     ['cutlass',    'mace',     'hatchet',   'dagger'],
+  warrior: {
+    1: ['club', 'mace'],
+    3: ['sword', 'mace', 'hatchet'],
+    5: ['sword', 'flail', 'spear', 'halberd'],
+    7: ['greatsword', 'greataxe', 'glaive'],
+    9: ['scythe', 'greatsword', 'meteor_hammer'],
+  },
+  guard: {
+    1: ['club', 'mace'],
+    3: ['spear', 'sword', 'mace'],
+    5: ['halberd', 'spear', 'sword'],
+    7: ['halberd', 'guan_dao', 'bardiche'],
+    9: ['halberd', 'pole_hammer', 'glaive'],
+  },
+  guardian: {
+    1: ['mace', 'shield'],
+    3: ['spear', 'shield', 'mace'],
+    5: ['halberd', 'tower_shield', 'spear'],
+    7: ['halberd', 'tower_shield', 'guan_dao'],
+    9: ['pole_hammer', 'tower_shield', 'meteor_hammer'],
+  },
+  knight: {
+    1: ['mace', 'sword'],
+    3: ['sword', 'lance', 'mace'],
+    5: ['sword', 'lance', 'flail'],
+    7: ['greatsword', 'lance', 'pole_hammer'],
+    9: ['greatsword', 'glaive', 'meteor_hammer'],
+  },
+  soldier: {
+    1: ['pistol', 'club'],
+    3: ['pistol', 'shotgun', 'carbine'],
+    5: ['rifle', 'carbine', 'shotgun'],
+    7: ['rifle', 'sniper', 'lmg'],
+    9: ['sniper', 'anti_material', 'rpg'],
+  },
+  enforcer: {
+    1: ['club', 'knuckles'],
+    3: ['mace', 'club', 'flail'],
+    5: ['hammer', 'mace', 'flail'],
+    7: ['maul', 'hammer', 'flail'],
+    9: ['maul', 'meteor_hammer', 'kanabo'],
+  },
+  fanatic: {
+    1: ['club', 'sickle'],
+    3: ['flail', 'sickle', 'club'],
+    5: ['scythe', 'flail', 'pike'],
+    7: ['scythe', 'flail', 'greataxe'],
+    9: ['scythe', 'meteor_hammer', 'urumi'],
+  },
+  raider: {
+    1: ['club', 'hatchet'],
+    3: ['cutlass', 'mace', 'hatchet'],
+    5: ['cutlass', 'tomahawk', 'mace'],
+    7: ['greataxe', 'cutlass', 'flail'],
+    9: ['greataxe', 'macuahuitl', 'scythe'],
+  },
+  berserker: {
+    1: ['club', 'hatchet'],
+    3: ['mace', 'hatchet', 'tomahawk'],
+    5: ['greataxe', 'maul', 'flail'],
+    7: ['greataxe', 'scythe', 'maul'],
+    9: ['scythe', 'meteor_hammer', 'kanabo'],
+  },
 
   // Ranged / stealth
-  hunter:     ['longbow',    'crossbow', 'shortbow',  'dagger'],
-  scout:      ['shortbow',   'crossbow', 'dagger'],
-  ranger:     ['longbow',    'crossbow', 'shortbow'],
-  archer:     ['longbow',    'shortbow', 'bow'],
-  // Note: "knife" class is intentionally absent — the inferWeaponClass
-  // regex groups knife/dagger/stiletto/dirk/kris under class=dagger, so
-  // naming an NPC's item "Knife" would round-trip to class=dagger and
-  // break the round-trip contract. Use "dagger" as the canonical short-blade.
-  rogue:      ['dagger',     'rapier',   'kukri'],
-  assassin:   ['dagger',     'katana',   'kukri',     'sai'],
-  thief:      ['dagger',     'sai'],
-  ninja:      ['katana',     'thrown',   'sai',       'kusarigama'],
-
-  // Brute
-  thug:       ['club',       'hammer',   'mace',      'knuckles'],
-  predator:   ['claw',       'fist',     'knuckles'],
-  berserker:  ['greataxe',   'scythe',   'maul'],
+  hunter: {
+    1: ['sling', 'shortbow'],
+    3: ['shortbow', 'bow', 'dagger'],
+    5: ['longbow', 'crossbow', 'dagger'],
+    7: ['longbow', 'crossbow', 'harpoon'],
+    9: ['longbow', 'crossbow', 'sniper'],
+  },
+  scout: {
+    1: ['sling', 'dagger'],
+    3: ['shortbow', 'dagger', 'crossbow'],
+    5: ['crossbow', 'shortbow', 'dagger'],
+    7: ['crossbow', 'longbow', 'rapier'],
+    9: ['longbow', 'sniper', 'chakram'],
+  },
+  ranger: {
+    1: ['sling', 'shortbow'],
+    3: ['shortbow', 'bow', 'crossbow'],
+    5: ['longbow', 'crossbow', 'shortbow'],
+    7: ['longbow', 'crossbow', 'rapier'],
+    9: ['longbow', 'sniper', 'crossbow'],
+  },
+  archer: {
+    1: ['shortbow', 'bow'],
+    3: ['shortbow', 'bow', 'crossbow'],
+    5: ['longbow', 'crossbow', 'bow'],
+    7: ['longbow', 'crossbow'],
+    9: ['longbow', 'chakram'],
+  },
+  rogue: {
+    1: ['dagger'],
+    3: ['dagger', 'rapier', 'kukri'],
+    5: ['rapier', 'dagger', 'cutlass'],
+    7: ['rapier', 'kukri', 'gunblade'],
+    9: ['rapier', 'urumi', 'monomolecular_whip'],
+  },
+  assassin: {
+    1: ['dagger'],
+    3: ['dagger', 'kukri', 'sai'],
+    5: ['katana', 'dagger', 'kukri'],
+    7: ['katana', 'gunblade', 'monomolecular_whip'],
+    9: ['katana', 'monomolecular_whip', 'mantis_blades'],
+  },
+  thief: {
+    1: ['dagger', 'sai'],
+    3: ['dagger', 'sai'],
+    5: ['dagger', 'rapier', 'sai'],
+    7: ['rapier', 'kukri', 'gunblade'],
+    9: ['rapier', 'monomolecular_whip', 'urumi'],
+  },
+  ninja: {
+    1: ['dagger', 'kama'],
+    3: ['thrown', 'katana', 'kama'],
+    5: ['katana', 'kusarigama', 'thrown'],
+    7: ['katana', 'kusarigama', 'sai'],
+    9: ['katana', 'urumi', 'monomolecular_whip'],
+  },
+  thug: {
+    1: ['club', 'knuckles'],
+    3: ['club', 'mace', 'knuckles'],
+    5: ['mace', 'hammer', 'flail'],
+    7: ['hammer', 'maul', 'flail'],
+    9: ['maul', 'kanabo', 'meteor_hammer'],
+  },
+  predator: {
+    1: ['fist', 'claw'],
+    3: ['claw', 'fist', 'knuckles'],
+    5: ['claw', 'knuckles', 'gauntlet'],
+    7: ['gauntlet', 'claw', 'mantis_blades'],
+    9: ['mantis_blades', 'gorilla_arms', 'claw'],
+  },
 
   // Magic / focus
-  mage:       ['staff',      'wand',     'orb',       'grimoire'],
-  mystic:     ['staff',      'orb',      'talisman',  'scepter'],
-  wizard:     ['staff',      'wand',     'grimoire'],
-  sorcerer:   ['wand',       'orb',      'crystal'],
-  warlock:    ['scepter',    'wand',     'grimoire'],
-  shaman:     ['staff',      'talisman', 'rod'],
-  cleric:     ['mace',       'staff',    'talisman'],
-  priest:     ['scepter',    'staff'],
+  mage: {
+    1: ['wand', 'rod'],
+    3: ['wand', 'rod', 'orb'],
+    5: ['staff', 'orb', 'grimoire'],
+    7: ['staff', 'grimoire', 'scepter'],
+    9: ['staff', 'grimoire', 'crystal'],
+  },
+  mystic: {
+    1: ['talisman', 'rod'],
+    3: ['rod', 'talisman', 'orb'],
+    5: ['orb', 'staff', 'talisman'],
+    7: ['staff', 'scepter', 'orb'],
+    9: ['staff', 'crystal', 'grimoire'],
+  },
+  wizard: {
+    1: ['wand', 'rod'],
+    3: ['wand', 'staff', 'grimoire'],
+    5: ['staff', 'grimoire', 'wand'],
+    7: ['staff', 'grimoire', 'scepter'],
+    9: ['staff', 'grimoire', 'crystal'],
+  },
+  sorcerer: {
+    1: ['wand', 'rod'],
+    3: ['wand', 'orb', 'crystal'],
+    5: ['orb', 'crystal', 'wand'],
+    7: ['scepter', 'orb', 'crystal'],
+    9: ['scepter', 'crystal', 'grimoire'],
+  },
+  warlock: {
+    1: ['rod', 'wand'],
+    3: ['wand', 'scepter', 'grimoire'],
+    5: ['scepter', 'grimoire', 'wand'],
+    7: ['scepter', 'grimoire', 'staff'],
+    9: ['scepter', 'crystal', 'grimoire'],
+  },
+  shaman: {
+    1: ['rod', 'talisman'],
+    3: ['rod', 'talisman', 'staff'],
+    5: ['staff', 'talisman', 'rod'],
+    7: ['staff', 'talisman', 'scepter'],
+    9: ['staff', 'talisman', 'crystal'],
+  },
+  cleric: {
+    1: ['mace', 'rod'],
+    3: ['mace', 'staff', 'talisman'],
+    5: ['mace', 'staff', 'scepter'],
+    7: ['scepter', 'mace', 'staff'],
+    9: ['scepter', 'staff', 'flail'],
+  },
+  priest: {
+    1: ['rod', 'mace'],
+    3: ['scepter', 'staff', 'rod'],
+    5: ['scepter', 'staff'],
+    7: ['scepter', 'staff', 'grimoire'],
+    9: ['scepter', 'crystal', 'grimoire'],
+  },
 
   // Tech / cyber
-  hacker:     ['smart_gun',  'emp_gun',  'pistol'],
-  pilot:      ['pistol',     'smart_gun', 'laser_pistol'],
-  engineer:   ['tech_gun',   'hammer',   'pistol'],
-  cyborg:     ['mantis_blades', 'gorilla_arms', 'tech_gun'],
-  marksman:   ['sniper',     'rifle',    'pistol'],
-  gunslinger: ['revolver',   'pistol',   'shotgun'],
+  hacker: {
+    1: ['pistol', 'dagger'],
+    3: ['pistol', 'smart_gun', 'emp_gun'],
+    5: ['smart_gun', 'emp_gun', 'pistol'],
+    7: ['smart_gun', 'emp_gun', 'tech_gun'],
+    9: ['tech_gun', 'emp_gun', 'monomolecular_whip'],
+  },
+  pilot: {
+    1: ['pistol', 'derringer'],
+    3: ['pistol', 'smart_gun'],
+    5: ['smart_gun', 'laser_pistol', 'pistol'],
+    7: ['laser_pistol', 'smart_gun', 'beam_rifle'],
+    9: ['beam_rifle', 'laser_pistol', 'particle_beam'],
+  },
+  engineer: {
+    1: ['hammer', 'pistol'],
+    3: ['hammer', 'pistol', 'tech_gun'],
+    5: ['tech_gun', 'hammer', 'smart_gun'],
+    7: ['tech_gun', 'plasma', 'railgun'],
+    9: ['railgun', 'plasma', 'gauss_rifle'],
+  },
+  cyborg: {
+    1: ['gauntlet', 'knuckles'],
+    3: ['gauntlet', 'gorilla_arms', 'mantis_blades'],
+    5: ['mantis_blades', 'gorilla_arms', 'tech_gun'],
+    7: ['mantis_blades', 'gorilla_arms', 'monomolecular_whip'],
+    9: ['mantis_blades', 'monomolecular_whip', 'gorilla_arms'],
+  },
+  marksman: {
+    1: ['pistol', 'bow'],
+    3: ['rifle', 'pistol', 'crossbow'],
+    5: ['sniper', 'rifle', 'longbow'],
+    7: ['sniper', 'rifle', 'anti_material'],
+    9: ['sniper', 'anti_material', 'railgun'],
+  },
+  gunslinger: {
+    1: ['derringer', 'pistol'],
+    3: ['revolver', 'pistol', 'shotgun'],
+    5: ['revolver', 'shotgun', 'hand_cannon'],
+    7: ['hand_cannon', 'revolver', 'shotgun'],
+    9: ['hand_cannon', 'gunblade', 'revolver'],
+  },
 
-  // Civilian
-  vigilante:  ['fist',       'kanabo',   'pistol'],
-  security:   ['shield',     'mace',     'pistol'],
-  trader:     ['pistol',     'dagger'],
-  blacksmith: ['hammer',     'mace'],
-  miner:      ['hammer',     'pickaxe',  'mace'],   // pickaxe → falls through, mace fallback
-  farmer:     ['sickle',     'scythe',   'hatchet'],
-  medic:      ['fist',       'dagger'],
-  scientist:  ['fist'],
-  journalist: ['fist'],
-  entertainer:['fan',        'whip'],
-  citizen:    ['fist',       'club'],
-  wanderer:   ['dagger',     'quarterstaff', 'sling'],
-  investigator: ['pistol',   'sword'],
-  official:   ['sword',      'scepter'],
+  // Civilian / utility
+  vigilante: {
+    1: ['fist', 'club'],
+    3: ['kanabo', 'club', 'pistol'],
+    5: ['kanabo', 'pistol', 'mace'],
+    7: ['pistol', 'kanabo', 'gunblade'],
+    9: ['gunblade', 'mantis_blades', 'kanabo'],
+  },
+  security: {
+    1: ['club', 'mace'],
+    3: ['mace', 'shield', 'pistol'],
+    5: ['mace', 'shield', 'pistol'],
+    7: ['shield', 'mace', 'rifle'],
+    9: ['shield', 'rifle', 'mace'],
+  },
+  trader:     { 1: ['pistol', 'dagger'], 3: ['pistol', 'dagger'], 5: ['pistol', 'derringer'], 7: ['pistol', 'rifle'], 9: ['pistol', 'rifle'] },
+  blacksmith: { 1: ['hammer'], 3: ['hammer', 'mace'], 5: ['hammer', 'mace'], 7: ['hammer', 'maul'], 9: ['maul', 'hammer'] },
+  miner:      { 1: ['hammer'], 3: ['hammer', 'mace'], 5: ['hammer', 'mace'], 7: ['hammer', 'maul'], 9: ['maul', 'hammer'] },
+  farmer:     { 1: ['sickle'], 3: ['sickle', 'hatchet'], 5: ['scythe', 'sickle', 'hatchet'], 7: ['scythe', 'hatchet'], 9: ['scythe'] },
+  medic:      { 1: ['fist'], 3: ['fist', 'dagger'], 5: ['dagger', 'fist'], 7: ['dagger', 'pistol'], 9: ['pistol', 'dagger'] },
+  scientist:  { 1: ['fist'], 3: ['fist'], 5: ['fist', 'rod'], 7: ['rod', 'fist'], 9: ['rod', 'staff'] },
+  journalist: { 1: ['fist'], 3: ['fist'], 5: ['fist', 'pistol'], 7: ['pistol', 'fist'], 9: ['pistol'] },
+  entertainer:{ 1: ['fan'], 3: ['fan', 'whip'], 5: ['fan', 'whip'], 7: ['whip', 'fan'], 9: ['urumi', 'fan'] },
+  citizen:    { 1: ['fist', 'club'], 3: ['fist', 'club'], 5: ['club', 'mace'], 7: ['mace', 'club'], 9: ['mace'] },
+  wanderer:   { 1: ['sling', 'dagger'], 3: ['quarterstaff', 'dagger', 'sling'], 5: ['quarterstaff', 'dagger'], 7: ['quarterstaff', 'sword'], 9: ['quarterstaff', 'staff'] },
+  investigator: { 1: ['fist', 'pistol'], 3: ['pistol', 'sword'], 5: ['pistol', 'sword'], 7: ['pistol', 'rifle'], 9: ['pistol', 'rifle'] },
+  official:   { 1: ['sword'], 3: ['sword', 'scepter'], 5: ['sword', 'scepter'], 7: ['scepter', 'sword'], 9: ['scepter', 'sword'] },
 
-  default:    ['fist'],
+  // Fallback
+  default:    { 1: ['fist'], 3: ['fist', 'club'], 5: ['club', 'mace'], 7: ['mace', 'sword'], 9: ['sword'] },
 };
+
+// ── Rarity ladder by level ─────────────────────────────────────────────────
+const RARITY_BY_LEVEL = [
+  // [minLevel, key,          adjective,    color (UI hint)]
+  [1,  'common',     'Common',      '#9ca3af'],   // 1–2
+  [3,  'uncommon',   'Uncommon',    '#22c55e'],   // 3–4
+  [5,  'rare',       'Rare',        '#3b82f6'],   // 5–6
+  [7,  'epic',       'Epic',        '#a855f7'],   // 7–8
+  [9,  'legendary',  'Legendary',   '#f59e0b'],   // 9+
+];
+
+function _rarityForLevel(level) {
+  let pick = RARITY_BY_LEVEL[0];
+  for (const row of RARITY_BY_LEVEL) {
+    if (level >= row[0]) pick = row;
+  }
+  return { key: pick[1], adjective: pick[2], color: pick[3] };
+}
+
+function _tierForLevel(archetype, level) {
+  const tiers = ARCHETYPE_WEAPON_TIERS[archetype] ?? ARCHETYPE_WEAPON_TIERS.default;
+  const keys = Object.keys(tiers).map(Number).sort((a, b) => a - b);
+  let pickKey = keys[0];
+  for (const k of keys) {
+    if (level >= k) pickKey = k;
+  }
+  return tiers[pickKey];
+}
 
 // ── Item-name templates per weapon_class ───────────────────────────────────
 // Mapping a class → human-readable noun. The noun MUST be a keyword that
@@ -212,8 +450,13 @@ export function accumulateWealth(db, npcId, occupation) {
 
 /**
  * Pick a weapon_class for an archetype deterministically from npcId.
- * The same (archetype, npcId) always yields the same class — important for
- * save/restore consistency. Returns { class, name } where name is a
+ *
+ * The same (archetype, npcId, level) always yields the same class — important
+ * for save/restore consistency. Class grows with level: a low-level guard
+ * carries a club, a high-level guard carries a halberd. Rarity also climbs
+ * — common (1–2) → uncommon (3–4) → rare (5–6) → epic (7–8) → legendary (9+).
+ *
+ * Returns { class, rarity, rarityKey, rarityColor, name } where name is a
  * round-trippable string that inferWeaponClass() resolves back to `class`.
  *
  * Returns null when archetype has no weapon preferences (e.g. blacksmith,
@@ -221,12 +464,12 @@ export function accumulateWealth(db, npcId, occupation) {
  * "{archetype} {slot} Lv{n}" naming in that case.
  */
 export function pickWeaponClassForArchetype(archetype, npcId, level = 1) {
-  const prefs = ARCHETYPE_WEAPON_CLASSES[archetype] ?? ARCHETYPE_WEAPON_CLASSES.default;
-  if (!prefs || prefs.length === 0) return null;
+  const tierClasses = _tierForLevel(archetype, level);
+  if (!tierClasses || tierClasses.length === 0) return null;
   // Filter out any class without registry metadata (defensive — e.g. "pickaxe"
   // is a tool that doesn't appear in WEAPON_CLASS_INFO, so it falls through
   // to the next preference).
-  const valid = prefs.filter((c) => WEAPON_CLASS_INFO[c]);
+  const valid = tierClasses.filter((c) => WEAPON_CLASS_INFO[c]);
   if (valid.length === 0) return null;
   // Deterministic pick keyed by npcId so the same NPC always gets the same
   // weapon. SHA1 → modulo for a stable index.
@@ -234,7 +477,18 @@ export function pickWeaponClassForArchetype(archetype, npcId, level = 1) {
   const idx = h.readUInt32BE(0) % valid.length;
   const cls = valid[idx];
   const noun = WEAPON_CLASS_NOUNS[cls] ?? _capitalize(cls);
-  return { class: cls, name: `${_capitalize(archetype)}'s ${noun} Lv${level}` };
+  const rarity = _rarityForLevel(level);
+  return {
+    class: cls,
+    rarity: rarity.adjective,
+    rarityKey: rarity.key,
+    rarityColor: rarity.color,
+    // Format: "Rare Hunter's Crossbow Lv5" — rarity adjective + archetype
+    // possessive + class noun + level marker. Noun appears LAST so the
+    // inferWeaponClass regex still resolves the class (most patterns match
+    // on the noun keyword regardless of prefix).
+    name: `${rarity.adjective} ${_capitalize(archetype)}'s ${noun} Lv${level}`,
+  };
 }
 
 /**
@@ -246,41 +500,64 @@ export function pickWeaponClassForArchetype(archetype, npcId, level = 1) {
  */
 export function seedStarterGear(db, npcId, archetype, startLevel = 1) {
   const slots = ARCHETYPE_SLOTS[archetype] ?? ARCHETYPE_SLOTS.default;
+  // Every slot also gets a rarity stamp keyed by gear_level so tool / armor
+  // / accessory upgrades feel like loot too, not just weapons.
+  const slotRarity = _rarityForLevel(startLevel);
   for (const slot of slots) {
     const stats = SLOT_STATS[slot]?.(startLevel) ?? {};
     let itemId = `${archetype}-${slot}-lv${startLevel}`;
-    let itemName = `${_capitalize(archetype)} ${_capitalize(slot)} Lv${startLevel}`;
+    let itemName = `${slotRarity.adjective} ${_capitalize(archetype)} ${_capitalize(slot)} Lv${startLevel}`;
     let weaponClass = null;
+    let rarityKey = slotRarity.key;
     if (slot === 'weapon') {
       const pick = pickWeaponClassForArchetype(archetype, npcId, startLevel);
       if (pick) {
         itemId = `${archetype}-${pick.class}-lv${startLevel}`;
         itemName = pick.name;
         weaponClass = pick.class;
+        rarityKey = pick.rarityKey;
       }
     }
-    // Persist weapon_class in stats JSON so downstream readers (combat,
-    // loot, dialogue colour) can read it without re-inferring.
-    const statsWithClass = weaponClass ? { ...stats, weapon_class: weaponClass } : stats;
+    // Persist weapon_class + rarity in stats JSON so downstream readers
+    // (combat, loot, dialogue colour, character sheet) can read them
+    // without re-inferring.
+    const statsWithMeta = {
+      ...stats,
+      rarity: rarityKey,
+      rarity_color: slotRarity.color,
+      ...(weaponClass ? { weapon_class: weaponClass } : {}),
+    };
     db.prepare(`
       INSERT OR IGNORE INTO npc_gear (id, npc_id, slot, item_id, item_name, item_type, gear_level, stats)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       crypto.randomUUID(), npcId, slot,
       itemId, itemName, slot, startLevel,
-      JSON.stringify(statsWithClass),
+      JSON.stringify(statsWithMeta),
     );
   }
   db.prepare('UPDATE world_npcs SET gear_level = ? WHERE id = ?').run(startLevel, npcId);
 }
 
 /**
- * Lookup the canonical preference list for an archetype (read-only). Used
- * by the loadout-test harness and by faction-strategy "what does this
- * archetype carry?" prompts.
+ * Lookup the canonical preference list for an archetype at a given level.
+ * Returns the tier band for that level. Used by the loadout-test harness
+ * and by faction-strategy "what does this archetype carry?" prompts.
  */
-export function getArchetypeWeaponPreferences(archetype) {
-  return ARCHETYPE_WEAPON_CLASSES[archetype] ?? ARCHETYPE_WEAPON_CLASSES.default;
+export function getArchetypeWeaponPreferences(archetype, level = 1) {
+  return _tierForLevel(archetype, level);
+}
+
+/**
+ * Rarity ladder lookup — public so the character-sheet route can decorate
+ * player loot with the same color the NPC's gear stamps.
+ *
+ *   { key: 'rare', adjective: 'Rare', color: '#3b82f6' }
+ *
+ * Levels: 1–2 common, 3–4 uncommon, 5–6 rare, 7–8 epic, 9+ legendary.
+ */
+export function rarityForLevel(level) {
+  return _rarityForLevel(level);
 }
 
 // ── Gear Upgrade Evaluation ───────────────────────────────────────────────────
@@ -311,17 +588,32 @@ export function evaluateGearUpgrade(db, npcId) {
   if (!lowestSlot) return false;
 
   const newSlotLevel = (lowestSlot.gear_level ?? 1) + 1;
-  const stats = SLOT_STATS[lowestSlot.slot]?.(newSlotLevel) ?? {};
+  const baseStats = SLOT_STATS[lowestSlot.slot]?.(newSlotLevel) ?? {};
+  const rarity = _rarityForLevel(newSlotLevel);
+
+  // Weapon slot: re-roll class against the new tier band so a guard
+  // crossing the Lv5 threshold goes club → halberd, a mage Lv5 goes
+  // wand → staff. Non-weapon slots just bump the rarity adjective.
+  let nextItemName;
+  let nextStats;
+  if (lowestSlot.slot === 'weapon') {
+    const pick = pickWeaponClassForArchetype(npc.archetype ?? 'default', npcId, newSlotLevel);
+    if (pick) {
+      nextItemName = pick.name;
+      nextStats = { ...baseStats, weapon_class: pick.class, rarity: pick.rarityKey, rarity_color: pick.rarityColor };
+    } else {
+      nextItemName = `${rarity.adjective} ${_capitalize(npc.archetype ?? 'npc')} ${_capitalize(lowestSlot.slot)} Lv${newSlotLevel}`;
+      nextStats = { ...baseStats, rarity: rarity.key, rarity_color: rarity.color };
+    }
+  } else {
+    nextItemName = `${rarity.adjective} ${_capitalize(npc.archetype ?? 'npc')} ${_capitalize(lowestSlot.slot)} Lv${newSlotLevel}`;
+    nextStats = { ...baseStats, rarity: rarity.key, rarity_color: rarity.color };
+  }
 
   db.prepare(`
     UPDATE npc_gear SET gear_level = ?, item_name = ?, stats = ?
     WHERE id = ?
-  `).run(
-    newSlotLevel,
-    `${_capitalize(npc.archetype ?? 'npc')} ${_capitalize(lowestSlot.slot)} Lv${newSlotLevel}`,
-    JSON.stringify(stats),
-    lowestSlot.id,
-  );
+  `).run(newSlotLevel, nextItemName, JSON.stringify(nextStats), lowestSlot.id);
 
   // Deduct cost, update aggregate gear_level (average of equipped slots, rounded)
   db.prepare('UPDATE world_npcs SET wealth_sparks = wealth_sparks - ? WHERE id = ?').run(cost, npcId);

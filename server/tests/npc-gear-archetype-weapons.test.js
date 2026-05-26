@@ -19,6 +19,7 @@ import {
   seedStarterGear,
   pickWeaponClassForArchetype,
   getArchetypeWeaponPreferences,
+  rarityForLevel,
 } from "../lib/npc-gear.js";
 import { WEAPON_CLASS_INFO, inferWeaponClass } from "../lib/combat/loadout.js";
 
@@ -99,8 +100,8 @@ describe("pickWeaponClassForArchetype — deterministic per-NPC pick", () => {
   });
 });
 
-describe("ARCHETYPE_WEAPON_CLASSES — registry validation", () => {
-  it("every archetype's preferences resolve to canonical classes (after pickaxe-like filter)", () => {
+describe("ARCHETYPE_WEAPON_TIERS — registry validation", () => {
+  it("every archetype has tier bands at all 5 levels with canonical classes", () => {
     const archetypes = [
       "warrior", "guard", "guardian", "knight", "soldier", "enforcer",
       "fanatic", "raider", "hunter", "scout", "ranger", "archer",
@@ -113,20 +114,23 @@ describe("ARCHETYPE_WEAPON_CLASSES — registry validation", () => {
       "investigator", "official", "default",
     ];
     for (const a of archetypes) {
-      const prefs = getArchetypeWeaponPreferences(a);
-      assert.ok(Array.isArray(prefs) && prefs.length > 0, `no prefs for "${a}"`);
-      const validCount = prefs.filter((c) => WEAPON_CLASS_INFO[c]).length;
-      assert.ok(validCount > 0, `archetype "${a}" has no canonical class in prefs ${JSON.stringify(prefs)}`);
+      for (const lv of [1, 3, 5, 7, 9]) {
+        const prefs = getArchetypeWeaponPreferences(a, lv);
+        assert.ok(Array.isArray(prefs) && prefs.length > 0, `no prefs for "${a}" lv${lv}`);
+        const validCount = prefs.filter((c) => WEAPON_CLASS_INFO[c]).length;
+        assert.ok(validCount > 0, `"${a}" lv${lv} has no canonical class in ${JSON.stringify(prefs)}`);
+      }
     }
   });
 
-  it("category coherence — frontline melee archetypes pick melee weapons", () => {
-    // warrior should pick from melee categories, not firearm
-    for (let i = 0; i < 20; i++) {
-      const r = pickWeaponClassForArchetype("warrior", `w_${i}`, 1);
-      const info = WEAPON_CLASS_INFO[r.class];
-      assert.ok(info.category.startsWith("melee"),
-        `warrior picked ${r.class} (${info.category}), expected melee_*`);
+  it("category coherence — warrior stays melee_* across all tiers", () => {
+    for (const lv of [1, 3, 5, 7, 9]) {
+      for (let i = 0; i < 10; i++) {
+        const r = pickWeaponClassForArchetype("warrior", `w_${lv}_${i}`, lv);
+        const info = WEAPON_CLASS_INFO[r.class];
+        assert.ok(info.category.startsWith("melee"),
+          `warrior lv${lv} picked ${r.class} (${info.category})`);
+      }
     }
   });
 
@@ -159,11 +163,127 @@ describe("ARCHETYPE_WEAPON_CLASSES — registry validation", () => {
       `expected mostly firearms for soldier, got ${seen.firearm}/${seen.firearm + seen.other}`);
   });
 
-  it("category coherence — cyborg picks cyberware", () => {
+  it("category coherence — cyborg picks cyberware at lv5+ (apprentices start fist/knuckles)", () => {
+    // Lv1 cyborg has unchromed humanoid kit (gauntlet/knuckles), so we test
+    // the higher-tier band where the implants actually unlock.
     for (let i = 0; i < 20; i++) {
-      const r = pickWeaponClassForArchetype("cyborg", `c_${i}`, 1);
+      const r = pickWeaponClassForArchetype("cyborg", `c_${i}`, 5);
       const info = WEAPON_CLASS_INFO[r.class];
-      assert.equal(info.category, "cyberware");
+      assert.ok(["cyberware", "fist", "firearm"].includes(info.category),
+        `cyborg lv5 ${r.class} (${info.category})`);
+    }
+    // At lv9, fully chromed — cyberware-only.
+    for (let i = 0; i < 20; i++) {
+      const r = pickWeaponClassForArchetype("cyborg", `c9_${i}`, 9);
+      const info = WEAPON_CLASS_INFO[r.class];
+      assert.equal(info.category, "cyberware", `cyborg lv9 ${r.class}`);
+    }
+  });
+});
+
+describe("Class progression — tiers grow with level", () => {
+  it("warrior — high-tier levels pull from 2H / polearm pool, novice from club/mace", () => {
+    const noviceCats = new Set();
+    const eliteCats = new Set();
+    for (let i = 0; i < 50; i++) {
+      noviceCats.add(WEAPON_CLASS_INFO[pickWeaponClassForArchetype("warrior", `w_${i}`, 1).class].category);
+      eliteCats.add(WEAPON_CLASS_INFO[pickWeaponClassForArchetype("warrior", `w_${i}`, 9).class].category);
+    }
+    // At lv1 only blunt_1h. At lv9 the pool includes blade_2h / exotic / polearm.
+    assert.ok(noviceCats.has("melee_blunt_1h"));
+    assert.ok(
+      eliteCats.has("melee_blade_2h") || eliteCats.has("melee_exotic") || eliteCats.has("melee_polearm"),
+      `lv9 warrior should reach 2H/exotic/polearm pool; saw ${[...eliteCats].join(",")}`,
+    );
+    // And novice never reaches the elite-only classes.
+    assert.ok(
+      !noviceCats.has("melee_blade_2h") && !noviceCats.has("melee_exotic"),
+      `lv1 warrior should not reach 2H/exotic; saw ${[...noviceCats].join(",")}`,
+    );
+  });
+
+  it("hunter — novice uses sling/shortbow, elite reaches sniper/longbow", () => {
+    const novices = new Set();
+    const elites = new Set();
+    for (let i = 0; i < 50; i++) {
+      novices.add(pickWeaponClassForArchetype("hunter", `h_${i}`, 1).class);
+      elites.add(pickWeaponClassForArchetype("hunter", `h_${i}`, 9).class);
+    }
+    assert.ok(novices.has("sling") || novices.has("shortbow"));
+    assert.ok(elites.has("longbow") || elites.has("sniper"));
+    assert.ok(!novices.has("sniper"), "novice hunter shouldn't get a sniper rifle");
+  });
+
+  it("soldier — novice has pistol/club, elite has rpg/anti_material", () => {
+    const novices = new Set();
+    const elites = new Set();
+    for (let i = 0; i < 50; i++) {
+      novices.add(pickWeaponClassForArchetype("soldier", `s_${i}`, 1).class);
+      elites.add(pickWeaponClassForArchetype("soldier", `s_${i}`, 9).class);
+    }
+    assert.ok(novices.has("pistol") || novices.has("club"));
+    assert.ok(elites.has("rpg") || elites.has("anti_material") || elites.has("sniper"));
+    assert.ok(!novices.has("rpg") && !novices.has("anti_material"));
+  });
+
+  it("mage — novice uses wand/rod, elite reaches staff/grimoire/crystal", () => {
+    const novices = new Set();
+    const elites = new Set();
+    for (let i = 0; i < 50; i++) {
+      novices.add(pickWeaponClassForArchetype("mage", `m_${i}`, 1).class);
+      elites.add(pickWeaponClassForArchetype("mage", `m_${i}`, 9).class);
+    }
+    assert.ok(novices.has("wand") || novices.has("rod"));
+    assert.ok(elites.has("staff") || elites.has("grimoire") || elites.has("crystal"));
+  });
+
+  it("tier-gating is sharp at level boundaries (3 / 5 / 7 / 9)", () => {
+    // soldier at lv4 should NOT have access to elite-only sniper/rpg.
+    let elite4 = 0;
+    for (let i = 0; i < 100; i++) {
+      const c = pickWeaponClassForArchetype("soldier", `b_${i}`, 4).class;
+      if (c === "sniper" || c === "rpg" || c === "anti_material" || c === "lmg") elite4++;
+    }
+    assert.equal(elite4, 0, "lv4 soldier should never roll elite-tier classes");
+    // soldier at lv7 SHOULD reach sniper/lmg sometimes.
+    let elite7 = 0;
+    for (let i = 0; i < 100; i++) {
+      const c = pickWeaponClassForArchetype("soldier", `b_${i}`, 7).class;
+      if (c === "sniper" || c === "lmg") elite7++;
+    }
+    assert.ok(elite7 > 0, "lv7 soldier should sometimes roll elite-tier classes");
+  });
+});
+
+describe("Rarity ladder — grows with level", () => {
+  it("rarityForLevel maps levels to canonical buckets", () => {
+    assert.equal(rarityForLevel(1).key,  "common");
+    assert.equal(rarityForLevel(2).key,  "common");
+    assert.equal(rarityForLevel(3).key,  "uncommon");
+    assert.equal(rarityForLevel(4).key,  "uncommon");
+    assert.equal(rarityForLevel(5).key,  "rare");
+    assert.equal(rarityForLevel(6).key,  "rare");
+    assert.equal(rarityForLevel(7).key,  "epic");
+    assert.equal(rarityForLevel(8).key,  "epic");
+    assert.equal(rarityForLevel(9).key,  "legendary");
+    assert.equal(rarityForLevel(10).key, "legendary");
+  });
+
+  it("pick emits the matching rarity for the level", () => {
+    const r1 = pickWeaponClassForArchetype("warrior", "npc_x", 1);
+    assert.equal(r1.rarityKey, "common");
+    assert.equal(r1.rarity, "Common");
+    assert.match(r1.name, /^Common /);
+    const r9 = pickWeaponClassForArchetype("warrior", "npc_x", 9);
+    assert.equal(r9.rarityKey, "legendary");
+    assert.equal(r9.rarity, "Legendary");
+    assert.match(r9.name, /^Legendary /);
+  });
+
+  it("rarity color is a hex string", () => {
+    for (const lv of [1, 3, 5, 7, 9]) {
+      const r = rarityForLevel(lv);
+      assert.match(r.color, /^#[0-9a-f]{6}$/i, `${lv}: ${r.color}`);
     }
   });
 });
@@ -195,6 +315,22 @@ describe("seedStarterGear — wires the picked class into npc_gear.stats", () =>
     assert.equal(inferred.weaponClass, stats.weapon_class,
       `name="${row.item_name}" name-class=${inferred.weaponClass} stats-class=${stats.weapon_class}`);
     assert.ok(row.item_name.includes("Lv3"));
+    assert.equal(stats.rarity, "uncommon", "lv3 → uncommon rarity stamped");
+    assert.ok(stats.rarity_color, "rarity color present");
+  });
+
+  it("seeded weapon level → rarity stamp matches the ladder", () => {
+    const cases = [
+      [1, "common"], [3, "uncommon"], [5, "rare"], [7, "epic"], [9, "legendary"],
+    ];
+    for (const [level, expectedKey] of cases) {
+      const id = `npc_rarity_${level}`;
+      db.prepare("INSERT INTO world_npcs (id, archetype) VALUES (?, ?)").run(id, "warrior");
+      seedStarterGear(db, id, "warrior", level);
+      const row = db.prepare("SELECT * FROM npc_gear WHERE npc_id = ? AND slot = 'weapon'").get(id);
+      const stats = JSON.parse(row.stats);
+      assert.equal(stats.rarity, expectedKey, `lv${level} → ${expectedKey}, got ${stats.rarity}`);
+    }
   });
 
   it("blacksmith (no 'weapon' slot in ARCHETYPE_SLOTS) seeds only tool+armor", () => {

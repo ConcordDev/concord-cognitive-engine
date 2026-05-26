@@ -64,9 +64,9 @@ before(() => {
   // Seed: user U1 with a scythe (right hand) + a shotgun in inventory,
   // a frost spell, super_strength + flight (powers), combat + crafting skills.
   db.prepare(`INSERT INTO player_inventory VALUES (?,?,?,?,?,?,?,?)`)
-    .run("inv_scythe", "U1", "war scythe", "weapon", null, null, "rare", "concordia-hub");
+    .run("inv_scythe", "U1", "war scythe", "weapon", null, null, 75, "concordia-hub");  // quality 75 = epic
   db.prepare(`INSERT INTO player_inventory VALUES (?,?,?,?,?,?,?,?)`)
-    .run("inv_shotgun", "U1", "Mossberg shotgun", "weapon", null, null, "common", "concordia-hub");
+    .run("inv_shotgun", "U1", "Mossberg shotgun", "weapon", null, null, 20, "concordia-hub");  // quality 20 = common
   db.prepare(`INSERT INTO player_equipment (user_id, right_hand_id, left_hand_id) VALUES (?,?,?)`)
     .run("U1", "inv_scythe", "inv_scythe"); // two-handed
   db.prepare(`INSERT INTO player_glyph_spells VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`)
@@ -117,13 +117,16 @@ describe("GET /api/character-sheet/me", () => {
     assert.ok("skills" in r.body.sheet);
   });
 
-  it("decorates loadout with weapon_class + category from taxonomy", async () => {
+  it("decorates loadout with weapon_class + category + rarity from taxonomy", async () => {
     const { body } = await invoke("/me");
     const right = body.sheet.loadout.rightHand;
     assert.equal(right.weapon_class, "scythe");
     assert.equal(right.category, "melee_blade_2h");
     assert.equal(right.handedness, "two");
     assert.equal(right.reach_m, 3.0);
+    assert.equal(right.rarity, "epic", "quality=75 → epic rarity");
+    assert.equal(right.rarity_label, "Epic");
+    assert.match(right.rarity_color, /^#[0-9a-f]{6}$/i);
   });
 
   it("decorates spells with element category + school", async () => {

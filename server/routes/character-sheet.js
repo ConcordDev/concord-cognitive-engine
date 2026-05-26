@@ -16,6 +16,18 @@ import {
   inferElement, inferSpellSchool, inferPowerType, inferSkillType,
   getElementInfo, getSpellSchoolInfo, getPowerTypeInfo, getSkillTypeInfo,
 } from "../lib/combat/taxonomies.js";
+import { rarityForLevel } from "../lib/npc-gear.js";
+
+// Player items use the player_inventory.quality column (0–100 INTEGER).
+// Map that onto the same 5-tier rarity ladder NPC gear uses.
+function _rarityForQuality(quality) {
+  if (quality == null) return rarityForLevel(1);
+  if (quality >= 91) return { key: "legendary", adjective: "Legendary", color: "#f59e0b" };
+  if (quality >= 71) return { key: "epic",      adjective: "Epic",      color: "#a855f7" };
+  if (quality >= 51) return { key: "rare",      adjective: "Rare",      color: "#3b82f6" };
+  if (quality >= 31) return { key: "uncommon",  adjective: "Uncommon",  color: "#22c55e" };
+  return                     { key: "common",   adjective: "Common",    color: "#9ca3af" };
+}
 
 export default function createCharacterSheetRouter({ db, requireAuth }) {
   const router = express.Router();
@@ -37,6 +49,7 @@ export default function createCharacterSheetRouter({ db, requireAuth }) {
           hand = inf.handedness;
         }
         const info = cls ? getWeaponClassInfo(cls) : null;
+        const rarity = _rarityForQuality(item.quality);
         return {
           ...item,
           weapon_class: cls,
@@ -44,6 +57,9 @@ export default function createCharacterSheetRouter({ db, requireAuth }) {
           category: info?.category || null,
           reach_m: info?.reach_m ?? null,
           amorphous: !!info?.amorphous,
+          rarity: rarity.key,
+          rarity_label: rarity.adjective,
+          rarity_color: rarity.color,
         };
       };
       const decoratedLoadout = loadout ? {

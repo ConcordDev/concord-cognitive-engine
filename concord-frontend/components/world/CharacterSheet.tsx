@@ -28,6 +28,9 @@ interface Decorated {
   category?: string | null;
   reach_m?: number | null;
   amorphous?: boolean;
+  rarity?: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | null;
+  rarity_label?: string | null;
+  rarity_color?: string | null;
 }
 
 interface Spell {
@@ -280,11 +283,27 @@ function LoadoutTab({ sheet }: { sheet: Sheet }) {
           className={`rounded-md border p-2 ${
             item ? categoryColor(item.category) : 'border-white/10 bg-slate-900/40 text-slate-500'
           }`}
+          style={item?.rarity_color ? { borderLeft: `3px solid ${item.rarity_color}` } : undefined}
         >
-          <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] uppercase tracking-wider opacity-80">{label}</div>
+            {item?.rarity_label && (
+              <div
+                className="text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded"
+                style={{ color: item.rarity_color || undefined, borderColor: item.rarity_color || undefined, borderWidth: 1 }}
+              >
+                {item.rarity_label}
+              </div>
+            )}
+          </div>
           {item ? (
             <>
-              <div className="text-sm font-semibold mt-0.5 truncate">{item.item_name}</div>
+              <div
+                className="text-sm font-semibold mt-0.5 truncate"
+                style={item.rarity_color ? { color: item.rarity_color } : undefined}
+              >
+                {item.item_name}
+              </div>
               <div className="text-[10px] opacity-70 mt-0.5">
                 {item.weapon_class || '—'}
                 {item.category ? ` · ${item.category}` : ''}
