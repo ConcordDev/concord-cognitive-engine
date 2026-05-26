@@ -17,28 +17,84 @@
 //   - 'code:liveshare' — Code lens Live Share sessions, keyed by code
 //   - 'collab:doc'      — Collab lens documents, keyed by docId
 //
-// Persistence is in-process (`Y.Doc` lives in a Map). When the server
-// restarts the doc state is lost — for now this matches the existing
-// op-log persistence (which is also in-memory STATE). Future work:
-// LevelDB-backed y-leveldb provider to survive restarts.
+// **Persistence (2026-05-26 fix):** Y.Docs ARE now persisted to disk.
+// Dirty docs flush every PERSIST_INTERVAL_MS (30s by default) to
+// `server/data/yjs-state/{scope}/{docId}.bin`. On `getDoc` for a
+// previously-known (scope, docId) the saved bytes are restored into
+// a fresh Y.Doc before any client sees it. Before this, a server
+// restart silently wiped every open Live Share session + collab doc.
 
 import * as Y from "yjs";
+import fs from "node:fs";
+import path from "node:path";
 
 // scope → Map<docId, Y.Doc>
 const DOCS = new Map();
+// scope → Map<docId, dirty-flag>. Set on each applyUpdate, cleared on persist.
+const DIRTY = new Map();
 
-function bucket(scope) {
-  let b = DOCS.get(scope);
-  if (!b) { b = new Map(); DOCS.set(scope, b); }
+const PERSIST_ROOT = process.env.YJS_STATE_DIR
+  || path.join(process.env.DATA_DIR || "./server/data", "yjs-state");
+const PERSIST_INTERVAL_MS = Number(process.env.YJS_PERSIST_MS) || 30_000;
+
+function bucket(scope, map = DOCS) {
+  let b = map.get(scope);
+  if (!b) { b = new Map(); map.set(scope, b); }
   return b;
 }
 
-/** Get or create the authoritative Y.Doc for a (scope, docId) pair. */
+function pathFor(scope, docId) {
+  const safeScope = String(scope).replace(/[^a-zA-Z0-9_:-]/g, "_");
+  const safeDoc = String(docId).replace(/[^a-zA-Z0-9_-]/g, "_");
+  return path.join(PERSIST_ROOT, safeScope, `${safeDoc}.bin`);
+}
+
+function markDirty(scope, docId) {
+  bucket(scope, DIRTY).set(docId, true);
+}
+
+/** Periodic disk flush — runs on a setInterval started by attachYjsSync. */
+let _persistTimer = null;
+function flushDirty() {
+  for (const [scope, b] of DIRTY) {
+    for (const [docId, isDirty] of b) {
+      if (!isDirty) continue;
+      const doc = DOCS.get(scope)?.get(docId);
+      if (!doc) { b.delete(docId); continue; }
+      try {
+        const fp = pathFor(scope, docId);
+        fs.mkdirSync(path.dirname(fp), { recursive: true });
+        const bytes = Y.encodeStateAsUpdate(doc);
+        fs.writeFileSync(fp, Buffer.from(bytes));
+        b.set(docId, false);
+      } catch (e) {
+        // Don't crash the whole flush on one doc.
+        try { console.warn(`[yjs-persist] failed for ${scope}/${docId}:`, e?.message); } catch {}
+      }
+    }
+  }
+}
+
+/** Get or create the authoritative Y.Doc for a (scope, docId) pair.
+ *  On first access, attempts to restore from disk if a saved snapshot
+ *  exists at `${PERSIST_ROOT}/{scope}/{docId}.bin`. Restore failure is
+ *  non-fatal — caller gets a fresh empty doc and the broken file is
+ *  left in place for forensics. */
 export function getDoc(scope, docId) {
   const b = bucket(scope);
   let doc = b.get(docId);
   if (!doc) {
     doc = new Y.Doc();
+    // Lazy-restore from disk.
+    try {
+      const fp = pathFor(scope, docId);
+      if (fs.existsSync(fp)) {
+        const bytes = fs.readFileSync(fp);
+        Y.applyUpdate(doc, bytes);
+      }
+    } catch (e) {
+      try { console.warn(`[yjs-restore] failed for ${scope}/${docId}:`, e?.message); } catch {}
+    }
     b.set(docId, doc);
   }
   return doc;
@@ -71,6 +127,7 @@ export function applyUpdate(scope, docId, update) {
   const doc = getDoc(scope, docId);
   try {
     Y.applyUpdate(doc, update);
+    markDirty(scope, docId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: String(e?.message || e) };
@@ -93,6 +150,16 @@ export function applyUpdate(scope, docId, update) {
  */
 export function attachYjsSync(io) {
   if (!io || typeof io.on !== "function") return;
+  // Start the periodic disk-flush. Idempotent — if already started,
+  // re-arming is a no-op. Ensures CRDT state survives server restart.
+  if (!_persistTimer && PERSIST_INTERVAL_MS > 0) {
+    _persistTimer = setInterval(flushDirty, PERSIST_INTERVAL_MS);
+    // Allow the process to exit even when this timer is pending.
+    try { _persistTimer.unref?.(); } catch { /* node version w/o unref */ }
+    // Also flush on graceful shutdown so the last edits aren't lost.
+    process.on("SIGTERM", () => { try { flushDirty(); } catch { /* best-effort */ } });
+    process.on("SIGINT",  () => { try { flushDirty(); } catch { /* best-effort */ } });
+  }
   io.on("connection", (socket) => {
     socket.on("yjs:sync-request", ({ scope, docId } = {}) => {
       if (!scope || !docId) return;
@@ -154,6 +221,10 @@ export function replaceDoc(scope, docId, updateBytes) {
     return { ok: false, error: String(e?.message || e) };
   }
   b.set(docId, fresh);
+  // Mark dirty so the replaced state is flushed to disk on the next
+  // tick. Without this, a restart between replaceDoc and the next
+  // applyUpdate would revert to the pre-restore state.
+  markDirty(scope, docId);
   return { ok: true, state: Y.encodeStateAsUpdate(fresh) };
 }
 
