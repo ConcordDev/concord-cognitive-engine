@@ -2212,6 +2212,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
               );
               if (chainRes?.ok && chainRes.targets.length > 0) {
                 const io = req.app.locals.io;
+                // Per-target emits still fire (preserves existing event
+                // shape for any consumers that already listen). Plus one
+                // batched emit with positions so the LightningChainFX
+                // frontend can render all 5 arcs in a single draw pass
+                // without buffering across multiple events.
                 for (const t of chainRes.targets) {
                   io?.to(`world:${worldId}`).emit('combat:chain', {
                     worldId,
@@ -2221,8 +2226,28 @@ export default function createWorldsRouter({ requireAuth, db }) {
                     distance: Math.round(t.distance * 10) / 10,
                     damage: chainRes.chainDamage,
                     element: 'lightning',
+                    // x/z added 2026-05-26 so the FX can project the arc
+                    // endpoints into screen space.
+                    targetX: t.x,
+                    targetZ: t.z,
                   });
                 }
+                io?.to(`world:${worldId}`).emit('combat:chain-batch', {
+                  worldId,
+                  sourceTargetId: npcId,
+                  sourceX: targetPos?.x,
+                  sourceZ: targetPos?.z,
+                  attackerId: req.user?.id ?? null,
+                  attackerX: attackerPos?.x,
+                  attackerZ: attackerPos?.z,
+                  chainDamage: chainRes.chainDamage,
+                  element: 'lightning',
+                  targets: chainRes.targets.map(t => ({
+                    id: t.id, kind: t.kind,
+                    x: t.x, z: t.z,
+                    distance: Math.round(t.distance * 10) / 10,
+                  })),
+                });
               }
             } catch { /* chain best-effort */ }
           }

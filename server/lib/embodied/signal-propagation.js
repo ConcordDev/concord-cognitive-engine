@@ -433,7 +433,10 @@ export function propagateLightningChain(db, worldId, sourcePos, magnitude, exclu
     for (const n of nearbyNpcs) {
       if (n.id === excludeEntityId) continue;
       const d = Math.hypot(n.x - sourcePos.x, n.z - sourcePos.z);
-      if (d <= r) targets.push({ id: n.id, kind: "npc", distance: d });
+      // Include x,z on each target so the LightningChainFX frontend can
+      // render arcs without re-querying NPC positions. Cheap addition;
+      // we already SELECTed x,z from world_npcs.
+      if (d <= r) targets.push({ id: n.id, kind: "npc", distance: d, x: n.x, z: n.z });
     }
   } catch { /* no world_npcs */ }
 
@@ -448,7 +451,7 @@ export function propagateLightningChain(db, worldId, sourcePos, magnitude, exclu
     for (const p of nearbyPlayers) {
       if (p.id === excludeEntityId) continue;
       const d = Math.hypot(p.x - sourcePos.x, p.z - sourcePos.z);
-      if (d <= r) targets.push({ id: p.id, kind: "player", distance: d });
+      if (d <= r) targets.push({ id: p.id, kind: "player", distance: d, x: p.x, z: p.z });
     }
   } catch { /* no player_world_state */ }
 

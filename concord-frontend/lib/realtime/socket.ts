@@ -346,6 +346,10 @@ export type SocketEvent =
   | 'combat:kill'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
   | 'combat:combo-evolved'
+  // Combat lightning-chain — server emits per chain target (existing)
+  // PLUS one batched event with positions for the LightningChainFX layer.
+  | 'combat:chain'
+  | 'combat:chain-batch'
   // Companions (pet/tame system) — Phase A of pre-playtest sprint.
   | 'companion:tame-success'
   | 'companion:deployed'

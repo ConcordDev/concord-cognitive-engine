@@ -245,6 +245,10 @@ const BuildingCollapseVFX = dynamic(
   () => import('@/components/world/BuildingCollapseVFX'),
   { ssr: false }
 );
+const LightningChainFX = dynamic(
+  () => import('@/components/world/LightningChainFX'),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -4569,6 +4573,15 @@ export default function WorldLensPage() {
           <SeasonalEffects worldId={activeDistrict?.id || 'concordia-hub'} />
           <UnderwaterPostFX worldId={activeDistrict?.id || 'concordia-hub'} />
           <BuildingCollapseVFX
+            worldId={activeDistrict?.id || 'concordia-hub'}
+            getCamera={() => null}
+          />
+          {/* LightningChainFX — subscribes to combat:chain-batch socket
+              events and renders SVG arcs between source + chain targets.
+              Falls back to a screen-edge flash when getCamera returns
+              null so the player still sees feedback before the camera-
+              wire fix lands. */}
+          <LightningChainFX
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
           />
