@@ -12,6 +12,25 @@
 import express from "express";
 import { attemptTame, breedCompanions, tameChance } from "../lib/taming.js";
 
+// Mount toggle helpers. Only one companion can be mounted at a time per
+// user — flipping mount on a new one auto-dismounts the previous.
+function _mount(db, userId, companionId) {
+  const row = db.prepare(`SELECT id, mount_eligible, world_id FROM player_companions WHERE id = ? AND owner_id = ?`).get(companionId, userId);
+  if (!row) return { ok: false, reason: "companion_not_found" };
+  if (row.mount_eligible === 0) return { ok: false, reason: "not_mount_eligible" };
+  const tx = db.transaction(() => {
+    db.prepare(`UPDATE player_companions SET mounted = 0 WHERE owner_id = ? AND mounted = 1`).run(userId);
+    db.prepare(`UPDATE player_companions SET mounted = 1, deployed = 1 WHERE id = ?`).run(companionId);
+  });
+  tx();
+  return { ok: true, companionId, worldId: row.world_id };
+}
+
+function _dismount(db, userId) {
+  const r = db.prepare(`UPDATE player_companions SET mounted = 0 WHERE owner_id = ? AND mounted = 1`).run(userId);
+  return { ok: true, dismounted: r.changes };
+}
+
 export default function createCompanionsBreedingRouter({ db, requireAuth }) {
   const router = express.Router();
 
@@ -69,6 +88,29 @@ export default function createCompanionsBreedingRouter({ db, requireAuth }) {
       } catch { /* realtime best-effort */ }
     }
     return res.json(result);
+  });
+
+  router.post("/:companionId/mount", requireAuth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "no_user" });
+    const r = _mount(db, userId, req.params.companionId);
+    if (!r.ok) return res.status(400).json(r);
+    try {
+      req.app.locals.io?.to(`world:${r.worldId}`)?.emit?.("world:player-mounted", {
+        worldId: r.worldId, ownerId: userId, companionId: r.companionId,
+      });
+    } catch { /* realtime best-effort */ }
+    return res.json(r);
+  });
+
+  router.post("/dismount", requireAuth, (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ ok: false, error: "no_user" });
+    const r = _dismount(db, userId);
+    try {
+      req.app.locals.io?.to(`user:${userId}`)?.emit?.("world:player-dismounted", { ownerId: userId });
+    } catch { /* realtime best-effort */ }
+    return res.json(r);
   });
 
   router.post("/breed", requireAuth, async (req, res) => {

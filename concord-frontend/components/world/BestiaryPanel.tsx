@@ -153,6 +153,35 @@ export default function BestiaryPanel({ onClose }: Props) {
 function BestiaryEntry({ entry }: { entry: Discovery }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const [companionId, setCompanionId] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // For tamed/bred entries, fetch the matching companion row so we can
+  // toggle ride state. The `species_ref` for these kinds is the companion id.
+  useEffect(() => {
+    if (entry.kind !== 'tamed' && entry.kind !== 'bred') return;
+    setCompanionId(entry.species_ref);
+    fetch('/api/companions/mine', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (!j?.ok) return;
+        const c = (j.companions ?? []).find((x: { id: string; mounted: number }) => x.id === entry.species_ref);
+        if (c) setIsMounted(!!c.mounted);
+      })
+      .catch(() => { /* best-effort */ });
+  }, [entry.kind, entry.species_ref]);
+
+  const toggleRide = useCallback(async () => {
+    if (!companionId) return;
+    const url = isMounted ? '/api/companions/dismount' : `/api/companions/${encodeURIComponent(companionId)}/mount`;
+    try {
+      const r = await fetch(url, { method: 'POST', credentials: 'same-origin' });
+      if (r.ok) {
+        setIsMounted(!isMounted);
+        window.dispatchEvent(new CustomEvent('concordia:mount-changed', { detail: { companionId, mounted: !isMounted } }));
+      }
+    } catch { /* best-effort */ }
+  }, [companionId, isMounted]);
 
   // Render a small 3D thumbnail when the entry mounts. Re-uses the same
   // procedural mesh builder as the in-world hybrids.
@@ -218,6 +247,8 @@ function BestiaryEntry({ entry }: { entry: Discovery }) {
   const meta = entry.meta || {};
   const label = (meta.topology as string) || entry.kind;
 
+  const canRide = entry.kind === 'tamed' || entry.kind === 'bred';
+
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded border border-white/5 bg-slate-900/50">
       <canvas ref={canvasRef} width={80} height={80} className="rounded bg-slate-800/40" />
@@ -233,6 +264,18 @@ function BestiaryEntry({ entry }: { entry: Discovery }) {
           {entry.kind} · {firstSeen.toLocaleDateString()}
         </div>
       </div>
+      {canRide && companionId && (
+        <button
+          onClick={toggleRide}
+          className={`text-[9px] uppercase tracking-wider px-2 py-1 rounded transition-colors ${
+            isMounted
+              ? 'bg-amber-500/30 text-amber-200 hover:bg-amber-500/40'
+              : 'bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30'
+          }`}
+        >
+          {isMounted ? 'Dismount' : 'Ride'}
+        </button>
+      )}
     </div>
   );
 }
