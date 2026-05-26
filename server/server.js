@@ -23748,6 +23748,9 @@ import registerFoundrySystemsMacros from "./domains/foundry-systems.js";
 registerFoundrySystemsMacros(register);
 import registerSecretsMacros from "./domains/secrets.js";
 registerSecretsMacros(register);
+// Wave 2 / T1.2 — player creature bestiary (discovery + tame + breed log).
+import registerBestiaryMacros from "./domains/bestiary.js";
+registerBestiaryMacros(register);
 import registerSchemesMacros from "./domains/schemes.js";
 registerSchemesMacros(register);
 // Concordia Phase 2-16 — register the new player-experience domains.
@@ -29921,6 +29924,10 @@ app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 // taxonomy registries (lib/combat/loadout.js + lib/combat/taxonomies.js).
 import createCharacterSheetRouter from "./routes/character-sheet.js";
 app.use("/api/character-sheet", createCharacterSheetRouter({ db, requireAuth }));
+
+// Wave 2 / T1.3 — player taming + companion breeding routes.
+import createCompanionsBreedingRouter from "./routes/companions-breeding.js";
+app.use("/api/companions", createCompanionsBreedingRouter({ db, requireAuth }));
 
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";

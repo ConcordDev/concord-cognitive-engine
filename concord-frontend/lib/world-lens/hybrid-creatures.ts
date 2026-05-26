@@ -225,6 +225,26 @@ export function attachHybridCreatures(scene: SceneLike, opts: AttachOptions = {}
       mesh.position.set(row.position.x, row.position.y, row.position.z);
       scene.add(mesh);
       active.set(id, { id, group: mesh, spawnedAt: performance.now(), wingPhase: Math.random() * Math.PI * 2 });
+      // Wave 2 / T1.2 — log a bestiary sighting on first render. The
+      // backend debounces re-sightings of the same hybrid within 60s
+      // so this is safe to call on every mesh-add.
+      try {
+        fetch('/api/lens/run', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            domain: 'bestiary',
+            name: 'sight',
+            input: {
+              worldId,
+              kind: 'hybrid',
+              speciesRef: id,
+              meta: { topology: row.blueprint.topology, mass: row.blueprint.massKg },
+            },
+          }),
+        }).catch(() => { /* sighting is best-effort */ });
+      } catch { /* never block renderer */ }
     } catch (_err) { /* renderer never crashes the scene */ }
   }
 

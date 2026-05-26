@@ -438,6 +438,10 @@ const PerkConstellation = dynamic(
   () => import('@/components/world/PerkConstellation'),
   { ssr: false },
 );
+const BestiaryPanel = dynamic(
+  () => import('@/components/world/BestiaryPanel'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -1821,6 +1825,7 @@ export default function WorldLensPage() {
   const [characterSheetOpen, setCharacterSheetOpen] = useState(false);
   const [favoritesWheelOpen, setFavoritesWheelOpen] = useState(false);
   const [perkConstellationOpen, setPerkConstellationOpen] = useState(false);
+  const [bestiaryOpen, setBestiaryOpen] = useState(false);
   // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
   // refreshed whenever equipment changes. Drives Biomutant-style left/right/
   // two-hand routing in the input controller.
@@ -2359,6 +2364,7 @@ export default function WorldLensPage() {
       if (e.key === 'c' || e.key === 'C') setCharacterSheetOpen((v) => !v);
       else if (e.key === 'q' || e.key === 'Q') setFavoritesWheelOpen((v) => !v);
       else if (e.key === 'k' || e.key === 'K') setPerkConstellationOpen((v) => !v);
+      else if (e.key === 'b' || e.key === 'B') setBestiaryOpen((v) => !v);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -4051,6 +4057,11 @@ export default function WorldLensPage() {
           {characterSheetOpen && (
             <div className="fixed top-20 right-4 z-50">
               <CharacterSheet onClose={() => setCharacterSheetOpen(false)} />
+            </div>
+          )}
+          {bestiaryOpen && (
+            <div className="fixed top-20 right-[460px] z-50">
+              <BestiaryPanel onClose={() => setBestiaryOpen(false)} />
             </div>
           )}
           <CompassStrip
