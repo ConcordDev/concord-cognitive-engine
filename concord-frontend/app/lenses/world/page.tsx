@@ -446,6 +446,10 @@ const WhileYouWereAwayPanel = dynamic(
   () => import('@/components/world/WhileYouWereAwayPanel'),
   { ssr: false },
 );
+const SettlementEditor = dynamic(
+  () => import('@/components/world/SettlementEditor'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -1830,6 +1834,7 @@ export default function WorldLensPage() {
   const [favoritesWheelOpen, setFavoritesWheelOpen] = useState(false);
   const [perkConstellationOpen, setPerkConstellationOpen] = useState(false);
   const [bestiaryOpen, setBestiaryOpen] = useState(false);
+  const [settlementOpen, setSettlementOpen] = useState(false);
   // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
   // refreshed whenever equipment changes. Drives Biomutant-style left/right/
   // two-hand routing in the input controller.
@@ -2369,6 +2374,7 @@ export default function WorldLensPage() {
       else if (e.key === 'q' || e.key === 'Q') setFavoritesWheelOpen((v) => !v);
       else if (e.key === 'k' || e.key === 'K') setPerkConstellationOpen((v) => !v);
       else if (e.key === 'b' || e.key === 'B') setBestiaryOpen((v) => !v);
+      else if (e.key === 't' || e.key === 'T') setSettlementOpen((v) => !v);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -4066,6 +4072,16 @@ export default function WorldLensPage() {
           {bestiaryOpen && (
             <div className="fixed top-20 right-[460px] z-50">
               <BestiaryPanel onClose={() => setBestiaryOpen(false)} />
+            </div>
+          )}
+          {settlementOpen && (
+            <div className="fixed top-20 left-4 z-50">
+              <SettlementEditor
+                worldId="concordia-hub"
+                playerX={playerAvatar.position.x}
+                playerZ={playerAvatar.position.y}
+                onClose={() => setSettlementOpen(false)}
+              />
             </div>
           )}
           <WhileYouWereAwayPanel worldId="concordia-hub" />

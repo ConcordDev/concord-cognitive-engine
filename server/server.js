@@ -29933,6 +29933,10 @@ app.use("/api/companions", createCompanionsBreedingRouter({ db, requireAuth }));
 import createDigestRouter from "./routes/digest.js";
 app.use("/api/world", createDigestRouter({ db, requireAuth }));
 
+// Wave 6 / T3.1 — player-buildable settlements (claim land + place buildings).
+import createSettlementRouter from "./routes/settlement.js";
+app.use("/api/settlement", createSettlementRouter({ db, requireAuth }));
+
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));
