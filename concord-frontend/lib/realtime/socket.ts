@@ -352,6 +352,11 @@ export type SocketEvent =
   | 'world:npc-death'
   // NPC drops a death_loot_bag from equipped gear (T1.1)
   | 'world:loot-dropped'
+  // Faction army on the move during a war campaign (T2.4)
+  | 'world:army-march'
+  // Player mount toggle (T2.1)
+  | 'world:player-mounted'
+  | 'world:player-dismounted'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
   | 'combat:combo-evolved'
   // Combat lightning-chain — server emits per chain target (existing)
