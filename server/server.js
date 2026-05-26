@@ -29901,6 +29901,11 @@ app.use("/api/player-trade", createPlayerTradeRouter({ requireAuth, db, emitToUs
 import createCombatFlowRouter from "./routes/combat-flow.js";
 app.use("/api/combat-flow", createCombatFlowRouter({ db, requireAuth }));
 
+// Character Sheet — categorised loadout + spells + powers + skills from the
+// taxonomy registries (lib/combat/loadout.js + lib/combat/taxonomies.js).
+import createCharacterSheetRouter from "./routes/character-sheet.js";
+app.use("/api/character-sheet", createCharacterSheetRouter({ db, requireAuth }));
+
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));

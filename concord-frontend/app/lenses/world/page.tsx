@@ -417,6 +417,10 @@ const EquipmentSlotsPanel = dynamic(
   () => import('@/components/world-lens/EquipmentSlotsPanel'),
   { ssr: false },
 );
+const CharacterSheet = dynamic(
+  () => import('@/components/world/CharacterSheet'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -1793,6 +1797,7 @@ export default function WorldLensPage() {
   // Controls remap menu open/close + Equipment slot panel toggle
   const [controlsOpen, setControlsOpen] = useState(false);
   const [equipmentOpen, setEquipmentOpen] = useState(false);
+  const [characterSheetOpen, setCharacterSheetOpen] = useState(false);
   // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
   // refreshed whenever equipment changes. Drives Biomutant-style left/right/
   // two-hand routing in the input controller.
@@ -2321,6 +2326,19 @@ export default function WorldLensPage() {
       _prevNearNPCIdRef.current = null;
     }
   }, [playerAvatar.position, rawWorldNPCs]);
+
+  // C key: toggle Character Sheet (categorised loadout + spells + powers + skills).
+  // Skipped when an input field is focused so it doesn't intercept typing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'c' && e.key !== 'C') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      setCharacterSheetOpen((v) => !v);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
@@ -4004,6 +4022,11 @@ export default function WorldLensPage() {
           {equipmentOpen && (
             <div className="fixed top-20 left-4 z-50">
               <EquipmentSlotsPanel onClose={() => setEquipmentOpen(false)} />
+            </div>
+          )}
+          {characterSheetOpen && (
+            <div className="fixed top-20 right-4 z-50">
+              <CharacterSheet onClose={() => setCharacterSheetOpen(false)} />
             </div>
           )}
           <PauseMenu
