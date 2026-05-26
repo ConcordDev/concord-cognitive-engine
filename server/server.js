@@ -8646,6 +8646,35 @@ function _hydrateState(obj) {
 
 
   if (obj.settings && typeof obj.settings === "object") STATE.settings = { ...STATE.settings, ...obj.settings };
+
+  // Self-heal: when a previous test run / debug toggle leaves the
+  // autonomous-engine flags persisted as `false`, the boot silently
+  // fires nothing — Concordia loads as a museum diorama with all 68
+  // heartbeats registered and zero of them ticking. This guard flips
+  // them back to `true` unless explicitly forbidden via env, and logs
+  // a loud warning so the operator knows the state was repaired.
+  //
+  // Opt-out: `CONCORD_AUTONOMOUS_DEFAULT_ON=false` for ops who want the
+  // persisted disabled state to stick (debugging, regression bisect).
+  if (process.env.CONCORD_AUTONOMOUS_DEFAULT_ON !== "false") {
+    const flags = ["heartbeatEnabled", "autogenEnabled", "dreamEnabled", "evolutionEnabled", "synthEnabled"];
+    const repaired = [];
+    for (const f of flags) {
+      if (STATE.settings[f] === false) {
+        STATE.settings[f] = true;
+        repaired.push(f);
+      }
+    }
+    if (repaired.length > 0) {
+      try {
+        structuredLog("warn", "autonomous_engines_self_healed", {
+          repaired,
+          note: "persisted state had autonomous engines disabled; flipped back to true. Set CONCORD_AUTONOMOUS_DEFAULT_ON=false to opt out.",
+        });
+      } catch { /* logger may not exist yet at this boot phase */ }
+    }
+  }
+
   if (Array.isArray(obj.logs)) STATE.logs = obj.logs.slice(-1000);
   if (Array.isArray(obj.crawlQueue)) STATE.crawlQueue = obj.crawlQueue;
   if (obj.queues && typeof obj.queues === "object") {
