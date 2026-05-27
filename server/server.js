@@ -21562,7 +21562,11 @@ let localReply = formatCrispResponse({
     // returned `system` is functional directives + runtime context that
     // augment it. Pre-this-refactor a hardcoded `You are ConcordOS...`
     // override silently shadowed the Modelfile persona; now it doesn't.
-    const _composed = composeSystemPrompt("conscious", { mode, currentLens });
+    // Phase O — thread worldId through so per-world LLM voice (loops.json
+    // #worldVoice) injects into the system prompt. When the user is in a
+    // world lens, their session carries a worldId; otherwise null is fine.
+    const _worldId = input.worldId || sess_pre?.worldId || null;
+    const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
     const _baseSystem = _composed.system;
 
     _pipelineBudget = assembleWithTokenBudget({
@@ -22006,6 +22010,7 @@ Rules for tool use:
         const _followUpSystem = composeSystemPrompt("conscious", {
           mode,
           currentLens,
+          worldId: _worldId,
           extra: "You previously called tools and received their results. Now synthesize a final answer for the user.",
         }).system;
         try {
