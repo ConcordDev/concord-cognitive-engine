@@ -729,6 +729,25 @@ export default function ConcordiaScene({
       scene = new THREE.Scene();
       scene.fog = new THREE.Fog(activeTheme.fog.color, activeTheme.fog.near, activeTheme.fog.far);
       sceneRef.current = scene;
+
+      // ── Visual-polish Wave 6: procedural sky dome + (optional) clouds.
+      try {
+        const { createSkyDome } = await import('@/lib/world-lens/sky-shader');
+        const sky = createSkyDome(THREE, { radius: 2200, segments: 28 });
+        scene.add(sky.mesh);
+        (scene as unknown as { __concordSky?: unknown }).__concordSky = sky;
+        // Default time-of-day = afternoon
+        sky.setTimeOfDayHour(15);
+        if (quality === 'high' || quality === 'ultra') {
+          const { createCloudLayer } = await import('@/lib/world-lens/cloud-raymarch');
+          const clouds = createCloudLayer(THREE, { radius: 1600 });
+          clouds.setWeatherDensity(0.55);
+          scene.add(clouds.mesh);
+          (scene as unknown as { __concordClouds?: unknown }).__concordClouds = clouds;
+        }
+      } catch (skyErr) {
+        console.warn('[ConcordiaScene] Sky / clouds unavailable:', skyErr);
+      }
       // Sprint 9 — expose scene globally so the QuestWaypointBeacon
       // can attach its 3D objects without prop-drilling through the
       // entire scene tree. Same pattern as __concordiaRenderer.
@@ -1060,6 +1079,12 @@ export default function ConcordiaScene({
           } catch { /* SSR-safe */ }
         }
 
+        // ── Visual-polish Wave 6: drive cloud-layer animation
+        try {
+          const clouds = (scene as unknown as { __concordClouds?: { tick: (dt: number) => void } }).__concordClouds;
+          if (clouds) clouds.tick(delta);
+        } catch { /* noop */ }
+
         // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick + auto-exposure
         try {
           const polish = polishPassesRef.current;
@@ -1380,6 +1405,12 @@ export default function ConcordiaScene({
       } catch { /* idempotent */ }
       polishPassesRef.current = null;
       polishMatRef.current.prev = null;
+      try {
+        const sky = (sceneRef.current as unknown as { __concordSky?: { mesh: unknown; dispose: () => void } } | null)?.__concordSky;
+        const clouds = (sceneRef.current as unknown as { __concordClouds?: { mesh: unknown; dispose: () => void } } | null)?.__concordClouds;
+        if (sky?.dispose) sky.dispose();
+        if (clouds?.dispose) clouds.dispose();
+      } catch { /* idempotent */ }
       probeManagerRef.current?.dispose();
       probeManagerRef.current = null;
       weatherSysRef.current = null;
