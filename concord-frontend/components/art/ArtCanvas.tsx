@@ -11,11 +11,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Loader2, Undo2, Redo2, Plus, Eye, EyeOff, Trash2, ChevronUp, ChevronDown, ArrowLeft,
   Eraser, Brush, PaintBucket, Square, Circle, Minus, Type, Pipette, BoxSelect,
-  Copy, Layers as LayersIcon, Lock, Unlock, Download, FlipHorizontal2,
+  Copy, Layers as LayersIcon, Lock, Unlock, Download, FlipHorizontal2, Upload,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
 import { ProStudioPanel } from './ProStudioPanel';
+import { PublishAsTextureDialog } from './PublishAsTextureDialog';
 
 interface El {
   id?: string; kind?: string; tool: string; color: string; size?: number; opacity: number;
@@ -108,6 +109,7 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
   const [shapeFilled, setShapeFilled] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [panel, setPanel] = useState<'none' | 'transform' | 'adjust' | 'canvas' | 'pro'>('none');
+  const [publishOpen, setPublishOpen] = useState(false);
   const [adjust, setAdjust] = useState({ hueShift: 0, satScale: 1, lightScale: 1 });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -460,6 +462,14 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         <button type="button" onClick={undo} className={topBtn}><Undo2 className="w-3.5 h-3.5" /> Undo</button>
         <button type="button" onClick={redo} className={topBtn}><Redo2 className="w-3.5 h-3.5" /> Redo</button>
         <button type="button" onClick={exportPNG} className={topBtn}><Download className="w-3.5 h-3.5" /> PNG</button>
+        <button
+          type="button"
+          onClick={() => setPublishOpen(true)}
+          className={topBtn}
+          title="Publish as a Concordia material texture — flows through evo_assets → pbr-loader → procedural-buildings"
+        >
+          <Upload className="w-3.5 h-3.5" /> Publish material
+        </button>
       </div>
 
       {/* Tool palette */}
@@ -641,6 +651,13 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
           layerId={activeLayer}
           selectedIds={[...selectedIds]}
           onApplied={reload}
+        />
+      )}
+      {publishOpen && (
+        <PublishAsTextureDialog
+          canvas={canvasRef.current}
+          artworkId={artwork?.id}
+          onClose={() => setPublishOpen(false)}
         />
       )}
     </div>
