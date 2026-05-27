@@ -513,6 +513,29 @@ export default function createWorldsRouter({ requireAuth, db }) {
     } catch (e) { serverError(res, e); }
   });
 
+  // GET /api/worlds/:worldId/npc-relationships/gossip-feed — Phase AB
+  // village gossip events scoped to a world, newest first.
+  router.get("/:worldId/npc-relationships/gossip-feed", requireAuth, async (req, res) => {
+    try {
+      const { getVillageGossipFeed } = await import("../lib/npc-relationships.js");
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      const sinceS = req.query.sinceS ? parseInt(req.query.sinceS, 10) : undefined;
+      const entries = getVillageGossipFeed(db, req.params.worldId, { limit, sinceS });
+      res.json({ entries });
+    } catch (e) { serverError(res, e); }
+  });
+
+  // GET /api/worlds/:worldId/npc-relationships/list — relationships in a world
+  router.get("/:worldId/npc-relationships/list", requireAuth, async (req, res) => {
+    try {
+      const { listInWorld } = await import("../lib/npc-relationships.js");
+      const kind = req.query.kind || undefined;
+      const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+      const rels = listInWorld(db, req.params.worldId, { kind, limit });
+      res.json({ relationships: rels });
+    } catch (e) { serverError(res, e); }
+  });
+
   // GET /api/worlds/:worldId/difficulty — player's effective resistance curve
   router.get("/:worldId/difficulty", requireAuth, async (req, res) => {
     try {

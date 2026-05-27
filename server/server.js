@@ -767,6 +767,17 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
+// world scans for grief-bonds (kin of slain NPC), scheme betrayals
+// (npc_schemes outcome='betrayed' + character_opinions < -50), and
+// mentor pairings (authored ≥20 + procgen same archetype). Decay sweep
+// runs every tick. Kill-switch: CONCORD_NEMESIS_CYCLE=0.
+import { runNemesisCycle } from "./emergent/nemesis-cycle.js";
+registerHeartbeat("nemesis-cycle", {
+  frequency: 40,
+  handler: runNemesisCycle,
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
