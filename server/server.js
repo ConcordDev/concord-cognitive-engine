@@ -185,6 +185,17 @@ registerHeartbeat("gift-offering-cycle", {
   handler: runGiftOfferingCycle,
 });
 
+// Wave F — per-world procedural dungeons. Each world has a distinct
+// dungeon template (theme, room kinds, creature mix, loot bias,
+// hazards, boss archetype). Spawns up to MAX_ACTIVE_PER_WORLD=6
+// dungeons per world; depth scales with the active count.
+// Kill switch: CONCORD_DUNGEON_SPAWNER=0.
+import { runDungeonSpawnerCycle } from "./emergent/dungeon-spawner-cycle.js";
+registerHeartbeat("dungeon-spawner-cycle", {
+  frequency: 240,  // ~1h game-time
+  handler: runDungeonSpawnerCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
@@ -30020,6 +30031,10 @@ app.use("/api/dynasty", createDynastyRouter({ db, requireAuth }));
 // Wave E / E3a — player rhetoric persuasion route.
 import createRhetoricRouter from "./routes/rhetoric.js";
 app.use("/api/rhetoric", createRhetoricRouter({ db, requireAuth }));
+
+// Wave F — per-world procedural dungeons.
+import createDungeonsRouter from "./routes/dungeons.js";
+app.use("/api/dungeons", createDungeonsRouter({ db, requireAuth }));
 
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
