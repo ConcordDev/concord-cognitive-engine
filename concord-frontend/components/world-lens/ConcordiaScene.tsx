@@ -245,12 +245,11 @@ export default function ConcordiaScene({
     render: (t: null) => void;
   } | null>(null);
   // Visual-polish Wave 5 — extra post passes layered on the composer.
-  const polishPassesRef = useRef<{
-    motionBlur?:  { setMatrices: (a: unknown, b: unknown) => void; setStrength: (n: number) => void };
-    chromAb?:     { tick: (n: number) => void; pulse: (m: number, d?: number) => void; setAmbient: (m: number) => void; detach?: () => void };
-    autoExposure?: { tick: (r: unknown, w: number, h: number) => void; dispose: () => void };
-    lut?:         { setEnabled: (b: boolean) => void; setStrength: (n: number) => void };
-  } | null>(null);
+  // Typed as a loose record because each sub-API has its own signature
+  // shape (THREE.Matrix4 vs unknown vs WebGLRenderer); concrete typing
+  // lives at the call site via import('@/lib/world-lens/...').
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const polishPassesRef = useRef<Record<string, any> | null>(null);
   const polishMatRef = useRef<{ prev: unknown | null; cur: unknown | null }>({ prev: null, cur: null });
   // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
   // invoked during teardown so the listener disposes with the scene.
