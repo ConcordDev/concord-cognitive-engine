@@ -2613,6 +2613,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
   },
   {
+    id: 'lfg',
+    name: 'LFG',
+    icon: Users,
+    description: 'Looking For Group — post requests + browse open party openings across worlds.',
+    category: 'social',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/lfg',
+    order: 18,
+    keywords: ['lfg', 'looking for group', 'party', 'matchmaking', 'raid'],
+  },
+  {
     id: 'achievements',
     name: 'Achievements',
     icon: Trophy,

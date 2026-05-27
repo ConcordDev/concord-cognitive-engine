@@ -192,6 +192,23 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase U5 — LFG expiry sweep (~15min cadence). Open requests older
+// than 1h transition to 'expired' so the board stays fresh.
+registerHeartbeat("lfg-expiry-sweep", {
+  frequency: 60,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_LFG_ENABLED === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/lfg.js");
+      return mod.sweepExpiredLfg(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase U4 — faction reputation cache refresh (~15min cadence). Reads
 // character_opinions and writes player_faction_reputation_cache.
 registerHeartbeat("faction-rep-cache-refresh", {
@@ -5729,6 +5746,8 @@ function authMiddleware(req, res, next) {
     // Phase U2 — achievement catalog + recent unlocks are public-read.
     "/api/achievements/catalog",
     "/api/achievements/recent",
+    // Phase U5 — LFG board is public-read (anon browse before login).
+    "/api/lfg/open",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -47922,6 +47941,106 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase U5 — parties + LFG ────────────────────────────────────────────
+
+app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
+  const { createParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = createParty(db, userId, req.body || {});
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteToParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = inviteToParty(db, req.params.partyId, userId, req.body?.toUserId);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/invites/:inviteId/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptPartyInvite } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = acceptPartyInvite(db, req.params.inviteId, userId);
+  if (r.ok && r.partyId) {
+    try { realtimeEmit?.("party:member-joined", { partyId: r.partyId, userId }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaveParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = leaveParty(db, req.params.partyId, userId);
+  if (r.ok) {
+    try { realtimeEmit?.("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/kick", requireAuth(), asyncHandler(async (req, res) => {
+  const { kickFromParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = kickFromParty(db, req.params.partyId, userId, req.body?.targetUserId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/disband", requireAuth(), asyncHandler(async (req, res) => {
+  const { disbandParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = disbandParty(db, req.params.partyId, userId);
+  if (r.ok) { try { realtimeEmit?.("party:disbanded", { partyId: req.params.partyId }); } catch { /* best-effort */ } }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/parties/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMyParty, listIncomingInvites } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    party: getMyParty(db, userId),
+    incomingInvites: listIncomingInvites(db, userId),
+  });
+}));
+
+app.post("/api/parties/:partyId/share-quest", requireAuth(), asyncHandler(async (req, res) => {
+  const { shareQuestWithParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = shareQuestWithParty(db, req.params.partyId, req.body?.questId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// LFG
+app.post("/api/lfg/post", requireAuth(), asyncHandler(async (req, res) => {
+  const { postLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = postLfg(db, userId, req.body || {});
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/lfg/:lfgId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelLfg(db, req.params.lfgId, userId));
+}));
+
+app.get("/api/lfg/open", asyncHandler(async (req, res) => {
+  const { listOpenLfg } = await import("./lib/lfg.js");
+  res.json({ ok: true, requests: listOpenLfg(db, { worldId: req.query.worldId, role: req.query.role, limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.post("/api/lfg/:lfgId/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteFromLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = inviteFromLfg(db, req.params.lfgId, userId);
+  if (r.ok) { try { realtimeEmit?.("lfg:matched", { lfgId: req.params.lfgId, partyId: r.partyId }); } catch { /* best-effort */ } }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
 
 // ── Phase U4 — faction reputation aggregate ─────────────────────────────
 

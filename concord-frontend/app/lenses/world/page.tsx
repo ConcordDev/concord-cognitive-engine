@@ -45,6 +45,7 @@ import WorldShareButton from '@/components/world/WorldShareButton';
 import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
 import { AchievementToast } from '@/components/world/AchievementToast';
+import { PartyPanel } from '@/components/world/PartyPanel';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5739,6 +5740,9 @@ export default function WorldLensPage() {
 
       {/* Phase U2 — achievement unlock toast (top-right). */}
       <AchievementToast />
+
+      {/* Phase U5 — party panel (bottom-right next to friends). */}
+      <PartyPanel />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">
