@@ -258,7 +258,7 @@ function distanceSq(a, b) {
  * @param {{ cityId: string, x: number, y: number, z: number, direction: number, action: string }} pos
  * @returns {{ nearby: object[] }} Nearby user positions after the update.
  */
-export function updateUserPosition(userId, { cityId, x, y, z, direction, action, rotation, currentAnimation, districtId }) {
+export function updateUserPosition(userId, { cityId, x, y, z, direction, action, rotation, currentAnimation, districtId, worldId }) {
   const prev = _userPositions.get(userId);
   const now = Date.now();
 
@@ -340,6 +340,9 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
 
   const entry = {
     cityId,
+    // Phase M — track per-world presence so getWorldUserCount /
+    // getPlayersInCell / soft-cap pooling can scope correctly.
+    worldId: worldId ?? prev?.worldId ?? null,
     districtId: districtId ?? prev?.districtId ?? null,
     x,
     y,
@@ -532,6 +535,47 @@ export function getUserIdsInCity(cityId) {
     if (pos.cityId === cityId) ids.push(userId);
   }
   return ids;
+}
+
+/**
+ * Phase M — multiplayer density helpers.
+ * Worlds are presence-keyed by `worldId` (set when a player travels via
+ * /api/worlds/travel + Socket.IO `world:join`). These helpers expose per-
+ * world player counts to the shard manager (soft cap), spectator mode
+ * (head count), and the world picker (live density indicator).
+ */
+export function getWorldUserCount(worldId) {
+  if (!worldId) return 0;
+  let count = 0;
+  for (const [, pos] of _userPositions) {
+    if (pos.worldId === worldId) count++;
+  }
+  return count;
+}
+
+export function getUserIdsInWorld(worldId) {
+  const ids = [];
+  for (const [userId, pos] of _userPositions) {
+    if (pos.worldId === worldId) ids.push(userId);
+  }
+  return ids;
+}
+
+/**
+ * Return all players within a single 50m spatial cell in a world.
+ * Used by signal-propagation and combat fan-out so 200 concurrent users
+ * only get events that matter to their cell, not the whole world.
+ */
+export function getPlayersInCell(worldId, cellX, cellZ, cellSize = 50) {
+  const out = [];
+  if (!worldId) return out;
+  for (const [userId, pos] of _userPositions) {
+    if (pos.worldId !== worldId) continue;
+    const px = Math.floor((Number(pos.x) || 0) / cellSize);
+    const pz = Math.floor((Number(pos.z) || 0) / cellSize);
+    if (px === cellX && pz === cellZ) out.push(userId);
+  }
+  return out;
 }
 
 /**

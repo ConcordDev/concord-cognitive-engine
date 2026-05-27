@@ -47839,6 +47839,24 @@ app.post("/api/worlds/travel", requireAuth(), asyncHandler(async (req, res) => {
     }
   }
 
+  // Phase M — soft cap. Reject travel if the world is at capacity. The
+  // default cap (200) is per-world; ops can override via env or future
+  // instance-pooling work (currently a hard 503 with retry hint).
+  const SOFT_CAP = Number(process.env.CONCORD_WORLD_USER_SOFT_CAP) || 200;
+  try {
+    const presence = await import("./lib/city-presence.js");
+    const liveCount = presence.getWorldUserCount?.(worldId) ?? 0;
+    if (liveCount >= SOFT_CAP) {
+      return res.status(503).json({
+        ok: false,
+        error: "world_at_capacity",
+        currentUsers: liveCount,
+        softCap: SOFT_CAP,
+        retryAfterMs: 5_000,
+      });
+    }
+  } catch { /* presence module optional in minimal builds */ }
+
   // 2. Spawn / activate the world's worker if sharding enabled. When
   //    sharding is off this is a no-op that returns ok immediately.
   let shardStatus = { ok: true, status: "in-process", firstTickEtaMs: 0 };
