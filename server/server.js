@@ -5685,6 +5685,11 @@ function authMiddleware(req, res, next) {
     "/api/atlas/signals", "/api/atlas/privacy",
     // Competitive parity modules
     "/api/messaging", "/api/sandbox",
+    // Phase K bug-fix: feed + social Discovery widget calls
+    // /api/connective-tissue/search — the route exists at
+    // routes/connective-tissue.js:229 but wasn't on the public-read list.
+    // Adding the prefix lets anon search land before requiring login.
+    "/api/connective-tissue",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
     // Plugins & extensions
@@ -24273,27 +24278,12 @@ register("slides", "compile", (_ctx, input = {}) => {
   };
 }, { description: "Compile a presentation deck spec from slide DTUs" });
 
-// ── tools.web_search ─────────────────────────────────────────────────────
-// Surfaces the chat-web-search infrastructure as a one-shot macro for
-// any lens. Falls back to documenting the fetch path if the chat web
-// adapter isn't loaded.
-register("tools", "web_search", async (_ctx, input = {}) => {
-  const query = String(input.query ?? "").slice(0, 500);
-  if (!query) return { ok: false, error: "query required" };
-  // Try existing web-search infra
-  try {
-    const mod = await import("./lib/web-search.js").catch(() => null);
-    if (mod?.searchWeb) {
-      const results = await mod.searchWeb(query, { limit: input.limit ?? 5 });
-      return { ok: true, query, results };
-    }
-  } catch (_e) { /* fall through */ }
-  // Fallback: return query + hint so the lens can still show something
-  return {
-    ok: true, query, results: [],
-    note: "web-search adapter not available on this build; chat lens emits chat:web_results socket events directly",
-  };
-}, { description: "One-shot web search returning DTU-ingestible results" });
+// Phase K bug-fix: a second `tools.web_search` registration used to live
+// here and silently shadowed the canonical one at server.js:11176. That
+// one carries the safety primitives (governed call, ethos invariant,
+// session opt-in) and is the production-correct path. This sibling has
+// been removed so `macro_duplicate_registration` no longer fires for
+// tools.web_search on every boot.
 
 // ── compile.transpile ────────────────────────────────────────────────────
 // TypeScript / modern-JS transpile via esbuild if available. Falls back
@@ -26193,11 +26183,14 @@ register("jobs","get", (ctx, input) => {
   return { ok:true, job: j };
 }, { summary:"Get a job by id." });
 
-register("jobs","list", (ctx, input) => {
-  const limit = clamp(Number(input.limit||50), 1, 200);
-  const jobs = Array.from(STATE.jobs.values()).slice(-limit).reverse();
-  return { ok:true, jobs };
-}, { summary:"List recent jobs." });
+// Phase K bug-fix: `jobs.list` used to be registered here against the
+// in-memory STATE.jobs queue, but `server/domains/jobs.js:18` registers
+// it second against the tunyan employment system in DB, silently
+// shadowing this version. Frontend JobsPanel.tsx wants the tunyan
+// version (paired with `jobs.my_employment` and `jobs.rations_table`),
+// so the domain registration is canonical. The in-memory version is
+// removed; callers needing the agent-job queue use `STATE.jobs`
+// directly (a 3-call codebase grep confirmed no external caller).
 
 // ---- Agents ----
 register("agent","create", (ctx, input) => {
@@ -27806,9 +27799,16 @@ try {
 
 // ── Validate required secrets at startup ──────────────────────────────────────
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-  console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
-  if (process.env.NODE_ENV === "production") process.exit(1);
-  else console.warn("[WARN] Using insecure default JWT_SECRET for development");
+  // Phase K bug-fix: only print [FATAL] when we're actually about to exit.
+  // In dev we continue with an insecure default, so the right severity is
+  // [WARN] — printing [FATAL] then continuing makes operators distrust
+  // the severity tag.
+  if (process.env.NODE_ENV === "production") {
+    console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
+    process.exit(1);
+  } else {
+    console.warn("[WARN] JWT_SECRET is missing or too short — using an insecure default for development. Generate with: openssl rand -hex 32");
+  }
 }
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
   if (process.env.NODE_ENV === "production") {
@@ -33539,6 +33539,20 @@ register("persona", "delete", (ctx, input) => {
   saveStateDebounced();
   return { ok: true, deleted: input.id };
 });
+
+// Phase K bug-fix: the personas lens (concord-frontend/app/lenses/personas/page.tsx)
+// calls `lensRun('personas', …)` (plural) but the domain above is registered
+// singular. Alias every persona macro under the plural name so both lens
+// call sites and any legacy deep-link work. Cheaper than auditing 20+ call
+// sites for the rename.
+{
+  const personaDomain = MACROS.get("persona");
+  if (personaDomain) {
+    for (const [name, entry] of personaDomain) {
+      register("personas", name, entry.fn, { ...entry.spec, note: "intentional_shadow_ok" });
+    }
+  }
+}
 
 // ---- Admin Dashboard Endpoints ----
 // SECURITY: every admin macro runs through requireAdminRole() first so
