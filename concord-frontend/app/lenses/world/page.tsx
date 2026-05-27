@@ -43,6 +43,7 @@ import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvid
 import FactionOverlay from '@/components/world/FactionOverlay';
 import WorldShareButton from '@/components/world/WorldShareButton';
 import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
+import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5731,6 +5732,9 @@ export default function WorldLensPage() {
       {/* Phase F — process-per-world shard status. Renders only when sharding
           is enabled (returns null otherwise to avoid cluttering the HUD). */}
       <ShardHealthBadge worldId={currentWorldId} />
+
+      {/* Meet-up flow — friends list + presence + join/invite buttons. */}
+      <FriendsPresencePanel myWorldId={currentWorldId} />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

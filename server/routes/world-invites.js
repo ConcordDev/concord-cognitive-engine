@@ -22,7 +22,7 @@ function _userId(req) {
 }
 
 export function registerWorldInviteRoutes(app, deps) {
-  const { db, asyncHandler, requireAuth } = deps;
+  const { db, asyncHandler, requireAuth, realtimeEmit } = deps;
 
   app.get("/api/worlds/invites", requireAuth(), asyncHandler(async (req, res) => {
     const userId = _userId(req);
@@ -64,6 +64,12 @@ export function registerWorldInviteRoutes(app, deps) {
       INSERT INTO world_invites (id, from_user_id, to_user_id, world_id, world_name)
       VALUES (?, ?, ?, ?, ?)
     `).run(id, userId, toUserId, worldId, worldName);
+
+    // Realtime push — the recipient's FriendsPresencePanel listens for
+    // `world:invite-received` and refreshes its pending list.
+    try {
+      realtimeEmit?.("world:invite-received", { id, fromUserId: userId, worldId, worldName }, { targetUserId: toUserId });
+    } catch { /* emit best-effort */ }
 
     res.json({ ok: true, id });
   }));

@@ -28645,7 +28645,7 @@ registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, user
 registerSaveRoutes(app, { db, asyncHandler, STATE });
 
 // ---- World invites (extracted to routes/world-invites.js) ----
-registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth });
+registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth, realtimeEmit });
 
 // ---- Analytics aggregator (extracted to routes/analytics.js) ----
 registerAnalyticsRoutes(app, { db, asyncHandler });
@@ -47870,6 +47870,103 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Meet-up flow — friends + presence + invites ─────────────────────────
+//
+// Pieces:
+//   POST   /api/friends/request        send friend request
+//   POST   /api/friends/:id/accept     accept incoming request
+//   POST   /api/friends/:id/decline    decline incoming request
+//   DELETE /api/friends/:friendUserId  unfriend
+//   GET    /api/friends                list accepted friends
+//   GET    /api/friends/requests       list incoming + outgoing pending
+//   GET    /api/friends/presence       list friends with live world / online
+//
+// The /api/worlds/invites endpoint already exists (routes/world-invites.js)
+// so the "come to my world" send path is just a UI button that POSTs
+// there. The presence + friends additions complete the meet-up loop.
+
+app.post("/api/friends/request", requireAuth(), asyncHandler(async (req, res) => {
+  const { sendFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const targetId = String(req.body?.toUserId || "").trim();
+  if (!targetId) return res.status(400).json({ ok: false, error: "toUserId required" });
+  const r = sendFriendRequest(db, userId, targetId);
+  if (r.ok) {
+    // Realtime nudge to the addressee — their friends panel shows the new
+    // pending request without a refresh.
+    try {
+      realtimeEmit?.("friend:request-received", { id: r.id, fromUserId: userId, status: r.status }, { targetUserId: targetId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/friends/:id/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = acceptFriendRequest(db, req.params.id, userId);
+  if (r.ok) {
+    try {
+      // Tell BOTH parties so each panel updates. The route caller knows
+      // who they are; the requester id has to come from the row.
+      realtimeEmit?.("friend:request-accepted", { id: req.params.id, acceptedBy: userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/friends/:id/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { declineFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = declineFriendRequest(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.delete("/api/friends/:friendUserId", requireAuth(), asyncHandler(async (req, res) => {
+  const { unfriend } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = unfriend(db, userId, req.params.friendUserId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/friends", requireAuth(), asyncHandler(async (req, res) => {
+  const { listFriends } = await import("./lib/friendships.js");
+  const { resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const friends = listFriends(db, userId);
+  const display = resolveUserDisplay(db, friends.map(f => f.friendUserId));
+  res.json({
+    ok: true,
+    friends: friends.map(f => ({ ...f, displayName: display[f.friendUserId]?.displayName ?? f.friendUserId })),
+  });
+}));
+
+app.get("/api/friends/requests", requireAuth(), asyncHandler(async (req, res) => {
+  const { listIncomingRequests, listOutgoingRequests } = await import("./lib/friendships.js");
+  const { resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const incoming = listIncomingRequests(db, userId);
+  const outgoing = listOutgoingRequests(db, userId);
+  const ids = [...incoming.map(r => r.fromUser), ...outgoing.map(r => r.toUser)];
+  const display = resolveUserDisplay(db, ids);
+  res.json({
+    ok: true,
+    incoming: incoming.map(r => ({ ...r, fromDisplayName: display[r.fromUser]?.displayName ?? r.fromUser })),
+    outgoing: outgoing.map(r => ({ ...r, toDisplayName: display[r.toUser]?.displayName ?? r.toUser })),
+  });
+}));
+
+app.get("/api/friends/presence", requireAuth(), asyncHandler(async (req, res) => {
+  const { getFriendsPresence, resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const presence = getFriendsPresence(db, userId);
+  const display = resolveUserDisplay(db, presence.map(p => p.friendUserId));
+  res.json({
+    ok: true,
+    presence: presence.map(p => ({ ...p, displayName: display[p.friendUserId]?.displayName ?? p.friendUserId })),
+  });
+}));
 
 // Phase Q — UGC worlds. Authors publish via POST; their content drops
 // into content/world/usergen-<slug>/ and is auto-picked up by next
