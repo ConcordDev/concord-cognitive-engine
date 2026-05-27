@@ -7,6 +7,7 @@
 
 import { listFriends } from "./friendships.js";
 import { getUserPosition } from "./city-presence.js";
+import { getActiveTitlesForUsers } from "./player-titles.js";
 
 /**
  * @param {object} db
@@ -61,5 +62,13 @@ export function resolveUserDisplay(db, userIds) {
   for (const id of userIds) {
     if (!out[id]) out[id] = { displayName: id.slice(0, 8) };
   }
+  // Phase U3 — also attach active title so the friends panel renders
+  // "Marcus the Healer" instead of just "Marcus".
+  try {
+    const titles = getActiveTitlesForUsers(db, userIds);
+    for (const id of userIds) {
+      if (titles[id]) out[id].activeTitle = titles[id];
+    }
+  } catch { /* title lookup best-effort */ }
   return out;
 }

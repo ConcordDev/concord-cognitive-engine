@@ -21,6 +21,7 @@ interface FriendPresence {
   friendUserId: string;
   friendshipId: string;
   displayName: string;
+  activeTitle?: string | null;
   online: boolean;
   worldId?: string | null;
   cityId?: string | null;
@@ -262,7 +263,12 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex min-w-0 items-center gap-2">
                           <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${f.online ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                          <span className="truncate text-cyan-100">{f.displayName}</span>
+                          <span className="truncate text-cyan-100">
+                            {f.displayName}
+                            {f.activeTitle && (
+                              <span className="ml-1 text-[10px] italic text-fuchsia-300">{f.activeTitle}</span>
+                            )}
+                          </span>
                         </div>
                         {f.online && f.worldId && (
                           <span className="ml-2 flex items-center gap-1 truncate text-[10px] text-cyan-300">

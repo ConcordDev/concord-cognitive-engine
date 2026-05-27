@@ -47907,6 +47907,32 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
   }
 });
 
+// ── Phase U3 — titles ───────────────────────────────────────────────────
+
+app.get("/api/titles/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listOwnedTitles, getActiveTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    owned: listOwnedTitles(db, userId),
+    active: getActiveTitle(db, userId),
+  });
+}));
+
+app.post("/api/titles/:titleId/equip", requireAuth(), asyncHandler(async (req, res) => {
+  const { equipTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = equipTitle(db, userId, req.params.titleId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/titles/unequip", requireAuth(), asyncHandler(async (req, res) => {
+  const { unequipTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = unequipTitle(db, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
 // ── Phase U2 — achievements ─────────────────────────────────────────────
 
 app.get("/api/achievements/mine", requireAuth(), asyncHandler(async (req, res) => {
