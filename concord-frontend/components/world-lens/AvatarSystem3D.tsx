@@ -46,6 +46,11 @@ import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/seconda
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
+// Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
+// inline synthesizeGait when the worker isn't ready (boot warmup) or
+// has failed (e.g. SSR / locked-down browser).
+import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
+import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -281,6 +286,13 @@ export default function AvatarSystem3D({
   // These two are new — per-frame eye tickers and enhanced-disposers.
   const eyeTickersRef = useRef<Map<string, (dt: number) => void>>(new Map());
   const enhancedDisposeRef = useRef<Map<string, () => void>>(new Map());
+
+  // Phase AA2 — Web Worker for gait synthesis. The hook spawns one
+  // worker for the lifetime of this component; per-frame requestGait
+  // posts params and reads back the latest-resolved pose. Fallback to
+  // inline synthesizeGait happens automatically when the worker isn't
+  // ready or has failed (the hook returns null).
+  const avatarAnimator = useAvatarAnimator();
   // Phase B3 — flight-physics shadow state. Initialised when player
   // enters glide; ticked per frame; emitted as `concordia:flight-state`
   // so HUD / camera systems can read it.
@@ -2083,7 +2095,17 @@ export default function AvatarSystem3D({
               style: styleCfg,
             };
 
-            const gaitPose = synthesizeGait(gaitParams, stridePhaseRef.current);
+            // Phase AA2 — try Web Worker first; fall back to inline if the
+            // worker isn't ready, returned null, or the hook failed.
+            const workerPose = avatarAnimator.requestGait(
+              playerAvatar.id || 'player',
+              gaitParams,
+              stridePhaseRef.current,
+              delta,
+            );
+            const gaitPose = workerPose
+              ? serializableToGaitPose(workerPose)
+              : synthesizeGait(gaitParams, stridePhaseRef.current);
             applyGaitPose(gaitPose, (name) => pm.getObjectByName(name) ?? undefined);
 
             // ── FABRIK foot IK — plant feet on actual terrain ──
@@ -2250,7 +2272,19 @@ export default function AvatarSystem3D({
               bodyType: npcData.appearance.bodyType as BodyType,
               style: npcCfg,
             };
-            applyGaitPose(synthesizeGait(npcParams, newPhase), getMesh);
+            // Phase AA2 — same worker-first / inline-fallback as the
+            // player avatar. Per-NPC requestGait keyed by npcId so the
+            // worker pool keeps a latest-pose cache per character.
+            const workerNpcPose = avatarAnimator.requestGait(
+              `npc:${npcId}`,
+              npcParams,
+              newPhase,
+              delta,
+            );
+            const npcGaitPose = workerNpcPose
+              ? serializableToGaitPose(workerNpcPose)
+              : synthesizeGait(npcParams, newPhase);
+            applyGaitPose(npcGaitPose, getMesh);
           } else {
             applyGaitPose(synthesizeIdle(elapsed, npcCfg, 1), getMesh);
           }

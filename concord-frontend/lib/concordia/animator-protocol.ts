@@ -6,6 +6,7 @@
 // main-thread hook rehydrates them into THREE objects before applying to
 // bones.
 
+import * as THREE from 'three';
 import type { BodyType, GaitPose } from './gait-synthesis';
 import type { MovementStyleConfig } from './movement-styles';
 
@@ -100,5 +101,37 @@ export function gaitPoseToSerializable(pose: GaitPose): SerializableGaitPose {
     leftForearm:   eulerToSerializable(pose.leftForearm),
     rightUpperArm: eulerToSerializable(pose.rightUpperArm),
     rightForearm:  eulerToSerializable(pose.rightForearm),
+  };
+}
+
+// ── Re-hydrate plain-object → THREE classes ─────────────────────────────
+// Used by AvatarSystem3D when consuming worker-returned poses. The worker
+// returns SerializableGaitPose (no class prototypes survive postMessage);
+// applyGaitPose expects THREE.Euler / THREE.Vector3 instances.
+
+function _toEuler(s: SerializableEuler): THREE.Euler {
+  return new THREE.Euler(s.x, s.y, s.z, (s.order || 'XYZ') as THREE.EulerOrder);
+}
+function _toVec3(s: SerializableVec3): THREE.Vector3 {
+  return new THREE.Vector3(s.x, s.y, s.z);
+}
+
+export function serializableToGaitPose(s: SerializableGaitPose): GaitPose {
+  return {
+    hips:          _toEuler(s.hips),
+    hipOffset:     _toVec3(s.hipOffset),
+    spine:         _toEuler(s.spine),
+    chest:         _toEuler(s.chest),
+    neck:          _toEuler(s.neck),
+    leftUpperLeg:  _toEuler(s.leftUpperLeg),
+    leftLowerLeg:  _toEuler(s.leftLowerLeg),
+    leftFoot:      _toEuler(s.leftFoot),
+    rightUpperLeg: _toEuler(s.rightUpperLeg),
+    rightLowerLeg: _toEuler(s.rightLowerLeg),
+    rightFoot:     _toEuler(s.rightFoot),
+    leftUpperArm:  _toEuler(s.leftUpperArm),
+    leftForearm:   _toEuler(s.leftForearm),
+    rightUpperArm: _toEuler(s.rightUpperArm),
+    rightForearm:  _toEuler(s.rightForearm),
   };
 }

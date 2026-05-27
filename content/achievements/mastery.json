@@ -87,6 +87,16 @@
       "icon": "Bot",
       "rewardCc": 50,
       "triggers": [{ "kind": "event", "event": "resident:deployed", "condition": {} }]
+    },
+    {
+      "id": "plague_survivor",
+      "title": "Plague Survivor",
+      "description": "Recover from a plague-tier disease and gain immunity.",
+      "rarity": "gold",
+      "icon": "ShieldCheck",
+      "rewardCc": 200,
+      "rewardTitle": "the Unbroken",
+      "triggers": [{ "kind": "event", "event": "disease:recovered", "condition": { "tier": "plague" } }]
     }
   ]
 }

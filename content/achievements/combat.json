@@ -69,6 +69,25 @@
       "rewardTitle": "the Legendary",
       "hidden": true,
       "triggers": [{ "kind": "stat", "stat": "fights_won", "threshold": 1000 }]
+    },
+    {
+      "id": "tavern_brawler",
+      "title": "Tavern Brawler",
+      "description": "Win 5 unarmed brawls.",
+      "rarity": "bronze",
+      "icon": "Beer",
+      "rewardCc": 25,
+      "triggers": [{ "kind": "stat", "stat": "brawls_won", "threshold": 5 }]
+    },
+    {
+      "id": "frame_perfect",
+      "title": "Frame Perfect",
+      "description": "Parry within the active window (50ms tolerance) ten times.",
+      "rarity": "gold",
+      "icon": "Timer",
+      "rewardCc": 150,
+      "rewardTitle": "the Reflexive",
+      "triggers": [{ "kind": "stat", "stat": "perfect_parries", "threshold": 10 }]
     }
   ]
 }

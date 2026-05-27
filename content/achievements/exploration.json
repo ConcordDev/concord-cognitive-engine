@@ -57,6 +57,16 @@
       "icon": "Globe",
       "rewardCc": 50,
       "triggers": [{ "kind": "event", "event": "user:traveled", "condition": { "worldIdPrefix": "usergen-" } }]
+    },
+    {
+      "id": "world_citizen",
+      "title": "World Citizen",
+      "description": "Spend at least 15 minutes in every authored world.",
+      "rarity": "gold",
+      "icon": "Globe2",
+      "rewardCc": 250,
+      "rewardTitle": "the Cosmopolitan",
+      "triggers": [{ "kind": "stat", "stat": "worlds_with_15min_dwell", "threshold": 8 }]
     }
   ]
 }
