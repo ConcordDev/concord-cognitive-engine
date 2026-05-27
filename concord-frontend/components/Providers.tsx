@@ -13,6 +13,7 @@ import SoundSystem from '@/components/world-lens/SoundSystem';
 import AdaptiveComplexity from '@/components/world-lens/AdaptiveComplexity';
 import HiddenAssistance from '@/components/world-lens/HiddenAssistance';
 import SecretsDiscovery from '@/components/world-lens/SecretsDiscovery';
+import SplashScreen from '@/components/SplashScreen';
 import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
@@ -48,10 +49,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   const [userScopes, setUserScopes] = useState<string[]>([]);
+  const [splashVisible, setSplashVisible] = useState(true);
 
   // FE-018: Start performance observation
   useEffect(() => {
     observeWebVitals();
+  }, []);
+
+  // Splash screen auto-hide on first paint settled.
+  // Skip splash if the user has already entered the world this session.
+  useEffect(() => {
+    const seenThisSession = sessionStorage.getItem('concord_splash_seen');
+    if (seenThisSession) {
+      setSplashVisible(false);
+      return;
+    }
+    const id = setTimeout(() => {
+      setSplashVisible(false);
+      sessionStorage.setItem('concord_splash_seen', '1');
+    }, 1400);
+    return () => clearTimeout(id);
   }, []);
 
   // Connect WebSocket and fetch user scopes on mount (if authenticated)
@@ -136,6 +153,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
         </QueryClientProvider>
       </I18nProvider>
       </MotionConfig>
+      {/* Branded splash overlay shown once per session on cold start. */}
+      <SplashScreen visible={splashVisible} />
     </ErrorBoundary>
   );
 }

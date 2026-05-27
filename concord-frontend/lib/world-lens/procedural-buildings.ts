@@ -74,6 +74,19 @@ export interface BuildingOptions {
   seed:          string;     // stable string id (e.g., building.id)
   scale?:        number;     // 1.0 = default ~10m tall
   factionStyle?: FactionVisualOverride;
+  /**
+   * Visual-polish wave 10 — opt-in interior decoration. When `true`,
+   * the returned group has a child Group (initially set visible=false)
+   * holding archetype-appropriate interior props (fireplace + table in
+   * taverns, scrolls in archives, etc). Toggle visibility when zoom
+   * level transitions to 'interior'.
+   *
+   * Pass `'lazy'` to attach the decor as a userData reference that's
+   * built on first show via attachInteriorDecor() rather than at
+   * createBuilding() time — useful for cold-spawning thousands of
+   * buildings without paying the decor cost upfront.
+   */
+  withInterior?: boolean | 'lazy';
 }
 
 /**
@@ -97,8 +110,29 @@ export const SILHOUETTE_BIAS: Record<ArchitectureStyle, {
 
 const materialCache = new Map<string, THREE_NS.MeshStandardMaterial>();
 
-function getMaterial(THREE: typeof THREE_NS, key: string, color: string, opts?: { emissive?: string; emissiveIntensity?: number; roughness?: number; metalness?: number }) {
-  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}`;
+/**
+ * Visual-polish wave 9 — per-slot PBR texture overlay.
+ *
+ * The procedural-texture module ships in-memory canvas textures keyed
+ * by (kind, seed, size); we look them up synchronously and bind them
+ * to the building material when present. Authored CC0 textures land
+ * via the unified pbr-loader (which is async); when those land they
+ * replace via setMaterialPBR() below.
+ */
+function getMaterial(
+  THREE: typeof THREE_NS,
+  key: string,
+  color: string,
+  opts?: {
+    emissive?: string;
+    emissiveIntensity?: number;
+    roughness?: number;
+    metalness?: number;
+    pbrKind?: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt';
+    pbrSeed?: number;
+  },
+) {
+  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}:${opts?.pbrKind ?? ""}`;
   let m = materialCache.get(cacheKey);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
@@ -108,6 +142,17 @@ function getMaterial(THREE: typeof THREE_NS, key: string, color: string, opts?: 
       emissive:          opts?.emissive ? new THREE.Color(opts.emissive) : new THREE.Color(0x000000),
       emissiveIntensity: opts?.emissiveIntensity ?? 0,
     });
+    if (opts?.pbrKind) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { makePBR } = require('./procedural-texture') as typeof import('./procedural-texture');
+        const set = makePBR(THREE, { kind: opts.pbrKind, seed: opts.pbrSeed ?? 1 });
+        m.map = set.albedo;
+        m.normalMap = set.normal;
+        m.roughnessMap = set.roughness;
+        m.aoMap = set.ao;
+      } catch { /* procedural texture optional */ }
+    }
     materialCache.set(cacheKey, m);
   }
   return m;
@@ -140,8 +185,20 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     : null;
   const scale = baseScale * (bias?.wallHeightMult ?? 1.0);
 
-  const wallMat   = getMaterial(THREE, "wall",   palette.wall);
-  const roofMat   = getMaterial(THREE, "roof",   palette.roof);
+  // Map each archetype to a PBR material kind for the wall + roof slots.
+  // Trim is left flat because procedural-texture brick / metal would
+  // visually clash with the per-faction accent palette.
+  const PBR_BY_ARCHETYPE: Record<BuildingArchetype, { wall: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt'; roof: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt' }> = {
+    tavern:  { wall: 'wood',  roof: 'thatch' },
+    archive: { wall: 'stone', roof: 'stone'  },
+    forge:   { wall: 'stone', roof: 'metal'  },
+    market:  { wall: 'brick', roof: 'wood'   },
+    tower:   { wall: 'stone', roof: 'stone'  },
+  };
+  const pbr = PBR_BY_ARCHETYPE[opts.archetype];
+  const pbrSeed = hashSeed(`pbr:${opts.seed}`);
+  const wallMat   = getMaterial(THREE, "wall",   palette.wall,   { pbrKind: pbr.wall, pbrSeed });
+  const roofMat   = getMaterial(THREE, "roof",   palette.roof,   { pbrKind: pbr.roof, pbrSeed });
   const trimMat   = getMaterial(THREE, "trim",   palette.trim);
   const windowMat = getMaterial(THREE, "window", palette.window, {
     emissive: palette.emissive,
@@ -170,9 +227,64 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     archetype:    opts.archetype,
     seed:         opts.seed,
     factionStyle: opts.factionStyle ?? null,
+    _interiorMode: opts.withInterior ?? false,
   };
 
+  if (opts.withInterior === true) {
+    attachInteriorDecor(THREE, group, opts.archetype);
+  }
+
   return group;
+}
+
+/**
+ * Visual-polish wave 10 — build + attach the interior decor child Group.
+ * Idempotent: returns early if already attached. Safe to call lazily
+ * the first time the building's zoom level transitions to 'interior'.
+ */
+export function attachInteriorDecor(
+  THREE: typeof THREE_NS,
+  buildingGroup: THREE_NS.Group,
+  archetype: BuildingArchetype,
+): THREE_NS.Group | null {
+  if ((buildingGroup.userData as { _interiorGroup?: THREE_NS.Group })._interiorGroup) {
+    return (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group })._interiorGroup ?? null;
+  }
+  try {
+    // Lazy import so the SSR bundle and cold-start path don't pull in
+    // the full decor module unless an interior is actually being
+    // populated.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { decorateInterior } = require('./interior-decor') as typeof import('./interior-decor');
+    const decor = decorateInterior(THREE, { archetype });
+    decor.group.visible = false; // Caller toggles when zoom transitions to interior.
+    buildingGroup.add(decor.group);
+    (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorGroup = decor.group;
+    (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorDispose = decor.dispose;
+    return decor.group;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Toggle a building's interior visibility. Call this from the zoom
+ * handler when the player crosses the entrance threshold.
+ */
+export function setInteriorVisible(
+  THREE: typeof THREE_NS,
+  buildingGroup: THREE_NS.Group,
+  visible: boolean,
+): void {
+  const ud = buildingGroup.userData as {
+    archetype?: BuildingArchetype;
+    _interiorGroup?: THREE_NS.Group;
+    _interiorMode?: boolean | 'lazy';
+  };
+  if (!ud._interiorGroup && ud._interiorMode === 'lazy' && ud.archetype) {
+    attachInteriorDecor(THREE, buildingGroup, ud.archetype);
+  }
+  if (ud._interiorGroup) ud._interiorGroup.visible = visible;
 }
 
 /**

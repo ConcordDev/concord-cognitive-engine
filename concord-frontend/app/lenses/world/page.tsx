@@ -197,6 +197,10 @@ const AdaptiveMusicBridge = dynamic(
   () => import('@/components/world/AdaptiveMusicBridge'),
   { ssr: false }
 );
+const EmbodiedParticlesBridge = dynamic(
+  () => import('@/components/world/EmbodiedParticlesBridge'),
+  { ssr: false }
+);
 
 // Sprint B.5 — perception + walker injection + tomb overlay.
 // NpcPerceptionBridge: dispatches concordia:npc-look-at + npc-mood
@@ -4515,6 +4519,8 @@ export default function WorldLensPage() {
           <CombatPolishLayer userId={playerAvatar?.id || null} />
           {/* Visual-polish wave 4 — adaptive vertical-layer music */}
           <AdaptiveMusicBridge />
+          {/* Visual-polish wave 3 — per-terrain footstep audio + dust + cold-breath */}
+          <EmbodiedParticlesBridge />
           {/* Phase C1 — combat-motor-driver event bridge. */}
           <CombatMotorBridge userId={playerAvatar?.id || null} />
           {/* Phase C4 — reflex-layer driver for the local player. */}
