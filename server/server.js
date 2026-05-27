@@ -48331,6 +48331,59 @@ app.get("/api/ambient-chat/list", asyncHandler(async (req, res) => {
   res.json({ ok: true, messages: listRecentInDistrict(db, worldId, districtId, { limit: Number(req.query.limit) || 15 }) });
 }));
 
+// ── Phase BA1 — player housing (wire land_claims → building → rooms) ───
+
+app.post("/api/housing/claim", requireAuth(), asyncHandler(async (req, res) => {
+  const { claimHouse } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(claimHouse(db, userId, req.body || {}));
+}));
+
+app.get("/api/housing/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyHouses } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, houses: listMyHouses(db, userId) });
+}));
+
+app.get("/api/housing/:houseId", asyncHandler(async (req, res) => {
+  const { getHouse } = await import("./lib/player-housing.js");
+  const house = getHouse(db, req.params.houseId);
+  if (!house) return res.status(404).json({ ok: false, error: "no_house" });
+  res.json({ ok: true, house });
+}));
+
+app.post("/api/housing/:houseId/visibility", requireAuth(), asyncHandler(async (req, res) => {
+  const { setVisibility, setAllowLiveVisits } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  if (req.body?.visibility) {
+    const v = setVisibility(db, userId, req.params.houseId, req.body.visibility);
+    if (!v.ok) return res.status(400).json(v);
+  }
+  if (typeof req.body?.allowLiveVisits === "boolean") {
+    const a = setAllowLiveVisits(db, userId, req.params.houseId, req.body.allowLiveVisits);
+    if (!a.ok) return res.status(400).json(a);
+  }
+  res.json({ ok: true });
+}));
+
+app.post("/api/housing/:houseId/lock", requireAuth(), asyncHandler(async (req, res) => {
+  const { setLockTier } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(setLockTier(db, userId, req.params.houseId, req.body?.roomId, req.body?.lockTier));
+}));
+
+app.post("/api/housing/:houseId/furniture/place", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeFurniture } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(placeFurniture(db, userId, req.params.houseId, req.body?.roomId, req.body?.item || {}));
+}));
+
+app.post("/api/housing/:houseId/furniture/remove", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeFurniture } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(removeFurniture(db, userId, req.params.houseId, req.body?.roomId, req.body?.itemId));
+}));
+
 // ── Phase U6 — world markers (wire migration 188) ───────────────────────
 
 app.post("/api/worlds/:worldId/markers", requireAuth(), asyncHandler(async (req, res) => {
