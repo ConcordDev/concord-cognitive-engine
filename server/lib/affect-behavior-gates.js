@@ -119,3 +119,54 @@ export function classifyMood(affect) {
   if (affect.v >= t.JOY_V) return "friendly";
   return "neutral";
 }
+
+/**
+ * Wave G5 — crowd reaction to combat. Pure function that maps an
+ * NPC's archetype + distance to a combat event into a reaction kind.
+ *
+ * INVARIANT: callers MUST pass `finalDamage` (post-cap, post-env),
+ * never raw client damage. Reaction intensity scales with it.
+ *
+ * opts: { npcArchetype, distance, finalDamage, hasAuthority? }
+ * returns: { kind: 'flee_home'|'engage'|'cower'|'watch'|'none',
+ *            movementStyle, mood, ttlSeconds }
+ *
+ * Distance bands:
+ *   civilian/child: ≤30m flee, ≤40m watch
+ *   merchant/elder: ≤30m cower, ≤40m watch
+ *   guard + hasAuthority: ≤40m engage (regardless of distance band)
+ *   default: ≤25m watch
+ *
+ * Intensity gate: very small damage (≤3) doesn't trigger reactions.
+ */
+const CIVILIAN_ARCHETYPES = new Set(["civilian", "peasant", "commoner", "child"]);
+const COWERING_ARCHETYPES = new Set(["merchant", "trader", "shopkeeper", "elder", "scholar", "healer"]);
+const GUARD_ARCHETYPES = new Set(["guard", "soldier", "warden", "captain", "knight"]);
+
+export function crowdReactionTo({ npcArchetype, distance, finalDamage, hasAuthority } = {}) {
+  if (typeof finalDamage !== "number" || finalDamage <= 3) {
+    return { kind: "none" };
+  }
+  const a = String(npcArchetype || "").toLowerCase();
+  const d = typeof distance === "number" ? distance : Infinity;
+  // Guards engage out to 40m if they have authority.
+  if (GUARD_ARCHETYPES.has(a) && hasAuthority === true && d <= 40) {
+    return { kind: "engage", movementStyle: "confident", mood: "hostile", ttlSeconds: 30 };
+  }
+  // Civilians + children flee.
+  if (CIVILIAN_ARCHETYPES.has(a) && d <= 30) {
+    return { kind: "flee_home", movementStyle: "frantic", mood: "fearful", ttlSeconds: 30 };
+  }
+  // Merchants + elders + scholars cower.
+  if (COWERING_ARCHETYPES.has(a) && d <= 30) {
+    return { kind: "cower", movementStyle: "cautious", mood: "fearful", ttlSeconds: 30 };
+  }
+  // Out-band but still close: stand and watch.
+  if (d <= 25) {
+    return { kind: "watch", movementStyle: "cautious", mood: "suspicious", ttlSeconds: 20 };
+  }
+  if (d <= 40) {
+    return { kind: "watch", movementStyle: "relaxed", mood: "suspicious", ttlSeconds: 15 };
+  }
+  return { kind: "none" };
+}

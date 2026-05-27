@@ -496,6 +496,10 @@ const PropInteractionPrompt = dynamic(
   () => import('@/components/world/PropInteractionPrompt').then((m) => ({ default: m.PropInteractionPrompt })),
   { ssr: false },
 );
+const NpcBarkBubble = dynamic(
+  () => import('@/components/world/NpcBarkBubble').then((m) => ({ default: m.NpcBarkBubble })),
+  { ssr: false },
+);
 const NemesisGlyphLayer = dynamic(
   () => import('@/components/world/NemesisGlyphLayer').then((m) => ({ default: m.NemesisGlyphLayer })),
   { ssr: false },
@@ -2629,6 +2633,19 @@ export default function WorldLensPage() {
     return () => { cancelled = true; clearInterval(iv); };
   }, [worldIdForTheme, playerAvatar?.position?.x, playerAvatar?.position?.z]);
 
+  // Wave G7 / G8 — forward player position to footprint trail + fauna boids.
+  useEffect(() => {
+    if (!playerAvatar?.position) return;
+    try {
+      const fp = (globalThis as unknown as { __concordFootprintRecord?: (x: number, y: number, z: number) => void })
+        .__concordFootprintRecord;
+      if (fp) fp(playerAvatar.position.x, playerAvatar.position.y ?? 0, playerAvatar.position.z);
+      const fa = (globalThis as unknown as { __concordFaunaPlayer?: (xz: { x: number; z: number }) => void })
+        .__concordFaunaPlayer;
+      if (fa) fa({ x: playerAvatar.position.x, z: playerAvatar.position.z });
+    } catch { /* ok */ }
+  }, [playerAvatar?.position?.x, playerAvatar?.position?.z, playerAvatar?.position?.y]);
+
   // Wave G6 — door open/close socket → frontend tween.
   useEffect(() => {
     function onOpened(...args: unknown[]) {
@@ -4462,6 +4479,10 @@ export default function WorldLensPage() {
           <PropInteractionPrompt
             props={nearbyProps}
             playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y ?? 0, z: playerAvatar.position.z }}
+          />
+          {/* Wave G2 — NPC bark bubbles (procedural + opt-in LLM). */}
+          <NpcBarkBubble
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
           <NemesisGlyphLayer
             worldId={activeDistrict.id}

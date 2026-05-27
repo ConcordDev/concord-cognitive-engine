@@ -190,6 +190,12 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     // reference what kind of character the player is (elements, weapon
     // affinity, lineage signature). Injected when opts.userId is set.
     player_profile:           null,
+    // Wave G2 — current visible appearance signals: bloody / soaked /
+    // glowing / wealthy / weapon-armed / clothing-mismatch. Composed
+    // from player_inventory + user_active_effects + cityPresence +
+    // signalsForWorld. Used by NPC dialogue + bark composition so
+    // remarks can reference what the NPC actually sees.
+    current_player_appearance: null,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 
@@ -301,6 +307,15 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
         }
       } catch { /* user_player_profiles absent on minimal builds */ }
     }
+
+    // Wave G2 — current visible player appearance. Best-effort: any
+    // signal table that's missing on this build is silently skipped.
+    if (opts.userId) {
+      try {
+        const appearance = _composePlayerAppearance(db, opts.userId);
+        if (appearance) traits.current_player_appearance = appearance;
+      } catch { /* appearance is optional */ }
+    }
   }
 
   // Defense-in-depth: scan the materialized traits for the secret canary.
@@ -330,6 +345,71 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
  *
  * Output shape: [{ id, name, alias, homeWorld, type, notes }]
  */
+/**
+ * Wave G2 — compose a compact appearance descriptor for the player so
+ * NPC dialogue + bark prompts can reference what they actually see.
+ * Returns null if no signals are notable.
+ *
+ * Signals checked:
+ *   - bloody: pending combat_recoveries OR damage_events as target ≤30s ago
+ *   - soaked: cityPresence cell humidity > 0.75
+ *   - glowing: user_active_effects.kind LIKE '%glow%' OR '%aura%'
+ *   - wealthy: wallet ≥ 5000 CC
+ *   - armed: equipped weapon in player_inventory (weapon_class set + equipped=1)
+ *   - clothing_mismatch: equipped armor weight class vs ambient temp
+ */
+function _composePlayerAppearance(db, userId) {
+  if (!db || !userId) return null;
+  const out = {};
+  // bloody — recent damage_events as target.
+  try {
+    const r = db.prepare(`
+      SELECT COUNT(*) AS n FROM damage_events
+      WHERE target_id = ? AND occurred_at > unixepoch() - 30
+    `).get(userId);
+    if ((r?.n ?? 0) > 0) out.bloody = true;
+  } catch { /* table absent — skip */ }
+  // soaked — last cityPresence cell humidity, joined to signalsForWorld via per-world cell.
+  try {
+    const pres = db.prepare(`
+      SELECT world_id, x, z FROM city_presence WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1
+    `).get(userId);
+    if (pres?.world_id) {
+      const sig = db.prepare(`
+        SELECT value FROM embodied_signal_log
+        WHERE world_id = ? AND channel = 'chemical_os.humidity'
+          AND ttl_expires_at > unixepoch()
+        ORDER BY recorded_at DESC LIMIT 1
+      `).get(pres.world_id);
+      if (sig && Number(sig.value) > 75) out.soaked = true;
+    }
+  } catch { /* ok */ }
+  // glowing — active effects with glow/aura.
+  try {
+    const r = db.prepare(`
+      SELECT COUNT(*) AS n FROM user_active_effects
+      WHERE user_id = ? AND (kind LIKE '%glow%' OR kind LIKE '%aura%')
+        AND (expires_at IS NULL OR expires_at > unixepoch())
+    `).get(userId);
+    if ((r?.n ?? 0) > 0) out.glowing = true;
+  } catch { /* ok */ }
+  // wealthy — wallet ≥ 5000.
+  try {
+    const w = db.prepare(`SELECT balance FROM user_wallets WHERE user_id = ?`).get(userId);
+    if ((w?.balance ?? 0) >= 5000) out.wealthy = true;
+  } catch { /* ok */ }
+  // armed — any equipped weapon.
+  try {
+    const w = db.prepare(`
+      SELECT weapon_class FROM player_inventory
+      WHERE user_id = ? AND weapon_class IS NOT NULL
+      ORDER BY id DESC LIMIT 1
+    `).get(userId);
+    if (w?.weapon_class) out.armed_with = String(w.weapon_class);
+  } catch { /* ok */ }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 function buildRelationshipWeb(npc) {
   if (!npc?.relationships || !Array.isArray(npc.relationships)) return [];
   const out = [];

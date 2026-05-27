@@ -664,6 +664,56 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // Wave G4 — ambient signals lookup for reactive props (torch flicker,
+  // banner sway, water ripple, brazier embers). Wraps signalsForWorld
+  // with a 2-second in-process cache keyed by (worldId, cellX, cellZ)
+  // so N polling clients × M reactive props don't hammer the DB.
+  const _ambientCache = new Map(); // key → { ts, body }
+  const AMBIENT_CACHE_TTL_MS = 2000;
+  router.get("/:worldId/ambient", async (req, res) => {
+    try {
+      const worldId = req.params.worldId;
+      const x = req.query.x != null ? Number(req.query.x) : 0;
+      const z = req.query.z != null ? Number(req.query.z) : 0;
+      const cellX = Math.floor(x / 50);
+      const cellZ = Math.floor(z / 50);
+      const cacheKey = `${worldId}|${cellX}|${cellZ}`;
+      const cached = _ambientCache.get(cacheKey);
+      const now = Date.now();
+      if (cached && (now - cached.ts) < AMBIENT_CACHE_TTL_MS) {
+        return res.json({ ok: true, cached: true, ...cached.body });
+      }
+      const { signalsForWorld } = await import("../lib/embodied/signals.js");
+      const signals = signalsForWorld(db, worldId, { x, z });
+      // Frontend-derived wind direction (deterministic per world + slow drift).
+      const t = Date.now() / 1000;
+      const seed = worldId.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+      const baseAngle = ((seed >>> 0) % 360) * Math.PI / 180;
+      const windDirRad = baseAngle + Math.sin(t / 480) * 0.4;
+      const body = {
+        worldId, x, z, cellX, cellZ,
+        signals,
+        wind: {
+          directionRad: windDirRad,
+          directionDeg: windDirRad * 180 / Math.PI,
+          // Wind magnitude scales with pressure delta + a small base.
+          magnitude: 0.2 + Math.min(0.8, Math.abs((signals?.pressure ?? 0)) * 0.4),
+        },
+        ts: now,
+      };
+      _ambientCache.set(cacheKey, { ts: now, body });
+      // Prune cache periodically to avoid unbounded growth.
+      if (_ambientCache.size > 500) {
+        for (const [k, v] of _ambientCache.entries()) {
+          if (now - v.ts > 4 * AMBIENT_CACHE_TTL_MS) _ambientCache.delete(k);
+        }
+      }
+      res.json({ ok: true, cached: false, ...body });
+    } catch (e) {
+      serverError(res, e);
+    }
+  });
+
   router.post("/:worldId/emergents/:emergentId/affinity", requireAuth, async (req, res) => {
     try {
       const { delta = 1 } = req.body;
@@ -2224,6 +2274,62 @@ export default function createWorldsRouter({ requireAuth, db }) {
           });
         }
       } catch { /* SFX emit never blocks combat */ }
+
+      // Wave G5 — crowd reaction to combat. Scan NPCs within 40m of
+      // the combat point; archetype-driven flee / cower / engage /
+      // watch overrides current routine for ttlSeconds. Reads ONLY
+      // post-cap, post-env finalDamage (combat anti-cheat invariant).
+      try {
+        const targetPos = db.prepare(`SELECT x, z FROM world_npcs WHERE id = ?`).get(npcId);
+        if (targetPos) {
+          const { crowdReactionTo } = await import("../lib/affect-behavior-gates.js");
+          let nearby = [];
+          try {
+            nearby = db.prepare(`
+              SELECT id, archetype, x, z, faction_id FROM world_npcs
+              WHERE world_id = ? AND id != ? AND COALESCE(is_dead, 0) = 0
+                AND x BETWEEN ? AND ? AND z BETWEEN ? AND ?
+              LIMIT 60
+            `).all(worldId, npcId, targetPos.x - 40, targetPos.x + 40, targetPos.z - 40, targetPos.z + 40);
+          } catch { /* ok */ }
+          const nowS = Math.floor(Date.now() / 1000);
+          const io = req.app?.locals?.io;
+          for (const candidate of nearby) {
+            const dx = candidate.x - targetPos.x;
+            const dz = candidate.z - targetPos.z;
+            const distance = Math.sqrt(dx * dx + dz * dz);
+            const hasAuthority = !!candidate.faction_id; // guards in any faction = authority
+            const reaction = crowdReactionTo({
+              npcArchetype: candidate.archetype,
+              distance,
+              finalDamage: damageResult.finalDamage,
+              hasAuthority,
+            });
+            if (reaction.kind === "none") continue;
+            // Write current_activity with TTL via npc_routine_state. Idempotent
+            // upsert — the routine cycle will respect this until it lapses.
+            try {
+              db.prepare(`
+                INSERT INTO npc_routine_state (npc_id, current_activity, block_started_at, block_until)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(npc_id) DO UPDATE SET
+                  current_activity = excluded.current_activity,
+                  block_started_at = excluded.block_started_at,
+                  block_until      = excluded.block_until
+              `).run(candidate.id, reaction.kind, nowS, nowS + (reaction.ttlSeconds || 30));
+            } catch { /* table may not exist on minimal builds */ }
+            // Realtime so client can switch activity tag + movement style.
+            try {
+              io?.to(`world:${worldId}`).emit("npc:crowd-reaction", {
+                worldId, npcId: candidate.id,
+                kind: reaction.kind, movementStyle: reaction.movementStyle,
+                mood: reaction.mood, ttlSeconds: reaction.ttlSeconds,
+                triggeredBy: { kind: "combat:hit", attackerId: userId, targetId: npcId },
+              });
+            } catch { /* ok */ }
+          }
+        }
+      } catch { /* crowd reactions never block combat */ }
 
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at

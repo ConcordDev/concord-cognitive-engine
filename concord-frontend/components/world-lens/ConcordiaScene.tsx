@@ -266,6 +266,9 @@ export default function ConcordiaScene({
     getDoorMeshes: () => Map<string, unknown>;
     dispose: () => void;
   } | null>(null);
+  // Wave G7 + G8 — footprint decals + ambient micro-fauna.
+  const footprintTrailRef = useRef<import('@/lib/world-lens/footprint-trail').FootprintTrail | null>(null);
+  const microFaunaRef = useRef<import('@/lib/world-lens/micro-fauna').MicroFauna | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -829,6 +832,38 @@ export default function ConcordiaScene({
           .__concordOpenDoor = (id) => worldDoorsRef.current?.openDoor(id);
         (globalThis as unknown as { __concordCloseDoor?: (id: string) => void })
           .__concordCloseDoor = (id) => worldDoorsRef.current?.closeDoor(id);
+      } catch { /* best-effort */ }
+
+      // ── Wave G7 — footprint decals ──────────────────────────────
+      try {
+        const { FootprintTrail } = await import('@/lib/world-lens/footprint-trail');
+        footprintTrailRef.current = new FootprintTrail(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+        );
+        (globalThis as unknown as {
+          __concordFootprintRecord?: (x: number, y: number, z: number) => void;
+          __concordFootprintTerrain?: (k: string) => void;
+        }).__concordFootprintRecord = (x, y, z) => footprintTrailRef.current?.recordPosition(x, y, z);
+        (globalThis as unknown as {
+          __concordFootprintTerrain?: (k: string) => void;
+        }).__concordFootprintTerrain = (k) => footprintTrailRef.current?.setTerrain(k as 'mud' | 'sand' | 'snow' | 'stone' | 'wood' | 'grass' | 'tile');
+      } catch { /* best-effort */ }
+
+      // ── Wave G8 — ambient micro-fauna ───────────────────────────
+      try {
+        const { MicroFauna } = await import('@/lib/world-lens/micro-fauna');
+        microFaunaRef.current = new MicroFauna(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+        );
+        // Seed a default region around world center; world page can re-seed.
+        microFaunaRef.current.populate({ cx: 0, cz: 0, radius: 60, flocks: 4, butterflyZones: 4 });
+        (globalThis as unknown as {
+          __concordFaunaPlayer?: (xz: { x: number; z: number }) => void;
+          __concordFaunaSeed?: (r: { cx: number; cz: number; radius: number; flocks: number; butterflyZones: number }) => void;
+        }).__concordFaunaPlayer = (xz) => microFaunaRef.current?.setPlayerPosition(xz);
+        (globalThis as unknown as {
+          __concordFaunaSeed?: (r: { cx: number; cz: number; radius: number; flocks: number; butterflyZones: number }) => void;
+        }).__concordFaunaSeed = (r) => microFaunaRef.current?.populate(r);
       } catch { /* best-effort */ }
 
       // ── Clock & Raycaster ───────────────────────────────────────
@@ -1436,6 +1471,22 @@ export default function ConcordiaScene({
         delete g.__concordSetWorldDoors;
         delete g.__concordOpenDoor;
         delete g.__concordCloseDoor;
+      } catch { /* ignore */ }
+
+      try { footprintTrailRef.current?.dispose(); } catch { /* ignore */ }
+      footprintTrailRef.current = null;
+      try {
+        const g = globalThis as unknown as { __concordFootprintRecord?: unknown; __concordFootprintTerrain?: unknown };
+        delete g.__concordFootprintRecord;
+        delete g.__concordFootprintTerrain;
+      } catch { /* ignore */ }
+
+      try { microFaunaRef.current?.dispose(); } catch { /* ignore */ }
+      microFaunaRef.current = null;
+      try {
+        const g = globalThis as unknown as { __concordFaunaPlayer?: unknown; __concordFaunaSeed?: unknown };
+        delete g.__concordFaunaPlayer;
+        delete g.__concordFaunaSeed;
       } catch { /* ignore */ }
 
       ssgiPassRef.current?.dispose();

@@ -423,6 +423,22 @@ ${typeof daysSinceLastSeen === "number" && daysSinceLastSeen >= 3
 Keep the question grounded, specific, and short. End with a question mark.
 Do not ask multiple questions; do not preface with "I wonder". Just ask.`,
 
+  // Wave G2 — short procedural bark. Used by npc-bark-cycle when the
+  // player walks within ~8m of an NPC and the rate-limit allows. Caller
+  // composes the topic + tone (templated 80% of the time) and only
+  // routes through this LLM-driven path when CONCORD_NPC_BARKS_LLM=true
+  // is set, since cost adds up at world-population scale.
+  // The LLM should return ONE short remark — ≤14 words, no preamble, no
+  // quotation marks, no name labels. Match `tone`: friendly|wary|hostile.
+  npcBark: ({ npcName, npcArchetype, tone, topic, appearance, asymmetry, lastTopic } = {}) =>
+    `You are ${npcName || npcArchetype}. Say one short bark to a passing player.
+TONE: ${tone || "neutral"}. TOPIC: ${topic || "greeting"}.
+${appearance ? `What you see: ${JSON.stringify(appearance)}` : ""}
+${asymmetry ? `Your private feeling toward them: ${JSON.stringify(asymmetry)}` : ""}
+${lastTopic ? `Last thing you discussed: ${lastTopic}` : ""}
+Rules: ONE line, ≤14 words, no preamble, no name labels, no quotation marks.
+Voice matches your archetype. Sound like a real person muttering or calling out, not a quest-giver.`,
+
   // ── Agent Mode (chat-agent.js) ────────────────────────────────────
   // Note: chat-agent has additional dynamic blocks (TOOL_SCHEMA_BLOCK,
   // shadowContextBlock). The caller composes those + calls this for the

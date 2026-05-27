@@ -210,6 +210,15 @@ registerHeartbeat("door-auto-close-cycle", {
   handler: runDoorAutoCloseCycle,
 });
 
+// Wave G2 — proximity-driven NPC barks (RDR2-style). Rate-limited 90s
+// per (npc, player) via npc_player_memories. Opt-in LLM personalization
+// via CONCORD_NPC_BARKS_LLM=true; kill switch CONCORD_NPC_BARKS=0.
+import { runNpcBarkCycle } from "./emergent/npc-bark-cycle.js";
+registerHeartbeat("npc-bark-cycle", {
+  frequency: 3,    // ~45s
+  handler: runNpcBarkCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
