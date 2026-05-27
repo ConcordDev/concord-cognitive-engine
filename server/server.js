@@ -192,6 +192,48 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase W — disease tick cycle (~75s cadence per world). Advances
+// severity of every active infection in the world.
+registerHeartbeat("disease-tick-cycle", {
+  frequency: 5,
+  scope: "world",
+  handler: async ({ db: ctxDb, worldId }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
+    try {
+      // Get every user with an active disease in this world (or globally
+      // if no shard scope). For each, run tickDiseases.
+      const userRows = ctxDb.prepare(`
+        SELECT DISTINCT user_id FROM player_diseases
+        WHERE recovered_at IS NULL LIMIT 200
+      `).all();
+      let total = 0;
+      for (const u of userRows) {
+        const r = tickDiseases(ctxDb, u.user_id, { worldId });
+        total += r.ticked || 0;
+      }
+      return { ok: true, ticked: total };
+    } catch (err) {
+      return { ok: false, reason: "tick_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase W3 — plague watch (~15min cadence). Detects + declares plagues.
+registerHeartbeat("plague-watch", {
+  frequency: 60,
+  scope: "world",
+  handler: async (ctx) => {
+    if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/plague-event.js");
+      return mod.plagueWatch(ctx);
+    } catch (err) {
+      return { ok: false, reason: "watch_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase V4 — event reminder sweep (~1min cadence). Fires event:reminder
 // realtime to users whose RSVP'd event starts in the next 10min.
 registerHeartbeat("event-reminder-sweep", {
@@ -5801,6 +5843,9 @@ function authMiddleware(req, res, next) {
     // Phase V1 — auction list + detail public-read so anon can browse.
     "/api/auctions/active",
     "/api/auctions/",
+    // Phase W — disease catalog + plague list public-read.
+    "/api/diseases/catalog",
+    "/api/diseases/plagues",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -30018,6 +30063,7 @@ import { seedContent } from "./lib/content-seeder.js";
 import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
 import { initAchievementCatalog, listEarned as listEarnedAchievements, listRecent as listRecentAchievements, listCatalog as listAchievementCatalog } from "./lib/achievement-engine.js";
 import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-bridge.js";
+import { initDiseaseCatalog, listActiveDiseases as listActiveUserDiseases, listCatalog as listDiseaseCatalog, listEndemicTo as listDiseasesEndemicTo, contractDisease, tickDiseases } from "./lib/disease-engine.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
@@ -30101,6 +30147,11 @@ if (db) {
       initAchievementBridge(db);
       console.log("[achievement-engine] catalog loaded:", r.count);
     } catch (e) { console.warn("[achievement-engine]", e.message); }
+    // Phase W — disease catalog from content/diseases/*.json
+    try {
+      const r = initDiseaseCatalog();
+      console.log("[disease-engine] catalog loaded:", r.count);
+    } catch (e) { console.warn("[disease-engine]", e.message); }
     // Concordia substrate seeder — populate npc_ancestry, actor_physique,
     // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
     // calculation paths get real values. Idempotent on every boot.
@@ -47997,6 +48048,51 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase W — disease engine + medical profession + plague ─────────────
+
+app.get("/api/diseases/catalog", (req, res) => {
+  try {
+    const worldId = req.query.worldId;
+    const list = worldId ? listDiseasesEndemicTo(String(worldId)) : listDiseaseCatalog();
+    res.json({ ok: true, diseases: list });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/diseases/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, diseases: listActiveUserDiseases(db, userId) });
+}));
+
+app.post("/api/admin/diseases/contract", requireAuth(), asyncHandler(async (req, res) => {
+  // Admin-only endpoint to trigger an infection (for testing + GM use).
+  const isAdmin = ["owner", "admin", "founder", "sovereign"].includes(req.user?.role);
+  if (!isAdmin) return res.status(403).json({ ok: false, error: "admin_only" });
+  res.json(contractDisease(db, req.body?.userId, req.body?.diseaseId, req.body || {}));
+}));
+
+app.post("/api/medical/diagnose", requireAuth(), asyncHandler(async (req, res) => {
+  const { diagnose } = await import("./lib/medical-profession.js");
+  const healerId = req.user?.id || req.user?.userId;
+  res.json(diagnose(db, healerId, req.body?.patientId));
+}));
+
+app.post("/api/medical/treat", requireAuth(), asyncHandler(async (req, res) => {
+  const { treatPatient } = await import("./lib/medical-profession.js");
+  const healerId = req.user?.id || req.user?.userId;
+  res.json(treatPatient(db, healerId, req.body?.patientId, req.body?.diseaseId, req.body?.cureRecipeId));
+}));
+
+app.get("/api/medical/diagnose-xp", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDiagnoseXp } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, ...getDiagnoseXp(db, userId) });
+}));
+
+app.get("/api/diseases/plagues", asyncHandler(async (req, res) => {
+  const { listActivePlagues } = await import("./lib/plague-event.js");
+  res.json({ ok: true, plagues: listActivePlagues() });
+}));
 
 // ── Phase V3 — wardrobe ─────────────────────────────────────────────────
 

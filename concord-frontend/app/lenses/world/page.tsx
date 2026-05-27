@@ -48,6 +48,7 @@ import { AchievementToast } from '@/components/world/AchievementToast';
 import { PartyPanel } from '@/components/world/PartyPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
+import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5751,6 +5752,9 @@ export default function WorldLensPage() {
 
       {/* Phase V5 — kill feed (top-right; only renders when enabled). */}
       <KillFeed worldId={currentWorldId} />
+
+      {/* Phase W — disease HUD (top-right; renders only when infected). */}
+      <DiseaseStatusHUD />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

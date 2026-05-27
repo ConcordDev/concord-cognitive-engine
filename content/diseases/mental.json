@@ -1,0 +1,54 @@
+{
+  "$schema": "disease-catalog.v1",
+  "tier": "mental",
+  "diseases": [
+    {
+      "id": "trauma",
+      "name": "Acute trauma",
+      "symptoms": ["flashbacks", "hypervigilance", "sleep disruption"],
+      "transmissionVector": "noncontagious",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0,
+      "severityHalfLifeHours": 168,
+      "severityIncreasePerTick": 0.004,
+      "endemicWorlds": ["all"],
+      "cureRecipeIds": ["counseling_session", "meditation_retreat", "trusted_dialogue"]
+    },
+    {
+      "id": "burnout",
+      "name": "Burnout",
+      "symptoms": ["exhaustion", "cynicism", "reduced efficacy"],
+      "transmissionVector": "noncontagious",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0,
+      "severityHalfLifeHours": 336,
+      "severityIncreasePerTick": 0.003,
+      "endemicWorlds": ["crime", "cyber", "concordia-hub"],
+      "cureRecipeIds": ["sabbatical", "tavern_celebration", "hot_tub"]
+    },
+    {
+      "id": "melancholia",
+      "name": "Melancholia",
+      "symptoms": ["persistent sadness", "anhedonia", "withdrawal"],
+      "transmissionVector": "noncontagious",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0.02,
+      "severityHalfLifeHours": 720,
+      "severityIncreasePerTick": 0.002,
+      "endemicWorlds": ["all"],
+      "cureRecipeIds": ["counseling_session", "ritual_communion", "companion_pet"]
+    },
+    {
+      "id": "grief",
+      "name": "Grief",
+      "symptoms": ["weeping", "numbness", "anger waves"],
+      "transmissionVector": "noncontagious",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0,
+      "severityHalfLifeHours": 480,
+      "severityIncreasePerTick": 0.005,
+      "endemicWorlds": ["all"],
+      "cureRecipeIds": ["funeral_attendance", "trusted_dialogue", "remembrance_dtu"]
+    }
+  ]
+}
