@@ -5690,6 +5690,9 @@ function authMiddleware(req, res, next) {
     // Phase P — cross-world feed is the news layer of the federation.
     // No PII; world-event summaries are server-generated.
     "/api/cross-world/feed",
+    // Phase Q + S — UGC world list + active tournaments are public-safe.
+    "/api/foundry/worlds",
+    "/api/tournaments/active",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -47799,6 +47802,139 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
       heartbeatPool: getHeartbeatPoolStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase Q — UGC worlds. Authors publish via POST; their content drops
+// into content/world/usergen-<slug>/ and is auto-picked up by next
+// discoverSubWorlds() pass (the publisher also reloads the flavor cache).
+app.post("/api/foundry/world/publish", requireAuth(), asyncHandler(async (req, res) => {
+  const { publishUgcWorld } = await import("./lib/foundry-publisher.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = await publishUgcWorld(db, { ...req.body, authorUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/foundry/worlds", async (req, res) => {
+  try {
+    const { listActiveUgcWorlds } = await import("./lib/foundry-publisher.js");
+    res.json({ ok: true, worlds: listActiveUgcWorlds(db, { limit: Number(req.query.limit) || 50 }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/foundry/my-worlds", requireAuth(), async (req, res) => {
+  try {
+    const { listMyUgcWorlds } = await import("./lib/foundry-publisher.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, worlds: listMyUgcWorlds(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase R — world marketplace. Users lease worlds as private tenants.
+app.post("/api/world-marketplace/lease", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaseWorld } = await import("./lib/world-tenancy.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = leaseWorld(db, { ...req.body, ownerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/world-marketplace/my-leases", requireAuth(), async (req, res) => {
+  try {
+    const { listMyTenancies } = await import("./lib/world-tenancy.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, tenancies: listMyTenancies(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/world-marketplace/:tenantWorldId/members", requireAuth(), asyncHandler(async (req, res) => {
+  const { addTenantMember, getMemberRole } = await import("./lib/world-tenancy.js");
+  const userId = req.user?.id || req.user?.userId;
+  // Only the owner / admin can add members.
+  const myRole = getMemberRole(db, req.params.tenantWorldId, userId);
+  if (myRole !== "owner" && myRole !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_authorized" });
+  }
+  const r = addTenantMember(db, req.params.tenantWorldId, req.body?.userId, req.body?.role || "member");
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// Phase S — tournaments per world.
+app.post("/api/tournaments/create", requireAuth(), asyncHandler(async (req, res) => {
+  const { createTournament } = await import("./lib/tournaments.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = createTournament(db, { ...req.body, organizerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/tournaments/:tournamentId/register", requireAuth(), asyncHandler(async (req, res) => {
+  const { registerForTournament } = await import("./lib/tournaments.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = registerForTournament(db, req.params.tournamentId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/tournaments/active", async (req, res) => {
+  try {
+    const { listActiveTournaments } = await import("./lib/tournaments.js");
+    res.json({ ok: true, tournaments: listActiveTournaments(db, { limit: Number(req.query.limit) || 50 }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/tournaments/:tournamentId", async (req, res) => {
+  try {
+    const { getTournament } = await import("./lib/tournaments.js");
+    const t = getTournament(db, req.params.tournamentId);
+    if (!t) return res.status(404).json({ ok: false, error: "no_tournament" });
+    res.json({ ok: true, tournament: t });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase T — AI residents.
+app.post("/api/residents/deploy", requireAuth(), asyncHandler(async (req, res) => {
+  const { deployResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = deployResident(db, { ...req.body, ownerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/pause", requireAuth(), asyncHandler(async (req, res) => {
+  const { pauseResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = pauseResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/resume", requireAuth(), asyncHandler(async (req, res) => {
+  const { resumeResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = resumeResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/recall", requireAuth(), asyncHandler(async (req, res) => {
+  const { recallResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = recallResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/residents/mine", requireAuth(), async (req, res) => {
+  try {
+    const { listMyResidents } = await import("./lib/ai-residents.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, residents: listMyResidents(db, userId) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
