@@ -115,3 +115,78 @@ export function treatPatient(db, healerId, patientId, diseaseId, cureRecipeId) {
 
   return { ok: true, success: false };
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Phase AD — hygiene (modulates touch + airborne contraction)
+// ──────────────────────────────────────────────────────────────────────
+
+const HYGIENE_DECAY_PER_DAY = 0.05;
+const HYGIENE_BATH_RESTORE = 0.5;
+
+/** Read a player's current hygiene. Defaults to 1.0 (clean) if no row. */
+export function getHygiene(db, userId) {
+  if (!db || !userId) return 1.0;
+  try {
+    const r = db.prepare(`
+      SELECT hygiene_level FROM player_hygiene WHERE user_id = ?
+    `).get(userId);
+    return r ? Number(r.hygiene_level) : 1.0;
+  } catch { return 1.0; }
+}
+
+/**
+ * Bump hygiene by `delta` (typically +0.5 for a bath, +0.2 for a
+ * river wash). Clamped to [0, 1].
+ */
+export function improveHygiene(db, userId, delta = HYGIENE_BATH_RESTORE) {
+  if (!db || !userId) return { ok: false, error: "missing_inputs" };
+  const d = Math.max(0, Number(delta));
+  try {
+    const existing = db.prepare(`
+      SELECT hygiene_level FROM player_hygiene WHERE user_id = ?
+    `).get(userId);
+    const next = Math.min(1, (Number(existing?.hygiene_level) || 0) + d);
+    if (existing) {
+      db.prepare(`
+        UPDATE player_hygiene
+        SET hygiene_level = ?, last_bath_at = unixepoch(), last_decay_at = unixepoch()
+        WHERE user_id = ?
+      `).run(next, userId);
+    } else {
+      db.prepare(`
+        INSERT INTO player_hygiene (user_id, hygiene_level, last_bath_at, last_decay_at)
+        VALUES (?, ?, unixepoch(), unixepoch())
+      `).run(userId, next);
+    }
+    return { ok: true, hygiene: next };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * Heartbeat-driven decay. Drops hygiene by HYGIENE_DECAY_PER_DAY × days
+ * since last_decay_at. Heartbeat caller invokes per active player.
+ */
+export function decayHygiene(db, userId) {
+  if (!db || !userId) return { ok: true, hygiene: 1.0 };
+  try {
+    const r = db.prepare(`
+      SELECT hygiene_level, last_decay_at FROM player_hygiene WHERE user_id = ?
+    `).get(userId);
+    if (!r) return { ok: true, hygiene: 1.0 };
+    const now = Math.floor(Date.now() / 1000);
+    const dayFraction = (now - (r.last_decay_at || now)) / (24 * 60 * 60);
+    if (dayFraction <= 0) return { ok: true, hygiene: r.hygiene_level };
+    const next = Math.max(0, r.hygiene_level - HYGIENE_DECAY_PER_DAY * dayFraction);
+    db.prepare(`
+      UPDATE player_hygiene SET hygiene_level = ?, last_decay_at = unixepoch()
+      WHERE user_id = ?
+    `).run(next, userId);
+    return { ok: true, hygiene: next };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export { HYGIENE_DECAY_PER_DAY, HYGIENE_BATH_RESTORE };

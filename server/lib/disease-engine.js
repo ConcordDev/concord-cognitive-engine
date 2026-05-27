@@ -235,6 +235,180 @@ export function getInfectionRatio(db, worldId) {
 
 export { DISEASE_RECOVERY_BELOW_SEVERITY, PLAGUE_INFECTION_RATIO };
 
+// ──────────────────────────────────────────────────────────────────────
+// Phase AD — per-vector transmission probability + substrate gates.
+// ──────────────────────────────────────────────────────────────────────
+
+// PZ-style base rates; each disease can override via
+// `transmissionProbabilities` + `vectorRequirements` in its JSON.
+export const DEFAULT_TRANSMISSION = Object.freeze({
+  airborne:    { base: 0.15, distanceFalloffPerM: 0.04 }, // per 1m within radius
+  touch:       { base: 0.30 },                            // hygiene-modulated
+  foodborne:   { base: 0.40, minContamination: 0.2 },
+  bloodborne:  { base: 0.60 },                            // requires open wound
+  waterborne:  { base: 0.25 },                            // requires contaminated source
+});
+
+/**
+ * Compute contraction probability for a given vector.
+ * @param {object} disease  — catalog entry (with optional `transmissionProbabilities`).
+ * @param {'airborne'|'touch'|'foodborne'|'bloodborne'|'waterborne'} vector
+ * @param {object} opts     — vector-specific signals (distance, hygiene, etc.)
+ * @returns {number}        — [0, 1]
+ */
+export function getTransmissionProbability(disease, vector, opts = {}) {
+  if (!disease) return 0;
+  const userOverrides = disease.transmissionProbabilities || {};
+  const reqs = disease.vectorRequirements || {};
+  const baseDef = DEFAULT_TRANSMISSION[vector];
+  if (!baseDef) return 0;
+
+  // Per-disease base for this vector (override the default if present).
+  const baseRaw = userOverrides[vector];
+  const base = typeof baseRaw === "number" ? baseRaw : baseDef.base;
+  if (base <= 0) return 0;
+
+  let p = base;
+
+  switch (vector) {
+    case "airborne": {
+      const distance = Math.max(0, Number(opts.distanceM) || 0);
+      const radius = Number(disease.contagionRadiusM) || 5;
+      if (distance > radius) return 0;
+      const falloff = baseDef.distanceFalloffPerM;
+      p = Math.max(0, base - distance * falloff);
+      // Hygiene shifts the receiver's susceptibility (clean = halved).
+      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene) ?? 1));
+      p *= (1 - hygiene * 0.5);
+      break;
+    }
+    case "touch": {
+      const distance = Math.max(0, Number(opts.distanceM) || 0);
+      if (distance > 0) return 0; // touch requires zero distance
+      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene) ?? 1));
+      p *= (1 - hygiene * 0.5);
+      break;
+    }
+    case "foodborne": {
+      const contamination = Math.max(0, Math.min(1, Number(opts.contaminationLevel) || 0));
+      const min = baseDef.minContamination;
+      if (contamination < min) return 0;
+      p *= contamination;
+      break;
+    }
+    case "bloodborne": {
+      const requiresWound = reqs.needsOpenWound !== false; // default true
+      if (requiresWound && !opts.openWound) return 0;
+      break;
+    }
+    case "waterborne": {
+      const contamination = Math.max(0, Math.min(1, Number(opts.waterContamination) || 0));
+      if (contamination <= 0) return 0;
+      p *= contamination;
+      break;
+    }
+  }
+
+  return Math.max(0, Math.min(1, p));
+}
+
+/**
+ * Mark a food DTU as contaminated by a disease. Idempotent on
+ * (food_dtu_id, disease_id) — re-marking raises level (capped at 1).
+ */
+export function contaminateFood(db, { foodDtuId, diseaseId, level, sourceUserId } = {}) {
+  if (!db || !foodDtuId || !diseaseId) return { ok: false, error: "missing_inputs" };
+  const lvl = Math.max(0, Math.min(1, Number(level) || 0.5));
+  try {
+    const existing = db.prepare(`
+      SELECT contamination_level FROM food_contamination
+      WHERE food_dtu_id = ? AND disease_id = ?
+    `).get(foodDtuId, diseaseId);
+    if (existing) {
+      const next = Math.min(1, existing.contamination_level + lvl);
+      db.prepare(`
+        UPDATE food_contamination SET contamination_level = ?
+        WHERE food_dtu_id = ? AND disease_id = ?
+      `).run(next, foodDtuId, diseaseId);
+      return { ok: true, contaminationLevel: next };
+    }
+    db.prepare(`
+      INSERT INTO food_contamination
+        (food_dtu_id, disease_id, contamination_level, source_user_id)
+      VALUES (?, ?, ?, ?)
+    `).run(foodDtuId, diseaseId, lvl, sourceUserId || null);
+    return { ok: true, contaminationLevel: lvl };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function getFoodContamination(db, foodDtuId) {
+  if (!db || !foodDtuId) return [];
+  try {
+    return db.prepare(`
+      SELECT disease_id AS diseaseId, contamination_level AS level
+      FROM food_contamination WHERE food_dtu_id = ?
+    `).all(foodDtuId);
+  } catch { return []; }
+}
+
+export function contaminateWaterSource(db, opts = {}) {
+  if (!db) return { ok: false, error: "missing_inputs" };
+  const { worldId, x, z, radiusM, diseaseId, level, ttlSeconds = 86400 } = opts;
+  if (!worldId || !diseaseId || typeof x !== "number" || typeof z !== "number") {
+    return { ok: false, error: "missing_inputs" };
+  }
+  const lvl = Math.max(0, Math.min(1, Number(level) || 0.5));
+  const radius = Math.max(1, Number(radiusM) || 10);
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+  try {
+    const id = `wc_${crypto.randomBytes(6).toString("hex")}`;
+    db.prepare(`
+      INSERT INTO water_source_contamination
+        (id, world_id, x, z, radius_m, disease_id, level, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, worldId, x, z, radius, diseaseId, lvl, expiresAt);
+    return { ok: true, id };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * Look up any active contaminated water source the given point sits inside.
+ * Returns first hit (most contaminated wins via ORDER BY level DESC).
+ */
+export function waterContaminationAt(db, worldId, x, z) {
+  if (!db || !worldId) return null;
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const sources = db.prepare(`
+      SELECT id, disease_id AS diseaseId, level, x, z, radius_m AS radiusM
+      FROM water_source_contamination
+      WHERE world_id = ? AND expires_at > ?
+      ORDER BY level DESC
+    `).all(worldId, now);
+    for (const s of sources) {
+      const d = Math.hypot(x - s.x, z - s.z);
+      if (d <= s.radiusM) return { ...s, distanceM: d };
+    }
+    return null;
+  } catch { return null; }
+}
+
+/** Sweep expired water contamination rows. */
+export function sweepWaterContamination(db) {
+  try {
+    const r = db.prepare(`
+      DELETE FROM water_source_contamination WHERE expires_at <= unixepoch()
+    `).run();
+    return { ok: true, removed: r.changes || 0 };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
 /** Test-only reset. */
 export function _resetDiseaseCatalog() {
   _catalogCache.clear();

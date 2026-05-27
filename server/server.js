@@ -48116,6 +48116,20 @@ app.get("/api/medical/diagnose-xp", requireAuth(), asyncHandler(async (req, res)
   res.json({ ok: true, ...getDiagnoseXp(db, userId) });
 }));
 
+// Phase AD — hygiene (modulates touch + airborne contraction).
+app.get("/api/medical/hygiene", requireAuth(), asyncHandler(async (req, res) => {
+  const { getHygiene } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, hygiene: getHygiene(db, userId) });
+}));
+
+app.post("/api/medical/bath", requireAuth(), asyncHandler(async (req, res) => {
+  const { improveHygiene } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  const delta = Number(req.body?.delta) || 0.5;
+  res.json(improveHygiene(db, userId, delta));
+}));
+
 app.get("/api/diseases/plagues", asyncHandler(async (req, res) => {
   const { listActivePlagues } = await import("./lib/plague-event.js");
   res.json({ ok: true, plagues: listActivePlagues() });
