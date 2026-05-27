@@ -143,6 +143,31 @@ export default function AdaptiveMusicBridge() {
         } catch {
           /* stem discovery is non-fatal — keep procedural fallback */
         }
+
+        // Wave 14: tier-1 studio adaptive music. Region-aware DTUs
+        // override the per-mood combat_drum / tension_pad / ambient_bed
+        // stems when the player is in a matching region. The combat
+        // bridge swaps in via a fresh loadStem call on region change;
+        // for cold-start we just preload the 'tavern/ambient' default.
+        try {
+          const adaptResp = await lensRun('studio', 'list-adaptive-music', { intensity: 'ambient' });
+          const tracks = (adaptResp.data?.result?.tracks as Array<{
+            region: string; intensity: string; downloadUrl: string | null; createdAt: string;
+          }> | undefined) ?? [];
+          // Pick the newest 'tavern/ambient' track as the boot default if any
+          const tavernTrack = tracks
+            .filter((t) => t.region === 'tavern' && t.downloadUrl)
+            .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0];
+          if (tavernTrack?.downloadUrl) {
+            const buf = await fetchAndDecodeStem(ctx, tavernTrack.downloadUrl);
+            if (buf && musicRef.current && !disposed) {
+              // 'ambient_bed' = the most generic always-on slot
+              await musicRef.current.loadStem('ambient_bed', buf);
+            }
+          }
+        } catch {
+          /* adaptive-music discovery is non-fatal */
+        }
       } catch {
         /* audio unavailable — silently no-op */
       }

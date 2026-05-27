@@ -1,4 +1,64 @@
 // server/domains/studio.js
+//
+// Content-engine bridge: publish-as-adaptive-music takes a studio
+// project (tracks + clips + effects) + a client-bounced reference
+// stem (audio bytes), persists both to the substrate, and makes the
+// combined manifest available to the frontend AdaptiveMusicBridge as
+// a per-region adaptive-music DTU. Per CLAUDE.md "music DTU → soundscape"
+// pattern, but for a richer manifest than a single stem.
+
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+
+const ADAPTIVE_REGIONS = new Set([
+  "tavern", "archive", "forge", "market", "tower",
+  "plaza", "wilderness", "arena", "underground",
+]);
+const ADAPTIVE_INTENSITIES = new Set(["ambient", "active", "battle"]);
+const STUDIO_AUDIO_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+const STUDIO_DATA_DIR = process.env.DATA_DIR
+  || (fs.existsSync("/workspace/concord-data") ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
+const STUDIO_LENS_ROOT = path.join(STUDIO_DATA_DIR, "lens-assets", "adaptive-music");
+
+function decodeStudioAudioDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return null;
+  const m = dataUrl.match(/^data:audio\/(wav|mpeg|mp3|ogg|flac);base64,(.+)$/);
+  if (!m) return null;
+  const sub = m[1] === "mp3" ? "mpeg" : m[1];
+  const mimeType = `audio/${sub}`;
+  const ext = m[1] === "mpeg" ? "mp3" : m[1] === "mp3" ? "mp3" : m[1];
+  try {
+    const buf = Buffer.from(m[2], "base64");
+    if (!buf.length || buf.length > STUDIO_AUDIO_MAX_BYTES) return null;
+    return { buf, mimeType, ext };
+  } catch {
+    return null;
+  }
+}
+
+function ensureRouteArtifactsTableStudio(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS route_artifacts (
+      artifact_id  TEXT PRIMARY KEY,
+      dtu_id       TEXT,
+      name         TEXT NOT NULL,
+      mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
+      size_bytes   INTEGER NOT NULL DEFAULT 0,
+      storage_mode TEXT NOT NULL DEFAULT 'inline',
+      content_b64  TEXT,
+      storage_path TEXT,
+      created_by   TEXT NOT NULL,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      description  TEXT NOT NULL DEFAULT '',
+      tags         TEXT NOT NULL DEFAULT '[]'
+    );
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_dtu ON route_artifacts (dtu_id);
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);
+  `);
+}
+
 export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "projectTimeline", (ctx, artifact, _params) => {
     const tasks = artifact.data?.tasks || [];
@@ -1490,4 +1550,199 @@ export default function registerStudioActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Content-engine bridge: publish a studio project as adaptive music ──
+  //
+  // Studio renders audio client-side via Web Audio API; this macro
+  // takes the bounced reference stem (data URL) + the project manifest
+  // (tracks/clips/fx as JSON) and persists both to the substrate.
+  //
+  // The reference stem rides through route_artifacts (HTTP-served at
+  // /api/artifacts/:id/download); the manifest rides through dtus
+  // with body_json={type:'adaptive_music', region, intensity, manifest,
+  // artifactId, mimeType, durationMs}. Frontend AdaptiveMusicBridge
+  // queries DTUs by tag (adaptive_music + region:<name>) on world-
+  // region transitions and swaps stems live.
+  //
+  // Future enhancement: a draft_version_id column on dtus lets users
+  // iterate without publishing. v1 ships as full-publish-each-time.
+  registerLensAction("studio", "publish-as-adaptive-music", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = studioActor(ctx);
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required to publish adaptive music" };
+    }
+    const region = String(params.soundscapeRegion || "").toLowerCase();
+    if (!ADAPTIVE_REGIONS.has(region)) {
+      return { ok: false, error: `soundscapeRegion must be one of: ${[...ADAPTIVE_REGIONS].join(", ")}` };
+    }
+    const intensity = String(params.intensity || "ambient").toLowerCase();
+    if (!ADAPTIVE_INTENSITIES.has(intensity)) {
+      return { ok: false, error: `intensity must be one of: ${[...ADAPTIVE_INTENSITIES].join(", ")}` };
+    }
+    const projectId = params.projectId ? String(params.projectId).slice(0, 64) : null;
+    const title = String(params.title || "Adaptive music").slice(0, 200);
+    const durationMs = Math.max(0, Math.round(Number(params.durationMs) || 0));
+    const moodTags = Array.isArray(params.moodTags)
+      ? params.moodTags.filter((m) => typeof m === "string").map((m) => m.toLowerCase().slice(0, 40)).slice(0, 6)
+      : [];
+
+    const decoded = decodeStudioAudioDataUrl(params.referenceStemDataUrl);
+    if (!decoded) {
+      return {
+        ok: false,
+        error: `referenceStemDataUrl must be a base64 data: URL (audio/wav, mpeg, ogg, or flac, ≤${STUDIO_AUDIO_MAX_BYTES / (1024 * 1024)} MB)`,
+      };
+    }
+    if (!params.manifest || typeof params.manifest !== "object") {
+      return { ok: false, error: "manifest required (project tracks/clips/fx JSON)" };
+    }
+
+    ensureRouteArtifactsTableStudio(db);
+
+    const dtuId = `dtu_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    const artifactId = crypto.randomUUID();
+    const fileName = `${region}-${intensity}-${dtuId}.${decoded.ext}`;
+    const inline = decoded.buf.length <= 1024 * 1024;
+    const contentB64 = inline ? decoded.buf.toString("base64") : null;
+    let storagePath = null;
+    if (!inline) {
+      const dir = path.join(STUDIO_LENS_ROOT, region, intensity);
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        storagePath = path.join(dir, fileName);
+        fs.writeFileSync(storagePath, decoded.buf);
+      } catch (err) {
+        return { ok: false, error: `failed to write reference stem: ${err?.message || err}` };
+      }
+    }
+
+    const tagsArr = [
+      "adaptive_music",
+      `region:${region}`,
+      `intensity:${intensity}`,
+      `creator:${userId}`,
+    ];
+    if (projectId) tagsArr.push(`project:${projectId}`);
+    for (const mood of moodTags) tagsArr.push(`mood:${mood}`);
+
+    try {
+      db.prepare(`
+        INSERT INTO route_artifacts (
+          artifact_id, dtu_id, name, mime_type, size_bytes,
+          storage_mode, content_b64, storage_path, created_by,
+          description, tags
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        artifactId, dtuId, fileName, decoded.mimeType, decoded.buf.length,
+        inline ? "inline" : "disk",
+        contentB64, storagePath, userId,
+        `Studio adaptive music — ${region}/${intensity}`,
+        JSON.stringify(tagsArr),
+      );
+
+      db.prepare(`
+        INSERT INTO dtus (
+          id, owner_user_id, title, body_json, tags_json, visibility, tier
+        ) VALUES (?, ?, ?, ?, ?, ?, 'regular')
+      `).run(
+        dtuId, userId, title,
+        JSON.stringify({
+          type: "adaptive_music",
+          region,
+          intensity,
+          manifest: params.manifest,
+          artifactId,
+          mimeType: decoded.mimeType,
+          durationMs,
+          moodTags,
+          projectId,
+        }),
+        JSON.stringify(tagsArr),
+        "public",
+      );
+    } catch (err) {
+      if (storagePath) {
+        try { fs.unlinkSync(storagePath); } catch { /* idempotent */ }
+      }
+      return { ok: false, error: `failed to register adaptive-music DTU: ${err?.message || err}` };
+    }
+
+    return {
+      ok: true,
+      result: {
+        dtuId,
+        artifactId,
+        region,
+        intensity,
+        durationMs,
+        moodTags,
+        mimeType: decoded.mimeType,
+        sizeBytes: decoded.buf.length,
+        downloadUrl: `/api/artifacts/${artifactId}/download`,
+      },
+    };
+  });
+
+  // Discovery — list published adaptive-music DTUs for a region/intensity.
+  // Frontend AdaptiveMusicBridge polls this on world-region transitions.
+  registerLensAction("studio", "list-adaptive-music", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const wantRegion = params.region
+      ? String(params.region).toLowerCase()
+      : null;
+    if (wantRegion && !ADAPTIVE_REGIONS.has(wantRegion)) {
+      return { ok: false, error: `region must be one of: ${[...ADAPTIVE_REGIONS].join(", ")}` };
+    }
+    const wantIntensity = params.intensity
+      ? String(params.intensity).toLowerCase()
+      : null;
+    if (wantIntensity && !ADAPTIVE_INTENSITIES.has(wantIntensity)) {
+      return { ok: false, error: `intensity must be one of: ${[...ADAPTIVE_INTENSITIES].join(", ")}` };
+    }
+
+    const rows = db.prepare(`
+      SELECT id, owner_user_id, title, body_json, tags_json, created_at
+      FROM dtus
+      WHERE tags_json LIKE '%adaptive_music%'
+        AND visibility != 'private'
+      ORDER BY created_at DESC
+      LIMIT 200
+    `).all();
+
+    const tracks = [];
+    for (const row of rows) {
+      let tags = [], body = {};
+      try { tags = JSON.parse(row.tags_json || "[]"); } catch { continue; }
+      try { body = JSON.parse(row.body_json || "{}"); } catch { continue; }
+      if (!Array.isArray(tags) || !tags.includes("adaptive_music")) continue;
+      if (body?.type !== "adaptive_music") continue;
+      const regionTag = tags.find((t) => typeof t === "string" && t.startsWith("region:"));
+      const regionName = regionTag ? regionTag.slice(7) : null;
+      if (!regionName || !ADAPTIVE_REGIONS.has(regionName)) continue;
+      if (wantRegion && regionName !== wantRegion) continue;
+      const intensityTag = tags.find((t) => typeof t === "string" && t.startsWith("intensity:"));
+      const intensityName = intensityTag ? intensityTag.slice(10) : null;
+      if (wantIntensity && intensityName !== wantIntensity) continue;
+      tracks.push({
+        dtuId: row.id,
+        title: row.title,
+        ownerUserId: row.owner_user_id,
+        region: regionName,
+        intensity: intensityName,
+        durationMs: typeof body?.durationMs === "number" ? body.durationMs : null,
+        artifactId: body?.artifactId ?? null,
+        mimeType: body?.mimeType ?? null,
+        moodTags: Array.isArray(body?.moodTags) ? body.moodTags : [],
+        downloadUrl: body?.artifactId ? `/api/artifacts/${body.artifactId}/download` : null,
+        manifestSummary: body?.manifest
+          ? { trackCount: Number(body.manifest?.trackCount) || 0 }
+          : null,
+        createdAt: row.created_at,
+      });
+    }
+    return { ok: true, result: { tracks, count: tracks.length } };
+  });
 }
