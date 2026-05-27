@@ -192,6 +192,22 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase V4 — event reminder sweep (~1min cadence). Fires event:reminder
+// realtime to users whose RSVP'd event starts in the next 10min.
+registerHeartbeat("event-reminder-sweep", {
+  frequency: 4,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/event-rsvp.js");
+      return mod.sweepEventReminders(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase V1 — auction settler (~1min cadence). Auctions whose ends_at
 // passed get settled: winner gets the item, seller gets payout minus
 // 5% platform fee.
@@ -47981,6 +47997,62 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase V3 — wardrobe ─────────────────────────────────────────────────
+
+app.post("/api/wardrobe", requireAuth(), asyncHandler(async (req, res) => {
+  const { saveOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(saveOutfit(db, userId, req.body || {}));
+}));
+
+app.get("/api/wardrobe/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyOutfits, listSlotTypes } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, outfits: listMyOutfits(db, userId), slotTypes: listSlotTypes(db) });
+}));
+
+app.post("/api/wardrobe/:outfitId/equip", requireAuth(), asyncHandler(async (req, res) => {
+  const { equipOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = equipOutfit(db, req.params.outfitId, userId);
+  if (r.ok) {
+    try { realtimeEmit?.("wardrobe:outfit-equipped", { userId, outfitId: req.params.outfitId, slots: r.slots }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/wardrobe/:outfitId/share", requireAuth(), asyncHandler(async (req, res) => {
+  const { shareOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(shareOutfit(db, req.params.outfitId, userId));
+}));
+
+app.delete("/api/wardrobe/:outfitId", requireAuth(), asyncHandler(async (req, res) => {
+  const { deleteOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(deleteOutfit(db, req.params.outfitId, userId));
+}));
+
+// ── Phase V4 — calendar / event RSVP ────────────────────────────────────
+
+app.post("/api/calendar/rsvp", requireAuth(), asyncHandler(async (req, res) => {
+  const { rsvpToEvent } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(rsvpToEvent(db, { ...req.body, userId }));
+}));
+
+app.post("/api/calendar/:eventId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelRsvp } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelRsvp(db, req.params.eventId, userId));
+}));
+
+app.get("/api/calendar/upcoming", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyUpcomingEvents } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, rsvps: listMyUpcomingEvents(db, userId) });
+}));
 
 // ── Phase V1 — auction house ────────────────────────────────────────────
 
