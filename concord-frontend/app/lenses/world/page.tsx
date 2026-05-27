@@ -459,6 +459,10 @@ const MountStatusHUD = dynamic(
   () => import('@/components/world/MountStatusHUD'),
   { ssr: false },
 );
+const DungeonPanel = dynamic(
+  () => import('@/components/world/DungeonPanel'),
+  { ssr: false },
+);
 const PauseMenu = dynamic(
   () => import('@/components/world-lens/PauseMenu'),
   { ssr: false },
@@ -1930,6 +1934,7 @@ export default function WorldLensPage() {
   const [perkConstellationOpen, setPerkConstellationOpen] = useState(false);
   const [bestiaryOpen, setBestiaryOpen] = useState(false);
   const [settlementOpen, setSettlementOpen] = useState(false);
+  const [activeDungeonId, setActiveDungeonId] = useState<string | null>(null);
   // Dual-hand loadout — fetched from /api/combat-flow/loadout on mount and
   // refreshed whenever equipment changes. Drives Biomutant-style left/right/
   // two-hand routing in the input controller.
@@ -2488,10 +2493,34 @@ export default function WorldLensPage() {
         setBestiaryOpen((v) => { if (!v) stamp('bestiary'); return !v; });
       } else if (e.key === 't' || e.key === 'T') {
         setSettlementOpen((v) => { if (!v) stamp('settlement_editor'); return !v; });
+      } else if (e.key === 'u' || e.key === 'U') {
+        // U — toggle dungeon panel. If we have an active dungeon
+        // selected, toggle. Else find the nearest dungeon to player
+        // and select it. Player position is read from the rendered
+        // avatar at the moment of press.
+        setActiveDungeonId((prev) => {
+          if (prev) return null;
+          fetch(`/api/dungeons?worldId=concordia-hub`, { credentials: 'same-origin' })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((j) => {
+              if (!j?.ok || !Array.isArray(j.dungeons) || j.dungeons.length === 0) return;
+              setActiveDungeonId(j.dungeons[0].id);  // newest first
+            })
+            .catch(() => { /* best-effort */ });
+          return null;
+        });
       }
     };
+    const onDungeonOpen = (e: Event) => {
+      const ce = e as CustomEvent<{ dungeonId: string }>;
+      if (ce.detail?.dungeonId) setActiveDungeonId(ce.detail.dungeonId);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('concordia:dungeon-open', onDungeonOpen as EventListener);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('concordia:dungeon-open', onDungeonOpen as EventListener);
+    };
   }, []);
 
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
@@ -4204,6 +4233,13 @@ export default function WorldLensPage() {
                 onClose={() => setSettlementOpen(false)}
               />
             </div>
+          )}
+          {activeDungeonId && (
+            <DungeonPanel
+              dungeonId={activeDungeonId}
+              worldId="concordia-hub"
+              onClose={() => setActiveDungeonId(null)}
+            />
           )}
           <WhileYouWereAwayPanel worldId="concordia-hub" />
           <SecondCycleWizard />

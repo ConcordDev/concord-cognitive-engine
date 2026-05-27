@@ -357,6 +357,9 @@ export type SocketEvent =
   // Player mount toggle (T2.1)
   | 'world:player-mounted'
   | 'world:player-dismounted'
+  // Wave F — per-world procedural dungeons
+  | 'world:dungeon-spawned'
+  | 'world:dungeon-cleared'
   // Combat combo evolution — server emits when flow-engine derives a new branch.
   | 'combat:combo-evolved'
   // Combat lightning-chain — server emits per chain target (existing)

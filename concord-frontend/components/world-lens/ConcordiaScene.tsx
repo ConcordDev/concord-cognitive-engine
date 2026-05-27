@@ -250,6 +250,7 @@ export default function ConcordiaScene({
   const hybridCleanupRef = useRef<(() => void) | null>(null);
   const lootCleanupRef = useRef<(() => void) | null>(null);
   const deathVfxCleanupRef = useRef<(() => void) | null>(null);
+  const dungeonEntrancesCleanupRef = useRef<(() => void) | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -757,6 +758,18 @@ export default function ConcordiaScene({
       try {
         const { attachDeathVFX } = await import('@/lib/world-lens/death-vfx');
         deathVfxCleanupRef.current = attachDeathVFX(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+          { worldId: 'concordia-hub' },
+        );
+      } catch { /* best-effort */ }
+
+      // ── Dungeon entrance markers (Wave F) ───────────────────────
+      // Hydrates active dungeons from /api/dungeons + subscribes to
+      // world:dungeon-spawned. Renders a themed entrance mesh
+      // (arch/pillar/door/dome/...) at each dungeon's anchor.
+      try {
+        const { attachDungeonEntrances } = await import('@/lib/world-lens/dungeon-entrances');
+        dungeonEntrancesCleanupRef.current = attachDungeonEntrances(
           scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
           { worldId: 'concordia-hub' },
         );
@@ -1345,6 +1358,8 @@ export default function ConcordiaScene({
       lootCleanupRef.current = null;
       try { deathVfxCleanupRef.current?.(); } catch { /* ignore */ }
       deathVfxCleanupRef.current = null;
+      try { dungeonEntrancesCleanupRef.current?.(); } catch { /* ignore */ }
+      dungeonEntrancesCleanupRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
