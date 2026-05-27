@@ -48384,6 +48384,32 @@ app.post("/api/housing/:houseId/furniture/remove", requireAuth(), asyncHandler(a
   res.json(removeFurniture(db, userId, req.params.houseId, req.body?.roomId, req.body?.itemId));
 }));
 
+// ── Phase BA2 — house visit (snapshot OR live) ─────────────────────────
+
+app.post("/api/housing/:houseId/visit", requireAuth(), asyncHandler(async (req, res) => {
+  const { requestVisit } = await import("./lib/house-visit.js");
+  const userId = req.user?.id || req.user?.userId;
+  // friend check is best-effort; visitors without explicit friend status
+  // get isFriend:false.
+  const isFriend = Boolean(req.body?.isFriend);
+  const r = requestVisit(db, userId, req.params.houseId, { isFriend, io: REALTIME?.io });
+  res.status(r.ok ? 200 : 403).json(r);
+}));
+
+app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {
+  try {
+    const houses = db.prepare(`
+      SELECT id, user_id, name, building_id, visibility, allow_live_visits,
+             last_decorated_at
+      FROM player_houses
+      WHERE world_id = ? AND visibility = 'public'
+      ORDER BY last_decorated_at DESC
+      LIMIT 100
+    `).all(req.params.worldId);
+    res.json({ ok: true, houses });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // ── Phase U6 — world markers (wire migration 188) ───────────────────────
 
 app.post("/api/worlds/:worldId/markers", requireAuth(), asyncHandler(async (req, res) => {

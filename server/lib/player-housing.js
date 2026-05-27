@@ -21,6 +21,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { scheduleSnapshotCapture } from "./house-visit.js";
 
 const VALID_VISIBILITIES = new Set(["private", "friends", "public"]);
 
@@ -119,6 +120,7 @@ export function placeFurniture(db, userId, houseId, roomId, item) {
     db.prepare(`
       UPDATE player_houses SET last_decorated_at = unixepoch() WHERE id = ?
     `).run(houseId);
+    scheduleSnapshotCapture(db, houseId);
 
     return { ok: true, layoutSize: layout.length };
   } catch (err) {
@@ -154,6 +156,7 @@ export function removeFurniture(db, userId, houseId, roomId, itemId) {
       db.prepare(`
         UPDATE player_houses SET last_decorated_at = unixepoch() WHERE id = ?
       `).run(houseId);
+      scheduleSnapshotCapture(db, houseId);
     }
     return { ok: true, removed };
   } catch (err) {
@@ -169,6 +172,7 @@ export function setVisibility(db, userId, houseId, visibility) {
   try {
     db.prepare(`UPDATE player_houses SET visibility = ? WHERE id = ?`)
       .run(visibility, houseId);
+    scheduleSnapshotCapture(db, houseId);
     return { ok: true, visibility };
   } catch (err) {
     return { ok: false, error: err?.message };

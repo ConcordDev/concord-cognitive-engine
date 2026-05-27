@@ -2675,6 +2675,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['training', 'dojo', 'frame', 'parry', 'combo', 'practice'],
   },
   {
+    id: 'housing',
+    name: 'Housing',
+    icon: Home,
+    description: 'Claim a plot, place a building, decorate, lock the door. Houses are destructible and pickable.',
+    category: 'world',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/housing',
+    order: 21,
+    keywords: ['house', 'housing', 'home', 'plot', 'furniture', 'decorate', 'lock'],
+  },
+  {
     id: 'mail',
     name: 'Mail',
     icon: Mail,
