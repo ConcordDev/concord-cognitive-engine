@@ -46,6 +46,7 @@ import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
 import { AchievementToast } from '@/components/world/AchievementToast';
 import { PartyPanel } from '@/components/world/PartyPanel';
+import { MapPingLayer } from '@/components/world/MapPingLayer';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5743,6 +5744,9 @@ export default function WorldLensPage() {
 
       {/* Phase U5 — party panel (bottom-right next to friends). */}
       <PartyPanel />
+
+      {/* Phase U6 — world marker overlay (top-left). */}
+      <MapPingLayer worldId={currentWorldId} />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

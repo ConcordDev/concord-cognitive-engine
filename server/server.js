@@ -192,6 +192,22 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase U6 — world markers cleanup (~60min cadence). Expired markers
+// are deleted to keep query cost bounded.
+registerHeartbeat("world-markers-cleanup", {
+  frequency: 240,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/world-markers.js");
+      return mod.sweepExpiredMarkers(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase U5 — LFG expiry sweep (~15min cadence). Open requests older
 // than 1h transition to 'expired' so the board stays fresh.
 registerHeartbeat("lfg-expiry-sweep", {
@@ -5900,6 +5916,9 @@ function authMiddleware(req, res, next) {
   // Phase G — per-world flavor JSON (loops + climate + voice). Static
   // content, no PII; world picker reads this anon to render flavor chips.
   if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/flavor$/.test(req.path) && !_hasAuthHeader) return next();
+  // Phase U6 — public world-marker reads so the world map shows pings
+  // without requiring login (write requires auth).
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/markers$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -47941,6 +47960,31 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase U6 — world markers (wire migration 188) ───────────────────────
+
+app.post("/api/worlds/:worldId/markers", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeMarker } = await import("./lib/world-markers.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeMarker(db, { ...req.body, worldId: req.params.worldId, userId });
+  if (r.ok) {
+    try {
+      realtimeEmit?.("world:marker-placed", { id: r.id, worldId: r.worldId, kind: r.kind, label: r.label, x: r.x, z: r.z, placedBy: userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/worlds/:worldId/markers", asyncHandler(async (req, res) => {
+  const { listMarkersForWorld } = await import("./lib/world-markers.js");
+  res.json({ ok: true, markers: listMarkersForWorld(db, req.params.worldId, { limit: Number(req.query.limit) || 100 }) });
+}));
+
+app.delete("/api/worlds/:worldId/markers/:markerId", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeMarker } = await import("./lib/world-markers.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(removeMarker(db, req.params.markerId, userId));
+}));
 
 // ── Phase U5 — parties + LFG ────────────────────────────────────────────
 
