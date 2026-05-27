@@ -252,6 +252,20 @@ export default function ConcordiaScene({
   const deathVfxCleanupRef = useRef<(() => void) | null>(null);
   const dungeonEntrancesCleanupRef = useRef<(() => void) | null>(null);
   const dungeonInteriorRef = useRef<{ setActive: (id: string | null) => Promise<void>; dispose: () => void } | null>(null);
+  // Wave G1 / G6 — interactable props + doors.
+  const worldPropsRef = useRef<{
+    setActive: (worldId: string | null) => Promise<void>;
+    getPropMeshes: () => Map<string, import('three').Object3D>;
+    getPropData: () => Map<string, import('@/lib/world-lens/world-props').WorldProp>;
+    dispose: () => void;
+  } | null>(null);
+  const worldDoorsRef = useRef<{
+    setActive: (worldId: string | null) => Promise<void>;
+    openDoor: (doorId: string) => void;
+    closeDoor: (doorId: string) => void;
+    getDoorMeshes: () => Map<string, unknown>;
+    dispose: () => void;
+  } | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -789,6 +803,32 @@ export default function ConcordiaScene({
         // Expose globally so the world page can drive it.
         (globalThis as unknown as { __concordSetDungeonInterior?: (id: string | null) => void })
           .__concordSetDungeonInterior = (id) => { void dungeonInteriorRef.current?.setActive(id); };
+      } catch { /* best-effort */ }
+
+      // ── Wave G1 — interactable world props ──────────────────────
+      try {
+        const { attachWorldProps } = await import('@/lib/world-lens/world-props');
+        worldPropsRef.current = attachWorldProps(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+        );
+        (globalThis as unknown as { __concordSetWorldProps?: (id: string | null) => void })
+          .__concordSetWorldProps = (id) => { void worldPropsRef.current?.setActive(id); };
+        (globalThis as unknown as { __concordGetPropData?: () => Map<string, unknown> })
+          .__concordGetPropData = () => worldPropsRef.current?.getPropData() ?? new Map();
+      } catch { /* best-effort */ }
+
+      // ── Wave G6 — doors ─────────────────────────────────────────
+      try {
+        const { attachWorldDoors } = await import('@/lib/world-lens/doors');
+        worldDoorsRef.current = attachWorldDoors(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+        );
+        (globalThis as unknown as { __concordSetWorldDoors?: (id: string | null) => void })
+          .__concordSetWorldDoors = (id) => { void worldDoorsRef.current?.setActive(id); };
+        (globalThis as unknown as { __concordOpenDoor?: (id: string) => void })
+          .__concordOpenDoor = (id) => worldDoorsRef.current?.openDoor(id);
+        (globalThis as unknown as { __concordCloseDoor?: (id: string) => void })
+          .__concordCloseDoor = (id) => worldDoorsRef.current?.closeDoor(id);
       } catch { /* best-effort */ }
 
       // ── Clock & Raycaster ───────────────────────────────────────
@@ -1380,6 +1420,23 @@ export default function ConcordiaScene({
       dungeonInteriorRef.current = null;
       try { delete (globalThis as unknown as { __concordSetDungeonInterior?: unknown }).__concordSetDungeonInterior; }
       catch { /* ignore */ }
+
+      try { worldPropsRef.current?.dispose(); } catch { /* ignore */ }
+      worldPropsRef.current = null;
+      try {
+        const g = globalThis as unknown as { __concordSetWorldProps?: unknown; __concordGetPropData?: unknown };
+        delete g.__concordSetWorldProps;
+        delete g.__concordGetPropData;
+      } catch { /* ignore */ }
+
+      try { worldDoorsRef.current?.dispose(); } catch { /* ignore */ }
+      worldDoorsRef.current = null;
+      try {
+        const g = globalThis as unknown as { __concordSetWorldDoors?: unknown; __concordOpenDoor?: unknown; __concordCloseDoor?: unknown };
+        delete g.__concordSetWorldDoors;
+        delete g.__concordOpenDoor;
+        delete g.__concordCloseDoor;
+      } catch { /* ignore */ }
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

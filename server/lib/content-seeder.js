@@ -485,6 +485,19 @@ export async function seedContent({ db = null } = {}) {
     if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs, { db, defaultWorldId: sub.id });
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
+    // Wave G1 — authored interactable props per world (idempotent).
+    if (db) {
+      const subProps = readJSON(`${sub.path}/props.json`);
+      if (Array.isArray(subProps)) {
+        try {
+          const { composeAuthoredProps } = await import("./world-props.js");
+          const r = composeAuthoredProps(db, sub.id, subProps);
+          results.props = (results.props || 0) + (r.inserted || 0);
+        } catch (err) {
+          logger.warn({ err: err.message }, "content_seeder_props_failed");
+        }
+      }
+    }
   }
 
   // Onboarding quest chain

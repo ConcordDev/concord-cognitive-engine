@@ -1063,6 +1063,65 @@ export default function AvatarSystem3D({
         ])
       );
 
+      // ── Wave G1 — interactable-prop verbs ─────────────────────────
+      // All five are procedurally keyframed on the avatar root group
+      // (matching the existing clip style). They compose with whatever
+      // gait/idle was previously playing on bound bones.
+
+      // drink — mug-to-mouth (forearm rises, head tilts, brief hold)
+      clips.set(
+        'drink',
+        new THREE.AnimationClip('drink', 1.4, [
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.4, 0.8, 1.4], [0, -0.25, -0.25, 0]),
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.3, 0.6, 0.9, 1.4], [0, 0.4, 0.5, 0.4, 0]),
+        ])
+      );
+
+      // kneel-pickup — knee bend, reach, stand
+      clips.set(
+        'kneel-pickup',
+        new THREE.AnimationClip('kneel-pickup', 1.2, [
+          new THREE.NumberKeyframeTrack('.position[y]', [0, 0.5, 0.9, 1.2], [0, -0.45, -0.45, 0]),
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.4, 0.8, 1.2], [0, 0.5, 0.3, 0]),
+        ])
+      );
+
+      // light-torch — hand extends, brief pause for spark, retracts
+      clips.set(
+        'light-torch',
+        new THREE.AnimationClip('light-torch', 1.1, [
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.3, 0.6, 0.9, 1.1], [0, -0.6, -0.7, -0.6, 0]),
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 0.3, 0.6, 1.1], [0, -0.1, -0.15, 0]),
+        ])
+      );
+
+      // lean — slow spine tilt + arm rest (durable pose for tables/walls)
+      clips.set(
+        'lean',
+        new THREE.AnimationClip('lean', 1.5, [
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.6, 1.5], [0, 0.18, 0.18]),
+          new THREE.NumberKeyframeTrack('.position[y]', [0, 0.5, 1.5], [0, -0.05, -0.05]),
+        ])
+      );
+
+      // hand-extend — outward reach (touch banner, offer hand, gesture)
+      clips.set(
+        'hand-extend',
+        new THREE.AnimationClip('hand-extend', 0.8, [
+          new THREE.NumberKeyframeTrack('.rotation[z]', [0, 0.3, 0.5, 0.8], [0, -0.5, -0.5, 0]),
+          new THREE.NumberKeyframeTrack('.rotation[y]', [0, 0.3, 0.8], [0, 0.05, 0]),
+        ])
+      );
+
+      // sleep — slow rest pose (combines with sit/lean parents)
+      clips.set(
+        'sleep',
+        new THREE.AnimationClip('sleep', 3.0, [
+          new THREE.NumberKeyframeTrack('.position[y]', [0, 1.5, 3.0], [-0.4, -0.43, -0.4]),
+          new THREE.NumberKeyframeTrack('.rotation[x]', [0, 1.5, 3.0], [0.1, 0.13, 0.1]),
+        ])
+      );
+
       return clips;
     },
     []
@@ -1226,6 +1285,42 @@ export default function AvatarSystem3D({
         }
       }
       window.addEventListener('concordia:hit-reaction', handleHitReaction);
+
+      // ── Wave G1 / G3 — generic procedural clip player ──────────────
+      // Detail: { entityId: string; clip: string; durationMs?: number }
+      // Plays a procedurally-keyframed clip (drink / kneel-pickup /
+      // light-torch / lean / hand-extend / read / hammer / sleep / sit /
+      // sweep / wave / point / craft / etc.) on the named entity's mixer.
+      // Falls back to idle after the clip's duration unless durationMs
+      // explicitly says to hold longer (e.g. sit/lean/sleep).
+      const clipFadeBackTimers = new Map<string, ReturnType<typeof setTimeout>>();
+      function handlePlayClip(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; clip?: string; durationMs?: number; holdAfter?: boolean }
+          | undefined;
+        if (!detail?.entityId || !detail?.clip) return;
+        const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
+        if (!mixer) return;
+        const clip = animClips.get(detail.clip);
+        if (!clip) return;
+        try {
+          playClip(mixer, detail.clip, 150);
+          // Cancel any pending fade-back for this entity.
+          const pending = clipFadeBackTimers.get(detail.entityId);
+          if (pending) { try { clearTimeout(pending); } catch { /* ok */ } }
+          // After durationMs, restore the entity's baseline clip unless holdAfter is true.
+          if (!detail.holdAfter) {
+            const dur = Math.max(400, detail.durationMs ?? Math.round(clip.duration * 1000));
+            const baseline = baselineClips.get(mixer) || 'idle';
+            const timer = setTimeout(() => {
+              try { playClip(mixer, baseline, 200); } catch { /* ok */ }
+              clipFadeBackTimers.delete(detail.entityId!);
+            }, dur);
+            clipFadeBackTimers.set(detail.entityId, timer);
+          }
+        } catch { /* ok — best-effort */ }
+      }
+      window.addEventListener('concordia:play-clip', handlePlayClip);
 
       // Theme 5 (game-feel pass): hit-pause + knockback. GameJuice fires
       // these on combat-hit-heavy / combat-crit / combat-kill so the
@@ -2296,6 +2391,9 @@ export default function AvatarSystem3D({
         window.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('keyup', handleKeyUp);
         window.removeEventListener('concordia:hit-reaction', handleHitReaction);
+        window.removeEventListener('concordia:play-clip', handlePlayClip);
+        clipFadeBackTimers.forEach((t) => { try { clearTimeout(t); } catch { /* ok */ } });
+        clipFadeBackTimers.clear();
         window.removeEventListener('concordia:hit-pause', handleHitPause);
         window.removeEventListener('concordia:knockback', handleKnockback);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);

@@ -196,6 +196,20 @@ registerHeartbeat("dungeon-spawner-cycle", {
   handler: runDungeonSpawnerCycle,
 });
 
+// Wave G1 — refill mug durability + clear stale prop state markers.
+import { runPropRespawnCycle } from "./emergent/prop-respawn-cycle.js";
+registerHeartbeat("prop-respawn-cycle", {
+  frequency: 240,  // ~1h
+  handler: runPropRespawnCycle,
+});
+
+// Wave G6 — auto-close doors that have been open >60s.
+import { runDoorAutoCloseCycle } from "./emergent/door-auto-close-cycle.js";
+registerHeartbeat("door-auto-close-cycle", {
+  frequency: 8,    // ~2min
+  handler: runDoorAutoCloseCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
@@ -5728,6 +5742,10 @@ function authMiddleware(req, res, next) {
     "/api/webrtc/ice-servers",
     // Cross-world crisis banner — polled by the world lens, no PII.
     "/api/worlds/crises",
+    // Wave G1 — interactable world props (GET only; POST interact requires auth).
+    "/api/world-props",
+    // Wave G6 — door state (GET only; POST open/close requires auth).
+    "/api/world-doors",
     // Atlas & Signal Cortex
     "/api/atlas",
     "/api/atlas/signals", "/api/atlas/privacy",
@@ -30035,6 +30053,14 @@ app.use("/api/rhetoric", createRhetoricRouter({ db, requireAuth }));
 // Wave F — per-world procedural dungeons.
 import createDungeonsRouter from "./routes/dungeons.js";
 app.use("/api/dungeons", createDungeonsRouter({ db, requireAuth }));
+
+// Wave G1 — interactable world props (chairs, mugs, torches, signposts…).
+import createWorldPropsRouter from "./routes/world-props.js";
+app.use("/api/world-props", createWorldPropsRouter({ db, requireAuth }));
+
+// Wave G6 — door open/close + auto-close after 60s.
+import createWorldDoorsRouter from "./routes/world-doors.js";
+app.use("/api/world-doors", createWorldDoorsRouter({ db, requireAuth }));
 
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";

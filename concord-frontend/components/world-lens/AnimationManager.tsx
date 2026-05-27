@@ -24,7 +24,16 @@ export type AvatarAnimation =
   | 'dodge-back'
   | 'parry'
   | 'hit-flinch'
-  | 'death';
+  | 'death'
+  // Wave G1 — interactable-prop verbs (procedurally keyframed in AvatarSystem3D).
+  | 'drink'
+  | 'kneel-pickup'
+  | 'light-torch'
+  | 'lean'
+  | 'hand-extend'
+  | 'read'
+  | 'hammer'
+  | 'sleep';
 
 export type NPCOccupation =
   | 'blacksmith'
@@ -84,13 +93,13 @@ export interface AnimationManagerAPI {
 // ── Transition map ────────────────────────────────────────────────
 
 const avatarTransitions: Record<AvatarAnimation, AvatarAnimation[]> = {
-  idle: ['walk', 'build', 'inspect', 'craft', 'sit', 'wave', 'celebrate', 'attack-light', 'attack-heavy', 'block', 'dodge-left', 'dodge-right', 'dodge-back', 'parry', 'hit-flinch', 'death'],
+  idle: ['walk', 'build', 'inspect', 'craft', 'sit', 'wave', 'celebrate', 'attack-light', 'attack-heavy', 'block', 'dodge-left', 'dodge-right', 'dodge-back', 'parry', 'hit-flinch', 'death', 'drink', 'kneel-pickup', 'light-torch', 'lean', 'hand-extend', 'read', 'hammer', 'sleep'],
   walk: ['idle', 'run', 'build', 'inspect', 'attack-light', 'block', 'dodge-left', 'dodge-right', 'dodge-back', 'hit-flinch'],
   run: ['walk', 'idle', 'attack-light', 'dodge-back'],
   build: ['idle', 'walk'],
   inspect: ['idle', 'walk'],
   craft: ['idle'],
-  sit: ['idle'],
+  sit: ['idle', 'lean', 'sleep', 'drink'],
   wave: ['idle'],
   celebrate: ['idle'],
   // Combat states all return to idle (or chain into hit-flinch / death on damage).
@@ -103,6 +112,15 @@ const avatarTransitions: Record<AvatarAnimation, AvatarAnimation[]> = {
   'dodge-back':    ['idle', 'walk'],
   'hit-flinch':    ['idle', 'death'],
   death:           ['death'],
+  // Wave G1 — interactable-prop verbs return to idle by default.
+  drink:         ['idle'],
+  'kneel-pickup': ['idle'],
+  'light-torch': ['idle'],
+  lean:          ['idle', 'sit'],
+  'hand-extend': ['idle'],
+  read:          ['idle'],
+  hammer:        ['idle'],
+  sleep:         ['idle', 'sit'],
 };
 
 // Per-animation duration & blend timing (ms). Combat is faster than locomotion.
@@ -116,6 +134,15 @@ const animationTimings: Partial<Record<AvatarAnimation, { duration: number; blen
   'dodge-back':   { duration: 600,  blend: 80  },
   'hit-flinch':   { duration: 350,  blend: 60  },
   death:          { duration: 2000, blend: 200 },
+  // Wave G1 — prop interaction timings.
+  drink:          { duration: 1400, blend: 150 },
+  'kneel-pickup': { duration: 1200, blend: 150 },
+  'light-torch':  { duration: 1100, blend: 150 },
+  lean:           { duration: 1500, blend: 200 },
+  'hand-extend':  { duration:  800, blend: 120 },
+  read:           { duration: 2200, blend: 200 },
+  hammer:         { duration: 1000, blend: 150 },
+  sleep:          { duration: 3000, blend: 400 },
 };
 
 const constructionPhases: ConstructionPhase[] = [

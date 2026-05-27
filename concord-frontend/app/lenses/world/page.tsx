@@ -492,6 +492,10 @@ const NPCActivityTag = dynamic(
   () => import('@/components/world/NPCActivityTag').then((m) => ({ default: m.NPCActivityTag })),
   { ssr: false },
 );
+const PropInteractionPrompt = dynamic(
+  () => import('@/components/world/PropInteractionPrompt').then((m) => ({ default: m.PropInteractionPrompt })),
+  { ssr: false },
+);
 const NemesisGlyphLayer = dynamic(
   () => import('@/components/world/NemesisGlyphLayer').then((m) => ({ default: m.NemesisGlyphLayer })),
   { ssr: false },
@@ -2336,6 +2340,16 @@ export default function WorldLensPage() {
 
   const gatherFromNode = async (nodeId: string) => {
     setGatheringNode(nodeId);
+    // Wave G3 — play kneel-pickup animation BEFORE the API call so the
+    // motion is anchored to the player intent. The clip is short
+    // (~1.2s) so it overlaps with the network round-trip.
+    try {
+      if (playerAvatar?.id) {
+        window.dispatchEvent(new CustomEvent('concordia:play-clip', {
+          detail: { entityId: playerAvatar.id, clip: 'kneel-pickup' },
+        }));
+      }
+    } catch { /* ok */ }
     try {
       const node = nearbyNodes.find((n) => n.id === nodeId);
       const res = await fetch(`/api/worlds/${activeDistrict.id}/nodes/${nodeId}/gather`, {
@@ -2563,6 +2577,116 @@ export default function WorldLensPage() {
       window.removeEventListener('concordia:dungeon-interior-exit',  onExit  as EventListener);
     };
   }, []);
+
+  // Wave G1 — interactable world props per active world.
+  // Loads PROP_MESHES into the scene for the active worldId; also keeps
+  // a React-state list of props near the player for the floating prompt.
+  const [nearbyProps, setNearbyProps] = useState<Array<{ id: string; kind: string; position: { x: number; y: number; z: number } }>>([]);
+  useEffect(() => {
+    if (!worldIdForTheme) return;
+    const setter = (globalThis as unknown as { __concordSetWorldProps?: (id: string | null) => void })
+      .__concordSetWorldProps;
+    if (setter) void setter(worldIdForTheme);
+    const doorSetter = (globalThis as unknown as { __concordSetWorldDoors?: (id: string | null) => void })
+      .__concordSetWorldDoors;
+    if (doorSetter) void doorSetter(worldIdForTheme);
+    return () => {
+      // On world switch / unmount, clear props/doors so the next world
+      // gets a fresh load via setActive.
+      if (setter) void setter(null);
+      if (doorSetter) void doorSetter(null);
+    };
+  }, [worldIdForTheme]);
+
+  // Poll nearby props every ~750ms so the PropInteractionPrompt updates
+  // as the player walks around. Reads from the scene-side prop data map.
+  useEffect(() => {
+    if (!worldIdForTheme) return;
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        const getter = (globalThis as unknown as {
+          __concordGetPropData?: () => Map<string, { id: string; prop_kind: string; x: number; z: number; y: number }>;
+        }).__concordGetPropData;
+        const data = getter?.();
+        if (data && playerAvatar?.position) {
+          const px = playerAvatar.position.x;
+          const pz = playerAvatar.position.z;
+          const arr: Array<{ id: string; kind: string; position: { x: number; y: number; z: number } }> = [];
+          data.forEach((p) => {
+            const dx = p.x - px, dz = p.z - pz;
+            if (dx * dx + dz * dz <= 25) {
+              arr.push({ id: p.id, kind: p.prop_kind, position: { x: p.x, y: p.y || 0, z: p.z } });
+            }
+          });
+          setNearbyProps(arr);
+        }
+      } catch { /* ok */ }
+    };
+    tick();
+    const iv = setInterval(tick, 750);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [worldIdForTheme, playerAvatar?.position?.x, playerAvatar?.position?.z]);
+
+  // Wave G6 — door open/close socket → frontend tween.
+  useEffect(() => {
+    function onOpened(...args: unknown[]) {
+      const payload = args[0] as { doorId?: string } | undefined;
+      const fn = (globalThis as unknown as { __concordOpenDoor?: (id: string) => void }).__concordOpenDoor;
+      if (fn && payload?.doorId) fn(payload.doorId);
+    }
+    function onClosed(...args: unknown[]) {
+      const payload = args[0] as { doorId?: string } | undefined;
+      const fn = (globalThis as unknown as { __concordCloseDoor?: (id: string) => void }).__concordCloseDoor;
+      if (fn && payload?.doorId) fn(payload.doorId);
+    }
+    worldSocket.on?.('door:opened', onOpened);
+    worldSocket.on?.('door:closed', onClosed);
+    return () => {
+      worldSocket.off?.('door:opened', onOpened);
+      worldSocket.off?.('door:closed', onClosed);
+    };
+  }, [worldSocket]);
+
+  // Wave G1 — handle prop-interact dispatch: POST + animation.
+  useEffect(() => {
+    function onPropInteract(e: Event) {
+      const detail = (e as CustomEvent).detail as
+        | { propId: string; propKind: string; verb: string; position: { x: number; y: number; z: number } }
+        | undefined;
+      if (!detail?.propId || !detail?.verb) return;
+      // Fire animation immediately for snappy feel; the server will
+      // enforce its own 500ms minimum response anyway.
+      try {
+        // Lazy import client catalog to map verb → clip.
+        void import('@/lib/world-lens/world-props').then((m) => {
+          const clip = m.clipFor(detail.propKind, detail.verb);
+          if (clip && playerAvatar?.id) {
+            const holdAfter = detail.verb === 'sit' || detail.verb === 'lean' || detail.verb === 'sleep';
+            window.dispatchEvent(new CustomEvent('concordia:play-clip', {
+              detail: { entityId: playerAvatar.id, clip, holdAfter },
+            }));
+          }
+        });
+      } catch { /* ok */ }
+      // POST interact.
+      void (async () => {
+        try {
+          const playerPos = playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : null;
+          const res = await fetch(`/api/world-props/${encodeURIComponent(detail.propId)}/interact`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind: detail.verb, position: playerPos }),
+          });
+          if (!res.ok) { /* server rejected — animation already played; harmless */ }
+        } catch { /* ok */ }
+      })();
+    }
+    window.addEventListener('concordia:prop-interact', onPropInteract as EventListener);
+    return () => window.removeEventListener('concordia:prop-interact', onPropInteract as EventListener);
+  }, [playerAvatar?.id, playerAvatar?.position]);
 
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
@@ -4333,6 +4457,11 @@ export default function WorldLensPage() {
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          {/* Wave G1 — floating "✦ Sit / Drink / Light / Read" prompt above nearby props. */}
+          <PropInteractionPrompt
+            props={nearbyProps}
+            playerPosition={{ x: playerAvatar.position.x, y: playerAvatar.position.y ?? 0, z: playerAvatar.position.z }}
           />
           <NemesisGlyphLayer
             worldId={activeDistrict.id}
