@@ -48215,6 +48215,61 @@ app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
   res.json({ ok: true, auction: a });
 }));
 
+// ── Phase AC — EVE-style buy orders ────────────────────────────────────
+
+app.post("/api/auctions/buy-orders", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeBuyOrder(db, userId, req.body || {});
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:buy-order-placed", {
+        buyOrderId: r.buyOrderId,
+        buyerUserId: userId,
+        escrowCc: r.escrowCc,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/buy-orders/:buyOrderId/fill", requireAuth(), asyncHandler(async (req, res) => {
+  const { fillBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const qty = Number(req.body?.quantity) || 1;
+  const r = fillBuyOrder(db, req.params.buyOrderId, userId, qty);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:buy-order-filled", {
+        buyOrderId: req.params.buyOrderId,
+        sellerUserId: userId,
+        fillQty: r.fillQty,
+        payment: r.payment,
+        newStatus: r.newStatus,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/buy-orders/:buyOrderId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelBuyOrder(db, req.params.buyOrderId, userId));
+}));
+
+app.get("/api/auctions/buy-orders", asyncHandler(async (req, res) => {
+  const { listOpenBuyOrders } = await import("./lib/auctions.js");
+  res.json({
+    ok: true,
+    buyOrders: listOpenBuyOrders(db, {
+      worldId: req.query.worldId,
+      itemDescriptor: req.query.itemDescriptor,
+      limit: Number(req.query.limit) || 50,
+    }),
+  });
+}));
+
 // ── Phase U6 — world markers (wire migration 188) ───────────────────────
 
 app.post("/api/worlds/:worldId/markers", requireAuth(), asyncHandler(async (req, res) => {

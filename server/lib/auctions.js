@@ -281,3 +281,196 @@ function _walletCredit(db, userId, amount, reason) {
     } catch { /* ledger optional */ }
   } catch { /* wallets table optional */ }
 }
+
+// ──────────────────────────────────────────────────────────────────────
+// Phase AC — buy orders (EVE-style)
+// ──────────────────────────────────────────────────────────────────────
+//
+// Symmetric inverse of the sell-side path: buyer escrows
+// unit_price × quantity_wanted; sellers atomically fill any quantity up
+// to remaining. Cancel/expire refunds the unfilled portion. Buy orders
+// aren't time-pressured (no snipe rule); they expire after 7 days by
+// default. Same royalty cascade as the sell-side fires on each fill
+// when the item is a DTU.
+
+const DEFAULT_BUY_ORDER_TTL_S = 7 * 24 * 60 * 60;
+
+export function placeBuyOrder(db, buyerId, opts = {}) {
+  if (!db || !buyerId) return { ok: false, error: "missing_inputs" };
+  const {
+    worldId = "concordia-hub",
+    itemKind = "dtu",
+    itemDescriptor,
+    itemFilter = null,
+    unitPriceCc,
+    quantity,
+    ttlSeconds = DEFAULT_BUY_ORDER_TTL_S,
+  } = opts;
+
+  if (!itemDescriptor) return { ok: false, error: "missing_item_descriptor" };
+  if (!Number.isFinite(unitPriceCc) || unitPriceCc <= 0) {
+    return { ok: false, error: "invalid_unit_price" };
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return { ok: false, error: "invalid_quantity" };
+  }
+  if (!["dtu", "inventory"].includes(itemKind)) {
+    return { ok: false, error: "invalid_item_kind" };
+  }
+
+  const total = Math.round(unitPriceCc * quantity * 100) / 100;
+  const debit = _walletDebit(db, buyerId, total, `buy_order_escrow:${itemDescriptor}`);
+  if (!debit.ok) return debit;
+
+  const id = `bo_${crypto.randomBytes(8).toString("hex")}`;
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
+
+  try {
+    db.prepare(`
+      INSERT INTO auction_buy_orders
+        (id, buyer_user_id, world_id, item_kind, item_descriptor,
+         item_filter_json, unit_price_cc, quantity_wanted,
+         total_escrow_cc, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, buyerId, worldId, itemKind, itemDescriptor,
+      itemFilter ? JSON.stringify(itemFilter) : null,
+      unitPriceCc, quantity, total, expiresAt
+    );
+    logger.info?.("auctions", "buy_order_placed", { id, buyerId, total, quantity });
+    return { ok: true, buyOrderId: id, escrowCc: total, expiresAt };
+  } catch (err) {
+    // Refund on insert failure.
+    _walletCredit(db, buyerId, total, `buy_order_refund_oninsert:${err?.message}`);
+    return { ok: false, error: err?.message || "db_error" };
+  }
+}
+
+export function fillBuyOrder(db, buyOrderId, sellerId, quantity) {
+  if (!db || !buyOrderId || !sellerId) return { ok: false, error: "missing_inputs" };
+  if (!Number.isInteger(quantity) || quantity <= 0) {
+    return { ok: false, error: "invalid_quantity" };
+  }
+
+  try {
+    const order = db.prepare(`SELECT * FROM auction_buy_orders WHERE id = ?`).get(buyOrderId);
+    if (!order) return { ok: false, error: "no_order" };
+    if (order.status === "filled" || order.status === "cancelled" || order.status === "expired") {
+      return { ok: false, error: `order_${order.status}` };
+    }
+    if (order.expires_at < Math.floor(Date.now() / 1000)) {
+      return { ok: false, error: "order_expired" };
+    }
+    if (sellerId === order.buyer_user_id) {
+      return { ok: false, error: "self_fill" };
+    }
+
+    const remaining = order.quantity_wanted - order.quantity_filled;
+    if (remaining <= 0) return { ok: false, error: "already_filled" };
+
+    const fillQty = Math.min(quantity, remaining);
+    const payment = Math.round(order.unit_price_cc * fillQty * 100) / 100;
+
+    const newFilled = order.quantity_filled + fillQty;
+    const newStatus = newFilled >= order.quantity_wanted ? "filled" : "partial";
+
+    const fillId = `bof_${crypto.randomBytes(8).toString("hex")}`;
+    db.prepare(`
+      INSERT INTO auction_buy_fills
+        (id, buy_order_id, seller_user_id, quantity, unit_price_cc)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(fillId, buyOrderId, sellerId, fillQty, order.unit_price_cc);
+
+    db.prepare(`
+      UPDATE auction_buy_orders
+      SET quantity_filled = ?, status = ?
+      WHERE id = ?
+    `).run(newFilled, newStatus, buyOrderId);
+
+    _walletCredit(db, sellerId, payment, `buy_order_fill:${buyOrderId}`);
+
+    logger.info?.("auctions", "buy_order_filled", {
+      buyOrderId, sellerId, fillQty, payment, newStatus,
+    });
+    return {
+      ok: true, fillId, fillQty, payment,
+      newStatus, remaining: order.quantity_wanted - newFilled,
+    };
+  } catch (err) {
+    return { ok: false, error: err?.message || "db_error" };
+  }
+}
+
+export function cancelBuyOrder(db, buyOrderId, buyerId) {
+  if (!db || !buyOrderId || !buyerId) return { ok: false, error: "missing_inputs" };
+  try {
+    const order = db.prepare(`SELECT * FROM auction_buy_orders WHERE id = ?`).get(buyOrderId);
+    if (!order) return { ok: false, error: "no_order" };
+    if (order.buyer_user_id !== buyerId) return { ok: false, error: "not_owner" };
+    if (order.status === "cancelled") return { ok: false, error: "already_cancelled" };
+    if (order.status === "filled") return { ok: false, error: "already_filled" };
+
+    const unfilled = order.quantity_wanted - order.quantity_filled;
+    const refund = Math.round(order.unit_price_cc * unfilled * 100) / 100;
+
+    db.prepare(`UPDATE auction_buy_orders SET status = 'cancelled' WHERE id = ?`).run(buyOrderId);
+    if (refund > 0) {
+      _walletCredit(db, buyerId, refund, `buy_order_cancel_refund:${buyOrderId}`);
+    }
+    return { ok: true, refundCc: refund };
+  } catch (err) {
+    return { ok: false, error: err?.message || "db_error" };
+  }
+}
+
+export function listOpenBuyOrders(db, opts = {}) {
+  try {
+    const { worldId, itemDescriptor, limit = 50 } = opts;
+    const filters = ["status IN ('open','partial')", "expires_at > unixepoch()"];
+    const args = [];
+    if (worldId) { filters.push("world_id = ?"); args.push(worldId); }
+    if (itemDescriptor) { filters.push("item_descriptor = ?"); args.push(itemDescriptor); }
+    args.push(Math.max(1, Math.min(500, limit)));
+    return db.prepare(`
+      SELECT id, buyer_user_id, world_id, item_kind, item_descriptor,
+             unit_price_cc, quantity_wanted, quantity_filled, total_escrow_cc,
+             status, posted_at, expires_at
+      FROM auction_buy_orders
+      WHERE ${filters.join(" AND ")}
+      ORDER BY unit_price_cc DESC, posted_at ASC
+      LIMIT ?
+    `).all(...args);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Sweep expired-but-not-yet-marked buy orders, refund their unfilled
+ * portion. Heartbeat-friendly; idempotent.
+ */
+export function sweepExpiredBuyOrders(db) {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const expired = db.prepare(`
+      SELECT id, buyer_user_id, unit_price_cc, quantity_wanted, quantity_filled
+      FROM auction_buy_orders
+      WHERE status IN ('open','partial') AND expires_at <= ?
+      LIMIT 100
+    `).all(now);
+
+    let refunded = 0;
+    for (const o of expired) {
+      const unfilled = o.quantity_wanted - o.quantity_filled;
+      const refund = Math.round(o.unit_price_cc * unfilled * 100) / 100;
+      db.prepare(`UPDATE auction_buy_orders SET status = 'expired' WHERE id = ?`).run(o.id);
+      if (refund > 0) {
+        _walletCredit(db, o.buyer_user_id, refund, `buy_order_expired_refund:${o.id}`);
+        refunded += refund;
+      }
+    }
+    return { ok: true, expired: expired.length, refunded };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
