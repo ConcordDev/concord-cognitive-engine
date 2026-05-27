@@ -244,6 +244,14 @@ export default function ConcordiaScene({
     setSize: (w: number, h: number) => void;
     render: (t: null) => void;
   } | null>(null);
+  // Visual-polish Wave 5 — extra post passes layered on the composer.
+  const polishPassesRef = useRef<{
+    motionBlur?:  { setMatrices: (a: unknown, b: unknown) => void; setStrength: (n: number) => void };
+    chromAb?:     { tick: (n: number) => void; pulse: (m: number, d?: number) => void; setAmbient: (m: number) => void; detach?: () => void };
+    autoExposure?: { tick: (r: unknown, w: number, h: number) => void; dispose: () => void };
+    lut?:         { setEnabled: (b: boolean) => void; setStrength: (n: number) => void };
+  } | null>(null);
+  const polishMatRef = useRef<{ prev: unknown | null; cur: unknown | null }>({ prev: null, cur: null });
   // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
   // invoked during teardown so the listener disposes with the scene.
   const domeCleanupRef = useRef<(() => void) | null>(null);
@@ -529,6 +537,49 @@ export default function ConcordiaScene({
               }`,
           };
           composer.addPass(new ShaderPass(colorGradeShader));
+
+          // ── Visual-polish Wave 5: motion blur + chromatic aberration + LUT
+          // The shader-pass constructor is given to each builder so we
+          // don't have to re-import from three/examples in this file.
+          try {
+            const [{ createMotionBlurPass }, { createChromaticAberrationPass }, { createLUTPass }] =
+              await Promise.all([
+                import('@/lib/world-lens/post-motion-blur'),
+                import('@/lib/world-lens/post-chromatic-aberration'),
+                import('@/lib/world-lens/lut-loader'),
+              ]);
+            const motionBlur = createMotionBlurPass(ShaderPass as unknown as new (s: unknown) => unknown);
+            motionBlur.setStrength(quality === 'ultra' ? 0.55 : 0.35);
+            composer.addPass(motionBlur.shaderPass as unknown as InstanceType<typeof ShaderPass>);
+
+            const chromAb = createChromaticAberrationPass(ShaderPass as unknown as new (s: unknown) => unknown);
+            chromAb.setAmbient(quality === 'ultra' ? 0.0035 : 0.002);
+            composer.addPass(chromAb.shaderPass as unknown as InstanceType<typeof ShaderPass>);
+            const detachChromAb = chromAb.attachWindowEvents();
+
+            const lut = createLUTPass(THREE, ShaderPass as unknown as new (s: unknown) => unknown);
+            // No LUT loaded by default; .cube files dropped in public/luts/
+            // can be loaded by callers via setLut + setEnabled(true).
+            composer.addPass(lut.shaderPass as unknown as InstanceType<typeof ShaderPass>);
+
+            polishPassesRef.current = polishPassesRef.current ?? {};
+            polishPassesRef.current.motionBlur = motionBlur;
+            polishPassesRef.current.chromAb = { ...chromAb, detach: detachChromAb };
+            polishPassesRef.current.lut = lut;
+
+            // Auto-exposure does not need a ShaderPass — it samples the
+            // back buffer + sets renderer.toneMappingExposure directly.
+            try {
+              const { createAutoExposure } = await import('@/lib/world-lens/post-auto-exposure');
+              polishPassesRef.current.autoExposure = createAutoExposure({
+                blendFactor: quality === 'ultra' ? 0.06 : 0.04,
+              });
+            } catch (aeErr) {
+              console.warn('[ConcordiaScene] Auto-exposure unavailable:', aeErr);
+            }
+          } catch (polishErr) {
+            console.warn('[ConcordiaScene] Polish passes unavailable:', polishErr);
+          }
 
           // Wave 1 deferral 1: depth-of-field pass for cinematic dialogue.
           // Cheap radial blur centered on screen — not true depth-aware DoF
@@ -1009,6 +1060,27 @@ export default function ConcordiaScene({
           } catch { /* SSR-safe */ }
         }
 
+        // ── Visual-polish Wave 5: drive motion-blur matrices + chromAb tick + auto-exposure
+        try {
+          const polish = polishPassesRef.current;
+          if (polish?.motionBlur && cameraRef.current) {
+            const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
+            const curVP = new THREE.Matrix4()
+              .multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+            const prevVP = polishMatRef.current.prev ?? curVP.clone();
+            polish.motionBlur.setMatrices(prevVP, curVP);
+            polishMatRef.current.prev = curVP.clone();
+          }
+          if (polish?.chromAb) polish.chromAb.tick(globalThis.performance.now());
+          if (polish?.autoExposure) {
+            polish.autoExposure.tick(
+              renderer as unknown as Parameters<typeof polish.autoExposure.tick>[0],
+              canvas!.clientWidth,
+              canvas!.clientHeight,
+            );
+          }
+        } catch { /* polish passes optional */ }
+
         // Render: SSGI > EffectComposer > plain renderer
         if (ssgiPassRef.current) {
           ssgiPassRef.current.render(null);
@@ -1302,6 +1374,12 @@ export default function ConcordiaScene({
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
+      try {
+        polishPassesRef.current?.chromAb?.detach?.();
+        polishPassesRef.current?.autoExposure?.dispose();
+      } catch { /* idempotent */ }
+      polishPassesRef.current = null;
+      polishMatRef.current.prev = null;
       probeManagerRef.current?.dispose();
       probeManagerRef.current = null;
       weatherSysRef.current = null;

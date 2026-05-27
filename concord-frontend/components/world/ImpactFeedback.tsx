@@ -75,6 +75,21 @@ export function emitScreenShake(intensity: number) {
  */
 export function emitHitStop(durationMs = 80, severity: HitSeverity = 'light'): void {
   _emitStop?.(durationMs, severity);
+  // Visual-polish Wave 5 — RGB-split pulse on every impact via window event;
+  // ConcordiaScene's chromatic-aberration post pass listens for it.
+  try {
+    const mag = severity === 'kill' ? 0.030
+              : severity === 'crit' ? 0.022
+              : severity === 'heavy' ? 0.015
+              : 0.010;
+    const dur = severity === 'kill' ? 360
+              : severity === 'crit' ? 300
+              : severity === 'heavy' ? 240
+              : 180;
+    window.dispatchEvent(new CustomEvent('concordia:chromatic-pulse', {
+      detail: { magnitude: mag, durationMs: dur },
+    }));
+  } catch { /* SSR-safe */ }
 }
 
 export function emitHealNumber(value: number) {
