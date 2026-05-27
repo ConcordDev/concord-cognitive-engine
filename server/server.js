@@ -5947,7 +5947,7 @@ function authMiddleware(req, res, next) {
     "/api/world/weather",
     // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
     "/api/world/bazaar", "/api/world/perf-telemetry",
-    "/api/combat/state",
+    "/api/combat/state", "/api/combat/frame-data",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
@@ -30969,6 +30969,16 @@ app.post("/api/combat/block", requireAuth, (req, res) => {
   _setBlock(userId, Math.min(2000, Math.max(100, Number(req.body?.durationMs) || 600)));
   res.json({ ok: true });
 });
+
+// Phase AF — frame data (public read). Surfaces the per-skill
+// startup/active/recovery/parry/dodge envelope to the combat HUD +
+// training room.
+app.get("/api/combat/frame-data/:skillId", asyncHandler(async (req, res) => {
+  const { getFrameDataForSkillId } = await import("./lib/combat-frame-data.js");
+  const data = getFrameDataForSkillId(db, req.params.skillId);
+  if (!data) return res.status(404).json({ ok: false, error: "no_skill" });
+  res.json({ ok: true, frameData: data });
+}));
 
 // Start the world-clock broadcast loop once REALTIME is ready. We poll briefly
 // for it because REALTIME may finish initializing after this import runs.

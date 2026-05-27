@@ -2663,6 +2663,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['achievement', 'achievements', 'trophy', 'unlock', 'rewards'],
   },
   {
+    id: 'training-room',
+    name: 'Training Room',
+    icon: Target,
+    description: 'Controlled dojo — pick a skill, see frame data, replay the hit.',
+    category: 'progression',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/training-room',
+    order: 20,
+    keywords: ['training', 'dojo', 'frame', 'parry', 'combo', 'practice'],
+  },
+  {
     id: 'mail',
     name: 'Mail',
     icon: Mail,
