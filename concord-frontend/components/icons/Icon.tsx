@@ -32,7 +32,6 @@ export function Icon({ name, size = 18, className, ariaLabel, title, style }: Ic
       aria-label={ariaLabel}
       className={className}
       style={style}
-      // eslint-disable-next-line react/no-danger
       dangerouslySetInnerHTML={{ __html: (title ? `<title>${escapeHtml(title)}</title>` : '') + body }}
     />
   );

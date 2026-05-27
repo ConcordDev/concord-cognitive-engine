@@ -93,7 +93,7 @@ export function createAdaptiveMusic(ctx: AudioContext, opts: { masterGain?: numb
   master.gain.value = masterGain;
   master.connect(ctx.destination);
 
-  function buildStem(name: StemName): StemRuntime {
+  function buildStem(_name: StemName): StemRuntime {
     const gainNode = ctx.createGain();
     gainNode.gain.value = 0;
     gainNode.connect(master);
