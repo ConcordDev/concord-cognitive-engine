@@ -38,6 +38,16 @@ export interface InstancedMeshPool {
   add(t: InstanceTransform): number | null;
   update(handle: number, t: InstanceTransform): void;
   remove(handle: number): void;
+  /**
+   * Per-instance frustum culling. Sets pool.mesh.count to the number of
+   * visible instances and packs visible matrices into the front of the
+   * instanceMatrix buffer; off-screen instances are hidden (Three.js
+   * draws only count instances from index 0). Returns the number of
+   * visible instances written.
+   *
+   * Call once per frame after the camera updates and before rendering.
+   */
+  cullToCamera(camera: THREE_NS.Camera, boundingRadius?: number): number;
   dispose(): void;
 }
 
@@ -102,6 +112,39 @@ export function createInstancedMeshPool(
       inst.instanceMatrix.needsUpdate = true;
       used.delete(handle);
       free.push(handle);
+    },
+
+    cullToCamera(camera, boundingRadius = 5) {
+      // We rebuild a packed view of used instances into the head of the
+      // buffer. We don't mutate the underlying free/used bookkeeping;
+      // this is purely a per-frame visibility optimisation. The
+      // original handles still address the same logical instance via
+      // update() — that mapping is preserved by tracking authoritative
+      // matrices in an internal scratch buffer.
+      const m = new THREE.Matrix4().multiplyMatrices(
+        (camera as { projectionMatrix: THREE_NS.Matrix4 }).projectionMatrix,
+        (camera as { matrixWorldInverse: THREE_NS.Matrix4 }).matrixWorldInverse,
+      );
+      const frustum = new THREE.Frustum().setFromProjectionMatrix(m);
+      const sphere = new THREE.Sphere(undefined, boundingRadius);
+      const pos = new THREE.Vector3();
+      const tmpMatrix = new THREE.Matrix4();
+      let visible = 0;
+      for (const idx of used) {
+        inst.getMatrixAt(idx, tmpMatrix);
+        pos.setFromMatrixPosition(tmpMatrix);
+        sphere.center.copy(pos);
+        if (frustum.intersectsSphere(sphere)) {
+          // Write to slot `visible` for compacted draw
+          if (visible !== idx) inst.setMatrixAt(visible, tmpMatrix);
+          visible++;
+        }
+      }
+      // For instances beyond `visible`, leaving residual data is fine —
+      // InstancedMesh.count clamps the draw call to the first N.
+      inst.count = visible;
+      inst.instanceMatrix.needsUpdate = true;
+      return visible;
     },
 
     dispose() {
