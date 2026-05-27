@@ -64,6 +64,10 @@ import {
 registerHeartbeat("social-npc-bridge", {
   frequency: 5,
   handler: runSocialNpcBridge,
+  // Phase A: writes STATE.shadowDtus that npc-knowledge-bridge then reads.
+  // Serial so the bridge sees the freshest social signals.
+  serial: true,
+  scope: "global",
 });
 
 // Register every-10-tick (~10 minute) NPC knowledge bridge. Medical /
@@ -73,6 +77,10 @@ registerHeartbeat("social-npc-bridge", {
 registerHeartbeat("npc-knowledge-bridge", {
   frequency: 10,
   handler: runNpcKnowledgeBridge,
+  // Phase A: depends on social-NPC bridge having published shadow DTUs;
+  // runs after the parallel batch.
+  serial: true,
+  scope: "global",
 });
 
 // Decay refusal_debt slowly so a single misstep doesn't follow a player
@@ -80,6 +88,7 @@ registerHeartbeat("npc-knowledge-bridge", {
 registerHeartbeat("metrics-decay", {
   frequency: 20,
   handler: runMetricsDecay,
+  scope: "global",
 });
 
 // EvoEcosystem W1: ambient fauna spawner. Tops up per-biome populations
@@ -111,6 +120,10 @@ import { runSignalPropagationCycle } from "./emergent/signal-propagation-cycle.j
 registerHeartbeat("signal-propagation-cycle", {
   frequency: 3,
   handler: runSignalPropagationCycle,
+  // Phase A: writes embodied_signal_log rows that creature-flock-cycle and
+  // env-coupled handlers read on the same tick. Serial to keep the read
+  // path consistent.
+  serial: true,
 });
 
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
@@ -148,6 +161,10 @@ import {
 registerHeartbeat("refusal-field-sweep", {
   frequency: 1,
   handler: runRefusalFieldSweep,
+  // Phase C: every-tick glyph algebra is the highest-cumulative-cost
+  // pure-compute heartbeat — biggest win moving off main thread.
+  worker: true,
+  scope: "global",
 });
 
 // EvoEcosystem W2: prune expired creature corpses so the table doesn't
@@ -172,6 +189,7 @@ import { runDraftGcCycle } from "./emergent/draft-gc-cycle.js";
 registerHeartbeat("draft-gc-cycle", {
   frequency: 480,
   handler: runDraftGcCycle,
+  scope: "global",
 });
 
 // Presence stale-entry sweep. Socket disconnect handlers
@@ -182,6 +200,7 @@ registerHeartbeat("draft-gc-cycle", {
 // (default 10 min). Implemented in lib/city-presence.js#sweepStalePresence.
 registerHeartbeat("presence-stale-sweep", {
   frequency: 20,
+  scope: "global",
   handler: async () => {
     try {
       const cp = await import("./lib/city-presence.js").catch((err) => {
@@ -216,20 +235,31 @@ import {
 registerHeartbeat("lattice-drift-scan", {
   frequency: 60,
   handler: runPeriodicDriftScan,
+  // Phase A: drift findings feed lattice-breakthrough-pass; keep them
+  // ordered so a single 60-tick coincidence sees the freshest alerts.
+  serial: true,
+  scope: "global",
+  // Phase C: pure-compute heavy (HLR + constraint check). Worker pool.
+  worker: true,
 });
 registerHeartbeat("lattice-breakthrough-pass", {
   frequency: 240,
   handler: runBreakthroughResearchPass,
+  serial: true,
+  scope: "global",
+  worker: true,
 });
 registerHeartbeat("lattice-federation-poll", {
   frequency: 120,
   handler: runFederationPoll,
+  scope: "global",
 });
 // Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
 // 16 macros were registered via Ghost Fleet but never tick-scheduled.
 registerHeartbeat("culture-drift-pass", {
   frequency: 120,
   handler: runCultureDriftPass,
+  scope: "global",
 });
 // Phase 3 wire-the-Lost: forgetting-engine health-check pass. The engine
 // already runs inline in governorTick on TICK_FREQUENCIES.FORGETTING; this
@@ -238,6 +268,7 @@ registerHeartbeat("culture-drift-pass", {
 registerHeartbeat("forgetting-health-check", {
   frequency: 480,
   handler: runForgettingHealthCheck,
+  scope: "global",
 });
 
 // Code-quality detector sweep. Every 2880 ticks (~12h) runs the static
@@ -383,6 +414,9 @@ import { runFactionStrategyCycle } from "./emergent/faction-strategy-cycle.js";
 registerHeartbeat("faction-strategy-cycle", {
   frequency: 200,
   handler: runFactionStrategyCycle,
+  // Phase C: deterministic state-machine + seeded RNG, no live DB writes
+  // during pick (only at applyMove). Pure-compute heavy → worker pool.
+  worker: true,
 });
 
 // Layer 10: forward-sim anticipation cycle. Every 100 ticks (~25 min)
@@ -395,6 +429,8 @@ import { runForwardSimCycle } from "./emergent/forward-sim-cycle.js";
 registerHeartbeat("forward-sim-cycle", {
   frequency: 100,
   handler: runForwardSimCycle,
+  // Phase C: deterministic compose + a single INSERT per prediction.
+  worker: true,
 });
 
 // Layer 9: embodied-dream-cycle. Every 80 ticks (~20 min) the offline
@@ -410,6 +446,8 @@ import { runEmbodiedDreamCycle } from "./emergent/embodied-dream-cycle.js";
 registerHeartbeat("embodied-dream-cycle", {
   frequency: 80,
   handler: runEmbodiedDreamCycle,
+  // Phase C: fragment-gather + compose is the heavy lift; one INSERT at end.
+  worker: true,
 });
 
 // Phase 1: NPC skill evolution. Every 80 ticks (~20 min) auto-evolves any
@@ -539,6 +577,9 @@ import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
 registerHeartbeat("lattice-quest-cycle", {
   frequency: 180,
   handler: runLatticeQuestCycle,
+  // Phase C: drift→quest composer is pure compute; the actual insert is
+  // a small final transaction at the end.
+  worker: true,
 });
 
 // Phase 6: Ecology quest cycle. Drains ecology_imbalance_log rows (set
@@ -570,6 +611,9 @@ import { runSeasonCycle } from "./emergent/season-cycle.js";
 registerHeartbeat("season-cycle", {
   frequency: 480,
   handler: runSeasonCycle,
+  // Phase A: season transitions feed env-bias reads elsewhere on the
+  // same tick. Serial so downstream sees the post-transition values.
+  serial: true,
 });
 
 // Phase 5a: Player land claims. Every 240 ticks (~1h) ticks maintenance
@@ -934,6 +978,10 @@ import { recordObservation as recordInstitutionalDecision, getInstitutionalMemor
 
 // ---- Worker Pool: offload heavy macros to worker threads ----
 import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool } from "./workers/macro-pool.js";
+import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool } from "./workers/heartbeat-pool.js";
+import { setHeartbeatPool, getHeartbeatTimingStats } from "./emergent/heartbeat-registry.js";
+import { initWorldShards, broadcastTick as broadcastShardTick, getShardHealth, restartShard, shutdownShards } from "./lib/world-shard-manager.js";
+import { shardingEnabled } from "./lib/world-shard-protocol.js";
 
 // ---- Repair Cortex: three-phase self-repair (Prophet + Surgeon + Guardian) ----
 import {
@@ -5762,6 +5810,10 @@ function authMiddleware(req, res, next) {
   // HTTP-Signature on the request, verified by the inbox handler itself
   // via lib/ap-signature.js + activitypub-bridge.js#receiveActivity.
   if (req.method === "POST" && /^\/api\/federation\/users\/[^/]+\/inbox$/.test(req.path)) return next();
+  // Phase F — per-world shard health badge. The world lens reads this to
+  // render "shard healthy / catching up / offline" — no PII, just shard
+  // status (alive, lastTick, restartCount).
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/health$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -6407,20 +6459,65 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
-    // Per-block heartbeat timing. Every call through runHeartbeatModule
-    // observes its duration here so a Grafana panel + alert can name the
-    // exact block that is starving the next tick. Buckets are tuned for
-    // the 15s tick interval — anything past 5s is already concerning.
+    // Per-block heartbeat timing. Every call through the heartbeat
+    // registry observes its duration here so a Grafana panel + alert can
+    // name the exact block that is starving the next tick. Buckets are
+    // tuned for the real 60s tick cadence — anything past 10s is already
+    // concerning, anything past 30s threatens the next tick.
     // Alert rule lives in monitoring/prometheus/alerts.yml
-    // (ConcordHeartbeatBlockSlow): histogram_quantile(0.99,
+    // (ConcordHeartbeatModuleSlow): histogram_quantile(0.99,
     //   rate(concord_heartbeat_block_ms_bucket[5m])) > 10000.
     METRICS.histograms.heartbeatBlockMs = new prom.Histogram({
       name: "concord_heartbeat_block_ms",
       help: "Wall-clock duration of an individual heartbeat tick block (ms), labeled by module",
       labelNames: ["module"],
-      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000],
       registers: [METRICS.registry]
     });
+
+    // Phase A — heartbeat modules that exceed MODULE_TIMEOUT_MS are
+    // cancelled at the dispatcher boundary so they cannot starve the next
+    // tick. The counter labels by module so the operator can see which
+    // one is wedging. Alert: ConcordHeartbeatModuleStuck.
+    METRICS.counters.heartbeatModuleTimeout = new prom.Counter({
+      name: "concord_heartbeat_module_timeout_total",
+      help: "Heartbeat modules timed out at the dispatcher boundary, by module",
+      labelNames: ["module"],
+      registers: [METRICS.registry]
+    });
+
+    // Phase C — heartbeat worker pool utilisation. Mirrors the macro-pool
+    // shape so operator UI can render both pools with the same widget.
+    METRICS.gauges.heartbeatWorkerPoolSize = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_size",
+      help: "Configured heartbeat worker pool size",
+      registers: [METRICS.registry]
+    });
+    METRICS.gauges.heartbeatWorkerPoolBusy = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_busy",
+      help: "Heartbeat workers currently executing a task",
+      registers: [METRICS.registry]
+    });
+    METRICS.gauges.heartbeatWorkerPoolQueueLen = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_queue_length",
+      help: "Tasks queued waiting for a free heartbeat worker",
+      registers: [METRICS.registry]
+    });
+
+    // Expose the counters/histograms via globalThis so cross-module
+    // observers (heartbeat-registry.js, world-shard-manager.js) can
+    // record without circular imports. The registry's own observation
+    // path uses globalThis._concordPromMetrics directly.
+    globalThis._concordPromMetrics = {
+      heartbeatTicks: METRICS.counters.heartbeatTicks,
+      heartbeatModuleErrors: METRICS.counters.heartbeatModuleErrors,
+      heartbeatModuleTimeout: METRICS.counters.heartbeatModuleTimeout,
+      heartbeatSkipped: METRICS.counters.heartbeatSkipped,
+      heartbeatBlockMs: METRICS.histograms.heartbeatBlockMs,
+      heartbeatWorkerPoolSize: METRICS.gauges.heartbeatWorkerPoolSize,
+      heartbeatWorkerPoolBusy: METRICS.gauges.heartbeatWorkerPoolBusy,
+      heartbeatWorkerPoolQueueLen: METRICS.gauges.heartbeatWorkerPoolQueueLen,
+    };
 
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
@@ -32730,13 +32827,36 @@ async function governorTick(reason="heartbeat") {
     // server/emergent/heartbeat-registry.js and fire those whose tick is due.
     // Each handler is independently try/caught inside the registry — a single
     // module failure cannot stop the tick.
+    // Phase F: when CONCORD_SHARD_WORLDS=true, parent runs scope='global'
+    // modules only and broadcasts a tick to each world shard which runs
+    // its own scope='world' subset.
     try {
-      await tickAllRegistered({
-        state: STATE,
-        db,
-        tickCount: STATE.__bgTickCounter || 0,
-        reason,
-      });
+      if (shardingEnabled()) {
+        // Parent: run global heartbeats only.
+        await tickAllRegistered({
+          state: STATE,
+          db,
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+          scope: "global",
+        });
+        // Fan out to world shards. Each shard runs its scope='world' set
+        // against its own DB handle. Non-blocking: shard ticks are
+        // independent and emit results back via IPC.
+        broadcastShardTick({
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+          settings: STATE.settings || {},
+        });
+      } else {
+        // Default in-process path — run everything inline.
+        await tickAllRegistered({
+          state: STATE,
+          db,
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+        });
+      }
     } catch (e) { observe(e, "governor_heartbeat_registry"); }
 
     return { ok:true };
@@ -47609,6 +47729,79 @@ app.post("/api/reminders/:id/complete", (req, res) => {
   }
 });
 
+// Phase B + C + D — operator-facing telemetry for the concurrency stack.
+// Surfaces per-module heartbeat timing, worker-pool utilisation, and brain
+// endpoint inflight + failure counts. Powers the ops-telemetry lens.
+app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      modules: getHeartbeatTimingStats(),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      macroPool: getPoolStats(),
+      heartbeatPool: getHeartbeatPoolStats(),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase F — per-world shard health (public-safe; reveals shard status only).
+app.get("/api/worlds/:worldId/health", (req, res) => {
+  try {
+    const worldId = req.params.worldId;
+    res.json({ ok: true, ...getShardHealth(worldId), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase F — admin: cross-world shard table + manual restart.
+app.get("/api/admin/world-shards", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({ ok: true, sharded: shardingEnabled(), shards: getShardHealth() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/admin/world-shards/:worldId/restart", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const r = restartShard(req.params.worldId);
+    res.status(r.ok ? 200 : 404).json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { getEndpointStats, getActiveBrainConfig } = await import("./lib/brain-config.js");
+    const stats = getEndpointStats();
+    const cfg = getActiveBrainConfig();
+    const brains = Object.entries(stats).map(([brainName, endpoints]) => ({
+      brain: brainName,
+      model: cfg[brainName]?.model || "unknown",
+      maxConcurrent: cfg[brainName]?.maxConcurrent ?? null,
+      endpoints,
+    }));
+    res.json({ ok: true, brains, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 14: Enterprise Endpoints ----
 app.get("/api/admin/stats", requireRole("owner", "admin"), (req, res) => {
   res.json(getAdminStats());
@@ -51307,6 +51500,44 @@ try {
   structuredLog("info", "module_loaded", { detail: `Worker Pool: ${getPoolStats().poolSize} workers initialized` });
 } catch (e) {
   console.warn("[Concord] Worker pool failed to initialize:", e.message);
+}
+
+// ── Heartbeat Worker Pool Initialization (Phase C) ───────────────────────────
+// Routes `worker:true` heartbeat modules off the main thread so a heavy tick
+// (refusal-field-sweep, faction-strategy, lattice-quest, embodied-dream,
+// forward-sim) can't starve the rest of the dispatch loop. Workers open
+// their own read-only better-sqlite3 handle and return side effects the
+// main thread replays.
+try {
+  initHeartbeatPool({
+    db,
+    realtimeEmit: (...args) => {
+      try { realtimeEmit(...args); } catch { /* main-thread emit best-effort */ }
+    },
+    dbPath: DB_PATH,
+  });
+  setHeartbeatPool({ exec: execHeartbeatWorker });
+  structuredLog("info", "module_loaded", { detail: `Heartbeat Worker Pool: ${getHeartbeatPoolStats().poolSize} workers initialized` });
+} catch (e) {
+  console.warn("[Concord] Heartbeat worker pool failed to initialize:", e.message);
+}
+
+// ── World shard manager (Phase F) ────────────────────────────────────────────
+// Activated by CONCORD_SHARD_WORLDS=true. Spawns one child_process.fork per
+// active world; per-world heartbeat modules (`scope: 'world'`) run inside
+// the shard. Global modules (`scope: 'global'`) keep running on the parent.
+if (shardingEnabled()) {
+  initWorldShards({
+    dbPath: DB_PATH,
+    realtimeEmit: (...args) => {
+      try { realtimeEmit(...args); } catch { /* main-thread emit best-effort */ }
+    },
+    db,
+  }).then((r) => {
+    structuredLog("info", "world_shard_manager_started", { enabled: r.enabled, shards: r.shards });
+  }).catch((err) => {
+    structuredLog("warn", "world_shard_manager_failed", { error: err?.message });
+  });
 }
 
 // ── Memory Ceiling Monitor ──────────────────────────────────────────────────

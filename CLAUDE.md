@@ -393,3 +393,34 @@ Several caps were intentionally raised before multi-tenant deploy. If you find a
 2. Register in `server/emergent/module-registry.js`
 3. Wire into `governorTick` in `server.js` at the appropriate tick frequency
 4. Run `npm run check-deps` to validate no circular dependencies introduced
+
+## Heartbeat dispatch contract (Phase A–F)
+
+`registerHeartbeat(id, opts)` in `server/emergent/heartbeat-registry.js` accepts these flags:
+
+- `serial: true` — runs after the parallel batch in registration order. Use only for modules that MUST observe another module's writes on the same tick (e.g. `social-npc-bridge` → `npc-knowledge-bridge`, `signal-propagation-cycle` → `creature-flock-cycle`). Default is parallel (Phase A).
+- `worker: true` — routes through `workers/heartbeat-pool.js`. The handler runs in a worker with a read-only `better-sqlite3` handle and side effects (DB writes, realtime emits) replayed on the main thread. Pure-compute heavy modules only — anything that depends on live STATE or live socket fan-out stays inline. Currently flagged: `refusal-field-sweep`, `faction-strategy-cycle`, `lattice-quest-cycle`, `lattice-drift-scan`, `lattice-breakthrough-pass`, `embodied-dream-cycle`, `forward-sim-cycle`.
+- `scope: 'global' | 'world'` — Phase F sharding. Default `'world'`. `scope: 'global'` runs on the parent process even when `CONCORD_SHARD_WORLDS=true`; reserve for cross-world infrastructure (federation poll, drift-scan, social-NPC bridge, presence sweep, draft GC, metrics decay).
+- The dispatcher cancels a module that runs longer than `CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS` (default 30s) and increments `concord_heartbeat_module_timeout_total{module}`. A timed-out or thrown module never blocks the rest of the tick.
+
+## DB write-ownership rules (Phase F)
+
+When `CONCORD_SHARD_WORLDS=true`, each forked world shard opens its own writeable `better-sqlite3` handle. WAL mode permits one writer per table at a time; to avoid contention, the rules below MUST hold. The canonical lists are in `server/lib/world-shard-protocol.js` (`PER_WORLD_WRITE_TABLES` / `USER_GLOBAL_WRITE_TABLES`):
+
+- **Per-world tables** (write-owned by the world shard): `world_npcs`, `city_presence`, `npc_routine_state`, `world_events`, `world_buildings`, `world_seasons`, `season_events`, `npc_schedules`, `embodied_signal_log`, `creature_corpses`, `dreams`, `forward_predictions`, `faction_strategy_state`, `faction_relations`, `faction_strategy_log`, `lattice_born_quests`, `procgen_regions`, `procgen_region_visits`, `land_claims`, `quest_triggers`, `quest_trigger_visits`, `player_signs`, `player_corpses`, and the npc-economy / npc-asymmetry tables.
+- **User-global tables** (write-owned by the parent process via HTTP routes): `users`, `user_wallets`, `user_active_effects`, `dtus`, `dtu_citations`, `economy_ledger`, `pain_signals`, `mentorships`, `npc_skill_acquisitions`, `player_inventory` (per-world by column, but writes flow through HTTP routes on the parent).
+
+New code that writes to a per-world table from an HTTP route or from a `scope: 'global'` module is wrong: it will work in single-process mode but will race the shard writer once Phase F is enabled. Tag the module `scope: 'world'` instead, or push the write through `req.app.locals.io` events that the shard consumes.
+
+## Phase D — brain endpoint scale-out
+
+`server/lib/brain-config.js` accepts `BRAIN_<NAME>_URLS` (comma-separated) as a multi-endpoint alternative to the singular `BRAIN_<NAME>_URL`. `pickBrainEndpoint(brain)` rotates across endpoints and prefers the less-loaded one; `noteEndpointStart` / `noteEndpointFinish` track inflight + failure counts (surfaced at `/api/admin/brain-endpoints`). On RunPod with a single Ollama instance, leave the plural unset — the singular URL still works. Enable when you spin up a second Ollama process on the pod or run in multi-container mode.
+
+## Admin telemetry surfaces
+
+- `/api/admin/heartbeat-stats` — per-module p50/p90/p99/last/run-count
+- `/api/admin/worker-stats` — macro pool + heartbeat pool utilisation
+- `/api/admin/brain-endpoints` — per-brain endpoint inflight + failures
+- `/api/admin/world-shards` (+ `POST .../:worldId/restart`) — shard status + manual restart
+- `/api/worlds/:worldId/health` — public-safe shard status badge feed
+- Lens: **`/lenses/ops-telemetry`** mounts all of the above with 5s auto-refresh.

@@ -18,20 +18,22 @@ export async function preloadBrains(structuredLog = () => {}) {
   const loaded = [];
   const failed = [];
 
-  // De-duplicate: group brains by URL so we don't pull the same model twice
+  // De-duplicate: group brains by (URL, model) so we don't pull the same
+  // model twice. Phase D — also probe every endpoint in `config.urls`
+  // (multi-endpoint scale-out) not just the primary.
   const seen = new Set();
 
   for (const [name, config] of Object.entries(BRAIN_CONFIG)) {
-    const key = `${config.url}::${config.model}`;
-    if (seen.has(key)) {
-      loaded.push(name);
-      continue;
-    }
-    seen.add(key);
+    const endpoints = Array.isArray(config.urls) && config.urls.length ? config.urls : [config.url];
+    for (const epUrl of endpoints) {
+      const key = `${epUrl}::${config.model}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const epName = endpoints.length > 1 ? `${name}@${epUrl}` : name;
 
     try {
       // Pull model if not present (idempotent)
-      const pullRes = await fetch(`${config.url}/api/pull`, {
+      const pullRes = await fetch(`${epUrl}/api/pull`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: config.model, stream: false }),
@@ -39,13 +41,13 @@ export async function preloadBrains(structuredLog = () => {}) {
       });
 
       if (!pullRes.ok) {
-        structuredLog("warn", "brain_pull_failed", { brain: name, model: config.model, status: pullRes.status });
-        failed.push(name);
+        structuredLog("warn", "brain_pull_failed", { brain: epName, model: config.model, status: pullRes.status });
+        failed.push(epName);
         continue;
       }
 
       // Warm: send minimal request to load model into memory
-      const warmRes = await fetch(`${config.url}/api/generate`, {
+      const warmRes = await fetch(`${epUrl}/api/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -58,15 +60,16 @@ export async function preloadBrains(structuredLog = () => {}) {
       });
 
       if (warmRes.ok) {
-        loaded.push(name);
-        structuredLog("info", "brain_preloaded", { brain: name, model: config.model });
+        loaded.push(epName);
+        structuredLog("info", "brain_preloaded", { brain: epName, model: config.model });
       } else {
-        failed.push(name);
-        structuredLog("warn", "brain_warm_failed", { brain: name, model: config.model });
+        failed.push(epName);
+        structuredLog("warn", "brain_warm_failed", { brain: epName, model: config.model });
       }
     } catch (err) {
-      failed.push(name);
-      structuredLog("warn", "brain_preload_error", { brain: name, model: config.model, error: err.message });
+      failed.push(epName);
+      structuredLog("warn", "brain_preload_error", { brain: epName, model: config.model, error: err.message });
+    }
     }
   }
 

@@ -42,6 +42,7 @@ import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/con
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
 import WorldShareButton from '@/components/world/WorldShareButton';
+import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5726,6 +5727,10 @@ export default function WorldLensPage() {
         open={adventureKitOpen}
         onClose={() => setAdventureKitOpen(false)}
       />
+
+      {/* Phase F — process-per-world shard status. Renders only when sharding
+          is enabled (returns null otherwise to avoid cluttering the HUD). */}
+      <ShardHealthBadge worldId={currentWorldId} />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

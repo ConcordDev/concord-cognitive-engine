@@ -96,6 +96,14 @@ All caps are env-overridable. Defaults:
 | `BRAIN_VISION_CONCURRENT` | 8 | LLaVA / vision parallelism |
 | `LLM_CONCURRENCY` | 32 | Global LLM queue concurrency |
 | `LLM_CONCURRENCY_LIMIT` | 64 | Hard ceiling on inflight LLM operations |
+| `BRAIN_<NAME>_URLS` | (unset) | Phase D multi-endpoint round-robin (comma-separated); leave unset on single-Ollama RunPod |
+| `CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS` | 30000 | Phase A: hung heartbeat module cancellation budget |
+| `CONCORD_HEARTBEAT_TIMING_HISTORY` | 60 | Phase B: per-module p50/p90/p99 sample ring |
+| `CONCORD_HEARTBEAT_POOL_SIZE` | min(4,cpus-2) | Phase C: heartbeat worker pool size |
+| `CONCORD_HEARTBEAT_WORKER_TIMEOUT_MS` | 25000 | Phase C: per-task worker timeout |
+| `CONCORD_SHARD_WORLDS` | false | Phase F: process-per-world sharding kill-switch |
+| `CONCORD_SHARD_BACKOFF_MS` | 2000 | Phase F: world-shard restart backoff base |
+| `CONCORD_SHARD_MAX_RESTARTS_PER_MIN` | 5 | Phase F: restart rate cap before extended cooldown |
 | `CONCORD_AGENT_TICK_CONCURRENT` | 32 | Emergent agent ticks per cycle |
 | `CONCORD_GHOST_THREADS_CONCURRENT` | 16 | Ghost thread parallelism |
 | `CONCORD_SQLITE_MMAP_MB` | 4096 | SQLite mmap window |
@@ -142,3 +150,60 @@ After startup, check:
 - `POST /api/voice/session/create` (if voice is enabled) lights up Vision brain
 - Server log line: `embeddings_loaded backend=ollama model=nomic-embed-text dim=768`
   - If you see `backend=xenova` instead, the Ollama probe failed; check `BRAIN_VISION_URL` reachability.
+
+## Concurrency / threading on RunPod (Phase A–F)
+
+The concurrency overhaul ships in six phases. All six are wired into the
+RunPod deploy via `.env.runpod` + `ecosystem.config.cjs`; the defaults are
+safe for the standard RTX PRO 4500 pod.
+
+- **Phase A — parallel heartbeat dispatch.** 60+ heartbeat modules run in
+  parallel by default. Ordering-sensitive ones opt back in via `serial: true`
+  in `server/server.js`. Per-module timeout: `CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS`
+  (default 30s) — Prom counter `concord_heartbeat_module_timeout_total{module}`.
+- **Phase B — per-module timing telemetry.** Prom histogram
+  `concord_heartbeat_block_ms{module}` + alerts `ConcordHeartbeatModuleSlow`
+  (p99>10s) and `ConcordHeartbeatModuleStuck` (timeouts firing). Operator UI
+  at **`/lenses/ops-telemetry`** + JSON at **`GET /api/admin/heartbeat-stats`**.
+- **Phase C — heartbeat worker pool.** Pure-compute heavy modules
+  (refusal-field-sweep, faction-strategy, lattice-quest, lattice-drift-scan,
+  lattice-breakthrough-pass, forward-sim, embodied-dream) flagged
+  `worker: true` route to `workers/heartbeat-pool.js`. Workers open their
+  own read-only `better-sqlite3` handle and return side-effects the main
+  thread replays. Pool size: `CONCORD_HEARTBEAT_POOL_SIZE` (default `min(4, cpus-2)`).
+- **Phase D — LLM scale-out.** On a single-Ollama RunPod pod the only lever
+  is `OLLAMA_NUM_PARALLEL` (bumped 8→16). If you spin up a second Ollama
+  process on the same pod (different port), set `BRAIN_<NAME>_URLS=` to a
+  comma-separated list and the brain router will round-robin across them,
+  preferring the less-loaded endpoint per call. Per-endpoint inflight +
+  failure counts visible at **`GET /api/admin/brain-endpoints`**.
+- **Phase E — frontend Web Workers.** Gait synthesis, FABRIK IK and
+  secondary-physics moved off the React/Three.js main thread via
+  `concord-frontend/workers/avatar-animator.worker.ts`. Toggle in the
+  UX Suite lens → Settings tab → "Avatar compute mode" (`auto` /
+  `main-thread` / `worker-only`).
+- **Phase F — process-per-world sharding.** `CONCORD_SHARD_WORLDS=true`
+  forks one child per active world; per-world modules (`scope: 'world'`)
+  run inside the shard. Off by default — flip on after the ops-telemetry
+  lens "World shards" widget confirms the per-world isolation is clean for
+  your workload. The world lens UI shows a corner badge per world
+  (`shard healthy / catching up / offline`) via
+  **`GET /api/worlds/:worldId/health`**.
+
+### When to flip Phase F on
+
+A single-pod deploy with 8 active worlds gets the biggest win from Phase A
+(parallel dispatch) + Phase C (worker pool). Phase F adds true per-world CPU
+isolation but at the cost of one Node process per world (≈100-200MB RSS
+each). Recommended: leave OFF on standard 16GB-RAM RunPod pods; flip ON if
+you upgrade to a 32-64GB pod and run heavy emergent simulation across
+multiple worlds simultaneously.
+
+### Cloudflare tunnel — no changes needed
+
+The Phase F per-world health route (`/api/worlds/:worldId/health`) is
+in the public-read allowlist (Gate 1 of 3 in `server.js`) — no auth header
+required. CORS rules from `ALLOWED_ORIGINS` apply. If your tunnel domain
+is the only ingress, set `TUNNEL_PUBLIC_URL` in `.env` and `./startup.sh
+--cloudflare` will wire it through to `NEXT_PUBLIC_API_URL` +
+`COOKIE_DOMAIN` automatically (see `startup.sh:59-98`).

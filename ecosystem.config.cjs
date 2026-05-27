@@ -67,6 +67,20 @@ module.exports = {
         BRAIN_UTILITY_MODEL: 'qwen2.5:3b',
         BRAIN_REPAIR_MODEL: 'qwen2.5:0.5b',
         BRAIN_VISION_MODEL: 'llava:13b-v1.6-vicuna-q4_K_M',
+        // Phase A-F — concurrency / threading tuning. See .env.runpod for
+        // descriptions. Defaults here are safe for the standard RTX PRO 4500
+        // pod; override per-pod in .env if you need different values.
+        CONCORD_HEARTBEAT_MODULE_TIMEOUT_MS: '30000',
+        CONCORD_HEARTBEAT_TIMING_HISTORY: '60',
+        CONCORD_HEARTBEAT_POOL_SIZE: '4',
+        CONCORD_HEARTBEAT_WORKER_TIMEOUT_MS: '25000',
+        // World sharding OFF by default — enable only after the operator
+        // has telemetry confirming the per-world isolation is clean for
+        // their workload (ops-telemetry lens shows shard status + restart
+        // counts under "World shards" widget).
+        CONCORD_SHARD_WORLDS: 'false',
+        CONCORD_SHARD_BACKOFF_MS: '2000',
+        CONCORD_SHARD_MAX_RESTARTS_PER_MIN: '5',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file
       },
       env_development: {
@@ -129,7 +143,10 @@ module.exports = {
         // is much lighter than the old 32b+14b setup — total loaded weight stays
         // well under 32GB even with 2 models hot, so we keep MAX_LOADED_MODELS=2
         // for low-latency rotation between conscious and subconscious.
-        OLLAMA_NUM_PARALLEL: '8',        // 8 concurrent inference streams
+        // Phase D — bumped 8 → 16 for the single-Ollama RunPod deploy.
+        // 16 concurrent inference streams across all loaded models. Higher
+        // risks KV-cache thrash with 2 loaded models at q8_0.
+        OLLAMA_NUM_PARALLEL: '16',
         OLLAMA_MAX_LOADED_MODELS: '2',   // keep conscious+subconscious in VRAM
         OLLAMA_NUM_THREAD: '14',         // half of 28 vCPU for Ollama CPU work
         // Blackwell tensor-core / VRAM optimizations — matches docker-compose.yml.

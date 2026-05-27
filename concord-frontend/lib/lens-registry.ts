@@ -27,6 +27,7 @@ import {
   Calendar,
   Share2,
   Sparkles,
+  BarChart3,
   Target,
   Activity,
   Users,
@@ -2597,6 +2598,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     path: '/lenses/ux-suite',
     order: 90,
     keywords: ['ux', 'suite', 'absorbed', 'components'],
+  },
+  {
+    id: 'ops-telemetry',
+    name: 'Ops Telemetry',
+    icon: BarChart3,
+    description: 'Heartbeat module timings, worker pool utilisation, and brain endpoint inflight counts (admin).',
+    category: 'system',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/ops-telemetry',
+    order: 91,
+    keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
   },
 
   // ── System pages ───────────────────────────────────────────────
