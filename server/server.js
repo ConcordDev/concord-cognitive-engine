@@ -5687,6 +5687,9 @@ function authMiddleware(req, res, next) {
     // Phase N — public spectator counts. No PII; the world picker reads
     // this anonymously to render "N watching" badges.
     "/api/worlds/spectator-counts",
+    // Phase P — cross-world feed is the news layer of the federation.
+    // No PII; world-event summaries are server-generated.
+    "/api/cross-world/feed",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -47796,6 +47799,31 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
       heartbeatPool: getHeartbeatPoolStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase P — cross-world feed surfaces in the concord-link-frontier lens.
+// Public-read; the news ticker has no PII.
+app.get("/api/cross-world/feed", async (req, res) => {
+  try {
+    const { getCrossWorldFeed } = await import("./lib/cross-world-feed.js");
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const sinceMs = Number(req.query.sinceMs) || 3_600_000;
+    const kindFilter = req.query.kind ? String(req.query.kind) : undefined;
+    res.json({ ok: true, ...getCrossWorldFeed(db, { limit, sinceMs, kindFilter }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/cross-world/royalty-flow", requireAuth(), async (req, res) => {
+  try {
+    const { getCrossWorldRoyaltyFlow } = await import("./lib/cross-world-feed.js");
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const sinceMs = Number(req.query.sinceMs) || 86_400_000;
+    res.json({ ok: true, ...getCrossWorldRoyaltyFlow(db, { limit, sinceMs }) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
