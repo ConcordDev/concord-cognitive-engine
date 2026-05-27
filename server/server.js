@@ -145,6 +145,27 @@ registerHeartbeat("user-profile-compiler-cycle", {
   handler: runUserProfileCompilerCycle,
 });
 
+// Wave D / D1 — bards perform legends to nearby NPCs. Each performance
+// propagates opinion deltas to listeners scaled by the legend's sentiment,
+// so atrocities spread infamy and triumphs spread fame.
+// Kill switch: CONCORD_BARD_PERFORMANCE=0.
+import { runBardPerformanceCycle } from "./emergent/bard-performance-cycle.js";
+registerHeartbeat("bard-performance-cycle", {
+  frequency: 40,   // ~10min — matches the 10min cooldown per bard
+  handler: runBardPerformanceCycle,
+});
+
+// Wave D / D2 — NPCs grieve absent players. Pairs (npc, player) where
+// the NPC had high sentiment + the player has been gone ≥ 14 days get
+// a 'personal_loss' preoccupation for 30 days. Lifts via the existing
+// affect+routine override (B3).
+// Kill switch: CONCORD_GRIEVING_NPC=0.
+import { runGrievingNpcCycle } from "./emergent/grieving-npc-cycle.js";
+registerHeartbeat("grieving-npc-cycle", {
+  frequency: 600,  // ~2.5h — grief sets in slowly
+  handler: runGrievingNpcCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
