@@ -18,7 +18,54 @@
 
 import { useEffect, useRef } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
-import type { AdaptiveMusicAPI } from '@/lib/world-lens/adaptive-music';
+import { lensRun } from '@/lib/api/client';
+import type { AdaptiveMusicAPI, StemName } from '@/lib/world-lens/adaptive-music';
+
+const ADAPTIVE_STEMS: StemName[] = [
+  'ambient_bed', 'tension_pad', 'combat_drum', 'revelation_strings',
+];
+
+interface PublishedStem {
+  dtuId:        string;
+  stemName:     StemName;
+  downloadUrl:  string | null;
+  mood:         string | null;
+  durationMs:   number | null;
+  createdAt:    string;
+}
+
+async function fetchAndDecodeStem(
+  ctx: AudioContext,
+  url: string,
+): Promise<AudioBuffer | null> {
+  try {
+    const resp = await fetch(url, { credentials: 'include' });
+    if (!resp.ok) return null;
+    const arr = await resp.arrayBuffer();
+    return await ctx.decodeAudioData(arr);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pick the canonical stem to load per slot. Strategy: prefer the
+ * newest published stem per name (latest createdAt wins). When the
+ * marketplace/canon vote layer lands, this becomes a quality-score
+ * sort instead.
+ */
+function selectCanonStems(stems: PublishedStem[]): Partial<Record<StemName, PublishedStem>> {
+  const byName: Partial<Record<StemName, PublishedStem>> = {};
+  for (const s of stems) {
+    if (!ADAPTIVE_STEMS.includes(s.stemName)) continue;
+    if (!s.downloadUrl) continue;
+    const existing = byName[s.stemName];
+    if (!existing || s.createdAt > existing.createdAt) {
+      byName[s.stemName] = s;
+    }
+  }
+  return byName;
+}
 
 const DECAY_RATES = {
   combat:     1 / 6,   // 6s back to 0
@@ -73,6 +120,29 @@ export default function AdaptiveMusicBridge() {
         };
         window.addEventListener('pointerdown', onUserGesture, { once: true });
         window.addEventListener('keydown', onUserGesture, { once: true });
+
+        // ── Tier-1 stems: load music-lens published audio over the
+        // procedural fallback. Marketplace canon vote will sort which
+        // stem wins each slot when that layer lands. For now: newest
+        // wins. Failures fall through to procedural silently.
+        try {
+          const stemsResp = await lensRun('music', 'list-published-stems', {});
+          const stems = (stemsResp.data?.result?.stems as PublishedStem[] | undefined) ?? [];
+          const canon = selectCanonStems(stems);
+          await Promise.all(
+            ADAPTIVE_STEMS.map(async (name) => {
+              if (disposed) return;
+              const stem = canon[name];
+              if (!stem?.downloadUrl) return;
+              const buf = await fetchAndDecodeStem(ctx, stem.downloadUrl);
+              if (buf && musicRef.current && !disposed) {
+                await musicRef.current.loadStem(name, buf);
+              }
+            }),
+          );
+        } catch {
+          /* stem discovery is non-fatal — keep procedural fallback */
+        }
       } catch {
         /* audio unavailable — silently no-op */
       }

@@ -8,8 +8,70 @@
 // Free, no API key — but ToS REQUIRES a contact User-Agent header.
 // Set MUSICBRAINZ_CONTACT to a contact email/URL for production
 // usage; we use a fallback identifying Concord OS for dev.
+//
+// Content-engine bridge: publish-as-stem and list-published-stems
+// hand audio bytes from the music lens to the frontend adaptive-music
+// state machine. Audio rides through route_artifacts (HTTP serving)
+// and dtus (discovery + royalty cascade tagging).
 
+import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
+
+const ADAPTIVE_STEM_NAMES = new Set([
+  "ambient_bed",
+  "tension_pad",
+  "combat_drum",
+  "revelation_strings",
+]);
+const AUDIO_MIME = {
+  wav: "audio/wav",
+  mp3: "audio/mpeg",
+  mpeg: "audio/mpeg",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+};
+const STEM_ARTIFACT_MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+
+// Decode a data: URL (audio/wav | mpeg | ogg | flac) → { buf, mimeType, ext }
+function decodeAudioDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return null;
+  const m = dataUrl.match(/^data:audio\/(wav|mpeg|mp3|ogg|flac);base64,(.+)$/);
+  if (!m) return null;
+  const sub = m[1] === "mp3" ? "mpeg" : m[1];
+  const mimeType = `audio/${sub}`;
+  const ext = m[1] === "mpeg" ? "mp3" : m[1] === "mp3" ? "mp3" : m[1];
+  try {
+    const buf = Buffer.from(m[2], "base64");
+    if (!buf.length || buf.length > STEM_ARTIFACT_MAX_BYTES) return null;
+    return { buf, mimeType, ext };
+  } catch {
+    return null;
+  }
+}
+
+// Ensure route_artifacts exists. The routes/artifacts.js router creates
+// it on mount but if this macro fires before that route was mounted
+// (cold-start race), we make the table ourselves with the same schema.
+function ensureRouteArtifactsTable(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS route_artifacts (
+      artifact_id  TEXT PRIMARY KEY,
+      dtu_id       TEXT,
+      name         TEXT NOT NULL,
+      mime_type    TEXT NOT NULL DEFAULT 'application/octet-stream',
+      size_bytes   INTEGER NOT NULL DEFAULT 0,
+      storage_mode TEXT NOT NULL DEFAULT 'inline',
+      content_b64  TEXT,
+      storage_path TEXT,
+      created_by   TEXT NOT NULL,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      description  TEXT NOT NULL DEFAULT '',
+      tags         TEXT NOT NULL DEFAULT '[]'
+    );
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_dtu ON route_artifacts (dtu_id);
+    CREATE INDEX IF NOT EXISTS idx_route_artifacts_creator ON route_artifacts (created_by, created_at DESC);
+  `);
+}
 
 const MB_BASE = "https://musicbrainz.org/ws/2";
 
@@ -1594,5 +1656,181 @@ export default function registerMusicActions(registerLensAction) {
     } catch (e) {
       return { ok: false, error: `apple rss unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
+  });
+
+  // ── Content-engine bridge: publish a DAW track as an adaptive-music stem ──
+  //
+  // The procedural-hand-authored music flow:
+  //   1. Player composes in the DAW (studio lens) → renders to audio bytes
+  //   2. Client calls music.publish-as-stem with the audio data URL
+  //   3. The macro stores the audio in route_artifacts (served by the
+  //      existing /api/artifacts/:id/download endpoint) and inserts a
+  //      DTU tagged 'adaptive_music' + 'stem:<stemName>' for discovery.
+  //   4. Frontend AdaptiveMusicBridge polls music.list-published-stems
+  //      on mount; for each found stem, calls adaptiveMusic.loadStem(name, url).
+  //   5. Procedural Web Audio fallback is replaced live as authored
+  //      stems land. Marketplace votes pick canon; royalty cascade
+  //      tracks every derivative.
+  //
+  // Stems are stored inline (≤1 MB) or to disk (>1 MB); the existing
+  // download route handles both.
+  registerLensAction("music", "publish-as-stem", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = muAid(ctx);
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required to publish a stem" };
+    }
+    const stemName = String(params.stemName || "").toLowerCase();
+    if (!ADAPTIVE_STEM_NAMES.has(stemName)) {
+      return { ok: false, error: `stemName must be one of: ${[...ADAPTIVE_STEM_NAMES].join(", ")}` };
+    }
+    const decoded = decodeAudioDataUrl(params.audioDataUrl);
+    if (!decoded) {
+      return {
+        ok: false,
+        error: `audioDataUrl must be a base64 data: URL (audio/wav, mpeg, ogg, or flac, ≤${STEM_ARTIFACT_MAX_BYTES / (1024 * 1024)} MB)`,
+      };
+    }
+    const durationMs = Math.max(0, Math.round(muNum(params.durationMs, 0)));
+    const mood = muClean(params.mood, 40).toLowerCase() || null;
+    const title = muClean(params.title, 200) || `Stem: ${stemName}`;
+
+    ensureRouteArtifactsTable(db);
+
+    const dtuId = `dtu_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    const artifactId = crypto.randomUUID();
+    const fileName = `${stemName}-${dtuId}.${decoded.ext}`;
+
+    const inline = decoded.buf.length <= 1024 * 1024;
+    const contentB64 = inline ? decoded.buf.toString("base64") : null;
+    let storagePath = null;
+    if (!inline) {
+      // Same DATA_DIR convention as art-textures; stem files live under
+      // $DATA_DIR/lens-assets/music-stems/<stemName>/.
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const DATA_DIR = process.env.DATA_DIR
+        || (fs.existsSync("/workspace/concord-data") ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
+      const dir = path.join(DATA_DIR, "lens-assets", "music-stems", stemName);
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        storagePath = path.join(dir, fileName);
+        fs.writeFileSync(storagePath, decoded.buf);
+      } catch (err) {
+        return { ok: false, error: `failed to write stem file: ${err?.message || err}` };
+      }
+    }
+
+    const tagsArr = ["adaptive_music", `stem:${stemName}`, `creator:${userId}`];
+    if (mood) tagsArr.push(`mood:${mood}`);
+
+    try {
+      db.prepare(`
+        INSERT INTO route_artifacts (
+          artifact_id, dtu_id, name, mime_type, size_bytes,
+          storage_mode, content_b64, storage_path, created_by,
+          description, tags
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        artifactId, dtuId, fileName, decoded.mimeType, decoded.buf.length,
+        inline ? "inline" : "disk",
+        contentB64, storagePath, userId,
+        `Adaptive-music stem: ${stemName}`,
+        JSON.stringify(tagsArr),
+      );
+
+      db.prepare(`
+        INSERT INTO dtus (
+          id, owner_user_id, title, body_json, tags_json, visibility, tier
+        ) VALUES (?, ?, ?, ?, ?, ?, 'regular')
+      `).run(
+        dtuId, userId, title,
+        JSON.stringify({
+          type: "adaptive_stem",
+          stemName,
+          mood,
+          durationMs,
+          artifactId,
+          mimeType: decoded.mimeType,
+        }),
+        JSON.stringify(tagsArr),
+        "public",
+      );
+    } catch (err) {
+      // Roll back the file write so we don't leave orphans
+      if (storagePath) {
+        try { const fs = require("node:fs"); fs.unlinkSync(storagePath); } catch { /* idempotent */ }
+      }
+      return { ok: false, error: `failed to register stem: ${err?.message || err}` };
+    }
+
+    return {
+      ok: true,
+      result: {
+        dtuId,
+        artifactId,
+        stemName,
+        mood,
+        durationMs,
+        mimeType: decoded.mimeType,
+        sizeBytes: decoded.buf.length,
+        downloadUrl: `/api/artifacts/${artifactId}/download`,
+      },
+    };
+  });
+
+  // Discovery — list every adaptive-music stem currently published.
+  // Frontend AdaptiveMusicBridge calls this on mount to populate stems.
+  registerLensAction("music", "list-published-stems", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const wantStem = params.stemName
+      ? String(params.stemName).toLowerCase()
+      : null;
+    if (wantStem && !ADAPTIVE_STEM_NAMES.has(wantStem)) {
+      return { ok: false, error: `stemName must be one of: ${[...ADAPTIVE_STEM_NAMES].join(", ")}` };
+    }
+    const wantMood = params.mood
+      ? `mood:${String(params.mood).toLowerCase()}`
+      : null;
+
+    const rows = db.prepare(`
+      SELECT id, owner_user_id, title, body_json, tags_json, created_at
+      FROM dtus
+      WHERE tags_json LIKE '%adaptive_music%'
+        AND visibility != 'private'
+      ORDER BY created_at DESC
+      LIMIT 200
+    `).all();
+
+    const stems = [];
+    for (const row of rows) {
+      let tags = [];
+      let body = {};
+      try { tags = JSON.parse(row.tags_json || "[]"); } catch { continue; }
+      try { body = JSON.parse(row.body_json || "{}"); } catch { continue; }
+      if (!Array.isArray(tags) || !tags.includes("adaptive_music")) continue;
+      if (body?.type !== "adaptive_stem") continue;
+      const stemTag = tags.find((t) => typeof t === "string" && t.startsWith("stem:"));
+      const stemName = stemTag ? stemTag.slice(5) : null;
+      if (!stemName || !ADAPTIVE_STEM_NAMES.has(stemName)) continue;
+      if (wantStem && stemName !== wantStem) continue;
+      const moodTag = tags.find((t) => typeof t === "string" && t.startsWith("mood:"));
+      if (wantMood && moodTag !== wantMood) continue;
+      stems.push({
+        dtuId: row.id,
+        title: row.title,
+        ownerUserId: row.owner_user_id,
+        stemName,
+        mood: moodTag ? moodTag.slice(5) : null,
+        durationMs: typeof body?.durationMs === "number" ? body.durationMs : null,
+        artifactId: body?.artifactId ?? null,
+        mimeType: body?.mimeType ?? null,
+        downloadUrl: body?.artifactId ? `/api/artifacts/${body.artifactId}/download` : null,
+        createdAt: row.created_at,
+      });
+    }
+    return { ok: true, result: { stems, count: stems.length } };
   });
 }
