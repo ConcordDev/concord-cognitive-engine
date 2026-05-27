@@ -238,6 +238,44 @@ else
   WARNINGS+=("$(c_y "⚠ DB_PATH dir missing")  $DB_DIR — server will create at boot if parent is writable")
 fi
 
+# ── MMO sprint — content + flag parseability ──
+# Phase U2 — achievement catalog
+if [ -d "./content/achievements" ]; then
+  ACH_COUNT="$(ls ./content/achievements/*.json 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "$ACH_COUNT" -gt 0 ]; then
+    echo "$(c_g "✓ achievement catalog")  $ACH_COUNT JSON file(s)"
+  else
+    WARNINGS+=("$(c_y "⚠ content/achievements")  exists but is empty — achievement engine will boot with no triggers")
+  fi
+fi
+
+# Phase W — disease catalog
+if [ -d "./content/diseases" ]; then
+  DIS_COUNT="$(ls ./content/diseases/*.json 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "$DIS_COUNT" -gt 0 ]; then
+    echo "$(c_g "✓ disease catalog")  $DIS_COUNT JSON file(s)"
+    # Validate each parses.
+    for f in ./content/diseases/*.json; do
+      if ! node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" 2>/dev/null; then
+        ERRORS+=("$(c_r "✗ disease catalog")  $f is malformed JSON")
+      fi
+    done
+  else
+    WARNINGS+=("$(c_y "⚠ content/diseases")  exists but is empty — disease engine will boot with no diseases")
+  fi
+fi
+
+# Phase U-W kill switches — parseability.
+for FLAG in CONCORD_MAIL_ENABLED CONCORD_LFG_ENABLED CONCORD_AUCTION_HOUSE CONCORD_DISEASE_ENGINE CONCORD_INTOXICATION; do
+  VAL="${!FLAG:-}"
+  if [ -n "$VAL" ]; then
+    case "$VAL" in
+      true|false|0|1) echo "$(c_g "✓ $FLAG")  $VAL" ;;
+      *) ERRORS+=("$(c_r "✗ $FLAG")  must be true/false/0/1, got '$VAL'") ;;
+    esac
+  fi
+done
+
 # ── Summary ──
 echo
 if [ ${#WARNINGS[@]} -gt 0 ]; then

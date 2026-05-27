@@ -328,6 +328,17 @@ Previously-shipped follow-ons (kept for grep-back; these did land):
 
 ## Key Invariants
 
+- **MMO sprint invariants (Phase U-W):**
+  - **Mail attachments transfer is single-transaction.** `server/lib/player-mail.js#claimAttachments` runs COD walletDebit → walletCredit + DTU ownership transfer inside one `db.transaction(...)` call. Partial failures roll back; idempotent on already-claimed.
+  - **Auctions extend by 60s on snipe.** A bid landing in the final `CONCORD_AUCTION_SNIPE_WINDOW_S` seconds (default 60) pushes `ends_at` forward by `CONCORD_AUCTION_SNIPE_EXTEND_S` (default 60). The settlement heartbeat runs every ~1min; never settle an auction with `ends_at > now`.
+  - **Achievement unlocks are idempotent on `(user_id, achievement_id)`.** The PK collision in `INSERT INTO player_achievements ... ON CONFLICT DO NOTHING` means re-evaluating the same event is safe; reward CC + title are awarded only on the first INSERT.
+  - **Diseases never cross worlds.** Contagion radius spread uses `getPlayersInCell` (Phase M) scoped to the patient's current world. `player_diseases` rows don't replicate; immunity (`disease_immunity` table) is global per (user, disease).
+  - **Faction reputation is cached.** `player_faction_reputation_cache` (migration 218) is refreshed by the `faction-rep-cache-refresh` heartbeat (freq 60). Direct gameplay reads should call `getFactionReputation` which falls back to live `computeFactionReputation` when the cache is empty.
+  - **Title display goes through `friend-presence.resolveUserDisplay`.** Don't query `users.active_title_id` directly from the frontend — call `/api/friends/presence` or the equivalent helper that already joins the title.
+  - **Plague threshold is 0.15.** When >15% of a world's recent visitors have an active disease severity > 0.3, `world:plague-declared` fires. Resolves when ratio drops below 7.5%. Override via `CONCORD_PLAGUE_THRESHOLD`.
+  - **LFG cancels prior-open from same user in same world.** `postLfg` doesn't allow two concurrent requests in one world — the new post auto-cancels the old.
+  - **Party leadership transfers to earliest joiner** on leader leave; party disbands if 0 members remain. Leader-only actions: invite (on invite_only), kick, disband.
+
 - **Marketplace fees are hardcoded.**
   - DTU royalty-aware path (`/api/marketplace/purchaseWithRoyalties`): `creatorPool = price * 0.95`, `platformFee = price * 0.05` — 95% to creator pool.
   - Economic marketplace path (`/api/economic/marketplace/buy`): `MARKETPLACE_FEE: 0.04`, `CREATOR_SHARE: 0.70`, `ROYALTY_SHARE: 0.20`, `TREASURY_SHARE: 0.10`.

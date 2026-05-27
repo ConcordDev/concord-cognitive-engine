@@ -48049,6 +48049,22 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
   }
 });
 
+// ── Phase X2 — intoxication ─────────────────────────────────────────────
+
+app.post("/api/intoxication/drink", requireAuth(), asyncHandler(async (req, res) => {
+  if (process.env.CONCORD_INTOXICATION === "false") return res.status(503).json({ ok: false, error: "feature_disabled" });
+  const { drink } = await import("./lib/intoxication.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(drink(db, userId, req.body?.drinkStrength));
+}));
+
+app.get("/api/intoxication/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getBac, getTier } = await import("./lib/intoxication.js");
+  const userId = req.user?.id || req.user?.userId;
+  const bac = getBac(db, userId);
+  res.json({ ok: true, bac, tier: getTier(bac) });
+}));
+
 // ── Phase W — disease engine + medical profession + plague ─────────────
 
 app.get("/api/diseases/catalog", (req, res) => {
