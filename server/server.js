@@ -629,10 +629,24 @@ registerHeartbeat("land-claims-cycle", {
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
 // any per-NPC authoring. Kill-switch: CONCORD_PROCGEN_NPCS=0.
+// Phase H — this is now the BACKSTOP (long-cadence safety net); the
+// world-population-cycle below is the primary populator.
 import { runProceduralNpcSpawner } from "./emergent/procedural-npc-spawner.js";
 registerHeartbeat("procedural-npc-spawner", {
   frequency: 360,
   handler: runProceduralNpcSpawner,
+});
+
+// Phase H — world-population-cycle. Every 60 ticks (~15 min) per active
+// world, tops factions to loops.json#npcDensity.targetPerFaction with
+// archetype-need bias + bloodline linkage + deterministic-or-LLM
+// backstory. Scoped per-world so it runs inside each shard. Kill-switch:
+// CONCORD_PROCGEN_NPCS=0.
+import { runWorldPopulationCycle } from "./emergent/world-population-cycle.js";
+registerHeartbeat("world-population-cycle", {
+  frequency: 60,
+  scope: "world",
+  handler: runWorldPopulationCycle,
 });
 
 // Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
