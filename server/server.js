@@ -5819,6 +5819,9 @@ function authMiddleware(req, res, next) {
   // render "shard healthy / catching up / offline" — no PII, just shard
   // status (alive, lastTick, restartCount).
   if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/health$/.test(req.path) && !_hasAuthHeader) return next();
+  // Phase G — per-world flavor JSON (loops + climate + voice). Static
+  // content, no PII; world picker reads this anon to render flavor chips.
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/flavor$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -29802,6 +29805,7 @@ import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
+import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
@@ -29874,6 +29878,10 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Phase G — load per-world flavor JSONs (loops.json per sub-world).
+    // Loops + climate + skill ceilings + NPC density + world voice all
+    // resolve through this cache. Idempotent.
+    try { initWorldFlavors(); } catch (e) { console.warn("[world-flavor]", e.message); }
     // Concordia substrate seeder — populate npc_ancestry, actor_physique,
     // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
     // calculation paths get real values. Idempotent on every boot.
@@ -47766,6 +47774,24 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
       heartbeatPool: getHeartbeatPoolStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase G — per-world flavor (public-safe; static JSON, no PII).
+app.get("/api/worlds/:worldId/flavor", (req, res) => {
+  try {
+    const flavor = getWorldFlavor(req.params.worldId);
+    res.json({ ok: true, worldId: req.params.worldId, flavor });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/world-flavors", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({ ok: true, worlds: listAllFlavors(), generatedAt: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

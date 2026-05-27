@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "High-fantasy — all 14 loops on. Kingdoms decree, magic ceilings high, dense populations.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 4 },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": true, "frequency": 480 },
+    "npc-economy-cycle": { "enabled": true, "frequency": 8 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": true, "frequency": 16 },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 8 },
+    "procgen-settlement-cycle": { "enabled": true, "frequency": 240 },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 360 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 8 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 30 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 2 },
+    "world-population-cycle": { "enabled": true, "frequency": 60 }
+  },
+  "climate": {
+    "baseTemp": 16,
+    "humidity": 60,
+    "airQuality": 92,
+    "illumination": 0.95,
+    "structuralStress": 0,
+    "ambientDb": 40,
+    "weather": "temperate"
+  },
+  "factionStartState": {
+    "default": { "stance": "consolidate", "momentum": 0.0 }
+  },
+  "skillCeilings": {
+    "physical": 250, "fire": 300, "ice": 300, "water": 300,
+    "lightning": 300, "bio": 250, "energy": 300, "poison": 250
+  },
+  "npcDensity": {
+    "targetPerFaction": 100,
+    "max": 800,
+    "archetypeWeights": { "warrior": 1.2, "scholar": 1.1, "trader": 1.1, "mystic": 1.4, "guard": 1.1, "healer": 1.0, "hunter": 1.0 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.0, "scarcityBias": 0.05 },
+  "worldVoice": {
+    "tone": "high-fantasy archaic — 'thou', 'thee', formal address, proper nouns capitalised",
+    "vocabulary": ["mine liege", "thee", "thou", "the Realm", "the Wyrd", "by the Old Names", "well met"],
+    "avoid": ["modern slang", "tech jargon", "noir grit"],
+    "examples": [
+      "Well met, traveller. What service does thou seek of me?",
+      "By the Old Names, thy quest does not falter while I draw breath."
+    ]
+  }
+}

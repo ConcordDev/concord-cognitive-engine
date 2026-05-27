@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Concord-link-frontier — cross-world news + federation showcase. Sparse population (this is a meta-world for reading the news, not living in), federation poll runs at higher frequency.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 10 },
+    "signal-propagation-cycle": { "enabled": false },
+    "creature-flock-cycle": { "enabled": false },
+    "environment-sensor": { "enabled": true, "frequency": 30 },
+    "season-cycle": { "enabled": false },
+    "npc-economy-cycle": { "enabled": true, "frequency": 20 },
+    "land-claims-cycle": { "enabled": false },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 30 },
+    "procgen-settlement-cycle": { "enabled": false },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 600 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 30 },
+    "npc-scheme-cycle": { "enabled": false },
+    "war-skirmish-cycle": { "enabled": false },
+    "world-population-cycle": { "enabled": true, "frequency": 240 }
+  },
+  "climate": {
+    "baseTemp": 19,
+    "humidity": 50,
+    "airQuality": 95,
+    "illumination": 1.0,
+    "structuralStress": 0,
+    "ambientDb": 30,
+    "weather": "clear"
+  },
+  "factionStartState": {
+    "default": { "stance": "consolidate", "momentum": 0.0 }
+  },
+  "skillCeilings": {
+    "physical": 100, "fire": 100, "ice": 100, "water": 100,
+    "lightning": 100, "bio": 100, "energy": 100, "poison": 100
+  },
+  "npcDensity": {
+    "targetPerFaction": 15,
+    "max": 80,
+    "archetypeWeights": { "warrior": 0.3, "scholar": 1.8, "trader": 1.2, "mystic": 0.8, "guard": 0.5, "healer": 0.7, "hunter": 0.3 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.0, "scarcityBias": 0.0 },
+  "worldVoice": {
+    "tone": "journalistic, observational, references to 'the feeds' and 'cross-world'",
+    "vocabulary": ["the feed", "cross-world", "sources confirm", "reporting from", "the cipher", "lattice-link"],
+    "avoid": ["partisan tone", "world-specific slang"],
+    "examples": [
+      "The feed reports a faction shift in sovereign-ruins. We are gathering sources.",
+      "Cross-world citations are up this week. Whose work made the long jump?"
+    ]
+  }
+}

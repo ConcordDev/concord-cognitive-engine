@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Post-apocalyptic — low light, harsh stress, sparse population. No kingdoms, no full-scale war (just survival skirmishes). Schemes run hot.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 4 },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": true, "frequency": 720 },
+    "npc-economy-cycle": { "enabled": true, "frequency": 12 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 6 },
+    "procgen-settlement-cycle": { "enabled": true, "frequency": 480 },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 480 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 12 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 15 },
+    "war-skirmish-cycle": { "enabled": false },
+    "world-population-cycle": { "enabled": true, "frequency": 90 }
+  },
+  "climate": {
+    "baseTemp": 8,
+    "humidity": 40,
+    "airQuality": 50,
+    "illumination": 0.4,
+    "structuralStress": 0.2,
+    "ambientDb": 25,
+    "weather": "overcast-ashen"
+  },
+  "factionStartState": {
+    "default": { "stance": "isolation", "momentum": -0.2 }
+  },
+  "skillCeilings": {
+    "physical": 220, "fire": 100, "ice": 150, "water": 80,
+    "lightning": 120, "bio": 60, "energy": 100, "poison": 180
+  },
+  "npcDensity": {
+    "targetPerFaction": 30,
+    "max": 220,
+    "archetypeWeights": { "warrior": 1.2, "scholar": 0.5, "trader": 0.6, "mystic": 1.0, "guard": 0.8, "healer": 0.8, "hunter": 1.4 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.15, "scarcityBias": 0.4 },
+  "worldVoice": {
+    "tone": "grim, terse, references to 'before the silence' and 'after the breaking'",
+    "vocabulary": ["before the silence", "the breaking", "what's left", "still standing", "the long quiet"],
+    "avoid": ["cheerful greetings", "modern slang", "magical bombast"],
+    "examples": [
+      "You're still standing. That counts for something here.",
+      "Before the silence we had names for things. Now we have what's left."
+    ]
+  }
+}

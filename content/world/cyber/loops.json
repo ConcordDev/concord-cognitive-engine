@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Neon dystopia — high artificial illumination, no seasons, energy-magic dominant, schemes hot. Corp + hacker factions.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": false },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": false },
+    "npc-economy-cycle": { "enabled": true, "frequency": 6 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 6 },
+    "procgen-settlement-cycle": { "enabled": false },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 300 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 8 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 12 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 4 },
+    "world-population-cycle": { "enabled": true, "frequency": 60 }
+  },
+  "climate": {
+    "baseTemp": 18,
+    "humidity": 50,
+    "airQuality": 55,
+    "illumination": 1.3,
+    "structuralStress": 0.1,
+    "ambientDb": 70,
+    "weather": "neon-night"
+  },
+  "factionStartState": {
+    "default": { "stance": "expand", "momentum": 0.3 }
+  },
+  "skillCeilings": {
+    "physical": 200, "fire": 100, "ice": 80, "water": 60,
+    "lightning": 250, "bio": 50, "energy": 300, "poison": 150
+  },
+  "npcDensity": {
+    "targetPerFaction": 100,
+    "max": 800,
+    "archetypeWeights": { "warrior": 0.8, "scholar": 1.5, "trader": 1.3, "mystic": 0.5, "guard": 1.1, "healer": 0.7, "hunter": 0.7 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.1, "scarcityBias": 0.1 },
+  "worldVoice": {
+    "tone": "corp-speak laced with hacker slang, transactional, dystopian undertone",
+    "vocabulary": ["asset", "leverage", "the net", "uplink", "the corps", "ICE", "burned", "ghost-runner", "quarterly"],
+    "avoid": ["archaic terms", "rural metaphors", "magical bombast"],
+    "examples": [
+      "Quarterly's coming up. The board likes assets who deliver. You delivering, friend?",
+      "Heard you got burned uptown. Want a clean uplink, you talk to me, nobody else."
+    ]
+  }
+}

@@ -26,6 +26,16 @@
 // per-world dispatch).
 
 import logger from "../logger.js";
+// Phase G — per-world flavor lookup. Used by the dispatcher to skip
+// modules that loops.json has disabled for the current world (only
+// meaningful when ctx.worldId is set, i.e. inside a world shard).
+let _isLoopEnabledForWorld = null;
+let _getLoopFrequencyForWorld = null;
+try {
+  const wf = await import("../lib/world-flavor.js");
+  _isLoopEnabledForWorld = wf.isLoopEnabledForWorld;
+  _getLoopFrequencyForWorld = wf.getLoopFrequencyForWorld;
+} catch { /* flavor lib optional — pre-Phase-G builds fall back to "enabled" */ }
 
 /**
  * @typedef {Object} RegistryEntry
@@ -95,10 +105,17 @@ export async function tickAllRegistered(ctx) {
   const parallel = [];
   const serial = [];
 
+  const worldId = ctx?.worldId ?? null;
   for (const entry of REGISTRY.values()) {
-    if (tickCount % entry.frequency !== 0) continue;
+    // Phase G — per-world frequency override (loops.json#loops.<id>.frequency).
+    const effectiveFreq = (worldId && _getLoopFrequencyForWorld)
+      ? (_getLoopFrequencyForWorld(worldId, entry.id) ?? entry.frequency)
+      : entry.frequency;
+    if (tickCount % effectiveFreq !== 0) continue;
     if (!entry.neverDisable && disabled.has(entry.id)) continue;
     if (filterScope !== "all" && entry.scope !== filterScope) continue;
+    // Phase G — per-world enable flag.
+    if (worldId && _isLoopEnabledForWorld && !_isLoopEnabledForWorld(worldId, entry.id)) continue;
     (entry.serial ? serial : parallel).push(entry);
   }
 
