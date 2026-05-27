@@ -778,6 +778,16 @@ registerHeartbeat("nemesis-cycle", {
   handler: runNemesisCycle,
 });
 
+// Phase AG: ambient chat retention sweep. Every 60 ticks (~15 min) drops
+// expired messages so the district feed self-cleans. Scope global — one
+// table, no per-world isolation needed.
+import { sweepExpiredAmbientChat } from "./lib/ambient-chat.js";
+registerHeartbeat("ambient-chat-sweep", {
+  frequency: 60,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => sweepExpiredAmbientChat(ctxDb || db),
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
@@ -5948,6 +5958,8 @@ function authMiddleware(req, res, next) {
     // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
     "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state", "/api/combat/frame-data",
+    // Ambient chat — public read (district feed); post requires auth.
+    "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
@@ -48292,6 +48304,31 @@ app.get("/api/auctions/buy-orders", asyncHandler(async (req, res) => {
       limit: Number(req.query.limit) || 50,
     }),
   });
+}));
+
+// ── Phase AG — district ambient chat (co-presence) ─────────────────────
+
+app.post("/api/ambient-chat/post", requireAuth(), asyncHandler(async (req, res) => {
+  const { postAmbientMessage } = await import("./lib/ambient-chat.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { worldId, districtId, body } = req.body || {};
+  const r = postAmbientMessage(db, { userId, worldId, districtId, body });
+  if (r.ok) {
+    try {
+      // Per-district room fan-out.
+      realtimeEmit?.(`world:${worldId}:district:${districtId}:ambient`, {
+        id: r.id, userId, body: r.body, postedAt: Math.floor(Date.now() / 1000),
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/ambient-chat/list", asyncHandler(async (req, res) => {
+  const { listRecentInDistrict } = await import("./lib/ambient-chat.js");
+  const { worldId, districtId } = req.query;
+  if (!worldId || !districtId) return res.status(400).json({ ok: false, error: "missing_params" });
+  res.json({ ok: true, messages: listRecentInDistrict(db, worldId, districtId, { limit: Number(req.query.limit) || 15 }) });
 }));
 
 // ── Phase U6 — world markers (wire migration 188) ───────────────────────

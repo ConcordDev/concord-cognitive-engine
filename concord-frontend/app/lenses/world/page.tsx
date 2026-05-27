@@ -119,6 +119,13 @@ const VillageGossipFeed = dynamic(
     })),
   { ssr: false }
 );
+const AmbientChatPanel = dynamic(
+  () =>
+    import('@/components/world/AmbientChatPanel').then((m) => ({
+      default: m.AmbientChatPanel,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4697,6 +4704,13 @@ export default function WorldLensPage() {
 
           {/* Phase AB — village gossip (NPC↔NPC graph escalations) */}
           <VillageGossipFeed worldId={activeDistrict.id} />
+
+          {/* Phase AG — district ambient chat (co-presence) */}
+          <AmbientChatPanel
+            worldId={activeDistrict.id}
+            districtId={activeDistrict.id}
+            currentUserId={playerAvatar.id}
+          />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
