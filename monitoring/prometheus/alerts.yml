@@ -101,6 +101,35 @@ groups:
           summary: "Heartbeat module {{ $labels.module }} timing out"
           description: "Module {{ $labels.module }} exceeded MODULE_TIMEOUT_MS (default 30s) and was cancelled at the dispatcher boundary. Sustained timeouts indicate a deadlock or runaway external dependency."
 
+      - alert: ConcordWorldShardStuck
+        expr: rate(concord_world_shard_stuck_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "World shard {{ $labels.world }} unresponsive"
+          description: "World shard for {{ $labels.world }} stopped responding to ticks. The manager will attempt restart-with-backoff (Phase I). If this fires repeatedly, the per-world heartbeat is wedged."
+
+      - alert: ConcordWorldShardCantSpawn
+        expr: rate(concord_world_shard_spawn_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cannot spawn world shard for {{ $labels.world }}"
+          description: "Worker thread spawn failed > 0.1/sec — players cannot travel to {{ $labels.world }}. Inspect logs for worker_construct_failed."
+
+      - alert: ConcordWorldDensityLow
+        expr: |
+          (concord_world_npc_count{} < concord_world_npc_target{} * 0.5)
+          and (concord_world_npc_target{} > 0)
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "World {{ $labels.world }} NPC density below 50% of target"
+          description: "world-population-cycle is not keeping up. Inspect the cycle's logs for failures or LLM-throttling."
+
       - alert: ConcordSyntheticCheckFailing
         expr: concord_synthetic_check_pass == 0
         for: 2m

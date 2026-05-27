@@ -175,6 +175,59 @@ if [ -n "${MAX_OLD_SPACE_SIZE:-}" ]; then
   fi
 fi
 
+# ── Phase G — per-world flavor files ──
+# Every authored sub-world must have a valid loops.json so the heartbeat
+# dispatcher's per-world filtering doesn't fall back to "all loops on"
+# silently. Missing or malformed files surface as warnings (not errors)
+# because the engine still works with the defaults — but the operator
+# should know the per-world tuning isn't taking effect.
+WORLD_DIR="${CONCORD_WORLD_DIR:-./content/world}"
+if [ -d "$WORLD_DIR" ]; then
+  EXPECTED_WORLDS=(concordia-hub tunya sovereign-ruins crime cyber superhero fantasy lattice-crucible)
+  for w in "${EXPECTED_WORLDS[@]}"; do
+    if [ ! -f "$WORLD_DIR/$w/loops.json" ]; then
+      WARNINGS+=("$(c_y "⚠ loops.json missing")  for world '$w' — Phase G flavor will fall back to defaults")
+    elif ! node -e "JSON.parse(require('fs').readFileSync('$WORLD_DIR/$w/loops.json','utf8'))" 2>/dev/null; then
+      ERRORS+=("$(c_r "✗ loops.json malformed")  for world '$w' — invalid JSON")
+    fi
+  done
+fi
+
+# ── Phase D — multi-endpoint brain URL parseability ──
+for B in CONSCIOUS SUBCONSCIOUS UTILITY REPAIR VISION; do
+  PLURAL_VAR="BRAIN_${B}_URLS"
+  if [ -n "${!PLURAL_VAR:-}" ]; then
+    # comma-separated, each must look like http(s)://...
+    OK=1
+    IFS=',' read -ra ARR <<< "${!PLURAL_VAR}"
+    for url in "${ARR[@]}"; do
+      url_trim="$(echo "$url" | xargs)"
+      if ! echo "$url_trim" | grep -qE '^https?://[^/]+'; then
+        OK=0
+        ERRORS+=("$(c_r "✗ $PLURAL_VAR")  contains invalid URL: '$url_trim'")
+      fi
+    done
+    [ "$OK" = "1" ] && echo "$(c_g "✓ $PLURAL_VAR")  $(echo "${!PLURAL_VAR}" | tr ',' '\n' | wc -l | tr -d ' ') endpoint(s)"
+  fi
+done
+
+# ── Phase I — sharding kill-switch parseability ──
+if [ -n "${CONCORD_SHARD_WORLDS:-}" ]; then
+  case "$CONCORD_SHARD_WORLDS" in
+    true|false|0|1) echo "$(c_g "✓ CONCORD_SHARD_WORLDS")  ${CONCORD_SHARD_WORLDS}" ;;
+    *) ERRORS+=("$(c_r "✗ CONCORD_SHARD_WORLDS")  must be true/false/0/1, got '$CONCORD_SHARD_WORLDS'") ;;
+  esac
+fi
+
+# ── Phase C — heartbeat pool size sanity (warn if cpus < pool + 2) ──
+if [ -n "${CONCORD_HEARTBEAT_POOL_SIZE:-}" ]; then
+  POOL="$CONCORD_HEARTBEAT_POOL_SIZE"
+  CPUS="$(nproc 2>/dev/null || echo 4)"
+  if [ "$CPUS" -lt "$((POOL + 2))" ]; then
+    WARNINGS+=("$(c_y "⚠ CONCORD_HEARTBEAT_POOL_SIZE")  is $POOL but only $CPUS vCPU available — workers will starve main thread; reduce to ≤ $((CPUS - 2))")
+  fi
+fi
+
 # ── Database path writable ──
 DB_DIR="$(dirname "${DB_PATH:-./server/data/concord.db}")"
 if [ -d "$DB_DIR" ] && [ -w "$DB_DIR" ]; then

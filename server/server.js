@@ -6517,6 +6517,37 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // Phase L — world-shard / NPC density observability.
+    METRICS.counters.worldShardStuck = new prom.Counter({
+      name: "concord_world_shard_stuck_total",
+      help: "World shards that stopped responding (Phase I)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.counters.worldShardSpawnFailed = new prom.Counter({
+      name: "concord_world_shard_spawn_failed_total",
+      help: "World shard spawn failures (Phase I)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldShardActiveCount = new prom.Gauge({
+      name: "concord_world_shard_active_count",
+      help: "Currently-active world shards (Phase I on-demand)",
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldNpcCount = new prom.Gauge({
+      name: "concord_world_npc_count",
+      help: "Living NPC count per world (Phase H density)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldNpcTarget = new prom.Gauge({
+      name: "concord_world_npc_target",
+      help: "Target NPC count per world (loops.json#npcDensity)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+
     // Phase C — heartbeat worker pool utilisation. Mirrors the macro-pool
     // shape so operator UI can render both pools with the same widget.
     METRICS.gauges.heartbeatWorkerPoolSize = new prom.Gauge({
@@ -6548,6 +6579,11 @@ async function initMetrics() {
       heartbeatWorkerPoolSize: METRICS.gauges.heartbeatWorkerPoolSize,
       heartbeatWorkerPoolBusy: METRICS.gauges.heartbeatWorkerPoolBusy,
       heartbeatWorkerPoolQueueLen: METRICS.gauges.heartbeatWorkerPoolQueueLen,
+      worldShardStuck: METRICS.counters.worldShardStuck,
+      worldShardSpawnFailed: METRICS.counters.worldShardSpawnFailed,
+      worldShardActiveCount: METRICS.gauges.worldShardActiveCount,
+      worldNpcCount: METRICS.gauges.worldNpcCount,
+      worldNpcTarget: METRICS.gauges.worldNpcTarget,
     };
 
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
@@ -6580,6 +6616,34 @@ setInterval(() => {
     METRICS.gauges.dtuCount.set(_realCount);
   }
   if (METRICS.gauges.activeConnections) METRICS.gauges.activeConnections.set(REALTIME.clients?.size || 0);
+
+  // Phase L — per-world density gauges. Cheap query, only fires every 30s.
+  try {
+    if (METRICS.gauges.worldNpcCount) {
+      const rows = db.prepare(`
+        SELECT world_id, COUNT(*) AS n FROM world_npcs
+        WHERE COALESCE(is_dead, 0) = 0
+        GROUP BY world_id
+      `).all();
+      for (const r of rows) {
+        METRICS.gauges.worldNpcCount.set({ world: r.world_id || "concordia-hub" }, Number(r.n) || 0);
+      }
+    }
+    if (METRICS.gauges.worldNpcTarget) {
+      // Pulled from loops.json#npcDensity.targetPerFaction × ~5 factions/world.
+      const flavors = listAllFlavors();
+      for (const f of flavors) {
+        if (f.npcDensityTarget != null) {
+          METRICS.gauges.worldNpcTarget.set({ world: f.worldId }, f.npcDensityTarget * 5);
+        }
+      }
+    }
+    if (METRICS.gauges.worldShardActiveCount) {
+      const shardHealth = getShardHealth();
+      const active = Array.isArray(shardHealth) ? shardHealth.filter(s => s.status === "ready" || s.status === "catching-up").length : 0;
+      METRICS.gauges.worldShardActiveCount.set(active);
+    }
+  } catch { /* density gauges best-effort */ }
 }, 30_000);
 
 // ---- Backup & Restore ----
