@@ -192,6 +192,24 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase V1 — auction settler (~1min cadence). Auctions whose ends_at
+// passed get settled: winner gets the item, seller gets payout minus
+// 5% platform fee.
+registerHeartbeat("auction-settler", {
+  frequency: 4,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_AUCTION_HOUSE === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/auctions.js");
+      return mod.sweepEndedAuctions(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "settle_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase U6 — world markers cleanup (~60min cadence). Expired markers
 // are deleted to keep query cost bounded.
 registerHeartbeat("world-markers-cleanup", {
@@ -5764,6 +5782,9 @@ function authMiddleware(req, res, next) {
     "/api/achievements/recent",
     // Phase U5 — LFG board is public-read (anon browse before login).
     "/api/lfg/open",
+    // Phase V1 — auction list + detail public-read so anon can browse.
+    "/api/auctions/active",
+    "/api/auctions/",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -47960,6 +47981,44 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase V1 — auction house ────────────────────────────────────────────
+
+app.post("/api/auctions", requireAuth(), asyncHandler(async (req, res) => {
+  const { createAuction } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(createAuction(db, userId, req.body || {}));
+}));
+
+app.post("/api/auctions/:auctionId/bid", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeBid } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeBid(db, req.params.auctionId, userId, req.body?.amountCc);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:bid-placed", { auctionId: req.params.auctionId, bidderUserId: userId, amountCc: r.bid, endsAt: r.endsAt });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/:auctionId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelAuction } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelAuction(db, req.params.auctionId, userId));
+}));
+
+app.get("/api/auctions/active", asyncHandler(async (req, res) => {
+  const { listActiveAuctions } = await import("./lib/auctions.js");
+  res.json({ ok: true, auctions: listActiveAuctions(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
+  const { getAuction } = await import("./lib/auctions.js");
+  const a = getAuction(db, req.params.auctionId);
+  if (!a) return res.status(404).json({ ok: false, error: "no_auction" });
+  res.json({ ok: true, auction: a });
+}));
 
 // ── Phase U6 — world markers (wire migration 188) ───────────────────────
 
