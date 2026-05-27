@@ -29973,6 +29973,10 @@ app.use("/api/settlement", createSettlementRouter({ db, requireAuth }));
 import createTutorialSecondCycleRouter from "./routes/tutorial-second-cycle.js";
 app.use("/api/tutorial", createTutorialSecondCycleRouter({ db, requireAuth }));
 
+// Wave C / C2 — generation-spanning play. Heir succession + lineage.
+import createDynastyRouter from "./routes/dynasty.js";
+app.use("/api/dynasty", createDynastyRouter({ db, requireAuth }));
+
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
 app.use("/api/training-match", createTrainingMatchRouter({ db, requireAuth, emitToUser }));

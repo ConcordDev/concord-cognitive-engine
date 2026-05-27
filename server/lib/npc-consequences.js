@@ -137,9 +137,51 @@ export async function triggerNPCDeath(db, npcId, killerId, realtimeEmit) {
     isCreature: typeof npc.archetype === 'string' && npc.archetype.startsWith('creature:'),
   });
 
+  // ── Wave C / C1: long-arc consequence cascades ────────────────────
+  // Detect the kind of kill and schedule the corresponding cascade.
+  // Only player kills trigger cascades — NPC-on-NPC death is handled
+  // by the existing family-grief cascade above.
+  try {
+    if (killerId && !String(killerId).startsWith?.('npc:')) {
+      const triggerKind = _classifyKill(npc);
+      if (triggerKind) {
+        const { fire } = await import("./consequence-cascades.js");
+        const r = fire(db, triggerKind, {
+          source:  { kind: 'npc_death', id: npcId },
+          target:  { kind: 'user',      id: killerId },
+          worldId: npc.world_id,
+          actorUserId: killerId,
+          victimNpcId: npcId,
+          factionId: npc.faction ?? null,
+          location: { x: npc.x ?? 0, z: npc.z ?? 0 },
+          meta: { archetype: npc.archetype, name: _npcName(npc) },
+        });
+        if (r?.ok) consequence.cascadeIds = r.scheduledIds;
+      }
+    }
+  } catch (err) {
+    logger.warn('npc-consequences', 'cascade_failed', { npcId, error: err?.message });
+  }
+
   logger.info('npc-consequences', 'npc_died', { npcId, worldId: npc.world_id, killer: killerId, archetype: npc.archetype });
 
   return { died: true, migrated: false, consequence };
+}
+
+/**
+ * Detect what kind of cascade a kill should trigger. Returns one of the
+ * CASCADE_TEMPLATES keys, or null when the kill is unremarkable.
+ *
+ *   royal_kill     — archetype matches king/queen/ruler/monarch/sovereign
+ *   mass_atrocity  — placeholder; caller passes this directly when
+ *                    aggregating mass-civilian kills
+ *   betrayal       — placeholder; caller passes this directly when an
+ *                    ally is killed
+ */
+function _classifyKill(npc) {
+  const a = String(npc.archetype || '').toLowerCase();
+  if (/king|queen|ruler|monarch|sovereign|emperor|empress|matriarch|patriarch/.test(a)) return 'royal_kill';
+  return null;
 }
 
 // ── Disrepair Tick ────────────────────────────────────────────────────

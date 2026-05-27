@@ -55,7 +55,7 @@ export default async function handleSchemeReveal(db, consequence) {
   try {
     if (plotterKind === "npc") {
       const delta = phase === "exposed" ? -25 : -10; // exposure is worse
-      const { recordOpinionEvent } = await import("../npc-relations.js");
+      const { recordOpinionEvent } = await import("../npc-opinions.js");
       if (recordOpinionEvent) {
         recordOpinionEvent(db, { npcId: plotterId, targetKind, targetId },
           delta, `scheme_${phase}_${kind}`);
