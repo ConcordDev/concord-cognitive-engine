@@ -251,6 +251,7 @@ export default function ConcordiaScene({
   const lootCleanupRef = useRef<(() => void) | null>(null);
   const deathVfxCleanupRef = useRef<(() => void) | null>(null);
   const dungeonEntrancesCleanupRef = useRef<(() => void) | null>(null);
+  const dungeonInteriorRef = useRef<{ setActive: (id: string | null) => Promise<void>; dispose: () => void } | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -773,6 +774,21 @@ export default function ConcordiaScene({
           scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
           { worldId: 'concordia-hub' },
         );
+      } catch { /* best-effort */ }
+
+      // ── Dungeon interior renderer (Wave F follow-up) ────────────
+      // Builds a full procedural dungeon mesh group at the active
+      // dungeon's underground anchor (Y = -100). The DungeonPanel
+      // fires concordia:dungeon-interior-enter / -exit; world page
+      // forwards the dungeonId via window.__concordSetDungeonInterior.
+      try {
+        const { attachDungeonInterior } = await import('@/lib/world-lens/dungeon-interior');
+        dungeonInteriorRef.current = attachDungeonInterior(
+          scene as unknown as { add: (m: unknown) => void; remove: (m: unknown) => void },
+        );
+        // Expose globally so the world page can drive it.
+        (globalThis as unknown as { __concordSetDungeonInterior?: (id: string | null) => void })
+          .__concordSetDungeonInterior = (id) => { void dungeonInteriorRef.current?.setActive(id); };
       } catch { /* best-effort */ }
 
       // ── Clock & Raycaster ───────────────────────────────────────
@@ -1360,6 +1376,10 @@ export default function ConcordiaScene({
       deathVfxCleanupRef.current = null;
       try { dungeonEntrancesCleanupRef.current?.(); } catch { /* ignore */ }
       dungeonEntrancesCleanupRef.current = null;
+      try { dungeonInteriorRef.current?.dispose(); } catch { /* ignore */ }
+      dungeonInteriorRef.current = null;
+      try { delete (globalThis as unknown as { __concordSetDungeonInterior?: unknown }).__concordSetDungeonInterior; }
+      catch { /* ignore */ }
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

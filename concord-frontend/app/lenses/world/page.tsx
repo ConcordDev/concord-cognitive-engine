@@ -2523,6 +2523,47 @@ export default function WorldLensPage() {
     };
   }, []);
 
+  // Wave F follow-up — listen for dungeon interior enter/exit events.
+  // Mount the procedural interior mesh, teleport the avatar to the
+  // entrance (Y = -100 underground); exit removes the mesh + restores
+  // the previous overworld position.
+  useEffect(() => {
+    let savedOverworldPos: { x: number; y: number; z: number } | null = null;
+
+    const onEnter = (e: Event) => {
+      const ce = e as CustomEvent<{ dungeonId: string; anchorX: number; anchorZ: number; entranceX: number; entranceZ: number }>;
+      if (!ce.detail?.dungeonId) return;
+      const setter = (globalThis as unknown as { __concordSetDungeonInterior?: (id: string | null) => void })
+        .__concordSetDungeonInterior;
+      if (!setter) return;
+      void setter(ce.detail.dungeonId);
+      setPlayerAvatar((prev) => {
+        savedOverworldPos = { ...prev.position };
+        return {
+          ...prev,
+          // Underground (Y = -100) at the entrance room's coordinates.
+          position: { x: ce.detail.entranceX, y: -100, z: ce.detail.entranceZ },
+        };
+      });
+    };
+    const onExit = () => {
+      const setter = (globalThis as unknown as { __concordSetDungeonInterior?: (id: string | null) => void })
+        .__concordSetDungeonInterior;
+      if (setter) void setter(null);
+      if (savedOverworldPos) {
+        const pos = savedOverworldPos;
+        setPlayerAvatar((prev) => ({ ...prev, position: pos }));
+        savedOverworldPos = null;
+      }
+    };
+    window.addEventListener('concordia:dungeon-interior-enter', onEnter as EventListener);
+    window.addEventListener('concordia:dungeon-interior-exit',  onExit  as EventListener);
+    return () => {
+      window.removeEventListener('concordia:dungeon-interior-enter', onEnter as EventListener);
+      window.removeEventListener('concordia:dungeon-interior-exit',  onExit  as EventListener);
+    };
+  }, []);
+
   // E key: portal entry OR nearest NPC dialogue (portal takes priority)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

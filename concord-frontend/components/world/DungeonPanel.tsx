@@ -95,6 +95,7 @@ export default function DungeonPanel({ dungeonId, worldId = 'concordia-hub', onC
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [insideInterior, setInsideInterior] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -168,6 +169,41 @@ export default function DungeonPanel({ dungeonId, worldId = 'concordia-hub', onC
     } finally { setBusy(false); }
   }, [busy, dungeon, dungeonId, refresh]);
 
+  // Wave F follow-up — toggle 3D interior. Dispatches
+  // `concordia:dungeon-interior-enter` / `…-exit` events the world
+  // page listens for to teleport the player avatar into the
+  // procedural interior at Y = -100.
+  const toggleInterior = useCallback(() => {
+    if (!dungeon) return;
+    if (insideInterior) {
+      window.dispatchEvent(new CustomEvent('concordia:dungeon-interior-exit', { detail: { dungeonId } }));
+      setInsideInterior(false);
+    } else {
+      const entrance = dungeon.rooms.find((r) => r.room_idx === 0);
+      window.dispatchEvent(new CustomEvent('concordia:dungeon-interior-enter', {
+        detail: {
+          dungeonId,
+          anchorX: dungeon.anchor_x,
+          anchorZ: dungeon.anchor_z,
+          entranceX: entrance ? entrance.x : dungeon.anchor_x,
+          entranceZ: entrance ? entrance.z : dungeon.anchor_z,
+        },
+      }));
+      setInsideInterior(true);
+    }
+  }, [dungeon, dungeonId, insideInterior]);
+
+  // If the panel unmounts, make sure we exit interior mode.
+  useEffect(() => {
+    return () => {
+      if (insideInterior) {
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:dungeon-interior-exit', { detail: { dungeonId } }));
+        } catch { /* ok */ }
+      }
+    };
+  }, [insideInterior, dungeonId]);
+
   const layout = useMemo(() => {
     if (!dungeon?.rooms?.length) return null;
     // Compute bounds.
@@ -210,7 +246,22 @@ export default function DungeonPanel({ dungeonId, worldId = 'concordia-hub', onC
             </div>
             {theme && <div className="text-[10px] text-slate-500 italic mt-0.5">{theme.mood}</div>}
           </div>
-          {onClose && <button onClick={onClose} className="text-slate-400 hover:text-white text-sm">✕  Esc</button>}
+          <div className="flex items-center gap-2">
+            {dungeon && (
+              <button
+                onClick={toggleInterior}
+                className={`text-[10px] uppercase tracking-wider px-3 py-1.5 rounded transition-colors ${
+                  insideInterior
+                    ? 'bg-rose-500/30 text-rose-200 hover:bg-rose-500/40'
+                    : 'bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30'
+                }`}
+                title={insideInterior ? 'Return to overworld' : 'Walk inside in 3D'}
+              >
+                {insideInterior ? 'Exit Interior' : 'Enter Interior'}
+              </button>
+            )}
+            {onClose && <button onClick={onClose} className="text-slate-400 hover:text-white text-sm">✕  Esc</button>}
+          </div>
         </div>
 
         {error && <div className="text-xs text-red-300 mb-2">{error}</div>}
