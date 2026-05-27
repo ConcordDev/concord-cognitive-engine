@@ -1,0 +1,63 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "economy",
+  "achievements": [
+    {
+      "id": "first_dtu",
+      "title": "First DTU",
+      "description": "Create your first DTU.",
+      "rarity": "bronze",
+      "icon": "FileText",
+      "rewardCc": 10,
+      "triggers": [{ "kind": "event", "event": "dtu:created", "condition": {} }]
+    },
+    {
+      "id": "first_sale",
+      "title": "First Sale",
+      "description": "Sell a DTU on the marketplace.",
+      "rarity": "bronze",
+      "icon": "ShoppingCart",
+      "rewardCc": 20,
+      "triggers": [{ "kind": "event", "event": "marketplace:sold", "condition": {} }]
+    },
+    {
+      "id": "creator",
+      "title": "Creator",
+      "description": "Create 25 DTUs.",
+      "rarity": "silver",
+      "icon": "Sparkles",
+      "rewardCc": 100,
+      "rewardTitle": "the Maker",
+      "triggers": [{ "kind": "stat", "stat": "dtus_created", "threshold": 25 }]
+    },
+    {
+      "id": "dtu_promoted",
+      "title": "Memetic Influence",
+      "description": "Have one of your DTUs promoted to MEGA tier.",
+      "rarity": "gold",
+      "icon": "TrendingUp",
+      "rewardCc": 150,
+      "rewardTitle": "the Influential",
+      "triggers": [{ "kind": "event", "event": "dtu:promoted", "condition": { "tier": "mega_dtu" } }]
+    },
+    {
+      "id": "auction_winner",
+      "title": "Going, Going, Gone",
+      "description": "Win an auction.",
+      "rarity": "silver",
+      "icon": "Gavel",
+      "rewardCc": 50,
+      "triggers": [{ "kind": "event", "event": "auction:settled", "condition": { "outcome": "won" } }]
+    },
+    {
+      "id": "merchant",
+      "title": "Merchant",
+      "description": "Earn 10,000 CC in lifetime sales.",
+      "rarity": "gold",
+      "icon": "Coins",
+      "rewardCc": 500,
+      "rewardTitle": "the Merchant",
+      "triggers": [{ "kind": "stat", "stat": "lifetime_sales_cc", "threshold": 10000 }]
+    }
+  ]
+}

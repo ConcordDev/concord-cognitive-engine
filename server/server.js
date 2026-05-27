@@ -5710,6 +5710,9 @@ function authMiddleware(req, res, next) {
     // Phase Q + S — UGC world list + active tournaments are public-safe.
     "/api/foundry/worlds",
     "/api/tournaments/active",
+    // Phase U2 — achievement catalog + recent unlocks are public-read.
+    "/api/achievements/catalog",
+    "/api/achievements/recent",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -7345,6 +7348,13 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
   // Sprint 8 — expose realtimeEmit globally so emergent modules can
   // route activity broadcasts without a circular import. Cheap stash.
   globalThis._concordRealtimeEmit = realtimeEmit;
+
+  // Phase U2 — achievement bridge intercepts every emit and dispatches
+  // matching events into the achievement engine. Best-effort; never
+  // blocks the emit path.
+  try {
+    bridgeRealtimeEvent?.(event, enrichedPayload);
+  } catch { /* bridge optional */ }
 
   // Sprint 8 — unified timeline persistence. Every emit also lands in
   // event_timeline_log so the /lenses/timeline lens has a queryable
@@ -29915,6 +29925,8 @@ import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
 import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
+import { initAchievementCatalog, listEarned as listEarnedAchievements, listRecent as listRecentAchievements, listCatalog as listAchievementCatalog } from "./lib/achievement-engine.js";
+import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-bridge.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
@@ -29991,6 +30003,13 @@ if (db) {
     // Loops + climate + skill ceilings + NPC density + world voice all
     // resolve through this cache. Idempotent.
     try { initWorldFlavors(); } catch (e) { console.warn("[world-flavor]", e.message); }
+    // Phase U2 — achievement catalog from content/achievements/*.json
+    // persisted to achievement_catalog. Bridge subscribes to realtimeEmit.
+    try {
+      const r = initAchievementCatalog(db);
+      initAchievementBridge(db);
+      console.log("[achievement-engine] catalog loaded:", r.count);
+    } catch (e) { console.warn("[achievement-engine]", e.message); }
     // Concordia substrate seeder — populate npc_ancestry, actor_physique,
     // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
     // calculation paths get real values. Idempotent on every boot.
@@ -47883,6 +47902,34 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
       heartbeatPool: getHeartbeatPoolStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── Phase U2 — achievements ─────────────────────────────────────────────
+
+app.get("/api/achievements/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, earned: listEarnedAchievements(db, userId) });
+}));
+
+app.get("/api/achievements/catalog", (req, res) => {
+  try {
+    const catalog = listAchievementCatalog().map(a => ({
+      id: a.id, title: a.title, description: a.description,
+      category: a.category, icon: a.icon, rarity: a.rarity,
+      hidden: !!a.hidden, rewardCc: a.rewardCc || 0, rewardTitle: a.rewardTitle || null,
+    }));
+    res.json({ ok: true, catalog });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/achievements/recent", (req, res) => {
+  try {
+    res.json({ ok: true, recent: listRecentAchievements(db, { limit: Number(req.query.limit) || 50 }) });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }

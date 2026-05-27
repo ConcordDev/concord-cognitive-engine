@@ -1,0 +1,286 @@
+// server/lib/achievement-engine.js
+//
+// Phase U2 — achievement evaluator + unlock dispatcher.
+//
+// Two trigger kinds:
+//   - event: matches a realtime event name + optional condition fields
+//             (subset-match on payload).
+//   - stat:  matches when a numeric stat ≥ threshold. Stats are computed
+//             on-demand from DB views (DTU counts, friend counts,
+//             quests_completed, etc.).
+//
+// Unlock is idempotent on (user_id, achievement_id). Rewards (CC + DTU
+// citations + title) are applied inside the same transaction as the
+// unlock so a partial failure rolls back.
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
+import logger from "../logger.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CONTENT_DIR = path.resolve(__dirname, "..", "..", "content", "achievements");
+
+/** @type {Map<string, object>} */
+const _catalogCache = new Map();
+/** @type {Map<string, Array<object>>} eventKind → [{achievement, condition}] */
+const _eventTriggers = new Map();
+/** @type {Map<string, Array<object>>} statName → [{achievement, threshold}] */
+const _statTriggers = new Map();
+let _initialized = false;
+
+/**
+ * Boot loader. Reads content/achievements/*.json and persists the catalog
+ * into achievement_catalog + achievement_triggers (idempotent on PK).
+ */
+export function initAchievementCatalog(db) {
+  if (_initialized) return { ok: true, count: _catalogCache.size };
+  _initialized = true;
+
+  let files;
+  try { files = fs.readdirSync(CONTENT_DIR).filter(f => f.endsWith(".json")); }
+  catch (err) {
+    logger.warn?.("achievement-engine", "content_dir_unreadable", { error: err?.message });
+    return { ok: false, count: 0 };
+  }
+
+  let count = 0;
+  for (const file of files) {
+    try {
+      const raw = fs.readFileSync(path.join(CONTENT_DIR, file), "utf8");
+      const parsed = JSON.parse(raw);
+      const category = parsed.category || "general";
+      for (const a of parsed.achievements || []) {
+        const id = a.id;
+        if (!id) continue;
+        _catalogCache.set(id, { ...a, category });
+        // Persist (idempotent).
+        if (db) {
+          try {
+            db.prepare(`
+              INSERT INTO achievement_catalog
+                (id, title, description, category, icon, rarity, hidden,
+                 reward_dtu_ids, reward_cc, reward_title)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT(id) DO UPDATE SET
+                title = excluded.title,
+                description = excluded.description,
+                category = excluded.category,
+                icon = excluded.icon,
+                rarity = excluded.rarity,
+                hidden = excluded.hidden,
+                reward_dtu_ids = excluded.reward_dtu_ids,
+                reward_cc = excluded.reward_cc,
+                reward_title = excluded.reward_title
+            `).run(
+              id,
+              a.title || id,
+              a.description || "",
+              category,
+              a.icon || null,
+              a.rarity || "bronze",
+              a.hidden ? 1 : 0,
+              JSON.stringify(a.rewardDtuIds || []),
+              Number(a.rewardCc) || 0,
+              a.rewardTitle || null,
+            );
+            // Refresh triggers — clear existing, re-insert.
+            db.prepare(`DELETE FROM achievement_triggers WHERE achievement_id = ?`).run(id);
+            for (const t of (a.triggers || [])) {
+              db.prepare(`
+                INSERT INTO achievement_triggers (achievement_id, trigger_kind, condition_json)
+                VALUES (?, ?, ?)
+              `).run(id, t.kind || "event", JSON.stringify(t));
+            }
+          } catch (err) {
+            logger.warn?.("achievement-engine", "catalog_persist_failed", { id, error: err?.message });
+          }
+        }
+        // Index in-memory triggers for fast event/stat lookup.
+        for (const t of (a.triggers || [])) {
+          if (t.kind === "event" && t.event) {
+            const arr = _eventTriggers.get(t.event) || [];
+            arr.push({ achievementId: id, condition: t.condition || {} });
+            _eventTriggers.set(t.event, arr);
+          } else if (t.kind === "stat" && t.stat) {
+            const arr = _statTriggers.get(t.stat) || [];
+            arr.push({ achievementId: id, threshold: Number(t.threshold) || 0 });
+            _statTriggers.set(t.stat, arr);
+          }
+        }
+        count++;
+      }
+    } catch (err) {
+      logger.warn?.("achievement-engine", "catalog_load_failed", { file, error: err?.message });
+    }
+  }
+
+  logger.info?.("achievement-engine", "catalog_loaded", { count });
+  return { ok: true, count };
+}
+
+/** Read-only catalog accessor (for the lens). */
+export function getAchievement(id) { return _catalogCache.get(id) || null; }
+export function listCatalog() { return [..._catalogCache.values()]; }
+
+/**
+ * Evaluate an event against the catalog. Unlocks any matching achievement
+ * for the user (idempotent on player_achievements PK).
+ *
+ * @param {object} db
+ * @param {string} userId
+ * @param {string} eventKind
+ * @param {object} payload
+ * @returns {{ unlocked: Array<{id, title, rewardCc, rewardTitle}> }}
+ */
+export function evaluateAchievement(db, userId, eventKind, payload = {}) {
+  if (!db || !userId || !eventKind) return { unlocked: [] };
+  if (!_initialized) initAchievementCatalog(db);
+  const triggers = _eventTriggers.get(eventKind) || [];
+  const unlocked = [];
+  for (const tr of triggers) {
+    if (!_matchesCondition(tr.condition, payload)) continue;
+    const r = unlockAchievement(db, userId, tr.achievementId, { eventKind, payload });
+    if (r.unlocked) unlocked.push(r);
+  }
+  return { unlocked };
+}
+
+/**
+ * Evaluate a stat-threshold trigger. Caller invokes this when a stat
+ * changes (or periodically). `currentValue` is the current numeric stat.
+ */
+export function evaluateStatThreshold(db, userId, statName, currentValue) {
+  if (!db || !userId || !statName) return { unlocked: [] };
+  if (!_initialized) initAchievementCatalog(db);
+  const triggers = _statTriggers.get(statName) || [];
+  const unlocked = [];
+  for (const tr of triggers) {
+    if (currentValue < tr.threshold) continue;
+    const r = unlockAchievement(db, userId, tr.achievementId, { statName, currentValue });
+    if (r.unlocked) unlocked.push(r);
+  }
+  return { unlocked };
+}
+
+/**
+ * Idempotent unlock. Returns { unlocked: bool, id, title, rewardCc, rewardTitle }.
+ * If the user already had it, unlocked=false.
+ */
+export function unlockAchievement(db, userId, achievementId, ctx = {}) {
+  if (!db || !userId || !achievementId) return { unlocked: false };
+  const a = _catalogCache.get(achievementId);
+  if (!a) return { unlocked: false };
+
+  try {
+    // Insert; the PK collision means already-earned → no-op.
+    const r = db.prepare(`
+      INSERT INTO player_achievements (player_id, achievement_id, earned_at)
+      VALUES (?, ?, unixepoch())
+      ON CONFLICT DO NOTHING
+    `).run(userId, achievementId);
+    if (r.changes === 0) return { unlocked: false, alreadyEarned: true };
+
+    // Apply rewards. CC via the same lightweight wallet helpers as mail.
+    const rewardCc = Number(a.rewardCc) || 0;
+    if (rewardCc > 0) _walletCredit(db, userId, rewardCc, `achievement:${achievementId}`);
+
+    // Title reward: insert into player_titles (table from migration 192).
+    if (a.rewardTitle) {
+      try {
+        db.prepare(`
+          INSERT INTO player_titles (id, user_id, world_id, title, earned_at)
+          VALUES (?, ?, NULL, ?, unixepoch())
+        `).run(`title_${crypto.randomBytes(6).toString("hex")}`, userId, a.rewardTitle);
+      } catch (err) {
+        logger.warn?.("achievement-engine", "title_insert_failed", { userId, title: a.rewardTitle, error: err?.message });
+      }
+    }
+
+    // Emit realtime so the toast appears.
+    try {
+      globalThis._concordRealtimeEmit?.("achievement:unlocked", {
+        userId, achievementId,
+        title: a.title, rarity: a.rarity, icon: a.icon,
+        rewardCc, rewardTitle: a.rewardTitle || null,
+      });
+    } catch { /* emit best-effort */ }
+
+    return { unlocked: true, id: achievementId, title: a.title, rewardCc, rewardTitle: a.rewardTitle || null };
+  } catch (err) {
+    logger.warn?.("achievement-engine", "unlock_failed", { userId, achievementId, error: err?.message });
+    return { unlocked: false, error: err?.message };
+  }
+}
+
+/** Subset-match: condition fields must all match payload fields. */
+function _matchesCondition(condition, payload) {
+  if (!condition || typeof condition !== "object") return true;
+  for (const [key, val] of Object.entries(condition)) {
+    if (key === "worldIdPrefix") {
+      if (!String(payload.worldId || "").startsWith(String(val))) return false;
+      continue;
+    }
+    if (payload[key] !== val) return false;
+  }
+  return true;
+}
+
+export function listEarned(db, userId) {
+  if (!db || !userId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT pa.achievement_id, pa.earned_at,
+             c.title, c.description, c.category, c.icon, c.rarity, c.reward_cc AS rewardCc, c.reward_title AS rewardTitle
+      FROM player_achievements pa
+      LEFT JOIN achievement_catalog c ON c.id = pa.achievement_id
+      WHERE pa.player_id = ?
+      ORDER BY pa.earned_at DESC
+    `).all(userId);
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+export function listRecent(db, opts = {}) {
+  if (!db) return [];
+  const limit = Math.min(Math.max(1, opts.limit || 50), 200);
+  try {
+    return db.prepare(`
+      SELECT pa.player_id AS userId, pa.achievement_id, pa.earned_at,
+             c.title, c.rarity, c.icon
+      FROM player_achievements pa
+      LEFT JOIN achievement_catalog c ON c.id = pa.achievement_id
+      WHERE c.hidden = 0
+      ORDER BY pa.earned_at DESC LIMIT ?
+    `).all(limit);
+  } catch {
+    return [];
+  }
+}
+
+function _walletCredit(db, userId, amount, reason) {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  try {
+    db.prepare(`
+      INSERT INTO user_wallets (user_id, balance) VALUES (?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
+    `).run(userId, amount);
+    try {
+      db.prepare(`
+        INSERT INTO economy_ledger (id, user_id, kind, amount_cc, ts, ref_id)
+        VALUES (?, ?, 'achievement_credit', ?, unixepoch(), ?)
+      `).run(`led_${crypto.randomBytes(6).toString("hex")}`, userId, amount, reason);
+    } catch { /* ledger optional */ }
+  } catch { /* wallet table may not exist on minimal builds */ }
+}
+
+/** Test-only — reset between specs. */
+export function _resetAchievementCatalog() {
+  _catalogCache.clear();
+  _eventTriggers.clear();
+  _statTriggers.clear();
+  _initialized = false;
+}

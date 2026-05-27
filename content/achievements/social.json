@@ -1,0 +1,62 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "social",
+  "achievements": [
+    {
+      "id": "first_friend",
+      "title": "First Friend",
+      "description": "Make your first friend.",
+      "rarity": "bronze",
+      "icon": "UserPlus",
+      "rewardCc": 10,
+      "triggers": [{ "kind": "event", "event": "friend:request-accepted", "condition": {} }]
+    },
+    {
+      "id": "socialite",
+      "title": "Socialite",
+      "description": "Have 25 accepted friends.",
+      "rarity": "silver",
+      "icon": "Users",
+      "rewardCc": 100,
+      "triggers": [{ "kind": "stat", "stat": "friend_count", "threshold": 25 }]
+    },
+    {
+      "id": "mailman",
+      "title": "Postal Carrier",
+      "description": "Send 50 pieces of mail.",
+      "rarity": "silver",
+      "icon": "Mail",
+      "rewardCc": 50,
+      "triggers": [{ "kind": "stat", "stat": "mail_sent", "threshold": 50 }]
+    },
+    {
+      "id": "party_animal",
+      "title": "Party Animal",
+      "description": "Lead a party of 8.",
+      "rarity": "silver",
+      "icon": "PartyPopper",
+      "rewardCc": 75,
+      "triggers": [{ "kind": "event", "event": "party:full", "condition": { "size": 8 } }]
+    },
+    {
+      "id": "matchmaker",
+      "title": "Matchmaker",
+      "description": "Successfully match 10 LFG requests.",
+      "rarity": "gold",
+      "icon": "Heart",
+      "rewardCc": 150,
+      "rewardTitle": "the Matchmaker",
+      "triggers": [{ "kind": "stat", "stat": "lfg_matches_made", "threshold": 10 }]
+    },
+    {
+      "id": "married",
+      "title": "Vows Exchanged",
+      "description": "Get married in a Concordian wedding.",
+      "rarity": "gold",
+      "icon": "HeartHandshake",
+      "rewardCc": 200,
+      "rewardTitle": "the Wedded",
+      "triggers": [{ "kind": "event", "event": "marriage:ceremony", "condition": {} }]
+    }
+  ]
+}

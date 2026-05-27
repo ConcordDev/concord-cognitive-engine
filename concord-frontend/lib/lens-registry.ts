@@ -2613,6 +2613,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
   },
   {
+    id: 'achievements',
+    name: 'Achievements',
+    icon: Trophy,
+    description: 'Your earned achievements + the catalog of what\'s available.',
+    category: 'progression',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/achievements',
+    order: 16,
+    keywords: ['achievement', 'achievements', 'trophy', 'unlock', 'rewards'],
+  },
+  {
     id: 'mail',
     name: 'Mail',
     icon: Mail,

@@ -44,6 +44,7 @@ import FactionOverlay from '@/components/world/FactionOverlay';
 import WorldShareButton from '@/components/world/WorldShareButton';
 import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
 import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
+import { AchievementToast } from '@/components/world/AchievementToast';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -5735,6 +5736,9 @@ export default function WorldLensPage() {
 
       {/* Meet-up flow — friends list + presence + join/invite buttons. */}
       <FriendsPresencePanel myWorldId={currentWorldId} />
+
+      {/* Phase U2 — achievement unlock toast (top-right). */}
+      <AchievementToast />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

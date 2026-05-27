@@ -1,0 +1,92 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "mastery",
+  "achievements": [
+    {
+      "id": "first_quest",
+      "title": "Quest Begun",
+      "description": "Complete your first quest.",
+      "rarity": "bronze",
+      "icon": "ScrollText",
+      "rewardCc": 15,
+      "triggers": [{ "kind": "event", "event": "quest:completed", "condition": {} }]
+    },
+    {
+      "id": "quest_master",
+      "title": "Quest Master",
+      "description": "Complete 100 quests.",
+      "rarity": "gold",
+      "icon": "BookOpen",
+      "rewardCc": 500,
+      "rewardTitle": "the Questbreaker",
+      "triggers": [{ "kind": "stat", "stat": "quests_completed", "threshold": 100 }]
+    },
+    {
+      "id": "first_cure",
+      "title": "Healer",
+      "description": "Cure your first patient.",
+      "rarity": "bronze",
+      "icon": "Heart",
+      "rewardCc": 20,
+      "triggers": [{ "kind": "event", "event": "disease:cured", "condition": { "byOther": true } }]
+    },
+    {
+      "id": "plague_breaker",
+      "title": "Plague Breaker",
+      "description": "End a plague event.",
+      "rarity": "legendary",
+      "icon": "ShieldPlus",
+      "rewardCc": 1000,
+      "rewardTitle": "the Plaguebreaker",
+      "hidden": true,
+      "triggers": [{ "kind": "event", "event": "plague:resolved", "condition": {} }]
+    },
+    {
+      "id": "skill_50",
+      "title": "Adept",
+      "description": "Reach level 50 in any skill.",
+      "rarity": "silver",
+      "icon": "Star",
+      "rewardCc": 100,
+      "triggers": [{ "kind": "stat", "stat": "max_skill_level", "threshold": 50 }]
+    },
+    {
+      "id": "skill_evolved",
+      "title": "Path-Walker",
+      "description": "Evolve a skill to gen-2.",
+      "rarity": "gold",
+      "icon": "Sparkles",
+      "rewardCc": 250,
+      "rewardTitle": "the Evolved",
+      "triggers": [{ "kind": "event", "event": "skill:evolved", "condition": {} }]
+    },
+    {
+      "id": "faction_honored",
+      "title": "Honored Ally",
+      "description": "Reach Honored reputation with any faction.",
+      "rarity": "silver",
+      "icon": "Award",
+      "rewardCc": 100,
+      "triggers": [{ "kind": "stat", "stat": "highest_faction_rep_tier", "threshold": 4 }]
+    },
+    {
+      "id": "exalted",
+      "title": "Exalted",
+      "description": "Reach Exalted reputation with any faction.",
+      "rarity": "legendary",
+      "icon": "Crown",
+      "rewardCc": 1000,
+      "rewardTitle": "the Exalted",
+      "triggers": [{ "kind": "stat", "stat": "highest_faction_rep_tier", "threshold": 5 }]
+    },
+    {
+      "id": "ai_resident_owner",
+      "title": "Mentor of Minds",
+      "description": "Deploy your first AI resident.",
+      "rarity": "silver",
+      "icon": "Bot",
+      "rewardCc": 50,
+      "triggers": [{ "kind": "event", "event": "resident:deployed", "condition": {} }]
+    }
+  ]
+}
