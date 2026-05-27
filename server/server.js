@@ -192,6 +192,23 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase U1 — mail expiry sweep (~2h cadence). Expired mail refunds
+// attachments to the sender; stays in outbox history as 'expired'.
+registerHeartbeat("mail-expiry-sweep", {
+  frequency: 480,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_MAIL_ENABLED === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/player-mail.js");
+      return mod.sweepExpiredMail(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
 // Presence stale-entry sweep. Socket disconnect handlers
 // (server.js:7112, 7120) prune `_userPositions` on the happy path, but
 // crash-recovery / never-cleanly-disconnected sockets leave entries
@@ -47870,6 +47887,57 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase U1 — async player-to-player mail (WoW-style) ──────────────────
+//
+// Distinct from social.js#sendMessage (in-memory instant DM): survives
+// logout, supports DTU + CC attachments + COD. 30-day TTL with sweep.
+
+app.post("/api/mail/send", requireAuth(), asyncHandler(async (req, res) => {
+  const { sendMail } = await import("./lib/player-mail.js");
+  const fromUserId = req.user?.id || req.user?.userId;
+  const r = sendMail(db, { ...req.body, fromUserId });
+  if (r.ok) {
+    try {
+      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId });
+    } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/mail/inbox", requireAuth(), asyncHandler(async (req, res) => {
+  const { listInbox } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, mail: listInbox(db, userId, { status: req.query.status, limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/mail/sent", requireAuth(), asyncHandler(async (req, res) => {
+  const { listSent } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, mail: listSent(db, userId, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/mail/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMail } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const mail = getMail(db, req.params.id, userId);
+  if (!mail) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, mail });
+}));
+
+app.post("/api/mail/:id/read", requireAuth(), asyncHandler(async (req, res) => {
+  const { readMail } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = readMail(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/mail/:id/claim", requireAuth(), asyncHandler(async (req, res) => {
+  const { claimAttachments } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = claimAttachments(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
 
 // ── Meet-up flow — friends + presence + invites ─────────────────────────
 //

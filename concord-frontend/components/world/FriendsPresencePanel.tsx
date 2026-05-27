@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check } from 'lucide-react';
+import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check, Mail } from 'lucide-react';
 import { useWorldTravel, ACTIVE_WORLD_KEY } from '@/hooks/useWorldTravel';
 
 interface FriendPresence {
@@ -271,32 +271,38 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
                           </span>
                         )}
                       </div>
-                      {f.online && (
-                        <div className="mt-1 flex gap-1">
-                          {f.worldId && f.worldId !== myWorldId && (
-                            <button
-                              type="button"
-                              onClick={() => handleJoinFriend(f)}
-                              disabled={busy === `join-${f.friendUserId}`}
-                              className="flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-40"
-                            >
-                              <ChevronRight className="h-3 w-3" />
-                              Join {f.worldId.replace(/-/g, ' ')}
-                            </button>
-                          )}
-                          {myWorldId && (
-                            <button
-                              type="button"
-                              onClick={() => handleInviteToMyWorld(f)}
-                              disabled={busy === `invite-${f.friendUserId}`}
-                              className="flex items-center gap-1 rounded bg-fuchsia-500/20 px-2 py-0.5 text-[10px] text-fuchsia-200 hover:bg-fuchsia-500/30 disabled:opacity-40"
-                            >
-                              <Send className="h-3 w-3" />
-                              Invite here
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {f.online && f.worldId && f.worldId !== myWorldId && (
+                          <button
+                            type="button"
+                            onClick={() => handleJoinFriend(f)}
+                            disabled={busy === `join-${f.friendUserId}`}
+                            className="flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-40"
+                          >
+                            <ChevronRight className="h-3 w-3" />
+                            Join {f.worldId.replace(/-/g, ' ')}
+                          </button>
+                        )}
+                        {f.online && myWorldId && (
+                          <button
+                            type="button"
+                            onClick={() => handleInviteToMyWorld(f)}
+                            disabled={busy === `invite-${f.friendUserId}`}
+                            className="flex items-center gap-1 rounded bg-fuchsia-500/20 px-2 py-0.5 text-[10px] text-fuchsia-200 hover:bg-fuchsia-500/30 disabled:opacity-40"
+                          >
+                            <Send className="h-3 w-3" />
+                            Invite here
+                          </button>
+                        )}
+                        {/* Mail works whether the friend is online or offline. */}
+                        <a
+                          href={`/lenses/mail?to=${encodeURIComponent(f.friendUserId)}`}
+                          className="flex items-center gap-1 rounded bg-slate-700/40 px-2 py-0.5 text-[10px] text-slate-200 hover:bg-slate-600/40"
+                        >
+                          <Mail className="h-3 w-3" />
+                          Mail
+                        </a>
+                      </div>
                     </div>
                   ))}
               </div>
