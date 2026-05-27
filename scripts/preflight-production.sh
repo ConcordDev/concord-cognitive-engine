@@ -276,6 +276,17 @@ for FLAG in CONCORD_MAIL_ENABLED CONCORD_LFG_ENABLED CONCORD_AUCTION_HOUSE CONCO
   fi
 done
 
+# Phase AA-AG kill switches.
+for FLAG in CONCORD_NEMESIS_CYCLE CONCORD_QUEST_DIALOGUE_LLM CONCORD_AMBIENT_CHAT_ENABLED; do
+  VAL="${!FLAG:-}"
+  if [ -n "$VAL" ]; then
+    case "$VAL" in
+      true|false|0|1) echo "$(c_g "✓ $FLAG")  $VAL" ;;
+      *) ERRORS+=("$(c_r "✗ $FLAG")  must be true/false/0/1, got '$VAL'") ;;
+    esac
+  fi
+done
+
 # ── Summary ──
 echo
 if [ ${#WARNINGS[@]} -gt 0 ]; then
