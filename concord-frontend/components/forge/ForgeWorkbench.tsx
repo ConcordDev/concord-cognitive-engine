@@ -23,10 +23,11 @@ import {
   Cpu, Database, Lock, CreditCard, Globe, Wifi, Clock,
   Layers, TestTube, Rocket, Heart, Settings, Plus,
   FileCode, AlertTriangle, Eye, Copy, Loader2,
-  Zap,
+  Zap, Upload,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { PublishForgeAppDialog } from './PublishForgeAppDialog';
 
 // ── Section icon mapping ────────────────────────────────────────────────
 const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string; size?: number | string }>> = {
@@ -104,11 +105,13 @@ export function ForgeWorkbench() {
   const [newTableName, setNewTableName] = useState('');
   const [enabledSections, setEnabledSections] = useState<string[] | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [generationManifest, setGenerationManifest] = useState<Record<string, unknown> | null>(null);
   const [activePanel, setActivePanel] = useState<'config' | 'preview' | 'sections'>('config');
   const [previewSection, setPreviewSection] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [jwtSecret, setJwtSecret] = useState('');
   const [stripeKey, setStripeKey] = useState('');
+  const [publishOpen, setPublishOpen] = useState(false);
 
   // ── Queries ─────────────────────────────────────────────────────────
   const { data: templatesData } = useQuery({
@@ -159,6 +162,12 @@ export function ForgeWorkbench() {
     onSuccess: (data) => {
       if (data.ok) {
         setGeneratedCode(data.code);
+        setGenerationManifest({
+          sections: data.sections,
+          config: data.config,
+          template: data.template,
+          stats: data.stats,
+        });
         setActivePanel('preview');
       }
     },
@@ -278,6 +287,9 @@ export function ForgeWorkbench() {
               </button>
               <button onClick={handleDownload} className="p-2 rounded-lg hover:bg-lattice-elevated text-orange-400" title="Download .mjs file">
                 <Download className="w-4 h-4" />
+              </button>
+              <button onClick={() => setPublishOpen(true)} className="p-2 rounded-lg hover:bg-lattice-elevated text-violet-300" title="Publish as DTU + list on marketplace">
+                <Upload className="w-4 h-4" />
               </button>
             </>
           )}
@@ -664,6 +676,15 @@ export function ForgeWorkbench() {
           </div>
         )}
       </div>
+      {publishOpen && generatedCode && (
+        <PublishForgeAppDialog
+          templateId={selectedTemplate}
+          appName={appName}
+          sourceCode={generatedCode}
+          manifest={generationManifest}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
     </div>
   );
 }
