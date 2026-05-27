@@ -48396,6 +48396,28 @@ app.post("/api/housing/:houseId/visit", requireAuth(), asyncHandler(async (req, 
   res.status(r.ok ? 200 : 403).json(r);
 }));
 
+// ── Phase BA3 — dye / cosmetic overrides ───────────────────────────────
+
+app.post("/api/cosmetics/dye", requireAuth(), asyncHandler(async (req, res) => {
+  const { setDye } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { avatarId, slot, channel, colorHex } = req.body || {};
+  res.json(setDye(db, userId, avatarId, slot, channel, colorHex));
+}));
+
+app.post("/api/cosmetics/dye/remove", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeDye } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { avatarId, slot, channel } = req.body || {};
+  res.json(removeDye(db, userId, avatarId, slot, channel));
+}));
+
+app.get("/api/cosmetics/overrides", requireAuth(), asyncHandler(async (req, res) => {
+  const { getOverrides } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, overrides: getOverrides(db, userId, req.query.avatarId) });
+}));
+
 app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {
   try {
     const houses = db.prepare(`
