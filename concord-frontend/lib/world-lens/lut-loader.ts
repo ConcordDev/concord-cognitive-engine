@@ -1,5 +1,13 @@
 /**
- * LUT (.cube) loader + 3D-LUT ShaderPass.
+ * LUT (.cube) loader + 3D-LUT ShaderPass — SUBSTRATE PLAYER.
+ *
+ * This is the runtime consumer for color-grading LUTs produced by the
+ * `art` lens. An art-lens-authored LUT DTU drops into public/luts/ (or
+ * resolves via /api/evo-asset/resolve when registered with
+ * source='authored', kind='lut') and plugs into this loader without
+ * shader recompile. Marketplace canon votes pick the "official"
+ * per-biome / per-time-of-day grade; royalty cascade tracks every
+ * derivative.
  *
  * Parses Adobe .cube LUT files (industry standard for cinematic color
  * grading) into a 3D texture, then renders a ShaderPass that samples

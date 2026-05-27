@@ -1,17 +1,23 @@
 /**
- * Procedural PBR texture generator.
+ * Procedural PBR texture generator — SUBSTRATE FALLBACK (tier 3).
+ *
+ * This is the always-available floor under Concord's procedural-hand-
+ * authored content engine. Player-produced texture DTUs from the `art`
+ * lens (tier 1) and CC0 packs in public/textures/ (tier 2) override
+ * the canvas synthesis here per-channel via the unified pbr-loader.
  *
  * Canvas-based synthesis of albedo / normal / roughness / AO maps for
  * 8 material kinds: stone, wood, brick, cloth, metal, leather, thatch,
  * dirt. Each kind has a distinct procedural signature so the result
  * reads as "stylized PBR" — far better than flat-colour Lambert, not
- * AAA photoreal.
- *
- * Authored CC0 textures dropped into public/textures/<kind>/ override
- * the procedural output via the pbr-loader unified API.
+ * AAA photoreal. Marketplace canon votes + LLaVA aesthetic validation
+ * are how the engine converges on better-than-this; this module is
+ * the catalog floor that never has to be authored.
  *
  * Performance: textures are cached per (kind, seed, size); 512×512
  * default, drops to 256 on low quality.
+ *
+ * See: lib/world-lens/pbr-loader.ts for the tier resolution order.
  */
 
 import type * as THREE_NS from 'three';

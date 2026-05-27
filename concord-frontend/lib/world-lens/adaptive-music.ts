@@ -1,16 +1,22 @@
 /**
- * Adaptive vertical-layer music state machine.
+ * Adaptive vertical-layer music state machine — SUBSTRATE FALLBACK.
+ *
+ * This is the runtime player for music DTUs produced by Concord's
+ * `music` lens (DAW + session view). Until a community-authored stem
+ * lands for a given mood (ambient_bed / tension_pad / combat_drum /
+ * revelation_strings), a per-stem procedural Web Audio oscillator
+ * fills the slot so the world is never silent. Authored DTUs swap in
+ * transparently via `loadStem(name, AudioBuffer)`; royalty cascade
+ * tracks every derivative.
+ *
+ * Per CLAUDE.md "Music DTU → soundscape" the community-curated
+ * playlist path is already wired server-side; this state machine is
+ * the *adaptive* layer that crossfades between four stems based on
+ * combat / tension / revelation / exploration state.
  *
  * Four stems play simultaneously, each with an independent gain. The
- * caller drives a state (combat, tension, revelation, exploration); the
- * state machine eases the gains toward configured targets per stem
- * per state over a smooth crossfade window.
- *
- * Stems are loaded as AudioBuffers and looped continuously. A stem that
- * isn't loaded plays its procedural Web Audio fallback so the system
- * always produces sound even without authored music. Real authored
- * tracks (community DAW DTUs, Suno/Udio output, etc.) drop in via the
- * `loadStem(name, urlOrBuffer)` API and immediately take over.
+ * caller drives a state vector; the machine eases gains toward
+ * per-state targets over a smooth crossfade window.
  *
  * Crossfades are computed in linear gain space (perceptually that's
  * "equal-power" enough at low gain deltas for 4 layered stems).

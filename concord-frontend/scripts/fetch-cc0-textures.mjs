@@ -1,11 +1,29 @@
 #!/usr/bin/env node
 /**
- * fetch-cc0-textures — pulls a curated CC0 PBR texture pack into
- * public/textures/<kind>/ so the unified PBR loader uses authored
- * maps over the procedural fallback.
+ * fetch-cc0-textures — DEPRECATED / OPTIONAL escape hatch.
  *
- * Opt-in only — does NOT run on `npm install` or `npm run build`. Run
- * once per repo when you want the photoreal upgrade:
+ * ⚠️  Before running this, prefer Concord's own content engine:
+ *
+ *     art lens → texture DTU → evo_assets (kind='texture')
+ *                            → resolved at runtime via
+ *                              GET /api/evo-asset/resolve
+ *                            → consumed by pbr-loader.ts
+ *
+ * Player-authored textures flow through that pipeline with full
+ * royalty-cascade lineage tracking; LLaVA validates aesthetic
+ * consistency; evo-asset scheduler refines on the heartbeat tick;
+ * marketplace votes canon. That's the actual content treadmill.
+ *
+ * This script is a one-shot bootstrap that pulls a curated CC0
+ * material pack from AmbientCG into public/textures/<kind>/ — useful
+ * when (a) the lens engine hasn't yet produced any texture DTU for a
+ * given material kind, AND (b) the procedural fallback in
+ * procedural-texture.ts is too stylized for a particular scene.
+ *
+ * If you're reaching for this script as a default, you're probably
+ * sidestepping the content engine. The substrate is designed so that
+ * authored DTUs > CC0 pack > procedural fallback, in that priority
+ * order, automatically. See lib/world-lens/pbr-loader.ts.
  *
  *     node scripts/fetch-cc0-textures.mjs
  *

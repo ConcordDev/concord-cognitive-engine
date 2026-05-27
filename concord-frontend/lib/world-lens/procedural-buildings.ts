@@ -111,13 +111,21 @@ export const SILHOUETTE_BIAS: Record<ArchitectureStyle, {
 const materialCache = new Map<string, THREE_NS.MeshStandardMaterial>();
 
 /**
- * Visual-polish wave 9 — per-slot PBR texture overlay.
+ * Per-slot PBR texture overlay — 3-tier resolution wired through the
+ * procedural-hand-authored content engine:
  *
- * The procedural-texture module ships in-memory canvas textures keyed
- * by (kind, seed, size); we look them up synchronously and bind them
- * to the building material when present. Authored CC0 textures land
- * via the unified pbr-loader (which is async); when those land they
- * replace via setMaterialPBR() below.
+ *   tier 1  art-lens DTU (canonical, royalty-tracked, marketplace canon)
+ *           via /api/evo-asset/resolve?source=authored&sourceId=material:<kind>:<seed>
+ *   tier 2  CC0 fetched pack at public/textures/<kind>/ (one-shot bootstrap)
+ *   tier 3  procedural canvas fallback (always available, deterministic)
+ *
+ * Synchronous path: we bind procedural textures immediately so the
+ * mesh has *some* PBR maps from frame 1. Asynchronous tier-1 / tier-2
+ * lookups via pbr-loader run in the background and swap in over the
+ * existing channels as they resolve — the substrate gets richer over
+ * time as the lens engine produces authored DTUs without any code
+ * change here. See lib/world-lens/pbr-loader.ts for the resolution
+ * order + caching.
  */
 function getMaterial(
   THREE: typeof THREE_NS,
@@ -132,7 +140,7 @@ function getMaterial(
     pbrSeed?: number;
   },
 ) {
-  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}:${opts?.pbrKind ?? ""}`;
+  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}:${opts?.pbrKind ?? ""}:${opts?.pbrSeed ?? ""}`;
   let m = materialCache.get(cacheKey);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
@@ -143,6 +151,7 @@ function getMaterial(
       emissiveIntensity: opts?.emissiveIntensity ?? 0,
     });
     if (opts?.pbrKind) {
+      // ── Tier 3 (synchronous): bind procedural so we have maps now ──
       try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { makePBR } = require('./procedural-texture') as typeof import('./procedural-texture');
@@ -152,6 +161,29 @@ function getMaterial(
         m.roughnessMap = set.roughness;
         m.aoMap = set.ao;
       } catch { /* procedural texture optional */ }
+
+      // ── Tier 1/2 (async): swap in lens-DTU / CC0 channels as they
+      // resolve. We don't await — the material is usable immediately,
+      // and the better-quality channels arrive in a later frame. The
+      // pbr-loader caches per (kind, seed) so spawning N buildings of
+      // the same archetype incurs one resolve, not N.
+      const upgradeMat = m;
+      const matchedKind = opts.pbrKind;
+      const matchedSeed = opts.pbrSeed ?? 1;
+      Promise.resolve()
+        .then(async () => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { loadPBR } = require('./pbr-loader') as typeof import('./pbr-loader');
+          const set = await loadPBR(THREE, matchedKind, { seed: matchedSeed });
+          // Only swap channels whose identity changed — procedural
+          // tier-3 textures are reused as a fallback floor.
+          if (upgradeMat.map        !== set.albedo)    upgradeMat.map        = set.albedo;
+          if (upgradeMat.normalMap  !== set.normal)    upgradeMat.normalMap  = set.normal;
+          if (upgradeMat.roughnessMap !== set.roughness) upgradeMat.roughnessMap = set.roughness;
+          if (upgradeMat.aoMap      !== set.ao)        upgradeMat.aoMap      = set.ao;
+          upgradeMat.needsUpdate = true;
+        })
+        .catch(() => { /* keep procedural — substrate floor never fails */ });
     }
     materialCache.set(cacheKey, m);
   }

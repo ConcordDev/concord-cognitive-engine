@@ -1,5 +1,12 @@
 /**
- * Procedural interior decoration.
+ * Procedural interior decoration — SUBSTRATE FALLBACK.
+ *
+ * Default interior layouts that ship for every building archetype so
+ * walking inside any tavern / archive / forge / market / tower reveals
+ * recognisable furniture from frame 1. Player-authored interiors
+ * produced by the `whiteboard` lens (CRDT blueprint canvas → building
+ * DTU per Wave 6 of the content engine) override the procedural layout
+ * once they win marketplace canon for a given archetype + faction.
  *
  * When a building's zoom level transitions to 'interior', this module
  * spawns archetype-appropriate props:
@@ -13,8 +20,10 @@
  * caller-provided buildingGroup, so disposing the building auto-cleans
  * the decor.
  *
- * Materials come from the procedural-texture generator (Wave 9) so the
- * surfaces read as wood / cloth / stone / metal instead of flat colour.
+ * Materials come from the procedural-texture generator (which itself
+ * accepts authored DTU overrides via pbr-loader) so the surfaces read
+ * as wood / cloth / stone / metal instead of flat colour, and improve
+ * automatically as the content engine produces authored textures.
  */
 
 import type * as THREE_NS from 'three';
