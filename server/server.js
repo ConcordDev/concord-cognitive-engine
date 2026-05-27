@@ -192,6 +192,22 @@ registerHeartbeat("draft-gc-cycle", {
   scope: "global",
 });
 
+// Phase U4 — faction reputation cache refresh (~15min cadence). Reads
+// character_opinions and writes player_faction_reputation_cache.
+registerHeartbeat("faction-rep-cache-refresh", {
+  frequency: 60,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/faction-reputation.js");
+      return mod.refreshFactionReputationCache(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "refresh_failed", error: err?.message };
+    }
+  },
+});
+
 // Phase U1 — mail expiry sweep (~2h cadence). Expired mail refunds
 // attachments to the sender; stays in outbox history as 'expired'.
 registerHeartbeat("mail-expiry-sweep", {
@@ -47906,6 +47922,21 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// ── Phase U4 — faction reputation aggregate ─────────────────────────────
+
+app.get("/api/factions/:factionId/reputation", requireAuth(), asyncHandler(async (req, res) => {
+  const { getFactionReputation } = await import("./lib/faction-reputation.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId || "concordia-hub";
+  res.json({ ok: true, ...getFactionReputation(db, userId, req.params.factionId, worldId) });
+}));
+
+app.get("/api/factions/reputation/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getAllReputations } = await import("./lib/faction-reputation.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, reputations: getAllReputations(db, userId, req.query.worldId || null) });
+}));
 
 // ── Phase U3 — titles ───────────────────────────────────────────────────
 
