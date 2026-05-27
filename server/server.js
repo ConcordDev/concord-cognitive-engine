@@ -166,6 +166,25 @@ registerHeartbeat("grieving-npc-cycle", {
   handler: runGrievingNpcCycle,
 });
 
+// Wave E / E1 — asymmetric multiplayer (single-instance simulation).
+// Samples notable local legends → writes to cross_world_shadow_queue;
+// drains queue → spawns echo quests in active worlds.
+// Kill switch: CONCORD_CROSS_WORLD_PULSE=0.
+import { runCrossWorldPulseCycle } from "./emergent/cross-world-pulse-cycle.js";
+registerHeartbeat("cross-world-pulse-cycle", {
+  frequency: 120,  // ~30min
+  handler: runCrossWorldPulseCycle,
+});
+
+// Wave E / E2 — gift-offering. High-loyalty NPCs leave gifts that
+// match the player's compiled gift_preferences_json in world_markers.
+// Kill switch: CONCORD_GIFT_OFFERING=0.
+import { runGiftOfferingCycle } from "./emergent/gift-offering-cycle.js";
+registerHeartbeat("gift-offering-cycle", {
+  frequency: 480,  // ~2h
+  handler: runGiftOfferingCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
@@ -29997,6 +30016,10 @@ app.use("/api/tutorial", createTutorialSecondCycleRouter({ db, requireAuth }));
 // Wave C / C2 — generation-spanning play. Heir succession + lineage.
 import createDynastyRouter from "./routes/dynasty.js";
 app.use("/api/dynasty", createDynastyRouter({ db, requireAuth }));
+
+// Wave E / E3a — player rhetoric persuasion route.
+import createRhetoricRouter from "./routes/rhetoric.js";
+app.use("/api/rhetoric", createRhetoricRouter({ db, requireAuth }));
 
 // Flow Combat — PvP training match (queue/challenge + safe reset between rounds)
 import createTrainingMatchRouter from "./routes/training-match.js";
