@@ -119,6 +119,49 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/evo-asset/by-category — list assets matching category + kind.
+  //
+  // Public read used by procedural-buildings.ts#applyBlueprintOverlayIfAny
+  // and similar overlay-by-archetype lookups (textures, materials).
+  // Ranked by evolution_score so marketplace canon wins per slot.
+  router.get("/by-category", (req, res) => {
+    try {
+      const category = String(req.query.category || "").slice(0, 80);
+      const kind = req.query.kind ? String(req.query.kind).slice(0, 32) : null;
+      if (!category) return res.status(400).json({ ok: false, error: "category required" });
+      const limit = Math.max(1, Math.min(50, parseInt(String(req.query.limit || "10"), 10) || 10));
+      const rows = kind
+        ? db.prepare(`
+            SELECT id, source_id, local_path, evolution_score, quality_level
+            FROM evo_assets
+            WHERE category = ? AND kind = ? AND archived_at IS NULL
+            ORDER BY evolution_score DESC, quality_level DESC, created_at DESC
+            LIMIT ?
+          `).all(category, kind, limit)
+        : db.prepare(`
+            SELECT id, source_id, local_path, evolution_score, quality_level
+            FROM evo_assets
+            WHERE category = ? AND archived_at IS NULL
+            ORDER BY evolution_score DESC, quality_level DESC, created_at DESC
+            LIMIT ?
+          `).all(category, limit);
+      res.json({
+        ok: true,
+        category,
+        kind,
+        assets: rows.map((r) => ({
+          id: r.id,
+          sourceId: r.source_id,
+          localPath: r.local_path,
+          evolutionScore: r.evolution_score,
+          qualityLevel: r.quality_level,
+        })),
+      });
+    } catch {
+      res.status(500).json({ ok: false, error: "An unexpected error occurred" });
+    }
+  });
+
   // GET /api/evo-asset/asset/:id — detailed state
   router.get("/asset/:id", (req, res) => {
     try {

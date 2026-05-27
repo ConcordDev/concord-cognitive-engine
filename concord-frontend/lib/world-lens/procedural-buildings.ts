@@ -293,10 +293,102 @@ export function attachInteriorDecor(
     buildingGroup.add(decor.group);
     (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorGroup = decor.group;
     (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorDispose = decor.dispose;
+
+    // Wave 12: try to layer a whiteboard-lens blueprint DTU on top.
+    // The query runs async and modifies decor.group in-place when a
+    // blueprint is found — fallback procedural decor stays as the
+    // floor. This is the "marketplace canon wins" wire-up.
+    (async () => {
+      try {
+        await applyBlueprintOverlayIfAny(THREE, decor.group, archetype);
+      } catch {
+        /* blueprint overlay is optional; procedural stays */
+      }
+    })();
+
     return decor.group;
   } catch {
     return null;
   }
+}
+
+interface BlueprintDecorElement {
+  kind: string;
+  x: number; y: number; w: number; h: number;
+  rotation?: number;
+  color?: string | null;
+  label?: string | null;
+}
+
+/**
+ * If the evo-asset registry has a blueprint DTU for this archetype,
+ * fetch it + spawn a thin overlay group of player-authored marks on
+ * top of the procedural floor. The floor decor stays intact so any
+ * gaps in the blueprint don't leave the room empty.
+ */
+async function applyBlueprintOverlayIfAny(
+  THREE: typeof THREE_NS,
+  parentGroup: THREE_NS.Group,
+  archetype: BuildingArchetype,
+): Promise<void> {
+  if (typeof fetch === 'undefined') return;
+  // Find any authored blueprint for this archetype — the evo-asset
+  // registry's resolve endpoint is keyed on (source, sourceId) but
+  // there's no per-archetype lookup yet. Fall back to a tag query.
+  // We rely on category='interior:<archetype>' indexed in the registry.
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/evo-asset/by-category?category=interior:${archetype}&kind=blueprint`, {
+      credentials: 'include',
+    });
+  } catch {
+    return;
+  }
+  if (!resp.ok) return;
+  let listed: { ok?: boolean; assets?: Array<{ id: string; sourceId: string; localPath?: string; evolutionScore: number }> };
+  try { listed = await resp.json(); } catch { return; }
+  if (!listed?.ok || !Array.isArray(listed.assets) || listed.assets.length === 0) return;
+  // Newest / highest-score asset wins
+  const winning = listed.assets[0];
+  let blueprintResp: Response;
+  try {
+    blueprintResp = await fetch(`/api/evo-asset/file/${winning.id}`, { credentials: 'include' });
+  } catch { return; }
+  if (!blueprintResp.ok) return;
+  let blueprint: { decor: BlueprintDecorElement[]; themeOverrides?: Record<string, unknown> | null };
+  try { blueprint = await blueprintResp.json(); } catch { return; }
+  if (!Array.isArray(blueprint?.decor)) return;
+
+  // Build a child group of authored marks. Position each element in
+  // the building's interior box; scale x/y from whiteboard space
+  // (assumed 1000×600) to interior box (12m × 12m default).
+  const overlay = new THREE.Group();
+  overlay.name = 'blueprint-overlay';
+  const SCALE_X = 12 / 1000;
+  const SCALE_Z = 12 / 600;
+  const OFFSET_X = -6;
+  const OFFSET_Z = -6;
+  for (const el of blueprint.decor) {
+    const px = (el.x ?? 0) * SCALE_X + OFFSET_X;
+    const pz = (el.y ?? 0) * SCALE_Z + OFFSET_Z;
+    const pw = Math.max(0.1, (el.w ?? 60) * SCALE_X);
+    const ph = Math.max(0.1, (el.h ?? 60) * SCALE_Z);
+    const colorHex = typeof el.color === 'string' && /^#[0-9a-f]{6}$/i.test(el.color)
+      ? el.color : '#a78bfa';
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(colorHex),
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+    const geom = new THREE.BoxGeometry(pw, 0.3, ph);
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(px + pw / 2, 0.15, pz + ph / 2);
+    if (typeof el.rotation === 'number') {
+      mesh.rotation.y = el.rotation * Math.PI / 180;
+    }
+    overlay.add(mesh);
+  }
+  parentGroup.add(overlay);
 }
 
 /**

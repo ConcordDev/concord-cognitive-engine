@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, Square, BookOpen, ThumbsUp, Trash2, Save, Plus } from 'lucide-react';
+import { X, Loader2, Square, BookOpen, ThumbsUp, Trash2, Save, Plus, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { PublishAsBlueprintDialog } from './PublishAsBlueprintDialog';
 
 export interface Template {
   id: string;
@@ -79,6 +80,7 @@ function BoardsTab() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState('');
+  const [publishingBoardId, setPublishingBoardId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -132,11 +134,22 @@ function BoardsTab() {
               <p className="text-sm font-medium text-gray-100">{b.title}</p>
               <p className="text-[10px] text-gray-400">{b.elementCount} elements · {new Date(b.updatedAt).toLocaleDateString()}</p>
             </div>
-            <button type="button" onClick={() => remove(b.id)}
-              className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => setPublishingBoardId(b.id)}
+                title="Publish as Concordia building blueprint"
+                className="p-1 text-gray-500 hover:text-violet-300 opacity-0 group-hover:opacity-100"><Upload className="w-3 h-3" /></button>
+              <button type="button" onClick={() => remove(b.id)}
+                className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
+            </div>
           </div>
         ))
       }
+      {publishingBoardId && (
+        <PublishAsBlueprintDialog
+          boardId={publishingBoardId}
+          onClose={() => setPublishingBoardId(null)}
+        />
+      )}
     </div>
   );
 }
