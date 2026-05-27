@@ -187,6 +187,38 @@ export function advanceScheme(db, schemeId, opts = {}) {
       SET phase = ?, next_tick_at = ?, resolved_at = CASE WHEN ? IN ('complete','exposed','abandoned') THEN unixepoch() ELSE NULL END
       WHERE id = ?
     `).run(nextPhase, nextTickAt(now), nextPhase, schemeId);
+
+    // Wave B / B2 — schedule a dramatic reveal when a scheme reaches
+    // terminal state. The dispatcher fires `scheme:reveal` after a
+    // 60–600s delay so the player gets a beat instead of an instant
+    // notification. Each reveal also writes a synthetic secret so
+    // players who pay attention can stumble onto the conspiracy.
+    if (nextPhase === "complete" || nextPhase === "exposed") {
+      try {
+        void import("./scheduled-consequences.js").then(({ schedule }) => {
+          try {
+            schedule(db, {
+              kind: "scheme:reveal",
+              fireInS: 60 + Math.floor(Math.random() * 540),
+              source: { kind: "npc_scheme", id: schemeId },
+              target: { kind: sch.target_kind, id: sch.target_id },
+              worldId: sch.world_id ?? null,
+              payload: {
+                schemeId,
+                plotterKind: sch.plotter_kind,
+                plotterId: sch.plotter_id,
+                targetKind: sch.target_kind,
+                targetId: sch.target_id,
+                kind: sch.kind,
+                phase: nextPhase,                  // complete | exposed
+                accompliceCount: sch.accomplice_count,
+                discoveryPct: sch.discovery_pct,
+              },
+            });
+          } catch { /* scheduler optional on minimal builds */ }
+        }).catch(() => { /* ok */ });
+      } catch { /* ok */ }
+    }
   } else {
     db.prepare(`UPDATE npc_schemes SET next_tick_at = ? WHERE id = ?`).run(nextTickAt(now), schemeId);
   }

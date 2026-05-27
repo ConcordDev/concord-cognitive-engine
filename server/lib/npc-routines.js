@@ -15,6 +15,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { shouldSkipRoutine, classifyMood } from "./affect-behavior-gates.js";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -389,7 +390,32 @@ export async function advanceRoutine(db, npc, opts = {}) {
 export function getActiveRoutine(db, npcId) {
   if (!db || !npcId) return null;
   try {
-    return db.prepare(`SELECT * FROM npc_routine_state WHERE npc_id = ?`).get(npcId) || null;
+    const row = db.prepare(`SELECT * FROM npc_routine_state WHERE npc_id = ?`).get(npcId) || null;
+    if (!row) return null;
+    // Wave B / B3 — affect override. Grief / fear skip whatever the
+    // schedule says and return a `rest` block. The persisted schedule
+    // is unchanged so when the NPC's affect returns to baseline they
+    // resume normally without a schedule-regenerate.
+    try {
+      const affect = _readAffectFor(db, npcId);
+      if (affect && shouldSkipRoutine(affect)) {
+        return {
+          ...row,
+          activity_kind: "rest",
+          location_kind: row.location_kind || "home",
+          affect_override: true,
+          affect_mood: classifyMood(affect),
+        };
+      }
+    } catch { /* gates optional; degrade to baseline */ }
+    return row;
+  } catch { return null; }
+}
+
+function _readAffectFor(db, npcId) {
+  try {
+    const row = db.prepare(`SELECT v, a, c, g, t, f FROM affect_state WHERE entity_id = ? LIMIT 1`).get(npcId);
+    return row || null;
   } catch { return null; }
 }
 

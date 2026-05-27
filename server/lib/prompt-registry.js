@@ -407,6 +407,22 @@ List 3 parallels.`,
   npcDirective: ({ name, archetype, worldId, goals } = {}) =>
     `You are ${name || archetype} in world ${worldId}. Your current goals: ${JSON.stringify(goals)}. What is your primary directive right now? Reply in one sentence.`,
 
+  // Wave B / B1 — NPCs ask the player questions. Composed once per
+  // dialogue turn ~20% of the time, biased by NPC's desire_for_this_player
+  // and memory_of_this_player.lastTopic. The caller appends this directive
+  // to the existing dialogue prompt; the LLM's reply ends with one
+  // open-ended question (terminated by `?`).
+  npcQuestion: ({ npcName, npcArchetype, desire, lastTopic, daysSinceLastSeen } = {}) =>
+    `You are ${npcName || npcArchetype}. End your reply with ONE genuinely curious open question
+about the player. Match what you already know:
+${desire ? `- You want to know: ${desire}` : ""}
+${lastTopic ? `- Last time you spoke about: ${lastTopic}` : ""}
+${typeof daysSinceLastSeen === "number" && daysSinceLastSeen >= 3
+  ? `- It's been ${daysSinceLastSeen} days since you last saw them — your question should reflect curiosity about what changed.`
+  : ""}
+Keep the question grounded, specific, and short. End with a question mark.
+Do not ask multiple questions; do not preface with "I wonder". Just ask.`,
+
   // ── Agent Mode (chat-agent.js) ────────────────────────────────────
   // Note: chat-agent has additional dynamic blocks (TOOL_SCHEMA_BLOCK,
   // shadowContextBlock). The caller composes those + calls this for the

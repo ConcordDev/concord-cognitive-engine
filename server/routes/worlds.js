@@ -1035,6 +1035,25 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }) || null;
       } catch { /* asymmetry optional — fall back to neutral prompt */ }
 
+      // Wave B / B1 — ~20% of dialogues, NPC ends with a question for the
+      // player. Bias: less likely if NPC is hostile (they don't curiosity);
+      // more likely if NPC has a desire_for_this_player or a recent memory
+      // topic to revisit.
+      const memoryBias = asymmetryTraits?.memory_of_this_player?.lastTopic ? 0.15 : 0;
+      const desireBias = asymmetryTraits?.desire_for_this_player ? 0.1 : 0;
+      const hostilePenalty = isHostileRep ? -0.15 : 0;
+      const questionP = Math.max(0, Math.min(0.5, 0.2 + memoryBias + desireBias + hostilePenalty));
+      const askQuestion = Math.random() < questionP;
+      const questionDirective = askQuestion
+        ? TASK_PROMPTS.npcQuestion({
+            npcName,
+            npcArchetype: npc.archetype,
+            desire: asymmetryTraits?.desire_for_this_player ?? null,
+            lastTopic: asymmetryTraits?.memory_of_this_player?.lastTopic ?? null,
+            daysSinceLastSeen: asymmetryTraits?.days_since_last_seen ?? null,
+          })
+        : '';
+
       const promptLines = [
         TASK_PROMPTS.worldNpcPersonaHeader({
           npcName, archetype: npc.archetype, worldId,
@@ -1057,6 +1076,17 @@ export default function createWorldsRouter({ requireAuth, db }) {
         asymmetryTraits?.desire_for_this_player
           ? `What you privately want from this player: ${asymmetryTraits.desire_for_this_player}`
           : '',
+        // Wave A / A2 — per-(npc, player) memory grounding.
+        asymmetryTraits?.memory_of_this_player?.headline
+          ? `Memory of this player: ${asymmetryTraits.memory_of_this_player.headline}`
+          : '',
+        typeof asymmetryTraits?.days_since_last_seen === 'number' && asymmetryTraits.days_since_last_seen >= 1
+          ? `Days since you last saw this player: ${asymmetryTraits.days_since_last_seen}.`
+          : '',
+        // Wave A / A3 — player playstyle profile.
+        asymmetryTraits?.player_profile?.signature
+          ? `What you know about this player as a character: ${asymmetryTraits.player_profile.signature}`
+          : '',
         quests.length > 0 ? `You have ${quests.length} quest(s) available to offer.` : '',
         ``,
         `A player has approached you to talk.`,
@@ -1065,6 +1095,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         `The "options" array MUST include these keys in order: ${options.map(o => o.key).join(', ')}.`,
         `Use the labels provided. mood must reflect your opinion of the player and your current emotional state.`,
         isHostileRep ? 'Player is hated/feared — mood must be hostile. Do not offer trade or quests.' : '',
+        questionDirective,
       ].filter(Boolean).join('\n');
 
       // 7. Call LLM
@@ -1106,7 +1137,29 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-fatal */ }
 
-      // 10. Return structured response
+      // Wave A / A2 — record the dialogue as an interaction so future
+      // dialogues with this NPC carry the memory + sentiment bias. Best-
+      // effort: never blocks the response.
+      try {
+        if (playerId) {
+          const { recordInteraction } = await import("../lib/npc-player-memory.js");
+          const moodSentiment = mood === 'friendly' ? 0.10
+                              : mood === 'hostile' ? -0.10
+                              : mood === 'grieving' ? -0.02
+                              : 0;
+          recordInteraction(db, {
+            npcId, playerId, worldId,
+            kind: 'spoke',
+            payload: { mood, greeting: greeting?.slice(0, 200) ?? null },
+            sentimentDelta: moodSentiment,
+          });
+        }
+      } catch { /* memory tables may be absent on minimal builds */ }
+
+      // 10. Return structured response. The `question` flag tells the
+      // client to surface a free-text answer input — the player can
+      // respond, the NPC will remember the answer + propagate to nearby
+      // NPCs via gossip.
       res.json({
         ok: true, npcId, npcName,
         greeting,
@@ -1115,6 +1168,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        question: askQuestion ? {
+          asked: true,
+          topic: asymmetryTraits?.memory_of_this_player?.lastTopic ?? null,
+        } : undefined,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -1197,6 +1254,66 @@ export default function createWorldsRouter({ requireAuth, db }) {
       }
 
       res.json({ ok: true, response: safeResponse });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/dialogue/answer-question
+  // Wave B / B1 — player free-text response to an NPC's question. We
+  // record it as a structured memory + propagate to nearby NPCs via
+  // the consequence-dispatcher (gossip), and apply a small opinion
+  // bump (responding at all is a sign of engagement).
+  router.post("/:worldId/npcs/:npcId/dialogue/answer-question", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const playerId = req.user?.id;
+      const { freeText, topic } = req.body || {};
+      if (!freeText || typeof freeText !== "string") {
+        return res.status(400).json({ ok: false, error: "missing_free_text" });
+      }
+      if (freeText.length > 1000) {
+        return res.status(400).json({ ok: false, error: "free_text_too_long" });
+      }
+      const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);
+      if (!npc || npc.is_dead) return res.status(404).json({ ok: false, error: "npc_not_found" });
+
+      // Record the answer as a structured memory.
+      try {
+        const { recordInteraction } = await import("../lib/npc-player-memory.js");
+        recordInteraction(db, {
+          npcId, playerId, worldId,
+          kind: "answered_question",
+          payload: { topic: topic || null, body: freeText.slice(0, 600) },
+          sentimentDelta: 0.08,  // engagement is positive by default
+        });
+      } catch { /* memory tables optional */ }
+
+      // Apply opinion bump via existing broadcast.
+      try {
+        const npcLocation = _tryParseJSON(npc.location, { x: 0, z: 0 });
+        broadcastOpinionEvent(db, worldId, playerId, "player", "spoke_kindly",
+          { x: npcLocation.x ?? 0, z: npcLocation.z ?? 0 },
+          { radius: 5, targetId: npcId, context: "dialogue_answer" });
+      } catch { /* non-fatal */ }
+
+      // Schedule gossip — 5-30 min later, nearby NPCs pick up this memory
+      // at lower confidence. Implemented as a scheduled consequence the
+      // dispatcher (Wave A) will route to a gossip handler in B1's
+      // handler module below.
+      try {
+        const { schedule } = await import("../lib/scheduled-consequences.js");
+        schedule(db, {
+          kind: "gossip:player-answered",
+          fireInS: 300 + Math.floor(Math.random() * 1500),
+          source: { kind: "npc", id: npcId },
+          target: { kind: "player", id: playerId },
+          worldId,
+          payload: { topic, body: freeText.slice(0, 200) },
+        });
+      } catch { /* scheduled_consequences may be absent */ }
+
+      return res.json({ ok: true, recorded: true });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -20,6 +20,9 @@ const MAX_PER_PASS = 32;
 // default export is `async function handle(db, consequence) -> result`.
 // Adding a new kind = one entry here, no other change.
 const HANDLER_MODULES = {
+  // Wave B / item 1 — gossip propagation when player answers question
+  "gossip:player-answered":   "../lib/consequence-handlers/gossip.js",
+
   // Wave B / item 4
   "scheme:reveal":            "../lib/consequence-handlers/scheme-reveal.js",
 
