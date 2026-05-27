@@ -994,7 +994,7 @@ import { recordObservation as recordInstitutionalDecision, getInstitutionalMemor
 import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool } from "./workers/macro-pool.js";
 import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool } from "./workers/heartbeat-pool.js";
 import { setHeartbeatPool, getHeartbeatTimingStats } from "./emergent/heartbeat-registry.js";
-import { initWorldShards, broadcastTick as broadcastShardTick, getShardHealth, restartShard, shutdownShards } from "./lib/world-shard-manager.js";
+import { initWorldShards, broadcastTick as broadcastShardTick, getShardHealth, restartShard, shutdownShards, ensureWorldActive, markWorldUserCount, recordWorldActivity } from "./lib/world-shard-manager.js";
 import { shardingEnabled } from "./lib/world-shard-protocol.js";
 
 // ---- Repair Cortex: three-phase self-repair (Prophet + Surgeon + Guardian) ----
@@ -47810,6 +47810,69 @@ app.get("/api/admin/world-flavors", requireRole("owner", "admin", "sovereign", "
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
+
+// Phase I + J — travel endpoint. POST /api/worlds/travel with { worldId }.
+// Ensures the target world's worker is active (on-demand spawn, ~2-3s
+// cold start), then opens a world_visits row for the user and emits a
+// realtime user:traveled event. Returns shard status + readiness ETA.
+app.post("/api/worlds/travel", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = String(req.body?.worldId || "").trim();
+  if (!worldId) return res.status(400).json({ ok: false, error: "worldId required" });
+
+  // 1. Validate worldId exists. Check authored sub-worlds OR DB worlds table.
+  let isKnown = false;
+  try {
+    const r = db.prepare(`SELECT id FROM worlds WHERE id = ?`).get(worldId);
+    isKnown = !!r;
+  } catch { /* worlds table optional in minimal builds */ }
+  if (!isKnown) {
+    // Fallback: accept the 8+1 authored worlds even if DB table absent.
+    const authored = ["concordia-hub", "tunya", "sovereign-ruins", "crime", "cyber", "superhero", "fantasy", "lattice-crucible", "concord-link-frontier"];
+    if (!authored.includes(worldId)) {
+      return res.status(404).json({ ok: false, error: "unknown_world" });
+    }
+  }
+
+  // 2. Spawn / activate the world's worker if sharding enabled. When
+  //    sharding is off this is a no-op that returns ok immediately.
+  let shardStatus = { ok: true, status: "in-process", firstTickEtaMs: 0 };
+  if (shardingEnabled()) {
+    shardStatus = await ensureWorldActive(worldId);
+    if (!shardStatus.ok) {
+      return res.status(503).json({ ok: false, error: "shard_spawn_failed", shardStatus });
+    }
+    markWorldUserCount(worldId, 1);
+  }
+
+  // 3. Update world_visits — close any prior open visit; open the new one.
+  try {
+    db.prepare(`
+      UPDATE world_visits SET departed_at = unixepoch(),
+        total_time_minutes = ROUND((unixepoch() - arrived_at) / 60.0, 2)
+      WHERE user_id = ? AND departed_at IS NULL
+    `).run(userId);
+    const visitId = `wv_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+    db.prepare(`
+      INSERT INTO world_visits (id, user_id, world_id, arrived_at)
+      VALUES (?, ?, ?, unixepoch())
+    `).run(visitId, userId, worldId);
+  } catch (err) {
+    structuredLog?.("warn", "world_visit_record_failed", { userId, worldId, error: err?.message });
+  }
+
+  // 4. Realtime emit so other clients (multiplayer, spectators) know.
+  try {
+    realtimeEmit?.("user:traveled", { userId, worldId, shardStatus });
+  } catch { /* emit best-effort */ }
+
+  res.json({
+    ok: true,
+    worldId,
+    shardStatus,
+    sharded: shardingEnabled(),
+  });
+}));
 
 // Phase F — per-world shard health (public-safe; reveals shard status only).
 app.get("/api/worlds/:worldId/health", (req, res) => {
