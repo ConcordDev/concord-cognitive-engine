@@ -2057,7 +2057,7 @@ export default function AvatarSystem3D({
                   const footBone = boneMap?.get(side === 'L' ? 'leftFoot' : 'rightFoot');
                   const fp = new THREE.Vector3();
                   if (footBone) footBone.getWorldPosition(fp);
-                  else fp.copy(pos);
+                  else fp.set(pos.x, pos.y, pos.z);
                   try {
                     window.dispatchEvent(new CustomEvent('concordia:foot-plant', {
                       detail: {
