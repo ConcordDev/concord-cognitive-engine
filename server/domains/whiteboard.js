@@ -1,5 +1,63 @@
 // server/domains/whiteboard.js
+//
+// Content-engine bridge: publish-as-blueprint registers a CRDT canvas
+// board as a building-interior layout DTU. The board's elements (lines,
+// shapes, sticky notes positioned with x/y/width/height) are translated
+// into a building-prop manifest. procedural-buildings.ts#attachInteriorDecor
+// queries evo_assets for the highest-quality blueprint per archetype +
+// faction match. Marketplace canon picks winners.
+
+import fs from "node:fs";
+import path from "node:path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { registerAsset } from "../lib/evo-asset/registry.js";
+
+const BLUEPRINT_ARCHETYPES = new Set(["tavern", "archive", "forge", "market", "tower"]);
+const SNAPSHOT_FORMATS = new Set(["json-snap", "svg-raster"]);
+const BLUEPRINT_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const DATA_DIR = process.env.DATA_DIR
+  || (fs.existsSync("/workspace/concord-data") ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
+const LENS_BLUEPRINT_ROOT = path.join(DATA_DIR, "lens-assets", "whiteboard-blueprints");
+
+function decodeSvgDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return null;
+  const m = dataUrl.match(/^data:image\/svg\+xml;base64,(.+)$/);
+  if (!m) return null;
+  try {
+    const buf = Buffer.from(m[1], "base64");
+    if (!buf.length || buf.length > BLUEPRINT_MAX_BYTES) return null;
+    return { buf, ext: "svg", mimeType: "image/svg+xml" };
+  } catch {
+    return null;
+  }
+}
+
+function serialiseBoardToBlueprintJson(scene, themeOverrides) {
+  const elements = Array.isArray(scene?.elements) ? scene.elements : [];
+  const decor = [];
+  for (const el of elements) {
+    if (!el || typeof el !== "object") continue;
+    const x = Number(el.x) || 0;
+    const y = Number(el.y) || 0;
+    const w = Number(el.width)  || Number(el.w) || 60;
+    const h = Number(el.height) || Number(el.h) || 60;
+    const kind = String(el.kind || el.type || "shape").toLowerCase();
+    decor.push({
+      kind,
+      x, y, w, h,
+      rotation: Number(el.rotation) || 0,
+      color: typeof el.fillColor === "string" ? el.fillColor : null,
+      label: typeof el.text === "string" ? el.text.slice(0, 80) : null,
+    });
+  }
+  return {
+    schemaVersion: 1,
+    decor,
+    themeOverrides: themeOverrides && typeof themeOverrides === "object" ? themeOverrides : null,
+    elementCount: decor.length,
+  };
+}
 
 export default function registerWhiteboardActions(registerLensAction) {
   registerLensAction("whiteboard", "vision", async (ctx, artifact, _params) => {
@@ -1556,4 +1614,139 @@ export default function registerWhiteboardActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Content-engine bridge: publish a board as a building-interior blueprint ──
+  //
+  // Flow:
+  //   1. Player composes a CRDT canvas — shapes positioned with x/y/w/h.
+  //   2. Client picks an archetype (tavern/archive/forge/market/tower)
+  //      and submits the board (snapshot of `scene.elements`) plus an
+  //      optional rasterised SVG preview.
+  //   3. Macro serialises the board to a deterministic blueprint JSON
+  //      (decor[] with kind/x/y/w/h/rotation/color/label) and writes
+  //      it to disk. Optional SVG preview lives alongside.
+  //   4. Registers in evo_assets with kind='blueprint', source='authored',
+  //      sourceId='blueprint:<archetype>:<userId>:<boardId>'.
+  //   5. procedural-buildings.ts#attachInteriorDecor queries evo_assets
+  //      ranked by evolution_score; winning blueprint overrides the
+  //      built-in procedural decor. Marketplace canon picks winners.
+  //
+  // Auth required. Idempotent on (source, sourceId).
+  registerLensAction("whiteboard", "publish-as-blueprint", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = wbActor(ctx);
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required to publish a blueprint" };
+    }
+    const archetype = String(params.archetype || "").toLowerCase();
+    if (!BLUEPRINT_ARCHETYPES.has(archetype)) {
+      return { ok: false, error: `archetype must be one of: ${[...BLUEPRINT_ARCHETYPES].join(", ")}` };
+    }
+    const snapshotFormat = String(params.snapshotFormat || "json-snap").toLowerCase();
+    if (!SNAPSHOT_FORMATS.has(snapshotFormat)) {
+      return { ok: false, error: `snapshotFormat must be one of: ${[...SNAPSHOT_FORMATS].join(", ")}` };
+    }
+    const boardId = params.boardId ? String(params.boardId).slice(0, 64) : null;
+    if (!boardId) return { ok: false, error: "boardId required" };
+
+    // Locate the board in user state
+    const s = getWhiteboardState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = s.boards?.get(userId)?.get(boardId);
+    if (!board) return { ok: false, error: "board not found" };
+
+    // Always serialise to deterministic JSON; optional SVG raster is a
+    // companion preview.
+    const blueprint = serialiseBoardToBlueprintJson(board.scene, params.themeOverrides);
+    const jsonBuf = Buffer.from(JSON.stringify(blueprint, null, 2));
+    if (jsonBuf.length > BLUEPRINT_MAX_BYTES) {
+      return { ok: false, error: `blueprint JSON exceeds ${BLUEPRINT_MAX_BYTES / 1024 / 1024} MB` };
+    }
+
+    let svgBuf = null;
+    if (snapshotFormat === "svg-raster") {
+      const svg = decodeSvgDataUrl(params.svgDataUrl);
+      if (!svg) {
+        return { ok: false, error: "svgDataUrl must be a base64 data:image/svg+xml URL (≤5 MB)" };
+      }
+      svgBuf = svg.buf;
+    }
+
+    const sourceId = `blueprint:${archetype}:${userId}:${boardId}`;
+    const dir = path.join(LENS_BLUEPRINT_ROOT, archetype, userId);
+    const jsonName = `${boardId}.blueprint.json`;
+    const svgName  = `${boardId}.preview.svg`;
+    const jsonPath = path.join(dir, jsonName);
+    const svgPath  = path.join(dir, svgName);
+
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(jsonPath, jsonBuf);
+      if (svgBuf) fs.writeFileSync(svgPath, svgBuf);
+    } catch (err) {
+      return { ok: false, error: `failed to write blueprint files: ${err?.message || err}` };
+    }
+
+    let assetResult;
+    try {
+      assetResult = registerAsset(db, {
+        kind: "blueprint",
+        source: "authored",
+        sourceId,
+        localPath: jsonPath,
+        category: `interior:${archetype}`,
+        tags: ["whiteboard", "blueprint", archetype, `creator:${userId}`, `board:${boardId}`],
+        qualityLevel: 1,
+      });
+    } catch (err) {
+      try { fs.unlinkSync(jsonPath); } catch { /* idempotent */ }
+      if (svgBuf) { try { fs.unlinkSync(svgPath); } catch { /* idempotent */ } }
+      return { ok: false, error: `failed to register blueprint: ${err?.message || err}` };
+    }
+
+    return {
+      ok: true,
+      result: {
+        assetId: assetResult.id,
+        created: assetResult.created,
+        sourceId,
+        archetype,
+        boardId,
+        elementCount: blueprint.elementCount,
+        previewIncluded: !!svgBuf,
+        resolveUrl: `/api/evo-asset/resolve?source=authored&sourceId=${encodeURIComponent(sourceId)}`,
+      },
+    };
+  });
+
+  // Coverage indicator: which archetypes does this player's portfolio
+  // currently cover? Used by the publish dialog to show a "you've
+  // published 2/5 interiors" badge.
+  registerLensAction("whiteboard", "published-blueprint-coverage", (ctx, _a, _params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = wbActor(ctx);
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required" };
+    }
+    const archetypes = {};
+    for (const a of BLUEPRINT_ARCHETYPES) {
+      const row = db.prepare(`
+        SELECT id, quality_level, evolution_score
+        FROM evo_assets
+        WHERE source = 'authored'
+          AND kind = 'blueprint'
+          AND category = ?
+          AND source_id LIKE ?
+          AND archived_at IS NULL
+        ORDER BY evolution_score DESC
+        LIMIT 1
+      `).get(`interior:${a}`, `blueprint:${a}:${userId}:%`);
+      archetypes[a] = row
+        ? { assetId: row.id, qualityLevel: row.quality_level, evolutionScore: row.evolution_score }
+        : null;
+    }
+    return { ok: true, result: { userId, archetypes } };
+  });
 }

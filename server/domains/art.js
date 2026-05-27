@@ -1,8 +1,42 @@
 // server/domains/art.js
 // Domain actions for visual art: color harmony analysis, composition scoring,
 // palette generation, and style classification.
+//
+// Content-engine bridge: the `publish-as-texture` macro is the wire from
+// the `art` lens into the evo_assets registry. Player-authored textures
+// flow through evo-asset → /api/evo-asset/resolve → frontend pbr-loader
+// (tier 1) → procedural-buildings material slots. See pbr-loader.ts for
+// the 3-tier resolution order.
 
+import fs from "fs";
+import path from "path";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
+import { registerAsset } from "../lib/evo-asset/registry.js";
+
+const PROCEDURAL_KINDS = new Set([
+  "stone", "wood", "brick", "cloth", "metal", "leather", "thatch", "dirt",
+]);
+const TEXTURE_CHANNELS = new Set(["color", "normal", "roughness", "ao"]);
+
+// Match the data-dir resolution convention used by artifact-store.js.
+const DATA_DIR = process.env.DATA_DIR
+  || (fs.existsSync("/workspace/concord-data") ? "/workspace/concord-data" : path.join(process.cwd(), "data"));
+const LENS_ASSET_ROOT = path.join(DATA_DIR, "lens-assets", "art-textures");
+
+// Decode a data URL (data:image/png;base64,...) → raw bytes Buffer.
+function decodeDataUrl(dataUrl) {
+  if (typeof dataUrl !== "string") return null;
+  const m = dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/);
+  if (!m) return null;
+  const ext = m[1] === "jpeg" ? "jpg" : m[1];
+  try {
+    const buf = Buffer.from(m[2], "base64");
+    if (!buf.length || buf.length > 20 * 1024 * 1024) return null;
+    return { buf, ext };
+  } catch {
+    return null;
+  }
+}
 
 export default function registerArtActions(registerLensAction) {
   registerLensAction("art", "vision", async (ctx, artifact, _params) => {
@@ -768,6 +802,123 @@ export default function registerArtActions(registerLensAction) {
     arr.splice(i, 1);
     saveArtState();
     return { ok: true, result: { deleted: params.id } };
+  });
+
+  // ── Content-engine bridge: publish an artwork as a Concordia material texture ──
+  //
+  // The procedural-hand-authored content engine flow:
+  //   1. Player creates an artwork in the `art` lens (canvas strokes)
+  //   2. Client rasterises one or more PBR channels to PNG via canvas.toDataURL
+  //   3. Client calls art.publish-as-texture per channel
+  //   4. The macro writes the PNG to disk + registers an evo_assets row
+  //      with source='authored', kind='texture', sourceId='material:<kind>:<seed>:<channel>'
+  //   5. Frontend pbr-loader tier-1 resolves the channel at /api/evo-asset/resolve
+  //      → procedural-buildings material slots upgrade transparently
+  //   6. Marketplace canon votes pick winners; evo-asset scheduler refines on heartbeat
+  //   7. Royalty cascade tracks every derivative for 50 generations
+  //
+  // Auth: requires ctx.actor.userId so the asset has a creator. Anon
+  // submissions are rejected.
+  registerLensAction("art", "publish-as-texture", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!userId || userId === "anon") {
+      return { ok: false, error: "authentication required to publish a texture" };
+    }
+
+    const materialKind = String(params.materialKind || "").toLowerCase();
+    if (!PROCEDURAL_KINDS.has(materialKind)) {
+      return { ok: false, error: `materialKind must be one of: ${[...PROCEDURAL_KINDS].join(", ")}` };
+    }
+    const seed = Math.floor(atClamp(params.seed, 0, 0xffffffff, 1));
+    const channel = String(params.channel || "color").toLowerCase();
+    if (!TEXTURE_CHANNELS.has(channel)) {
+      return { ok: false, error: `channel must be one of: ${[...TEXTURE_CHANNELS].join(", ")}` };
+    }
+
+    const decoded = decodeDataUrl(params.imageDataUrl);
+    if (!decoded) {
+      return { ok: false, error: "imageDataUrl must be a base64 data: URL (png or jpeg, ≤20 MB)" };
+    }
+
+    const s = getArtState();
+    const artworkId = params.artworkId ? String(params.artworkId).slice(0, 64) : null;
+    if (artworkId && s) {
+      const arr = s.artworks.get(userId) || [];
+      const found = arr.find((a) => a.id === artworkId);
+      if (!found) return { ok: false, error: "artwork not found" };
+    }
+
+    // Slot key: stable per (kind, seed, channel) so derivative authors
+    // converge on the same canonical slot and the marketplace can rank
+    // them against each other.
+    const sourceId = `material:${materialKind}:${seed}:${channel}`;
+    const fileName = `${materialKind}-${seed}-${channel}.${decoded.ext}`;
+    const dirPath = path.join(LENS_ASSET_ROOT, materialKind, String(seed));
+    const filePath = path.join(dirPath, fileName);
+
+    try {
+      fs.mkdirSync(dirPath, { recursive: true });
+      fs.writeFileSync(filePath, decoded.buf);
+    } catch (err) {
+      return { ok: false, error: `failed to write asset file: ${err?.message || err}` };
+    }
+
+    let assetResult;
+    try {
+      assetResult = registerAsset(db, {
+        kind: "texture",
+        source: "authored",
+        sourceId,
+        localPath: filePath,
+        category: `material:${materialKind}:${channel}`,
+        tags: ["art-lens", materialKind, channel, `seed:${seed}`, `creator:${userId}`],
+        qualityLevel: 1,
+      });
+    } catch (err) {
+      // Roll back the file write so we don't leave orphans
+      try { fs.unlinkSync(filePath); } catch { /* idempotent */ }
+      return { ok: false, error: `failed to register asset: ${err?.message || err}` };
+    }
+
+    return {
+      ok: true,
+      result: {
+        assetId: assetResult.id,
+        created: assetResult.created,
+        sourceId,
+        materialKind,
+        seed,
+        channel,
+        sizeBytes: decoded.buf.length,
+        resolveUrl: `/api/evo-asset/resolve?source=authored&sourceId=${encodeURIComponent(sourceId)}`,
+      },
+    };
+  });
+
+  // Convenience: which (kind, seed, channel) sourceIds the player's
+  // current authorship covers. Lets the art lens UI render a "you've
+  // published 2/4 channels for material:wood:1" indicator.
+  registerLensAction("art", "published-texture-coverage", (ctx, _a, params = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "db unavailable" };
+    const materialKind = String(params.materialKind || "").toLowerCase();
+    if (!PROCEDURAL_KINDS.has(materialKind)) {
+      return { ok: false, error: `materialKind must be one of: ${[...PROCEDURAL_KINDS].join(", ")}` };
+    }
+    const seed = Math.floor(atClamp(params.seed, 0, 0xffffffff, 1));
+    const channels = {};
+    for (const ch of TEXTURE_CHANNELS) {
+      const sourceId = `material:${materialKind}:${seed}:${ch}`;
+      const row = db
+        .prepare("SELECT id, quality_level, evolution_score FROM evo_assets WHERE source = 'authored' AND source_id = ? AND archived_at IS NULL")
+        .get(sourceId);
+      channels[ch] = row
+        ? { assetId: row.id, qualityLevel: row.quality_level, evolutionScore: row.evolution_score }
+        : null;
+    }
+    return { ok: true, result: { materialKind, seed, channels } };
   });
 
   // ── Layers ──────────────────────────────────────────────────────────

@@ -74,6 +74,19 @@ export interface BuildingOptions {
   seed:          string;     // stable string id (e.g., building.id)
   scale?:        number;     // 1.0 = default ~10m tall
   factionStyle?: FactionVisualOverride;
+  /**
+   * Visual-polish wave 10 — opt-in interior decoration. When `true`,
+   * the returned group has a child Group (initially set visible=false)
+   * holding archetype-appropriate interior props (fireplace + table in
+   * taverns, scrolls in archives, etc). Toggle visibility when zoom
+   * level transitions to 'interior'.
+   *
+   * Pass `'lazy'` to attach the decor as a userData reference that's
+   * built on first show via attachInteriorDecor() rather than at
+   * createBuilding() time — useful for cold-spawning thousands of
+   * buildings without paying the decor cost upfront.
+   */
+  withInterior?: boolean | 'lazy';
 }
 
 /**
@@ -97,8 +110,37 @@ export const SILHOUETTE_BIAS: Record<ArchitectureStyle, {
 
 const materialCache = new Map<string, THREE_NS.MeshStandardMaterial>();
 
-function getMaterial(THREE: typeof THREE_NS, key: string, color: string, opts?: { emissive?: string; emissiveIntensity?: number; roughness?: number; metalness?: number }) {
-  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}`;
+/**
+ * Per-slot PBR texture overlay — 3-tier resolution wired through the
+ * procedural-hand-authored content engine:
+ *
+ *   tier 1  art-lens DTU (canonical, royalty-tracked, marketplace canon)
+ *           via /api/evo-asset/resolve?source=authored&sourceId=material:<kind>:<seed>
+ *   tier 2  CC0 fetched pack at public/textures/<kind>/ (one-shot bootstrap)
+ *   tier 3  procedural canvas fallback (always available, deterministic)
+ *
+ * Synchronous path: we bind procedural textures immediately so the
+ * mesh has *some* PBR maps from frame 1. Asynchronous tier-1 / tier-2
+ * lookups via pbr-loader run in the background and swap in over the
+ * existing channels as they resolve — the substrate gets richer over
+ * time as the lens engine produces authored DTUs without any code
+ * change here. See lib/world-lens/pbr-loader.ts for the resolution
+ * order + caching.
+ */
+function getMaterial(
+  THREE: typeof THREE_NS,
+  key: string,
+  color: string,
+  opts?: {
+    emissive?: string;
+    emissiveIntensity?: number;
+    roughness?: number;
+    metalness?: number;
+    pbrKind?: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt';
+    pbrSeed?: number;
+  },
+) {
+  const cacheKey = `${key}:${color}:${opts?.emissive ?? ""}:${opts?.pbrKind ?? ""}:${opts?.pbrSeed ?? ""}`;
   let m = materialCache.get(cacheKey);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
@@ -108,6 +150,41 @@ function getMaterial(THREE: typeof THREE_NS, key: string, color: string, opts?: 
       emissive:          opts?.emissive ? new THREE.Color(opts.emissive) : new THREE.Color(0x000000),
       emissiveIntensity: opts?.emissiveIntensity ?? 0,
     });
+    if (opts?.pbrKind) {
+      // ── Tier 3 (synchronous): bind procedural so we have maps now ──
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { makePBR } = require('./procedural-texture') as typeof import('./procedural-texture');
+        const set = makePBR(THREE, { kind: opts.pbrKind, seed: opts.pbrSeed ?? 1 });
+        m.map = set.albedo;
+        m.normalMap = set.normal;
+        m.roughnessMap = set.roughness;
+        m.aoMap = set.ao;
+      } catch { /* procedural texture optional */ }
+
+      // ── Tier 1/2 (async): swap in lens-DTU / CC0 channels as they
+      // resolve. We don't await — the material is usable immediately,
+      // and the better-quality channels arrive in a later frame. The
+      // pbr-loader caches per (kind, seed) so spawning N buildings of
+      // the same archetype incurs one resolve, not N.
+      const upgradeMat = m;
+      const matchedKind = opts.pbrKind;
+      const matchedSeed = opts.pbrSeed ?? 1;
+      Promise.resolve()
+        .then(async () => {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { loadPBR } = require('./pbr-loader') as typeof import('./pbr-loader');
+          const set = await loadPBR(THREE, matchedKind, { seed: matchedSeed });
+          // Only swap channels whose identity changed — procedural
+          // tier-3 textures are reused as a fallback floor.
+          if (upgradeMat.map        !== set.albedo)    upgradeMat.map        = set.albedo;
+          if (upgradeMat.normalMap  !== set.normal)    upgradeMat.normalMap  = set.normal;
+          if (upgradeMat.roughnessMap !== set.roughness) upgradeMat.roughnessMap = set.roughness;
+          if (upgradeMat.aoMap      !== set.ao)        upgradeMat.aoMap      = set.ao;
+          upgradeMat.needsUpdate = true;
+        })
+        .catch(() => { /* keep procedural — substrate floor never fails */ });
+    }
     materialCache.set(cacheKey, m);
   }
   return m;
@@ -140,8 +217,20 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     : null;
   const scale = baseScale * (bias?.wallHeightMult ?? 1.0);
 
-  const wallMat   = getMaterial(THREE, "wall",   palette.wall);
-  const roofMat   = getMaterial(THREE, "roof",   palette.roof);
+  // Map each archetype to a PBR material kind for the wall + roof slots.
+  // Trim is left flat because procedural-texture brick / metal would
+  // visually clash with the per-faction accent palette.
+  const PBR_BY_ARCHETYPE: Record<BuildingArchetype, { wall: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt'; roof: 'stone' | 'wood' | 'brick' | 'cloth' | 'metal' | 'leather' | 'thatch' | 'dirt' }> = {
+    tavern:  { wall: 'wood',  roof: 'thatch' },
+    archive: { wall: 'stone', roof: 'stone'  },
+    forge:   { wall: 'stone', roof: 'metal'  },
+    market:  { wall: 'brick', roof: 'wood'   },
+    tower:   { wall: 'stone', roof: 'stone'  },
+  };
+  const pbr = PBR_BY_ARCHETYPE[opts.archetype];
+  const pbrSeed = hashSeed(`pbr:${opts.seed}`);
+  const wallMat   = getMaterial(THREE, "wall",   palette.wall,   { pbrKind: pbr.wall, pbrSeed });
+  const roofMat   = getMaterial(THREE, "roof",   palette.roof,   { pbrKind: pbr.roof, pbrSeed });
   const trimMat   = getMaterial(THREE, "trim",   palette.trim);
   const windowMat = getMaterial(THREE, "window", palette.window, {
     emissive: palette.emissive,
@@ -170,9 +259,156 @@ export function createBuilding(THREE: typeof THREE_NS, opts: BuildingOptions): T
     archetype:    opts.archetype,
     seed:         opts.seed,
     factionStyle: opts.factionStyle ?? null,
+    _interiorMode: opts.withInterior ?? false,
   };
 
+  if (opts.withInterior === true) {
+    attachInteriorDecor(THREE, group, opts.archetype);
+  }
+
   return group;
+}
+
+/**
+ * Visual-polish wave 10 — build + attach the interior decor child Group.
+ * Idempotent: returns early if already attached. Safe to call lazily
+ * the first time the building's zoom level transitions to 'interior'.
+ */
+export function attachInteriorDecor(
+  THREE: typeof THREE_NS,
+  buildingGroup: THREE_NS.Group,
+  archetype: BuildingArchetype,
+): THREE_NS.Group | null {
+  if ((buildingGroup.userData as { _interiorGroup?: THREE_NS.Group })._interiorGroup) {
+    return (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group })._interiorGroup ?? null;
+  }
+  try {
+    // Lazy import so the SSR bundle and cold-start path don't pull in
+    // the full decor module unless an interior is actually being
+    // populated.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { decorateInterior } = require('./interior-decor') as typeof import('./interior-decor');
+    const decor = decorateInterior(THREE, { archetype });
+    decor.group.visible = false; // Caller toggles when zoom transitions to interior.
+    buildingGroup.add(decor.group);
+    (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorGroup = decor.group;
+    (buildingGroup.userData as { _interiorGroup?: THREE_NS.Group; _interiorDispose?: () => void })._interiorDispose = decor.dispose;
+
+    // Wave 12: try to layer a whiteboard-lens blueprint DTU on top.
+    // The query runs async and modifies decor.group in-place when a
+    // blueprint is found — fallback procedural decor stays as the
+    // floor. This is the "marketplace canon wins" wire-up.
+    (async () => {
+      try {
+        await applyBlueprintOverlayIfAny(THREE, decor.group, archetype);
+      } catch {
+        /* blueprint overlay is optional; procedural stays */
+      }
+    })();
+
+    return decor.group;
+  } catch {
+    return null;
+  }
+}
+
+interface BlueprintDecorElement {
+  kind: string;
+  x: number; y: number; w: number; h: number;
+  rotation?: number;
+  color?: string | null;
+  label?: string | null;
+}
+
+/**
+ * If the evo-asset registry has a blueprint DTU for this archetype,
+ * fetch it + spawn a thin overlay group of player-authored marks on
+ * top of the procedural floor. The floor decor stays intact so any
+ * gaps in the blueprint don't leave the room empty.
+ */
+async function applyBlueprintOverlayIfAny(
+  THREE: typeof THREE_NS,
+  parentGroup: THREE_NS.Group,
+  archetype: BuildingArchetype,
+): Promise<void> {
+  if (typeof fetch === 'undefined') return;
+  // Find any authored blueprint for this archetype — the evo-asset
+  // registry's resolve endpoint is keyed on (source, sourceId) but
+  // there's no per-archetype lookup yet. Fall back to a tag query.
+  // We rely on category='interior:<archetype>' indexed in the registry.
+  let resp: Response;
+  try {
+    resp = await fetch(`/api/evo-asset/by-category?category=interior:${archetype}&kind=blueprint`, {
+      credentials: 'include',
+    });
+  } catch {
+    return;
+  }
+  if (!resp.ok) return;
+  let listed: { ok?: boolean; assets?: Array<{ id: string; sourceId: string; localPath?: string; evolutionScore: number }> };
+  try { listed = await resp.json(); } catch { return; }
+  if (!listed?.ok || !Array.isArray(listed.assets) || listed.assets.length === 0) return;
+  // Newest / highest-score asset wins
+  const winning = listed.assets[0];
+  let blueprintResp: Response;
+  try {
+    blueprintResp = await fetch(`/api/evo-asset/file/${winning.id}`, { credentials: 'include' });
+  } catch { return; }
+  if (!blueprintResp.ok) return;
+  let blueprint: { decor: BlueprintDecorElement[]; themeOverrides?: Record<string, unknown> | null };
+  try { blueprint = await blueprintResp.json(); } catch { return; }
+  if (!Array.isArray(blueprint?.decor)) return;
+
+  // Build a child group of authored marks. Position each element in
+  // the building's interior box; scale x/y from whiteboard space
+  // (assumed 1000×600) to interior box (12m × 12m default).
+  const overlay = new THREE.Group();
+  overlay.name = 'blueprint-overlay';
+  const SCALE_X = 12 / 1000;
+  const SCALE_Z = 12 / 600;
+  const OFFSET_X = -6;
+  const OFFSET_Z = -6;
+  for (const el of blueprint.decor) {
+    const px = (el.x ?? 0) * SCALE_X + OFFSET_X;
+    const pz = (el.y ?? 0) * SCALE_Z + OFFSET_Z;
+    const pw = Math.max(0.1, (el.w ?? 60) * SCALE_X);
+    const ph = Math.max(0.1, (el.h ?? 60) * SCALE_Z);
+    const colorHex = typeof el.color === 'string' && /^#[0-9a-f]{6}$/i.test(el.color)
+      ? el.color : '#a78bfa';
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(colorHex),
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+    const geom = new THREE.BoxGeometry(pw, 0.3, ph);
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(px + pw / 2, 0.15, pz + ph / 2);
+    if (typeof el.rotation === 'number') {
+      mesh.rotation.y = el.rotation * Math.PI / 180;
+    }
+    overlay.add(mesh);
+  }
+  parentGroup.add(overlay);
+}
+
+/**
+ * Toggle a building's interior visibility. Call this from the zoom
+ * handler when the player crosses the entrance threshold.
+ */
+export function setInteriorVisible(
+  THREE: typeof THREE_NS,
+  buildingGroup: THREE_NS.Group,
+  visible: boolean,
+): void {
+  const ud = buildingGroup.userData as {
+    archetype?: BuildingArchetype;
+    _interiorGroup?: THREE_NS.Group;
+    _interiorMode?: boolean | 'lazy';
+  };
+  if (!ud._interiorGroup && ud._interiorMode === 'lazy' && ud.archetype) {
+    attachInteriorDecor(THREE, buildingGroup, ud.archetype);
+  }
+  if (ud._interiorGroup) ud._interiorGroup.visible = visible;
 }
 
 /**

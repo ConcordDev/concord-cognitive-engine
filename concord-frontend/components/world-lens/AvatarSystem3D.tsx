@@ -2037,6 +2037,42 @@ export default function AvatarSystem3D({
               delta
             );
 
+            // ── Visual-polish wave 3: emit foot-plant events on phase
+            // crossings so EmbodiedParticlesBridge can spawn dust +
+            // play per-terrain SFX. Phase crosses 0 (left contact) and
+            // 0.5 (right contact) each stride cycle.
+            {
+              const lastPhase = (pm.userData.__lastStridePhase as number | undefined) ?? stridePhaseRef.current;
+              const cur = stridePhaseRef.current;
+              const justCrossedLeft  = lastPhase > cur || (lastPhase < 0.05 && cur >= 0.0 && physicsSpeed > 0.3 && lastPhase > 0.9);
+              const justCrossedRight = lastPhase < 0.5 && cur >= 0.5 && physicsSpeed > 0.3;
+              const planted: Array<'L' | 'R'> = [];
+              if (justCrossedLeft  && physicsSpeed > 0.3) planted.push('L');
+              if (justCrossedRight) planted.push('R');
+              pm.userData.__lastStridePhase = cur;
+              if (planted.length > 0) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const boneMap = pm.userData.boneMap as Map<string, any> | undefined;
+                for (const side of planted) {
+                  const footBone = boneMap?.get(side === 'L' ? 'leftFoot' : 'rightFoot');
+                  const fp = new THREE.Vector3();
+                  if (footBone) footBone.getWorldPosition(fp);
+                  else fp.set(pos.x, pos.y, pos.z);
+                  try {
+                    window.dispatchEvent(new CustomEvent('concordia:foot-plant', {
+                      detail: {
+                        side,
+                        position: { x: fp.x, y: fp.y, z: fp.z },
+                        material: (pm.userData.__terrainMaterial as string | undefined) ?? 'grass',
+                        wet: pm.userData.__terrainWet === true,
+                        intensity: Math.min(2, 0.5 + physicsSpeed / 6),
+                      },
+                    }));
+                  } catch { /* SSR */ }
+                }
+              }
+            }
+
             const gaitParams: GaitParams = {
               speed: physicsSpeed,
               direction: 0,

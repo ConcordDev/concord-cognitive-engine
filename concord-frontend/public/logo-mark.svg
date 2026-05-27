@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Concord mark">
+  <defs>
+    <linearGradient id="lm-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"  stop-color="#5fbfff"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill="none" stroke="url(#lm-grad)" stroke-width="2.4" opacity="0.65"/>
+  <circle cx="32" cy="32" r="19" fill="none" stroke="url(#lm-grad)" stroke-width="2.0" opacity="0.82"/>
+  <circle cx="32" cy="32" r="8.5" fill="url(#lm-grad)" opacity="0.95"/>
+  <circle cx="32" cy="32" r="3.4" fill="#fff"/>
+  <g opacity="0.75" stroke="url(#lm-grad)" stroke-width="2.0" stroke-linecap="round">
+    <line x1="32" y1="2"  x2="32" y2="11"/>
+    <line x1="32" y1="53" x2="32" y2="62"/>
+    <line x1="2"  y1="32" x2="11" y2="32"/>
+    <line x1="53" y1="32" x2="62" y2="32"/>
+    <line x1="9"  y1="9"  x2="16" y2="16"/>
+    <line x1="48" y1="48" x2="55" y2="55"/>
+    <line x1="55" y1="9"  x2="48" y2="16"/>
+    <line x1="16" y1="48" x2="9"  y2="55"/>
+  </g>
+</svg>

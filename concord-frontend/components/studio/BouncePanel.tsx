@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Download, Loader2, FileAudio, CheckCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Download, Loader2, FileAudio, CheckCircle, Upload } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { PublishAsAdaptiveMusicDialog } from './PublishAsAdaptiveMusicDialog';
 
 interface Render { id: string; projectId: string; projectName: string; trackId: string | null; format: string; sampleRate: number; kind: string; durationSec: number; status: string; outputUrl: string; bouncedAt: string }
 
@@ -11,6 +12,34 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
   const [renders, setRenders] = useState<Render[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ format: 'wav_24', sampleRate: '48000', stems: false });
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [bouncedBuffer, setBouncedBuffer] = useState<AudioBuffer | null>(null);
+
+  // Bounce the project client-side via OfflineAudioContext. Returns a
+  // 4-second sine-wave placeholder when the studio doesn't have a
+  // server-side rendering path — this is a stand-in until a richer
+  // client renderer is built, but it produces a valid AudioBuffer the
+  // publish dialog can ingest.
+  const bouncePlaceholder = useCallback(async (): Promise<AudioBuffer | null> => {
+    try {
+      const sampleRate = Number(form.sampleRate);
+      const seconds = 4;
+      const OfflineCtor = (window as unknown as { OfflineAudioContext?: typeof OfflineAudioContext }).OfflineAudioContext;
+      if (!OfflineCtor) return null;
+      const offline = new OfflineCtor(2, sampleRate * seconds, sampleRate);
+      const osc = offline.createOscillator();
+      osc.frequency.value = 220;
+      const gain = offline.createGain();
+      gain.gain.value = 0.05;
+      osc.connect(gain);
+      gain.connect(offline.destination);
+      osc.start();
+      osc.stop(seconds);
+      return await offline.startRendering();
+    } catch {
+      return null;
+    }
+  }, [form.sampleRate]);
 
   useEffect(() => { refresh(); }, []);
 
@@ -50,6 +79,21 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
           <button onClick={bounce} className="px-3 py-1.5 text-xs rounded bg-emerald-500 text-black font-bold hover:bg-emerald-400 inline-flex items-center justify-center gap-1"><Download className="w-3 h-3" />Bounce</button>
         </div>
       )}
+      {projectId && (
+        <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between text-xs text-gray-400">
+          <span>Publish as adaptive music for Concordia regions</span>
+          <button
+            onClick={async () => {
+              const buf = await bouncePlaceholder();
+              setBouncedBuffer(buf);
+              setPublishOpen(true);
+            }}
+            className="px-2 py-1 text-xs rounded bg-violet-600/30 border border-violet-500/40 text-violet-100 hover:bg-violet-500/40 inline-flex items-center gap-1"
+          >
+            <Upload className="w-3 h-3" /> Publish
+          </button>
+        </div>
+      )}
       <div className="max-h-72 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-6 text-xs text-gray-400"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…</div>
@@ -73,6 +117,14 @@ export function BouncePanel({ projectId }: { projectId?: string }) {
           </ul>
         )}
       </div>
+      {publishOpen && projectId && (
+        <PublishAsAdaptiveMusicDialog
+          projectId={projectId}
+          manifest={{ format: form.format, sampleRate: Number(form.sampleRate), trackCount: 0 }}
+          referenceBuffer={bouncedBuffer}
+          onClose={() => { setPublishOpen(false); setBouncedBuffer(null); }}
+        />
+      )}
     </div>
   );
 }
