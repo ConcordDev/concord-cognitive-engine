@@ -61,17 +61,21 @@ async function tryLoad(
 }
 
 /**
- * Tier 1 — resolve a lens-produced DTU for this material slot.
+ * Tier 1 — resolve lens-produced texture DTUs for this material slot.
  *
  * The `art` lens publishes texture DTUs into evo_assets with
- * source='authored' (or 'evolved' after a refinement pass).
- * sourceId convention: `material:<kind>:<seed>` so each (kind, seed)
- * pair has a stable canonical slot players can converge on.
+ * source='authored' (or 'evolved' after a refinement pass). Each
+ * channel is a separate evo_asset row keyed by sourceId:
  *
- * Returns whichever channels the resolved asset provides. The asset
- * binary format is flexible: we try common path suffixes
- * (?channel=color, /color.jpg, etc) and fall back gracefully when a
- * channel isn't present.
+ *   material:<kind>:<seed>:color      (albedo, always required)
+ *   material:<kind>:<seed>:normal     (optional)
+ *   material:<kind>:<seed>:roughness  (optional)
+ *   material:<kind>:<seed>:ao         (optional)
+ *
+ * Per-channel registration lets the marketplace converge on the best
+ * albedo independently from the best normal map, and lets LLaVA
+ * validate channels independently for material consistency. Missing
+ * channels fall through to tier 2 / tier 3 per-channel.
  */
 async function loadLensDtu(
   THREE: typeof THREE_NS,
@@ -83,32 +87,34 @@ async function loadLensDtu(
   if (cached) return cached;
   const promise = (async (): Promise<Partial<PBRTextureSet>> => {
     if (typeof fetch === 'undefined') return {};
-    const sourceId = `material:${kind}:${seed}`;
-    let url: string | null = null;
-    try {
-      const resolveUrl = `${EVO_ASSET_RESOLVE_PATH}?source=authored&sourceId=${encodeURIComponent(sourceId)}`;
-      const resp = await fetch(resolveUrl, { credentials: 'include' });
-      if (!resp.ok) return {};
-      const body = await resp.json() as { ok?: boolean; url?: string };
-      if (!body?.ok || !body.url) return {};
-      url = body.url;
-    } catch {
-      return {};
-    }
-    const tryLoad = (suffix: string) => new Promise<THREE_NS.Texture | null>((resolve) => {
-      const loader = new THREE.TextureLoader();
-      loader.load(
-        `${url}${suffix}`,
-        (tex) => { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; resolve(tex); },
-        undefined,
-        () => resolve(null),
-      );
-    });
+    const resolveOne = async (channel: 'color' | 'normal' | 'roughness' | 'ao'): Promise<THREE_NS.Texture | null> => {
+      const sourceId = `material:${kind}:${seed}:${channel}`;
+      let assetUrl: string | null = null;
+      try {
+        const url = `${EVO_ASSET_RESOLVE_PATH}?source=authored&sourceId=${encodeURIComponent(sourceId)}`;
+        const resp = await fetch(url, { credentials: 'include' });
+        if (!resp.ok) return null;
+        const body = await resp.json() as { ok?: boolean; url?: string };
+        if (!body?.ok || !body.url) return null;
+        assetUrl = body.url;
+      } catch {
+        return null;
+      }
+      return new Promise((resolve) => {
+        const loader = new THREE.TextureLoader();
+        loader.load(
+          assetUrl as string,
+          (tex) => { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; resolve(tex); },
+          undefined,
+          () => resolve(null),
+        );
+      });
+    };
     const [albedo, normal, roughness, ao] = await Promise.all([
-      tryLoad('&channel=color'),
-      tryLoad('&channel=normal'),
-      tryLoad('&channel=roughness'),
-      tryLoad('&channel=ao'),
+      resolveOne('color'),
+      resolveOne('normal'),
+      resolveOne('roughness'),
+      resolveOne('ao'),
     ]);
     const partial: Partial<PBRTextureSet> = {};
     if (albedo)    partial.albedo    = albedo;

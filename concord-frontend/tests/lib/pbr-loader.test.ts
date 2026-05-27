@@ -59,7 +59,7 @@ describe('loadPBR — 3-tier resolution', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('tier-1 lens DTU calls the evo-asset resolve endpoint', async () => {
+  it('tier-1 lens DTU calls the evo-asset resolve endpoint per channel', async () => {
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ ok: false, error: 'not_registered' }),
@@ -67,24 +67,33 @@ describe('loadPBR — 3-tier resolution', () => {
     (globalThis as { fetch?: unknown }).fetch = fetchSpy;
     await loadPBR(THREE, 'metal', { size: 32, seed: 7 });
     expect(fetchSpy).toHaveBeenCalled();
-    const calledUrl = fetchSpy.mock.calls[0][0] as string;
-    expect(calledUrl).toContain('/api/evo-asset/resolve');
-    expect(calledUrl).toContain('source=authored');
-    expect(calledUrl).toContain('sourceId=material%3Ametal%3A7');
+    // 4 resolve calls — one per channel
+    const calledUrls = fetchSpy.mock.calls.map((c) => c[0] as string);
+    expect(calledUrls.length).toBe(4);
+    expect(calledUrls.every((u) => u.includes('/api/evo-asset/resolve'))).toBe(true);
+    expect(calledUrls.every((u) => u.includes('source=authored'))).toBe(true);
+    // Each channel encodes into its own sourceId
+    expect(calledUrls.some((u) => u.includes('sourceId=material%3Ametal%3A7%3Acolor'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('sourceId=material%3Ametal%3A7%3Anormal'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('sourceId=material%3Ametal%3A7%3Aroughness'))).toBe(true);
+    expect(calledUrls.some((u) => u.includes('sourceId=material%3Ametal%3A7%3Aao'))).toBe(true);
   });
 
-  it('tier-1 resolved DTU wins per-channel over tier-3 procedural', async () => {
-    // resolve endpoint returns a URL; texture loader returns a fake texture
-    // for color, fails for the other channels.
-    (globalThis as { fetch?: unknown }).fetch = vi.fn().mockResolvedValue({
+  it('tier-1 resolved channel wins over tier-3 procedural per-channel', async () => {
+    // Resolve endpoint: color sourceId returns a URL; the others 404.
+    (globalThis as { fetch?: unknown }).fetch = vi.fn().mockImplementation(async (url: string) => ({
       ok: true,
-      json: async () => ({ ok: true, url: '/api/evo-asset/file/test-id?v=3' }),
-    });
+      json: async () =>
+        url.includes('%3Acolor')
+          ? { ok: true, url: '/api/evo-asset/file/test-id?v=3' }
+          : { ok: false, error: 'not_registered' },
+    }));
     const dtuTexture = new THREE.Texture();
     (dtuTexture as unknown as { __isDtu?: boolean }).__isDtu = true;
+    // Only the DTU file URL succeeds; tier-2 public/textures paths fail.
     vi.spyOn(THREE.TextureLoader.prototype, 'load').mockImplementation(
       (url: string, onLoad?: unknown, _onProgress?: unknown, onError?: unknown) => {
-        if (url.includes('channel=color') && typeof onLoad === 'function') {
+        if (url.includes('/api/evo-asset/file/') && typeof onLoad === 'function') {
           (onLoad as (t: THREE.Texture) => void)(dtuTexture);
         } else if (typeof onError === 'function') {
           (onError as (e: unknown) => void)({});
@@ -94,7 +103,7 @@ describe('loadPBR — 3-tier resolution', () => {
     );
     const set = await loadPBR(THREE, 'dirt', { size: 32, seed: 11 });
     expect((set.albedo as unknown as { __isDtu?: boolean }).__isDtu).toBe(true);
-    // Other channels stay procedural
+    // Other channels stay procedural (no resolve URL → no texture load)
     expect((set.normal as unknown as { __isDtu?: boolean }).__isDtu).toBeUndefined();
   });
 
