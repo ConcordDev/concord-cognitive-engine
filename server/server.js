@@ -113,6 +113,38 @@ registerHeartbeat("crossbreed-spawn-cycle", {
   handler: runCrossbreedSpawnCycle,
 });
 
+// Wave A / A1 — generic delayed-action dispatcher. Drains
+// scheduled_consequences rows whose fires_at <= now, routes each by
+// `kind` to its handler. Per-kind handlers land with their owning
+// waves (B: scheme reveals, C: kill cascades, D: bard legends, E:
+// echo quests). Kill switch: CONCORD_CONSEQUENCE_DISPATCHER=0.
+import { runConsequenceDispatcherCycle } from "./emergent/consequence-dispatcher-cycle.js";
+registerHeartbeat("consequence-dispatcher-cycle", {
+  frequency: 4,    // ~60s — tight enough that "30 seconds later" beats
+                   // feel responsive without churning the scheduler.
+  handler: runConsequenceDispatcherCycle,
+});
+
+// Wave A / A2 — periodically compiles npc_player_memories.summary_json
+// from the rolling interaction log. Deterministic by default; routes
+// through subconscious brain when CONCORD_NPC_PLAYER_MEMORY_LLM=true.
+// Kill switch: CONCORD_NPC_PLAYER_MEMORY=0.
+import { runNpcPlayerMemoryCycle } from "./emergent/npc-player-memory-cycle.js";
+registerHeartbeat("npc-player-memory-cycle", {
+  frequency: 30,   // ~7.5min — compiles batches of 8 stale memories
+  handler: runNpcPlayerMemoryCycle,
+});
+
+// Wave A / A3 — compiles per-user playstyle profiles. narrative-bridge
+// reads these to inject `player_profile` into NPC dialogue prompts so
+// the LLM doesn't need to re-derive "who is this player" every turn.
+// Kill switch: CONCORD_USER_PROFILE_COMPILER=0.
+import { runUserProfileCompilerCycle } from "./emergent/user-profile-compiler-cycle.js";
+registerHeartbeat("user-profile-compiler-cycle", {
+  frequency: 60,   // ~15min
+  handler: runUserProfileCompilerCycle,
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing

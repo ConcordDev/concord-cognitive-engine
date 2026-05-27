@@ -181,6 +181,15 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     coping_state:             null,
     // Sprint C / A2 — current opinion of this player (kind + score).
     current_opinion:          null,
+    // Wave A / A2 — per-(npc, player) memory injected when both ids are
+    // present. Compact summary + days-since-last-seen lets the LLM
+    // reference shared history without hallucinating.
+    memory_of_this_player:    null,
+    days_since_last_seen:     null,
+    // Wave A / A3 — compiled per-user playstyle profile so dialogue can
+    // reference what kind of character the player is (elements, weapon
+    // affinity, lineage signature). Injected when opts.userId is set.
+    player_profile:           null,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
 
@@ -245,6 +254,53 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
         traits.physical_build = [phy.body_type, h, m].filter(Boolean).join(" / ");
       }
     } catch { /* actor_physique absent on minimal builds */ }
+
+    // Wave A / A2 — npc_player_memories injection. Compact summary + days-
+    // since-last-seen lets the LLM reference shared history without
+    // hallucinating. Requires opts.userId.
+    if (opts.userId) {
+      try {
+        const m = db.prepare(`
+          SELECT summary_json, sentiment, sightings, interactions,
+                 first_met_at, last_interaction_at
+          FROM npc_player_memories
+          WHERE npc_id = ? AND player_id = ?
+        `).get(npcId, opts.userId);
+        if (m) {
+          let summary = null;
+          try { summary = m.summary_json ? JSON.parse(m.summary_json) : null; } catch { /* malformed */ }
+          // Headline kept compact (~80 tokens) for prompt economy.
+          if (summary?.headline) {
+            traits.memory_of_this_player = {
+              headline: String(summary.headline).slice(0, 320),
+              sentiment: m.sentiment ?? 0,
+              dominantKind: summary.dominantKind ?? null,
+              lastTopic: summary.lastTopic ?? null,
+            };
+          }
+          const nowS = Math.floor(Date.now() / 1000);
+          traits.days_since_last_seen = Math.max(0, Math.floor((nowS - m.last_interaction_at) / 86400));
+        }
+      } catch { /* npc_player_memories absent on minimal builds */ }
+    }
+
+    // Wave A / A3 — user_player_profiles injection. Compiled by the
+    // user-profile-compiler-cycle heartbeat; surfaced here so NPC
+    // dialogue prompts reference the player's playstyle signature.
+    if (opts.userId) {
+      try {
+        const p = db.prepare(`
+          SELECT dialogue_signature, playstyle_json, lineage_summary
+          FROM user_player_profiles WHERE user_id = ?
+        `).get(opts.userId);
+        if (p?.dialogue_signature) {
+          traits.player_profile = {
+            signature: String(p.dialogue_signature).slice(0, 240),
+            lineage: p.lineage_summary ? String(p.lineage_summary).slice(0, 240) : null,
+          };
+        }
+      } catch { /* user_player_profiles absent on minimal builds */ }
+    }
   }
 
   // Defense-in-depth: scan the materialized traits for the secret canary.
