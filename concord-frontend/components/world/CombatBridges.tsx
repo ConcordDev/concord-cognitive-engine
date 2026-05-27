@@ -31,6 +31,7 @@
 
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
+import CombatVFXBridge from '@/components/world/CombatVFXBridge';
 // Phase 8 add-ons: the ImpactFeedback layer exposes three global emit
 // functions the bridges call inline. ImpactFeedback itself is mounted
 // once at app/lenses/world/page.tsx; the emitters are no-ops until
@@ -675,6 +676,8 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       <BuildingCollapseBridge userId={userId} />
       {/* Phase B2 — combat:hit (lethal) → ragdoll bridge */}
       <LethalHitBridge />
+      {/* Visual polish — element bursts + blood decals on every combat hit */}
+      <CombatVFXBridge />
     </>
   );
 }
