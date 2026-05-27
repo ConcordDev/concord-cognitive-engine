@@ -2611,6 +2611,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 91,
     keywords: ['ops', 'telemetry', 'heartbeat', 'worker', 'brain', 'concurrency', 'shard'],
   },
+  {
+    id: 'spectate',
+    name: 'Spectate',
+    icon: Eye,
+    description: 'Watch any sub-world live — faction wars, election night, PvP tournaments. Read-only.',
+    category: 'world',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/spectate',
+    order: 17,
+    keywords: ['spectate', 'watch', 'live', 'tournament', 'twitch', 'stream'],
+  },
 
   // ── System pages ───────────────────────────────────────────────
   {

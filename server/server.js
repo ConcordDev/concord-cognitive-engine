@@ -5684,6 +5684,9 @@ function authMiddleware(req, res, next) {
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
     "/api/settings", "/api/growth", "/api/metrics", "/api/context",
+    // Phase N — public spectator counts. No PII; the world picker reads
+    // this anonymously to render "N watching" badges.
+    "/api/worlds/spectator-counts",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -47793,6 +47796,18 @@ app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "f
       heartbeatPool: getHeartbeatPoolStats(),
       generatedAt: new Date().toISOString(),
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase N — public spectator counts per world. Spectators don't write
+// presence rows so this is the cheap way to surface "1,243 watching"
+// next to the world card.
+app.get("/api/worlds/spectator-counts", async (req, res) => {
+  try {
+    const { listSpectatorCounts } = await import("./lib/spectator-mode.js");
+    res.json({ ok: true, counts: listSpectatorCounts(), generatedAt: new Date().toISOString() });
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
