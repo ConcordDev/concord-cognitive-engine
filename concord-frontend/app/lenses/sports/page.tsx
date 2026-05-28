@@ -47,8 +47,10 @@ import { PipingProvider } from '@/components/panel-polish';
 import { LensFeedPanel } from '@/components/feeds/LensFeedPanel';
 import { LiveScoreboard } from '@/components/sports/LiveScoreboard';
 import { SportsSpectatorHub } from '@/components/sports/SportsSpectatorHub';
+import { LeagueStandings } from '@/components/sports/LeagueStandings';
+import { MatchSimulator } from '@/components/sports/MatchSimulator';
 
-type Tab = 'games' | 'stats' | 'training';
+type Tab = 'games' | 'stats' | 'training' | 'leagues';
 
 interface GameData {
   title: string;
@@ -85,6 +87,31 @@ const INTENSITY_COLORS: Record<string, string> = {
   moderate: 'text-yellow-400 bg-yellow-400/10',
   intense: 'text-red-400 bg-red-400/10',
 };
+
+function LeagueWire() {
+  const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <LeagueStandings leagueId={activeLeagueId ?? undefined} />
+      {activeLeagueId ? (
+        <MatchSimulator leagueId={activeLeagueId} />
+      ) : (
+        <div className="rounded-lg border border-zinc-700 bg-zinc-900/50 p-4 text-center text-xs text-zinc-500">
+          Create a league first to schedule matches.
+        </div>
+      )}
+      <div className="md:col-span-2">
+        <input
+          type="text"
+          value={activeLeagueId ?? ''}
+          onChange={(e) => setActiveLeagueId(e.target.value || null)}
+          placeholder="Paste an existing leagueId to focus the match simulator"
+          className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-100"
+        />
+      </div>
+    </div>
+  );
+}
 
 export default function SportsLensPage() {
   useLensNav('sports');
@@ -269,6 +296,7 @@ export default function SportsLensPage() {
     { id: 'games', label: 'Games', icon: Trophy },
     { id: 'stats', label: 'Statistics', icon: BarChart3 },
     { id: 'training', label: 'Training', icon: Target },
+    { id: 'leagues', label: 'Leagues (live)', icon: Swords },
   ];
 
   if (isError)
@@ -831,6 +859,18 @@ export default function SportsLensPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Leagues Tab — Phase DC1 live engine wire */}
+      {tab === 'leagues' && (
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-zinc-200">Live league engine</h3>
+          <p className="text-xs text-zinc-400">
+            Create a league, add teams, schedule + simulate matches. Each match call
+            uses the sports-league-engine power-score formula on the server.
+          </p>
+          <LeagueWire />
         </div>
       )}
 

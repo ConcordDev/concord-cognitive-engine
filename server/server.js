@@ -48580,6 +48580,29 @@ app.get("/api/courtship/:partnerKind/:partnerId", requireAuth(), asyncHandler(as
   res.json({ ok: true, courtship: getCourtship(db, userId, req.params.partnerKind, req.params.partnerId) });
 }));
 
+// Phase DC2 — Courtship propose + wed + marriage list + children
+app.post("/api/courtship/propose", requireAuth(), asyncHandler(async (req, res) => {
+  const { propose } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(propose(db, userId, req.body?.partnerKind, req.body?.partnerId));
+}));
+
+app.post("/api/courtship/wed", requireAuth(), asyncHandler(async (req, res) => {
+  const { wed } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(wed(db, userId, req.body?.partnerKind, req.body?.partnerId));
+}));
+
+app.get("/api/courtship/marriages/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyMarriages, listChildren } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    marriages: listMyMarriages(db, userId, true),
+    children: listChildren(db, userId),
+  });
+}));
+
 // Phase CF3 — fishing (surface lib/fishing + minigame-resolvers#resolveFishing).
 app.post("/api/fishing/resolve", requireAuth(), asyncHandler(async (req, res) => {
   const { resolveFishing } = await import("./lib/minigame-resolvers.js");

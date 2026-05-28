@@ -259,6 +259,13 @@ const ExtractionRunHUD = dynamic(
     })),
   { ssr: false }
 );
+const CourtshipProgressOverlay = dynamic(
+  () =>
+    import('@/components/world/CourtshipProgressOverlay').then((m) => ({
+      default: m.CourtshipProgressOverlay,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4199,6 +4206,14 @@ export default function WorldLensPage() {
               id: n.id,
               name: n.name,
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
+              position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+            }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          {/* Phase DC2 — Courtship affinity projection above NPC head */}
+          <CourtshipProgressOverlay
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
