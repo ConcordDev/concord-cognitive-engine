@@ -20,6 +20,12 @@ import { MeshStatusScreen } from '../screens/MeshStatusScreen';
 import { AtlasScreen } from '../screens/AtlasScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { BuyCoinsScreen } from '../screens/BuyCoinsScreen';
+// Phase Z9 — mobile parity for the 5 Phase D sidebar lenses.
+import { CourtshipScreen } from '../screens/CourtshipScreen';
+import { FishingScreen } from '../screens/FishingScreen';
+import { CreaturesScreen } from '../screens/CreaturesScreen';
+import { GarageScreen } from '../screens/GarageScreen';
+import { ReasoningTracesScreen } from '../screens/ReasoningTracesScreen';
 
 export type RootTabParamList = {
   Chat: undefined;
@@ -38,6 +44,12 @@ export type RootStackParamList = {
   DTUDetail: { dtuId: string };
   PeerDetail: { peerId: string };
   TransactionDetail: { txId: string };
+  // Phase Z9 — Phase D sidebar lenses (mobile parallel screens).
+  Courtship: undefined;
+  Fishing: undefined;
+  Creatures: undefined;
+  Garage: undefined;
+  ReasoningTraces: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -109,6 +121,11 @@ const linking: LinkingOptions<RootStackParamList> = {
       Settings: 'settings',
       DTUDetail: { path: 'dtu/:dtuId', parse: { dtuId: (v) => v } },
       LensDetail: { path: 'lens/:lensId', parse: { lensId: (v) => v } },
+      Courtship: 'lenses/courtship',
+      Fishing: 'lenses/fishing',
+      Creatures: 'lenses/creatures',
+      Garage: 'lenses/garage',
+      ReasoningTraces: 'lenses/reasoning/traces',
     },
   },
 };
@@ -169,6 +186,12 @@ export function AppNavigator() {
         <Stack.Screen name="Atlas" component={AtlasScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="BuyCoins" component={BuyCoinsScreen} />
+        {/* Phase Z9 — Phase D sidebar lenses */}
+        <Stack.Screen name="Courtship" component={CourtshipScreen} options={{ headerShown: true, title: 'Courtship', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fda4af' }} />
+        <Stack.Screen name="Fishing" component={FishingScreen} options={{ headerShown: true, title: 'Fishing', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#a5f3fc' }} />
+        <Stack.Screen name="Creatures" component={CreaturesScreen} options={{ headerShown: true, title: 'Creatures', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#c4b5fd' }} />
+        <Stack.Screen name="Garage" component={GarageScreen} options={{ headerShown: true, title: 'Garage', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fde68a' }} />
+        <Stack.Screen name="ReasoningTraces" component={ReasoningTracesScreen} options={{ headerShown: true, title: 'HLR Traces', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#a5f3fc' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
