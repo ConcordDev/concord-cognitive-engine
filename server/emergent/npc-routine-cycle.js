@@ -71,6 +71,11 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
     return p;
   }
 
+  // Phase G1.2 — accumulate transitions per world so we can fire one
+  // npc:activity-batch event per (world, pass) instead of fanning out
+  // ~70 npc:activity emits per tick.
+  const transitionsByWorld = new Map(); // worldId -> [{ npcId, fromBlock, toBlock, activity, faction }]
+
   for (const worldId of activeWorlds) {
     if (stats.advanced >= MAX_NPCS_PER_PASS) break;
     let npcs = [];
@@ -101,22 +106,17 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
           if (r.transitioned) stats.transitioned++;
           if (r.arrived) stats.arrived++;
           stats.signalsWritten += r.signalsWritten || 0;
-          // Sprint 8 — broadcast routine-block transitions so the timeline
-          // lens + DistrictActivityFeed surfaces NPC activity in real time.
-          // Skipped for routine pass-throughs (only fired on transitions).
           if (r.transitioned) {
-            try {
-              const re = globalThis._concordRealtimeEmit;
-              if (typeof re === "function") {
-                re("npc:activity", {
-                  world_id: worldId,
-                  actor_kind: "npc",
-                  actor_id: npc.id,
-                  activity: r.currentActivity || r.activity || null,
-                  faction: npc.faction || null,
-                });
-              }
-            } catch { /* never block tick */ }
+            // Accumulate; emit happens once per world after the loop.
+            const list = transitionsByWorld.get(worldId) || [];
+            list.push({
+              npcId: npc.id,
+              fromBlock: r.fromBlock ?? null,
+              toBlock: r.toBlock ?? null,
+              activity: r.currentActivity || r.activity || null,
+              faction: npc.faction || null,
+            });
+            transitionsByWorld.set(worldId, list);
           }
         }
       } catch (err) {
@@ -125,6 +125,24 @@ export async function runNpcRoutineCycle({ db, state: _state, tickCount: _t } = 
       }
     }
   }
+
+  // Phase G1.2 — one batch emit per world. Caps per-payload to keep
+  // socket size bounded if a world had hundreds of transitions; the
+  // remaining transitions are still counted in the count field.
+  try {
+    const re = globalThis._concordRealtimeEmit;
+    if (typeof re === "function") {
+      const MAX_PAYLOAD_TRANSITIONS = 20;
+      for (const [worldId, list] of transitionsByWorld) {
+        if (list.length === 0) continue;
+        re("npc:activity-batch", {
+          worldId,
+          count: list.length,
+          transitions: list.slice(0, MAX_PAYLOAD_TRANSITIONS),
+        });
+      }
+    }
+  } catch { /* emit failures never affect tick */ }
 
   // Sprint C / Track A1 — daily stress decay sweep. Cheap batch UPDATE,
   // safe to call every routine pass (the WHERE clause filters on

@@ -375,7 +375,20 @@ export type SocketEvent =
   // Phase 11 (Item 4) — pan-social notification toast: server fires
   // this from createNotification (reactions / comments / follows /
   // shares / mentions / DMs) to the recipient's user:${userId} room.
-  | 'social:notification';
+  | 'social:notification'
+  // Phase F3 (May 2026) — simulation surfacing
+  | 'faction:war-declared'
+  | 'faction:alliance-formed'
+  | 'faction:truce-sought'
+  | 'npc:scheme-resolved'
+  | 'dream:composed'
+  | 'prediction:realised'
+  | 'refusal:compound-threshold'
+  // Phase G1 (May 2026) — batched + chain + bridge surfacing
+  | 'combat:chain'
+  | 'npc:activity-batch'
+  | 'npc:economy-batch'
+  | 'social:shadows-synced';
 
 // ---- Enriched Event Payload (Category 2+5: Concurrency + Observability) ----
 interface EnrichedPayload {

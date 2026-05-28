@@ -136,4 +136,37 @@ describe("Phase F3.1 — heartbeat realtime emit contract", () => {
       assert.deepEqual(captured[0].payload, { a: 1 });
     });
   });
+
+  // Phase G1 — registered event shapes for the 4 new batched emits.
+  describe("Phase G1 — registered event shapes", () => {
+    it("npc:activity-batch shape validates", async () => {
+      const { validateEvent } = await import("../../lib/event-shapes.js");
+      const r = validateEvent("npc:activity-batch", {
+        worldId: "concordia-hub", count: 3,
+        transitions: [{ npcId: "npc_a", fromBlock: 0, toBlock: 1, activity: "work", faction: "x" }],
+      });
+      assert.equal(r.ok, true);
+    });
+    it("npc:economy-batch shape validates", async () => {
+      const { validateEvent } = await import("../../lib/event-shapes.js");
+      const r = validateEvent("npc:economy-batch", {
+        worldId: "concordia-hub", gathers: 3, crafts: 1, trades: 2, rests: 0, notable: [],
+      });
+      assert.equal(r.ok, true);
+    });
+    it("social:shadows-synced shape validates", async () => {
+      const { validateEvent } = await import("../../lib/event-shapes.js");
+      const r = validateEvent("social:shadows-synced", {
+        createdShadows: 5, totalCapacity: 1200,
+      });
+      assert.equal(r.ok, true);
+    });
+    it("combat:chain shape validates", async () => {
+      const { validateEvent } = await import("../../lib/event-shapes.js");
+      const r = validateEvent("combat:chain", {
+        originActorId: "u_a", targets: ["npc_b", "npc_c"],
+      });
+      assert.equal(r.ok, true);
+    });
+  });
 });

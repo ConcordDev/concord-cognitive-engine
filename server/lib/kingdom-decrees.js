@@ -84,12 +84,17 @@ export function issueDecree(db, decreeId, opts = {}) {
   // Cascade opinion-of-ruler shift across citizens.
   cascadeOpinionToCitizens(db, d.kingdom_id, d.popularity_delta, `decree: ${d.kind}`);
 
-  // Realtime event (best-effort).
+  // Phase G1.1 — unified to kingdom:decree-enacted (matches the route emit
+  // shape) so EmergentEventFeed + event-shapes registry don't need to track
+  // a parallel name. Best-effort; never blocks the cycle.
   try {
-    const io = opts?.io;
-    io?.emit?.("kingdom:decree-issued", {
-      kingdomId: d.kingdom_id, decreeId, kind: d.kind, popularity_delta: d.popularity_delta,
-    });
+    const emitFn = globalThis._concordRealtimeEmit;
+    if (typeof emitFn === "function") {
+      emitFn("kingdom:decree-enacted", {
+        kingdomId: d.kingdom_id, decreeId, decreeKind: d.kind,
+        activationState: "issued", popularityDelta: d.popularity_delta,
+      });
+    }
   } catch { /* noop */ }
 
   return { ok: true, action: "issued", decreeId };

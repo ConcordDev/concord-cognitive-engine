@@ -53,6 +53,10 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
   }
   if (activeWorlds.length === 0) return { ok: true, actions: 0 };
 
+  // Phase G1.3 — aggregate notable actions per world; emit one batch
+  // per (world, pass) instead of fanning out ~40 per-action emits.
+  const notableByWorld = new Map(); // worldId -> { gathers, crafts, trades, rests, notable: [...] }
+
   for (const worldId of activeWorlds) {
     if (stats.actions >= MAX_ACTIONS_PER_PASS) break;
     let arrived = [];
@@ -69,6 +73,12 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
       `).all(worldId, MAX_ACTIONS_PER_PASS - stats.actions);
     } catch { continue; }
 
+    let worldBucket = notableByWorld.get(worldId);
+    if (!worldBucket) {
+      worldBucket = { gathers: 0, crafts: 0, trades: 0, rests: 0, notable: [] };
+      notableByWorld.set(worldId, worldBucket);
+    }
+
     for (const npc of arrived) {
       if (stats.actions >= MAX_ACTIONS_PER_PASS) break;
       try {
@@ -76,19 +86,22 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
         if (r?.ok) {
           stats.actions++;
           if (npc.activity_kind in stats.byKind) stats.byKind[npc.activity_kind]++;
-          // Sprint 8 — broadcast meaningful economy actions to the timeline.
-          try {
-            const re = globalThis._concordRealtimeEmit;
-            if (typeof re === "function" && r.notable) {
-              re("npc:economy", {
-                world_id: worldId,
-                actor_kind: "npc",
-                actor_id: npc.id,
-                kind: npc.activity_kind,
-                outcome: r.outcome || null,
-              });
-            }
-          } catch { /* never block tick */ }
+          // Bucket counts by kind for the batch payload.
+          if (npc.activity_kind === "gather") worldBucket.gathers++;
+          else if (npc.activity_kind === "craft") worldBucket.crafts++;
+          else if (npc.activity_kind === "trade") worldBucket.trades++;
+          else if (npc.activity_kind === "rest") worldBucket.rests++;
+          // Notable actions go into a bounded highlight list (top 5 by
+          // magnitude or just first 5 — magnitude is per-outcome and
+          // we don't always have a numeric, so we use first-arrived).
+          if (r.notable && worldBucket.notable.length < 5) {
+            worldBucket.notable.push({
+              actorId: npc.id,
+              kind: npc.activity_kind,
+              outcome: r.outcome || null,
+              magnitude: r.magnitude ?? null,
+            });
+          }
         } else {
           stats.byKind.skipped++;
         }
@@ -104,6 +117,21 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
       if (r?.ok) stats.scarcityRefreshed++;
     } catch { /* table may not exist */ }
   }
+
+  // Phase G1.3 — one batch emit per world.
+  try {
+    const re = globalThis._concordRealtimeEmit;
+    if (typeof re === "function") {
+      for (const [worldId, b] of notableByWorld) {
+        if (b.gathers === 0 && b.crafts === 0 && b.trades === 0 && b.rests === 0) continue;
+        re("npc:economy-batch", {
+          worldId,
+          gathers: b.gathers, crafts: b.crafts, trades: b.trades, rests: b.rests,
+          notable: b.notable,
+        });
+      }
+    }
+  } catch { /* emit failures never affect tick */ }
 
   return stats;
 }
