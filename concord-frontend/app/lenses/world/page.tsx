@@ -273,6 +273,27 @@ const DriftAlertToast = dynamic(
     })),
   { ssr: false }
 );
+const FootprintLayer = dynamic(
+  () =>
+    import('@/components/world/FootprintLayer').then((m) => ({
+      default: m.FootprintLayer,
+    })),
+  { ssr: false }
+);
+const BloodlineTreeViewer = dynamic(
+  () =>
+    import('@/components/world/BloodlineTreeViewer').then((m) => ({
+      default: m.BloodlineTreeViewer,
+    })),
+  { ssr: false }
+);
+const NPCTraitInspector = dynamic(
+  () =>
+    import('@/components/world/NPCTraitInspector').then((m) => ({
+      default: m.NPCTraitInspector,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4943,6 +4964,15 @@ export default function WorldLensPage() {
 
           {/* Phase DC7 — Drift alert toast */}
           <DriftAlertToast />
+
+          {/* Phase DC12 — Tracking footprint layer (skill ≥ 5 gates) */}
+          <FootprintLayer />
+
+          {/* Phase DC13 — Bloodline tree (event-triggered) */}
+          <BloodlineTreeViewer />
+
+          {/* Phase DC14 — NPC trait inspector (event-triggered from DA1 menu) */}
+          <NPCTraitInspector />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

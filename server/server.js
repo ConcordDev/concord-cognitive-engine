@@ -48690,8 +48690,23 @@ app.post("/api/glyph-spells/compose", requireAuth(), asyncHandler(async (req, re
   try {
     const m = await import("./lib/glyph-spells.js");
     if (m.composeSpell) {
-      res.json(m.composeSpell(req.body?.chain || []));
+      res.json(m.composeSpell(db, req.body?.chain || []));
     } else { res.status(503).json({ ok: false, error: "compose_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/glyph-spells/components", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    res.json({ ok: true, components: m.listGlyphComponents ? m.listGlyphComponents(db) : [] });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/glyph-spells/mine", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, spells: m.listSpellsForUser ? m.listSpellsForUser(db, userId) : [] });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
@@ -48710,6 +48725,16 @@ app.get("/api/garage/world/:worldId", asyncHandler(async (req, res) => {
   res.json({ ok: true, vehicles: listVehiclesInWorld(db, req.params.worldId, { kind: req.query.kind }) });
 }));
 
+app.post("/api/garage/spawn", requireAuth(), asyncHandler(async (req, res) => {
+  const { spawnVehicle } = await import("./lib/world-vehicles.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(spawnVehicle(db, {
+    ...(req.body || {}),
+    ownerKind: req.body?.ownerKind || "player",
+    ownerId: req.body?.ownerKind === "player" ? userId : (req.body?.ownerId || ""),
+  }));
+}));
+
 app.get("/api/garage/vehicle/:vehicleId", asyncHandler(async (req, res) => {
   const { getVehicle } = await import("./lib/world-vehicles.js");
   const v = getVehicle(db, req.params.vehicleId);
@@ -48723,6 +48748,32 @@ app.get("/api/tracking/skill", requireAuth(), asyncHandler(async (req, res) => {
   try {
     const r = db.prepare(`SELECT xp, level FROM tracking_skill_xp WHERE user_id = ?`).get(userId);
     res.json({ ok: true, xp: r?.xp || 0, level: r?.level || 0 });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase DC12 — recent creature tracks for the FootprintLayer overlay.
+// Returns damage_events from the last N minutes where the target is a
+// creature (npc with creature_kind set or species_id linkage).
+app.get("/api/tracking/recent/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  const minutes = Math.max(1, Math.min(60, Number(req.query.minutes) || 10));
+  try {
+    const skill = db.prepare(`SELECT level FROM tracking_skill_xp WHERE user_id = ?`).get(userId);
+    if (!skill || (skill.level || 0) < 5) {
+      return res.json({ ok: true, tracks: [], gated: true, requiredLevel: 5 });
+    }
+    const since = Math.floor(Date.now() / 1000) - minutes * 60;
+    // Best-effort: damage_events table shape varies by build.
+    let rows = [];
+    try {
+      rows = db.prepare(`
+        SELECT id, attacker_id, target_id, x, z, occurred_at
+        FROM damage_events
+        WHERE world_id = ? AND occurred_at >= ?
+        ORDER BY occurred_at DESC LIMIT 50
+      `).all(req.params.worldId, since);
+    } catch { rows = []; }
+    res.json({ ok: true, tracks: rows, gated: false });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
