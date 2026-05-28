@@ -266,6 +266,13 @@ const CourtshipProgressOverlay = dynamic(
     })),
   { ssr: false }
 );
+const DriftAlertToast = dynamic(
+  () =>
+    import('@/components/world/DriftAlertToast').then((m) => ({
+      default: m.DriftAlertToast,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4933,6 +4940,9 @@ export default function WorldLensPage() {
 
           {/* Phase DB16 — Extraction run HUD */}
           <ExtractionRunHUD />
+
+          {/* Phase DC7 — Drift alert toast */}
+          <DriftAlertToast />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

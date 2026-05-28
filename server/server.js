@@ -48661,6 +48661,20 @@ app.post("/api/creatures/breed", requireAuth(), asyncHandler(async (req, res) =>
   res.json(maybeCrossbreed(db, req.body || {}));
 }));
 
+// Phase DC6 — creatures lens needs a list endpoint.
+app.get("/api/creatures/world/:worldId", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, biome, species_id, lifestyle, current_count, target_count
+      FROM creature_population WHERE world_id = ?
+      ORDER BY current_count DESC LIMIT 100
+    `).all(req.params.worldId);
+    res.json({ ok: true, populations: rows });
+  } catch (e) {
+    res.json({ ok: true, populations: [], error: e?.message });
+  }
+}));
+
 app.get("/api/creatures/:creatureId/lineage", asyncHandler(async (req, res) => {
   const { getLineage } = await import("./lib/creature-crossbreeding.js");
   res.json({ ok: true, lineage: getLineage(db, req.params.creatureId) });
@@ -48763,6 +48777,11 @@ app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) =
 app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
   const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
   res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+}));
+
+app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+  const m = await import("./emergent/hlr-engine.js");
+  res.json({ ok: true, traces: m.listTraces(Number(req.query.limit) || 50), modes: Object.values(m.REASONING_MODES) });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
