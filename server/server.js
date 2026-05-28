@@ -234,6 +234,23 @@ registerHeartbeat("plague-watch", {
   },
 });
 
+// Phase E7 — brawl matchmaking queue (~1min cadence). Pops pairs of
+// queued users and synthesises invites between them. The HTTP join
+// route also runs popPair() once immediately so single-pair waits
+// don't have to wait for this heartbeat.
+registerHeartbeat("brawl-queue-cycle", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      const mod = await import("./emergent/brawl-queue-cycle.js");
+      return mod.runBrawlQueueCycle({ realtimeEmit });
+    } catch (err) {
+      return { ok: false, error: err?.message };
+    }
+  },
+});
+
 // Phase V4 — event reminder sweep (~1min cadence). Fires event:reminder
 // realtime to users whose RSVP'd event starts in the next 10min.
 registerHeartbeat("event-reminder-sweep", {
@@ -49552,6 +49569,42 @@ app.get("/api/combat/brawl/invites", requireAuth(), asyncHandler(async (req, res
   const { listOpenInvitesFor } = await import("./lib/brawl.js");
   const userId = req.user?.id || req.user?.userId;
   res.json({ ok: true, invites: listOpenInvitesFor(userId) });
+}));
+
+// Phase E7 — brawl matchmaking queue. The brawl-queue-cycle heartbeat
+// pops pairs every minute; these routes let players join/leave/check.
+app.post("/api/brawl/queue/join", requireAuth(), asyncHandler(async (req, res) => {
+  const { joinQueue, popPair } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  const result = joinQueue(userId, { userName: req.user?.name || null });
+  // Try one immediate popPair — if someone else is already waiting,
+  // pair them right away instead of forcing a 1-minute heartbeat wait.
+  if (result.ok && !result.alreadyQueued) {
+    const r = popPair();
+    if (r?.ok && r.paired) {
+      try {
+        req.app.locals.io?.to(`user:${r.paired.a}`).emit("brawl-invited", {
+          inviteId: r.paired.inviteId, from: r.paired.b, via: "matchmaking",
+        });
+        req.app.locals.io?.to(`user:${r.paired.b}`).emit("brawl-invited", {
+          inviteId: r.paired.inviteId, from: r.paired.a, via: "matchmaking",
+        });
+      } catch { /* best-effort emit */ }
+    }
+  }
+  res.json(result);
+}));
+
+app.post("/api/brawl/queue/leave", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaveQueue } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(leaveQueue(userId));
+}));
+
+app.get("/api/brawl/queue/status", requireAuth(), asyncHandler(async (req, res) => {
+  const { queueStatus } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(queueStatus(userId));
 }));
 
 // Phase CA6 — soulslike corpse list (active TTL corpses for the caller).

@@ -105,11 +105,12 @@ const MODES: ModeConfig[] = [
     label: 'Brawl',
     icon: Swords,
     color: 'border-pink-500/40 bg-pink-500/10 text-pink-200 hover:bg-pink-500/20',
-    description: 'Fist-only 1v1. Sifu profile. Wait for an opponent.',
+    description: 'Fist-only 1v1. Sifu profile. Open the matchmaker.',
     start: async () => {
-      // Just open the open-invites query — the actual invite happens via NPC menu.
-      const r = await fetch('/api/combat/brawl/invites', { credentials: 'include' });
-      return await r.json();
+      // Phase E7 — opens the matchmaker queue UI. The direct NPC-menu
+      // path is still available for inviting a specific player.
+      window.dispatchEvent(new CustomEvent('concordia:open-brawl-queue'));
+      return { ok: true, opened: 'brawl-queue' };
     },
   },
 ];

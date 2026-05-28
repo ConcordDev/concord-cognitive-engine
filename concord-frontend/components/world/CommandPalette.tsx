@@ -37,6 +37,9 @@ const WORLD_ACTIONS: PaletteEntry[] = [
   { id: 'action:brawl',         label: 'Find Brawl Opponent',     category: 'mode',    keywords: ['brawl', 'fist', '1v1'], kind: 'action', handler: () => window.dispatchEvent(new CustomEvent('concordia:start-mode', { detail: { mode: 'brawl-matchmaker' } })) },
   { id: 'action:party-combat',  label: 'Start Party Combat',      category: 'mode',    keywords: ['party', 'crpg', 'tactical', 'rtwp'], kind: 'action', handler: () => window.dispatchEvent(new CustomEvent('concordia:start-mode', { detail: { mode: 'party-combat' } })) },
   { id: 'action:training',      label: 'Open Training Room',      category: 'world',   keywords: ['training', 'dojo', 'frame data'], kind: 'action', path: '/lenses/training-room' },
+  // Phase E7 — group + matchmaking actions.
+  { id: 'action:lfg-board',     label: 'Find a Group (LFG)',      category: 'social',  keywords: ['lfg', 'group', 'party', 'looking', 'tank', 'healer'], kind: 'action', handler: () => window.dispatchEvent(new CustomEvent('concordia:open-lfg-board')) },
+  { id: 'action:brawl-queue',   label: 'Brawl Matchmaker',        category: 'mode',    keywords: ['brawl', 'matchmaking', 'queue', '1v1', 'fist'], kind: 'action', handler: () => window.dispatchEvent(new CustomEvent('concordia:open-brawl-queue')) },
 ];
 
 function fuzzyMatch(query: string, text: string): number {

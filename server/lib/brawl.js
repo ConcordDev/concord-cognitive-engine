@@ -88,10 +88,71 @@ export function listOpenInvitesFor(userId) {
   return out;
 }
 
+// Phase E7 — brawl matchmaking queue.
+//
+// Players join a global queue with joinQueue(userId). The heartbeat
+// pops pairs every minute (or immediately if there are >= 2 waiting).
+// On pair, we synthesise an inviteBrawl from the older queuer to the
+// newer one so the existing acceptBrawl flow fires. Players who don't
+// accept within INVITE_TTL_MS go back to the front of the queue
+// implicitly (no auto-rematch — they need to re-queue).
+//
+// In-memory like the invite map. The heartbeat owns the popPair call.
+const _queue = new Map(); // userId → { joinedAt, userName? }
+
+export function joinQueue(userId, opts = {}) {
+  if (!userId) return { ok: false, error: "missing_user" };
+  if (_activeBrawls.has(userId)) return { ok: false, error: "already_in_brawl" };
+  if (_queue.has(userId)) return { ok: true, alreadyQueued: true, joinedAt: _queue.get(userId).joinedAt };
+  _queue.set(userId, { userId, joinedAt: Date.now(), userName: opts.userName || null });
+  return { ok: true, joinedAt: _queue.get(userId).joinedAt, queueSize: _queue.size };
+}
+
+export function leaveQueue(userId) {
+  if (!userId) return { ok: false, error: "missing_user" };
+  const had = _queue.delete(userId);
+  return { ok: true, removed: had };
+}
+
+export function queueStatus(userId = null) {
+  return {
+    ok: true,
+    size: _queue.size,
+    inQueue: userId ? _queue.has(userId) : null,
+    joinedAt: userId && _queue.has(userId) ? _queue.get(userId).joinedAt : null,
+  };
+}
+
+/**
+ * Pop the two oldest queuers and create a brawl invite between them.
+ * Returns { ok, paired: { a, b, inviteId } } or { ok: true, paired: null }.
+ */
+export function popPair() {
+  if (_queue.size < 2) return { ok: true, paired: null };
+  // Sort by joinedAt; oldest two pair.
+  const sorted = Array.from(_queue.values()).sort((x, y) => x.joinedAt - y.joinedAt);
+  const a = sorted[0];
+  const b = sorted[1];
+  _queue.delete(a.userId);
+  _queue.delete(b.userId);
+  // The older queuer "invites" the newer one — symmetric in practice
+  // because both opted into the queue.
+  const inv = inviteBrawl(a.userId, b.userId);
+  if (!inv.ok) {
+    // Re-add both to the queue so they aren't lost.
+    _queue.set(a.userId, a);
+    _queue.set(b.userId, b);
+    return { ok: false, reason: "invite_failed", detail: inv.error };
+  }
+  logger.info?.("brawl", "queue_paired", { a: a.userId, b: b.userId, inviteId: inv.inviteId });
+  return { ok: true, paired: { a: a.userId, b: b.userId, inviteId: inv.inviteId } };
+}
+
 // Test-only reset.
 export function _reset() {
   _invites.clear();
   _activeBrawls.clear();
+  _queue.clear();
 }
 
 export { INVITE_TTL_MS };

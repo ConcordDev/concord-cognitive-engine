@@ -294,6 +294,27 @@ const NPCTraitInspector = dynamic(
     })),
   { ssr: false }
 );
+const LFGBoardPanel = dynamic(
+  () =>
+    import('@/components/world/LFGBoardPanel').then((m) => ({
+      default: m.LFGBoardPanel,
+    })),
+  { ssr: false }
+);
+const BrawlMatchmakingQueue = dynamic(
+  () =>
+    import('@/components/world/BrawlMatchmakingQueue').then((m) => ({
+      default: m.BrawlMatchmakingQueue,
+    })),
+  { ssr: false }
+);
+const SpectatorOverlay = dynamic(
+  () =>
+    import('@/components/world/SpectatorOverlay').then((m) => ({
+      default: m.SpectatorOverlay,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4975,6 +4996,11 @@ export default function WorldLensPage() {
 
           {/* Phase DC14 — NPC trait inspector (event-triggered from DA1 menu) */}
           <NPCTraitInspector />
+
+          {/* Phase E7 — LFG board + brawl matchmaker + spectator overlay */}
+          <LFGBoardPanel />
+          <BrawlMatchmakingQueue />
+          <SpectatorOverlay />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
