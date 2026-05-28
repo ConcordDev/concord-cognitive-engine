@@ -49248,6 +49248,21 @@ app.get("/api/detective/mine", requireAuth(), asyncHandler(async (req, res) => {
   res.json({ ok: true, deductions: getDeductionsByUser(db, userId) });
 }));
 
+// Phase DB1 — player stamina state surfacing (climbing tracker reads this).
+app.get("/api/players/me/stamina", requireAuth(), asyncHandler(async (req, res) => {
+  const { getStamina } = await import("./lib/player-stamina.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId || "concordia-hub";
+  try {
+    const s = getStamina(db, userId, worldId);
+    if (!s) return res.json({ ok: true, stamina: { state: "rest", remaining_pct: 100 } });
+    res.json({ ok: true, stamina: {
+      state: s.state || "rest",
+      remaining_pct: Math.max(0, Math.min(100, Number(s.remaining_pct) || 100)),
+    }});
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase CA3 — climbing routes ledger.
 app.post("/api/climbing/route", requireAuth(), asyncHandler(async (req, res) => {
   const { recordRoute } = await import("./lib/climbing.js");

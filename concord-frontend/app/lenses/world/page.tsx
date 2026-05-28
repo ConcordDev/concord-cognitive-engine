@@ -182,6 +182,13 @@ const GameModesHotbarGroup = dynamic(
     })),
   { ssr: false }
 );
+const ClimbingTracker = dynamic(
+  () =>
+    import('@/components/world/ClimbingTracker').then((m) => ({
+      default: m.ClimbingTracker,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4809,6 +4816,11 @@ export default function WorldLensPage() {
           {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
           <div className="pointer-events-auto fixed right-4 top-32 z-20">
             <GameModesHotbarGroup worldId={activeDistrict.id} />
+          </div>
+
+          {/* Phase DB1 — Climbing tracker (top-left widget cluster) */}
+          <div className="pointer-events-auto fixed left-4 top-32 z-20 w-44">
+            <ClimbingTracker worldId={activeDistrict.id} playerY={playerAvatar.position.y} />
           </div>
 
           {/* Emote wheel — G key in exploration/social mode */}
