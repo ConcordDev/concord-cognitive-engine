@@ -6003,6 +6003,8 @@ function authMiddleware(req, res, next) {
     "/api/announcements",
     // Phase BC2 — mentor registry (public read).
     "/api/mentors",
+    // Phase CA3 — climbing top routes (public read).
+    "/api/climbing/world",
     // Phase BE1 — photos public feed.
     "/api/photos/world",
     // Ambient chat — public read (district feed); post requires auth.
@@ -48489,6 +48491,33 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CA3 — climbing routes ledger.
+app.post("/api/climbing/route", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordRoute } = await import("./lib/climbing.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = recordRoute(db, userId, req.body || {});
+  if (r.ok) {
+    try {
+      realtimeEmit?.("climbing:route-completed", {
+        userId, worldId: req.body?.worldId,
+        heightClimbed: r.heightClimbed,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/climbing/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listRoutes } = await import("./lib/climbing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, routes: listRoutes(db, userId, Number(req.query.limit) || 20) });
+}));
+
+app.get("/api/climbing/world/:worldId/top", asyncHandler(async (req, res) => {
+  const { getTopRoutes } = await import("./lib/climbing.js");
+  res.json({ ok: true, top: getTopRoutes(db, req.params.worldId, Number(req.query.limit) || 10) });
 }));
 
 // Phase CA2 — submarine dive-state aggregator. Joins player_oxygen,

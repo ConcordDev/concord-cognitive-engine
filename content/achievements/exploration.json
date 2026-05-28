@@ -67,6 +67,25 @@
       "rewardCc": 250,
       "rewardTitle": "the Cosmopolitan",
       "triggers": [{ "kind": "stat", "stat": "worlds_with_15min_dwell", "threshold": 8 }]
+    },
+    {
+      "id": "first_summit",
+      "title": "First Summit",
+      "description": "Complete your first climbing route.",
+      "rarity": "bronze",
+      "icon": "Mountain",
+      "rewardCc": 25,
+      "triggers": [{ "kind": "event", "event": "climbing:route-completed", "condition": {} }]
+    },
+    {
+      "id": "cliff_master",
+      "title": "Cliff Master",
+      "description": "Complete 10 climbing routes over 100m tall.",
+      "rarity": "gold",
+      "icon": "MoveUpRight",
+      "rewardCc": 200,
+      "rewardTitle": "the Cliffbound",
+      "triggers": [{ "kind": "stat", "stat": "tall_climbs_completed", "threshold": 10 }]
     }
   ]
 }
