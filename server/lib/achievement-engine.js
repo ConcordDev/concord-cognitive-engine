@@ -167,19 +167,38 @@ export function evaluateStatThreshold(db, userId, statName, currentValue) {
 /**
  * Idempotent unlock. Returns { unlocked: bool, id, title, rewardCc, rewardTitle }.
  * If the user already had it, unlocked=false.
+ *
+ * Phase BB2: stamps the current (season_idx, year_idx) at unlock time
+ * so leaderboards can filter by season. Enforces `seasonOnly` and
+ * `festivalOnly` gates from the achievement JSON.
  */
 export function unlockAchievement(db, userId, achievementId, ctx = {}) {
   if (!db || !userId || !achievementId) return { unlocked: false };
   const a = _catalogCache.get(achievementId);
   if (!a) return { unlocked: false };
 
+  // Phase BB2 gates: seasonOnly + festivalOnly.
+  const cal = _calendarSnapshot();
+  if (typeof a.seasonOnly === "number" && a.seasonOnly !== cal.season_idx) {
+    return { unlocked: false, reason: "season_gated" };
+  }
+  if (typeof a.festivalOnly === "string") {
+    try {
+      const active = db.prepare(`
+        SELECT 1 FROM festival_active
+        WHERE festival_id = ? AND ends_at > unixepoch()
+      `).get(a.festivalOnly);
+      if (!active) return { unlocked: false, reason: "festival_gated" };
+    } catch { /* festivals table missing on minimal build — skip gate */ }
+  }
+
   try {
     // Insert; the PK collision means already-earned → no-op.
     const r = db.prepare(`
-      INSERT INTO player_achievements (player_id, achievement_id, earned_at)
-      VALUES (?, ?, unixepoch())
+      INSERT INTO player_achievements (player_id, achievement_id, earned_at, season_idx, year_idx)
+      VALUES (?, ?, unixepoch(), ?, ?)
       ON CONFLICT DO NOTHING
-    `).run(userId, achievementId);
+    `).run(userId, achievementId, cal.season_idx, cal.year_idx);
     if (r.changes === 0) return { unlocked: false, alreadyEarned: true };
 
     // Apply rewards. CC via the same lightweight wallet helpers as mail.
@@ -284,3 +303,37 @@ export function _resetAchievementCatalog() {
   _statTriggers.clear();
   _initialized = false;
 }
+
+// ── Phase BB2 — seasonal stamp + leaderboard query ─────────────────────
+
+const _MS_PER_DAY = 86_400_000;
+const _YEAR_DAYS = 42;
+const _SEASON_DAYS = 7;
+
+/** Pure: derive { season_idx, year_idx } from the wall clock. */
+function _calendarSnapshot(now = Date.now()) {
+  const dayOfYear = Math.floor(now / _MS_PER_DAY) % _YEAR_DAYS;
+  const season_idx = Math.floor(dayOfYear / _SEASON_DAYS);
+  const year_idx = Math.floor((now / _MS_PER_DAY) / _YEAR_DAYS) + 1;
+  return { season_idx, year_idx };
+}
+
+/** Leaderboard filter for a specific (season, year). */
+export function listSeasonalAchievements(db, userId, opts = {}) {
+  if (!db || !userId) return [];
+  try {
+    const { seasonIdx, yearIdx } = opts;
+    const filters = ["player_id = ?"];
+    const args = [userId];
+    if (typeof seasonIdx === "number") { filters.push("season_idx = ?"); args.push(seasonIdx); }
+    if (typeof yearIdx === "number") { filters.push("year_idx = ?"); args.push(yearIdx); }
+    return db.prepare(`
+      SELECT achievement_id, earned_at, season_idx, year_idx
+      FROM player_achievements
+      WHERE ${filters.join(" AND ")}
+      ORDER BY earned_at DESC
+    `).all(...args);
+  } catch { return []; }
+}
+
+export { _calendarSnapshot };

@@ -1,0 +1,48 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "seasonal",
+  "achievements": [
+    {
+      "id": "wintersday_celebrant",
+      "title": "Wintersday Celebrant",
+      "description": "Complete a Wintersday quest while the festival is active.",
+      "rarity": "silver",
+      "icon": "Snowflake",
+      "rewardCc": 100,
+      "festivalOnly": "wintersday",
+      "triggers": [{ "kind": "event", "event": "quest:completed", "condition": { "festivalId": "wintersday" } }]
+    },
+    {
+      "id": "harvest_brewmaster",
+      "title": "Harvest Brewmaster",
+      "description": "Submit three brews to the Harvest Moon judges.",
+      "rarity": "silver",
+      "icon": "Beer",
+      "rewardCc": 100,
+      "festivalOnly": "harvest_moon",
+      "triggers": [{ "kind": "stat", "stat": "harvest_brews_submitted", "threshold": 3 }]
+    },
+    {
+      "id": "lunar_dancer",
+      "title": "Lunar Dancer",
+      "description": "Stay in a chain dance of 8+ for an entire song during the Lunar Dance.",
+      "rarity": "gold",
+      "icon": "Music",
+      "rewardCc": 150,
+      "rewardTitle": "the Moonlit",
+      "festivalOnly": "lunar_dance",
+      "triggers": [{ "kind": "event", "event": "festival:dance-completed", "condition": { "festivalId": "lunar_dance" } }]
+    },
+    {
+      "id": "founders_chronicler",
+      "title": "Founders' Chronicler",
+      "description": "Compose a founding-history DTU after hearing three elder tellings.",
+      "rarity": "gold",
+      "icon": "BookText",
+      "rewardCc": 200,
+      "rewardTitle": "the Chronicler",
+      "festivalOnly": "founders_day",
+      "triggers": [{ "kind": "event", "event": "dtu:created", "condition": { "kind": "history", "festivalId": "founders_day" } }]
+    }
+  ]
+}
