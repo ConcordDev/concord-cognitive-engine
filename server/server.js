@@ -5989,6 +5989,8 @@ function authMiddleware(req, res, next) {
     "/api/festivals",
     // Phase BB3 — announcements (public read; POST is admin-gated).
     "/api/announcements",
+    // Phase BC2 — mentor registry (public read).
+    "/api/mentors",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -48473,6 +48475,22 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase BC2 — mentor registry (public read).
+app.get("/api/mentors/world/:worldId", asyncHandler(async (req, res) => {
+  const { listMentorsInWorld } = await import("./lib/mentorship.js");
+  res.json({ ok: true, mentors: listMentorsInWorld(db, req.params.worldId, {
+    skillCategory: req.query.skillCategory,
+    limit: Number(req.query.limit) || 50,
+  }) });
+}));
+
+app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
+  const { getMentorProfile } = await import("./lib/mentorship.js");
+  const profile = getMentorProfile(db, req.params.npcId);
+  if (!profile) return res.status(404).json({ ok: false, error: "no_profile" });
+  res.json({ ok: true, profile });
 }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.
