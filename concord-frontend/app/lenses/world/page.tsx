@@ -154,6 +154,13 @@ const PlayerCorpseMarker = dynamic(
     })),
   { ssr: false }
 );
+const NPCActionMenu = dynamic(
+  () =>
+    import('@/components/world/NPCActionMenu').then((m) => ({
+      default: m.NPCActionMenu,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4755,6 +4762,9 @@ export default function WorldLensPage() {
             playerX={playerAvatar.position.x}
             playerZ={playerAvatar.position.y}
           />
+
+          {/* Phase DA1 — NPC contextual action menu */}
+          <NPCActionMenu />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

@@ -1262,12 +1262,18 @@ export default function ConcordiaScene({
             | { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string; name?: string; occupation?: string }
             | undefined;
           if (ud?.isNPC && ud.avatarId) {
+            // Phase DA1 — NPC click opens a contextual action menu near
+            // the cursor; the menu's "Talk" action forwards to dialogue.
+            // Backward compat: legacy listeners on concordia:open-dialogue
+            // still work via the menu's onTalk callback.
             try {
-              window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
+              window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', {
                 detail: {
                   npcId:      ud.avatarId,
                   npcName:    ud.name ?? ud.avatarId,
                   occupation: ud.occupation ?? null,
+                  screenX:    e.clientX,
+                  screenY:    e.clientY,
                 },
               }));
             } catch { /* dispatch best-effort */ }
