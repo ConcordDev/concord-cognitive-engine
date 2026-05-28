@@ -813,6 +813,16 @@ registerHeartbeat("announcement-broadcaster", {
   }),
 });
 
+// Phase CB3: farm crop growth heartbeat. Every 24 ticks (~6 min)
+// advances any crops whose planted season matches the current calendar
+// day. Kill-switch CONCORD_FARMING_ENABLED=0.
+import { runFarmGrowthCycle } from "./emergent/farm-growth-cycle.js";
+registerHeartbeat("farm-growth-cycle", {
+  frequency: 24,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runFarmGrowthCycle({ db: ctxDb || db }),
+});
+
 // Phase BD1: world boss scheduler. Every 16 ticks (~4 min) per active
 // world runs a trigger pass (opens any schedule whose next_spawn_at <=
 // now), sweeps expired actives, advances next_spawn_at. Kill-switch:
@@ -48493,6 +48503,43 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CB3 — farm plots.
+app.post("/api/farming/plant", requireAuth(), asyncHandler(async (req, res) => {
+  const { plantSeed } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  // Caller-supplied ownership check — for now, gate by land-claim
+  // owner_user_id direct query.
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(await import("./lib/farming.js").then(f => f.plantSeed(db, userId, { ...(req.body || {}), isOwner })));
+}));
+
+app.post("/api/farming/harvest", requireAuth(), asyncHandler(async (req, res) => {
+  const { harvestCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(harvestCrop(db, userId, { ...(req.body || {}), isOwner }));
+}));
+
+app.get("/api/farming/claim/:claimId", asyncHandler(async (req, res) => {
+  const { listCropsOnClaim } = await import("./lib/farming.js");
+  res.json({ ok: true, crops: listCropsOnClaim(db, req.params.claimId) });
+}));
+
+app.get("/api/farming/catalog", asyncHandler(async (req, res) => {
+  const { listCrops } = await import("./lib/farming.js");
+  res.json({ ok: true, crops: listCrops() });
 }));
 
 // Phase CB2 — bullet heaven horde mode.
