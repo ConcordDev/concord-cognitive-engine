@@ -63,6 +63,12 @@ function tableExists(db, name) {
   return !!db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
 }
 
+function columnExists(db, table, col) {
+  try {
+    return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+  } catch { return false; }
+}
+
 /**
  * Aggregate per-skill data for an actor (player or npc).
  * Returns { skills: { skillKey: { level, xp, mastery, source } }, groups }
@@ -72,22 +78,53 @@ export function getSkillTreeForActor(db, actorKind, actorId) {
   if (!actorKind || !actorId) return { ok: false, reason: "missing_inputs" };
   const skills = {};
 
-  // skill_revisions: skill_id, npc_id (or owner_user_id), revision_num, mastery_score
-  if (tableExists(db, "skill_revisions")) {
+  // Player levels/XP — authoritative source is player_skill_levels (migration
+  // 064: user_id, skill_type, level, xp). BUG A fix: the prior code queried
+  // skill_revisions.owner_user_id/skill_id/mastery_score — none of which exist
+  // in the real migration-126 schema (recipe_dtu_id/author_kind/author_id/
+  // revision_num), so the player branch threw `no such column` in production
+  // while a fabricated test schema kept it green.
+  if (actorKind === "player" && tableExists(db, "player_skill_levels")) {
+    const rows = db.prepare(`
+      SELECT skill_type AS skill_id, MAX(level) AS level, SUM(xp) AS xp
+      FROM player_skill_levels WHERE user_id = ? GROUP BY skill_type
+    `).all(actorId);
+    for (const r of rows) {
+      skills[r.skill_id] = {
+        level: r.level || 0,
+        xp: r.xp || 0,
+        mastery: r.level || 0,
+        source: "player_skill_levels",
+        group: SKILL_TO_GROUP[r.skill_id] || "uncategorized",
+      };
+    }
+  }
+
+  // skill_revisions — only usable for the per-skill tree under the legacy
+  // schema that carries an explicit skill_id (+ owner_user_id/npc_id). The
+  // real migration-126 schema keys revisions by recipe_dtu_id + author_kind/
+  // author_id (skill_kind, not a catalog skill), which does not map cleanly to
+  // the catalog lattice — so we skip it there rather than throw.
+  if (tableExists(db, "skill_revisions") && columnExists(db, "skill_revisions", "skill_id")) {
+    const hasMastery = columnExists(db, "skill_revisions", "mastery_score");
+    const masterySel = hasMastery ? "MAX(mastery_score)" : "0";
     const rows = actorKind === "player"
       ? db.prepare(`
-          SELECT skill_id, MAX(revision_num) AS latest_rev, MAX(mastery_score) AS best_mastery
+          SELECT skill_id, MAX(revision_num) AS latest_rev, ${masterySel} AS best_mastery
           FROM skill_revisions WHERE owner_user_id = ? GROUP BY skill_id
         `).all(actorId)
       : db.prepare(`
-          SELECT skill_id, MAX(revision_num) AS latest_rev, MAX(mastery_score) AS best_mastery
+          SELECT skill_id, MAX(revision_num) AS latest_rev, ${masterySel} AS best_mastery
           FROM skill_revisions WHERE npc_id = ? GROUP BY skill_id
         `).all(actorId);
     for (const r of rows) {
+      const prev = skills[r.skill_id];
       skills[r.skill_id] = {
-        level: r.latest_rev || 0,
-        mastery: r.best_mastery || 0,
-        source: "skill_revisions",
+        level: Math.max(prev?.level || 0, r.latest_rev || 0),
+        xp: prev?.xp || 0,
+        mastery: Math.max(prev?.mastery || 0, r.best_mastery || 0),
+        revisionNum: r.latest_rev || 0,
+        source: prev?.source || "skill_revisions",
         group: SKILL_TO_GROUP[r.skill_id] || "uncategorized",
       };
     }
