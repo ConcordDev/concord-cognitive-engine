@@ -48505,6 +48505,36 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC5 — time loop substrate.
+app.post("/api/time-loop/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startLoop } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startLoop(db, userId, req.body || {}));
+}));
+
+app.post("/api/time-loop/:sessionId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endLoop } = await import("./lib/time-loop.js");
+  res.json(endLoop(db, req.params.sessionId, req.body || {}));
+}));
+
+app.post("/api/time-loop/memory", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordMemory } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(recordMemory(db, userId, req.body || {}));
+}));
+
+app.get("/api/time-loop/memories/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMemories } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, memories: getMemories(db, userId, req.params.worldId) });
+}));
+
+app.get("/api/time-loop/active/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveLoop } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, session: getActiveLoop(db, userId, req.params.worldId) });
+}));
+
 // Phase CC1 — turn-based grid combat (Tactical/CRPG mode).
 app.post("/api/turn-combat/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startCombat } = await import("./lib/turn-combat.js");
