@@ -48491,6 +48491,68 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CA2 — submarine dive-state aggregator. Joins player_oxygen,
+// world_visits (is_swimming + swim_depth), and creature_swim_depth for
+// sonar contacts. Used by SubmarineHUD.tsx.
+app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  try {
+    const visit = db.prepare(`
+      SELECT world_id, is_swimming, swim_depth, last_position
+      FROM world_visits
+      WHERE user_id = ? AND departed_at IS NULL
+      ORDER BY entered_at DESC LIMIT 1
+    `).get(userId);
+
+    if (!visit || !visit.is_swimming) {
+      return res.json({ ok: true, diveState: { isSwimming: false } });
+    }
+
+    let oxRow = null;
+    try {
+      oxRow = db.prepare(`
+        SELECT oxygen_pct, max_depth_explored, drowning_damage
+        FROM player_oxygen WHERE user_id = ? AND world_id = ?
+      `).get(userId, visit.world_id);
+    } catch { /* table optional */ }
+
+    let sonar = [];
+    let playerX = 0, playerZ = 0;
+    try {
+      const pos = JSON.parse(visit.last_position || "{}");
+      playerX = Number(pos.x) || 0;
+      playerZ = Number(pos.z) || 0;
+    } catch { /* malformed */ }
+    try {
+      sonar = db.prepare(`
+        SELECT id, species_id AS speciesId, current_depth AS depth,
+               x, z
+        FROM creature_swim_depth
+        WHERE world_id = ? AND ABS(current_depth - ?) < 8
+        LIMIT 8
+      `).all(visit.world_id, visit.swim_depth).map(r => ({
+        id: r.id,
+        speciesId: r.speciesId,
+        depth: r.depth,
+        distance: Math.hypot((r.x || 0) - playerX, (r.z || 0) - playerZ),
+      })).filter(c => c.distance < 80).sort((a, b) => a.distance - b.distance);
+    } catch { /* table optional */ }
+
+    res.json({
+      ok: true,
+      diveState: {
+        isSwimming: !!visit.is_swimming,
+        swimDepth: Number(visit.swim_depth) || 0,
+        oxygenPct: oxRow ? Number(oxRow.oxygen_pct) : 100,
+        maxDepthExplored: oxRow ? Number(oxRow.max_depth_explored) : 0,
+        drowningDamage: oxRow ? Number(oxRow.drowning_damage) : 0,
+        sonarContacts: sonar,
+      },
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase BC2 — mentor registry (public read).
 app.get("/api/mentors/world/:worldId", asyncHandler(async (req, res) => {
   const { listMentorsInWorld } = await import("./lib/mentorship.js");

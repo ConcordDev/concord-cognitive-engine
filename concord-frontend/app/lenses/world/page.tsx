@@ -140,6 +140,13 @@ const FlightHUD = dynamic(
     })),
   { ssr: false }
 );
+const SubmarineHUD = dynamic(
+  () =>
+    import('@/components/world/SubmarineHUD').then((m) => ({
+      default: m.SubmarineHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4731,6 +4738,9 @@ export default function WorldLensPage() {
 
           {/* Phase CA1 — Flight HUD (subscribes to concordia:flight-state) */}
           <FlightHUD />
+
+          {/* Phase CA2 — Submarine HUD (polls dive-state when swimming) */}
+          <SubmarineHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
