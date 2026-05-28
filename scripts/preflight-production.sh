@@ -287,6 +287,17 @@ for FLAG in CONCORD_NEMESIS_CYCLE CONCORD_QUEST_DIALOGUE_LLM CONCORD_AMBIENT_CHA
   fi
 done
 
+# Phase CA-CF kill switches.
+for FLAG in CONCORD_TIME_LOOPS CONCORD_FACTORY_ENABLED CONCORD_FARMING_ENABLED CONCORD_HORDE_MODE_ENABLED CONCORD_THEME_PARK_ENABLED CONCORD_EXTRACTION_ENABLED; do
+  VAL="${!FLAG:-}"
+  if [ -n "$VAL" ]; then
+    case "$VAL" in
+      true|false|0|1) echo "$(c_g "✓ $FLAG")  $VAL" ;;
+      *) ERRORS+=("$(c_r "✗ $FLAG")  must be true/false/0/1, got '$VAL'") ;;
+    esac
+  fi
+done
+
 # Phase BA-BE kill switches.
 for FLAG in CONCORD_FESTIVALS_ENABLED CONCORD_WORLD_BOSSES_ENABLED CONCORD_ANNOUNCEMENTS_ENABLED; do
   VAL="${!FLAG:-}"
