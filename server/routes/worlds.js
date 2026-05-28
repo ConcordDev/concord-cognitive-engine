@@ -2142,26 +2142,40 @@ export default function createWorldsRouter({ requireAuth, db }) {
       try {
         const io = req.app?.locals?.io;
         const severity = damageResult.staggerSeverity || "none";
-        // Only emit when there's something to feel (a real stagger or a kill).
-        if (io && (severity !== "none" || kill)) {
+        const landed = (damageResult.finalDamage || 0) > 0;
+        // Emit on any landed hit so the client can render mastery-scaled VFX;
+        // the feel block is zero-feel for severity "none" (client no-ops it).
+        if (io && (landed || severity !== "none" || kill)) {
           const { buildImpactPayload } = await import("../lib/combat/impact-feel.js");
+          const { skillVfxDescriptor } = await import("../lib/skills/skill-mastery.js");
           const tPos = npcPosRow && Number.isFinite(npcPosRow.x)
             ? { x: npcPosRow.x, y: npcPosRow.y ?? 0, z: npcPosRow.z }
             : null;
           const aPos = cityPresence.getUserPosition?.(userId) || null;
-          io.to(`world:${worldId}`).emit("combat:impact", buildImpactPayload({
-            worldId,
-            attackerId: userId,
-            targetId: npcId,
-            targetKind: "npc",
-            severity,
-            momentum: damageResult.impactMomentum || 0,
+          // T3.1 — per-skill VFX scaled by the caster's mastery tier for this
+          // skill. A grandmaster's cast throws a bigger, brighter burst.
+          const vfx = skillVfxDescriptor({
+            skillType: skillData.skill_type || skillData.kind || null,
             element: skillData.element || "none",
-            damage: damageResult.finalDamage || 0,
-            isKill: !!kill,
-            targetPosition: tPos,
-            attackerPosition: aPos,
-          }));
+            kind: skillData.kind || skillData.weapon_kind || null,
+            level: skillRow?.level || skillData.skill_level || 0,
+          });
+          io.to(`world:${worldId}`).emit("combat:impact", {
+            ...buildImpactPayload({
+              worldId,
+              attackerId: userId,
+              targetId: npcId,
+              targetKind: "npc",
+              severity,
+              momentum: damageResult.impactMomentum || 0,
+              element: skillData.element || "none",
+              damage: damageResult.finalDamage || 0,
+              isKill: !!kill,
+              targetPosition: tPos,
+              attackerPosition: aPos,
+            }),
+            vfx,
+          });
         }
       } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
 

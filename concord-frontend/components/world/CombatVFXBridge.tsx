@@ -43,6 +43,21 @@ interface CombatChainEvent {
   chainTargets?: Array<{ id: string; position: Vec3Like; magnitude?: number }>;
 }
 
+interface CombatImpactEvent {
+  targetId?:       string;
+  attackerId?:     string;
+  element?:        string;
+  damage?:         number;
+  severity?:       string;
+  targetPosition?: Vec3Like;
+  vfx?: {
+    element?: string;
+    tier?: string;
+    particles?: { count?: number; scale?: number; trailLength?: number };
+    glow?: number;
+  };
+}
+
 const ELEMENT_ALLOW: Record<string, ElementKind> = {
   fire: 'fire',
   ice: 'ice',
@@ -86,6 +101,7 @@ export default function CombatVFXBridge() {
     let off1: (() => void) | null = null;
     let off2: (() => void) | null = null;
     let off3: (() => void) | null = null;
+    let off4: (() => void) | null = null;
     const sceneReady = async (event: Event) => {
       if (disposed || sceneReadyRef.current) return;
       const detail = (event as CustomEvent).detail as { scene?: unknown } | undefined;
@@ -151,6 +167,20 @@ export default function CombatVFXBridge() {
       }
     });
 
+    // T3.1 — per-skill VFX scaled by the caster's mastery tier. The server's
+    // skillVfxDescriptor sets particles.scale (1.0 novice → 1.8 grandmaster),
+    // so a master's cast throws a visibly larger burst for the same damage.
+    off4 = subscribe('combat:impact' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as CombatImpactEvent;
+      const pos = toVec3(ev.targetPosition);
+      if (!pos) return;
+      const element = normalizeElement(ev.element ?? ev.vfx?.element);
+      const damage = Number(ev.damage ?? 10);
+      const masteryScale = Math.max(0.8, Math.min(2, ev.vfx?.particles?.scale ?? 1));
+      const magnitude = Math.max(0.4, Math.min((damage / 30) * masteryScale, 3.2));
+      vfxRef.current?.spawn(element, pos, magnitude);
+    });
+
     return () => {
       disposed = true;
       window.removeEventListener('concordia:scene-ready', sceneReady as EventListener);
@@ -158,6 +188,7 @@ export default function CombatVFXBridge() {
       try { off1?.(); } catch { /* idempotent */ }
       try { off2?.(); } catch { /* idempotent */ }
       try { off3?.(); } catch { /* idempotent */ }
+      try { off4?.(); } catch { /* idempotent */ }
       try { vfxRef.current?.dispose(); } catch { /* idempotent */ }
       try { decalRef.current?.dispose(); } catch { /* idempotent */ }
       vfxRef.current = null;
