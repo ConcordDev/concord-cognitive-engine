@@ -30,6 +30,12 @@ export const EVENT_SHAPES = Object.freeze({
   "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey"] },
   "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
+  // Sprint 1 — defensive-loop wiring. ack events carry the granted i-frame
+  // window + parry result; the :perfect events drive the reward slow-mo.
+  "combat:dodge:ack":     { required: ["userId"], optional: ["direction", "t", "iframeMs", "perfect"] },
+  "combat:dodge:perfect": { required: ["userId"], optional: ["timeDilationPct", "durationMs", "t"] },
+  "combat:block:ack":     { required: ["userId"], optional: ["active", "t", "parried", "perfect", "riposteWindowMs"] },
+  "combat:parry:perfect": { required: ["userId"], optional: ["riposteWindowMs", "timeDilationPct", "durationMs", "t"] },
 
   // ── Combat presentation ───────────────────────────────────────────
   // Telegraph fires immediately before applyAttack resolves so clients

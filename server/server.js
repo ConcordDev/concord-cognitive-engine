@@ -8582,8 +8582,32 @@ async function tryInitWebSockets(server) {
       if (now - _lastDodgeAt < 400) return; // 2.5 dodges/sec cap
       _lastDodgeAt = now;
       const direction = ["left","right","back"].includes(data?.direction) ? data.direction : "back";
+
+      // Sprint 1 — grant i-frames so incoming hits whiff (applyHitToState
+      // checks iframeUntil). Baseline 350ms; a perfect dodge (input inside the
+      // first half of the dodge window vs a real incoming attack) extends to
+      // 500ms and fires a slow-mo time-dilation cue. Server-authoritative:
+      // attemptDodge scores the window from the client-supplied incoming time;
+      // with no timing we still grant the baseline window.
+      let perfectDodge = false, dodgeDilation = 0;
       try {
-        realtimeEmit("combat:dodge:ack", { userId, direction, t: now });
+        const incomingAt = Number(data?.attackArrivesAt ?? data?.incomingAt);
+        if (Number.isFinite(incomingAt)) {
+          const r = _attemptDodge(db, {
+            defenderKind: "player", defenderId: userId,
+            defenderInputAt: now, attackArrivesAt: incomingAt,
+          });
+          if (r?.dodged) { perfectDodge = !!r.perfect; dodgeDilation = r.time_dilation_pct || 0; }
+        }
+      } catch { /* scoring optional — baseline i-frames still granted */ }
+      try { _grantIFrames(userId, perfectDodge ? 500 : 350); } catch { /* in-memory state optional */ }
+
+      try {
+        realtimeEmit("combat:dodge:ack", { userId, direction, t: now, iframeMs: perfectDodge ? 500 : 350, perfect: perfectDodge });
+        if (perfectDodge) {
+          // Perfect-dodge reward: brief world slow-mo (the Sekiro/Sifu beat).
+          realtimeEmit("combat:dodge:perfect", { userId, timeDilationPct: dodgeDilation || 35, durationMs: 600, t: now });
+        }
       } catch (e) { /* socket emit silent */ }
       // Flow Combat: record dodge into the substrate. Hit=true if a recent
       // incoming attack was within the i-frame window (the client passes
@@ -8622,8 +8646,31 @@ async function tryInitWebSockets(server) {
       if (now - _lastBlockAt < 200) return;
       _lastBlockAt = now;
       const active = !!data?.active;
+
+      // Sprint 1 — a block engaged inside the parry window of a real incoming
+      // attack scores a parry; a perfect parry opens a riposte window + brief
+      // i-frames + a slow-mo cue. Built-but-unwired until now (attemptParry had
+      // zero non-test callers). Server-authoritative via the supplied timing.
+      let parried = false, perfectParry = false, riposteMs = 0;
       try {
-        realtimeEmit("combat:block:ack", { userId, active, t: now });
+        const incomingAt = Number(data?.attackArrivesAt ?? data?.incomingAt);
+        if (active && Number.isFinite(incomingAt)) {
+          const r = _attemptParry(db, {
+            defenderKind: "player", defenderId: userId,
+            defenderInputAt: now, attackArrivesAt: incomingAt,
+          });
+          if (r?.parried) {
+            parried = true; perfectParry = !!r.perfect; riposteMs = r.riposte_window_ms || 0;
+            if (perfectParry) { try { _grantIFrames(userId, 250); } catch { /* */ } }
+          }
+        }
+      } catch { /* parry scoring optional */ }
+
+      try {
+        realtimeEmit("combat:block:ack", { userId, active, t: now, parried, perfect: perfectParry, riposteWindowMs: riposteMs });
+        if (perfectParry) {
+          realtimeEmit("combat:parry:perfect", { userId, riposteWindowMs: riposteMs, timeDilationPct: 30, durationMs: 500, t: now });
+        }
       } catch (e) { /* socket emit silent */ }
       // Only record on block-engage (active=true), not on block-release —
       // a block held for 5 seconds is one decision, not 50.
@@ -30664,6 +30711,11 @@ import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONST
 import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
 import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
 import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+// Sprint 1 (Connection) — the dodge/block socket handlers echoed :ack but never
+// granted i-frames or scored a perfect dodge/parry, so the entire defensive
+// combat loop was built-but-unwired. attemptDodge/attemptParry score the timing
+// window; grantIFrames makes applyHitToState whiff incoming hits.
+import { attemptDodge as _attemptDodge, attemptParry as _attemptParry } from "./lib/combat-polish.js";
 // T3.1 — resolve a combat payload to a SKILL_CATALOG key for the client's
 // per-skill descriptor (shipped on combat:hit).
 import { skillKeyForSkill } from "./lib/skills/skill-key.js";
