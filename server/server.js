@@ -48897,6 +48897,12 @@ app.get("/api/extraction/zones/:worldId", asyncHandler(async (req, res) => {
   res.json({ ok: true, zones: listActiveZones(db, req.params.worldId) });
 }));
 
+app.get("/api/extraction/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveRun } = await import("./lib/extraction.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveRun(db, userId) });
+}));
+
 // Phase CC6 — asymmetric horror.
 app.post("/api/horror/session/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startSession } = await import("./lib/horror.js");
@@ -48925,6 +48931,15 @@ app.post("/api/horror/session/:id/down", requireAuth(), asyncHandler(async (req,
 app.post("/api/horror/session/:id/end", requireAuth(), asyncHandler(async (req, res) => {
   const { endSession } = await import("./lib/horror.js");
   res.json(endSession(db, req.params.id, req.body || {}));
+}));
+
+// Phase DB14 — active session lookup for ghost / investigator HUDs.
+app.get("/api/horror/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { findActiveSessionForUser } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId ? String(req.query.worldId) : null;
+  const sess = findActiveSessionForUser(db, userId, worldId);
+  res.json({ ok: true, session: sess });
 }));
 
 // Phase CC5 — time loop substrate.

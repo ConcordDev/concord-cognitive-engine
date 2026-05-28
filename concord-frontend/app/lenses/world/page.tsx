@@ -238,6 +238,27 @@ const PartyCombatHUD = dynamic(
     })),
   { ssr: false }
 );
+const TimeLoopHUD = dynamic(
+  () =>
+    import('@/components/world/TimeLoopHUD').then((m) => ({
+      default: m.TimeLoopHUD,
+    })),
+  { ssr: false }
+);
+const HorrorRoleHUDs = dynamic(
+  () =>
+    import('@/components/world/HorrorRoleHUDs').then((m) => ({
+      default: m.HorrorRoleHUDs,
+    })),
+  { ssr: false }
+);
+const ExtractionRunHUD = dynamic(
+  () =>
+    import('@/components/world/ExtractionRunHUD').then((m) => ({
+      default: m.ExtractionRunHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4888,6 +4909,15 @@ export default function WorldLensPage() {
 
           {/* Phase DB9 — Fluid party combat HUD (RTwP, not turn-based) */}
           <PartyCombatHUD />
+
+          {/* Phase DB13 — Time loop indicator */}
+          <TimeLoopHUD />
+
+          {/* Phase DB14 — Asymmetric horror role HUDs */}
+          <HorrorRoleHUDs />
+
+          {/* Phase DB16 — Extraction run HUD */}
+          <ExtractionRunHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

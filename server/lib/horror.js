@@ -147,4 +147,29 @@ export function getSession(db, sessionId) {
   } catch { return null; }
 }
 
+/**
+ * Find an active session this user is part of (ghost OR investigator).
+ */
+export function findActiveSessionForUser(db, userId, worldId = null) {
+  if (!db || !userId) return null;
+  try {
+    const rows = db.prepare(`
+      SELECT * FROM horror_sessions
+      WHERE ended_at IS NULL
+      ${worldId ? "AND world_id = ?" : ""}
+      ORDER BY started_at DESC LIMIT 50
+    `).all(...(worldId ? [worldId] : []));
+    for (const r of rows) {
+      if (r.ghost_user_id === userId) return { ...r, role: 'ghost' };
+      try {
+        const investigators = JSON.parse(r.investigators_json || '[]');
+        if (Array.isArray(investigators) && investigators.includes(userId)) {
+          return { ...r, role: 'investigator' };
+        }
+      } catch { /* skip */ }
+    }
+    return null;
+  } catch { return null; }
+}
+
 export { EVIDENCE_TO_WIN, DEFAULT_DURATION_S };
