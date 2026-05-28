@@ -48495,6 +48495,45 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CA7 — Brawl mode (sifu_brawler profile 1v1 invite).
+app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteBrawl } = await import("./lib/brawl.js");
+  const fromUserId = req.user?.id || req.user?.userId;
+  const r = inviteBrawl(fromUserId, req.body?.toUserId);
+  if (r.ok && !r.alreadyOpen) {
+    try {
+      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
+        inviteId: r.inviteId, from: fromUserId,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/combat/brawl/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(acceptBrawl(req.body?.inviteId, userId));
+}));
+
+app.post("/api/combat/brawl/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { declineBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(declineBrawl(req.body?.inviteId, userId));
+}));
+
+app.post("/api/combat/brawl/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(endBrawl(userId));
+}));
+
+app.get("/api/combat/brawl/invites", requireAuth(), asyncHandler(async (req, res) => {
+  const { listOpenInvitesFor } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, invites: listOpenInvitesFor(userId) });
+}));
+
 // Phase CA6 — soulslike corpse list (active TTL corpses for the caller).
 app.get("/api/players/me/corpses", requireAuth(), asyncHandler(async (req, res) => {
   const { activeCorpsesFor } = await import("./lib/player-corpse.js");
