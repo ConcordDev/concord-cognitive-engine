@@ -6003,6 +6003,8 @@ function authMiddleware(req, res, next) {
     "/api/announcements",
     // Phase BC2 — mentor registry (public read).
     "/api/mentors",
+    // Phase BE1 — photos public feed.
+    "/api/photos/world",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -48503,6 +48505,36 @@ app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
   const profile = getMentorProfile(db, req.params.npcId);
   if (!profile) return res.status(404).json({ ok: false, error: "no_profile" });
   res.json({ ok: true, profile });
+}));
+
+// ── Phase BE1 — photo gallery + freecam screenshots ────────────────────
+
+app.post("/api/photos/save", requireAuth(), asyncHandler(async (req, res) => {
+  const { savePhoto } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(savePhoto(db, userId, req.body || {}));
+}));
+
+app.post("/api/photos/:photoId/share", requireAuth(), asyncHandler(async (req, res) => {
+  const { sharePhoto } = await import("./lib/photo-gallery.js");
+  res.json(sharePhoto(db, req.params.photoId));
+}));
+
+app.post("/api/photos/:photoId/delete", requireAuth(), asyncHandler(async (req, res) => {
+  const { deletePhoto } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(deletePhoto(db, userId, req.params.photoId));
+}));
+
+app.get("/api/photos/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyPhotos } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, photos: listMyPhotos(db, userId, Number(req.query.limit) || 50) });
+}));
+
+app.get("/api/photos/world/:worldId/public", asyncHandler(async (req, res) => {
+  const { listPublicPhotosInWorld } = await import("./lib/photo-gallery.js");
+  res.json({ ok: true, photos: listPublicPhotosInWorld(db, req.params.worldId, Number(req.query.limit) || 50) });
 }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.

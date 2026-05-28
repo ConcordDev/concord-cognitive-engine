@@ -2700,6 +2700,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['news', 'announcements', 'roadmap', 'patch', 'changelog'],
   },
   {
+    id: 'photos',
+    name: 'Photos',
+    icon: Camera,
+    description: 'Your Concordia photo gallery — saved screenshots with optional public sharing.',
+    category: 'creative',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/photos',
+    order: 23,
+    keywords: ['photos', 'screenshot', 'gallery', 'camera', 'share'],
+  },
+  {
     id: 'mail',
     name: 'Mail',
     icon: Mail,
