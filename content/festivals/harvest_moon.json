@@ -1,0 +1,18 @@
+{
+  "id": "harvest_moon",
+  "name": "Harvest Moon",
+  "season_idx": 3,
+  "day_in_season_start": 4,
+  "day_in_season_end": 6,
+  "repeats_yearly": true,
+  "decoration_tag": "harvest_lanterns",
+  "synopsis": "The last full moon of harvest. Brewers compete; granaries are blessed. The river runs gold with reflected lantern light.",
+  "achievements": ["harvest_brewmaster"],
+  "quest_seeds": [
+    {
+      "id": "hm_brew_off",
+      "title": "Brew-Off",
+      "summary": "Submit three brews to the festival judges. At least one must use a harvest-season herb."
+    }
+  ]
+}

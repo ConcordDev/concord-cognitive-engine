@@ -788,6 +788,18 @@ registerHeartbeat("ambient-chat-sweep", {
   handler: ({ db: ctxDb } = {}) => sweepExpiredAmbientChat(ctxDb || db),
 });
 
+// Phase BB1: festival trigger heartbeat. Every 4 ticks (~1 min) checks
+// the calendar against the festivals table and opens any matching
+// window. Idempotent on (festival_id, world_id, year_idx). Kill-switch:
+// CONCORD_FESTIVALS_ENABLED=0.
+import { runFestivalTriggerCycle } from "./emergent/festival-trigger-cycle.js";
+registerHeartbeat("festival-trigger-cycle", {
+  frequency: 4,
+  handler: ({ db: ctxDb, worldId } = {}) => runFestivalTriggerCycle({
+    db: ctxDb || db, worldId, io: REALTIME?.io,
+  }),
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
@@ -5960,6 +5972,8 @@ function authMiddleware(req, res, next) {
     "/api/combat/state", "/api/combat/frame-data",
     // Phase BA5 — avatar scars + drift (public read).
     "/api/avatars",
+    // Phase BB1 — festival catalog + active list (public read).
+    "/api/festivals",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -48431,6 +48445,19 @@ app.get("/api/avatars/:userId/scars", asyncHandler(async (req, res) => {
     `).all(req.params.userId);
     res.json({ ok: true, scars: rows });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase BB1 — festival read APIs.
+app.get("/api/festivals/active", asyncHandler(async (req, res) => {
+  const { listActiveFestivals } = await import("./lib/festivals.js");
+  const worldId = req.query.worldId;
+  if (!worldId) return res.status(400).json({ ok: false, error: "missing_worldId" });
+  res.json({ ok: true, festivals: listActiveFestivals(db, worldId) });
+}));
+
+app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
+  const { listFestivals } = await import("./lib/festivals.js");
+  res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
 app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {

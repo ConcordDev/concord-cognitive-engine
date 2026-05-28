@@ -126,6 +126,13 @@ const AmbientChatPanel = dynamic(
     })),
   { ssr: false }
 );
+const FestivalBanner = dynamic(
+  () =>
+    import('@/components/world/FestivalBanner').then((m) => ({
+      default: m.FestivalBanner,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4711,6 +4718,9 @@ export default function WorldLensPage() {
             districtId={activeDistrict.id}
             currentUserId={playerAvatar.id}
           />
+
+          {/* Phase BB1 — active festival banner */}
+          <FestivalBanner worldId={activeDistrict.id} />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

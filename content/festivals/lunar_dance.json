@@ -1,0 +1,18 @@
+{
+  "id": "lunar_dance",
+  "name": "Lunar Dance",
+  "season_idx": 0,
+  "day_in_season_start": 2,
+  "day_in_season_end": 4,
+  "repeats_yearly": true,
+  "decoration_tag": "paper_flowers",
+  "synopsis": "Spring's third moon. Districts unfurl paper-flower garlands; dancers gather at every crossroads. The festival emote unlocks only here.",
+  "achievements": ["lunar_dancer"],
+  "quest_seeds": [
+    {
+      "id": "ld_chain_dance",
+      "title": "Chain Dance",
+      "summary": "Join a chain dance of at least 8 dancers. Stay in the chain for the full song."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "wintersday",
+  "name": "Wintersday",
+  "season_idx": 5,
+  "day_in_season_start": 0,
+  "day_in_season_end": 3,
+  "repeats_yearly": true,
+  "decoration_tag": "blue_snow",
+  "synopsis": "When the deep winter sets in, the cities hang blue-snow lanterns and exchange small gifts. Travelers warm at every hearth.",
+  "achievements": ["wintersday_celebrant"],
+  "quest_seeds": [
+    {
+      "id": "wd_gift_round",
+      "title": "Gift Round",
+      "summary": "Deliver three handmade gifts to three different friends or strangers."
+    }
+  ]
+}
