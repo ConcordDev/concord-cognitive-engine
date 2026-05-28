@@ -1,0 +1,14 @@
+{
+  "songId": "cathedral-of-keys",
+  "bpm": 60,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Bell rings once, the chime replies" },
+    { "at_ms": 4000,  "line": "Vow returned with both your eyes" },
+    { "at_ms": 8000,  "line": "Three altars in a single row" },
+    { "at_ms": 12000, "line": "Three relics breaking slow" },
+    { "at_ms": 16000, "line": "Cathedral of keys, cathedral of doors" },
+    { "at_ms": 20000, "line": "Cathedral of locks the player floors" },
+    { "at_ms": 24000, "line": "Bell rings once, the chime replies" },
+    { "at_ms": 28000, "line": "Vow returned with both your eyes" }
+  ]
+}

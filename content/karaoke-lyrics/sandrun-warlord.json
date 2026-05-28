@@ -1,0 +1,14 @@
+{
+  "songId": "sandrun-warlord",
+  "bpm": 120,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Tall woman, tall sword, tall scar" },
+    { "at_ms": 2000,  "line": "The warlord measures from afar" },
+    { "at_ms": 4000,  "line": "What you would burn for, what you would not" },
+    { "at_ms": 6000,  "line": "What you would die for, what you forgot" },
+    { "at_ms": 8000,  "line": "Sandrun Sanguire, Sahm friend" },
+    { "at_ms": 10000, "line": "The mirror-letter does not end" },
+    { "at_ms": 12000, "line": "Tall woman, tall sword, tall scar" },
+    { "at_ms": 14000, "line": "Hidden son under a borrowed star" }
+  ]
+}

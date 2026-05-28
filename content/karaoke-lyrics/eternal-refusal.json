@@ -1,0 +1,14 @@
+{
+  "songId": "eternal-refusal",
+  "bpm": 150,
+  "lyrics": [
+    { "at_ms": 0,     "line": "I refuse the harm, I refuse the harvest" },
+    { "at_ms": 1600,  "line": "I refuse the dome the king has narrowed" },
+    { "at_ms": 3200,  "line": "I refuse the win, I refuse the number" },
+    { "at_ms": 4800,  "line": "I refuse the consequence dragged from slumber" },
+    { "at_ms": 6400,  "line": "Strength six, the field compounds" },
+    { "at_ms": 8000,  "line": "Even the goddess holds her ground" },
+    { "at_ms": 9600,  "line": "I refuse the harm, I refuse the harvest" },
+    { "at_ms": 11200, "line": "I refuse — forever — the dome the king narrowed" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "songId": "glyph-procession",
+  "bpm": 128,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Mark the base, mark the six" },
+    { "at_ms": 1875,  "line": "Fold the field where the harm sits" },
+    { "at_ms": 3750,  "line": "Add the glyph, divide the harm" },
+    { "at_ms": 5625,  "line": "Refusal travels arm to arm" },
+    { "at_ms": 7500,  "line": "Strength is rising, six to nine" },
+    { "at_ms": 9375,  "line": "Compound the refusal, hold the line" },
+    { "at_ms": 11250, "line": "Mark the base, mark the six" },
+    { "at_ms": 13125, "line": "Fold the field where the harm sits" }
+  ]
+}

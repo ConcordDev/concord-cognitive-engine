@@ -1,0 +1,14 @@
+{
+  "songId": "neon-dialer",
+  "bpm": 136,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Dial in, dial in, neon line is clear" },
+    { "at_ms": 1765,  "line": "Talk to me through the static, dear" },
+    { "at_ms": 3530,  "line": "Cyber is awake, the lattice glows" },
+    { "at_ms": 5295,  "line": "Every wire knows where the data flows" },
+    { "at_ms": 7060,  "line": "Neon dialer, neon dialer" },
+    { "at_ms": 8825,  "line": "Patch me through to the firewall layer" },
+    { "at_ms": 10590, "line": "Dial in, dial in, neon line is clear" },
+    { "at_ms": 12355, "line": "Talk to me through the static, dear" }
+  ]
+}

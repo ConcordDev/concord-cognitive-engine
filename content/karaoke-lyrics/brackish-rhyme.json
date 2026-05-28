@@ -1,0 +1,14 @@
+{
+  "songId": "brackish-rhyme",
+  "bpm": 108,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Brackish in the bell-tower, Brackish on the run" },
+    { "at_ms": 2222,  "line": "Eleven years old and the city's number one" },
+    { "at_ms": 4444,  "line": "Watch me steal, watch me find" },
+    { "at_ms": 6666,  "line": "Watch me change the player's mind" },
+    { "at_ms": 8888,  "line": "If you're kind, I'm an eye" },
+    { "at_ms": 11110, "line": "If you're sharp, you'll see me fly" },
+    { "at_ms": 13332, "line": "Brackish in the bell-tower, Brackish on the run" },
+    { "at_ms": 15554, "line": "Plaza urchin, plaza sun" }
+  ]
+}

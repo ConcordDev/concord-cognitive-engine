@@ -1,0 +1,14 @@
+{
+  "songId": "skybreaker",
+  "bpm": 116,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Up, up, the city looks small" },
+    { "at_ms": 2069,  "line": "Skybreaker watches over them all" },
+    { "at_ms": 4138,  "line": "Mask on the rooftop, name on the wall" },
+    { "at_ms": 6207,  "line": "Catch what is falling, lift what would fall" },
+    { "at_ms": 8276,  "line": "Skybreaker, Skybreaker" },
+    { "at_ms": 10345, "line": "Take the blow, never the maker" },
+    { "at_ms": 12414, "line": "Up, up, the city looks small" },
+    { "at_ms": 14483, "line": "Skybreaker watches over them all" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "songId": "twin-suns",
+  "bpm": 120,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Two suns rose over the bluff" },
+    { "at_ms": 2000,  "line": "One was light and one was breath" },
+    { "at_ms": 4000,  "line": "Both will set, the long way down" },
+    { "at_ms": 6000,  "line": "Either one will mean my death" },
+    { "at_ms": 8000,  "line": "Twin suns, twin tongues, twin tides" },
+    { "at_ms": 10000, "line": "Choose the one your shadow rides" },
+    { "at_ms": 12000, "line": "Choose the dawn, choose the noon" },
+    { "at_ms": 14000, "line": "Either way, you choose the moon" }
+  ]
+}

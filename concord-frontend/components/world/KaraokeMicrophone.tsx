@@ -34,9 +34,14 @@ function detectPitch(buf: Float32Array, sampleRate: number): number {
   return 0;
 }
 
+interface LyricLine { at_ms: number; line: string; }
+interface LyricFile { songId: string; bpm: number; lyrics: LyricLine[]; }
+
 export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [song, setSong] = useState<Song | null>(null);
+  const [lyricFile, setLyricFile] = useState<LyricFile | null>(null);
+  const [currentLineIdx, setCurrentLineIdx] = useState(-1);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [pitchSamples, setPitchSamples] = useState<number[]>([]);
@@ -82,8 +87,18 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
         analyser.getFloatTimeDomainData(buf);
         const hz = detectPitch(buf, ctx.sampleRate);
         if (hz > 50 && hz < 2000) pitchesRef.current.push(hz);
-        setElapsed(Math.floor((performance.now() - startTimeRef.current) / 1000));
+        const elapsedMs = performance.now() - startTimeRef.current;
+        setElapsed(Math.floor(elapsedMs / 1000));
         setPitchSamples([...pitchesRef.current.slice(-50)]);
+        // Phase E5 — lyric scroll: pick the latest line whose at_ms <= elapsed.
+        if (lyricFile) {
+          let idx = -1;
+          for (let i = 0; i < lyricFile.lyrics.length; i++) {
+            if (lyricFile.lyrics[i].at_ms <= elapsedMs) idx = i;
+            else break;
+          }
+          setCurrentLineIdx(idx);
+        }
         rafRef.current = requestAnimationFrame(loop);
       };
       loop();
@@ -158,7 +173,15 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
             <p className="text-xs text-zinc-400">Pick a song.</p>
             <div className="space-y-1">
               {songs.map((s) => (
-                <button key={s.id} onClick={() => setSong(s)} className="block w-full rounded border border-pink-500/30 bg-pink-950/30 p-2 text-left hover:border-pink-400/60 hover:bg-pink-900/30">
+                <button key={s.id} onClick={async () => {
+                  setSong(s);
+                  setLyricFile(null);
+                  setCurrentLineIdx(-1);
+                  try {
+                    const j = await fetch(`/api/karaoke/lyrics/${s.id}`, { credentials: 'include' }).then(r => r.json());
+                    if (j?.ok && j.lyrics) setLyricFile(j.lyrics as LyricFile);
+                  } catch { /* no lyrics — fine */ }
+                }} className="block w-full rounded border border-pink-500/30 bg-pink-950/30 p-2 text-left hover:border-pink-400/60 hover:bg-pink-900/30">
                   <div className="flex items-center gap-2">
                     <Music size={14} className="text-pink-300" />
                     <span className="text-sm text-pink-100">{s.name}</span>
@@ -187,6 +210,27 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
                 back
               </button>
             </div>
+            {recording && lyricFile && (
+              <div className="rounded border border-pink-500/30 bg-zinc-900 p-3">
+                <div className="text-center font-serif">
+                  {[currentLineIdx - 1, currentLineIdx, currentLineIdx + 1].map((idx, slot) => {
+                    const l = lyricFile.lyrics[idx];
+                    const isCurrent = slot === 1;
+                    return (
+                      <div
+                        key={`lyr-${slot}`}
+                        className={[
+                          'transition-all duration-200',
+                          isCurrent ? 'text-base text-pink-100' : 'text-xs text-pink-300/40',
+                        ].join(' ')}
+                      >
+                        {l?.line ?? ' '}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {recording && (
               <div className="rounded border border-pink-500/30 bg-zinc-900 p-2">
                 <div className="text-[10px] text-pink-300/60">live pitch (Hz)</div>

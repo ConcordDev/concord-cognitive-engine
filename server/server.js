@@ -48708,6 +48708,23 @@ app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
   }
 }));
 
+// Phase E5 — karaoke lyrics endpoint. Per-song lyrics in
+// content/karaoke-lyrics/<songId>.json, time-stamped against the song's BPM.
+app.get("/api/karaoke/lyrics/:songId", asyncHandler(async (req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const safe = String(req.params.songId).replace(/[^a-z0-9_-]/gi, "");
+    const file = path.resolve(__dirname, "..", "content", "karaoke-lyrics", `${safe}.json`);
+    const lyrics = JSON.parse(readFileSync(file, "utf8"));
+    res.json({ ok: true, lyrics });
+  } catch (e) {
+    res.json({ ok: true, lyrics: null, error: e?.message });
+  }
+}));
+
 // Phase CF5 — mahjong (surface resolveMahjongHand).
 app.post("/api/mahjong/resolve", requireAuth(), asyncHandler(async (req, res) => {
   const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");

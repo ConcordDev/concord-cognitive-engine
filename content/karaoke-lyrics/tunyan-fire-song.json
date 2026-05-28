@@ -1,0 +1,14 @@
+{
+  "songId": "tunyan-fire-song",
+  "bpm": 132,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Forge breath, ember in the hand" },
+    { "at_ms": 1818,  "line": "Sandrun stand, Sandrun stand" },
+    { "at_ms": 3636,  "line": "Iyatte burned what Iyatte loved" },
+    { "at_ms": 5454,  "line": "And the third clan rose where she stood above" },
+    { "at_ms": 7272,  "line": "Fire-song, fire-song, kiss the steel" },
+    { "at_ms": 9090,  "line": "Honour-marks the duel reveals" },
+    { "at_ms": 10908, "line": "Forge breath, ember in the hand" },
+    { "at_ms": 12726, "line": "Sandrun stand, Sandrun stand" }
+  ]
+}

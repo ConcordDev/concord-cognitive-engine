@@ -1,0 +1,18 @@
+{
+  "songId": "lattice-lullaby",
+  "bpm": 76,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Settle now, the lattice hums" },
+    { "at_ms": 3158,  "line": "And the long day finally ends" },
+    { "at_ms": 6316,  "line": "Every signal you carried" },
+    { "at_ms": 9474,  "line": "Folds back into the dark" },
+    { "at_ms": 12632, "line": "Sleep beneath the seven spokes" },
+    { "at_ms": 15790, "line": "And the dome remembers your name" },
+    { "at_ms": 18948, "line": "Tomorrow has not asked for you" },
+    { "at_ms": 22106, "line": "Tomorrow does not need yet" },
+    { "at_ms": 25264, "line": "Settle now, the lattice hums" },
+    { "at_ms": 28422, "line": "And the long day finally ends" },
+    { "at_ms": 31580, "line": "Every signal you carried" },
+    { "at_ms": 34738, "line": "Folds back into the dark" }
+  ]
+}
