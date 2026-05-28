@@ -1,0 +1,23 @@
+{
+  "id": "concord_rising",
+  "name": "Concord Rising",
+  "season_idx": 3,
+  "day_in_season_start": 2,
+  "day_in_season_end": 4,
+  "repeats_yearly": true,
+  "decoration_tag": "lattice_lanterns",
+  "synopsis": "Three days marking the night the Ring of Doors first held and the worlds stopped drifting apart. Lattice-lanterns are strung from every gate in Concordia, and embassies from the nine sub-worlds light a shared beacon at the plaza. The Three Above All are thanked, and the Ninth Refusal is read aloud.",
+  "achievements": ["concord_witness"],
+  "quest_seeds": [
+    {
+      "id": "cr_light_the_beacon",
+      "title": "Light the Beacon",
+      "summary": "Gather a lantern-ember from each of three sub-world embassies at the plaza and add them to the shared beacon. Compose a summary DTU of what each delegation hopes the concord holds."
+    },
+    {
+      "id": "cr_reading_of_the_ninth",
+      "title": "The Reading of the Ninth",
+      "summary": "Attend the public reading of the Ninth Refusal at the Ring of Doors and cite the codex passage that names the refusal the hub itself keeps."
+    }
+  ]
+}
