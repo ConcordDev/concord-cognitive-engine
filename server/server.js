@@ -48505,6 +48505,29 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC7 — theme park tycoon.
+app.post("/api/theme-park/attraction", requireAuth(), asyncHandler(async (req, res) => {
+  const { openAttraction } = await import("./lib/theme-park.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(openAttraction(db, userId, req.body || {}));
+}));
+
+app.post("/api/theme-park/attraction/:id/close", requireAuth(), asyncHandler(async (req, res) => {
+  const { closeAttraction } = await import("./lib/theme-park.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(closeAttraction(db, req.params.id, userId));
+}));
+
+app.post("/api/theme-park/tick", requireAuth(), asyncHandler(async (req, res) => {
+  const { tickVisitors } = await import("./lib/theme-park.js");
+  res.json(tickVisitors(db, req.body?.worldId, { newArrivals: req.body?.newArrivals }));
+}));
+
+app.get("/api/theme-park/world/:worldId", asyncHandler(async (req, res) => {
+  const { listAttractionsInWorld } = await import("./lib/theme-park.js");
+  res.json({ ok: true, attractions: listAttractionsInWorld(db, req.params.worldId) });
+}));
+
 // Phase CC8 — extraction shooter.
 app.post("/api/extraction/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startRun } = await import("./lib/extraction.js");
