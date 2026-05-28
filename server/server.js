@@ -48505,6 +48505,36 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC6 — asymmetric horror.
+app.post("/api/horror/session/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, userId, req.body || {}));
+}));
+
+app.post("/api/horror/session/:id/join", requireAuth(), asyncHandler(async (req, res) => {
+  const { joinAsInvestigator } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(joinAsInvestigator(db, req.params.id, userId));
+}));
+
+app.post("/api/horror/session/:id/sighting", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordSighting } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(recordSighting(db, req.params.id, userId, req.body || {}));
+}));
+
+app.post("/api/horror/session/:id/down", requireAuth(), asyncHandler(async (req, res) => {
+  const { downInvestigator } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(downInvestigator(db, req.params.id, userId, req.body?.targetUserId));
+}));
+
+app.post("/api/horror/session/:id/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endSession } = await import("./lib/horror.js");
+  res.json(endSession(db, req.params.id, req.body || {}));
+}));
+
 // Phase CC5 — time loop substrate.
 app.post("/api/time-loop/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startLoop } = await import("./lib/time-loop.js");
