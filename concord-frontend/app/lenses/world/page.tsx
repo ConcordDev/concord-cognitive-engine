@@ -217,6 +217,13 @@ const RogueliteUnlockShop = dynamic(
     })),
   { ssr: false }
 );
+const HordeWaveHUD = dynamic(
+  () =>
+    import('@/components/world/HordeWaveHUD').then((m) => ({
+      default: m.HordeWaveHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4858,6 +4865,9 @@ export default function WorldLensPage() {
           {/* Phase DB3 — Roguelite run HUD + unlock shop */}
           <RogueliteRunHUD />
           <RogueliteUnlockShop />
+
+          {/* Phase DB4 — Horde wave HUD + upgrade picker */}
+          <HordeWaveHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
