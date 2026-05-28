@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Sparkles, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice, failureJuice } from '@/lib/concordia/juice';
 
 interface Question {
   id: string;
@@ -61,7 +62,10 @@ export function TriviaKioskPanel({ building, onClose, worldId }: OverlayProps) {
       const j = await r.json();
       setResult(j);
       if (j?.ok && j.isCorrect) {
+        successJuice('ui_trivia_correct');
         setTimeout(() => { setActive(null); setCitation(''); setResult(null); }, 1500);
+      } else if (j?.ok && !j.isCorrect) {
+        failureJuice('ui_trivia_wrong');
       }
     } finally { setPending(false); }
   }, [sessionId, active, citation]);

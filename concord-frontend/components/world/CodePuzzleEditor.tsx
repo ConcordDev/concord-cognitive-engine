@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Cpu, Play, Send, Trash2, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice, milestoneJuice, failureJuice } from '@/lib/concordia/juice';
 
 interface PuzzleStub { id: string; name: string; description?: string; optimal_cycles?: number; optimal_size?: number; }
 interface TestCase { input: number[]; expected: number[]; }
@@ -58,7 +59,11 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
         body: JSON.stringify({ program: program.map((p) => ({ op: p.op, a: p.a, b: p.b })) }),
       });
       const j = await r.json();
-      if (j?.ok) setResult(j);
+      if (j?.ok) {
+        setResult(j);
+        if (j.passed) successJuice('ui_code_test_pass');
+        else failureJuice('ui_code_test_fail');
+      }
     } finally { setPending(false); }
   }, [puzzle, program]);
 
@@ -72,7 +77,10 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
         body: JSON.stringify({ program: program.map((p) => ({ op: p.op, a: p.a, b: p.b })) }),
       });
       const j = await r.json();
-      if (j?.ok) setSubmitted({ cycles: j.cycles, size: j.size });
+      if (j?.ok) {
+        milestoneJuice('ui_code_submit_pass');
+        setSubmitted({ cycles: j.cycles, size: j.size });
+      }
     } finally { setPending(false); }
   }, [puzzle, program]);
 

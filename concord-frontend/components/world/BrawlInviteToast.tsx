@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Swords, X, Check } from 'lucide-react';
+import { sfx, juice } from '@/lib/concordia/juice';
 
 interface BrawlInvite {
   inviteId: string;
@@ -40,6 +41,8 @@ export function BrawlInviteToast() {
           receivedAt: Date.now(),
         },
       ]);
+      sfx('ui_brawl_invite');
+      juice('discovery');
     }
     window.addEventListener('concordia:brawl-invited', onInvite);
     return () => window.removeEventListener('concordia:brawl-invited', onInvite);
@@ -63,6 +66,10 @@ export function BrawlInviteToast() {
       });
       const j = await r.json();
       setInvites((prev) => prev.filter((x) => x.inviteId !== inviteId));
+      if (j?.ok) {
+        sfx('ui_brawl_accept');
+        juice('milestone');
+      }
       setFlash(j?.ok ? 'Brawl started — sifu_brawler profile' : (j?.error || 'accept failed'));
       setTimeout(() => setFlash(null), 3000);
     } catch { setFlash('network error'); setTimeout(() => setFlash(null), 3000); }
@@ -83,7 +90,7 @@ export function BrawlInviteToast() {
     <>
       <div className="pointer-events-auto fixed bottom-32 right-4 z-30 space-y-2">
         {invites.map((inv) => (
-          <div key={inv.inviteId} className="w-72 rounded-lg border border-rose-500/40 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur">
+          <div key={inv.inviteId} className="concordia-toast w-72 rounded-lg border border-rose-500/40 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur">
             <header className="mb-2 flex items-center gap-2 text-sm font-semibold text-rose-200">
               <Swords size={14} />
               Brawl challenge
@@ -113,6 +120,15 @@ export function BrawlInviteToast() {
           {flash}
         </div>
       )}
+      <style jsx global>{`
+        @keyframes concordiaToastIn {
+          0% { opacity: 0; transform: translateX(20px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+        .concordia-toast {
+          animation: concordiaToastIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      `}</style>
     </>
   );
 }

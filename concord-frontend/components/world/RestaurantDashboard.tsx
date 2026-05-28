@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ChefHat, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice } from '@/lib/concordia/juice';
 
 interface Order {
   id: string;
@@ -56,10 +57,12 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
   const serve = useCallback(async (orderId: string) => {
     setPending(true);
     try {
-      await fetch(`/api/restaurant/order/${orderId}/serve`, {
+      const r = await fetch(`/api/restaurant/order/${orderId}/serve`, {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' }, body: '{}',
       });
+      const j = await r.json().catch(() => null);
+      if (j?.ok !== false) successJuice('ui_dish_serve');
       refresh();
     } finally { setPending(false); }
   }, [refresh]);

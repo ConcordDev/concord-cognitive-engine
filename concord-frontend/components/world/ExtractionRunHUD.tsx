@@ -104,7 +104,7 @@ export function ExtractionRunHUD() {
   };
 
   return (
-    <div className="pointer-events-auto fixed bottom-32 left-1/2 z-25 w-96 -translate-x-1/2 rounded-lg border border-orange-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
+    <div className="concordia-hud-slide-bottom pointer-events-auto fixed bottom-32 left-1/2 z-25 w-96 -translate-x-1/2 rounded-lg border border-orange-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
       <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-orange-300/70">
         <Package size={11} /> extraction run
       </header>

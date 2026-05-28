@@ -152,7 +152,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-start justify-center bg-black/60 pt-24 backdrop-blur"
+      className="concordia-hud-fade fixed inset-0 z-40 flex items-start justify-center bg-black/60 pt-24 backdrop-blur"
       onClick={(e) => { if (e.currentTarget === e.target) setOpen(false); }}
     >
       <div className="w-full max-w-xl rounded-xl border border-sky-500/40 bg-zinc-950/95 shadow-2xl">

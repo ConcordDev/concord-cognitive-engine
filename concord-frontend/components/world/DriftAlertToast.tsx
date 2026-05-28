@@ -77,7 +77,7 @@ export function DriftAlertToast() {
   const critical = activeAlert.severity === 'CRITICAL';
 
   return (
-    <div className="pointer-events-auto fixed bottom-36 right-4 z-30 w-80 rounded-lg border border-red-500/40 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur">
+    <div className="concordia-hud-slide-right pointer-events-auto fixed bottom-36 right-4 z-30 w-80 rounded-lg border border-red-500/40 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur">
       <header className="mb-2 flex items-center justify-between">
         <h3 className={['flex items-center gap-1 text-sm font-semibold', critical ? 'text-red-300' : 'text-amber-300'].join(' ')}>
           <AlertTriangle size={14} /> {critical ? 'Critical drift' : 'High drift'}

@@ -17,6 +17,7 @@
 // The menu auto-closes on outside click or escape.
 
 import { useCallback, useEffect, useState } from 'react';
+import { sfx, juice } from '@/lib/concordia/juice';
 import {
   MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X,
 } from 'lucide-react';
@@ -54,6 +55,8 @@ export function NPCActionMenu() {
         isHirable: false,
       };
       setMenu(base);
+      sfx('ui_npc_menu_open');
+      juice('menu-open');
       enrich(detail).then(extras => setMenu(prev => prev && prev.npcId === detail.npcId ? { ...prev, ...extras } : prev));
     }
     window.addEventListener('concordia:npc-context-menu', onContextMenu);
@@ -171,9 +174,19 @@ export function NPCActionMenu() {
   return (
     <div
       data-npc-action-menu
-      className="pointer-events-auto fixed z-50 w-52 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 text-zinc-100 shadow-2xl backdrop-blur"
+      className="concordia-npc-menu pointer-events-auto fixed z-50 w-52 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 text-zinc-100 shadow-2xl backdrop-blur"
       style={{ left, top }}
     >
+      <style jsx>{`
+        @keyframes concordiaNpcMenuIn {
+          0% { opacity: 0; transform: translateY(-4px) scale(0.96); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .concordia-npc-menu {
+          animation: concordiaNpcMenuIn 130ms cubic-bezier(0.16, 1, 0.3, 1);
+          transform-origin: top left;
+        }
+      `}</style>
       <header className="mb-1 flex items-center justify-between border-b border-amber-500/20 pb-1">
         <span className="truncate text-xs font-medium text-amber-200">{menu.npcName}</span>
         <button onClick={() => setMenu(null)} aria-label="Close" className="rounded p-0.5 text-zinc-400 hover:bg-zinc-800">

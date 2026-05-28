@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Mountain, TrendingUp } from 'lucide-react';
+import { milestoneJuice } from '@/lib/concordia/juice';
 
 interface ClimbingRoute {
   id: string;
@@ -96,6 +97,8 @@ export function ClimbingTracker({ worldId, playerY }: Props) {
                   durationS: duration,
                 }),
               }).catch(() => {});
+              // Phase Z7 — celebrate the summit.
+              if (height >= 8) milestoneJuice('ui_climb_summit');
             }
             climbingRef.current = null;
           }
@@ -135,7 +138,7 @@ export function ClimbingTracker({ worldId, playerY }: Props) {
   if (!active && routes.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-stone-500/40 bg-zinc-950/85 p-2 text-stone-100 shadow-lg backdrop-blur">
+    <div className="concordia-hud-fade rounded-md border border-stone-500/40 bg-zinc-950/85 p-2 text-stone-100 shadow-lg backdrop-blur">
       <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-stone-300/70">
         <Mountain size={11} />
         Climbing

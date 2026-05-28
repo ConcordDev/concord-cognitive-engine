@@ -66,7 +66,7 @@ export function TimeLoopHUD() {
   const secs = remaining % 60;
 
   return (
-    <div className="pointer-events-auto fixed right-4 top-24 z-25 w-52 rounded-lg border border-violet-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
+    <div className="concordia-hud-slide-right pointer-events-auto fixed right-4 top-24 z-25 w-52 rounded-lg border border-violet-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
       <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-violet-300/70">
         <RotateCcw size={11} />
         Time loop #{loop.loop_number}

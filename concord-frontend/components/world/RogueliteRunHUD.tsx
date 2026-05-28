@@ -52,7 +52,7 @@ export function RogueliteRunHUD() {
   if (!run) return null;
 
   return (
-    <div className="pointer-events-auto fixed left-1/2 top-3 z-30 -translate-x-1/2 rounded-full border border-violet-500/50 bg-violet-500/15 px-4 py-1.5 text-sm text-violet-100 shadow-xl backdrop-blur">
+    <div className="concordia-hud-slide-top pointer-events-auto fixed left-1/2 top-3 z-30 -translate-x-1/2 rounded-full border border-violet-500/50 bg-violet-500/15 px-4 py-1.5 text-sm text-violet-100 shadow-xl backdrop-blur">
       <div className="flex items-center gap-3">
         <Dice5 size={14} />
         <span className="font-medium">Roguelite run</span>

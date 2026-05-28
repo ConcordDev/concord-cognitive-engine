@@ -9,6 +9,7 @@ import { useCallback, useState } from 'react';
 import { Hand, Sparkles, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice, milestoneJuice } from '@/lib/concordia/juice';
 
 const YAKU = [
   { id: 'pinfu', label: 'Pinfu', value: 100 },
@@ -53,7 +54,11 @@ export function MahjongTable({ building, onClose, worldId }: OverlayProps) {
         }),
       });
       const j = await r.json();
-      if (j?.ok) setResult(j);
+      if (j?.ok) {
+        if (j.score >= 1000) milestoneJuice('ui_mahjong_big_score');
+        else successJuice('ui_mahjong_score');
+        setResult(j);
+      }
     } finally { setPending(false); }
   }, [hand, wind, tsumo, riichi]);
 

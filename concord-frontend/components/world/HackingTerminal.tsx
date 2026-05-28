@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal, Trophy, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice, failureJuice, milestoneJuice, sfx } from '@/lib/concordia/juice';
 
 interface PuzzleStub {
   id: string; name: string; difficulty: number; reward_cc: number;
@@ -129,14 +130,18 @@ export function HackingTerminal({ building, onClose, worldId }: OverlayProps) {
       const j = await r.json();
       if (j?.ok) {
         if (j.completed) {
+          milestoneJuice('ui_hack_complete');
           setCompleted({ rewardCc: j.rewardCc });
           setHistory((h) => [...h, ``, `✓ puzzle complete · +${j.rewardCc} cc`]);
         } else if (j.progressReset) {
+          failureJuice('ui_hack_reset');
           setHistory((h) => [...h, `× wrong step — progress reset`]);
         } else if (j.matched) {
+          successJuice('ui_hack_step');
           setHistory((h) => [...h, `✓ step ${j.step}/${j.totalSteps}`]);
         }
       } else if (j?.error) {
+        sfx('ui_terminal_error');
         setHistory((h) => [...h, `error: ${j.error}`]);
       }
     } finally { setPending(false); }

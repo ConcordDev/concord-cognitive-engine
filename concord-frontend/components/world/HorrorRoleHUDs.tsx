@@ -80,7 +80,7 @@ export function HorrorRoleHUDs() {
   if (endedAck && !session) {
     const won = endedAck.end_reason === 'investigators_won';
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/80">
         <div className="rounded-xl border border-red-500/40 bg-zinc-950/95 p-6 text-center shadow-2xl">
           <div className="mb-2 flex justify-center">
             {won ? <Trophy size={36} className="text-amber-400" /> : <Skull size={36} className="text-red-400" />}
@@ -113,7 +113,7 @@ export function HorrorRoleHUDs() {
       <>
         {/* Full-overlay ghost shader hint (DOM proxy; real shader uses event) */}
         <div className="pointer-events-none fixed inset-0 z-10 bg-gradient-to-b from-zinc-900/20 via-transparent to-zinc-900/30" />
-        <div className="pointer-events-auto fixed left-4 top-24 z-25 w-56 rounded-lg border border-red-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
+        <div className="concordia-hud-slide-left pointer-events-auto fixed left-4 top-24 z-25 w-56 rounded-lg border border-red-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
           <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-red-300/70">
             <Ghost size={11} /> ghost · hunt
           </header>
@@ -148,7 +148,7 @@ export function HorrorRoleHUDs() {
       <div className="pointer-events-none fixed inset-0 z-10 bg-radial-gradient" style={{
         backgroundImage: 'radial-gradient(circle at center, transparent 0%, transparent 25%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.9) 100%)',
       }} />
-      <div className="pointer-events-auto fixed bottom-36 right-4 z-25 w-56 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
+      <div className="concordia-hud-slide-right pointer-events-auto fixed bottom-36 right-4 z-25 w-56 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
         <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">
           <Flashlight size={11} /> investigator
         </header>

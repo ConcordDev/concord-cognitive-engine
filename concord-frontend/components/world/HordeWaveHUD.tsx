@@ -74,7 +74,7 @@ export function HordeWaveHUD() {
 
   return (
     <>
-      <div className="pointer-events-auto fixed bottom-24 right-4 z-25 w-52 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
+      <div className="concordia-hud-slide-right pointer-events-auto fixed bottom-24 right-4 z-25 w-52 rounded-lg border border-amber-500/40 bg-zinc-950/95 p-2 shadow-xl backdrop-blur">
         <header className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-amber-300/70">
           <Zap size={11} />
           Horde — auto-attack

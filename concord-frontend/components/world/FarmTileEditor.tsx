@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Sprout, Wheat, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
+import { successJuice, failureJuice, milestoneJuice } from '@/lib/concordia/juice';
 
 interface Crop {
   claim_id: string;
@@ -61,8 +62,15 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
         body: JSON.stringify({ tileX: picker.x, tileY: picker.y, cropKind }),
       });
       const j = await r.json();
-      if (j?.ok) { setMsg(`planted ${cropKind}`); setPicker(null); refresh(); }
-      else setMsg(j?.error || 'plant_failed');
+      if (j?.ok) {
+        successJuice('ui_seed_plant');
+        setMsg(`planted ${cropKind}`);
+        setPicker(null);
+        refresh();
+      } else {
+        failureJuice();
+        setMsg(j?.error || 'plant_failed');
+      }
     } finally { setPending(false); }
   }, [picker, building.id, refresh]);
 
@@ -75,8 +83,14 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
         body: JSON.stringify({ tileX: x, tileY: y }),
       });
       const j = await r.json();
-      if (j?.ok) { setMsg(`harvested ${j.harvested?.quantity ?? 1} × ${j.harvested?.itemId}`); refresh(); }
-      else setMsg(j?.error || 'harvest_failed');
+      if (j?.ok) {
+        milestoneJuice('ui_crop_harvest');
+        setMsg(`harvested ${j.harvested?.quantity ?? 1} × ${j.harvested?.itemId}`);
+        refresh();
+      } else {
+        failureJuice();
+        setMsg(j?.error || 'harvest_failed');
+      }
     } finally { setPending(false); }
   }, [building.id, refresh]);
 
