@@ -37,7 +37,7 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
-import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
+import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -4158,7 +4158,7 @@ export default function WorldLensPage() {
           </div>
           {/* 3D scene rendering layers */}
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
-          <BuildingRenderer3D buildings={[]} viewMode="normal" />
+          <BuildingRenderer3D buildings={[]} viewMode="normal" buildingStyle={buildingStyleForWorld(worldIdForTheme)} />
           {/* Phase A3 — L-system trees + procedural rocks per biome.
               Mounts when worldId resolves (worldIdForTheme). */}
           <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />
@@ -4179,6 +4179,7 @@ export default function WorldLensPage() {
             quality="medium"
             themeSkyTop={skyThemeColors.top}
             themeSkyHorizon={skyThemeColors.horizon}
+            sunDisk={sunDiskForWorld(worldIdForTheme)}
           />
           <WaterRenderer
             riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}
