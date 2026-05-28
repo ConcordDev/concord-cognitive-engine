@@ -2132,6 +2132,39 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* boss HUD emit best-effort — never blocks combat */ }
 
+      // T1.4b — server-authoritative combat FEEL. The poise severity that
+      // T1.4a computed from real impact momentum (set on damageResult above)
+      // is mapped to the exact hitstop / knockback / wince parameters the
+      // client applies verbatim, so the *feel* matches the *physics* and a
+      // client can't inflate it. Emit `combat:impact` to the world room; the
+      // CombatImpactFeelBridge dispatches the hit-pause / knockback /
+      // hit-reaction CustomEvents the avatar loop already honours.
+      try {
+        const io = req.app?.locals?.io;
+        const severity = damageResult.staggerSeverity || "none";
+        // Only emit when there's something to feel (a real stagger or a kill).
+        if (io && (severity !== "none" || kill)) {
+          const { buildImpactPayload } = await import("../lib/combat/impact-feel.js");
+          const tPos = npcPosRow && Number.isFinite(npcPosRow.x)
+            ? { x: npcPosRow.x, y: npcPosRow.y ?? 0, z: npcPosRow.z }
+            : null;
+          const aPos = cityPresence.getUserPosition?.(userId) || null;
+          io.to(`world:${worldId}`).emit("combat:impact", buildImpactPayload({
+            worldId,
+            attackerId: userId,
+            targetId: npcId,
+            targetKind: "npc",
+            severity,
+            momentum: damageResult.impactMomentum || 0,
+            element: skillData.element || "none",
+            damage: damageResult.finalDamage || 0,
+            isKill: !!kill,
+            targetPosition: tPos,
+            attackerPosition: aPos,
+          }));
+        }
+      } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
+
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at
       // resisting (combat skill bumps). NPCs that out-grind players
