@@ -1,0 +1,145 @@
+{
+  "sage_ono_kell:idle": {
+    "greeting": "Ono Kell is sitting in her hut, robes pooled around her. She does not rise. \"Walker. The lattice has been carrying news of you for three days. Now you arrive.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I sit with three questions today. Which would you like to sit with me about?\"",
+        "playerOptions": [
+          { "text": "Oracle Nesha in the hub. You've never spoken.", "leadsTo": "node_nesha" },
+          { "text": "The drift signatures you read.", "leadsTo": "node_drift" },
+          { "text": "I'll come back when I have a question of my own.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_nesha",
+        "npcText": "\"She and I have been studying the same shape from opposite walls. We have never read each other directly. I would like to.\"",
+        "playerOptions": [
+          { "text": "Would you write to her, if I carried the letter?", "leadsTo": "node_nesha_2" },
+          { "text": "What stops you from going yourself?", "leadsTo": "node_nesha_3" }
+        ]
+      },
+      {
+        "id": "node_nesha_2",
+        "npcText": "\"Then sit. I will write while you wait. Drink the tea on the low table; you'll need it.\"",
+        "playerOptions": [
+          { "text": "I'll drink.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_nesha_3",
+        "npcText": "\"The lattice does not let me leave easily. It has needed me here for forty years. It needs me here a while longer.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_drift",
+        "npcText": "\"The drift speaks to those who learn its grammar. I have learned the nouns. The verbs are still arriving. Would you like to learn a noun today?\"",
+        "playerOptions": [
+          { "text": "Yes.", "leadsTo": "node_drift_2" }
+        ]
+      },
+      {
+        "id": "node_drift_2",
+        "npcText": "She raises one finger. The air shimmers around it briefly. \"This is the shape of a thing that has happened twice. When you see it again, you will know.\" The shimmer fades.",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Ono inclines her head. \"The path back is the path in.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "leader_voss_dren:idle": {
+    "greeting": "Voss Dren is standing in the drill yard, ash-skinned arms crossed. He nods you in. \"Walker. The cohort is at rest. We can talk.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"Speak plain. The cohort is mine; the strategy is mine. I owe no one a softer version of either.\"",
+        "playerOptions": [
+          { "text": "Calla Bren in the ruins. I know about the pact.", "leadsTo": "node_pact" },
+          { "text": "I'd like to drill with the cohort.", "leadsTo": "node_drill" },
+          { "text": "Just observing.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_pact",
+        "npcText": "He does not flinch. \"Who told you?\"",
+        "playerOptions": [
+          { "text": "Your niece Kit, indirectly.", "leadsTo": "node_pact_kit" },
+          { "text": "I worked it out from public signals.", "leadsTo": "node_pact_signal" }
+        ]
+      },
+      {
+        "id": "node_pact_kit",
+        "npcText": "\"Kit talks too much. Tell her so when you see her — gently. The pact is real. If you serve it well, we serve you well. If you betray it, both worlds will know your name.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_pact_signal",
+        "npcText": "\"Then you're smarter than half my officers. Walker, the pact is real. I won't say more here. Find me at the lattice circle after dusk if you want the next layer.\"",
+        "playerOptions": [
+          { "text": "I'll be there.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_drill",
+        "npcText": "\"Fall in. Bring a blade you trust. We don't drill with the cohort's blades.\"",
+        "playerOptions": [
+          { "text": "On it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "He turns back to the yard. \"Walk on.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "scout_emer_voss:idle": {
+    "greeting": "Emer Voss is squatting at the edge of the verge, reading the soil. \"Walker. Make less noise next time. There's a thing through there listening to us.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"Stay or go. Either's fine. The thing won't come closer with you here.\"",
+        "playerOptions": [
+          { "text": "Kiren Owl in the hub. You have the same print.", "leadsTo": "node_print" },
+          { "text": "Tell me what the soil says.", "leadsTo": "node_soil" },
+          { "text": "I'll come back another time.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_print",
+        "npcText": "Their eyes flick up. \"Show me his sketch.\"",
+        "playerOptions": [
+          { "text": "Here.", "leadsTo": "node_print_2" }
+        ]
+      },
+      {
+        "id": "node_print_2",
+        "npcText": "A long silence. \"Yes. Exact match. We've been tracking the same creature from opposite sides. Take my sketches to him — every one. Tell him I'll meet him at the breach if he can find it.\"",
+        "playerOptions": [
+          { "text": "I will.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_soil",
+        "npcText": "\"Damp at the north edge — wet boots passed twice. Pollen here that doesn't grow on our side of the verge. The thing came through last night. It went home an hour ago.\"",
+        "playerOptions": [
+          { "text": "Show me where home is.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "They nod, back to reading the soil. \"Move quiet.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "detective_iniko_voss:idle": {
+    "greeting": "Detective Iniko Voss closes her notebook with one finger still inside. \"Walker. You picked a slow day. Make it interesting.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I work three cases simultaneously. None are yours unless you make them. Which way are we doing this?\"",
+        "playerOptions": [
+          { "text": "I have something on the Thorpe ring.", "leadsTo": "node_thorpe" },
+          { "text": "I want to know about your hub colleague, Captain Ren.", "leadsTo": "node_ren" },
+          { "text": "I'd like to ride along on a canvas.", "leadsTo": "node_canvas" }
+        ]
+      },
+      {
+        "id": "node_thorpe",
+        "npcText": "Her finger leaves the notebook. \"Come to my office. Sit. Drink the coffee even if it's bad. Start at the top.\"",
+        "playerOptions": [
+          { "text": "Maddox Kray owes you three favours. He saw the last shipment.", "leadsTo": "node_thorpe_2" },
+          { "text": "I have a copy of Dahlia Kress's ledger.", "leadsTo": "node_thorpe_3" }
+        ]
+      },
+      {
+        "id": "node_thorpe_2",
+        "npcText": "\"Bell told me that yesterday. If you can get Maddox to say it on paper, Pia Haldane can charge the cousins. Bring me a signature.\"",
+        "playerOptions": [
+          { "text": "I'll try.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_thorpe_3",
+        "npcText": "She does not blink. \"Then you committed a felony to bring me one. I appreciate the gesture. I cannot use it in court. Burn it, or hand it to the judge directly — never through me.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_ren",
+        "npcText": "\"We share a cold case. I don't tell you which one. If you carry a message between us, ask Ren whether the south side of the bay still rhymes with hers. She'll know the answer.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_canvas",
+        "npcText": "\"Four o'clock, the wharf. Wear dark. Don't speak unless I do. If you flinch when something happens, you don't get a second canvas.\"",
+        "playerOptions": [
+          { "text": "I'll be there.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She opens the notebook again. \"Don't waste the coffee.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "mob_boss_silas_thorpe:idle": {
+    "greeting": "Silas Thorpe regards you across the warehouse floor. Two lieutenants flank him. He does not stand. \"Walker. You're either lost or stupid. Pick one.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You've got thirty seconds.\"",
+        "playerOptions": [
+          { "text": "I have a name your network is looking for.", "leadsTo": "node_name" },
+          { "text": "I work for Detective Voss.", "leadsTo": "node_voss" },
+          { "text": "Wrong building. My apologies.", "leadsTo": "node_close_safe" }
+        ]
+      },
+      {
+        "id": "node_name",
+        "npcText": "\"Names are cheap. Whose?\"",
+        "playerOptions": [
+          { "text": "Bell, the streetcorner informant.", "leadsTo": "node_name_bell" },
+          { "text": "Maddox Kray on the wharf.", "leadsTo": "node_name_maddox" }
+        ]
+      },
+      {
+        "id": "node_name_bell",
+        "npcText": "He nods almost imperceptibly. The right lieutenant peels off. \"That's worth a hundred. Take it from Vic at the door on your way out. Do not come back.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_name_maddox",
+        "npcText": "\"Maddox is mine. You're telling me a name I already pay. Try again, with better information.\"",
+        "playerOptions": [
+          { "text": "I apologise. I'll go.", "leadsTo": "node_close_safe" }
+        ]
+      },
+      {
+        "id": "node_voss",
+        "npcText": "He smiles, the way a closed door smiles. \"Then the next thing you say will be about her health.\"",
+        "playerOptions": [
+          { "text": "I came to deliver a message, not negotiate.", "leadsTo": "node_voss_msg" },
+          { "text": "I misspoke. Different Voss.", "leadsTo": "node_close_safe" }
+        ]
+      },
+      {
+        "id": "node_voss_msg",
+        "npcText": "\"Then say it once and leave. I have a meeting.\"",
+        "playerOptions": [
+          { "text": "She wants you to know the wharf night-shift is being watched.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close_safe",
+        "npcText": "He gestures to the door. The lieutenants do not move. \"Walk fast.\"",
+        "playerOptions": []
+      },
+      {
+        "id": "node_close",
+        "npcText": "Silas turns away. The audience is over.",
+        "playerOptions": []
+      }
+    ]
+  },
+  "judge_pia_haldane:idle": {
+    "greeting": "Judge Haldane is reading by lamplight long after the courthouse has emptied. She marks her place with one finger and looks up. \"You came to the right office. Most people don't.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I am working on an indictment the High Court would not touch. Tell me what you bring.\"",
+        "playerOptions": [
+          { "text": "Iniko's case file copies, if you'll accept them.", "leadsTo": "node_files" },
+          { "text": "Dahlia Kress's ledger, complete.", "leadsTo": "node_ledger" },
+          { "text": "Nothing yet. I came to understand.", "leadsTo": "node_understand" }
+        ]
+      },
+      {
+        "id": "node_files",
+        "npcText": "\"Bring them. Sealed. Two witnesses on the cover. I will read them in chambers and forget where they came from.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_ledger",
+        "npcText": "Her eyes narrow. \"You did not bring me anything that obvious. You held a copy in your hand. You set it down on a desk and walked away. I won't see your name on it. Do you understand?\"",
+        "playerOptions": [
+          { "text": "I understand.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_understand",
+        "npcText": "\"Read every law before you break one. Read every judge before you trust one. That is the entire course.\"",
+        "playerOptions": [
+          { "text": "Thank you, Judge.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She returns to her reading. \"Close the door on your way out. Quietly.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

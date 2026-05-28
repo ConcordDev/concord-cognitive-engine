@@ -1,0 +1,82 @@
+{
+  "captain_zara_morn:idle": {
+    "greeting": "Captain Zara Morn lowers the rifle from her shoulder and squints into the sun. \"Walker. The perimeter holds today. Make it brief — the next shift is in twenty.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You're either reinforcement, intelligence, or interruption. Pick.\"",
+        "playerOptions": [
+          { "text": "Intelligence. Lattice-Crucible scouts have been probing.", "leadsTo": "node_scouts" },
+          { "text": "Reinforcement. I'll take a patrol shift.", "leadsTo": "node_patrol" },
+          { "text": "Interruption. Quick question.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_scouts",
+        "npcText": "\"I've seen them. I've not engaged. They've not engaged either. Tell me what you know and we'll work out what kind of probe this is.\"",
+        "playerOptions": [
+          { "text": "Their lead scout is Emer Voss. They want a mutual perimeter watch.", "leadsTo": "node_scouts_2" }
+        ]
+      },
+      {
+        "id": "node_scouts_2",
+        "npcText": "She lets out a long breath. \"That's better than I hoped. Bring me a token from them — anything — and I'll send one back. We can both stop sleeping with one eye open.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_patrol",
+        "npcText": "\"Western road. Walk in pairs with Pell Orange. If you hear the bird that isn't a bird, hit the dirt and don't move until I say.\"",
+        "playerOptions": [
+          { "text": "Got it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She slings the rifle back. \"Watch your step.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "councillor_mara_pin:idle": {
+    "greeting": "Councillor Pin looks up from a stack of letters. Three pencils are in her breast pocket; the desk has four. \"Walker. Sit. Don't move the inkwell.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I write letters. Some get read. I have written one hundred and seventeen this year. You will not be the recipient of any of them, but you may be the bearer of one.\"",
+        "playerOptions": [
+          { "text": "I can carry one to Elder Mira Lattice in the hub.", "leadsTo": "node_mira" },
+          { "text": "Tell me about your correspondence with the hub.", "leadsTo": "node_correspond" },
+          { "text": "Just a quick visit.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_mira",
+        "npcText": "She does not show surprise. \"Then you know more than I assumed. I would be grateful. The letter is on the third pencil's pile. Hand it to her, not an aide. Do not read it.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_correspond",
+        "npcText": "\"It is on the topic of frontier autonomy. The Assembly considers us tax-paying outposts. I consider us a partner. Mira and I are working out which framing survives the next vote.\"",
+        "playerOptions": [
+          { "text": "Could a walker help?", "leadsTo": "node_correspond_2" }
+        ]
+      },
+      {
+        "id": "node_correspond_2",
+        "npcText": "\"Walkers can help by carrying letters. Carry one to Mira. That is the help that helps.\"",
+        "playerOptions": [
+          { "text": "I'll carry it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She returns to the stack. \"Quiet door, please.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

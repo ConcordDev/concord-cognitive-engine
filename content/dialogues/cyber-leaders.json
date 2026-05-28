@@ -1,0 +1,159 @@
+{
+  "fixer_oren_lim:idle": {
+    "greeting": "Oren Lim does not stop typing when you sit down. \"Walker. Status?\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "He finally looks up. The augmented eye whirs once, focuses. \"I broker information, identity, and inconvenient transit. Pick a category.\"",
+        "playerOptions": [
+          { "text": "Information. About Ghost-7.", "leadsTo": "node_ghost" },
+          { "text": "Identity. I need one.", "leadsTo": "node_identity" },
+          { "text": "I'm here on behalf of Lyra Brassgate, hub-side.", "leadsTo": "node_lyra" }
+        ]
+      },
+      {
+        "id": "node_ghost",
+        "npcText": "\"Three thousand sparks for the question. Five thousand for the answer. You pay either way.\"",
+        "playerOptions": [
+          { "text": "Three thousand to ask.", "leadsTo": "node_ghost_2" },
+          { "text": "Not at that price.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_ghost_2",
+        "npcText": "He pockets the chit. \"Ghost-7 is either two people coordinating, a custodial AI gone rogue, or a tired man named Lavren who lives above the noodle shop on 7th. None of these is true except one, and I don't tell you which until you've paid the five.\"",
+        "playerOptions": [
+          { "text": "Five thousand for the answer.", "leadsTo": "node_ghost_3" },
+          { "text": "Keep the three. I'll figure it out.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_ghost_3",
+        "npcText": "\"Lavren. Noodle shop. Don't kick his door in; knock twice, then once.\"",
+        "playerOptions": [
+          { "text": "Got it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_identity",
+        "npcText": "\"For yourself or for someone in your custody? The price doubles for the second.\"",
+        "playerOptions": [
+          { "text": "For me. New papers, clean.", "leadsTo": "node_identity_2" },
+          { "text": "Forget it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_identity_2",
+        "npcText": "\"Silver Vey writes them. I broker the introduction. Twelve thousand, half down. The other half on delivery in three days.\"",
+        "playerOptions": [
+          { "text": "Deal.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_lyra",
+        "npcText": "He stops typing entirely. \"Then we are not in this conversation. Sit. Order something. Don't say her name again at this table.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_lyra_2" }
+        ]
+      },
+      {
+        "id": "node_lyra_2",
+        "npcText": "He slides a folded paper under the menu. \"Take that to the back booth at the Neon Bar tonight. The person waiting will know what to do.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "He goes back to typing. \"Pleasure doing business.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "broker_silver_vey:idle": {
+    "greeting": "Silver Vey gestures to the chair across the desk. The office is bare except for a paper folder and a brass pen. \"Walker. Be brief. I bill by the minute.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I sell identities. Past, present, future, dead. None of them are mine. Which do you need?\"",
+        "playerOptions": [
+          { "text": "I want to know about a borrowed Sahm identity.", "leadsTo": "node_sahm" },
+          { "text": "I need new papers for myself.", "leadsTo": "node_papers" },
+          { "text": "I was curious about your work.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sahm",
+        "npcText": "The pen taps the desk once. \"That word costs ten thousand sparks just to have spoken in this office. I will not confirm or deny anything until it is paid.\"",
+        "playerOptions": [
+          { "text": "Pay it.", "leadsTo": "node_sahm_2" },
+          { "text": "Withdraw the question.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sahm_2",
+        "npcText": "\"You will not learn from me where the boy lives. You will learn that he exists, that his cover is intact, and that pressing on it will end three people including me. Take this knowledge and use it wisely or do not use it at all.\"",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_papers",
+        "npcText": "\"Eight thousand. Three days. Bring me a photograph and an old name you no longer want. The new name will not match the old.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "Silver does not stand. \"Close the door behind you.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "datadiver_kira_zane:idle": {
+    "greeting": "Kira Zane is sitting cross-legged on a beanbag in the runners' den, surrounded by three cups of cold tea. She does not look up from the terminal. \"Walker. You're either lost or about to be useful.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"Three things. I've mapped a packet flow that doesn't terminate. I'm tired. And I haven't slept in nineteen hours. Pick which one you're here for.\"",
+        "playerOptions": [
+          { "text": "The packet flow. Tell me about it.", "leadsTo": "node_packet" },
+          { "text": "I brought tea. Hot.", "leadsTo": "node_tea" },
+          { "text": "Maybe later.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_packet",
+        "npcText": "She turns. \"You're the third person I've told. The other two were also walkers. I don't think that's a coincidence. The flow leaks into another world. I don't know which. I will give you the map for nothing if you promise me one thing.\"",
+        "playerOptions": [
+          { "text": "Name it.", "leadsTo": "node_packet_2" }
+        ]
+      },
+      {
+        "id": "node_packet_2",
+        "npcText": "\"If you find out where it goes, you come back and you tell me. Not Oren. Not Silver. Me. I dreamed about it for three months.\"",
+        "playerOptions": [
+          { "text": "Promise.", "leadsTo": "node_close_warm" }
+        ]
+      },
+      {
+        "id": "node_tea",
+        "npcText": "She takes the cup without looking, drinks half of it in one swallow, sets it down. \"You are now my favourite walker. Ask me anything.\"",
+        "playerOptions": [
+          { "text": "Tell me about your packet map.", "leadsTo": "node_packet" }
+        ]
+      },
+      {
+        "id": "node_close_warm",
+        "npcText": "She nods, eyes already back on the terminal. \"Be careful.\"",
+        "playerOptions": []
+      },
+      {
+        "id": "node_close",
+        "npcText": "She is already back on the terminal.",
+        "playerOptions": []
+      }
+    ]
+  }
+}
