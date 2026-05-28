@@ -31489,6 +31489,13 @@ setTimeout(() => {
         kenney:    { limit: 200 },
       });
       structuredLog("info", "evo_asset_bootstrap", result);
+      // T1.6 — if the registry is empty after all loaders (offline + no seed),
+      // the evolution engine would tick on nothing silently. Warn loudly.
+      if (result?.empty) {
+        structuredLog("warn", "evo_asset_registry_empty", {
+          hint: "no seed pack found and all network loaders returned empty; runEvolutionTick has zero candidates",
+        });
+      }
     } catch (e) {
       structuredLog("warn", "evo_asset_bootstrap_failed", { error: String(e?.message || e) });
     }

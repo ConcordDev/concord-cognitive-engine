@@ -21,6 +21,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { poiseBudget, resolvePoiseStagger } from "./combat-impact.js";
 
 // ── Combat profiles (the genre dial) ────────────────────────────────────────
 
@@ -368,6 +369,57 @@ export function isRocked(db, { actorKind, actorId, nowMs }) {
   const row = db.prepare(`SELECT rocked_until_ms FROM combat_actor_state WHERE actor_kind = ? AND actor_id = ?`).get(actorKind, actorId);
   if (!row) return false;
   return (row.rocked_until_ms || 0) > (nowMs ?? Date.now());
+}
+
+/**
+ * T1.4a — resolve a hit into a graded stagger from IMPACT MOMENTUM vs the
+ * recipient's POISE BUDGET (mass × stance × posture × gas × brace), instead of
+ * raw damage vs a fixed threshold. Fully deterministic — no RNG, no
+ * `stagger_chance`. Severity bands: flinch < rocked < knockdown. `rocked` and
+ * `knockdown` apply a lockout (knockdown ~1.6× longer); `flinch` is a brief
+ * reaction with no lockout.
+ *
+ * @param {object} args
+ * @param {number} args.momentum   impact momentum (from combat-impact.momentumFor)
+ * @param {number} [args.offAxis]  0 = dead-on front .. 1 = from behind
+ * @param {number} [args.massKg]   recipient mass (defaults nominal)
+ * @param {boolean}[args.bracing]  recipient is blocking/braced
+ * @param {number} [args.poiseMul] mount/gear poise modifier (see mount-combat-overlay)
+ * @returns {{ severity, momentum, poise, until_ms, duration_ms }}
+ */
+export function triggerStaggerFromImpact(db, { actorKind, actorId, momentum, offAxis = 0, massKg, bracing = false, poiseMul = 1, nowMs }) {
+  if (!db || !(momentum >= 0)) return { severity: "none" };
+  const state = getOrCreateActorState(db, { actorKind, actorId });
+  if (!state) return { severity: "none" };
+  const profile = COMBAT_PROFILES[state.profile_id] || COMBAT_PROFILES.street_freeroam;
+
+  const gasFraction = state.max_gas ? (state.gas / state.max_gas) : 1;
+  const poise = poiseBudget({
+    massKg, stance: state.stance, posture: state.posture,
+    gasFraction, bracing, poiseMul,
+  });
+  const res = resolvePoiseStagger({ momentum, poise, offAxis });
+
+  if (res.severity === "none") return { severity: "none", momentum: res.momentum, poise };
+
+  const t = nowMs ?? Date.now();
+  if (res.severity === "flinch") {
+    insertEvent(db, state.world_id, actorKind, actorId, "flinch", { momentum: res.momentum, poise, overflow: res.overflowRatio });
+    return { severity: "flinch", momentum: res.momentum, poise, until_ms: 0, duration_ms: 0 };
+  }
+
+  const baseDur = profile.rocked_duration_ms;
+  const duration = res.severity === "knockdown" ? Math.round(baseDur * 1.6) : baseDur;
+  const until = t + duration;
+  try {
+    db.prepare(`UPDATE combat_actor_state SET rocked_until_ms = ?, updated_at = unixepoch() WHERE actor_kind = ? AND actor_id = ?`)
+      .run(until, actorKind, actorId);
+  } catch { return { severity: "none", reason: "update_failed" }; }
+
+  insertEvent(db, state.world_id, actorKind, actorId, res.severity === "knockdown" ? "knockdown" : "rocked", {
+    momentum: res.momentum, poise, severity: res.severity, until, overflow: res.overflowRatio,
+  });
+  return { severity: res.severity, momentum: res.momentum, poise, until_ms: until, duration_ms: duration };
 }
 
 // ── Awareness state machine ─────────────────────────────────────────────────

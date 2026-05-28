@@ -1,52 +1,132 @@
 {
-  "events": [
+  "world_name": "Concordia — The Hub",
+  "world_description": "The heart of all realities. A walled world-city the size of a country, where the Concord Link surfaces as eight permanent gates — one for each world it binds. Under the Concordant Law it is the only true neutral ground in existence: any soul may enter, none may conquer it, and only the three pillars hold permanent authority. Everyone else, however powerful in their own world, walks the hub as a guest. The eight figures who shape every reality keep embassies along the Ring of Doors; their rivalries, debts, and quiet wars braid through the markets, the temple of the twelve hours, and the lantern paths at dawn. The Sovereign watches, amused. Concord catalogs. Concordia, who poured herself into the ground here, wishes for more silence and less politics — and gets neither.",
+  "history": [
     {
-      "id": "hub_dome_stabilisation",
-      "world_id": "concordia-hub",
-      "kind": "historical",
-      "title": "The Dome Stabilisation",
-      "year": -2,
-      "summary": "Two years before now, the Refusal Field over the hub collapsed and re-formed in a single afternoon. The southern arc has never been the same. Captain Ren Solare's squad held the southern district through the failure. The Curator Asbir lost a wife in the incident. The previous Oracle died at her glyph-staff."
+      "id": "hub_the_heart_claimed",
+      "title": "The Ground She Made Hers",
+      "type": "founding",
+      "era": "The Great Refusal",
+      "description": "When Concordia poured her entire being into the ground beneath the Sovereign's feet and declared the world hers, the soil did not simply hold him — it held everything. Where her life-force pooled deepest, a city began to grow on its own: streets that arranged themselves around the eight points where the Concord Link had torn the sky, walls that rose to keep no one out but to mark what was sacred. This is the bedrock of the hub. Dig far enough beneath any district and you reach the same thing: her, listening.",
+      "significance": "The hub is not built on Concordia — it is built OF her. This is why no weapon forged in any world has ever broken its walls, and why the dead are quieter here than anywhere else.",
+      "factions_involved": ["the_three_pillars", "verdant_veil"]
     },
     {
-      "id": "hub_seven_spokes_founding",
-      "world_id": "concordia-hub",
-      "kind": "historical",
-      "title": "The Seven Spokes Inn",
-      "year": -47,
-      "summary": "Founded by Baren Hollow's grandmother on the day the Assembly ratified the hub's neutral-ground compact. The inn has held neutral-ground status through three faction wars."
+      "id": "hub_the_ring_of_doors",
+      "title": "The Ring of Doors",
+      "type": "founding",
+      "era": "The Great Refusal",
+      "description": "After the Truce, the eight surviving gates of the Concord Link did not close. The Sovereign refused to let them — having once refused the very concept of 'alone,' he would not now reseal the worlds from each other. The Concordant Law set the terms: each world would maintain one embassy at its gate, staffed by its own and answerable to no pillar. The gates were arranged in a ring around the old battlefield, which was left unpaved. They still call it the Unburned Court, though nothing there ever burned.",
+      "significance": "Establishes the eight-embassy structure and names the central plaza. The Unburned Court is the one place in the hub where the Concordant Law is read aloud each Founding Day.",
+      "factions_involved": ["the_three_pillars", "scholars", "iron_wardens", "merchant_collective", "shadow_network"]
+    },
+    {
+      "id": "hub_the_one_conquest_attempt",
+      "title": "The Night Someone Tried",
+      "type": "catastrophe",
+      "era": "Year 38",
+      "description": "Once — only once — a coalition of three embassies attempted to seize the Unburned Court and declare a hub government. They held it for four hours. Then the ground spoke. Not the Sovereign, not Concord. Concordia herself rose through the flagstones as a wall of root and bloom and took back nothing by force — she simply made the Court impossible to stand on, growing it faster than boots could find purchase, until the conspirators were carried out on a tide of flowers. No one died. No one was punished. The message was the mercy: you cannot own the heart, and she will not even dignify the attempt with anger.",
+      "significance": "Why no faction has tried to conquer the hub in over fifty years. The 'tide of flowers' is now a hub idiom for a plan that fails gently and absolutely.",
+      "factions_involved": ["the_three_pillars"]
+    },
+    {
+      "id": "hub_the_embassy_era",
+      "title": "The Embassy Era Begins",
+      "type": "power_shift",
+      "era": "Year 40 to Year 91",
+      "description": "With conquest off the table, the eight worlds learned to fight the only way the hub allows: with leverage, secrets, marriages, debts, and trade. Each embassy became an instrument of its world's ambition. The Crimson Court embassy (fantasy) trades in blackmail dressed as etiquette. The Grid embassy (cyber) runs the hub's data spine and quietly reads everything that crosses it. The Syndicate embassy (crime) launders not money but reputation. The frontier keeps no embassy at all — the walkers say the road is their door — which the other seven find either insulting or enviable.",
+      "significance": "Defines the hub as a city of soft power. Combat is rare here; the weapons are information and obligation. This is the social substrate the NPC scheme engine runs hottest against.",
+      "factions_involved": ["crimson_court", "grid_authority", "delgado_syndicate", "frontier_freenodes"]
+    },
+    {
+      "id": "hub_concordant_web_now",
+      "title": "The Concordant Web (Present)",
+      "type": "current_state",
+      "era": "Year 91 (Present)",
+      "description": "Eight figures move through the hub at once, and every one of them wants something from another. Elias Voss runs the Anti-Sovereign Movement from a basement two streets from the Sovereign's own tower. Vesper Kane funds half the hub's charities and owns the debt of the other half. Lady Seraphine Voss and Elias share a name, a bloodline neither will discuss, and an apparatus of mutual surveillance. Jax Rivera takes contracts from all eight and loyalty from none. Mama Iron Rose holds her people together across realities by never sleeping in the same world twice. Thorne Blackroot comes only at night, to the one grove the hub keeps for him. Kael 'Zero' Nakamura studies the Sovereign's refusal the way a man studies a god he intends to replace. Nyx 'Blackout' Torres organizes against Zero from inside the same embassy that employs him.",
+      "significance": "The live present-tense state of hub politics. Every name here is an authored NPC; every relationship is a scheme waiting to be seeded. This event is the dialogue hook for hub-spawned narrative.",
+      "factions_involved": ["anti_sovereign_movement", "luminary_industries", "crimson_court", "grid_authority", "delgado_syndicate"]
+    },
+    {
+      "id": "hub_the_voss_question",
+      "title": "The Voss Question",
+      "type": "mystery",
+      "era": "Year 91",
+      "description": "There are Vosses in four worlds. House Voss rules secrets in the fantasy realm; the Voss Consultation steers the Grid's elite; a Voss envoy brokered the underworld's first truce; and Elias and Seraphine carry the name into the hub itself. The Scholars' embassy keeps a sealed genealogy that purports to trace all of them to a single ancestor who walked the Concord Link before the Truce — before, by every other record, the Link existed. No one who has read the genealogy will say what the ancestor's first name was. Two who asked to read it have since declined to discuss the matter at all.",
+      "significance": "Canonizes the cross-world Voss dynasty as a deliberate thread, not a coincidence. The sealed genealogy is a recurring quest object usable in any world that has a Voss.",
+      "factions_involved": ["scholars", "crimson_court", "anti_sovereign_movement"]
+    },
+    {
+      "id": "hub_lamplighter_eastern_path",
+      "title": "The Lamplighter Keeps Walking",
+      "type": "mystery",
+      "era": "Year 0 (?) to Year 91",
+      "description": "Before dawn, someone walks the eastern lantern path lighting lamps that are already lit. The Lamplighter has done this for as long as the hub has existed — longer than any single person could live, and the temple records hint the lineage was once two people sharing one lantern and one name. They speak to no one except, very rarely, a newcomer who has just arrived through a gate and does not yet know where anything is. To those, the Lamplighter gives one true sentence about the hub, and is never seen by them twice.",
+      "significance": "The hub's intimate-scale anchor and a natural first-contact NPC for newly-arrived players. The 'one true sentence' is the cleanest place to teach a stranger what Concordia is.",
+      "factions_involved": ["verdant_veil"]
+    },
+    {
+      "id": "hub_the_ninth_refusal",
+      "title": "The Refusal That Is the Hub",
+      "type": "revelation",
+      "era": "The Great Refusal",
+      "description": "The Verdant Veil codified Eight Refusals, and Lyra Silentchant, keeper of the second hour, has refused to teach a ninth. The keepers of the upper grove believe she is wrong to withhold it. They are also wrong about why. The ninth refusal was never hers to teach, because it is not spoken — it is stood upon. To live in the hub at all, to enter through any gate and put down a single coin in a market that belongs to no world, is to refuse the thing every other refusal cannot help but commit: the refusal to let one's own refusal win. The hub is the ninth refusal, made of ground instead of words. Lyra has not taught it because it cannot be taught. It can only be walked into. The Third Keeper, who walked into the goddess and was not seen again, may have been the first to understand this.",
+      "significance": "The thematic keystone that ties the hub to the Refusal spine, the secret eighth refusal, and the Third Keeper mystery. The hub is not the absence of the Refusals — it is the one that holds the other eight in balance.",
+      "factions_involved": ["verdant_veil", "the_three_pillars"]
     },
     {
       "id": "hub_concordant_oath",
-      "world_id": "concordia-hub",
-      "kind": "founding",
       "title": "The Concordant Oath",
-      "year": -120,
-      "summary": "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture."
+      "type": "founding",
+      "era": "Year -120 (Founding)",
+      "description": "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture.",
+      "significance": "The original neutral-ground compact the Concordant Law later formalised.",
+      "factions_involved": ["the_three_pillars"]
+    },
+    {
+      "id": "hub_seven_spokes_founding",
+      "title": "The Seven Spokes Inn",
+      "type": "founding",
+      "era": "Year -47",
+      "description": "Founded by Baren Hollow's grandmother on the day the Assembly ratified the hub's neutral-ground compact. The inn has held neutral-ground status through three faction wars.",
+      "significance": "A neutral-ground landmark that has outlasted three faction wars.",
+      "factions_involved": []
     },
     {
       "id": "hub_lattice_correspondence",
-      "world_id": "concordia-hub",
-      "kind": "ongoing",
       "title": "The Lattice Correspondence",
-      "year": -15,
-      "summary": "A scholarly correspondence between hub curators and sub-world philosophers has run continuously for fifteen years. Asbir Thelane is the current keeper of the hub's side. The correspondence has surfaced more cross-world resonances than any other channel."
+      "type": "ongoing",
+      "era": "Year -15 to Year 91",
+      "description": "A scholarly correspondence between hub curators and sub-world philosophers has run continuously for fifteen years. Asbir Thelane is the current keeper of the hub's side. The correspondence has surfaced more cross-world resonances than any other channel.",
+      "significance": "The channel through which most cross-world resonances are first noticed.",
+      "factions_involved": ["scholars"]
+    },
+    {
+      "id": "hub_dome_stabilisation",
+      "title": "The Dome Stabilisation",
+      "type": "catastrophe",
+      "era": "Year 89",
+      "description": "Two years before now, the Refusal Field over the hub collapsed and re-formed in a single afternoon. The southern arc has never been the same. Captain Ren Solare's squad held the southern district through the failure. The Curator Asbir lost a wife in the incident. The previous Oracle died at her glyph-staff.",
+      "significance": "The wound in the southern arc that the present-day weakening reopens.",
+      "factions_involved": ["the_three_pillars"]
     },
     {
       "id": "hub_field_weakening",
-      "world_id": "concordia-hub",
-      "kind": "ongoing",
       "title": "The Southern Arc",
-      "year": 0,
-      "summary": "Six months ago, the Refusal Field's southern arc began weakening again. Captain Ren noticed. Oracle Nesha confirmed. The Speaker has not told the Assembly. The dome's next failure may be inside the year."
+      "type": "current_state",
+      "era": "Year 91",
+      "description": "Six months ago, the Refusal Field's southern arc began weakening again. Captain Ren noticed. Oracle Nesha confirmed. The Speaker has not told the Assembly. The dome's next failure may be inside the year.",
+      "significance": "A live, unresolved threat the player can be drawn into; the Speaker's silence is a scheme hook.",
+      "factions_involved": ["the_three_pillars"]
     },
     {
       "id": "hub_impossible_print",
-      "world_id": "concordia-hub",
-      "kind": "ongoing",
       "title": "The Impossible Print",
-      "year": 0,
-      "summary": "Ranger Kiren Owl has tracked a creature whose print matches nothing in the catalogue. Stablemaster Orin Rede has independent evidence of an unknown rider exhausting horses past explanation. Courier Kel Sandren has noticed a portal opening off-schedule. Three observations. No one has yet connected them."
+      "type": "mystery",
+      "era": "Year 91",
+      "description": "Ranger Kiren Owl has tracked a creature whose print matches nothing in the catalogue. Stablemaster Orin Rede has independent evidence of an unknown rider exhausting horses past explanation. Courier Kel Sandren has noticed a portal opening off-schedule. Three observations. No one has yet connected them.",
+      "significance": "A three-clue chain (Kiren + Orin + Kel) the player can connect — the hub's authored investigation seed.",
+      "factions_involved": []
     }
   ]
 }

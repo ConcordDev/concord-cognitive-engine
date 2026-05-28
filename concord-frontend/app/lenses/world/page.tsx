@@ -133,6 +133,13 @@ const FestivalBanner = dynamic(
     })),
   { ssr: false }
 );
+const BossHealthBar = dynamic(
+  () =>
+    import('@/components/world/BossHealthBar').then((m) => ({
+      default: m.BossHealthBar,
+    })),
+  { ssr: false }
+);
 const FlightHUD = dynamic(
   () =>
     import('@/components/world/FlightHUD').then((m) => ({
@@ -4941,6 +4948,8 @@ export default function WorldLensPage() {
 
           {/* Phase BB1 — active festival banner */}
           <FestivalBanner worldId={activeDistrict.id} />
+          {/* E0#3 — boss HP/phase HUD (subscribes to server boss:state) */}
+          <BossHealthBar />
 
           {/* Phase CA1 — Flight HUD (subscribes to concordia:flight-state) */}
           <FlightHUD />

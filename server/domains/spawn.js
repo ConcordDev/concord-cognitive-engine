@@ -76,9 +76,13 @@ export default function registerSpawnMacros(register) {
       const phases = bp.createBossPhases({
         bossId: id, worldId,
         phases: [
-          { name: "enraged-1", when: (m) => m.hpPct <= 0.75, scaling: { damage: 1.2 } },
-          { name: "enraged-2", when: (m) => m.hpPct <= 0.50, scaling: { damage: 1.4 } },
+          // Ordered MOST-RESTRICTIVE-FIRST: boss-phases.tick selects the first
+          // matching predicate, so death-throes (<=0.25) must precede enraged-2
+          // (<=0.50) and enraged-1 (<=0.75) — otherwise the boss sticks in
+          // enraged-1 forever once below 75% and never reaches the later phases.
           { name: "death-throes", when: (m) => m.hpPct <= 0.25, scaling: { damage: 1.6 } },
+          { name: "enraged-2", when: (m) => m.hpPct <= 0.50, scaling: { damage: 1.4 } },
+          { name: "enraged-1", when: (m) => m.hpPct <= 0.75, scaling: { damage: 1.2 } },
         ],
       });
       const STATE = (globalThis).__CONCORD_STATE__ || {};

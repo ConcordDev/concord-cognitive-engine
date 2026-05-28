@@ -1,0 +1,10 @@
+{
+  "spec": "concord-evo-seed/v1",
+  "license": "CC0-1.0",
+  "attribution": "Procedural primitive seed meshes authored for the Concord Cognitive Engine and released into the public domain (CC0-1.0). These exist so the evo-asset registry has a guaranteed non-empty floor even with zero outbound network access; the PolyHaven / ambientCG / OS3A network loaders enrich on top of this floor, they are not the only source.",
+  "assets": [
+    { "file": "cube.mesh.json", "kind": "mesh", "category": "primitive", "tags": ["primitive", "cube", "seed"], "qualityLevel": 1 },
+    { "file": "pyramid.mesh.json", "kind": "mesh", "category": "primitive", "tags": ["primitive", "pyramid", "seed"], "qualityLevel": 1 },
+    { "file": "plane.mesh.json", "kind": "mesh", "category": "primitive", "tags": ["primitive", "plane", "seed"], "qualityLevel": 1 }
+  ]
+}

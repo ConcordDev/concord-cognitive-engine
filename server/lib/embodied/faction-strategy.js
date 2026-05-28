@@ -112,6 +112,78 @@ export function setRelation(db, a, b, { score, kind }) {
 }
 
 /**
+ * T1.1 — seed strategy state + initial relations for a set of authored
+ * factions, so the faction-strategy cycle (which only advances rows that
+ * already exist) actually does work on a fresh boot. Idempotent: ensureFactionState
+ * no-ops if a row exists, and setRelation upserts.
+ *
+ * Without this the EVE-style "factions war while you sleep" layer is fully
+ * built (cycle + sockets + EmergentEventFeed) but dark — zero rows means zero
+ * moves, forever.
+ *
+ * Derivation (all deterministic):
+ *   - stance: an authored faction.stance if it's a valid engine stance; else a
+ *     hash-stable lean (rival-bearing factions split expand/consolidate so wars
+ *     can emerge; others consolidate).
+ *   - relations: rival_factions / rivalries → tension (-0.2); allied_factions /
+ *     alliances → truce (+0.45). Only seeded when BOTH factions are authored,
+ *     so every relation has two live strategy rows behind it. NB the rival
+ *     score is a *mild* tension on purpose: pickMove's DECLARE_WAR branch only
+ *     fires against an expanding rival whose relation is still >= -0.3 (wars
+ *     emerge from expansion collisions, not from pre-existing deep enmity), so
+ *     seeding -0.9 would paradoxically prevent the war it's meant to enable.
+ */
+export function seedFactionStrategyState(db, factions) {
+  if (!db || !Array.isArray(factions) || factions.length === 0) {
+    return { ok: true, seeded: 0, relations: 0 };
+  }
+  const ids = new Set(factions.map(f => f?.id).filter(Boolean));
+  let seeded = 0, relations = 0;
+
+  const stanceFor = (f) => {
+    const explicit = String(f.stance || "").toLowerCase();
+    if (STANCES.includes(explicit)) return explicit;
+    const rivals = [].concat(f.rival_factions || [], f.rivalries || []).filter(Boolean);
+    if (rivals.length > 0) {
+      // Deterministic split: ~half the rival-bearing factions start expansionist
+      // so DECLARE_WAR becomes reachable; the rest consolidate.
+      let h = 0; const s = String(f.id);
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+      return (Math.abs(h) % 2) === 0 ? "expand" : "consolidate";
+    }
+    return "consolidate";
+  };
+
+  for (const f of factions) {
+    if (!f?.id) continue;
+    try {
+      const before = db.prepare(`SELECT faction_id FROM faction_strategy_state WHERE faction_id = ?`).get(f.id);
+      ensureFactionState(db, f.id, { stance: stanceFor(f) });
+      if (!before) seeded++;
+    } catch { /* table optional */ }
+  }
+
+  const seedRelations = (f, list, score, kind) => {
+    for (const other of (Array.isArray(list) ? list : [])) {
+      if (!other || other === f.id || !ids.has(other)) continue;
+      try {
+        // Don't clobber a relation already shaped by gameplay.
+        const existing = getRelation(db, f.id, other);
+        if (existing && existing.kind && existing.kind !== "neutral") continue;
+        if (setRelation(db, f.id, other, { score, kind })) relations++;
+      } catch { /* relations table optional */ }
+    }
+  };
+  for (const f of factions) {
+    if (!f?.id) continue;
+    seedRelations(f, [].concat(f.rival_factions || [], f.rivalries || []), -0.2, "tension");
+    seedRelations(f, [].concat(f.allied_factions || [], f.alliances || []), 0.45, "truce");
+  }
+
+  return { ok: true, seeded, relations };
+}
+
+/**
  * Pick a move for a faction given its state + the relations with peers.
  * Pure: returns the move spec; caller persists.
  *

@@ -1045,11 +1045,35 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const { handle } = await selectBrain("subconscious", { callerId: "world:npc:dialogue" });
 
+      // T1.2 — surface the NPC's asymmetric feelings (grudge / preoccupation /
+      // desire / current opinion) so the dialogue reflects who this NPC is
+      // toward THIS player instead of sounding generic. The data is seeded by
+      // seedNPCAsymmetry (above) but was never read into the prompt. Best-effort;
+      // NEVER injects narrative_context.secret — only the derived grudge/desire/
+      // preoccupation prose, which is authored-for-players by design.
+      const asymmetryLines = [];
+      try {
+        const asym = await import("../lib/npc-asymmetry.js");
+        let playerMetrics = null;
+        try {
+          const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
+          playerMetrics = getMetrics(db, playerId, worldId);
+        } catch { /* metrics table optional */ }
+        const ctx = asym.composeAsymmetryContext?.(db, npcId, playerId, playerMetrics);
+        if (ctx) {
+          if (ctx.persistent_grudge) asymmetryLines.push(`Persistent grudge (let it color your tone; do not recite it verbatim): ${ctx.persistent_grudge}`);
+          if (ctx.current_preoccupation) asymmetryLines.push(`What preoccupies you right now: ${ctx.current_preoccupation}`);
+          if (ctx.current_opinion) asymmetryLines.push(`Your standing toward this player: ${ctx.current_opinion}.`);
+          if (ctx.desire_for_this_player) asymmetryLines.push(`Something you quietly want from this player (surface it only if the moment fits): ${ctx.desire_for_this_player}`);
+        }
+      } catch { /* asymmetry tables optional on minimal builds */ }
+
       const promptLines = [
         TASK_PROMPTS.worldNpcPersonaHeader({
           npcName, archetype: npc.archetype, worldId,
           faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
         }),
+        ...asymmetryLines,
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
         `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,
@@ -2048,8 +2072,31 @@ export default function createWorldsRouter({ requireAuth, db }) {
           damageResult.comboCount = strike.combo;
           damageResult.finisherUnlocked = strike.finisher_unlocked;
         }
-        // Trigger rocked state on NPC if magnitude crosses their threshold.
-        polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        // T1.4a — stagger from real IMPACT MOMENTUM (bone-mass × angular-
+        // velocity × lever) vs the NPC's poise budget, not raw damage vs a
+        // fixed threshold. Deterministic; graded flinch/rocked/knockdown.
+        try {
+          const { momentumFor } = await import("../lib/combat-impact.js");
+          const { getSkillFrameData } = await import("../lib/combat-frame-data.js");
+          const weaponKind = skillData?.kind || skillData?.weapon_kind || skillData?.skill_kind || "fist";
+          const tier = Math.max(1, Math.min(5, Math.ceil((skillRow?.level || 1) / 20)));
+          const frame = getSkillFrameData({ kind: weaponKind, level: skillRow?.level || 1 });
+          const momentum = momentumFor({
+            kind: weaponKind, tier, frame,
+            actorMassKg: damageResult.attackerMassKg || undefined,
+          });
+          const stagger = polish.triggerStaggerFromImpact(db, {
+            actorKind: "npc", actorId: npcId, momentum,
+            massKg: damageResult.targetMassKg || undefined,
+          });
+          if (stagger?.severity && stagger.severity !== "none") {
+            damageResult.staggerSeverity = stagger.severity;
+            damageResult.impactMomentum = Math.round(momentum * 10) / 10;
+          }
+        } catch {
+          // Momentum model optional — fall back to magnitude-based rocked.
+          polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        }
         // Bring the NPC's awareness into combat (idempotent on repeat).
         polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "alert" });
         polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "combat", target: userId });
@@ -2063,6 +2110,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // E0#3 — boss HP/phase HUD + light up the dormant boss-phase scaling.
+      // The phase-state created at spawn (STATE.bossPhases) was never ticked in
+      // combat, so its damage scaling was dead. If the target is a boss, tick
+      // its phases on the post-damage hp and emit boss:state for the HUD.
+      try {
+        const bossRow = db.prepare(
+          `SELECT name, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
+        ).get(npcId);
+        const bossPhases = globalThis.__CONCORD_STATE__?.bossPhases?.get?.(npcId);
+        const { isBossRow, computeBossState } = await import("../lib/combat/boss-hud.js");
+        if (isBossRow(bossRow, bossPhases)) {
+          const payload = computeBossState({
+            npcId, worldId,
+            name: bossRow.name, archetype: bossRow.archetype,
+            currentHp: bossRow.current_hp, maxHp: bossRow.max_hp,
+            phases: bossPhases, defeated: !!kill,
+          });
+          req.app.locals.io?.to(`world:${worldId}`).emit('boss:state', payload);
+        }
+      } catch { /* boss HUD emit best-effort — never blocks combat */ }
 
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at

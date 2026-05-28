@@ -309,6 +309,59 @@ function seedLore(loreData) {
   return count;
 }
 
+// ── Codex Seeding (cross-world worldbuilding → citable DTUs) ──────────────────
+
+/**
+ * Seed a cross-world codex (e.g. content/codex/eight-refusals.json) as citable
+ * DTUs so the worldbuilding surfaces in lore/atlas lenses and grounds oracle
+ * dialogue. Idempotent via INSERT OR IGNORE on a deterministic id (mirrors the
+ * Phase Z2 trivia-answer-DTU mint). Each refusal is tagged with its world_id
+ * (best-effort — column added by migration 225) so a world's lens can pull its
+ * own entry. Returns the number of DTUs newly minted.
+ */
+export function seedCodex(db, codex, { slug = "codex" } = {}) {
+  if (!db || !codex) return 0;
+  let count = 0;
+
+  const mint = (id, kind, title, summary, worldId) => {
+    if (!id || !title) return;
+    try {
+      const r = db.prepare(`
+        INSERT OR IGNORE INTO dtus (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
+        VALUES (?, ?, ?, ?, unixepoch(), 'system', 'global', 'public')
+      `).run(id, kind, title, summary || "");
+      if (r.changes > 0) {
+        count++;
+        if (worldId) {
+          // world_id added by migration 225; minimal builds simply skip the tag.
+          try { db.prepare(`UPDATE dtus SET world_id = ? WHERE id = ?`).run(worldId, id); } catch { /* no world_id column */ }
+        }
+      }
+    } catch (err) {
+      try { logger.debug?.("content_seeder", "codex_mint_failed", { id, err: err?.message }); } catch { /* ignore */ }
+    }
+  };
+
+  // Top-level codex entry.
+  mint(`${slug}_index`, "codex", codex.codex_name || "Codex", codex.codex_description || "", null);
+
+  // One DTU per refusal, tagged to its world.
+  for (const r of (codex.refusals ?? [])) {
+    if (!r?.id) continue;
+    const summary = [r.the_no, r.incarnation, r.the_cost, r.thread].filter(Boolean).join("\n\n");
+    mint(`${slug}_${r.id}`, "codex", r.name || r.id, summary, r.world_id || null);
+  }
+
+  // The ninth (the hub itself), if present.
+  if (codex.the_ninth) {
+    const n = codex.the_ninth;
+    const summary = [n.the_no, n.explanation].filter(Boolean).join("\n\n");
+    mint(`${slug}_the_ninth`, "codex", n.name || "The Ninth Refusal", summary, n.world_id || "concordia-hub");
+  }
+
+  return count;
+}
+
 // ── Quest Seeding ─────────────────────────────────────────────────────────────
 
 function buildQuestSteps(objectives = []) {
@@ -623,6 +676,39 @@ export async function seedContent({ db = null } = {}) {
       if (r?.ok) results.kingdoms = r.inserted || 0;
     } catch (err) {
       logger.warn({ err: err.message }, "content_seeder_kingdoms_failed");
+    }
+  }
+
+  // T1.1 — faction strategy state seeding (idempotent). The Layer-11
+  // faction-strategy cycle only advances faction_strategy_state rows that
+  // already exist; nothing seeded them, so the EVE-style autonomy layer
+  // booted dark (zero rows -> zero moves -> no wars ever). Seed a strategy
+  // row + initial relations (from authored rival_factions/allied_factions)
+  // for every authored faction so the cycle has something to advance.
+  if (db) {
+    try {
+      const { seedFactionStrategyState } = await import("./embodied/faction-strategy.js");
+      const factions = Array.from(_authoredFactions.values());
+      const r = seedFactionStrategyState(db, factions);
+      if (r?.ok) {
+        results.factionStrategySeeded = r.seeded || 0;
+        results.factionRelationsSeeded = r.relations || 0;
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_faction_strategy_failed");
+    }
+  }
+
+  // T3.2 — cross-world codex seeding (idempotent). Mints the Eight Refusals
+  // codex as citable DTUs so the worldbuilding surfaces in lore/atlas lenses
+  // and grounds oracle dialogue, per-world-tagged. New content kind; harmless
+  // (zero rows) on builds that don't ship the codex file.
+  if (db) {
+    try {
+      const codex = readJSON("codex/eight-refusals.json");
+      if (codex) results.codexSeeded = seedCodex(db, codex, { slug: "codex_eight_refusals" });
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_codex_failed");
     }
   }
 
