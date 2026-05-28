@@ -48505,6 +48505,52 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC2 — hacking puzzle.
+app.post("/api/hacking/puzzle", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorPuzzle } = await import("./lib/hacking.js");
+  res.json(authorPuzzle(db, req.body || {}));
+}));
+
+app.post("/api/hacking/:puzzleId/command", requireAuth(), asyncHandler(async (req, res) => {
+  const { attemptCommand } = await import("./lib/hacking.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(attemptCommand(db, req.params.puzzleId, userId, req.body?.command));
+}));
+
+app.get("/api/hacking/puzzles", asyncHandler(async (req, res) => {
+  const { listPuzzles } = await import("./lib/hacking.js");
+  res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/hacking/:puzzleId", asyncHandler(async (req, res) => {
+  const { getPuzzle } = await import("./lib/hacking.js");
+  const p = getPuzzle(db, req.params.puzzleId);
+  if (!p) return res.status(404).json({ ok: false, error: "no_puzzle" });
+  res.json({ ok: true, puzzle: p });
+}));
+
+// Phase CC3 — programming puzzle (VM).
+app.post("/api/code-puzzle/puzzle", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorPuzzle: authorCp } = await import("./lib/programming-puzzle.js");
+  res.json(authorCp(db, req.body || {}));
+}));
+
+app.post("/api/code-puzzle/:puzzleId/run", asyncHandler(async (req, res) => {
+  const { runSolution } = await import("./lib/programming-puzzle.js");
+  res.json(runSolution(db, req.params.puzzleId, req.body?.program || []));
+}));
+
+app.post("/api/code-puzzle/:puzzleId/submit", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitSolution } = await import("./lib/programming-puzzle.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(submitSolution(db, userId, req.params.puzzleId, req.body?.program || []));
+}));
+
+app.get("/api/code-puzzle/:puzzleId/leaderboard", asyncHandler(async (req, res) => {
+  const { leaderboardForPuzzle } = await import("./lib/programming-puzzle.js");
+  res.json({ ok: true, leaderboard: leaderboardForPuzzle(db, req.params.puzzleId) });
+}));
+
 // Phase CC7 — theme park tycoon.
 app.post("/api/theme-park/attraction", requireAuth(), asyncHandler(async (req, res) => {
   const { openAttraction } = await import("./lib/theme-park.js");
