@@ -1,0 +1,13 @@
+{
+  "id": "frontier_council_letters_day",
+  "name": "Council Letters Day",
+  "world_id": "concord-link-frontier",
+  "season_idx": 5,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "ink_jars",
+  "synopsis": "Councillor Mara Pin reads the year's most-replied-to letters aloud. The civic equivalent of a sermon.",
+  "achievements": [],
+  "quest_seeds": []
+}

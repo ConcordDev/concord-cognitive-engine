@@ -5,9 +5,48 @@
 // timeout, priority, and concurrency limit. The repair brain always runs
 // at highest priority (0). Conscious (user-facing) beats subconscious (autonomous).
 
+// Phase D — multi-endpoint scale-out.
+// If BRAIN_<NAME>_URLS is set (comma-separated), it overrides the singular
+// BRAIN_<NAME>_URL and a round-robin picker spreads requests across the
+// list. Legacy singular form still works unchanged.
+function _parseEndpoints(plural, singular, fallback) {
+  if (plural) {
+    const list = String(plural).split(",").map(s => s.trim()).filter(Boolean);
+    if (list.length) return list;
+  }
+  return [singular || fallback];
+}
+
+const _conscious_urls = _parseEndpoints(
+  process.env.BRAIN_CONSCIOUS_URLS,
+  process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST,
+  "http://ollama-conscious:11434",
+);
+const _subconscious_urls = _parseEndpoints(
+  process.env.BRAIN_SUBCONSCIOUS_URLS,
+  process.env.BRAIN_SUBCONSCIOUS_URL,
+  "http://ollama-subconscious:11434",
+);
+const _utility_urls = _parseEndpoints(
+  process.env.BRAIN_UTILITY_URLS,
+  process.env.BRAIN_UTILITY_URL,
+  "http://ollama-utility:11434",
+);
+const _repair_urls = _parseEndpoints(
+  process.env.BRAIN_REPAIR_URLS,
+  process.env.BRAIN_REPAIR_URL,
+  "http://ollama-repair:11434",
+);
+const _vision_urls = _parseEndpoints(
+  process.env.BRAIN_VISION_URLS,
+  process.env.BRAIN_VISION_URL || process.env.BRAIN_MULTIMODAL_URL || process.env.OLLAMA_URL || process.env.OLLAMA_HOST,
+  "http://ollama-vision:11434",
+);
+
 export const BRAIN_CONFIG = Object.freeze({
   conscious: {
-    url: process.env.BRAIN_CONSCIOUS_URL || process.env.OLLAMA_HOST || "http://ollama-conscious:11434",
+    url: _conscious_urls[0],
+    urls: _conscious_urls,
     model: process.env.BRAIN_CONSCIOUS_MODEL || "concord-conscious:latest",
     role: "chat, deep reasoning, council deliberation",
     temperature: 0.7,
@@ -21,7 +60,8 @@ export const BRAIN_CONFIG = Object.freeze({
     maxTokens: 4096,   // Full output — let it think
   },
   subconscious: {
-    url: process.env.BRAIN_SUBCONSCIOUS_URL || "http://ollama-subconscious:11434",
+    url: _subconscious_urls[0],
+    urls: _subconscious_urls,
     model: process.env.BRAIN_SUBCONSCIOUS_MODEL || "qwen2.5:7b-instruct-q4_K_M",
     role: "autogen, dream, evolution, synthesis, birth",
     temperature: 0.85,
@@ -34,7 +74,8 @@ export const BRAIN_CONFIG = Object.freeze({
     maxTokens: 1200,   // GPU: 7B brain can generate longer, more coherent DTUs
   },
   utility: {
-    url: process.env.BRAIN_UTILITY_URL || "http://ollama-utility:11434",
+    url: _utility_urls[0],
+    urls: _utility_urls,
     model: process.env.BRAIN_UTILITY_MODEL || "qwen2.5:3b",
     role: "lens interactions, entity actions, quick domain tasks",
     temperature: 0.3,
@@ -47,7 +88,8 @@ export const BRAIN_CONFIG = Object.freeze({
     maxTokens: 800,    // GPU: more complete outputs for entity actions
   },
   repair: {
-    url: process.env.BRAIN_REPAIR_URL || "http://ollama-repair:11434",
+    url: _repair_urls[0],
+    urls: _repair_urls,
     // Default matches the inline BRAIN declaration in server.js
     // (the hand-written object at server.js:14712 is the live source
     // of truth — see Phase 12 audit). 0.5b was the pre-Sprint-D
@@ -64,16 +106,13 @@ export const BRAIN_CONFIG = Object.freeze({
   },
   multimodal: {
     // Resolution order:
-    //   1. BRAIN_VISION_URL — preferred, set by docker-compose to point
-    //      at the dedicated ollama-vision service.
+    //   1. BRAIN_VISION_URLS / BRAIN_VISION_URL — preferred, set by docker-
+    //      compose to point at the dedicated ollama-vision service.
     //   2. BRAIN_MULTIMODAL_URL — legacy alias.
     //   3. OLLAMA_URL / OLLAMA_HOST — single-Ollama deployments.
     //   4. ollama-vision:11434 — docker-compose default.
-    url: process.env.BRAIN_VISION_URL
-      || process.env.BRAIN_MULTIMODAL_URL
-      || process.env.OLLAMA_URL
-      || process.env.OLLAMA_HOST
-      || "http://ollama-vision:11434",
+    url: _vision_urls[0],
+    urls: _vision_urls,
     // Default LLaVA 13B v1.6 (vicuna) at q4_K_M ≈ 9GB VRAM. With
     // OLLAMA_FLASH_ATTENTION + the RTX PRO 4500's 5th-gen tensor cores
     // this hits ~50 tok/s on a 1024×1024 input.
@@ -190,4 +229,105 @@ export function getActiveBrainConfig() {
 /** Diagnostic — returns the resolved profile metadata. */
 export function getActiveBrainProfile() {
   return { profile: _activeProfile, source: _activeSource };
+}
+
+// ── Phase D — multi-endpoint round-robin + inflight tracking ────────────────
+//
+// Per-endpoint inflight counters let us prefer the less-loaded endpoint when
+// a brain has more than one. Without this, naive round-robin would oscillate
+// between a wedged endpoint and a healthy one.
+
+/** @type {Map<string, number>} endpoint URL → inflight count */
+const _endpointInflight = new Map();
+/** @type {Map<string, number>} endpoint URL → consecutive failures */
+const _endpointFailures = new Map();
+/** @type {Map<string, number>} endpoint URL → last health probe (epoch ms) */
+const _endpointLastHealthy = new Map();
+/** @type {Map<string, number>} brain name → round-robin cursor */
+const _rrCursor = new Map();
+
+function _candidatesForBrain(brainName) {
+  const cfg = getActiveBrainConfig()[brainName];
+  if (!cfg) return [];
+  if (Array.isArray(cfg.urls) && cfg.urls.length) return cfg.urls;
+  return cfg.url ? [cfg.url] : [];
+}
+
+/**
+ * Pick an endpoint URL for a brain. Strategy:
+ *   1. Choose the endpoint with the fewest inflight calls.
+ *   2. Tiebreak by round-robin cursor so multiple equal endpoints share load.
+ *   3. Endpoints with ≥3 consecutive failures are deprioritised.
+ */
+export function pickBrainEndpoint(brainName) {
+  const candidates = _candidatesForBrain(brainName);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  let best = null;
+  let bestScore = Infinity;
+  let bestIdx = 0;
+  candidates.forEach((url, idx) => {
+    const inflight = _endpointInflight.get(url) || 0;
+    const failures = _endpointFailures.get(url) || 0;
+    // Heavy failure penalty so wedged endpoints are starved.
+    const score = inflight + (failures >= 3 ? 1_000 : 0);
+    if (score < bestScore) { best = url; bestScore = score; bestIdx = idx; }
+  });
+
+  // Round-robin tiebreak among equal-score endpoints.
+  const ties = candidates
+    .map((url, idx) => ({ url, idx, score: (_endpointInflight.get(url) || 0) + ((_endpointFailures.get(url) || 0) >= 3 ? 1_000 : 0) }))
+    .filter(c => c.score === bestScore);
+  if (ties.length > 1) {
+    const cursor = (_rrCursor.get(brainName) || 0) % ties.length;
+    best = ties[cursor].url;
+    bestIdx = ties[cursor].idx;
+    _rrCursor.set(brainName, cursor + 1);
+  }
+
+  return best;
+}
+
+/** Increment the inflight counter for an endpoint (call before the request). */
+export function noteEndpointStart(url) {
+  if (!url) return;
+  _endpointInflight.set(url, (_endpointInflight.get(url) || 0) + 1);
+}
+
+/** Decrement the inflight counter for an endpoint (call after the request). */
+export function noteEndpointFinish(url, { ok = true } = {}) {
+  if (!url) return;
+  const cur = _endpointInflight.get(url) || 0;
+  _endpointInflight.set(url, Math.max(0, cur - 1));
+  if (ok) {
+    _endpointFailures.set(url, 0);
+    _endpointLastHealthy.set(url, Date.now());
+  } else {
+    _endpointFailures.set(url, (_endpointFailures.get(url) || 0) + 1);
+  }
+}
+
+/** Diagnostic snapshot — used by /api/admin/brain-endpoints. */
+export function getEndpointStats() {
+  const out = {};
+  const config = getActiveBrainConfig();
+  for (const [brainName, cfg] of Object.entries(config)) {
+    const urls = Array.isArray(cfg.urls) && cfg.urls.length ? cfg.urls : [cfg.url];
+    out[brainName] = urls.map((url) => ({
+      url,
+      inflight: _endpointInflight.get(url) || 0,
+      failures: _endpointFailures.get(url) || 0,
+      lastHealthyAt: _endpointLastHealthy.get(url) || 0,
+    }));
+  }
+  return out;
+}
+
+/** Test-only — reset trackers between tests. */
+export function _resetEndpointStats() {
+  _endpointInflight.clear();
+  _endpointFailures.clear();
+  _endpointLastHealthy.clear();
+  _rrCursor.clear();
 }

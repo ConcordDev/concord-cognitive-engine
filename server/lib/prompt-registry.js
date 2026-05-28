@@ -166,7 +166,7 @@ export const LENS_CONTEXT_HINTS = {
 //     follow-up note)
 
 export function composeSystemPrompt(brain, ctx = {}) {
-  const { mode = "chat", currentLens = null, extra = null } = ctx;
+  const { mode = "chat", currentLens = null, extra = null, worldId = null } = ctx;
 
   const runtimeBits = [];
   runtimeBits.push(`Mode: ${mode}.`);
@@ -174,6 +174,30 @@ export function composeSystemPrompt(brain, ctx = {}) {
     runtimeBits.push(LENS_CONTEXT_HINTS[currentLens] || `Currently in the ${currentLens} lens.`);
   }
   if (extra) runtimeBits.push(extra);
+
+  // Phase O — per-world LLM voice. When ctx.worldId is set (NPC dialogue,
+  // narrative bridge, world-scoped chat), append the world's voice block
+  // from loops.json#worldVoice. The brain's persona / Modelfile voice
+  // stays — worldVoice modulates ON TOP of it.
+  let worldVoice = null;
+  if (worldId && _getWorldVoice) {
+    try { worldVoice = _getWorldVoice(worldId); } catch { /* flavor lookup best-effort */ }
+  }
+  if (worldVoice) {
+    const parts = [`World voice for ${worldId}:`];
+    if (worldVoice.tone) parts.push(`Tone: ${worldVoice.tone}.`);
+    if (Array.isArray(worldVoice.vocabulary) && worldVoice.vocabulary.length) {
+      parts.push(`Use these terms when natural: ${worldVoice.vocabulary.join(", ")}.`);
+    }
+    if (Array.isArray(worldVoice.avoid) && worldVoice.avoid.length) {
+      parts.push(`Avoid: ${worldVoice.avoid.join(", ")}.`);
+    }
+    if (Array.isArray(worldVoice.examples) && worldVoice.examples.length) {
+      parts.push(`Example phrasings: ${worldVoice.examples.map(e => `"${e}"`).join(" | ")}.`);
+    }
+    runtimeBits.push(parts.join(" "));
+  }
+
   const runtime = runtimeBits.join(" ");
 
   if (brain === "conscious") {
@@ -192,6 +216,15 @@ export function composeSystemPrompt(brain, ctx = {}) {
     useModelfileSystem: false,
   };
 }
+
+// Phase O — bind to world-flavor's getWorldVoice once at module-load.
+// Top-level await isn't needed because both modules are leaf-shallow
+// (no circular deps with prompt-registry callers).
+let _getWorldVoice = null;
+try {
+  const mod = await import("./world-flavor.js");
+  _getWorldVoice = mod.getWorldVoice;
+} catch { /* world-flavor optional — pre-Phase-G builds fall back gracefully */ }
 
 // ── TASK PROMPTS ───────────────────────────────────────────────────────
 //

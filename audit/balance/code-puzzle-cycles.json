@@ -1,0 +1,10 @@
+{
+  "sprint": "G3.2",
+  "puzzlesEvaluated": 0,
+  "puzzlesSeeded": 0,
+  "percentiles": null,
+  "perPuzzle": [],
+  "currentDefault": 10000,
+  "recommendation": 10000,
+  "formula": "max(10_000, p70 * 4)"
+}

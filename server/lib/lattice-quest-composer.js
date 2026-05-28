@@ -412,6 +412,19 @@ export async function spawnQuestFromAlert(db, alert, worldId) {
   });
 
   if (!persisted.ok) return persisted;
+
+  // Phase AE — compose 3-part dialogue and persist alongside the quest.
+  // Opt-in via env; deterministic fallback always produces something.
+  try {
+    const { composeQuestDialogue, persistDialogue } = await import("./quest-dialogue-composer.js");
+    const dialogue = await composeQuestDialogue(
+      { id: questId, title: composed.title, summary: composed.steps?.[0]?.prompt },
+      { preoccupation: host?.preoccupation, desire: host?.desire },
+      { tone: composed.worldVoice || "neutral" },
+    );
+    persistDialogue(db, questId, dialogue);
+  } catch { /* dialogue compose best-effort */ }
+
   return {
     ok: true,
     action: persisted.action,

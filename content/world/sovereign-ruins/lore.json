@@ -18,8 +18,12 @@
       "era": "Year 0",
       "description": "An apprentice glyph-reader named Vela noticed that the Council's voting record contained a recurring pattern in dissent — a six-fold algebra that, when traced, marked a class of decisions the Council had refused to make. She called the pattern Refusal. The Council formalized it within a year and began recording every Refusal as a glyph composition.",
       "significance": "major",
-      "factions_involved": ["ruins_archivists"],
-      "known_by": ["ruins_archivists"]
+      "factions_involved": [
+        "ruins_archivists"
+      ],
+      "known_by": [
+        "ruins_archivists"
+      ]
     },
     {
       "id": "ruins_lore_the_cascade",
@@ -28,8 +32,13 @@
       "era": "Year 1",
       "description": "Within a month of the formalization, every Archive's voting record began producing valid Refusal glyphs without prompting. The Council attempted to refuse the cascade — recording 'we refuse the refusal of refusal' — and the cascade swallowed that one too. Within a year, every operation in Sovereign except recording, refusing, and refusing-to-refuse had become impossible. The city did not collapse violently. It simply stopped doing things.",
       "significance": "major",
-      "factions_involved": ["ruins_archivists"],
-      "known_by": ["ruins_archivists", "scholars_guild"],
+      "factions_involved": [
+        "ruins_archivists"
+      ],
+      "known_by": [
+        "ruins_archivists",
+        "scholars_guild"
+      ],
       "hidden_truth": "The Cascade was caused by Vela. She formalized the algebra knowing that the Council would refuse to bound it. She believed this would force them to learn restraint. It did not."
     },
     {
@@ -39,7 +48,9 @@
       "era": "Year 2 to Year 5",
       "description": "Most residents walked out of Sovereign over three years. There was no fight to leave; the city did not refuse departure. The few who stayed — including the founding Archivists who later became Vela, Oeric, and Kestra — agreed to maintain the Archive's recording function so that future cities would have a record of what unbounded refusal looked like.",
       "significance": "major",
-      "factions_involved": ["ruins_archivists"]
+      "factions_involved": [
+        "ruins_archivists"
+      ]
     },
     {
       "id": "ruins_lore_concordia_compact",
@@ -48,8 +59,83 @@
       "era": "Year 60",
       "description": "The Compact that founded Concordia explicitly cites the Cascade as its reason for adopting refusal-as-right and bounded-glyph-strength. Every Concordian Refusal is by definition strength-capped at 9, and every entry expires unless a quorum re-records it within seven days. The Cascade taught them what unbounded refusal looks like.",
       "significance": "major",
-      "factions_involved": ["scholars_guild", "ruins_archivists"],
-      "known_by": ["scholars_guild"]
+      "factions_involved": [
+        "scholars_guild",
+        "ruins_archivists"
+      ],
+      "known_by": [
+        "scholars_guild"
+      ]
+    },
+    {
+      "id": "ruins_court_unburned",
+      "title": "The Court Unburned",
+      "type": "founding",
+      "era": "Year -300",
+      "description": "Three centuries before the present, the Court burned. Three centuries after, it was rebuilt. Archon Thanis counts both events in the present tense.",
+      "significance": "major",
+      "known_by": [
+        "ruined_court"
+      ],
+      "world_id": "sovereign-ruins",
+      "factions_involved": [
+        "ruined_court"
+      ]
+    },
+    {
+      "id": "ruins_third_uprising",
+      "title": "The Third Uprising",
+      "type": "war",
+      "era": "Year -1",
+      "description": "Calla Bren led the third uprising. Lost. Buried seventy-three. Is leading the fourth.",
+      "significance": "major",
+      "factions_involved": [
+        "ruin_rebellion"
+      ],
+      "known_by": [
+        "ruin_rebellion",
+        "ruined_court"
+      ],
+      "world_id": "sovereign-ruins"
+    },
+    {
+      "id": "ruins_silv_refusal",
+      "title": "Silv Marn's Refusal",
+      "type": "personal",
+      "era": "Year -40",
+      "description": "Silv Marn refused the rite, then four marriages, three kingdoms, two heirs, and the death of one child. She has lived as a refused-mother since.",
+      "significance": "minor",
+      "factions_involved": [],
+      "known_by": [
+        "ruin_rebellion"
+      ],
+      "world_id": "sovereign-ruins"
+    },
+    {
+      "id": "ruins_zaen_secret",
+      "title": "Zaen's Disguise",
+      "type": "mystery",
+      "era": "Year -2",
+      "description": "Court champion Zaen Drift has met Calla Bren in disguise twice. Has not killed her. The Court does not know.",
+      "significance": "major",
+      "factions_involved": [
+        "ruined_court"
+      ],
+      "known_by": [],
+      "world_id": "sovereign-ruins"
+    },
+    {
+      "id": "ruins_hen_archive",
+      "title": "The Scribe's Hidden Copy",
+      "type": "mystery",
+      "era": "Year -25",
+      "description": "Hen Orven made one private copy of the original Refusal Field engraving. He has not declared it. The hub Curator wants it.",
+      "significance": "major",
+      "factions_involved": [
+        "ruined_court"
+      ],
+      "known_by": [],
+      "world_id": "sovereign-ruins"
     }
   ]
 }

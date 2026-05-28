@@ -68,7 +68,7 @@ export function recordCombatFlow(db, evt = {}) {
     );
     return { ok: true, flowId: id };
   } catch (err) {
-    logger.warn?.({ err: err.message, fighterId: evt.fighterId }, "combat_flow_record_failed");
+    logger.warn?.("combat_flow", "record_failed", { err: err.message, fighterId: evt.fighterId });
     return { ok: false, error: err.message };
   }
 }

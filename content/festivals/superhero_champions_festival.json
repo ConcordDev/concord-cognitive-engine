@@ -1,0 +1,13 @@
+{
+  "id": "superhero_champions_festival",
+  "name": "Champion's Festival",
+  "world_id": "superhero",
+  "season_idx": 1,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "blue_silver_banners",
+  "synopsis": "Annual recognition of Champion's first save. Champion never attends. Helen Blackstar bakes.",
+  "achievements": [],
+  "quest_seeds": []
+}

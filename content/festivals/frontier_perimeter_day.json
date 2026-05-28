@@ -1,0 +1,13 @@
+{
+  "id": "frontier_perimeter_day",
+  "name": "Perimeter Day",
+  "world_id": "concord-link-frontier",
+  "season_idx": 1,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "frontier_flags",
+  "synopsis": "Captain Zara Morn leads a full-perimeter patrol with civilians. Free supper at the militia hall after.",
+  "achievements": [],
+  "quest_seeds": []
+}

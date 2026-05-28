@@ -1,0 +1,14 @@
+{
+  "songId": "concord-rising",
+  "bpm": 100,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Step up, step in, the city is awake" },
+    { "at_ms": 2400,  "line": "Every spoke is humming through the gate" },
+    { "at_ms": 4800,  "line": "Hold the line they drew at dawn" },
+    { "at_ms": 7200,  "line": "The Concord is rising, the dome holds on" },
+    { "at_ms": 9600,  "line": "Curator's pen and the Watch's blade" },
+    { "at_ms": 12000, "line": "The Assembly votes, the prices made" },
+    { "at_ms": 14400, "line": "Step up, step in, the city is awake" },
+    { "at_ms": 16800, "line": "Every spoke is humming through the gate" }
+  ]
+}

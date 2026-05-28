@@ -1,0 +1,130 @@
+[
+  {
+    "id": "cyber_ghost_01_oren",
+    "title": "Neon Quarter — Ask About Ghost-7",
+    "description": "Oren Lim sells the question for 3000 sparks, the answer for 5000. You pay either way.",
+    "giver_npc_id": "fixer_oren_lim",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ghost1_pay",
+        "type": "deliver",
+        "target": "sparks_to_oren_3000",
+        "required_count": 1,
+        "description": "Pay Oren 3000 sparks to ask."
+      },
+      {
+        "id": "obj_ghost1_pay_more",
+        "type": "deliver",
+        "target": "sparks_to_oren_5000",
+        "required_count": 1,
+        "description": "Pay 5000 more for the answer."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_ghost1",
+        "content": "Lavren, above the noodle shop on 7th. Knock twice, then once.",
+        "unlocks_after": "obj_ghost1_pay_more",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "cyber_ghost_02_lavren"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "cyber",
+      "cyber_main"
+    ]
+  },
+  {
+    "id": "cyber_ghost_02_lavren",
+    "title": "Neon Quarter — Lavren's Door",
+    "description": "Knock twice, then once. Don't kick the door. He's tired.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ghost2_knock",
+        "type": "interact",
+        "target": "lavren_door",
+        "required_count": 1,
+        "description": "Knock twice + once at Lavren's door."
+      },
+      {
+        "id": "obj_ghost2_meet",
+        "type": "talk_to",
+        "target": "lavren_ghost_7",
+        "required_count": 1,
+        "description": "Meet Lavren."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "cyber_ghost_03_choice"
+    ],
+    "prerequisites": [
+      "cyber_ghost_01_oren"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_main"
+    ]
+  },
+  {
+    "id": "cyber_ghost_03_choice",
+    "title": "Lavren — What He Asks of You",
+    "description": "Lavren asks one thing. Carry it or refuse. Either ends the trace.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ghost3_choose",
+        "type": "any_of",
+        "target": "ghost_7_request",
+        "required_count": 1,
+        "description": "Carry it or refuse."
+      }
+    ],
+    "rewards": {
+      "xp": 600,
+      "items": [
+        "lavren_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "cyber_ghost_02_lavren"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_main"
+    ],
+    "moral_branch": {
+      "description": "What did you choose?",
+      "options": [
+        {
+          "id": "carry",
+          "trigger": "obj_ghost3_choose:carry",
+          "consequence": "Lavren returns to silence. You become his only living contact. Information bridge across cyber."
+        },
+        {
+          "id": "refuse",
+          "trigger": "obj_ghost3_choose:refuse",
+          "consequence": "Lavren disconnects. Ghost-7 will not be reached again."
+        }
+      ]
+    }
+  }
+]

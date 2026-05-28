@@ -17,6 +17,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Train } from 'lucide-react';
 import WorldTravel from '@/components/world-lens/WorldTravel';
+import { PortalLoadScreen } from '@/components/world/PortalLoadScreen';
+import { useWorldTravel } from '@/hooks/useWorldTravel';
 import { api } from '@/lib/api/client';
 import { UtilityPageShell } from '@/components/shell/UtilityPageShell';
 import { LensShell } from '@/components/lens/LensShell';
@@ -81,21 +83,27 @@ export default function WorldTravelPage() {
     };
   }, []);
 
+  const travelHook = useWorldTravel();
+  const [flavorPreview, setFlavorPreview] = useState<Record<string, unknown> | null>(null);
+
   const handleTravel = useCallback(
     async (worldId: string) => {
       try {
-        await api.post('/api/worlds/travel', { worldId });
-        // Hint the world lens to pick up the new active world via
-        // localStorage so the redirect lands on the right scene.
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('concordia:activeWorldId', worldId);
-        }
+        // Pre-fetch flavor so the portal load screen can show the world's
+        // climate / voice / density chips while the shard spawns.
+        api.get(`/api/worlds/${encodeURIComponent(worldId)}/flavor`)
+          .then((r) => setFlavorPreview((r.data as { flavor?: Record<string, unknown> })?.flavor ?? null))
+          .catch(() => setFlavorPreview(null));
+
+        // Phase J — the hook handles POST + scene teardown + activeWorldId
+        // + scene-ready wait. Resolves only when the new scene has painted.
+        await travelHook.travel(worldId);
         router.push('/lenses/world');
       } catch (e) {
         setError(e instanceof Error ? e.message : 'travel failed');
       }
     },
-    [router],
+    [router, travelHook],
   );
 
   const handleBookmark = useCallback((worldId: string) => {
@@ -137,6 +145,13 @@ export default function WorldTravelPage() {
 
   return (
     <LensShell lensId="world" asMain={false}>
+      <PortalLoadScreen
+        phase={travelHook.phase}
+        targetWorldId={travelHook.targetWorldId}
+        error={travelHook.error}
+        flavor={flavorPreview as Parameters<typeof PortalLoadScreen>[0]['flavor']}
+        onRetry={() => travelHook.targetWorldId && handleTravel(travelHook.targetWorldId)}
+      />
       <UtilityPageShell
         icon={Train}
         title="World Terminal"

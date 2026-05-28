@@ -246,6 +246,99 @@ export function listMentorshipsForMentor(db, mentorKind, mentorId) {
   `).all(mentorKind, mentorId);
 }
 
+// ── Phase BC2 — mentor registry (in-world badge support) ───────────────
+
+/**
+ * Register / update an NPC as a mentor. Idempotent on PK (npc_id).
+ * Authored NPCs seeded via content-seeder; procgen NPCs promote at
+ * skill_revisions.revision_num >= 5 via maybePromoteToMentor.
+ */
+export function registerMentorProfile(db, opts = {}) {
+  if (!db) return { ok: false, error: "missing_db" };
+  const {
+    npcId, worldId, skillCategory,
+    depth = 1, feeCc = 0, languages = [], available = true,
+    promotedFrom = null,
+  } = opts;
+  if (!npcId || !worldId || !skillCategory) return { ok: false, error: "missing_inputs" };
+  try {
+    db.prepare(`
+      INSERT INTO npc_mentor_profiles
+        (npc_id, world_id, skill_category, depth, fee_cc, languages_json, available, promoted_from)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(npc_id) DO UPDATE SET
+        world_id = excluded.world_id,
+        skill_category = excluded.skill_category,
+        depth = excluded.depth,
+        fee_cc = excluded.fee_cc,
+        languages_json = excluded.languages_json,
+        available = excluded.available
+    `).run(
+      npcId, worldId, skillCategory,
+      Math.max(1, Number(depth) || 1),
+      Math.max(0, Number(feeCc) || 0),
+      JSON.stringify(languages),
+      available ? 1 : 0,
+      promotedFrom,
+    );
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+export function setMentorAvailability(db, npcId, available) {
+  if (!db || !npcId) return { ok: false, error: "missing_inputs" };
+  try {
+    db.prepare(`UPDATE npc_mentor_profiles SET available = ? WHERE npc_id = ?`)
+      .run(available ? 1 : 0, npcId);
+    return { ok: true };
+  } catch (err) { return { ok: false, error: err?.message }; }
+}
+
+export function listMentorsInWorld(db, worldId, opts = {}) {
+  if (!db || !worldId) return [];
+  try {
+    const filters = ["world_id = ?", "available = 1"];
+    const args = [worldId];
+    if (opts.skillCategory) { filters.push("skill_category = ?"); args.push(opts.skillCategory); }
+    args.push(Math.max(1, Math.min(200, opts.limit || 50)));
+    return db.prepare(`
+      SELECT npc_id, skill_category, depth, fee_cc, languages_json, registered_at
+      FROM npc_mentor_profiles WHERE ${filters.join(" AND ")}
+      ORDER BY depth DESC, registered_at ASC
+      LIMIT ?
+    `).all(...args);
+  } catch { return []; }
+}
+
+export function getMentorProfile(db, npcId) {
+  if (!db || !npcId) return null;
+  try {
+    return db.prepare(`SELECT * FROM npc_mentor_profiles WHERE npc_id = ?`).get(npcId) || null;
+  } catch { return null; }
+}
+
+/**
+ * Auto-promote a procgen NPC to mentor on revision threshold.
+ * Idempotent — re-promotion is a no-op.
+ */
+export function maybePromoteToMentor(db, opts = {}) {
+  const { npcId, worldId, skillCategory, revisionNum } = opts;
+  if (!npcId || !worldId || !skillCategory) return { ok: false, error: "missing_inputs" };
+  const threshold = 5;
+  if (!Number.isInteger(revisionNum) || revisionNum < threshold) {
+    return { ok: true, promoted: false };
+  }
+  const existing = getMentorProfile(db, npcId);
+  if (existing) return { ok: true, promoted: false, reason: "already_registered" };
+  const r = registerMentorProfile(db, {
+    npcId, worldId, skillCategory,
+    depth: revisionNum, promotedFrom: "skill_evolution",
+  });
+  return { ok: r.ok, promoted: r.ok, error: r.error };
+}
+
 export const _internal = {
   SESSION_PRICE_BASE,
   SESSION_PRICE_PER_DEPTH,

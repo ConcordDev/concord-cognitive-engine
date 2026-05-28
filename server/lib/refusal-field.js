@@ -100,6 +100,26 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
       );
     } catch { /* persistence best-effort — table may not exist on minimal builds */ }
   }
+
+  // Phase F3.1 — surface compound-refusal threshold crossings.
+  // Each newly-applied refusal might push the world's strength across
+  // the strength≥6 compound gate. Recompute and emit on transition.
+  try {
+    const emitFn = globalThis._concordRealtimeEmit;
+    if (typeof emitFn === "function") {
+      const strength = computeFieldComposition(state, worldId)?.strength ?? 0;
+      const wasCompound = !!state._compoundCrossed?.get?.(worldId);
+      const isCompound = strength >= 6;
+      if (isCompound && !wasCompound) {
+        if (!state._compoundCrossed) state._compoundCrossed = new Map();
+        state._compoundCrossed.set(worldId, true);
+        emitFn("refusal:compound-threshold", { worldId, strength, kind, reason: entry.reason });
+      } else if (!isCompound && wasCompound) {
+        state._compoundCrossed.set(worldId, false);
+      }
+    }
+  } catch { /* emit failure never blocks the field */ }
+
   return entry;
 }
 

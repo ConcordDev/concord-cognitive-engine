@@ -1,0 +1,13 @@
+{
+  "id": "ruins_rebel_memorial",
+  "name": "Rebel Memorial",
+  "world_id": "sovereign-ruins",
+  "season_idx": 2,
+  "day_in_season_start": 7,
+  "day_in_season_end": 7,
+  "repeats_yearly": true,
+  "decoration_tag": "red_ribbons",
+  "synopsis": "Names of every rebel who fell in three uprisings. Calla Bren reads. The Court does not attend.",
+  "achievements": [],
+  "quest_seeds": []
+}

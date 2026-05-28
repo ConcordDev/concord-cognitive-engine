@@ -26,7 +26,9 @@
       "era": "current",
       "description": "The Witness Charter says: observe; document; do not intervene. Sael has formally proposed an amendment that would permit intervention when a drift event endangers a player. Orla considers the amendment a violation of the charter's purpose; Pem is wavering. Player decisions in the Crucible are scored against this open question — players who intervene to save NPCs in active drift events accumulate Sael's favor and risk Orla's.",
       "significance": "active",
-      "factions_involved": ["crucible_witnesses"]
+      "factions_involved": [
+        "crucible_witnesses"
+      ]
     },
     {
       "id": "crucible_lore_orla_observation",
@@ -35,7 +37,9 @@
       "era": "current",
       "description": "Orla has identified a class of drift alerts that the lattice produces only when a player is in the Crucible. She has not told the other Witnesses. She has, however, started compiling a private corpus that she will release if the Charter Question resolves in favor of intervention.",
       "significance": "minor",
-      "known_by": ["witness_orla"],
+      "known_by": [
+        "witness_orla"
+      ],
       "hidden_truth": "The class of alerts Orla has identified is real. The lattice IS producing player-conditional drift. The cause is unclear; the federation has not been notified."
     },
     {
@@ -54,7 +58,10 @@
       "era": "Year 6 of the Crucible",
       "description": "The first breakthrough cluster the Crucible produced was a synthesis of drift-monitor + cnet-federation findings: the lattice realized that drift events in one city corresponded to undelivered Frontier parcels six weeks later. The Witnesses published the finding to the federation; the Couriers' Guild adopted a six-week delay tolerance for parcel investigations.",
       "significance": "major",
-      "factions_involved": ["crucible_witnesses", "frontier_couriers_guild"]
+      "factions_involved": [
+        "crucible_witnesses",
+        "frontier_couriers_guild"
+      ]
     },
     {
       "id": "crucible_lore_concordia_skepticism",
@@ -63,7 +70,10 @@
       "era": "Year 7",
       "description": "Concordia's Iron Wardens proposed quarantining the Crucible after a drift event killed a Concordian envoy. The motion failed at the Council of Twelve, but the Wardens have maintained an unofficial travel advisory for two years. Witnesses are still permitted in Concordia, but their drift-marks cannot be redeemed for Concord Coin without a Warden signature.",
       "significance": "major",
-      "factions_involved": ["iron_wardens", "crucible_witnesses"]
+      "factions_involved": [
+        "iron_wardens",
+        "crucible_witnesses"
+      ]
     },
     {
       "id": "crucible_lore_yorin_arrival",
@@ -88,6 +98,79 @@
       "era": "Year 4 of the Crucible",
       "description": "The first player to visit the Crucible was an unnamed glyph-reader from the Sovereign Ruins. They walked through the seventh door, witnessed an unclassified drift event, and walked out three days later without speaking. The Witnesses logged the visit and have been unable to reach them since. They are believed to have returned to the Ruins but have not been confirmed there.",
       "significance": "minor"
+    },
+    {
+      "id": "lattice_third_drift_event",
+      "title": "The Third Drift Event",
+      "type": "catastrophe",
+      "era": "Year 12 of the Crucible",
+      "description": "The third drift event reshaped the lattice circle. Voss Dren was promoted to cohort leader within the week. He has not lost a cohort member since.",
+      "significance": "major",
+      "factions_involved": [
+        "lattice_cohort"
+      ],
+      "known_by": [
+        "lattice_cohort"
+      ],
+      "world_id": "lattice-crucible"
+    },
+    {
+      "id": "lattice_ono_silence",
+      "title": "The Sage's Forty-Year Silence",
+      "type": "mystery",
+      "era": "Year -40 onward",
+      "description": "Ono Kell has studied drift signatures for forty years without writing them down. Citizens believe she carries them in her head. She does.",
+      "significance": "minor",
+      "factions_involved": [
+        "kell_circle"
+      ],
+      "known_by": [
+        "kell_circle"
+      ],
+      "world_id": "lattice-crucible"
+    },
+    {
+      "id": "lattice_emer_first_crossing",
+      "title": "Emer Voss's First Crossing",
+      "type": "personal",
+      "era": "Year 8 of the Crucible",
+      "description": "At eighteen Emer crossed the verge alone for three days. Returned with maps the Crucible would not publicly recognize. Has been mapping since.",
+      "significance": "minor",
+      "factions_involved": [
+        "verge_scouts"
+      ],
+      "known_by": [
+        "verge_scouts"
+      ],
+      "world_id": "lattice-crucible"
+    },
+    {
+      "id": "lattice_calvex_alloys",
+      "title": "The Calvex Alloys",
+      "type": "discovery",
+      "era": "Year 4 of the Crucible",
+      "description": "Rina Calvex's master discovered three alloys that harmonize with the focus-lattice. She refused to teach the recipe. Rina rediscovered two of them.",
+      "significance": "major",
+      "factions_involved": [
+        "calvex_forge"
+      ],
+      "known_by": [
+        "calvex_forge"
+      ],
+      "world_id": "lattice-crucible"
+    },
+    {
+      "id": "lattice_pact_origin",
+      "title": "The Cross-World Pact",
+      "type": "war",
+      "era": "Year 11 of the Crucible",
+      "description": "Voss Dren met Calla Bren of the sovereign-ruins at a neutral bog meeting. They have not declared the pact publicly. Three people know.",
+      "significance": "major",
+      "factions_involved": [
+        "lattice_cohort"
+      ],
+      "known_by": [],
+      "world_id": "lattice-crucible"
     }
   ]
 }

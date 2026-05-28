@@ -202,7 +202,7 @@
         "release_mode": "on_completion"
       }
     ],
-    "follow_up_quest_ids": ["the_arrival"],
+    "follow_up_quest_ids": ["the_arrival", "first_cycle_phase_d"],
     "prerequisites": ["first_cycle_fight"],
     "tags": ["tutorial", "first_cycle", "concordia", "commune", "milestone"],
     "tutorial_phase": "commune",

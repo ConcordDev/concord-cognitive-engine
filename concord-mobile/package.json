@@ -44,6 +44,7 @@
     "react-native-sensors": "^7.3.0",
     "react-native-sqlite-storage": "^6.0.1",
     "react-native-webrtc": "^124.0.0",
+    "react-native-webview": "13.12.5",
     "react-native-wifi-p2p": "^3.6.0",
     "readable-stream": "^4.7.0",
     "zustand": "^5.0.0"

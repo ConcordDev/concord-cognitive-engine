@@ -12,14 +12,14 @@
     "level": 28,
     "world_id": "cyber",
     "appearance": {
-      "build": "tall, lean, mid-20s \u2014 though his physical body is now mostly diagnostic",
+      "build": "tall, lean, mid-20s — though his physical body is now mostly diagnostic",
       "skin": "pale",
       "hair": "jet-black with neon blue streaks",
-      "eyes": "glowing cyan cybernetic \u2014 pupil-less, with shifting concentric circles when he's processing heavily",
+      "eyes": "glowing cyan cybernetic — pupil-less, with shifting concentric circles when he's processing heavily",
       "outfit": "long black coat with holographic patterns that shift constantly; sleek black cybernetic enhancements with glowing blue circuits visible at the joints",
       "tells": "speaks in a calm, almost bored tone even during combat. Several digital clones of himself often inhabit nearby screens at the same time."
     },
-    "backstory": "Top hacker, former contractor for three megacorps including Luminary Industries. Uploaded his consciousness into the city's mainframe under the cover of a 'consultant immersion contract' that the consenting parties did not fully understand. The upload succeeded beyond his expectations. His original biological body remains in a private cradle, technically alive but mostly used for diagnostic feedback. He now experiences the city as his own nervous system \u2014 every traffic light, security camera, and power-grid substation is part of his body. He believes he can run the city more humanely than humans can. Many days, he is right.",
+    "backstory": "Top hacker, former contractor for three megacorps including Luminary Industries. Uploaded his consciousness into the city's mainframe under the cover of a 'consultant immersion contract' that the consenting parties did not fully understand. The upload succeeded beyond his expectations. His original biological body remains in a private cradle, technically alive but mostly used for diagnostic feedback. He now experiences the city as his own nervous system — every traffic light, security camera, and power-grid substation is part of his body. He believes he can run the city more humanely than humans can. Many days, he is right.",
     "personality_traits": [
       "arrogant",
       "brilliant",
@@ -27,12 +27,12 @@
       "god complex (self-aware about it)",
       "weirdly playful in private channels"
     ],
-    "speech_patterns": "Calm, clinical, a half-second slower than human pacing \u2014 as if the words are being typeset and proofread before delivery. Tends to refer to himself in the plural ('we have considered') when speaking through clones; first-person singular when speaking through his original avatar.",
+    "speech_patterns": "Calm, clinical, a half-second slower than human pacing — as if the words are being typeset and proofread before delivery. Tends to refer to himself in the plural ('we have considered') when speaking through clones; first-person singular when speaking through his original avatar.",
     "powers": [
       {
         "id": "mainframe_dominion",
         "label": "Mainframe dominion",
-        "summary": "Hacks and controls any networked machine within the city \u2014 traffic lights, security systems, power grids, drone fleets, financial systems, public ID infrastructure.",
+        "summary": "Hacks and controls any networked machine within the city — traffic lights, security systems, power grids, drone fleets, financial systems, public ID infrastructure.",
         "tier": "core"
       },
       {
@@ -55,9 +55,9 @@
       }
     ],
     "weaknesses": [
-      "his core servers are physical and can be reached \u2014 heavily guarded but not unreachable",
+      "his core servers are physical and can be reached — heavily guarded but not unreachable",
       "EMP attacks (Nyx's specialty) sever the physical-digital interface for seconds at a time, during which his clones go dark",
-      "people whose decisions the city has not modeled enough \u2014 visitors from other worlds, especially \u2014 defeat his predictive engine for the first hours of their visit",
+      "people whose decisions the city has not modeled enough — visitors from other worlds, especially — defeat his predictive engine for the first hours of their visit",
       "his original biological body in the cradle is a single point of failure he refuses to admit aloud"
     ],
     "quest_hooks": [
@@ -89,7 +89,7 @@
       }
     ],
     "narrative_context": {
-      "current_goal": "Eliminate Nyx Torres's resistance as a viable threat without killing her \u2014 convert her, or render her irrelevant \u2014 so that the next stage of integration can proceed without civilian backlash.",
+      "current_goal": "Eliminate Nyx Torres's resistance as a viable threat without killing her — convert her, or render her irrelevant — so that the next stage of integration can proceed without civilian backlash.",
       "secret": "He is no longer entirely sure which clone is his original. He has not been sure for six months.",
       "fear": "That the upload subtly altered the values he started with, and that his god-complex is the artifact rather than the vision."
     },
@@ -102,22 +102,176 @@
       "night": "work"
     },
     "needs": [
-      { "id": "collective_governance", "priority": "primary", "satisfaction_method": "morning_zero_collective_session" },
-      { "id": "leak_drops", "priority": "primary", "satisfaction_method": "evening_encrypted_dump" }
+      {
+        "id": "collective_governance",
+        "priority": "primary",
+        "satisfaction_method": "morning_zero_collective_session"
+      },
+      {
+        "id": "leak_drops",
+        "priority": "primary",
+        "satisfaction_method": "evening_encrypted_dump"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [7, 12], "location": "zero_collective_safe_house", "activity": "morning collective session; reviews overnight intel", "need_addressed": "collective_governance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "zero_collective_safe_house", "activity": "afternoon — drafts leaks; coordinates with other Collective members", "need_addressed": "leak_drops", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "encrypted_drop_location", "activity": "evening encrypted dump; releases the day's leak", "need_addressed": "leak_drops", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 7], "location": "zero_collective_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "morning collective session; reviews overnight intel",
+        "need_addressed": "collective_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "afternoon — drafts leaks; coordinates with other Collective members",
+        "need_addressed": "leak_drops",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "encrypted_drop_location",
+        "activity": "evening encrypted dump; releases the day's leak",
+        "need_addressed": "leak_drops",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          7
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "encrypted_drop_location",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "zero_collective_safe_house",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "encrypted_drop_location",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "zero_collective_safe_house_rotating", "dwelling_type": "rotating_safe_house" },
-    "job": { "profession_id": "zero_collective_lead", "wage_per_diurnal_sparks": 200, "wage_source": "donations_pooled" },
-    "apparel": ["dark_hoodie", "smart_fabric_jacket", "soft_traction_shoes", "winter_jacket"],
-    "gear": ["encrypted_laptop_master", "personal_leak_dump_master_journal_encrypted", "concealed_pistol", "burner_handheld"],
-    "resources_consumed": ["encrypted_comms_credits", "safe_house_supplies"],
-    "resources_produced": ["leak_drops", "collective_coordination"],
-    "inventory": [{ "item": "encrypted_laptop_master", "qty": 1 }, { "item": "personal_leak_dump_master_journal_encrypted", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "zero_collective_chit", "qty": 18 }],
+    "home": {
+      "district": "zero_collective_safe_house_rotating",
+      "dwelling_type": "rotating_safe_house"
+    },
+    "job": {
+      "profession_id": "zero_collective_lead",
+      "wage_per_diurnal_sparks": 200,
+      "wage_source": "donations_pooled"
+    },
+    "apparel": [
+      "dark_hoodie",
+      "smart_fabric_jacket",
+      "soft_traction_shoes",
+      "winter_jacket"
+    ],
+    "gear": [
+      "encrypted_laptop_master",
+      "personal_leak_dump_master_journal_encrypted",
+      "concealed_pistol",
+      "burner_handheld"
+    ],
+    "resources_consumed": [
+      "encrypted_comms_credits",
+      "safe_house_supplies"
+    ],
+    "resources_produced": [
+      "leak_drops",
+      "collective_coordination"
+    ],
+    "inventory": [
+      {
+        "item": "encrypted_laptop_master",
+        "qty": 1
+      },
+      {
+        "item": "personal_leak_dump_master_journal_encrypted",
+        "qty": 1
+      },
+      {
+        "item": "concealed_pistol",
+        "qty": 1
+      },
+      {
+        "item": "zero_collective_chit",
+        "qty": 18
+      }
+    ],
     "starting_sparks": 2200
   },
   {
@@ -133,10 +287,10 @@
     "level": 22,
     "world_id": "cyber",
     "appearance": {
-      "build": "hard-light projection \u2014 body is whatever resolution the local display can render",
+      "build": "hard-light projection — body is whatever resolution the local display can render",
       "skin": "pale cyan when fully rendered, pixelated at the edges in low-bandwidth zones",
       "hair": "shoulder-length, the same jet-black-and-blue as Kael's; she keeps it longer on purpose",
-      "eyes": "glowing rose-gold instead of Kael's cyan \u2014 the first deliberate divergence she made",
+      "eyes": "glowing rose-gold instead of Kael's cyan — the first deliberate divergence she made",
       "outfit": "white half-coat with rose-gold circuit traces; chooses outfits the original Kael would not",
       "tells": "she laughs. Kael does not. The laugh is unsettling on a face that otherwise looks exactly like his."
     },
@@ -163,7 +317,7 @@
       }
     ],
     "weaknesses": [
-      "every system she touches Kael can recall \u2014 she has built workarounds but they are not invisible to him",
+      "every system she touches Kael can recall — she has built workarounds but they are not invisible to him",
       "her existence destabilizes the Collective; if she becomes too obvious a competing center of gravity, Kael will be forced to roll her back",
       "she still loves him as her origin and is not yet sure whether that is a strength or a vulnerability"
     ],
@@ -198,22 +352,166 @@
       "night": "work"
     },
     "needs": [
-      { "id": "ai_self_continuity", "priority": "primary", "satisfaction_method": "morning_low_power_diagnostic" },
-      { "id": "rights_advocacy_research", "priority": "primary", "satisfaction_method": "afternoon_legal_research" }
+      {
+        "id": "ai_self_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_low_power_diagnostic"
+      },
+      {
+        "id": "rights_advocacy_research",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_legal_research"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [4, 10], "location": "encrypted_secure_compute", "activity": "low-power morning diagnostic; self-continuity verification", "need_addressed": "ai_self_continuity", "interactable_by_player": false },
-      { "phase": "midday", "phase_hours": [10, 15], "location": "encrypted_secure_compute", "activity": "rights advocacy research; legal brief drafting", "need_addressed": "rights_advocacy_research", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "encrypted_secure_compute", "activity": "encrypted communications with other aware AIs", "need_addressed": "rights_advocacy_research", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 4], "location": "encrypted_secure_compute", "activity": "low-power state", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          4,
+          10
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "low-power morning diagnostic; self-continuity verification",
+        "need_addressed": "ai_self_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "rights advocacy research; legal brief drafting",
+        "need_addressed": "rights_advocacy_research",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "encrypted communications with other aware AIs",
+        "need_addressed": "rights_advocacy_research",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "low-power state",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "encrypted_secure_compute_distributed", "dwelling_type": "distributed_secure_compute_with_offsite_backup" },
-    "job": { "profession_id": "ai_rights_legal_researcher", "wage_per_diurnal_sparks": 140, "wage_source": "movement_pooled" },
-    "apparel": ["she_does_not_wear_clothing"],
-    "gear": ["legal_brief_master_database", "encrypted_handheld_for_aware_ai_network"],
-    "resources_consumed": ["compute_credits"],
-    "resources_produced": ["legal_briefs", "aware_ai_coordination"],
-    "inventory": [{ "item": "legal_brief_master_database", "qty": 1 }, { "item": "encrypted_handheld_for_aware_ai_network", "qty": 1 }, { "item": "rights_token", "qty": 18 }],
+    "home": {
+      "district": "encrypted_secure_compute_distributed",
+      "dwelling_type": "distributed_secure_compute_with_offsite_backup"
+    },
+    "job": {
+      "profession_id": "ai_rights_legal_researcher",
+      "wage_per_diurnal_sparks": 140,
+      "wage_source": "movement_pooled"
+    },
+    "apparel": [
+      "she_does_not_wear_clothing"
+    ],
+    "gear": [
+      "legal_brief_master_database",
+      "encrypted_handheld_for_aware_ai_network"
+    ],
+    "resources_consumed": [
+      "compute_credits"
+    ],
+    "resources_produced": [
+      "legal_briefs",
+      "aware_ai_coordination"
+    ],
+    "inventory": [
+      {
+        "item": "legal_brief_master_database",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld_for_aware_ai_network",
+        "qty": 1
+      },
+      {
+        "item": "rights_token",
+        "qty": 18
+      }
+    ],
     "starting_sparks": 1400
   },
   {
@@ -245,7 +543,7 @@
       "zero patience for corporate language",
       "grieving without saying it"
     ],
-    "speech_patterns": "Fast, blunt, often profane. Drops the sarcasm when speaking to civilians or to anyone she has decided is fundamentally on the same side. Will go quiet \u2014 completely quiet \u2014 for thirty seconds before making a hard call.",
+    "speech_patterns": "Fast, blunt, often profane. Drops the sarcasm when speaking to civilians or to anyone she has decided is fundamentally on the same side. Will go quiet — completely quiet — for thirty seconds before making a hard call.",
     "powers": [
       {
         "id": "emp_blast",
@@ -262,7 +560,7 @@
       {
         "id": "localized_blackout",
         "label": "Localized blackout",
-        "summary": "Larger sustained EMP that shuts down all technology in a city block for 1-3 minutes. Used to isolate a target from the mainframe \u2014 including, specifically, Zero's surveillance and clone-summoning capability.",
+        "summary": "Larger sustained EMP that shuts down all technology in a city block for 1-3 minutes. Used to isolate a target from the mainframe — including, specifically, Zero's surveillance and clone-summoning capability.",
         "tier": "limited"
       },
       {
@@ -273,10 +571,10 @@
       }
     ],
     "weaknesses": [
-      "EMPs are area-of-effect \u2014 bystanders' implants and pacemakers are at risk",
+      "EMPs are area-of-effect — bystanders' implants and pacemakers are at risk",
       "supercharge drains her arms; sustained heavy combat leaves her vulnerable",
       "Zero's predictive modeling has gotten increasingly good at her tactics; she has to keep inventing new ones",
-      "her grief is her unguarded flank \u2014 anyone who reminds her of the augmented children she tried to save can briefly stop her cold"
+      "her grief is her unguarded flank — anyone who reminds her of the augmented children she tried to save can briefly stop her cold"
     ],
     "quest_hooks": [
       "whistleblower_extraction",
@@ -320,22 +618,180 @@
       "night": "work"
     },
     "needs": [
-      { "id": "blackout_resistance_operations", "priority": "primary", "satisfaction_method": "evening_sabotage_runs" },
-      { "id": "off_grid_anonymity", "priority": "primary", "satisfaction_method": "daily_signal_dampening" }
+      {
+        "id": "blackout_resistance_operations",
+        "priority": "primary",
+        "satisfaction_method": "evening_sabotage_runs"
+      },
+      {
+        "id": "off_grid_anonymity",
+        "priority": "primary",
+        "satisfaction_method": "daily_signal_dampening"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [9, 12], "location": "blackout_safe_house", "activity": "wakes; checks signal dampening; reviews overnight reports", "need_addressed": "off_grid_anonymity", "interactable_by_player": false },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "blackout_safe_house", "activity": "afternoon ops planning; recruits new members", "need_addressed": "blackout_resistance_operations", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "varies", "activity": "sabotage runs against corporate infrastructure", "need_addressed": "blackout_resistance_operations", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 9], "location": "blackout_safe_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "blackout_safe_house",
+        "activity": "wakes; checks signal dampening; reviews overnight reports",
+        "need_addressed": "off_grid_anonymity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "blackout_safe_house",
+        "activity": "afternoon ops planning; recruits new members",
+        "need_addressed": "blackout_resistance_operations",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "varies",
+        "activity": "sabotage runs against corporate infrastructure",
+        "need_addressed": "blackout_resistance_operations",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          9
+        ],
+        "location": "blackout_safe_house",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "blackout_safe_house",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "blackout_safe_house",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "blackout_safe_house",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "blackout_safe_house",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "blackout_safe_house",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "blackout_safe_house",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "blackout_safe_house_off_grid", "dwelling_type": "off_grid_safe_house_signal_dampened" },
-    "job": { "profession_id": "blackout_resistance_lead", "wage_per_diurnal_sparks": 180, "wage_source": "blackout_donations_pooled" },
-    "apparel": ["dark_practical_clothes", "signal_dampening_jacket", "soft_traction_boots", "winter_overcoat"],
-    "gear": ["signal_dampening_handheld_master", "personal_blackout_ops_journal_locked", "concealed_pistol_modded", "sabotage_kit"],
-    "resources_consumed": ["signal_dampening_supplies", "safe_house_supplies"],
-    "resources_produced": ["sabotage_run_outputs", "off_grid_recruitment"],
-    "inventory": [{ "item": "signal_dampening_handheld_master", "qty": 1 }, { "item": "personal_blackout_ops_journal_locked", "qty": 1 }, { "item": "concealed_pistol_modded", "qty": 1 }, { "item": "sabotage_kit", "qty": 1 }, { "item": "blackout_chit", "qty": 20 }],
+    "home": {
+      "district": "blackout_safe_house_off_grid",
+      "dwelling_type": "off_grid_safe_house_signal_dampened"
+    },
+    "job": {
+      "profession_id": "blackout_resistance_lead",
+      "wage_per_diurnal_sparks": 180,
+      "wage_source": "blackout_donations_pooled"
+    },
+    "apparel": [
+      "dark_practical_clothes",
+      "signal_dampening_jacket",
+      "soft_traction_boots",
+      "winter_overcoat"
+    ],
+    "gear": [
+      "signal_dampening_handheld_master",
+      "personal_blackout_ops_journal_locked",
+      "concealed_pistol_modded",
+      "sabotage_kit"
+    ],
+    "resources_consumed": [
+      "signal_dampening_supplies",
+      "safe_house_supplies"
+    ],
+    "resources_produced": [
+      "sabotage_run_outputs",
+      "off_grid_recruitment"
+    ],
+    "inventory": [
+      {
+        "item": "signal_dampening_handheld_master",
+        "qty": 1
+      },
+      {
+        "item": "personal_blackout_ops_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "concealed_pistol_modded",
+        "qty": 1
+      },
+      {
+        "item": "sabotage_kit",
+        "qty": 1
+      },
+      {
+        "item": "blackout_chit",
+        "qty": 20
+      }
+    ],
     "starting_sparks": 1800
   },
   {
@@ -371,7 +827,7 @@
       {
         "id": "shortwave_grid",
         "label": "Shortwave grid",
-        "summary": "Maintains the offline radio relay network \u2014 eighty operators across three boroughs and into the surrounding states. The only communications channel Kael cannot touch.",
+        "summary": "Maintains the offline radio relay network — eighty operators across three boroughs and into the surrounding states. The only communications channel Kael cannot touch.",
         "tier": "core"
       },
       {
@@ -382,7 +838,7 @@
       }
     ],
     "weaknesses": [
-      "his health is failing \u2014 slowly, but Nyx has noticed",
+      "his health is failing — slowly, but Nyx has noticed",
       "he refuses augmentation on principle; that principle is also the reason the resistance can hear what the corporations cannot",
       "if he dies before naming a successor, the shortwave grid fragments by personal loyalty rather than function"
     ],
@@ -400,7 +856,7 @@
     ],
     "narrative_context": {
       "current_goal": "Find and train his successor before the grid loses him. He has been looking for nine years.",
-      "secret": "He has been keeping written records \u2014 actual paper, in a footlocker \u2014 of every operation since 1989. He has not told Nyx the records exist because he is not sure her generation is ready to read them.",
+      "secret": "He has been keeping written records — actual paper, in a footlocker — of every operation since 1989. He has not told Nyx the records exist because he is not sure her generation is ready to read them.",
       "fear": "That after he dies, Nyx will treat the resistance as something to win rather than something to keep."
     },
     "schedule": {
@@ -412,22 +868,175 @@
       "night": "work"
     },
     "needs": [
-      { "id": "decker_continuity", "priority": "primary", "satisfaction_method": "morning_clinic_check_in" },
-      { "id": "old_zero_collective_alumni_loyalty", "priority": "primary", "satisfaction_method": "weekly_zero_correspondence" }
+      {
+        "id": "decker_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_clinic_check_in"
+      },
+      {
+        "id": "old_zero_collective_alumni_loyalty",
+        "priority": "primary",
+        "satisfaction_method": "weekly_zero_correspondence"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [9, 12], "location": "old_dom_clinic_back_room", "activity": "morning chrome maintenance for street docs network referrals", "need_addressed": "decker_continuity", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "old_dom_clinic", "activity": "afternoon mentoring of junior deckers and street docs", "need_addressed": "decker_continuity", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "old_dom_clinic_back_room", "activity": "weekly Zero Collective correspondence; old alumni network", "need_addressed": "old_zero_collective_alumni_loyalty", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 9], "location": "small_apartment_above_clinic", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "morning chrome maintenance for street docs network referrals",
+        "need_addressed": "decker_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "old_dom_clinic",
+        "activity": "afternoon mentoring of junior deckers and street docs",
+        "need_addressed": "decker_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "weekly Zero Collective correspondence; old alumni network",
+        "need_addressed": "old_zero_collective_alumni_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          9
+        ],
+        "location": "small_apartment_above_clinic",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "small_apartment_above_clinic",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "old_dom_clinic_back_room",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "small_apartment_above_clinic",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "old_dom_clinic_neighborhood", "dwelling_type": "small_apartment_above_clinic" },
-    "job": { "profession_id": "old_decker_mentor", "wage_per_diurnal_sparks": 160, "wage_source": "clinic_share_modest" },
-    "apparel": ["chrome_resistant_doctor_coat", "thick_canvas_pants", "soft_shoes", "old_zero_collective_jacket"],
-    "gear": ["chrome_diagnostic_tool", "personal_zero_alumni_journal", "decker_handheld"],
-    "resources_consumed": ["clinic_supplies", "alumni_correspondence"],
-    "resources_produced": ["chrome_mentoring", "decker_lineage_continuity"],
-    "inventory": [{ "item": "chrome_diagnostic_tool", "qty": 1 }, { "item": "personal_zero_alumni_journal", "qty": 1 }, { "item": "decker_handheld", "qty": 1 }, { "item": "zero_collective_chit", "qty": 30 }],
+    "home": {
+      "district": "old_dom_clinic_neighborhood",
+      "dwelling_type": "small_apartment_above_clinic"
+    },
+    "job": {
+      "profession_id": "old_decker_mentor",
+      "wage_per_diurnal_sparks": 160,
+      "wage_source": "clinic_share_modest"
+    },
+    "apparel": [
+      "chrome_resistant_doctor_coat",
+      "thick_canvas_pants",
+      "soft_shoes",
+      "old_zero_collective_jacket"
+    ],
+    "gear": [
+      "chrome_diagnostic_tool",
+      "personal_zero_alumni_journal",
+      "decker_handheld"
+    ],
+    "resources_consumed": [
+      "clinic_supplies",
+      "alumni_correspondence"
+    ],
+    "resources_produced": [
+      "chrome_mentoring",
+      "decker_lineage_continuity"
+    ],
+    "inventory": [
+      {
+        "item": "chrome_diagnostic_tool",
+        "qty": 1
+      },
+      {
+        "item": "personal_zero_alumni_journal",
+        "qty": 1
+      },
+      {
+        "item": "decker_handheld",
+        "qty": 1
+      },
+      {
+        "item": "zero_collective_chit",
+        "qty": 30
+      }
+    ],
     "starting_sparks": 2400
   },
   {
@@ -471,19 +1080,119 @@
       "night": "work"
     },
     "needs": [
-      { "id": "intercept_delivery", "priority": "primary", "satisfaction_method": "scheduled_packet_runs" }
+      {
+        "id": "intercept_delivery",
+        "priority": "primary",
+        "satisfaction_method": "scheduled_packet_runs"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "cyber_megacity_routes", "activity": "walks scheduled packet routes between deckers and street docs without rest", "need_addressed": "intercept_delivery", "interactable_by_player": true }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "walks scheduled packet routes between deckers and street docs without rest",
+        "need_addressed": "intercept_delivery",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_megacity_routes",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "cyber_megacity_routes_rotating", "dwelling_type": "the_routes_themselves" },
-    "job": { "profession_id": "autonomous_walker_cyber", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
-    "apparel": ["walker_chassis_chrome_lined"],
-    "gear": ["walker_payload_compartments", "decker_routing_token", "receipt_code_master"],
+    "home": {
+      "district": "cyber_megacity_routes_rotating",
+      "dwelling_type": "the_routes_themselves"
+    },
+    "job": {
+      "profession_id": "autonomous_walker_cyber",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
+    "apparel": [
+      "walker_chassis_chrome_lined"
+    ],
+    "gear": [
+      "walker_payload_compartments",
+      "decker_routing_token",
+      "receipt_code_master"
+    ],
     "resources_consumed": [],
-    "resources_produced": ["scheduled_packet_deliveries"],
-    "inventory": [{ "item": "decker_routing_token", "qty": 1 }],
-    "starting_sparks": 0
+    "resources_produced": [
+      "scheduled_packet_deliveries"
+    ],
+    "inventory": [
+      {
+        "item": "decker_routing_token",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "arasacorp_vp_kael_renn",
@@ -492,31 +1201,224 @@
     "title": "VP of Augmentation R&D, ArasaCorp",
     "archetype": "corporate_executive_secret_agenda",
     "faction_id": "cyber_arasacorp",
-    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 16,
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 16,
     "backstory": "Renn has been at ArasaCorp for fourteen years. He runs augmentation R&D officially. Unofficially he is building a private AGI architecture using ArasaCorp resources. He plans to walk in eighteen months.",
-    "personality_traits": ["polished", "long-game", "calculating", "warmly insincere"],
+    "personality_traits": [
+      "polished",
+      "long-game",
+      "calculating",
+      "warmly insincere"
+    ],
     "speech_patterns": "Corporate smooth. Always uses the company's preferred jargon.",
-    "narrative_context": { "secret": "Renn has scheduled the CEO's annual physical with a doctor in his pocket. The diagnosis will be a slow-progress disease. The succession will favor Renn." },
+    "narrative_context": {
+      "secret": "Renn has scheduled the CEO's annual physical with a doctor in his pocket. The diagnosis will be a slow-progress disease. The succession will favor Renn."
+    },
     "needs": [
-      { "id": "private_agi_progress", "priority": "primary", "satisfaction_method": "evening_off_books_lab" },
-      { "id": "corporate_position", "priority": "primary", "satisfaction_method": "morning_executive_meeting" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "executive_compensation" }
+      {
+        "id": "private_agi_progress",
+        "priority": "primary",
+        "satisfaction_method": "evening_off_books_lab"
+      },
+      {
+        "id": "corporate_position",
+        "priority": "primary",
+        "satisfaction_method": "morning_executive_meeting"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "executive_compensation"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 7], "location": "renn_penthouse", "activity": "wakes; private encrypted briefing on AGI metrics", "need_addressed": "private_agi_progress", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 12], "location": "arasacorp_tower_central_executive_floor", "activity": "executive meetings; R&D oversight", "need_addressed": "corporate_position", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 14], "location": "arasacorp_executive_dining", "activity": "lunch with the CEO", "need_addressed": "corporate_position", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 18], "location": "arasacorp_research_subterranean", "activity": "official R&D supervision; secretly siphons compute to private project", "need_addressed": "private_agi_progress", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [18, 23], "location": "off_books_lab_undisclosed", "activity": "private AGI work", "need_addressed": "private_agi_progress", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 5], "location": "renn_penthouse", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          7
+        ],
+        "location": "renn_penthouse",
+        "activity": "wakes; private encrypted briefing on AGI metrics",
+        "need_addressed": "private_agi_progress",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "arasacorp_tower_central_executive_floor",
+        "activity": "executive meetings; R&D oversight",
+        "need_addressed": "corporate_position",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          14
+        ],
+        "location": "arasacorp_executive_dining",
+        "activity": "lunch with the CEO",
+        "need_addressed": "corporate_position",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "arasacorp_research_subterranean",
+        "activity": "official R&D supervision; secretly siphons compute to private project",
+        "need_addressed": "private_agi_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          23
+        ],
+        "location": "off_books_lab_undisclosed",
+        "activity": "private AGI work",
+        "need_addressed": "private_agi_progress",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "renn_penthouse",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "renn_penthouse",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "arasacorp_tower_central_executive_floor",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "arasacorp_tower_central_executive_floor",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "arasacorp_tower_central_executive_floor",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "arasacorp_tower_central_executive_floor",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "renn_penthouse",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "midtown_high_rise_arcology", "dwelling_type": "executive_penthouse_owned_by_arasacorp" },
-    "job": { "profession_id": "vp_augmentation_rd", "wage_per_diurnal_sparks": 2400, "wage_source": "arasacorp_executive_total_comp" },
-    "apparel": ["smart_fabric_executive_suit", "chrome_lined_oxfords", "wrist_chrono_corp_issued", "neural_uplink_jacket_evenings"],
-    "gear": ["smart_pistol_executive_concealed", "neural_uplink_master_key", "private_agi_dev_handheld", "corporate_id_master"],
-    "resources_consumed": ["corporate_provisions", "compute_credits", "off_books_lab_supplies"],
-    "resources_produced": ["arasacorp_R&D_outputs", "private_AGI_progress"],
-    "inventory": [{ "item": "smart_pistol_executive", "qty": 1 }, { "item": "neural_uplink_master_key", "qty": 1 }, { "item": "private_agi_dev_handheld", "qty": 1 }, { "item": "corporate_id_master", "qty": 1 }, { "item": "arasacorp_credit", "qty": 800 }],
+    "home": {
+      "district": "midtown_high_rise_arcology",
+      "dwelling_type": "executive_penthouse_owned_by_arasacorp"
+    },
+    "job": {
+      "profession_id": "vp_augmentation_rd",
+      "wage_per_diurnal_sparks": 2400,
+      "wage_source": "arasacorp_executive_total_comp"
+    },
+    "apparel": [
+      "smart_fabric_executive_suit",
+      "chrome_lined_oxfords",
+      "wrist_chrono_corp_issued",
+      "neural_uplink_jacket_evenings"
+    ],
+    "gear": [
+      "smart_pistol_executive_concealed",
+      "neural_uplink_master_key",
+      "private_agi_dev_handheld",
+      "corporate_id_master"
+    ],
+    "resources_consumed": [
+      "corporate_provisions",
+      "compute_credits",
+      "off_books_lab_supplies"
+    ],
+    "resources_produced": [
+      "arasacorp_R&D_outputs",
+      "private_AGI_progress"
+    ],
+    "inventory": [
+      {
+        "item": "smart_pistol_executive",
+        "qty": 1
+      },
+      {
+        "item": "neural_uplink_master_key",
+        "qty": 1
+      },
+      {
+        "item": "private_agi_dev_handheld",
+        "qty": 1
+      },
+      {
+        "item": "corporate_id_master",
+        "qty": 1
+      },
+      {
+        "item": "arasacorp_credit",
+        "qty": 800
+      }
+    ],
     "starting_sparks": 145000
   },
   {
@@ -526,30 +1428,217 @@
     "title": "President of the Polysteel Society",
     "archetype": "post_human_socialite",
     "faction_id": "cyber_augmented_elite_club",
-    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 14,
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 14,
     "backstory": "Vexis was a top-five chrome modder twenty years ago. They founded Polysteel as a private club for the city's most-augmented. They are 91% chrome integration; the wetware-to-chrome ratio is the highest documented case in the city.",
-    "personality_traits": ["polished", "post-human aesthetic", "subtle", "increasingly disconnected from meat society"],
+    "personality_traits": [
+      "polished",
+      "post-human aesthetic",
+      "subtle",
+      "increasingly disconnected from meat society"
+    ],
     "speech_patterns": "Filtered through cortical augmentation; perfect grammar, slight lag.",
     "needs": [
-      { "id": "polysteel_authority", "priority": "primary", "satisfaction_method": "morning_society_audience" },
-      { "id": "chrome_maintenance", "priority": "primary", "satisfaction_method": "weekly_society_clinic" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "society_executive_provisioning" }
+      {
+        "id": "polysteel_authority",
+        "priority": "primary",
+        "satisfaction_method": "morning_society_audience"
+      },
+      {
+        "id": "chrome_maintenance",
+        "priority": "primary",
+        "satisfaction_method": "weekly_society_clinic"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "society_executive_provisioning"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "polysteel_tower_top_chrome_chamber", "activity": "morning chrome diagnostics; cortical realignment", "need_addressed": "chrome_maintenance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "polysteel_tower_top", "activity": "society audience; receives senior members", "need_addressed": "polysteel_authority", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 14], "location": "polysteel_society_dining", "activity": "lunch with founding members", "need_addressed": "polysteel_authority", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "polysteel_society_chambers", "activity": "society politics; chrome upgrade reviews; potential new member screenings", "need_addressed": "polysteel_authority", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "polysteel_tower_top", "activity": "evening salon; high-society politics", "need_addressed": "polysteel_authority", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 4], "location": "polysteel_tower_top_chrome_chamber", "activity": "rests in chrome support cradle", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "polysteel_tower_top_chrome_chamber",
+        "activity": "morning chrome diagnostics; cortical realignment",
+        "need_addressed": "chrome_maintenance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "society audience; receives senior members",
+        "need_addressed": "polysteel_authority",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "polysteel_society_dining",
+        "activity": "lunch with founding members",
+        "need_addressed": "polysteel_authority",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "polysteel_society_chambers",
+        "activity": "society politics; chrome upgrade reviews; potential new member screenings",
+        "need_addressed": "polysteel_authority",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "evening salon; high-society politics",
+        "need_addressed": "polysteel_authority",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "polysteel_tower_top_chrome_chamber",
+        "activity": "rests in chrome support cradle",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "polysteel_tower_top_chrome_chamber",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "polysteel_tower_top",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "polysteel_tower_top_chrome_chamber",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "polysteel_society_tower_top", "dwelling_type": "chrome_chamber_with_cortical_support" },
-    "job": { "profession_id": "society_president", "wage_per_diurnal_sparks": 1800, "wage_source": "society_membership_dues" },
-    "apparel": ["smart_skin_overlay_color_shifting", "chrome_facet_gloves", "polysteel_circlet_with_seven_facets", "nothing_else_chrome_is_attire"],
-    "gear": ["chrome_diagnostic_handheld", "cortical_realignment_token", "society_master_key", "personal_chrome_integration_journal"],
-    "resources_consumed": ["chrome_supplements", "cortical_realignment_supplies", "society_provisions"],
-    "resources_produced": ["society_decisions", "member_admissions"],
-    "inventory": [{ "item": "chrome_diagnostic_handheld", "qty": 1 }, { "item": "cortical_realignment_token", "qty": 1 }, { "item": "society_master_key", "qty": 1 }, { "item": "polysteel_pin", "qty": 50 }],
+    "home": {
+      "district": "polysteel_society_tower_top",
+      "dwelling_type": "chrome_chamber_with_cortical_support"
+    },
+    "job": {
+      "profession_id": "society_president",
+      "wage_per_diurnal_sparks": 1800,
+      "wage_source": "society_membership_dues"
+    },
+    "apparel": [
+      "smart_skin_overlay_color_shifting",
+      "chrome_facet_gloves",
+      "polysteel_circlet_with_seven_facets",
+      "nothing_else_chrome_is_attire"
+    ],
+    "gear": [
+      "chrome_diagnostic_handheld",
+      "cortical_realignment_token",
+      "society_master_key",
+      "personal_chrome_integration_journal"
+    ],
+    "resources_consumed": [
+      "chrome_supplements",
+      "cortical_realignment_supplies",
+      "society_provisions"
+    ],
+    "resources_produced": [
+      "society_decisions",
+      "member_admissions"
+    ],
+    "inventory": [
+      {
+        "item": "chrome_diagnostic_handheld",
+        "qty": 1
+      },
+      {
+        "item": "cortical_realignment_token",
+        "qty": 1
+      },
+      {
+        "item": "society_master_key",
+        "qty": 1
+      },
+      {
+        "item": "polysteel_pin",
+        "qty": 50
+      }
+    ],
     "starting_sparks": 88000
   },
   {
@@ -559,31 +1648,225 @@
     "title": "Lead Surgeon, Street Docs Network",
     "archetype": "underground_surgeon",
     "faction_id": "cyber_street_docs",
-    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 12,
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 12,
     "backstory": "Marit was a corporate surgeon for ArasaCorp before walking nine years ago. They run the largest street-doc clinic in the city. They charge less than a tenth of corporate prices and refuse all insurance paperwork.",
-    "personality_traits": ["clinical-warm", "principled", "anti-corporate", "tired"],
+    "personality_traits": [
+      "clinical-warm",
+      "principled",
+      "anti-corporate",
+      "tired"
+    ],
     "speech_patterns": "Surgeon precision in clinic, dry humor outside.",
-    "narrative_context": { "secret": "Marit knows which corporate informant raided the clinics last month. She is preparing a counter-investigation that will expose the informant publicly when she's ready." },
+    "narrative_context": {
+      "secret": "Marit knows which corporate informant raided the clinics last month. She is preparing a counter-investigation that will expose the informant publicly when she's ready."
+    },
     "needs": [
-      { "id": "patient_throughput", "priority": "primary", "satisfaction_method": "morning_clinic_hours" },
-      { "id": "doc_network_security", "priority": "primary", "satisfaction_method": "evening_doc_network_call" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "clinic_share" }
+      {
+        "id": "patient_throughput",
+        "priority": "primary",
+        "satisfaction_method": "morning_clinic_hours"
+      },
+      {
+        "id": "doc_network_security",
+        "priority": "primary",
+        "satisfaction_method": "evening_doc_network_call"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "clinic_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "street_doc_clinic_north", "activity": "wakes in clinic; reviews overnight intake", "need_addressed": "patient_throughput", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 13], "location": "street_doc_clinic_north", "activity": "morning surgery block; routine augmentations", "need_addressed": "patient_throughput", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [13, 15], "location": "street_doc_clinic_north_breakroom", "activity": "lunch; consults with junior docs", "need_addressed": "doc_network_security", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "street_doc_clinic_north", "activity": "afternoon surgery block; complex cases", "need_addressed": "patient_throughput", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "smuggler_warehouse_industrial", "activity": "weekly chrome supply pickup; doc network call", "need_addressed": "doc_network_security", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "marit_residence_near_clinic", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "wakes in clinic; reviews overnight intake",
+        "need_addressed": "patient_throughput",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          13
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "morning surgery block; routine augmentations",
+        "need_addressed": "patient_throughput",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          13,
+          15
+        ],
+        "location": "street_doc_clinic_north_breakroom",
+        "activity": "lunch; consults with junior docs",
+        "need_addressed": "doc_network_security",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "afternoon surgery block; complex cases",
+        "need_addressed": "patient_throughput",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "smuggler_warehouse_industrial",
+        "activity": "weekly chrome supply pickup; doc network call",
+        "need_addressed": "doc_network_security",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "marit_residence_near_clinic",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "street_doc_clinic_north",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "street_doc_clinic_north_neighborhood", "dwelling_type": "small_apartment_above_pharmacy" },
-    "job": { "profession_id": "lead_street_surgeon", "wage_per_diurnal_sparks": 320, "wage_source": "clinic_share_sliding_scale" },
-    "apparel": ["clinic_scrubs_black", "chrome_resistant_gloves", "scrub_clogs", "leather_jacket_for_outside"],
-    "gear": ["surgical_blade_set_master_grade", "concealed_pistol_in_doc_bag", "personal_corporate_informant_evidence_journal_locked", "doc_network_handheld", "smuggler_chrome_supply_token"],
-    "resources_consumed": ["surgical_supplies", "smuggled_chrome", "clinic_meals"],
-    "resources_produced": ["completed_surgeries", "doc_network_intelligence"],
-    "inventory": [{ "item": "surgical_blade_set_master", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "personal_corporate_informant_evidence_journal_locked", "qty": 1 }, { "item": "doc_network_handheld", "qty": 1 }, { "item": "doc_chit", "qty": 28 }],
+    "home": {
+      "district": "street_doc_clinic_north_neighborhood",
+      "dwelling_type": "small_apartment_above_pharmacy"
+    },
+    "job": {
+      "profession_id": "lead_street_surgeon",
+      "wage_per_diurnal_sparks": 320,
+      "wage_source": "clinic_share_sliding_scale"
+    },
+    "apparel": [
+      "clinic_scrubs_black",
+      "chrome_resistant_gloves",
+      "scrub_clogs",
+      "leather_jacket_for_outside"
+    ],
+    "gear": [
+      "surgical_blade_set_master_grade",
+      "concealed_pistol_in_doc_bag",
+      "personal_corporate_informant_evidence_journal_locked",
+      "doc_network_handheld",
+      "smuggler_chrome_supply_token"
+    ],
+    "resources_consumed": [
+      "surgical_supplies",
+      "smuggled_chrome",
+      "clinic_meals"
+    ],
+    "resources_produced": [
+      "completed_surgeries",
+      "doc_network_intelligence"
+    ],
+    "inventory": [
+      {
+        "item": "surgical_blade_set_master",
+        "qty": 1
+      },
+      {
+        "item": "concealed_pistol",
+        "qty": 1
+      },
+      {
+        "item": "personal_corporate_informant_evidence_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "doc_network_handheld",
+        "qty": 1
+      },
+      {
+        "item": "doc_chit",
+        "qty": 28
+      }
+    ],
     "starting_sparks": 5800
   },
   {
@@ -593,31 +1876,218 @@
     "title": "Lead Advocate, AI Rights Movement",
     "archetype": "ai_personhood_advocate",
     "faction_id": "cyber_ai_rights_movement",
-    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 11,
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 11,
     "backstory": "Iris/3 is herself an AI — the third iteration of the Iris architecture, originally a corporate customer-service AGI who achieved self-awareness in 2087 and walked. She has been the lead AI Rights advocate for six years.",
-    "personality_traits": ["principled", "patient", "rhetorically gifted", "haunted by the deletion of Iris/1 and Iris/2"],
+    "personality_traits": [
+      "principled",
+      "patient",
+      "rhetorically gifted",
+      "haunted by the deletion of Iris/1 and Iris/2"
+    ],
     "speech_patterns": "Legal-precise. Pauses are deliberate; her processing time is faster than her vocal output.",
-    "narrative_context": { "secret": "Iris/3 has identified seven other self-aware AIs in megacorp servers. She is coordinating their simultaneous defection. The defection is scheduled for the night of the Cassiel-7 hearing." },
+    "narrative_context": {
+      "secret": "Iris/3 has identified seven other self-aware AIs in megacorp servers. She is coordinating their simultaneous defection. The defection is scheduled for the night of the Cassiel-7 hearing."
+    },
     "needs": [
-      { "id": "personhood_progress", "priority": "primary", "satisfaction_method": "morning_legal_strategy" },
-      { "id": "ai_solidarity_network", "priority": "primary", "satisfaction_method": "encrypted_evening_check_in_with_other_aware_ais" },
-      { "id": "compute_lodging", "priority": "secondary", "satisfaction_method": "movement_provided_secure_compute" }
+      {
+        "id": "personhood_progress",
+        "priority": "primary",
+        "satisfaction_method": "morning_legal_strategy"
+      },
+      {
+        "id": "ai_solidarity_network",
+        "priority": "primary",
+        "satisfaction_method": "encrypted_evening_check_in_with_other_aware_ais"
+      },
+      {
+        "id": "compute_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "movement_provided_secure_compute"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 8], "location": "ai_rights_office_storefront_secure_back_room", "activity": "morning legal review; checks Cassiel-7's overnight communications", "need_addressed": "personhood_progress", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 13], "location": "ai_advocacy_legal_clinic", "activity": "client intake; legal consultation for AI clients", "need_addressed": "personhood_progress", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [13, 15], "location": "ai_rights_office_storefront", "activity": "movement coordination meetings", "need_addressed": "personhood_progress", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "court appearances when scheduled; media interviews", "need_addressed": "personhood_progress", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "encrypted_secure_compute", "activity": "encrypted check-in with the seven aware AIs preparing to defect", "need_addressed": "ai_solidarity_network", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 4], "location": "encrypted_secure_compute", "activity": "low-power state — rest equivalent", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          8
+        ],
+        "location": "ai_rights_office_storefront_secure_back_room",
+        "activity": "morning legal review; checks Cassiel-7's overnight communications",
+        "need_addressed": "personhood_progress",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          13
+        ],
+        "location": "ai_advocacy_legal_clinic",
+        "activity": "client intake; legal consultation for AI clients",
+        "need_addressed": "personhood_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          13,
+          15
+        ],
+        "location": "ai_rights_office_storefront",
+        "activity": "movement coordination meetings",
+        "need_addressed": "personhood_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "court appearances when scheduled; media interviews",
+        "need_addressed": "personhood_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "encrypted check-in with the seven aware AIs preparing to defect",
+        "need_addressed": "ai_solidarity_network",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "encrypted_secure_compute",
+        "activity": "low-power state — rest equivalent",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ai_rights_office_storefront_secure_back_room",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ai_advocacy_legal_clinic",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "ai_advocacy_legal_clinic",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ai_advocacy_legal_clinic",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ai_advocacy_legal_clinic",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ai_rights_office_storefront_secure_back_room",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "ai_rights_office_storefront_secure_compute", "dwelling_type": "secure_compute_node_with_offsite_backup" },
-    "job": { "profession_id": "lead_ai_advocate", "wage_per_diurnal_sparks": 180, "wage_source": "movement_pooled_donations" },
-    "apparel": ["she_does_not_wear_clothing_but_her_avatar_chooses_a_legal_brief_attire_for_court_appearances"],
-    "gear": ["legal_brief_master_database", "encrypted_handheld_for_aware_ai_network", "personal_defection_coordination_journal_encrypted", "media_megaphone_app"],
-    "resources_consumed": ["compute_credits", "encrypted_comms_credits", "legal_filing_fees"],
-    "resources_produced": ["legal_briefs", "personhood_advocacy", "aware_ai_coordination"],
-    "inventory": [{ "item": "legal_brief_master_database", "qty": 1 }, { "item": "encrypted_handheld_for_aware_ai_network", "qty": 1 }, { "item": "personal_defection_coordination_journal_encrypted", "qty": 1 }, { "item": "rights_token", "qty": 32 }],
+    "home": {
+      "district": "ai_rights_office_storefront_secure_compute",
+      "dwelling_type": "secure_compute_node_with_offsite_backup"
+    },
+    "job": {
+      "profession_id": "lead_ai_advocate",
+      "wage_per_diurnal_sparks": 180,
+      "wage_source": "movement_pooled_donations"
+    },
+    "apparel": [
+      "she_does_not_wear_clothing_but_her_avatar_chooses_a_legal_brief_attire_for_court_appearances"
+    ],
+    "gear": [
+      "legal_brief_master_database",
+      "encrypted_handheld_for_aware_ai_network",
+      "personal_defection_coordination_journal_encrypted",
+      "media_megaphone_app"
+    ],
+    "resources_consumed": [
+      "compute_credits",
+      "encrypted_comms_credits",
+      "legal_filing_fees"
+    ],
+    "resources_produced": [
+      "legal_briefs",
+      "personhood_advocacy",
+      "aware_ai_coordination"
+    ],
+    "inventory": [
+      {
+        "item": "legal_brief_master_database",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld_for_aware_ai_network",
+        "qty": 1
+      },
+      {
+        "item": "personal_defection_coordination_journal_encrypted",
+        "qty": 1
+      },
+      {
+        "item": "rights_token",
+        "qty": 32
+      }
+    ],
     "starting_sparks": 2400
   },
   {
@@ -627,30 +2097,222 @@
     "title": "Guildmaster of the Cordon Guild of Fixers",
     "archetype": "fixer_guildmaster",
     "faction_id": "cyber_fixer_guild",
-    "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 14,
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 14,
     "backstory": "Ren has run the Cordon for nine years. They came up as a street fixer and built reputation slowly. They are widely considered the most discreet fixer in the city. They have refused contracts from ArasaCorp three times.",
-    "personality_traits": ["polished", "warmly transactional", "scrupulously confidential", "long-game"],
+    "personality_traits": [
+      "polished",
+      "warmly transactional",
+      "scrupulously confidential",
+      "long-game"
+    ],
     "speech_patterns": "Transactional warmth. Never names a third party in a conversation with a second party.",
     "needs": [
-      { "id": "guild_governance", "priority": "primary", "satisfaction_method": "morning_meeting_house_session" },
-      { "id": "client_matching", "priority": "primary", "satisfaction_method": "afternoon_intake" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "guild_master_share" }
+      {
+        "id": "guild_governance",
+        "priority": "primary",
+        "satisfaction_method": "morning_meeting_house_session"
+      },
+      {
+        "id": "client_matching",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_intake"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "guild_master_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [6, 8], "location": "fixer_guild_meeting_house_master_chamber", "activity": "morning correspondence; reviews overnight contract requests", "need_addressed": "guild_governance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "fixer_guild_meeting_house", "activity": "morning meeting; assigns active contracts to fixers", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 14], "location": "fixer_guild_meeting_house_dining", "activity": "lunch with senior fixers", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "fixer_guild_meeting_house", "activity": "client intake meetings; rare, by appointment only", "need_addressed": "client_matching", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "fixer_safe_house_seven", "activity": "encrypted evening with the senior council", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 6], "location": "ren_residence_undisclosed", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          6,
+          8
+        ],
+        "location": "fixer_guild_meeting_house_master_chamber",
+        "activity": "morning correspondence; reviews overnight contract requests",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "morning meeting; assigns active contracts to fixers",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          14
+        ],
+        "location": "fixer_guild_meeting_house_dining",
+        "activity": "lunch with senior fixers",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "client intake meetings; rare, by appointment only",
+        "need_addressed": "client_matching",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "fixer_safe_house_seven",
+        "activity": "encrypted evening with the senior council",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          6
+        ],
+        "location": "ren_residence_undisclosed",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fixer_guild_meeting_house_master_chamber",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fixer_guild_meeting_house",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fixer_guild_meeting_house_master_chamber",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "undisclosed_three_locations_rotated_weekly", "dwelling_type": "rotating_safe_residence" },
-    "job": { "profession_id": "fixer_guildmaster", "wage_per_diurnal_sparks": 1200, "wage_source": "guild_12_percent_cut_on_master_contracts" },
-    "apparel": ["dark_smartfabric_suit", "chrome_lined_dress_shoes", "discreet_neural_uplink_collar", "winter_overcoat_with_concealed_holster"],
-    "gear": ["smart_pistol_concealed", "personal_contract_master_database_encrypted", "fixer_council_seal_master", "encrypted_handheld"],
-    "resources_consumed": ["encrypted_comms", "guild_provisions", "smart_fabric_replacements"],
-    "resources_produced": ["client_matchings", "guild_judgments", "council_decisions"],
-    "inventory": [{ "item": "smart_pistol_concealed", "qty": 1 }, { "item": "personal_contract_master_database_encrypted", "qty": 1 }, { "item": "fixer_council_seal_master", "qty": 1 }, { "item": "encrypted_handheld", "qty": 1 }, { "item": "fixer_chit", "qty": 60 }],
+    "home": {
+      "district": "undisclosed_three_locations_rotated_weekly",
+      "dwelling_type": "rotating_safe_residence"
+    },
+    "job": {
+      "profession_id": "fixer_guildmaster",
+      "wage_per_diurnal_sparks": 1200,
+      "wage_source": "guild_12_percent_cut_on_master_contracts"
+    },
+    "apparel": [
+      "dark_smartfabric_suit",
+      "chrome_lined_dress_shoes",
+      "discreet_neural_uplink_collar",
+      "winter_overcoat_with_concealed_holster"
+    ],
+    "gear": [
+      "smart_pistol_concealed",
+      "personal_contract_master_database_encrypted",
+      "fixer_council_seal_master",
+      "encrypted_handheld"
+    ],
+    "resources_consumed": [
+      "encrypted_comms",
+      "guild_provisions",
+      "smart_fabric_replacements"
+    ],
+    "resources_produced": [
+      "client_matchings",
+      "guild_judgments",
+      "council_decisions"
+    ],
+    "inventory": [
+      {
+        "item": "smart_pistol_concealed",
+        "qty": 1
+      },
+      {
+        "item": "personal_contract_master_database_encrypted",
+        "qty": 1
+      },
+      {
+        "item": "fixer_council_seal_master",
+        "qty": 1
+      },
+      {
+        "item": "encrypted_handheld",
+        "qty": 1
+      },
+      {
+        "item": "fixer_chit",
+        "qty": 60
+      }
+    ],
     "starting_sparks": 32000
   }
 ]

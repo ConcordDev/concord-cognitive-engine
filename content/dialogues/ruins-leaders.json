@@ -1,0 +1,119 @@
+{
+  "archon_thanis:idle": {
+    "greeting": "Archon Thanis is seated on the cracked throne of the Ruined Court, half-mask shadowed. \"Walker. You have arrived, as predicted, in the tense the present does not name.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"What did you come bringing? The Court accepts gifts only of one kind.\"",
+        "playerOptions": [
+          { "text": "A glyph from Oracle Nesha in the hub.", "leadsTo": "node_glyph" },
+          { "text": "I came to understand the rite of refusal.", "leadsTo": "node_rite" },
+          { "text": "Nothing — I'm here to listen.", "leadsTo": "node_listen" }
+        ]
+      },
+      {
+        "id": "node_glyph",
+        "npcText": "He extends his hand. The fingers are pale. \"Show it.\"",
+        "playerOptions": [
+          { "text": "Here.", "leadsTo": "node_glyph_2" }
+        ]
+      },
+      {
+        "id": "node_glyph_2",
+        "npcText": "He studies it for a long moment. \"She has been working on the same glyph for forty years. She is close. Tell her she is close. Carry this back: a fragment of the same shape, half a layer further along. We do not speak directly, but our work converges.\"",
+        "playerOptions": [
+          { "text": "I'll carry it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_rite",
+        "npcText": "\"The rite refuses. That is its whole content. To refuse death, harvest, hostility, consequence, numbers, the dome, the win. It is the strongest grammar I know.\"",
+        "playerOptions": [
+          { "text": "Could a walker learn it?", "leadsTo": "node_rite_2" }
+        ]
+      },
+      {
+        "id": "node_rite_2",
+        "npcText": "\"You already have. The lattice taught you when you arrived. You have refused things you did not know you refused. The rite only makes the refusal visible.\"",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_listen",
+        "npcText": "He inclines his head. \"Then listen. Three centuries have passed since the Court was unburned. Six since it was unhated. One since it was unbroken. I count them in the wrong tense because the present has not yet decided which it is.\"",
+        "playerOptions": [
+          { "text": "Thank you for the audience.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "The half-mask tilts slightly. \"Walk back through the time you came from.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "rebel_calla_bren:idle": {
+    "greeting": "Calla Bren is checking the edge of her sword against the lamplight. She does not look up. \"Walker. Sit. Talk fast or talk slow; I'm not particular.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You came into a rebel camp. Either you're brave or stupid. Both can be useful.\"",
+        "playerOptions": [
+          { "text": "Voss Dren in the Crucible. I know about the pact.", "leadsTo": "node_pact" },
+          { "text": "I want to help the rebellion.", "leadsTo": "node_help" },
+          { "text": "Iyatte of Sandrun met you in a tavern as girls.", "leadsTo": "node_iyatte" }
+        ]
+      },
+      {
+        "id": "node_pact",
+        "npcText": "She sets the sword down. \"Voss is a careful man. He doesn't talk loosely. How did you learn?\"",
+        "playerOptions": [
+          { "text": "His niece Kit said too much.", "leadsTo": "node_pact_2" },
+          { "text": "He told me directly.", "leadsTo": "node_pact_3" }
+        ]
+      },
+      {
+        "id": "node_pact_2",
+        "npcText": "\"Kit. Damn. I'll have words with Voss. The pact is real. If you carry messages between us, we'll know about it within the day, both ends. Carry well.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_pact_3",
+        "npcText": "\"Then Voss trusts you more than I would on first meeting. He is a careful man; I'll give him the benefit. Don't make me wrong about you.\"",
+        "playerOptions": [
+          { "text": "I won't.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_help",
+        "npcText": "\"Then run a message to Zaen Drift, the Court champion. Tell him: the southern arc is thinning. He'll know which arc.\"",
+        "playerOptions": [
+          { "text": "On it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_iyatte",
+        "npcText": "Her hand stills. \"That was a long time ago, in a tavern that no longer stands. Who told you?\"",
+        "playerOptions": [
+          { "text": "I worked it out from old letters.", "leadsTo": "node_iyatte_2" },
+          { "text": "It's just a rumour.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_iyatte_2",
+        "npcText": "\"Then you read more than you should have. Iyatte and I parted on terms neither of us is proud of. If you ever stand in front of her, don't bring me up. Promise.\"",
+        "playerOptions": [
+          { "text": "Promise.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She picks up the sword again. \"Walk light. Come back if you do.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

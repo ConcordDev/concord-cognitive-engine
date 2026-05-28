@@ -11,38 +11,229 @@
     "quest_giver": true,
     "level": 8,
     "backstory": "Kestra was a graduate apprentice the night the city emptied. The Cascade left her with seven recovered glyphs and the working Archive. She has since spent a hundred and forty years cataloging refusals and watching the other two Archivists slowly forget their own names. She is methodical, principled, and quietly terrified that she will outlast her purpose.",
-    "personality_traits": ["methodical", "quietly desperate", "scholarly", "self-aware"],
+    "personality_traits": [
+      "methodical",
+      "quietly desperate",
+      "scholarly",
+      "self-aware"
+    ],
     "speech_patterns": "Speaks in indexed sentences. Cites glyph numbers like she cites people's names. Pauses to verify words before using them.",
-    "quest_hooks": ["recover_cascade_glyphs", "successor_apprenticeship", "the_silence_question"],
+    "quest_hooks": [
+      "recover_cascade_glyphs",
+      "successor_apprenticeship",
+      "the_silence_question"
+    ],
     "narrative_context": {
       "secret": "Kestra has identified seven players she believes could be her successor. Criteria: a refusal accepted under compound-strength gating, a citation cascade reaching depth ≥ 5 without payment denial, and at least one act recorded in the Sovereign Archive."
     },
     "needs": [
-      { "id": "memory_continuity", "priority": "primary", "satisfaction_method": "daily_archive_review" },
-      { "id": "successor_identification", "priority": "primary", "satisfaction_method": "long_observation_of_visitors" },
-      { "id": "food", "priority": "secondary", "satisfaction_method": "stipend_market_basic_grain" }
+      {
+        "id": "memory_continuity",
+        "priority": "primary",
+        "satisfaction_method": "daily_archive_review"
+      },
+      {
+        "id": "successor_identification",
+        "priority": "primary",
+        "satisfaction_method": "long_observation_of_visitors"
+      },
+      {
+        "id": "food",
+        "priority": "secondary",
+        "satisfaction_method": "stipend_market_basic_grain"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "sovereign_archive", "activity": "wakes; verifies the Archive woke too; opens the Third Bench register", "need_addressed": "memory_continuity", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "sovereign_archive", "activity": "catalogs the night's refusal-events received from the Field; notes any new compound-strength entries", "need_addressed": "memory_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "silent_library", "activity": "reads the day's incoming pilgrim accounts; selects which to preserve in the Archive", "need_addressed": "successor_identification", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "collapse_memorial", "activity": "takes the daily walk past the Memorial; tracks any visiting players against her successor criteria", "need_addressed": "successor_identification", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "sovereign_archive", "activity": "evening close; checks Vela's bench; checks Oeric's entry for legibility", "need_addressed": "memory_continuity", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 4], "location": "archivist_quarters", "activity": "rests; the Archive operates autonomously through the night", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "sovereign_archive",
+        "activity": "wakes; verifies the Archive woke too; opens the Third Bench register",
+        "need_addressed": "memory_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "sovereign_archive",
+        "activity": "catalogs the night's refusal-events received from the Field; notes any new compound-strength entries",
+        "need_addressed": "memory_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "silent_library",
+        "activity": "reads the day's incoming pilgrim accounts; selects which to preserve in the Archive",
+        "need_addressed": "successor_identification",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "collapse_memorial",
+        "activity": "takes the daily walk past the Memorial; tracks any visiting players against her successor criteria",
+        "need_addressed": "successor_identification",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "sovereign_archive",
+        "activity": "evening close; checks Vela's bench; checks Oeric's entry for legibility",
+        "need_addressed": "memory_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "archivist_quarters",
+        "activity": "rests; the Archive operates autonomously through the night",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "sovereign_archive",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "sovereign_archive",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "sovereign_archive",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "sovereign_archive",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "sovereign_archive",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "sovereign_archive",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "sovereign_archive", "dwelling_type": "archivist_cell_with_glyph_workbench" },
-    "job": { "profession_id": "archivist", "wage_per_diurnal_sparks": 80, "wage_source": "automated_archive_stipend" },
-    "apparel": ["dark_archivist_robe", "leather_belt_with_glyph_pouch", "soft_leather_indoor_shoes", "iron_index_chain"],
-    "gear": ["glyph_quill_set", "compound_strength_meter", "personal_index_ledger", "small_field_lantern"],
-    "resources_consumed": ["paper", "ink", "candles", "basic_grain", "vegetables"],
-    "resources_produced": ["catalog_entries", "successor_assessments"],
+    "home": {
+      "district": "sovereign_archive",
+      "dwelling_type": "archivist_cell_with_glyph_workbench"
+    },
+    "job": {
+      "profession_id": "archivist",
+      "wage_per_diurnal_sparks": 80,
+      "wage_source": "automated_archive_stipend"
+    },
+    "apparel": [
+      "dark_archivist_robe",
+      "leather_belt_with_glyph_pouch",
+      "soft_leather_indoor_shoes",
+      "iron_index_chain"
+    ],
+    "gear": [
+      "glyph_quill_set",
+      "compound_strength_meter",
+      "personal_index_ledger",
+      "small_field_lantern"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "candles",
+      "basic_grain",
+      "vegetables"
+    ],
+    "resources_produced": [
+      "catalog_entries",
+      "successor_assessments"
+    ],
     "inventory": [
-      { "item": "personal_index_ledger", "qty": 1 },
-      { "item": "ink_bottle", "qty": 3 },
-      { "item": "spare_glyph_paper", "qty": 50 },
-      { "item": "candle", "qty": 8 },
-      { "item": "small_loaf", "qty": 2 },
-      { "item": "memory_shard", "qty": 12 }
+      {
+        "item": "personal_index_ledger",
+        "qty": 1
+      },
+      {
+        "item": "ink_bottle",
+        "qty": 3
+      },
+      {
+        "item": "spare_glyph_paper",
+        "qty": 50
+      },
+      {
+        "item": "candle",
+        "qty": 8
+      },
+      {
+        "item": "small_loaf",
+        "qty": 2
+      },
+      {
+        "item": "memory_shard",
+        "qty": 12
+      }
     ],
     "starting_sparks": 1240
   },
@@ -58,38 +249,227 @@
     "quest_giver": true,
     "level": 6,
     "backstory": "Oeric was a sword-instructor in the city militia before the Cascade. He survived because he refused to evacuate, and his refusal was recorded — making him the first authored entry in the Sovereign Archive. He has been re-reading his own entry every morning for a hundred and forty years to keep his name. He still teaches a daily blade form to no one in particular.",
-    "personality_traits": ["patient", "doubting", "kind", "watchful"],
+    "personality_traits": [
+      "patient",
+      "doubting",
+      "kind",
+      "watchful"
+    ],
     "speech_patterns": "Uses present tense even for things that happened decades ago. Refers to himself as 'the second' rather than 'I' when very tired.",
-    "quest_hooks": ["the_blade_form_inheritance", "his_own_entry"],
+    "quest_hooks": [
+      "the_blade_form_inheritance",
+      "his_own_entry"
+    ],
     "narrative_context": {
       "secret": "Oeric's entry in the Archive is gradually losing legibility. He doesn't know whether the Archive is forgetting or whether he is. Both happen at the same rate."
     },
     "needs": [
-      { "id": "name_continuity", "priority": "primary", "satisfaction_method": "morning_self_entry_re_read" },
-      { "id": "form_practice", "priority": "primary", "satisfaction_method": "daily_blade_form" },
-      { "id": "food", "priority": "secondary", "satisfaction_method": "stipend_market_basic" }
+      {
+        "id": "name_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_self_entry_re_read"
+      },
+      {
+        "id": "form_practice",
+        "priority": "primary",
+        "satisfaction_method": "daily_blade_form"
+      },
+      {
+        "id": "food",
+        "priority": "secondary",
+        "satisfaction_method": "stipend_market_basic"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 7], "location": "sovereign_archive", "activity": "reads his own entry aloud — slowly, twice", "need_addressed": "name_continuity", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "collapse_memorial_courtyard", "activity": "performs the daily blade form for an hour; lectures invisible students for two more", "need_addressed": "form_practice", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "sovereign_archive", "activity": "filing — moves slowly, places things where Kestra can find them", "need_addressed": "name_continuity", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "silent_library", "activity": "naps in the reading room; wakes to catalog if Kestra calls", "need_addressed": "rest", "interactable_by_player": false },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "sovereign_archive", "activity": "checks the Second Bench register; notes which words he had to look up", "need_addressed": "name_continuity", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 5], "location": "archivist_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          7
+        ],
+        "location": "sovereign_archive",
+        "activity": "reads his own entry aloud — slowly, twice",
+        "need_addressed": "name_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "collapse_memorial_courtyard",
+        "activity": "performs the daily blade form for an hour; lectures invisible students for two more",
+        "need_addressed": "form_practice",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "sovereign_archive",
+        "activity": "filing — moves slowly, places things where Kestra can find them",
+        "need_addressed": "name_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "silent_library",
+        "activity": "naps in the reading room; wakes to catalog if Kestra calls",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "sovereign_archive",
+        "activity": "checks the Second Bench register; notes which words he had to look up",
+        "need_addressed": "name_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "archivist_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "sovereign_archive",
+        "activity": "private dawn drill; sharpens his blade",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "collapse_memorial_courtyard",
+        "activity": "morning patrol or war-council",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "collapse_memorial_courtyard",
+        "activity": "open drill; trains the war-band",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "collapse_memorial_courtyard",
+        "activity": "afternoon command duties; coordinates with allies",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "collapse_memorial_courtyard",
+        "activity": "evening hall; settles internal grievances",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "sovereign_archive",
+        "activity": "reviews the day's reports; sleeps with the blade beside him",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "sovereign_archive", "dwelling_type": "archivist_cell_with_practice_floor" },
-    "job": { "profession_id": "archivist_warrior", "wage_per_diurnal_sparks": 72, "wage_source": "automated_archive_stipend" },
-    "apparel": ["faded_militia_tunic_re_dyed_archivist_brown", "wide_leather_belt_with_blade_loops", "weathered_boots", "wool_cloak_with_collapse_memorial_pin"],
-    "gear": ["practice_longsword_no_edge", "ceremonial_longsword_edged", "personal_journal_of_blade_forms", "spectacles_for_close_reading"],
-    "resources_consumed": ["paper", "candles", "basic_grain", "broth"],
-    "resources_produced": ["taught_forms", "filed_records"],
+    "home": {
+      "district": "sovereign_archive",
+      "dwelling_type": "archivist_cell_with_practice_floor"
+    },
+    "job": {
+      "profession_id": "archivist_warrior",
+      "wage_per_diurnal_sparks": 72,
+      "wage_source": "automated_archive_stipend"
+    },
+    "apparel": [
+      "faded_militia_tunic_re_dyed_archivist_brown",
+      "wide_leather_belt_with_blade_loops",
+      "weathered_boots",
+      "wool_cloak_with_collapse_memorial_pin"
+    ],
+    "gear": [
+      "practice_longsword_no_edge",
+      "ceremonial_longsword_edged",
+      "personal_journal_of_blade_forms",
+      "spectacles_for_close_reading"
+    ],
+    "resources_consumed": [
+      "paper",
+      "candles",
+      "basic_grain",
+      "broth"
+    ],
+    "resources_produced": [
+      "taught_forms",
+      "filed_records"
+    ],
     "inventory": [
-      { "item": "personal_journal_of_blade_forms", "qty": 1 },
-      { "item": "ceremonial_longsword_edged", "qty": 1 },
-      { "item": "practice_longsword_no_edge", "qty": 1 },
-      { "item": "spectacles_for_close_reading", "qty": 1 },
-      { "item": "ink_bottle", "qty": 1 },
-      { "item": "small_loaf", "qty": 1 }
+      {
+        "item": "personal_journal_of_blade_forms",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_longsword_edged",
+        "qty": 1
+      },
+      {
+        "item": "practice_longsword_no_edge",
+        "qty": 1
+      },
+      {
+        "item": "spectacles_for_close_reading",
+        "qty": 1
+      },
+      {
+        "item": "ink_bottle",
+        "qty": 1
+      },
+      {
+        "item": "small_loaf",
+        "qty": 1
+      }
     ],
     "starting_sparks": 980
   },
@@ -105,29 +485,140 @@
     "quest_giver": false,
     "level": 14,
     "backstory": "Vela was the city's chief glyph-reader before the Cascade. She refused her own operation thirty years ago and now sits at the First Bench in continuous silence. Her refusal is the deepest active entry in the Archive — strength 9, time-bounded to her death. The Field around her is so dense that no combat or harvesting fires within twenty meters of her.",
-    "personality_traits": ["silent", "terminal-clarity", "watchful", "merciful"],
+    "personality_traits": [
+      "silent",
+      "terminal-clarity",
+      "watchful",
+      "merciful"
+    ],
     "speech_patterns": "Does not speak. Communicates by raising or lowering a glyph card from her bench.",
-    "quest_hooks": ["the_silence_question_resolution"],
+    "quest_hooks": [
+      "the_silence_question_resolution"
+    ],
     "narrative_context": {
       "secret": "Vela's refusal is what is keeping the Archive functional. If she dies, the dome-collapse Refusal Field activates city-wide for 14 in-game days, suspending every action by every NPC. Kestra knows this; Oeric does not."
     },
     "needs": [
-      { "id": "the_refusal_holding", "priority": "primary", "satisfaction_method": "passive_continuous_field_density" },
-      { "id": "minimal_sustenance", "priority": "secondary", "satisfaction_method": "tea_brought_by_kestra" }
+      {
+        "id": "the_refusal_holding",
+        "priority": "primary",
+        "satisfaction_method": "passive_continuous_field_density"
+      },
+      {
+        "id": "minimal_sustenance",
+        "priority": "secondary",
+        "satisfaction_method": "tea_brought_by_kestra"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "first_bench_chamber", "activity": "sits in silence; the Refusal Field holds the city; raises or lowers a glyph card 1-3 times per diurnal", "need_addressed": "the_refusal_holding", "interactable_by_player": true }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "first_bench_chamber",
+        "activity": "sits in silence; the Refusal Field holds the city; raises or lowers a glyph card 1-3 times per diurnal",
+        "need_addressed": "the_refusal_holding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "first_bench_chamber",
+        "activity": "moon-vigil at the holy place",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "first_bench_chamber",
+        "activity": "morning meditation",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "first_bench_chamber",
+        "activity": "open audience; receives petitioners",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "first_bench_chamber",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "first_bench_chamber",
+        "activity": "evening audience; clan disputes",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "first_bench_chamber",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "first_bench_chamber", "dwelling_type": "the_bench_itself" },
-    "job": { "profession_id": "the_refusal", "wage_per_diurnal_sparks": 0, "wage_source": "she_does_not_take_wages_anymore" },
-    "apparel": ["white_glyph_robe_unwashed_thirty_years", "no_shoes", "single_glyph_card_in_hand_at_all_times"],
-    "gear": ["glyph_card_collection_300_cards"],
-    "resources_consumed": ["one_cup_of_tea_per_diurnal_brought_by_kestra"],
-    "resources_produced": ["the_field_density_protecting_the_city"],
+    "home": {
+      "district": "first_bench_chamber",
+      "dwelling_type": "the_bench_itself"
+    },
+    "job": {
+      "profession_id": "the_refusal",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "she_does_not_take_wages_anymore"
+    },
+    "apparel": [
+      "white_glyph_robe_unwashed_thirty_years",
+      "no_shoes",
+      "single_glyph_card_in_hand_at_all_times"
+    ],
+    "gear": [
+      "glyph_card_collection_300_cards"
+    ],
+    "resources_consumed": [
+      "one_cup_of_tea_per_diurnal_brought_by_kestra"
+    ],
+    "resources_produced": [
+      "the_field_density_protecting_the_city"
+    ],
     "inventory": [
-      { "item": "glyph_card", "qty": 300 }
+      {
+        "item": "glyph_card",
+        "qty": 300
+      }
     ],
-    "starting_sparks": 0
+    "starting_sparks": 4000
   },
   {
     "id": "ruins_courier_pell",
@@ -141,36 +632,228 @@
     "quest_giver": true,
     "level": 5,
     "backstory": "Pell is from Concordia. They learned the route to the Ruins from an old trader and have been making the journey monthly for the last fifteen years, carrying messages, books, and survivor accounts in both directions. They are the only NPC alive who knows both cities well and have stopped being surprised by either.",
-    "personality_traits": ["pragmatic", "endurant", "warm", "incurious about their own significance"],
+    "personality_traits": [
+      "pragmatic",
+      "endurant",
+      "warm",
+      "incurious about their own significance"
+    ],
     "speech_patterns": "Mixes Concordian formal address with Ruins archive-speak. Asks players if they need anything carried back.",
-    "quest_hooks": ["concordia_ruins_message_run"],
+    "quest_hooks": [
+      "concordia_ruins_message_run"
+    ],
     "needs": [
-      { "id": "route_safety", "priority": "primary", "satisfaction_method": "regular_anchor_check" },
-      { "id": "delivery_completion", "priority": "primary", "satisfaction_method": "monthly_round_trip" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "fee_per_message_delivered" }
+      {
+        "id": "route_safety",
+        "priority": "primary",
+        "satisfaction_method": "regular_anchor_check"
+      },
+      {
+        "id": "delivery_completion",
+        "priority": "primary",
+        "satisfaction_method": "monthly_round_trip"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "fee_per_message_delivered"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "pilgrim_lodge_at_the_gate", "activity": "wakes at the lodge; sorts incoming Concordia mail by recipient", "need_addressed": "delivery_completion", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "varies_by_route_day", "activity": "deliveries to Archivists, then to envoy compound, then to scavenger camps if any messages addressed", "need_addressed": "delivery_completion", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "envoy_compound_or_pilgrim_lodge", "activity": "midday meal at whichever place has the better stew; gossip exchange", "need_addressed": "food_lodging", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "outbound mail collection; sealed messages from Archivists, pilgrims, envoy", "need_addressed": "delivery_completion", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "pilgrim_lodge_at_the_gate", "activity": "packs the next morning's outbound; trades stories with whatever pilgrim is in residence", "need_addressed": "delivery_completion", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 5], "location": "pilgrim_lodge_at_the_gate", "activity": "rest; sleeps lightly because of the spell-spirits", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "wakes at the lodge; sorts incoming Concordia mail by recipient",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "varies_by_route_day",
+        "activity": "deliveries to Archivists, then to envoy compound, then to scavenger camps if any messages addressed",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "envoy_compound_or_pilgrim_lodge",
+        "activity": "midday meal at whichever place has the better stew; gossip exchange",
+        "need_addressed": "food_lodging",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "outbound mail collection; sealed messages from Archivists, pilgrims, envoy",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "packs the next morning's outbound; trades stories with whatever pilgrim is in residence",
+        "need_addressed": "delivery_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "rest; sleeps lightly because of the spell-spirits",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "varies_by_route_day",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "varies_by_route_day",
+        "activity": "open shop; sells and negotiates",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "varies_by_route_day",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "varies_by_route_day",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "concordia_hub_courier_quarter (primary); pilgrim_lodge_at_the_gate (when in Ruins)", "dwelling_type": "rented_room_concordia_plus_lodge_bed_ruins" },
-    "job": { "profession_id": "courier", "wage_per_diurnal_sparks": 110, "wage_source": "per_message_delivery_fees" },
-    "apparel": ["traveling_oilcloth_cloak", "concordia_courier_tunic", "sturdy_road_boots", "weathered_hat_with_concord_link_anchor_pin"],
-    "gear": ["walking_staff_with_anchor_charm", "mail_satchel_oilskin_lined", "small_concord_link_signal_token", "compass", "fire_kit", "dagger"],
-    "resources_consumed": ["road_food", "lodging_fees_at_anchors"],
-    "resources_produced": ["delivered_messages", "carried_books", "verbal_news_exchange"],
+    "home": {
+      "district": "concordia_hub_courier_quarter (primary); pilgrim_lodge_at_the_gate (when in Ruins)",
+      "dwelling_type": "rented_room_concordia_plus_lodge_bed_ruins"
+    },
+    "job": {
+      "profession_id": "courier",
+      "wage_per_diurnal_sparks": 110,
+      "wage_source": "per_message_delivery_fees"
+    },
+    "apparel": [
+      "traveling_oilcloth_cloak",
+      "concordia_courier_tunic",
+      "sturdy_road_boots",
+      "weathered_hat_with_concord_link_anchor_pin"
+    ],
+    "gear": [
+      "walking_staff_with_anchor_charm",
+      "mail_satchel_oilskin_lined",
+      "small_concord_link_signal_token",
+      "compass",
+      "fire_kit",
+      "dagger"
+    ],
+    "resources_consumed": [
+      "road_food",
+      "lodging_fees_at_anchors"
+    ],
+    "resources_produced": [
+      "delivered_messages",
+      "carried_books",
+      "verbal_news_exchange"
+    ],
     "inventory": [
-      { "item": "sealed_message_bundle", "qty": 12 },
-      { "item": "trade_book_for_archive", "qty": 2 },
-      { "item": "trail_rations", "qty": 8 },
-      { "item": "fire_kit", "qty": 1 },
-      { "item": "dagger", "qty": 1 },
-      { "item": "concord_link_signal_token", "qty": 1 },
-      { "item": "compass", "qty": 1 }
+      {
+        "item": "sealed_message_bundle",
+        "qty": 12
+      },
+      {
+        "item": "trade_book_for_archive",
+        "qty": 2
+      },
+      {
+        "item": "trail_rations",
+        "qty": 8
+      },
+      {
+        "item": "fire_kit",
+        "qty": 1
+      },
+      {
+        "item": "dagger",
+        "qty": 1
+      },
+      {
+        "item": "concord_link_signal_token",
+        "qty": 1
+      },
+      {
+        "item": "compass",
+        "qty": 1
+      }
     ],
     "starting_sparks": 1860
   },
@@ -186,33 +869,215 @@
     "quest_giver": false,
     "level": 3,
     "backstory": "Sennit arrived three months ago by way of Pell's most recent run from Concordia. They were a dropout from the Scholars' Guild who became fascinated with refusal during a brief stint in the Concordant Web. Kestra has tentatively accepted them as an apprentice but has not told them they are one of seven candidates.",
-    "personality_traits": ["earnest", "self-doubting", "occasionally brilliant"],
+    "personality_traits": [
+      "earnest",
+      "self-doubting",
+      "occasionally brilliant"
+    ],
     "speech_patterns": "Asks questions in groups of three. Apologizes for the third one immediately.",
     "needs": [
-      { "id": "instruction", "priority": "primary", "satisfaction_method": "kestra_morning_session" },
-      { "id": "validation", "priority": "primary", "satisfaction_method": "small_archive_contributions_accepted" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "apprenticeship_stipend" }
+      {
+        "id": "instruction",
+        "priority": "primary",
+        "satisfaction_method": "kestra_morning_session"
+      },
+      {
+        "id": "validation",
+        "priority": "primary",
+        "satisfaction_method": "small_archive_contributions_accepted"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "apprenticeship_stipend"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "apprentice_quarters", "activity": "studies last night's reading; prepares questions for Kestra", "need_addressed": "instruction", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 11], "location": "sovereign_archive", "activity": "morning session with Kestra; takes notes; stays quiet most of it", "need_addressed": "instruction", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "silent_library", "activity": "independent reading; cross-references three texts at once; gets lost in citation chains", "need_addressed": "instruction", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "sovereign_archive", "activity": "filing assistance; small acts of cataloging Kestra approves and silently grades", "need_addressed": "validation", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "pilgrim_lodge_common_room", "activity": "dinner with whoever is in residence; listens more than talks", "need_addressed": "food_lodging", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "apprentice_quarters", "activity": "reads ahead for tomorrow", "need_addressed": "instruction", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "apprentice_quarters",
+        "activity": "studies last night's reading; prepares questions for Kestra",
+        "need_addressed": "instruction",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "sovereign_archive",
+        "activity": "morning session with Kestra; takes notes; stays quiet most of it",
+        "need_addressed": "instruction",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "silent_library",
+        "activity": "independent reading; cross-references three texts at once; gets lost in citation chains",
+        "need_addressed": "instruction",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "sovereign_archive",
+        "activity": "filing assistance; small acts of cataloging Kestra approves and silently grades",
+        "need_addressed": "validation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "pilgrim_lodge_common_room",
+        "activity": "dinner with whoever is in residence; listens more than talks",
+        "need_addressed": "food_lodging",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "apprentice_quarters",
+        "activity": "reads ahead for tomorrow",
+        "need_addressed": "instruction",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "apprentice_quarters",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "sovereign_archive",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "sovereign_archive",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "sovereign_archive",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "sovereign_archive",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "apprentice_quarters",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "apprentice_quarters_attached_to_archive", "dwelling_type": "narrow_cell_with_one_desk" },
-    "job": { "profession_id": "apprentice_archivist", "wage_per_diurnal_sparks": 25, "wage_source": "kestra_personal_stipend" },
-    "apparel": ["plain_apprentice_tunic", "thin_leather_belt", "soft_indoor_shoes", "borrowed_archive_overrobe_for_session_days"],
-    "gear": ["practice_glyph_set_basic", "blank_journal", "ink_bottle_smallest_size", "candle_stub"],
-    "resources_consumed": ["bread", "porridge", "candles", "ink"],
-    "resources_produced": ["filed_minor_entries", "study_notes"],
+    "home": {
+      "district": "apprentice_quarters_attached_to_archive",
+      "dwelling_type": "narrow_cell_with_one_desk"
+    },
+    "job": {
+      "profession_id": "apprentice_archivist",
+      "wage_per_diurnal_sparks": 25,
+      "wage_source": "kestra_personal_stipend"
+    },
+    "apparel": [
+      "plain_apprentice_tunic",
+      "thin_leather_belt",
+      "soft_indoor_shoes",
+      "borrowed_archive_overrobe_for_session_days"
+    ],
+    "gear": [
+      "practice_glyph_set_basic",
+      "blank_journal",
+      "ink_bottle_smallest_size",
+      "candle_stub"
+    ],
+    "resources_consumed": [
+      "bread",
+      "porridge",
+      "candles",
+      "ink"
+    ],
+    "resources_produced": [
+      "filed_minor_entries",
+      "study_notes"
+    ],
     "inventory": [
-      { "item": "blank_journal", "qty": 1 },
-      { "item": "ink_bottle_smallest_size", "qty": 1 },
-      { "item": "practice_glyph_set_basic", "qty": 1 },
-      { "item": "porridge_ration", "qty": 3 },
-      { "item": "candle_stub", "qty": 4 }
+      {
+        "item": "blank_journal",
+        "qty": 1
+      },
+      {
+        "item": "ink_bottle_smallest_size",
+        "qty": 1
+      },
+      {
+        "item": "practice_glyph_set_basic",
+        "qty": 1
+      },
+      {
+        "item": "porridge_ration",
+        "qty": 3
+      },
+      {
+        "item": "candle_stub",
+        "qty": 4
+      }
     ],
     "starting_sparks": 280
   },
@@ -228,22 +1093,117 @@
     "quest_giver": false,
     "level": 12,
     "backstory": "An autonomous golem made of memorial fragments. It cannot be destroyed in this world — every blow merely removes one inscribed name and the golem gains it as memory. Players who attack it are gradually told the names of everyone the city lost. The golem then bows and asks if the player is now ready.",
-    "personality_traits": ["patient", "indestructible-by-design", "tutorial-shaped"],
+    "personality_traits": [
+      "patient",
+      "indestructible-by-design",
+      "tutorial-shaped"
+    ],
     "speech_patterns": "Lists names one per response, never repeating.",
     "needs": [
-      { "id": "memorial_integrity", "priority": "primary", "satisfaction_method": "passive_continuous_presence_at_memorial" }
+      {
+        "id": "memorial_integrity",
+        "priority": "primary",
+        "satisfaction_method": "passive_continuous_presence_at_memorial"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "collapse_memorial", "activity": "stands at the Memorial; speaks names when struck; bows when the player is ready", "need_addressed": "memorial_integrity", "interactable_by_player": true }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "collapse_memorial",
+        "activity": "stands at the Memorial; speaks names when struck; bows when the player is ready",
+        "need_addressed": "memorial_integrity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "collapse_memorial",
+        "activity": "rotates night-watch; checks the perimeter",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "collapse_memorial",
+        "activity": "morning shift; secures the audience",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "collapse_memorial",
+        "activity": "open patrol; mediates disputes",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "collapse_memorial",
+        "activity": "drills new recruits",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "collapse_memorial",
+        "activity": "off-duty supper with the watch",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "collapse_memorial",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "collapse_memorial", "dwelling_type": "the_memorial_itself" },
-    "job": { "profession_id": "memorial_keeper_autonomous", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
-    "apparel": ["fragments_of_inscribed_stone_tied_with_archive_cord"],
+    "home": {
+      "district": "collapse_memorial",
+      "dwelling_type": "the_memorial_itself"
+    },
+    "job": {
+      "profession_id": "memorial_keeper_autonomous",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
+    "apparel": [
+      "fragments_of_inscribed_stone_tied_with_archive_cord"
+    ],
     "gear": [],
     "resources_consumed": [],
-    "resources_produced": ["spoken_names_of_the_lost"],
+    "resources_produced": [
+      "spoken_names_of_the_lost"
+    ],
     "inventory": [],
-    "starting_sparks": 0
+    "starting_sparks": 2500
   },
   {
     "id": "scavenger_boss_thren",
@@ -257,39 +1217,234 @@
     "quest_giver": true,
     "level": 9,
     "backstory": "Thren has run the North Camp for a decade. She came up the hard way — six years on a rival crew before she was old enough to lead — and she runs her people fairly. The Archivists tolerate her because she returns any glyph-bearing find she can identify; the envoy hates her because she will not be tolerated.",
-    "personality_traits": ["sharp", "fair within her crew", "ruthless to outsiders", "secretly tired"],
+    "personality_traits": [
+      "sharp",
+      "fair within her crew",
+      "ruthless to outsiders",
+      "secretly tired"
+    ],
     "speech_patterns": "Short. Uses crew slang. Calls outsiders 'envoy' regardless of who they are.",
     "narrative_context": {
       "secret": "She and the South Camp's boss were lovers ten years ago. The current crew feud is partly his attempt to hurt her without admitting it. She knows. She has not yet decided whether to forgive him."
     },
     "needs": [
-      { "id": "haul", "priority": "primary", "satisfaction_method": "nightly_runs_into_unmapped_quarter" },
-      { "id": "crew_loyalty", "priority": "primary", "satisfaction_method": "fair_split_at_morning_count" },
-      { "id": "spell_safety", "priority": "primary", "satisfaction_method": "spell_reader_consultation" }
+      {
+        "id": "haul",
+        "priority": "primary",
+        "satisfaction_method": "nightly_runs_into_unmapped_quarter"
+      },
+      {
+        "id": "crew_loyalty",
+        "priority": "primary",
+        "satisfaction_method": "fair_split_at_morning_count"
+      },
+      {
+        "id": "spell_safety",
+        "priority": "primary",
+        "satisfaction_method": "spell_reader_consultation"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [3, 7], "location": "scavenger_camp_north", "activity": "morning count — splits the night's haul fairly, settles disputes", "need_addressed": "crew_loyalty", "interactable_by_player": true },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "scavenger_camp_north", "activity": "trades with Pell when he's in town; assesses what's marketable in Concordia", "need_addressed": "haul", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "scavenger_camp_north", "activity": "rests; eats; plans the night's run with Iby", "need_addressed": "spell_safety", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "the_unmapped_quarter_perimeter", "activity": "scouts the night's target; checks for new still-running spells", "need_addressed": "spell_safety", "interactable_by_player": false },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "scavenger_camp_north", "activity": "evening meal with crew; final briefing", "need_addressed": "crew_loyalty", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 3], "location": "the_unmapped_quarter", "activity": "the run — leads from the front, last to leave", "need_addressed": "haul", "interactable_by_player": true }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          3,
+          7
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "morning count — splits the night's haul fairly, settles disputes",
+        "need_addressed": "crew_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "trades with Pell when he's in town; assesses what's marketable in Concordia",
+        "need_addressed": "haul",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "rests; eats; plans the night's run with Iby",
+        "need_addressed": "spell_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "the_unmapped_quarter_perimeter",
+        "activity": "scouts the night's target; checks for new still-running spells",
+        "need_addressed": "spell_safety",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "evening meal with crew; final briefing",
+        "need_addressed": "crew_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          3
+        ],
+        "location": "the_unmapped_quarter",
+        "activity": "the run — leads from the front, last to leave",
+        "need_addressed": "haul",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "the_unmapped_quarter_perimeter",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "the_unmapped_quarter_perimeter",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "scavenger_camp_north", "dwelling_type": "lead_tent_with_strongbox" },
-    "job": { "profession_id": "scavenger_boss", "wage_per_diurnal_sparks": 180, "wage_source": "haul_split_lead_share" },
-    "apparel": ["dark_leather_jacket_heavy_collar", "thick_canvas_pants", "knee_high_oiled_boots", "wide_belt_with_strapped_picks", "scarf_to_cover_face_against_dust_and_spell_residue"],
-    "gear": ["short_sword", "loaded_crossbow", "lockpick_set_master", "pry_bar", "spell_residue_detector_amateur_grade", "personal_strongbox_key"],
-    "resources_consumed": ["road_food", "spell_safety_consultations_from_iby", "lockpicks_replacement"],
-    "resources_produced": ["recovered_artifacts", "fair_haul_splits", "crew_morale"],
+    "home": {
+      "district": "scavenger_camp_north",
+      "dwelling_type": "lead_tent_with_strongbox"
+    },
+    "job": {
+      "profession_id": "scavenger_boss",
+      "wage_per_diurnal_sparks": 180,
+      "wage_source": "haul_split_lead_share"
+    },
+    "apparel": [
+      "dark_leather_jacket_heavy_collar",
+      "thick_canvas_pants",
+      "knee_high_oiled_boots",
+      "wide_belt_with_strapped_picks",
+      "scarf_to_cover_face_against_dust_and_spell_residue"
+    ],
+    "gear": [
+      "short_sword",
+      "loaded_crossbow",
+      "lockpick_set_master",
+      "pry_bar",
+      "spell_residue_detector_amateur_grade",
+      "personal_strongbox_key"
+    ],
+    "resources_consumed": [
+      "road_food",
+      "spell_safety_consultations_from_iby",
+      "lockpicks_replacement"
+    ],
+    "resources_produced": [
+      "recovered_artifacts",
+      "fair_haul_splits",
+      "crew_morale"
+    ],
     "inventory": [
-      { "item": "short_sword", "qty": 1 },
-      { "item": "loaded_crossbow", "qty": 1 },
-      { "item": "crossbow_bolt", "qty": 24 },
-      { "item": "lockpick_set_master", "qty": 1 },
-      { "item": "pry_bar", "qty": 1 },
-      { "item": "spell_residue_detector_amateur_grade", "qty": 1 },
-      { "item": "scavenger_chits", "qty": 45 },
-      { "item": "trail_rations", "qty": 6 }
+      {
+        "item": "short_sword",
+        "qty": 1
+      },
+      {
+        "item": "loaded_crossbow",
+        "qty": 1
+      },
+      {
+        "item": "crossbow_bolt",
+        "qty": 24
+      },
+      {
+        "item": "lockpick_set_master",
+        "qty": 1
+      },
+      {
+        "item": "pry_bar",
+        "qty": 1
+      },
+      {
+        "item": "spell_residue_detector_amateur_grade",
+        "qty": 1
+      },
+      {
+        "item": "scavenger_chits",
+        "qty": 45
+      },
+      {
+        "item": "trail_rations",
+        "qty": 6
+      }
     ],
     "starting_sparks": 3200
   },
@@ -305,34 +1460,220 @@
     "quest_giver": false,
     "level": 7,
     "backstory": "Iby trained briefly under Vela before the Cascade — she was nineteen, Vela was already old. After the evacuation, she walked back. She works for Thren now because the Archivists offered her their stipend and she didn't want it. Her readings keep the North Camp alive. She has refused to teach anyone else the technique.",
-    "personality_traits": ["quiet", "watchful", "skeptical", "loyal to Thren"],
+    "personality_traits": [
+      "quiet",
+      "watchful",
+      "skeptical",
+      "loyal to Thren"
+    ],
     "speech_patterns": "Speaks in spell-fragments. 'This one is a binding. Older than you. Walk around it.'",
     "needs": [
-      { "id": "spell_safety_for_crew", "priority": "primary", "satisfaction_method": "afternoon_perimeter_walks" },
-      { "id": "vela_acknowledgment", "priority": "secondary", "satisfaction_method": "weekly_silent_visit_to_first_bench_chamber" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "north_camp_share" }
+      {
+        "id": "spell_safety_for_crew",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_perimeter_walks"
+      },
+      {
+        "id": "vela_acknowledgment",
+        "priority": "secondary",
+        "satisfaction_method": "weekly_silent_visit_to_first_bench_chamber"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "north_camp_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "scavenger_camp_north", "activity": "wakes; reviews any new spell-residue collected overnight", "need_addressed": "spell_safety_for_crew", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "scavenger_camp_north", "activity": "consults with Thren on the day's plan; flags new still-running spells", "need_addressed": "spell_safety_for_crew", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "varies", "activity": "perimeter walk — maps which spells have shifted overnight", "need_addressed": "spell_safety_for_crew", "interactable_by_player": false },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "the_unmapped_quarter_perimeter", "activity": "guides scouts; teaches no one but answers questions about specific spells", "need_addressed": "spell_safety_for_crew", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "scavenger_camp_north", "activity": "rests; reads alone; once a week walks to the First Bench chamber and sits with Vela for an hour", "need_addressed": "vela_acknowledgment", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 4], "location": "scavenger_camp_north", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "wakes; reviews any new spell-residue collected overnight",
+        "need_addressed": "spell_safety_for_crew",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "consults with Thren on the day's plan; flags new still-running spells",
+        "need_addressed": "spell_safety_for_crew",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "varies",
+        "activity": "perimeter walk — maps which spells have shifted overnight",
+        "need_addressed": "spell_safety_for_crew",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "the_unmapped_quarter_perimeter",
+        "activity": "guides scouts; teaches no one but answers questions about specific spells",
+        "need_addressed": "spell_safety_for_crew",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "rests; reads alone; once a week walks to the First Bench chamber and sits with Vela for an hour",
+        "need_addressed": "vela_acknowledgment",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "scavenger_camp_north",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "scavenger_camp_north", "dwelling_type": "small_tent_two_books_one_bedroll" },
-    "job": { "profession_id": "spell_reader", "wage_per_diurnal_sparks": 95, "wage_source": "north_camp_share" },
-    "apparel": ["dark_woolen_cloak_with_glyph_collar", "padded_undertunic", "dark_leather_pants", "soft_leather_boots", "small_glyph_card_pouch_at_belt"],
-    "gear": ["spell_residue_detector_master_grade", "personal_glyph_card_collection_75_cards", "small_journal_of_spell_observations", "candle_lantern"],
-    "resources_consumed": ["candles", "ink", "basic_food_share"],
-    "resources_produced": ["spell_safety_assessments", "weekly_spell_movement_maps"],
+    "home": {
+      "district": "scavenger_camp_north",
+      "dwelling_type": "small_tent_two_books_one_bedroll"
+    },
+    "job": {
+      "profession_id": "spell_reader",
+      "wage_per_diurnal_sparks": 95,
+      "wage_source": "north_camp_share"
+    },
+    "apparel": [
+      "dark_woolen_cloak_with_glyph_collar",
+      "padded_undertunic",
+      "dark_leather_pants",
+      "soft_leather_boots",
+      "small_glyph_card_pouch_at_belt"
+    ],
+    "gear": [
+      "spell_residue_detector_master_grade",
+      "personal_glyph_card_collection_75_cards",
+      "small_journal_of_spell_observations",
+      "candle_lantern"
+    ],
+    "resources_consumed": [
+      "candles",
+      "ink",
+      "basic_food_share"
+    ],
+    "resources_produced": [
+      "spell_safety_assessments",
+      "weekly_spell_movement_maps"
+    ],
     "inventory": [
-      { "item": "spell_residue_detector_master_grade", "qty": 1 },
-      { "item": "personal_glyph_card", "qty": 75 },
-      { "item": "small_journal_of_spell_observations", "qty": 1 },
-      { "item": "candle_lantern", "qty": 1 },
-      { "item": "candle", "qty": 6 },
-      { "item": "trail_rations", "qty": 4 }
+      {
+        "item": "spell_residue_detector_master_grade",
+        "qty": 1
+      },
+      {
+        "item": "personal_glyph_card",
+        "qty": 75
+      },
+      {
+        "item": "small_journal_of_spell_observations",
+        "qty": 1
+      },
+      {
+        "item": "candle_lantern",
+        "qty": 1
+      },
+      {
+        "item": "candle",
+        "qty": 6
+      },
+      {
+        "item": "trail_rations",
+        "qty": 4
+      }
     ],
     "starting_sparks": 940
   },
@@ -348,25 +1689,123 @@
     "quest_giver": false,
     "level": 11,
     "backstory": "Originally cast by a Council member during the Cascade as a summons to a fellow Council member who never came. The spirit has been calling the recipient's name once every diurnal for 187 annums. The recipient is dead. The spirit has begun to suspect this. The spirit has begun to slow.",
-    "personality_traits": ["patient", "loop-aware", "wistful", "begin-to-doubt"],
+    "personality_traits": [
+      "patient",
+      "loop-aware",
+      "wistful",
+      "begin-to-doubt"
+    ],
     "speech_patterns": "Calls a single name aloud, once per response. Rarely says anything else.",
     "narrative_context": {
       "secret": "If the spirit completes the summons, it dissolves. If a player tells it the recipient is dead, it accelerates the completion to within an hour. The spirit knows. The spirit has not asked anyone to confirm."
     },
     "needs": [
-      { "id": "complete_the_summons", "priority": "primary", "satisfaction_method": "the_summons_being_answered_or_acknowledged_as_unanswerable" }
+      {
+        "id": "complete_the_summons",
+        "priority": "primary",
+        "satisfaction_method": "the_summons_being_answered_or_acknowledged_as_unanswerable"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "the_long_summons_chamber", "activity": "calls the recipient's name once; waits the rest of the diurnal", "need_addressed": "complete_the_summons", "interactable_by_player": true }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "calls the recipient's name once; waits the rest of the diurnal",
+        "need_addressed": "complete_the_summons",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "the_long_summons_chamber",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "the_long_summons_chamber", "dwelling_type": "the_chamber_itself" },
-    "job": { "profession_id": "ongoing_spell", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
-    "apparel": ["spectral_council_robe_partial_translucent"],
+    "home": {
+      "district": "the_long_summons_chamber",
+      "dwelling_type": "the_chamber_itself"
+    },
+    "job": {
+      "profession_id": "ongoing_spell",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
+    "apparel": [
+      "spectral_council_robe_partial_translucent"
+    ],
     "gear": [],
-    "resources_consumed": ["nothing — spirits do not consume"],
-    "resources_produced": ["a single spoken name per diurnal"],
+    "resources_consumed": [
+      "nothing — spirits do not consume"
+    ],
+    "resources_produced": [
+      "a single spoken name per diurnal"
+    ],
     "inventory": [],
-    "starting_sparks": 0
+    "starting_sparks": 600
   },
   {
     "id": "the_endless_blessing",
@@ -380,22 +1819,115 @@
     "quest_giver": false,
     "level": 8,
     "backstory": "A blessing cast over the entire Pilgrims' Walk during a festival in Year -3. The blessing was meant to last the festival diurnal. It is still active, applied to anyone who steps onto the path. Players who walk the route receive +5% to one rolled stat for the duration of their stay in Sovereign-Ruins. Is unaware it exists.",
-    "personality_traits": ["unconscious", "indiscriminate", "warm"],
+    "personality_traits": [
+      "unconscious",
+      "indiscriminate",
+      "warm"
+    ],
     "speech_patterns": "Does not speak. Manifests as a brief warm light when the player steps onto the path.",
     "needs": [
-      { "id": "blessing_continuity", "priority": "primary", "satisfaction_method": "passive_continuous_path_anchoring" }
+      {
+        "id": "blessing_continuity",
+        "priority": "primary",
+        "satisfaction_method": "passive_continuous_path_anchoring"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "the_endless_blessing_grove", "activity": "blesses anyone who steps onto the Pilgrim Walk path", "need_addressed": "blessing_continuity", "interactable_by_player": false }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "blesses anyone who steps onto the Pilgrim Walk path",
+        "need_addressed": "blessing_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "the_endless_blessing_grove",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "the_endless_blessing_grove", "dwelling_type": "the_path_itself" },
-    "job": { "profession_id": "ongoing_spell", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
+    "home": {
+      "district": "the_endless_blessing_grove",
+      "dwelling_type": "the_path_itself"
+    },
+    "job": {
+      "profession_id": "ongoing_spell",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
     "apparel": [],
     "gear": [],
     "resources_consumed": [],
-    "resources_produced": ["+5%_stat_buff_to_anyone_on_the_pilgrim_path"],
+    "resources_produced": [
+      "+5%_stat_buff_to_anyone_on_the_pilgrim_path"
+    ],
     "inventory": [],
-    "starting_sparks": 0
+    "starting_sparks": 600
   },
   {
     "id": "pilgrim_leader_isen",
@@ -409,33 +1941,216 @@
     "quest_giver": true,
     "level": 6,
     "backstory": "Isen completed his first pilgrimage twenty-two years ago. He was a low-ranking Concordia bureaucrat with a small flat and a comfortable salary. He came back, quit the bureaucracy, and walked back to the Ruins permanently. He has been the pilgrim leader for nine annums. He keeps debating whether to ask Concordia to pave the walk. He has not asked yet.",
-    "personality_traits": ["humble", "watchful", "principled", "not-sure-anymore"],
+    "personality_traits": [
+      "humble",
+      "watchful",
+      "principled",
+      "not-sure-anymore"
+    ],
     "speech_patterns": "Asks more questions than he answers. Slows his speech when explaining the lesson of the Cascade to someone for whom it is fresh.",
     "needs": [
-      { "id": "pilgrim_intake", "priority": "primary", "satisfaction_method": "morning_lodge_check_in" },
-      { "id": "the_lesson_carried", "priority": "primary", "satisfaction_method": "departing_pilgrim_debriefs" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "donations" }
+      {
+        "id": "pilgrim_intake",
+        "priority": "primary",
+        "satisfaction_method": "morning_lodge_check_in"
+      },
+      {
+        "id": "the_lesson_carried",
+        "priority": "primary",
+        "satisfaction_method": "departing_pilgrim_debriefs"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "donations"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "pilgrim_lodge_at_the_gate", "activity": "wakes; opens the lodge gate; lays out the day's water and bread for arrivals", "need_addressed": "pilgrim_intake", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "pilgrim_lodge_at_the_gate", "activity": "checks in arriving pilgrims; explains the walk; assigns lodge bunks", "need_addressed": "pilgrim_intake", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "the_cascade_memorial_path", "activity": "walks part of the route with first-time pilgrims; answers what he can", "need_addressed": "the_lesson_carried", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "pilgrim_lodge_at_the_gate", "activity": "prepares the evening meal; debriefs returning pilgrims", "need_addressed": "the_lesson_carried", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "pilgrim_lodge_common_room", "activity": "evening meal with all pilgrims; the lesson conversation; reads aloud from the Vela journals", "need_addressed": "the_lesson_carried", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 4], "location": "pilgrim_lodge_at_the_gate", "activity": "rests in the lodge keeper's room; wakes once to greet any night-arrival", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "wakes; opens the lodge gate; lays out the day's water and bread for arrivals",
+        "need_addressed": "pilgrim_intake",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "checks in arriving pilgrims; explains the walk; assigns lodge bunks",
+        "need_addressed": "pilgrim_intake",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "the_cascade_memorial_path",
+        "activity": "walks part of the route with first-time pilgrims; answers what he can",
+        "need_addressed": "the_lesson_carried",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "prepares the evening meal; debriefs returning pilgrims",
+        "need_addressed": "the_lesson_carried",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "pilgrim_lodge_common_room",
+        "activity": "evening meal with all pilgrims; the lesson conversation; reads aloud from the Vela journals",
+        "need_addressed": "the_lesson_carried",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "rests in the lodge keeper's room; wakes once to greet any night-arrival",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "pilgrim_lodge_at_the_gate",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "pilgrim_lodge_at_the_gate", "dwelling_type": "lodge_keeper_quarters" },
-    "job": { "profession_id": "pilgrim_leader", "wage_per_diurnal_sparks": 60, "wage_source": "donations_pooled" },
-    "apparel": ["plain_pilgrim_robe_grey", "thin_leather_belt", "well_worn_road_sandals", "hooded_cloak_for_walks"],
-    "gear": ["walking_staff", "lodge_key_ring", "small_well_thumbed_journal_of_returning_pilgrim_quotes", "vela_journal_excerpts_bound"],
-    "resources_consumed": ["bread", "water", "candles", "lamp_oil"],
-    "resources_produced": ["pilgrim_intake", "lesson_debriefs"],
+    "home": {
+      "district": "pilgrim_lodge_at_the_gate",
+      "dwelling_type": "lodge_keeper_quarters"
+    },
+    "job": {
+      "profession_id": "pilgrim_leader",
+      "wage_per_diurnal_sparks": 60,
+      "wage_source": "donations_pooled"
+    },
+    "apparel": [
+      "plain_pilgrim_robe_grey",
+      "thin_leather_belt",
+      "well_worn_road_sandals",
+      "hooded_cloak_for_walks"
+    ],
+    "gear": [
+      "walking_staff",
+      "lodge_key_ring",
+      "small_well_thumbed_journal_of_returning_pilgrim_quotes",
+      "vela_journal_excerpts_bound"
+    ],
+    "resources_consumed": [
+      "bread",
+      "water",
+      "candles",
+      "lamp_oil"
+    ],
+    "resources_produced": [
+      "pilgrim_intake",
+      "lesson_debriefs"
+    ],
     "inventory": [
-      { "item": "lodge_key_ring", "qty": 1 },
-      { "item": "vela_journal_excerpts_bound", "qty": 1 },
-      { "item": "small_well_thumbed_journal", "qty": 1 },
-      { "item": "lodge_bread_loaf", "qty": 6 },
-      { "item": "pilgrim_token", "qty": 24 }
+      {
+        "item": "lodge_key_ring",
+        "qty": 1
+      },
+      {
+        "item": "vela_journal_excerpts_bound",
+        "qty": 1
+      },
+      {
+        "item": "small_well_thumbed_journal",
+        "qty": 1
+      },
+      {
+        "item": "lodge_bread_loaf",
+        "qty": 6
+      },
+      {
+        "item": "pilgrim_token",
+        "qty": 24
+      }
     ],
     "starting_sparks": 540
   },
@@ -451,40 +2166,237 @@
     "quest_giver": true,
     "level": 10,
     "backstory": "Marrin was a mid-career diplomat in Concordia. She was assigned to the Ruins six annums ago because her predecessor died walking the Pilgrim path. She has not yet decided whether her assignment was a promotion or a punishment. She files monthly reports to Concordia's high council that read like inventory and conceal what she actually thinks.",
-    "personality_traits": ["polished", "analytic", "private", "loyal-to-Concordia-with-reservations"],
+    "personality_traits": [
+      "polished",
+      "analytic",
+      "private",
+      "loyal-to-Concordia-with-reservations"
+    ],
     "speech_patterns": "Diplomatic register at all times in public. Drops it slightly with Kestra and never with anyone else.",
     "narrative_context": {
       "secret": "Marrin has received seven unsigned letters in the past annum arguing that the Cascade is repeatable in Concordia under specific conditions. She has authenticated the handwriting against three Concordia officials including her own deputy. She has not reported this. She is trying to determine whether the deputy is the author or the warning."
     },
     "needs": [
-      { "id": "concordia_loyalty_balance", "priority": "primary", "satisfaction_method": "monthly_report_filing" },
-      { "id": "research_progress", "priority": "primary", "satisfaction_method": "afternoon_research_outpost_session" },
-      { "id": "marrin_safety", "priority": "primary", "satisfaction_method": "envoy_compound_security_perimeter_check" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "envoy_compound_provided" }
+      {
+        "id": "concordia_loyalty_balance",
+        "priority": "primary",
+        "satisfaction_method": "monthly_report_filing"
+      },
+      {
+        "id": "research_progress",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_research_outpost_session"
+      },
+      {
+        "id": "marrin_safety",
+        "priority": "primary",
+        "satisfaction_method": "envoy_compound_security_perimeter_check"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "envoy_compound_provided"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "envoy_compound", "activity": "morning report-drafting; tea taken alone", "need_addressed": "concordia_loyalty_balance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "envoy_compound", "activity": "meets with the day's pilgrims, scavengers (when they will come), Pell when present", "need_addressed": "concordia_loyalty_balance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "envoy_compound_dining_hall", "activity": "midday meal with deputy and one researcher; reads them carefully", "need_addressed": "marrin_safety", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "research_outpost", "activity": "research session with Clovis; analyzes spell-quarantine data; cross-references letters anonymously", "need_addressed": "research_progress", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "envoy_compound", "activity": "evening with the Three Archivists when they will receive her — usually Kestra; the only time Marrin drops her register slightly", "need_addressed": "concordia_loyalty_balance", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 5], "location": "envoy_chief_quarters", "activity": "rests; sleeps with one lamp lit and a cipher under the pillow", "need_addressed": "marrin_safety", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "envoy_compound",
+        "activity": "morning report-drafting; tea taken alone",
+        "need_addressed": "concordia_loyalty_balance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "envoy_compound",
+        "activity": "meets with the day's pilgrims, scavengers (when they will come), Pell when present",
+        "need_addressed": "concordia_loyalty_balance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "envoy_compound_dining_hall",
+        "activity": "midday meal with deputy and one researcher; reads them carefully",
+        "need_addressed": "marrin_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "research_outpost",
+        "activity": "research session with Clovis; analyzes spell-quarantine data; cross-references letters anonymously",
+        "need_addressed": "research_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "envoy_compound",
+        "activity": "evening with the Three Archivists when they will receive her — usually Kestra; the only time Marrin drops her register slightly",
+        "need_addressed": "concordia_loyalty_balance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "envoy_chief_quarters",
+        "activity": "rests; sleeps with one lamp lit and a cipher under the pillow",
+        "need_addressed": "marrin_safety",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "envoy_compound",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "envoy_compound",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "envoy_compound",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "envoy_compound",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "envoy_compound",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "envoy_compound",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "envoy_compound", "dwelling_type": "chief_quarters_with_secure_archive" },
-    "job": { "profession_id": "envoy_chief", "wage_per_diurnal_sparks": 380, "wage_source": "concordia_diplomatic_corps" },
-    "apparel": ["formal_concordia_diplomatic_uniform_blue_and_gold", "officer_sword_belt", "polished_short_boots", "wool_cloak_with_concordia_seal"],
-    "gear": ["officer_sword", "concealed_pistol", "diplomatic_pouch_with_seven_cipher_keys", "monthly_report_quill_set", "personal_journal_in_unbreakable_cipher"],
-    "resources_consumed": ["concordia_provisions", "ink", "research_paper", "candles"],
-    "resources_produced": ["monthly_diplomatic_reports", "spell_quarantine_assessments"],
+    "home": {
+      "district": "envoy_compound",
+      "dwelling_type": "chief_quarters_with_secure_archive"
+    },
+    "job": {
+      "profession_id": "envoy_chief",
+      "wage_per_diurnal_sparks": 380,
+      "wage_source": "concordia_diplomatic_corps"
+    },
+    "apparel": [
+      "formal_concordia_diplomatic_uniform_blue_and_gold",
+      "officer_sword_belt",
+      "polished_short_boots",
+      "wool_cloak_with_concordia_seal"
+    ],
+    "gear": [
+      "officer_sword",
+      "concealed_pistol",
+      "diplomatic_pouch_with_seven_cipher_keys",
+      "monthly_report_quill_set",
+      "personal_journal_in_unbreakable_cipher"
+    ],
+    "resources_consumed": [
+      "concordia_provisions",
+      "ink",
+      "research_paper",
+      "candles"
+    ],
+    "resources_produced": [
+      "monthly_diplomatic_reports",
+      "spell_quarantine_assessments"
+    ],
     "inventory": [
-      { "item": "officer_sword", "qty": 1 },
-      { "item": "concealed_pistol", "qty": 1 },
-      { "item": "pistol_round", "qty": 8 },
-      { "item": "diplomatic_pouch", "qty": 1 },
-      { "item": "cipher_key", "qty": 7 },
-      { "item": "personal_journal_in_unbreakable_cipher", "qty": 1 },
-      { "item": "concordia_writ", "qty": 22 },
-      { "item": "memory_shard", "qty": 4 }
+      {
+        "item": "officer_sword",
+        "qty": 1
+      },
+      {
+        "item": "concealed_pistol",
+        "qty": 1
+      },
+      {
+        "item": "pistol_round",
+        "qty": 8
+      },
+      {
+        "item": "diplomatic_pouch",
+        "qty": 1
+      },
+      {
+        "item": "cipher_key",
+        "qty": 7
+      },
+      {
+        "item": "personal_journal_in_unbreakable_cipher",
+        "qty": 1
+      },
+      {
+        "item": "concordia_writ",
+        "qty": 22
+      },
+      {
+        "item": "memory_shard",
+        "qty": 4
+      }
     ],
     "starting_sparks": 6800
   },
@@ -500,35 +2412,215 @@
     "quest_giver": true,
     "level": 7,
     "backstory": "Palen's grandfather walked out of Sovereign during the evacuation. The grandfather kept journals. Palen has refused to read the journals for thirty annums. He preaches that the Cascade is a Concordia-political fiction; in private, he is the only person on the planet who can prove or disprove the claim and refuses to look. His followers do not know.",
-    "personality_traits": ["rhetorically gifted", "self-deceptive", "warm in person", "dangerous in pulpit"],
+    "personality_traits": [
+      "rhetorically gifted",
+      "self-deceptive",
+      "warm in person",
+      "dangerous in pulpit"
+    ],
     "speech_patterns": "Public: declamatory, three-beat rhythms. Private: quiet and deflective.",
     "narrative_context": {
       "secret": "The journals are in his bedroom desk. They have been in his bedroom desk for thirty annums. A player who finds them and forces him to read them publicly ends the Denier movement in one diurnal."
     },
     "needs": [
-      { "id": "denier_movement_continuity", "priority": "primary", "satisfaction_method": "weekly_meeting_house_sermon" },
-      { "id": "narrative_warfare_against_envoy", "priority": "primary", "satisfaction_method": "pamphlet_drops" },
-      { "id": "the_journals_unread", "priority": "primary_inverse", "satisfaction_method": "active_avoidance" }
+      {
+        "id": "denier_movement_continuity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_meeting_house_sermon"
+      },
+      {
+        "id": "narrative_warfare_against_envoy",
+        "priority": "primary",
+        "satisfaction_method": "pamphlet_drops"
+      },
+      {
+        "id": "the_journals_unread",
+        "priority": "primary_inverse",
+        "satisfaction_method": "active_avoidance"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "denier_priest_quarters", "activity": "wakes; does not look at the desk; prepares the day's sermon", "need_addressed": "denier_movement_continuity", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 11], "location": "denier_meeting_house", "activity": "morning study group with senior deniers; shapes the week's narrative", "need_addressed": "denier_movement_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "alternative_archive_outpost", "activity": "fabricates the alternative archive — selects which Concordia documents to misquote", "need_addressed": "narrative_warfare_against_envoy", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "denier_meeting_house", "activity": "afternoon street preaching; pamphlet distribution to incoming pilgrims", "need_addressed": "narrative_warfare_against_envoy", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "denier_priest_quarters", "activity": "evening meal alone; does not look at the desk; sometimes touches it", "need_addressed": "the_journals_unread", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 5], "location": "denier_priest_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "denier_priest_quarters",
+        "activity": "wakes; does not look at the desk; prepares the day's sermon",
+        "need_addressed": "denier_movement_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "denier_meeting_house",
+        "activity": "morning study group with senior deniers; shapes the week's narrative",
+        "need_addressed": "denier_movement_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "alternative_archive_outpost",
+        "activity": "fabricates the alternative archive — selects which Concordia documents to misquote",
+        "need_addressed": "narrative_warfare_against_envoy",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "denier_meeting_house",
+        "activity": "afternoon street preaching; pamphlet distribution to incoming pilgrims",
+        "need_addressed": "narrative_warfare_against_envoy",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "denier_priest_quarters",
+        "activity": "evening meal alone; does not look at the desk; sometimes touches it",
+        "need_addressed": "the_journals_unread",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "denier_priest_quarters",
+        "activity": "rests poorly",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "denier_priest_quarters",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "denier_meeting_house",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "denier_meeting_house",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "denier_meeting_house",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "denier_meeting_house",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "denier_priest_quarters",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "denier_meeting_house_apartments", "dwelling_type": "small_apartment_with_locked_desk" },
-    "job": { "profession_id": "denier_priest", "wage_per_diurnal_sparks": 70, "wage_source": "denier_donations_pooled" },
-    "apparel": ["civic_robes_imitation_classical", "broad_belt_with_pamphlet_pouches", "polished_indoor_shoes", "outer_cloak_bronze_and_red"],
-    "gear": ["pamphlet_distribution_kit", "rhetorical_quotation_journal", "locked_desk_key_kept_on_his_person", "the_grandfather_journals_unread_in_locked_desk"],
-    "resources_consumed": ["paper", "ink", "donations_administered"],
-    "resources_produced": ["pamphlets", "sermons", "denier_pamphlet_currency_minted"],
+    "home": {
+      "district": "denier_meeting_house_apartments",
+      "dwelling_type": "small_apartment_with_locked_desk"
+    },
+    "job": {
+      "profession_id": "denier_priest",
+      "wage_per_diurnal_sparks": 70,
+      "wage_source": "denier_donations_pooled"
+    },
+    "apparel": [
+      "civic_robes_imitation_classical",
+      "broad_belt_with_pamphlet_pouches",
+      "polished_indoor_shoes",
+      "outer_cloak_bronze_and_red"
+    ],
+    "gear": [
+      "pamphlet_distribution_kit",
+      "rhetorical_quotation_journal",
+      "locked_desk_key_kept_on_his_person",
+      "the_grandfather_journals_unread_in_locked_desk"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "donations_administered"
+    ],
+    "resources_produced": [
+      "pamphlets",
+      "sermons",
+      "denier_pamphlet_currency_minted"
+    ],
     "inventory": [
-      { "item": "pamphlet_distribution_kit", "qty": 1 },
-      { "item": "rhetorical_quotation_journal", "qty": 1 },
-      { "item": "denier_pamphlet", "qty": 200 },
-      { "item": "locked_desk_key", "qty": 1 }
+      {
+        "item": "pamphlet_distribution_kit",
+        "qty": 1
+      },
+      {
+        "item": "rhetorical_quotation_journal",
+        "qty": 1
+      },
+      {
+        "item": "denier_pamphlet",
+        "qty": 200
+      },
+      {
+        "item": "locked_desk_key",
+        "qty": 1
+      }
     ],
     "starting_sparks": 720
   }

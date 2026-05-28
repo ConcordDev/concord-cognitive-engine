@@ -1,0 +1,113 @@
+[
+  {
+    "id": "cyber_silver_01_visit",
+    "title": "Silver's Office — A Quiet Meeting",
+    "description": "Silver Vey will see you. Be brief. He bills by the minute.",
+    "giver_npc_id": "broker_silver_vey",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silver1_visit",
+        "type": "reach_location",
+        "target": "cyber_silver_office",
+        "required_count": 1,
+        "description": "Visit Silver's office during open hours."
+      },
+      {
+        "id": "obj_silver1_ask",
+        "type": "any_of",
+        "target": "silver_request",
+        "required_count": 1,
+        "description": "Ask about identity work — your own, or the borrowed Sahm one."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "cyber_silver_02_choose"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "cyber",
+      "cyber_high"
+    ]
+  },
+  {
+    "id": "cyber_silver_02_choose",
+    "title": "Silver's Office — Choose Your Path",
+    "description": "Two paths. Buy new papers for yourself (8000 sparks, three days). Or pay 10000 to learn that Iyatte's son exists and that you must never look further.",
+    "giver_npc_id": "broker_silver_vey",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silver2_pay",
+        "type": "any_of",
+        "target": "silver_payment",
+        "required_count": 1,
+        "description": "Choose: papers or knowledge."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "cyber_silver_03_close"
+    ],
+    "prerequisites": [
+      "cyber_silver_01_visit"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_high"
+    ],
+    "moral_branch": {
+      "description": "What did you buy?",
+      "options": [
+        {
+          "id": "papers",
+          "trigger": "obj_silver2_pay:papers",
+          "consequence": "You receive new papers in three days. Useful for crime + cyber stealth surfaces."
+        },
+        {
+          "id": "knowledge",
+          "trigger": "obj_silver2_pay:knowledge",
+          "consequence": "You confirm Iyatte's son is alive. Silver warns you that pressing further ends three lives, his included."
+        }
+      ]
+    }
+  },
+  {
+    "id": "cyber_silver_03_close",
+    "title": "Silver's Office — Close the Door",
+    "description": "Whichever you chose, Silver closes the file. Whether you press further is on you.",
+    "giver_npc_id": "broker_silver_vey",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silver3_leave",
+        "type": "reach_location",
+        "target": "cyber_neon_quarter",
+        "required_count": 1,
+        "description": "Leave Silver's office and return to the Quarter."
+      }
+    ],
+    "rewards": {
+      "xp": 400
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "cyber_silver_02_choose"
+    ],
+    "tags": [
+      "cyber",
+      "cyber_high"
+    ]
+  }
+]

@@ -257,7 +257,7 @@ export function evolveFighterCombos(db, fighterId, fighterKind = "player") {
         });
       }
     } catch (err) {
-      logger.warn?.({ err: err.message, name, fighterId }, "combo_persist_failed");
+      logger.warn?.("combat_flow", "combo_persist_failed", { err: err.message, name, fighterId });
     }
   }
 

@@ -1,0 +1,13 @@
+{
+  "id": "cyber_neon_anniversary",
+  "name": "Neon Quarter Anniversary",
+  "world_id": "cyber",
+  "season_idx": 2,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "neon_strips",
+  "synopsis": "Anniversary of the Quarter going dark for a week in Year 18. Strips of neon strung across every alley.",
+  "achievements": [],
+  "quest_seeds": []
+}

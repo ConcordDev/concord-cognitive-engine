@@ -1,0 +1,14 @@
+{
+  "songId": "ren-of-the-watch",
+  "bpm": 96,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Ren of the Watch, captain by hand" },
+    { "at_ms": 2500,  "line": "Lost a brawl on purpose to stand" },
+    { "at_ms": 5000,  "line": "Holds the southern arc alone" },
+    { "at_ms": 7500,  "line": "Knows the field is thinning bone" },
+    { "at_ms": 10000, "line": "Ren, Ren, when will you tell?" },
+    { "at_ms": 12500, "line": "When the player can carry it well" },
+    { "at_ms": 15000, "line": "Ren of the Watch, captain by hand" },
+    { "at_ms": 17500, "line": "Holding the dome at the edge of the land" }
+  ]
+}

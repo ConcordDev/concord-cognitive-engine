@@ -1,0 +1,14 @@
+{
+  "songId": "ember-mother",
+  "bpm": 96,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Ember mother, light the kiln" },
+    { "at_ms": 2500,  "line": "Bring the daughters down the hill" },
+    { "at_ms": 5000,  "line": "We have bread enough for three" },
+    { "at_ms": 7500,  "line": "And a fire-song for me" },
+    { "at_ms": 10000, "line": "Sleep, small flame, sleep small flame" },
+    { "at_ms": 12500, "line": "Your mother knows the burning's name" },
+    { "at_ms": 15000, "line": "Ember mother, light the kiln" },
+    { "at_ms": 17500, "line": "We are warm here, we are still" }
+  ]
+}

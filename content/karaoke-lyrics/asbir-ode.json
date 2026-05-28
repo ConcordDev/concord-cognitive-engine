@@ -1,0 +1,14 @@
+{
+  "songId": "asbir-ode",
+  "bpm": 68,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Lord Curator, slow and grey" },
+    { "at_ms": 3529,  "line": "Three notebooks at the end of day" },
+    { "at_ms": 7058,  "line": "Facts, inferences, the difference between" },
+    { "at_ms": 10587, "line": "The cavity behind the screen" },
+    { "at_ms": 14116, "line": "Asbir holds what others want" },
+    { "at_ms": 17645, "line": "And the cost of holding is gaunt" },
+    { "at_ms": 21174, "line": "Lord Curator, slow and grey" },
+    { "at_ms": 24703, "line": "Three notebooks at the end of day" }
+  ]
+}

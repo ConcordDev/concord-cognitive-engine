@@ -19,6 +19,7 @@
 // has something to fold against.
 
 import { recordSignal, decaySweep } from "../lib/embodied/signals.js";
+import { getClimateOverride } from "../lib/world-flavor.js";
 import logger from "../logger.js";
 
 const SECONDS_PER_DAY = 86400;
@@ -80,7 +81,19 @@ export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount 
   for (const worldId of activeWorlds) {
     try {
       const rules = rulesByWorld.get(worldId) ?? {};
-      const climate = rules.climate ?? {};
+      // Phase G — loops.json#climate takes precedence over worlds.rule_modulators.climate
+      // so the operator can tune climate per-world without a DB migration.
+      const flavorClimate = getClimateOverride(worldId);
+      const climate = flavorClimate ? {
+        // Map flavor schema (baseTemp/illumination/etc) onto the sensor's expected
+        // names (temperature/peakLight/etc) so existing readers keep working.
+        temperature: flavorClimate.baseTemp ?? rules.climate?.temperature ?? 15,
+        humidity:    flavorClimate.humidity ?? rules.climate?.humidity ?? 50,
+        airQuality:  (flavorClimate.airQuality != null) ? (flavorClimate.airQuality / 100) : (rules.climate?.airQuality ?? 0.92),
+        noise:       flavorClimate.ambientDb ?? rules.climate?.noise ?? 42,
+        pressure:    rules.climate?.pressure ?? 101.325,
+        peakLight:   (flavorClimate.illumination != null) ? (flavorClimate.illumination * 100_000) : (rules.climate?.peakLight ?? 100_000),
+      } : (rules.climate ?? {});
 
       // Time-of-day: prefer worlds.time_of_day_s if the column exists; fall
       // back to wall-clock UTC seconds-of-day. Tests can pin either.

@@ -1,0 +1,14 @@
+{
+  "songId": "the-thorn-king",
+  "bpm": 140,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Thorn King rides, Thorn King rides" },
+    { "at_ms": 1714,  "line": "Lady Voss on the other side" },
+    { "at_ms": 3428,  "line": "Hidden heir under hidden law" },
+    { "at_ms": 5142,  "line": "Mirror to the Sandrun warlord's flaw" },
+    { "at_ms": 6856,  "line": "Two kingdoms, one secret kept" },
+    { "at_ms": 8570,  "line": "Two thrones the courtiers have wept" },
+    { "at_ms": 10284, "line": "Thorn King rides, Thorn King rides" },
+    { "at_ms": 11998, "line": "And the lattice carries letters wide" }
+  ]
+}

@@ -1,0 +1,212 @@
+[
+  {
+    "id": "concordia-001",
+    "questionText": "Which goddess governs the warm/cold dialogue phases tied to a player's ecosystem score?",
+    "answerHumanSummary": "Concordia (the goddess).",
+    "difficulty": 1,
+    "tags": ["concordia", "lore", "goddess"]
+  },
+  {
+    "id": "concordia-002",
+    "questionText": "What does the Refusal Field's base-6 glyph algebra gate at strength >= 6?",
+    "answerHumanSummary": "Compound-refusal phases — death, harvest, hostility, consequence, numbers, dome, win.",
+    "difficulty": 3,
+    "tags": ["refusal-field", "glyph-algebra"]
+  },
+  {
+    "id": "concordia-003",
+    "questionText": "How many days does one Concordia year have, split across how many seasons?",
+    "answerHumanSummary": "42 days across 6 seasons (7 days each).",
+    "difficulty": 2,
+    "tags": ["calendar", "seasons"]
+  },
+  {
+    "id": "concordia-004",
+    "questionText": "Which biome combination produces the harmonic damage multiplier for frost magic?",
+    "answerHumanSummary": "Cold cells with low temperature (frost potency 1.5x or higher).",
+    "difficulty": 2,
+    "tags": ["combat", "elements", "frost"]
+  },
+  {
+    "id": "concordia-005",
+    "questionText": "What is the canonical name of the goddess of the world hub?",
+    "answerHumanSummary": "Concordia.",
+    "difficulty": 1,
+    "tags": ["lore", "goddess"]
+  },
+  {
+    "id": "concordia-006",
+    "questionText": "What ratio defines DTU consolidation from regulars to MEGAs?",
+    "answerHumanSummary": "33:1 compression (5-20 regulars per MEGA, every 30 ticks).",
+    "difficulty": 4,
+    "tags": ["dtu", "consolidation"]
+  },
+  {
+    "id": "concordia-007",
+    "questionText": "How many parallel cognitive brains does Concord run?",
+    "answerHumanSummary": "Four (conscious / subconscious / utility / repair) plus a fifth vision brain (LLaVA).",
+    "difficulty": 2,
+    "tags": ["architecture", "brains"]
+  },
+  {
+    "id": "concordia-008",
+    "questionText": "What is the royalty cascade cap for any single sale's ancestors combined?",
+    "answerHumanSummary": "30% (MAX_ROYALTY_RATE = 0.30). Seller always keeps >= 64.54%.",
+    "difficulty": 3,
+    "tags": ["economy", "royalty-cascade"]
+  },
+  {
+    "id": "concordia-009",
+    "questionText": "What is the global cap on combat reach in meters?",
+    "answerHumanSummary": "80m (server-side anti-cheat hard cap).",
+    "difficulty": 3,
+    "tags": ["combat", "anti-cheat"]
+  },
+  {
+    "id": "concordia-010",
+    "questionText": "How many layers does the embodied substrate currently stack?",
+    "answerHumanSummary": "13 (signals, skill-environment, pain, dream, forward-sim, faction-strategy, orchestrator, etc.).",
+    "difficulty": 4,
+    "tags": ["substrate", "embodied"]
+  },
+  {
+    "id": "concordia-011",
+    "questionText": "What sensor channel measures structural stress on buildings?",
+    "answerHumanSummary": "tactile_force_os.structural_stress",
+    "difficulty": 4,
+    "tags": ["embodied", "sensors"]
+  },
+  {
+    "id": "concordia-012",
+    "questionText": "Which combat HUD primitive pauses real-time-with-pause sessions?",
+    "answerHumanSummary": "setTimeScale(0) — same primitive as PhotoMode.",
+    "difficulty": 3,
+    "tags": ["combat", "rtwp"]
+  },
+  {
+    "id": "concordia-013",
+    "questionText": "What is the canonical event for NPC click context menu?",
+    "answerHumanSummary": "concordia:npc-context-menu",
+    "difficulty": 3,
+    "tags": ["ui", "npc"]
+  },
+  {
+    "id": "concordia-014",
+    "questionText": "What proximity radius gates building workbench interaction?",
+    "answerHumanSummary": "4 meters (Math.hypot check in StationInteractionRouter).",
+    "difficulty": 2,
+    "tags": ["ui", "buildings"]
+  },
+  {
+    "id": "concordia-015",
+    "questionText": "What is the deterministic seed source for procgen wilderness regions?",
+    "answerHumanSummary": "sha1(drift_alert_signature).",
+    "difficulty": 4,
+    "tags": ["procgen", "regions"]
+  },
+  {
+    "id": "concordia-016",
+    "questionText": "What's the canonical name for the 5-component drag-compose magic system?",
+    "answerHumanSummary": "Glyph spell composition (10-entry seed library, base-6 algebra).",
+    "difficulty": 2,
+    "tags": ["magic", "glyphs"]
+  },
+  {
+    "id": "concordia-017",
+    "questionText": "How does an NPC get promoted to mentor automatically?",
+    "answerHumanSummary": "skill_revisions.revision_num >= 5 via maybePromoteToMentor.",
+    "difficulty": 4,
+    "tags": ["npc", "mentorship"]
+  },
+  {
+    "id": "concordia-018",
+    "questionText": "What happens when a player kills an NPC's kin?",
+    "answerHumanSummary": "Grudge stacks on the surviving relatives in npc_grudges.",
+    "difficulty": 3,
+    "tags": ["npc", "asymmetry"]
+  },
+  {
+    "id": "concordia-019",
+    "questionText": "What's the canonical command palette keybinding?",
+    "answerHumanSummary": "Ctrl+K (Cmd+K on macOS).",
+    "difficulty": 1,
+    "tags": ["ui", "shortcuts"]
+  },
+  {
+    "id": "concordia-020",
+    "questionText": "Which layer composes deterministic forward predictions for offline players?",
+    "answerHumanSummary": "Layer 10 — forward-sim (forward_predictions table).",
+    "difficulty": 4,
+    "tags": ["substrate", "forward-sim"]
+  },
+  {
+    "id": "concordia-021",
+    "questionText": "What's the minimum affinity to enable proposing in the courtship system?",
+    "answerHumanSummary": "60% (0.60).",
+    "difficulty": 2,
+    "tags": ["courtship"]
+  },
+  {
+    "id": "concordia-022",
+    "questionText": "How does Concordia's faction-strategy AI cycle pick moves?",
+    "answerHumanSummary": "Deterministic state machine using a seeded RNG keyed by faction_id + phase across 6 stances.",
+    "difficulty": 5,
+    "tags": ["factions", "ai"]
+  },
+  {
+    "id": "concordia-023",
+    "questionText": "Which heartbeat module composes player dreams during offline windows?",
+    "answerHumanSummary": "embodied-dream-cycle (frequency 80, ~20min).",
+    "difficulty": 4,
+    "tags": ["dreams", "heartbeats"]
+  },
+  {
+    "id": "concordia-024",
+    "questionText": "What's the hard damage cap on a single combat strike?",
+    "answerHumanSummary": "500 (DAMAGE_CAP_HARD).",
+    "difficulty": 3,
+    "tags": ["combat", "balance"]
+  },
+  {
+    "id": "concordia-025",
+    "questionText": "What's the maximum cascade depth of the royalty system?",
+    "answerHumanSummary": "50 generations (MAX_CASCADE_DEPTH).",
+    "difficulty": 3,
+    "tags": ["economy", "royalty"]
+  },
+  {
+    "id": "concordia-026",
+    "questionText": "How are time loops scoped?",
+    "answerHumanSummary": "Per (user, world) — one active loop per user per world.",
+    "difficulty": 3,
+    "tags": ["time-loop"]
+  },
+  {
+    "id": "concordia-027",
+    "questionText": "What does the asymmetric horror system enforce about ghost vs investigator roles?",
+    "answerHumanSummary": "Mutually exclusive — ghost_user_id cannot also be in investigators_json.",
+    "difficulty": 3,
+    "tags": ["horror", "asymmetric"]
+  },
+  {
+    "id": "concordia-028",
+    "questionText": "What kind of model drives combat animation in Concordia?",
+    "answerHumanSummary": "Procedural biomechanics (Winter 2009, Perry & Burnfield, Dempster 1955) + PD motor driver.",
+    "difficulty": 4,
+    "tags": ["combat", "animation"]
+  },
+  {
+    "id": "concordia-029",
+    "questionText": "Which event channel surfaces game-feel triggers (screen shake, milestone fanfare)?",
+    "answerHumanSummary": "concordia:game-juice CustomEvent dispatched on window.",
+    "difficulty": 4,
+    "tags": ["ui", "game-feel"]
+  },
+  {
+    "id": "concordia-030",
+    "questionText": "What's the heartbeat dispatch cadence in Concord's governor tick?",
+    "answerHumanSummary": "Every 15 seconds.",
+    "difficulty": 2,
+    "tags": ["heartbeat", "architecture"]
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "songId": "old-seam-vagrant",
+  "bpm": 64,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Old Seam walks the dome's slow arc" },
+    { "at_ms": 3750,  "line": "Was an Oracle once, before the dark" },
+    { "at_ms": 7500,  "line": "Trained the girl who sees too far" },
+    { "at_ms": 11250, "line": "Now both walk under different stars" },
+    { "at_ms": 15000, "line": "Master and student, twenty years apart" },
+    { "at_ms": 18750, "line": "Bread enough is the keeper's art" },
+    { "at_ms": 22500, "line": "Old Seam walks the dome's slow arc" },
+    { "at_ms": 26250, "line": "Was an Oracle once, before the dark" }
+  ]
+}

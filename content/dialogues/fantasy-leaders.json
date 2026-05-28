@@ -1,0 +1,173 @@
+{
+  "lady_seraphine_voss:idle": {
+    "greeting": "Lady Seraphine sets down her quill and inclines her head. \"You come at an awkward hour. The court is half-empty and the rest are listening.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You're not Thornwood-born — I would know. Tell me what brings you up the hill.\"",
+        "playerOptions": [
+          { "text": "I want to understand who actually runs this keep.", "leadsTo": "node_court" },
+          { "text": "I came to ask about your correspondence with Iyatte of Sandrun.", "leadsTo": "node_letter" },
+          { "text": "I'm just paying my respects.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_court",
+        "npcText": "\"I do — and Ser Corin keeps me alive while I do. The names that matter aren't on the rolls. I won't be one of them in front of you yet.\"",
+        "playerOptions": [
+          { "text": "I can earn that.", "leadsTo": "node_close" },
+          { "text": "Then I'll leave you to it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_letter",
+        "npcText": "\"You should not know that word, and yet you spoke it.\" She does not blink. \"Whom have you also told?\"",
+        "playerOptions": [
+          { "text": "No one. Yet.", "leadsTo": "node_letter_2" },
+          { "text": "Whoever needs to be told.", "leadsTo": "node_letter_3" }
+        ]
+      },
+      {
+        "id": "node_letter_2",
+        "npcText": "\"Good. Continue not telling.\" She pulls a small lacquered box from a drawer; the latch is brass. \"Bring this to the Verge crossroads at sunset. Don't open it. There will be a woman in red waiting. She'll know.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_letter_3",
+        "npcText": "She smiles, which is worse than her not smiling. \"Then we have nothing further to discuss. Ser Corin will show you out.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "\"The hill takes its time with newcomers. Return when you have something I don't.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "apothecary_lyra_thorne:idle": {
+    "greeting": "Lyra is grinding something pale into a paste. She does not look up. \"Take a seat or take a herb. Don't take both.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You have the road-pallor. Bruise, fever, or something you'd rather not name?\"",
+        "playerOptions": [
+          { "text": "A bruise. Stiff knee from the ride up.", "leadsTo": "node_bruise" },
+          { "text": "A question. I heard you trade cuttings cross-world.", "leadsTo": "node_cuttings" },
+          { "text": "Nothing — I was just curious about the shop.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_bruise",
+        "npcText": "\"Comfrey wash, twice a day. Twenty sparks for the jar.\" She wraps it in waxed paper and slides it across. \"And take an extra strip for the next bruise. There's always a next bruise.\"",
+        "playerOptions": [
+          { "text": "Thank you, Lyra.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_cuttings",
+        "npcText": "Her hands still. \"You heard wrong, or you heard from someone we share. Which?\"",
+        "playerOptions": [
+          { "text": "From Pia Thalis in the hub.", "leadsTo": "node_cuttings_pia" },
+          { "text": "Just rumour.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_cuttings_pia",
+        "npcText": "\"Pia sends moonleaf seedlings every spring. I send her wormwood and lattice-root. Don't say any of that out loud. The infirmary is bigger than either of us.\"",
+        "playerOptions": [
+          { "text": "I understand.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "\"Come back when you're hurt enough to be honest.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "witch_nymeria:idle": {
+    "greeting": "Nymeria is barefoot in two inches of bog water, humming. She turns when you arrive but does not move. \"Walker. The mud will tell me what you want; you only have to wait.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"The bog has three layers tonight: water, peat, and lattice. You touched one already. Which?\"",
+        "playerOptions": [
+          { "text": "I'd like to cross to the Crucible.", "leadsTo": "node_cross" },
+          { "text": "I want to learn what you see in the bog.", "leadsTo": "node_see" },
+          { "text": "I was sent by Father Galen.", "leadsTo": "node_galen" }
+        ]
+      },
+      {
+        "id": "node_cross",
+        "npcText": "\"Then bring me a lattice-fragment. Any size. I'll teach you the eight steps, three of which I make up each time so the bog stays interested.\"",
+        "playerOptions": [
+          { "text": "I'll bring one.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_see",
+        "npcText": "\"You see what you have already brought with you. The bog is a mirror that lies politely. Robin sees colours; I see weight. What you'll see is yours.\"",
+        "playerOptions": [
+          { "text": "Will you teach me to see?", "leadsTo": "node_see_2" },
+          { "text": "Maybe later.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_see_2",
+        "npcText": "She steps closer. Her feet make no sound in the water. \"Bring me four nights' sleep saved up and one thing you regret. We'll start there.\"",
+        "playerOptions": [
+          { "text": "Done.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_galen",
+        "npcText": "\"Galen still prays for me. That's kind of him. Tell him the bog does not need his prayers, but I read them anyway.\"",
+        "playerOptions": [
+          { "text": "I will.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "\"The path back is the path in. Don't change your mind once you've stepped on it.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "knight_corin_hale:idle": {
+    "greeting": "Ser Corin Hale stands at parade rest in the corridor, blue cloak folded. \"Walker. Lady Seraphine is in audience. Speak, and I'll relay.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"Or you came to me. Which is it?\"",
+        "playerOptions": [
+          { "text": "I came to you. About the heir.", "leadsTo": "node_heir" },
+          { "text": "I'd like sparring practice.", "leadsTo": "node_spar" },
+          { "text": "Just passing.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_heir",
+        "npcText": "His shoulders do not move. \"I have not heard you say a word. Continue not saying it. Then leave, and don't return to me about it.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_spar",
+        "npcText": "\"After my watch. The yard, fifth-bell. Bring a blade you trust. I don't fight to second blood; I fight until you learn one thing.\"",
+        "playerOptions": [
+          { "text": "I'll be there.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "He nods once. \"Walk on.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

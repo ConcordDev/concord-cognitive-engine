@@ -1,0 +1,54 @@
+{
+  "$schema": "disease-catalog.v1",
+  "tier": "rare",
+  "diseases": [
+    {
+      "id": "rad-poison",
+      "name": "Radiation poisoning",
+      "symptoms": ["hair loss", "vomiting", "internal bleeding", "weakness"],
+      "transmissionVector": "touch",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0.20,
+      "severityHalfLifeHours": 240,
+      "severityIncreasePerTick": 0.020,
+      "endemicWorlds": ["sovereign-ruins"],
+      "cureRecipeIds": ["potassium_iodide", "marrow_transplant"]
+    },
+    {
+      "id": "plague",
+      "name": "Plague",
+      "symptoms": ["buboes", "high fever", "black tongue", "delirium"],
+      "transmissionVector": "airborne",
+      "contagionRadiusM": 10,
+      "mortalityRisk": 0.30,
+      "severityHalfLifeHours": 96,
+      "severityIncreasePerTick": 0.025,
+      "endemicWorlds": ["sovereign-ruins", "fantasy"],
+      "cureRecipeIds": ["plague_cure_alchemy", "exorcist_blessing"]
+    },
+    {
+      "id": "cipher-rot",
+      "name": "Cipher rot",
+      "symptoms": ["cognitive cascade failure", "language scrambling", "fugue states"],
+      "transmissionVector": "touch",
+      "contagionRadiusM": 1,
+      "mortalityRisk": 0.18,
+      "severityHalfLifeHours": 120,
+      "severityIncreasePerTick": 0.015,
+      "endemicWorlds": ["cyber", "lattice-crucible"],
+      "cureRecipeIds": ["neural-defrag", "coherence_drug"]
+    },
+    {
+      "id": "cape-syndrome",
+      "name": "Cape syndrome",
+      "symptoms": ["delusions of invincibility", "manic episodes", "reckless self-harm"],
+      "transmissionVector": "airborne",
+      "contagionRadiusM": 3,
+      "mortalityRisk": 0.10,
+      "severityHalfLifeHours": 168,
+      "severityIncreasePerTick": 0.008,
+      "endemicWorlds": ["superhero"],
+      "cureRecipeIds": ["mood_stabilizer", "community_grounding"]
+    }
+  ]
+}

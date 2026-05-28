@@ -18,6 +18,22 @@ export const ROOM_TEMPLATES = {
   library:      { capacity: 10, typical_furniture: ['bookshelves', 'reading_table', 'candles', 'globe'],  width: 10, depth: 8,  height: 5 },
   garden:       { capacity: 15, typical_furniture: ['planters', 'fountain', 'benches'],                   width: 12, depth: 12, height: 0 },
   generic:      { capacity: 4,  typical_furniture: [],                                                    width: 6,  depth: 6,  height: 3 },
+  // ── Phase DA2 — station / workbench room kinds. Building_types match
+  // StationInteractionRouter's ROUTER_TABLE keys so spawning a building
+  // of these types auto-seeds the right interior surface.
+  farm_plot:    { capacity: 6,  typical_furniture: ['plot_tiles', 'water_trough', 'compost_bin'],         width: 10, depth: 10, height: 0 },
+  restaurant:   { capacity: 16, typical_furniture: ['tables', 'kitchen_pass', 'register', 'wine_rack'],   width: 12, depth: 10, height: 4 },
+  karaoke_booth:{ capacity: 4,  typical_furniture: ['mic_stand', 'speaker_pair', 'song_book'],            width: 5,  depth: 5,  height: 3 },
+  mahjong_table:{ capacity: 4,  typical_furniture: ['tile_set', 'four_chairs', 'lamp'],                   width: 4,  depth: 4,  height: 3 },
+  trivia_kiosk: { capacity: 1,  typical_furniture: ['kiosk_terminal', 'answer_buzzer'],                   width: 3,  depth: 3,  height: 3 },
+  hacking_terminal: { capacity: 1, typical_furniture: ['terminal_console', 'cable_spool', 'crt_monitor'], width: 3,  depth: 3,  height: 3 },
+  programming_console: { capacity: 1, typical_furniture: ['workstation', 'reference_books'],              width: 3,  depth: 3,  height: 3 },
+  factory_workbench:   { capacity: 4, typical_furniture: ['assembly_table', 'parts_bins', 'crane'],       width: 8,  depth: 6,  height: 4 },
+  attraction_booth:    { capacity: 8, typical_furniture: ['ticket_box', 'seating', 'safety_rail'],        width: 8,  depth: 6,  height: 4 },
+  creature_pen:        { capacity: 6, typical_furniture: ['feeding_trough', 'nest_box', 'water_dish'],    width: 8,  depth: 8,  height: 0 },
+  glyph_altar:         { capacity: 4, typical_furniture: ['altar_stone', 'glyph_braziers', 'tome_stand'], width: 6,  depth: 6,  height: 4 },
+  // Phase E3 — mystery-board buildings dispatch hidden-object scene viewing.
+  mystery_board:       { capacity: 1, typical_furniture: ['pinboard', 'photo_pile', 'string_and_pins'],   width: 4,  depth: 4,  height: 3 },
 };
 
 // Default room layouts per building type

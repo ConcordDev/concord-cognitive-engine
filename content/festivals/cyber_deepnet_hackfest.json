@@ -1,0 +1,13 @@
+{
+  "id": "cyber_deepnet_hackfest",
+  "name": "Deepnet Hackfest",
+  "world_id": "cyber",
+  "season_idx": 4,
+  "day_in_season_start": 7,
+  "day_in_season_end": 7,
+  "repeats_yearly": true,
+  "decoration_tag": "blue_glow",
+  "synopsis": "Sanctioned (kind of) 72-hour hack festival. Kira Zane sleeps less than usual. Officer Holt patrols quietly.",
+  "achievements": [],
+  "quest_seeds": []
+}

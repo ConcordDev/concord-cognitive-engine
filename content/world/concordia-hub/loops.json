@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "The hub — calm, balanced, all 14 per-world loops enabled at default frequencies. Travellers arrive here. This file is the baseline; other worlds override.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 4 },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": true, "frequency": 480 },
+    "npc-economy-cycle": { "enabled": true, "frequency": 8 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": true, "frequency": 16 },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 8 },
+    "procgen-settlement-cycle": { "enabled": true, "frequency": 240 },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 360 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 8 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 30 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 2 },
+    "world-population-cycle": { "enabled": true, "frequency": 60 }
+  },
+  "climate": {
+    "baseTemp": 18,
+    "humidity": 55,
+    "airQuality": 90,
+    "illumination": 0.9,
+    "structuralStress": 0,
+    "ambientDb": 35,
+    "weather": "temperate"
+  },
+  "factionStartState": {
+    "default": { "stance": "consolidate", "momentum": 0.0 }
+  },
+  "skillCeilings": {
+    "physical": 200, "fire": 150, "ice": 150, "water": 150,
+    "lightning": 150, "bio": 150, "energy": 200, "poison": 100
+  },
+  "npcDensity": {
+    "targetPerFaction": 50,
+    "max": 400,
+    "archetypeWeights": { "warrior": 1.0, "scholar": 1.0, "trader": 1.2, "mystic": 0.8, "guard": 1.0, "healer": 1.0, "hunter": 0.7 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.0, "scarcityBias": 0.0 },
+  "worldVoice": {
+    "tone": "neutral, contemporary, lightly poetic, welcoming",
+    "vocabulary": ["traveller", "friend", "honored visitor", "the Compact", "the four founders"],
+    "avoid": ["modern slang", "tech jargon"],
+    "examples": [
+      "Welcome to Concordia, friend. The Compact holds — speak plainly here.",
+      "Word travels well in this city. What brings you to my counter?"
+    ]
+  }
+}

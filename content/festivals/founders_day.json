@@ -1,0 +1,18 @@
+{
+  "id": "founders_day",
+  "name": "Founders' Day",
+  "season_idx": 1,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "gold_banners",
+  "synopsis": "The first day of summer. Gold banners over every gate. Each city tells the story of who built it.",
+  "achievements": ["founders_chronicler"],
+  "quest_seeds": [
+    {
+      "id": "fd_oral_history",
+      "title": "Oral History",
+      "summary": "Listen to three different elders' tellings of the city's founding. Compose a summary DTU."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "concordant_curators",
+    "name": "Concordant Curators",
+    "world_id": "concordia-hub",
+    "kind": "institution",
+    "domain": "knowledge",
+    "headquarters": "hub_archive",
+    "description": "The seven-spoke archive's keepers. Hold the official record of cross-world resonances, dome incidents, and faction treaties. Neutral by charter, networked by necessity.",
+    "leader_npc_id": "lord_curator_asbir_thelane",
+    "stance": "consolidate",
+    "values": ["neutrality", "preservation", "long_memory"],
+    "rivalries": [],
+    "alliances": ["concordant_assembly", "refusal_keep"]
+  },
+  {
+    "id": "concordant_watch",
+    "name": "Concordant Watch",
+    "world_id": "concordia-hub",
+    "kind": "civic",
+    "domain": "law_enforcement",
+    "headquarters": "hub_watch_barracks",
+    "description": "The hub's civilian guard. Patrols the wards, brokers between merchants and crowd, and maintains the southern-arc field check. Accountable to the Assembly.",
+    "leader_npc_id": "captain_ren_solare",
+    "stance": "consolidate",
+    "values": ["order", "discretion", "neighborhood_trust"],
+    "rivalries": [],
+    "alliances": ["concordant_assembly"]
+  },
+  {
+    "id": "bazaar_consortium",
+    "name": "Bazaar Consortium",
+    "world_id": "concordia-hub",
+    "kind": "guild",
+    "domain": "commerce",
+    "headquarters": "hub_bazaar_central_row",
+    "description": "The merchant guild that arbitrates trade disputes in the Concordant Bazaar. Pragmatic, networked, occasionally entangled with off-ledger fences.",
+    "leader_npc_id": "merchant_velka_ironhand",
+    "stance": "expand",
+    "values": ["fair_dealing", "haggling_as_craft", "network"],
+    "rivalries": [],
+    "alliances": ["brassgate_foundry", "crosswind_couriers"]
+  },
+  {
+    "id": "refusal_keep",
+    "name": "Refusal Keep",
+    "world_id": "concordia-hub",
+    "kind": "religious",
+    "domain": "metaphysics",
+    "headquarters": "hub_refusal_keep_main_hall",
+    "description": "Tenders of the Refusal Field. Glyph-scholars, dome-walkers, and oracles. The Keep holds the field's anchor-readings and grants spell-mintings.",
+    "leader_npc_id": "oracle_nesha_keep",
+    "stance": "rebuild",
+    "values": ["field_attendance", "glyph_discipline", "silence"],
+    "rivalries": [],
+    "alliances": ["concordant_curators", "concordant_assembly"]
+  },
+  {
+    "id": "concordant_assembly",
+    "name": "Concordant Assembly",
+    "world_id": "concordia-hub",
+    "kind": "civic",
+    "domain": "governance",
+    "headquarters": "hub_assembly_chamber",
+    "description": "The hub's deliberative body. Elected, term-limited, slow by design. Speaker convenes, but power lies in the seven seats.",
+    "leader_npc_id": "elder_mira_lattice",
+    "stance": "consolidate",
+    "values": ["deliberation", "civic_continuity", "collective_decision"],
+    "rivalries": [],
+    "alliances": ["concordant_watch", "refusal_keep", "concordant_curators"]
+  }
+]

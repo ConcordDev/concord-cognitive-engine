@@ -1,0 +1,14 @@
+{
+  "songId": "warm-tide",
+  "bpm": 84,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Salt comes in, salt goes out" },
+    { "at_ms": 2857,  "line": "Footprints filling without sound" },
+    { "at_ms": 5714,  "line": "The warm tide doesn't mind" },
+    { "at_ms": 8571,  "line": "What you brought or left behind" },
+    { "at_ms": 11428, "line": "Walk with me, brief and bright" },
+    { "at_ms": 14285, "line": "Even the bluff forgets at night" },
+    { "at_ms": 17142, "line": "Salt comes in, salt goes out" },
+    { "at_ms": 19999, "line": "Without sorrow, without doubt" }
+  ]
+}

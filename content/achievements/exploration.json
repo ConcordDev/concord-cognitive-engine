@@ -1,0 +1,91 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "exploration",
+  "achievements": [
+    {
+      "id": "first_travel",
+      "title": "First Steps",
+      "description": "Travel to your second world.",
+      "rarity": "bronze",
+      "icon": "Compass",
+      "rewardCc": 10,
+      "triggers": [{ "kind": "event", "event": "user:traveled", "condition": {} }]
+    },
+    {
+      "id": "all_worlds_visited",
+      "title": "Wanderer",
+      "description": "Visit all 8 authored worlds.",
+      "rarity": "silver",
+      "icon": "Map",
+      "rewardCc": 100,
+      "rewardTitle": "the Wanderer",
+      "triggers": [{ "kind": "stat", "stat": "worlds_visited", "threshold": 8 }]
+    },
+    {
+      "id": "deep_diver",
+      "title": "Deep Diver",
+      "description": "Explore deeper than 50m underwater.",
+      "rarity": "silver",
+      "icon": "Anchor",
+      "rewardCc": 75,
+      "triggers": [{ "kind": "stat", "stat": "max_depth_explored", "threshold": 50 }]
+    },
+    {
+      "id": "mountaineer",
+      "title": "Mountaineer",
+      "description": "Climb to a peak above 1000m.",
+      "rarity": "silver",
+      "icon": "Mountain",
+      "rewardCc": 75,
+      "triggers": [{ "kind": "stat", "stat": "max_altitude", "threshold": 1000 }]
+    },
+    {
+      "id": "lost_in_fog",
+      "title": "Found Yourself",
+      "description": "Return safely after getting lost in dense fog.",
+      "rarity": "gold",
+      "icon": "Cloud",
+      "rewardCc": 150,
+      "hidden": true,
+      "triggers": [{ "kind": "event", "event": "world:fog-rescue", "condition": {} }]
+    },
+    {
+      "id": "ugc_explorer",
+      "title": "Citizen of Many Realms",
+      "description": "Visit a community-authored world.",
+      "rarity": "silver",
+      "icon": "Globe",
+      "rewardCc": 50,
+      "triggers": [{ "kind": "event", "event": "user:traveled", "condition": { "worldIdPrefix": "usergen-" } }]
+    },
+    {
+      "id": "world_citizen",
+      "title": "World Citizen",
+      "description": "Spend at least 15 minutes in every authored world.",
+      "rarity": "gold",
+      "icon": "Globe2",
+      "rewardCc": 250,
+      "rewardTitle": "the Cosmopolitan",
+      "triggers": [{ "kind": "stat", "stat": "worlds_with_15min_dwell", "threshold": 8 }]
+    },
+    {
+      "id": "first_summit",
+      "title": "First Summit",
+      "description": "Complete your first climbing route.",
+      "rarity": "bronze",
+      "icon": "Mountain",
+      "rewardCc": 25,
+      "triggers": [{ "kind": "event", "event": "climbing:route-completed", "condition": {} }]
+    },
+    {
+      "id": "cliff_master",
+      "title": "Cliff Master",
+      "description": "Complete 10 climbing routes over 100m tall.",
+      "rarity": "gold",
+      "icon": "MoveUpRight",
+      "rewardCc": 200,
+      "rewardTitle": "the Cliffbound",
+      "triggers": [{ "kind": "stat", "stat": "tall_climbs_completed", "threshold": 10 }]
+    }
+  ]
+}

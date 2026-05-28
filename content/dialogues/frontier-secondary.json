@@ -1,0 +1,48 @@
+{
+  "rider_silas_quinn:idle": {
+    "greeting": "Silas Quinn touches the brim of his hat. \"Walker. The road is open today. Speak.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Make it brief. The west doesn't wait.\"",
+        "playerOptions": [
+          { "text": "The portal at the west perimeter — Kel Sandren tracks it too.", "leadsTo": "node_kel" },
+          { "text": "I'd ride with you.", "leadsTo": "node_ride" }
+        ]
+      },
+      { "id": "node_kel", "npcText": "He nods once. \"Then carry my log to Kel. He'll know what to do with it.\"",
+        "playerOptions": [ { "text": "I will.", "leadsTo": "node_close" } ] },
+      { "id": "node_ride", "npcText": "\"Dawn. The west road. Spare horse on the line.\"",
+        "playerOptions": [ { "text": "I'll be there.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "The hat tips back down. He's gone.", "playerOptions": [] }
+    ]
+  },
+  "scout_pell_orange:idle": {
+    "greeting": "Pell crouches at the edge of the dust. Doesn't turn. \"Walker. Quiet.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Print here. Mass two-fifty, stride one-eight.\"",
+        "playerOptions": [
+          { "text": "Same print Kiren Owl tracks. And Emer. And Brann.", "leadsTo": "node_cross" },
+          { "text": "Show me.", "leadsTo": "node_show" }
+        ]
+      },
+      { "id": "node_cross", "npcText": "\"Four scouts, four worlds, one creature. Bring me to Zara when she's free. We'll plan.\"",
+        "playerOptions": [ { "text": "I will.", "leadsTo": "node_close" } ] },
+      { "id": "node_show", "npcText": "Pell points. Same print.",
+        "playerOptions": [ { "text": "Got it.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "Pell returns to reading the dust.", "playerOptions": [] }
+    ]
+  },
+  "healer_jensa_bell:idle": {
+    "greeting": "Jensa wipes flour off her hands. \"Walker. I'm baking. Talk while I knead.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"What's the count today?\"",
+        "playerOptions": [
+          { "text": "Pia Thalis sends supplies.", "leadsTo": "node_pia" },
+          { "text": "Just visiting.", "leadsTo": "node_close" }
+        ]
+      },
+      { "id": "node_pia", "npcText": "\"Bless her. Back room, behind the flour sacks. Don't be seen.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "She kneads.", "playerOptions": [] }
+    ]
+  }
+}

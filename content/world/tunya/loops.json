@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Tropical mythopoesis — warm, lush, bio + water magic dominant, fire weak. Population dense, all loops on.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 4 },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": true, "frequency": 480 },
+    "npc-economy-cycle": { "enabled": true, "frequency": 8 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 8 },
+    "procgen-settlement-cycle": { "enabled": true, "frequency": 240 },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 360 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 8 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 30 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 4 },
+    "world-population-cycle": { "enabled": true, "frequency": 60 }
+  },
+  "climate": {
+    "baseTemp": 32,
+    "humidity": 80,
+    "airQuality": 95,
+    "illumination": 1.1,
+    "structuralStress": 0,
+    "ambientDb": 45,
+    "weather": "tropical-warm"
+  },
+  "factionStartState": {
+    "default": { "stance": "consolidate", "momentum": 0.1 }
+  },
+  "skillCeilings": {
+    "physical": 180, "fire": 50, "ice": 80, "water": 250,
+    "lightning": 200, "bio": 250, "energy": 150, "poison": 200
+  },
+  "npcDensity": {
+    "targetPerFaction": 80,
+    "max": 700,
+    "archetypeWeights": { "warrior": 0.7, "scholar": 1.2, "trader": 1.4, "mystic": 1.5, "guard": 0.8, "healer": 1.3, "hunter": 1.1 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 0.95, "scarcityBias": 0.0 },
+  "worldVoice": {
+    "tone": "warm, mythopoetic, references to natural cycles and the breath of the world",
+    "vocabulary": ["the breath", "the green hours", "kin", "elder", "the long rain", "the sun's mercy"],
+    "avoid": ["modern slang", "tech jargon", "industrial metaphors"],
+    "examples": [
+      "Sit, kin. The green hours are long here, and your story is older than I am.",
+      "What you seek breathes the same air as you. Walk slowly; it will come."
+    ]
+  }
+}

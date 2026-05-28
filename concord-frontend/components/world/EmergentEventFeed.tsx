@@ -12,7 +12,7 @@ import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
 // Authored events (combat-hit, marketplace-purchase, chat:token) are
 // intentionally excluded — those have their own surfaces (CombatHUD,
 // CurrencyHUD, chat panel).
-type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis' | 'companion' | 'system_health';
+type EmergentChannel = 'world' | 'entity' | 'agent' | 'evo' | 'weather' | 'crisis' | 'companion' | 'system_health' | 'faction' | 'npc' | 'self' | 'economy' | 'social';
 
 const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: string }[] = [
   { name: 'entity:death',                channel: 'entity',  label: 'NPC died' },
@@ -46,6 +46,19 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'pain:wound_healed',           channel: 'agent',   label: 'Wound healed' },
   // Phase 3 — system health channel surfaces detector-emitted invariant warnings.
   { name: 'world:invariant-warning' as SocketEvent, channel: 'system_health', label: 'System invariant warning' },
+  // Phase F3.5 — strategic faction + scheme + prediction + dream + refusal.
+  { name: 'faction:war-declared'      as SocketEvent, channel: 'faction', label: 'Faction war declared' },
+  { name: 'faction:alliance-formed'   as SocketEvent, channel: 'faction', label: 'Faction alliance formed' },
+  { name: 'faction:truce-sought'      as SocketEvent, channel: 'faction', label: 'Faction truce sought' },
+  { name: 'npc:scheme-resolved'       as SocketEvent, channel: 'npc',     label: 'NPC scheme resolved' },
+  { name: 'dream:composed'            as SocketEvent, channel: 'self',    label: 'Dream composed' },
+  { name: 'prediction:realised'       as SocketEvent, channel: 'self',    label: 'Prediction realised' },
+  { name: 'refusal:compound-threshold' as SocketEvent, channel: 'world',  label: 'Compound refusal' },
+  // Phase G1.5 — batched NPC sim + chain + social bridge surfacing.
+  { name: 'combat:chain'              as SocketEvent, channel: 'world',   label: 'Lightning chain' },
+  { name: 'npc:activity-batch'        as SocketEvent, channel: 'npc',     label: 'NPC activity batch' },
+  { name: 'npc:economy-batch'         as SocketEvent, channel: 'economy', label: 'NPC economy batch' },
+  { name: 'social:shadows-synced'     as SocketEvent, channel: 'social',  label: 'Social bridge synced' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
@@ -57,6 +70,11 @@ const CHANNEL_COLORS: Record<EmergentChannel, string> = {
   crisis:        'text-rose-300',
   companion:     'text-pink-300',
   system_health: 'text-red-400',
+  faction:       'text-orange-300',
+  npc:           'text-purple-300',
+  self:          'text-indigo-300',
+  economy:       'text-amber-300',
+  social:        'text-cyan-300',
 };
 
 const MAX_FEED_ITEMS = 50;

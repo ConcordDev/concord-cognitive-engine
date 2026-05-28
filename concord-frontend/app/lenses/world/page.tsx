@@ -42,6 +42,13 @@ import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/con
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
 import WorldShareButton from '@/components/world/WorldShareButton';
+import { ShardHealthBadge } from '@/components/hud/ShardHealthBadge';
+import { FriendsPresencePanel } from '@/components/world/FriendsPresencePanel';
+import { AchievementToast } from '@/components/world/AchievementToast';
+import { PartyPanel } from '@/components/world/PartyPanel';
+import { MapPingLayer } from '@/components/world/MapPingLayer';
+import { KillFeed } from '@/components/world/KillFeed';
+import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -103,6 +110,226 @@ const EmergentEventFeed = dynamic(
     import('@/components/world/EmergentEventFeed').then((m) => ({
       default: m.EmergentEventFeed,
     })),
+  { ssr: false }
+);
+const VillageGossipFeed = dynamic(
+  () =>
+    import('@/components/world/VillageGossipFeed').then((m) => ({
+      default: m.VillageGossipFeed,
+    })),
+  { ssr: false }
+);
+const AmbientChatPanel = dynamic(
+  () =>
+    import('@/components/world/AmbientChatPanel').then((m) => ({
+      default: m.AmbientChatPanel,
+    })),
+  { ssr: false }
+);
+const FestivalBanner = dynamic(
+  () =>
+    import('@/components/world/FestivalBanner').then((m) => ({
+      default: m.FestivalBanner,
+    })),
+  { ssr: false }
+);
+const FlightHUD = dynamic(
+  () =>
+    import('@/components/world/FlightHUD').then((m) => ({
+      default: m.FlightHUD,
+    })),
+  { ssr: false }
+);
+const SubmarineHUD = dynamic(
+  () =>
+    import('@/components/world/SubmarineHUD').then((m) => ({
+      default: m.SubmarineHUD,
+    })),
+  { ssr: false }
+);
+const PlayerCorpseMarker = dynamic(
+  () =>
+    import('@/components/world/CorpseMarker').then((m) => ({
+      default: m.CorpseMarker,
+    })),
+  { ssr: false }
+);
+const NPCActionMenu = dynamic(
+  () =>
+    import('@/components/world/NPCActionMenu').then((m) => ({
+      default: m.NPCActionMenu,
+    })),
+  { ssr: false }
+);
+const StationInteractionRouter = dynamic(
+  () =>
+    import('@/components/world/StationInteractionRouter').then((m) => ({
+      default: m.StationInteractionRouter,
+    })),
+  { ssr: false }
+);
+const CommandPalette = dynamic(
+  () =>
+    import('@/components/world/CommandPalette').then((m) => ({
+      default: m.CommandPalette,
+    })),
+  { ssr: false }
+);
+const GameModesHotbarGroup = dynamic(
+  () =>
+    import('@/components/world/GameModesHotbarGroup').then((m) => ({
+      default: m.GameModesHotbarGroup,
+    })),
+  { ssr: false }
+);
+const ClimbingTracker = dynamic(
+  () =>
+    import('@/components/world/ClimbingTracker').then((m) => ({
+      default: m.ClimbingTracker,
+    })),
+  { ssr: false }
+);
+const BrawlInviteToast = dynamic(
+  () =>
+    import('@/components/world/BrawlInviteToast').then((m) => ({
+      default: m.BrawlInviteToast,
+    })),
+  { ssr: false }
+);
+const BrawlActiveHUD = dynamic(
+  () =>
+    import('@/components/world/BrawlInviteToast').then((m) => ({
+      default: m.BrawlActiveHUD,
+    })),
+  { ssr: false }
+);
+const RogueliteRunHUD = dynamic(
+  () =>
+    import('@/components/world/RogueliteRunHUD').then((m) => ({
+      default: m.RogueliteRunHUD,
+    })),
+  { ssr: false }
+);
+const RogueliteUnlockShop = dynamic(
+  () =>
+    import('@/components/world/RogueliteRunHUD').then((m) => ({
+      default: m.RogueliteUnlockShop,
+    })),
+  { ssr: false }
+);
+const HordeWaveHUD = dynamic(
+  () =>
+    import('@/components/world/HordeWaveHUD').then((m) => ({
+      default: m.HordeWaveHUD,
+    })),
+  { ssr: false }
+);
+const HiddenObjectScenePanel = dynamic(
+  () =>
+    import('@/components/world/HiddenObjectScenePanel').then((m) => ({
+      default: m.HiddenObjectScenePanel,
+    })),
+  { ssr: false }
+);
+const PartyCombatHUD = dynamic(
+  () =>
+    import('@/components/world/PartyCombatHUD').then((m) => ({
+      default: m.PartyCombatHUD,
+    })),
+  { ssr: false }
+);
+const TimeLoopHUD = dynamic(
+  () =>
+    import('@/components/world/TimeLoopHUD').then((m) => ({
+      default: m.TimeLoopHUD,
+    })),
+  { ssr: false }
+);
+const HorrorRoleHUDs = dynamic(
+  () =>
+    import('@/components/world/HorrorRoleHUDs').then((m) => ({
+      default: m.HorrorRoleHUDs,
+    })),
+  { ssr: false }
+);
+const ExtractionRunHUD = dynamic(
+  () =>
+    import('@/components/world/ExtractionRunHUD').then((m) => ({
+      default: m.ExtractionRunHUD,
+    })),
+  { ssr: false }
+);
+const CourtshipProgressOverlay = dynamic(
+  () =>
+    import('@/components/world/CourtshipProgressOverlay').then((m) => ({
+      default: m.CourtshipProgressOverlay,
+    })),
+  { ssr: false }
+);
+const DriftAlertToast = dynamic(
+  () =>
+    import('@/components/world/DriftAlertToast').then((m) => ({
+      default: m.DriftAlertToast,
+    })),
+  { ssr: false }
+);
+const FootprintLayer = dynamic(
+  () =>
+    import('@/components/world/FootprintLayer').then((m) => ({
+      default: m.FootprintLayer,
+    })),
+  { ssr: false }
+);
+const BloodlineTreeViewer = dynamic(
+  () =>
+    import('@/components/world/BloodlineTreeViewer').then((m) => ({
+      default: m.BloodlineTreeViewer,
+    })),
+  { ssr: false }
+);
+const NPCTraitInspector = dynamic(
+  () =>
+    import('@/components/world/NPCTraitInspector').then((m) => ({
+      default: m.NPCTraitInspector,
+    })),
+  { ssr: false }
+);
+const LFGBoardPanel = dynamic(
+  () =>
+    import('@/components/world/LFGBoardPanel').then((m) => ({
+      default: m.LFGBoardPanel,
+    })),
+  { ssr: false }
+);
+const BrawlMatchmakingQueue = dynamic(
+  () =>
+    import('@/components/world/BrawlMatchmakingQueue').then((m) => ({
+      default: m.BrawlMatchmakingQueue,
+    })),
+  { ssr: false }
+);
+const SpectatorOverlay = dynamic(
+  () =>
+    import('@/components/world/SpectatorOverlay').then((m) => ({
+      default: m.SpectatorOverlay,
+    })),
+  { ssr: false }
+);
+// Phase F3 — simulation surfacing.
+const DreamReader = dynamic(
+  () => import('@/components/world/DreamReader').then((m) => ({ default: m.DreamReader })),
+  { ssr: false }
+);
+const StrategicWarBanner = dynamic(
+  () => import('@/components/world/StrategicWarBanner').then((m) => ({ default: m.StrategicWarBanner })),
+  { ssr: false }
+);
+const ForwardPredictionsPanel = dynamic(
+  () => import('@/components/world/ForwardPredictionsPanel').then((m) => ({ default: m.ForwardPredictionsPanel })),
+  { ssr: false }
+);
+const NPCSchemeOverhearTip = dynamic(
+  () => import('@/components/world/NPCSchemeOverhearTip').then((m) => ({ default: m.NPCSchemeOverhearTip })),
   { ssr: false }
 );
 const ConcordiaHUD = {
@@ -3867,6 +4094,19 @@ export default function WorldLensPage() {
             onBuildingClick={(id) => {
               const b = activeDistrict.buildings.find((b) => b.id === id);
               if (b) setSelectedBuilding(b);
+              // Phase DA2 — also dispatch a station-interaction event
+              // so the StationInteractionRouter can open the matching
+              // workbench overlay for the building's type.
+              try {
+                window.dispatchEvent(new CustomEvent('concordia:building-interact', {
+                  detail: {
+                    buildingId: id,
+                    worldId: activeDistrict.id,
+                    playerX: playerAvatar.position.x,
+                    playerZ: playerAvatar.position.y,
+                  },
+                }));
+              } catch { /* dispatch best-effort */ }
             }}
             onTerrainClick={() => {}}
             onWeatherModifiers={(mods) => setWeatherModifiers(mods)}
@@ -4032,6 +4272,14 @@ export default function WorldLensPage() {
               id: n.id,
               name: n.name,
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
+              position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+            }))}
+            playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
+          />
+          {/* Phase DC2 — Courtship affinity projection above NPC head */}
+          <CourtshipProgressOverlay
+            npcs={rawWorldNPCs.map((n) => ({
+              id: n.id,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
@@ -4680,6 +4928,102 @@ export default function WorldLensPage() {
             onOpenWorldEvents={() => setShowPanel('worldevents')}
             onOpenQuestLog={() => setShowPanel('questlog')}
           />
+
+          {/* Phase AB — village gossip (NPC↔NPC graph escalations) */}
+          <VillageGossipFeed worldId={activeDistrict.id} />
+
+          {/* Phase AG — district ambient chat (co-presence) */}
+          <AmbientChatPanel
+            worldId={activeDistrict.id}
+            districtId={activeDistrict.id}
+            currentUserId={playerAvatar.id}
+          />
+
+          {/* Phase BB1 — active festival banner */}
+          <FestivalBanner worldId={activeDistrict.id} />
+
+          {/* Phase CA1 — Flight HUD (subscribes to concordia:flight-state) */}
+          <FlightHUD />
+
+          {/* Phase CA2 — Submarine HUD (polls dive-state when swimming) */}
+          <SubmarineHUD />
+
+          {/* Phase CA6 — Soulslike player corpse marker */}
+          <PlayerCorpseMarker
+            worldId={activeDistrict.id}
+            playerX={playerAvatar.position.x}
+            playerZ={playerAvatar.position.y}
+          />
+
+          {/* Phase DA1 — NPC contextual action menu */}
+          <NPCActionMenu />
+
+          {/* Phase DA2 — station / workbench interaction router */}
+          <StationInteractionRouter />
+
+          {/* Phase DA3 — Global command palette (Ctrl+K) */}
+          <CommandPalette />
+
+          {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
+          <div className="pointer-events-auto fixed right-4 top-32 z-20">
+            <GameModesHotbarGroup worldId={activeDistrict.id} />
+          </div>
+
+          {/* Phase DB1 — Climbing tracker (top-left widget cluster) */}
+          <div className="pointer-events-auto fixed left-4 top-32 z-20 w-44">
+            <ClimbingTracker worldId={activeDistrict.id} playerY={playerAvatar.position.y} />
+          </div>
+
+          {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
+          <BrawlInviteToast />
+          <BrawlActiveHUD />
+
+          {/* Phase DB3 — Roguelite run HUD + unlock shop */}
+          <RogueliteRunHUD />
+          <RogueliteUnlockShop />
+
+          {/* Phase DB4 — Horde wave HUD + upgrade picker */}
+          <HordeWaveHUD />
+
+          {/* Phase DB8 — Hidden object scene viewer (event-triggered) */}
+          <HiddenObjectScenePanel />
+
+          {/* Phase DB9 — Optional tactical-party RTwP HUD (renders null
+              unless inside a party_combat_sessions row). The canonical
+              action combat surface is CombatInputController, not this. */}
+          <PartyCombatHUD />
+
+          {/* Phase DB13 — Time loop indicator */}
+          <TimeLoopHUD />
+
+          {/* Phase DB14 — Asymmetric horror role HUDs */}
+          <HorrorRoleHUDs />
+
+          {/* Phase DB16 — Extraction run HUD */}
+          <ExtractionRunHUD />
+
+          {/* Phase DC7 — Drift alert toast */}
+          <DriftAlertToast />
+
+          {/* Phase DC12 — Tracking footprint layer (skill ≥ 5 gates) */}
+          <FootprintLayer />
+
+          {/* Phase DC13 — Bloodline tree (event-triggered) */}
+          <BloodlineTreeViewer />
+
+          {/* Phase DC14 — NPC trait inspector (event-triggered from DA1 menu) */}
+          <NPCTraitInspector />
+
+          {/* Phase E7 — LFG board + brawl matchmaker + spectator overlay */}
+          <LFGBoardPanel />
+          <BrawlMatchmakingQueue />
+          <SpectatorOverlay />
+
+          {/* Phase F3 — simulation surfacing */}
+          <DreamReader />
+          <StrategicWarBanner />
+          <ForwardPredictionsPanel />
+          <NPCSchemeOverhearTip />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
@@ -5726,6 +6070,28 @@ export default function WorldLensPage() {
         open={adventureKitOpen}
         onClose={() => setAdventureKitOpen(false)}
       />
+
+      {/* Phase F — process-per-world shard status. Renders only when sharding
+          is enabled (returns null otherwise to avoid cluttering the HUD). */}
+      <ShardHealthBadge worldId={currentWorldId} />
+
+      {/* Meet-up flow — friends list + presence + join/invite buttons. */}
+      <FriendsPresencePanel myWorldId={currentWorldId} />
+
+      {/* Phase U2 — achievement unlock toast (top-right). */}
+      <AchievementToast />
+
+      {/* Phase U5 — party panel (bottom-right next to friends). */}
+      <PartyPanel />
+
+      {/* Phase U6 — world marker overlay (top-left). */}
+      <MapPingLayer worldId={currentWorldId} />
+
+      {/* Phase V5 — kill feed (top-right; only renders when enabled). */}
+      <KillFeed worldId={currentWorldId} />
+
+      {/* Phase W — disease HUD (top-right; renders only when infected). */}
+      <DiseaseStatusHUD />
 
       {/* World Actions Panel */}
       <div className="px-4 py-3 border-t border-white/10">

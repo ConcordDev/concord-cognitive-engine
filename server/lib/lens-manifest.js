@@ -194,6 +194,13 @@ const DOMAIN_TAG_MAP = Object.freeze({
   veterinary: ["animal", "patient", "clinic", "vaccination", "surgery", "species"],
   "law-enforcement": ["case", "incident", "officer", "evidence", "patrol", "warrant"],
   "emergency-services": ["dispatch", "fire", "ems", "rescue", "hazmat", "triage"],
+
+  // Phase Z1 — Phase D sidebar lenses.
+  courtship: ["romance", "marriage", "children", "bloodline", "affinity", "wedding"],
+  fishing: ["fish", "cast", "bait", "catch", "water", "reel"],
+  creatures: ["breeding", "crossbreed", "lineage", "fauna", "hybrid", "species"],
+  garage: ["vehicle", "horse", "cart", "glider", "mount", "spawn"],
+  "reasoning-traces": ["hlr", "trace", "deductive", "inductive", "abductive", "adversarial"],
 });
 
 // ── Manifest Operations ──────────────────────────────────────────────────

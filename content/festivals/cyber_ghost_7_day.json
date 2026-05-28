@@ -1,0 +1,13 @@
+{
+  "id": "cyber_ghost_7_day",
+  "name": "Ghost-7 Day",
+  "world_id": "cyber",
+  "season_idx": 3,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "static_on_every_radio",
+  "synopsis": "Folk holiday. Children leave bread at the noodle shop on 7th. Lavren takes none of it; some neighbor always does.",
+  "achievements": [],
+  "quest_seeds": []
+}

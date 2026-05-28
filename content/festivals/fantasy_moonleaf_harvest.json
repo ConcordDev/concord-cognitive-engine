@@ -1,0 +1,13 @@
+{
+  "id": "fantasy_moonleaf_harvest",
+  "name": "Moonleaf Harvest",
+  "world_id": "fantasy",
+  "season_idx": 2,
+  "day_in_season_start": 4,
+  "day_in_season_end": 4,
+  "repeats_yearly": true,
+  "decoration_tag": "silver_leaf_garlands",
+  "synopsis": "The Moonleaf Vigil opens the autumn harvest. Silver-leaf garlands over every threshold. Bread baked with moonleaf flour.",
+  "achievements": [],
+  "quest_seeds": []
+}

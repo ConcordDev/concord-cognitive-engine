@@ -1,0 +1,14 @@
+{
+  "songId": "sahm-letter",
+  "bpm": 88,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Chancellor of Sahm, write softly tonight" },
+    { "at_ms": 2727,  "line": "The boarding-house keeps a boy from the light" },
+    { "at_ms": 5454,  "line": "He is not yours, you have not asked" },
+    { "at_ms": 8181,  "line": "And neither one of us has unmasked" },
+    { "at_ms": 10908, "line": "Sahm, Sahm, fifteen years of ink" },
+    { "at_ms": 13635, "line": "Fifteen years and we don't blink" },
+    { "at_ms": 16362, "line": "Chancellor of Sahm, write softly tonight" },
+    { "at_ms": 19089, "line": "And the boy will dream what mothers write" }
+  ]
+}

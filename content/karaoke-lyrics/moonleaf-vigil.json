@@ -1,0 +1,14 @@
+{
+  "songId": "moonleaf-vigil",
+  "bpm": 72,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Moonleaf and silver bough" },
+    { "at_ms": 3333,  "line": "The old hunters keep vigil now" },
+    { "at_ms": 6666,  "line": "Watch the forest, watch the road" },
+    { "at_ms": 9999,  "line": "Watch the witch beneath the load" },
+    { "at_ms": 13332, "line": "Moonleaf, moonleaf, hold your post" },
+    { "at_ms": 16665, "line": "Even the king must fear the ghost" },
+    { "at_ms": 19998, "line": "Moonleaf and silver bough" },
+    { "at_ms": 23331, "line": "The old hunters keep vigil now" }
+  ]
+}

@@ -160,7 +160,7 @@ export function spawnFactionWar(db, params) {
     npcs, lastTickAt: 0, context: ctxLabel,
   });
 
-  logger.info?.({ warId, sideA: params.sideA, sideB: params.sideB, spawnsPerSide }, "faction_war_spawned");
+  logger.info?.("faction_war", "war_spawned", { warId, sideA: params.sideA, sideB: params.sideB, spawnsPerSide });
   return { ok: true, warId, npcs };
 }
 

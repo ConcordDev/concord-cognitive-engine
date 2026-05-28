@@ -19,7 +19,7 @@
       "outfit": "layered robes of living moss, bark, and shadow silk that shift and breathe with him",
       "tells": "the green tattoos brighten when he heals and dim toward black when he drains. The corrupted eye sees death's residue on every living thing."
     },
-    "backstory": "Thorne was a guardian of the great forests for two centuries before a curse spread through the elder roots and reached him. He fought it. He failed. The curse did not destroy him \u2014 it merged with him. He now walks both sides of the cycle: he can grow lethal thorns from the earth, drain the life force out of an enemy in seconds, OR pour that same energy into healing an ally back from the brink. He cannot turn it off. The forests he once protected are slowly going quiet around him.",
+    "backstory": "Thorne was a guardian of the great forests for two centuries before a curse spread through the elder roots and reached him. He fought it. He failed. The curse did not destroy him — it merged with him. He now walks both sides of the cycle: he can grow lethal thorns from the earth, drain the life force out of an enemy in seconds, OR pour that same energy into healing an ally back from the brink. He cannot turn it off. The forests he once protected are slowly going quiet around him.",
     "personality_traits": [
       "quiet",
       "ancient-feeling",
@@ -32,7 +32,7 @@
       {
         "id": "life_death_duality",
         "label": "Life-death duality magic",
-        "summary": "Channels the curse and the life-force together. Can grow deadly thorn fields, drain enemies' life force in a radius, or heal allies with the same energy. The pool is shared \u2014 healing takes from his own draining capacity and vice versa.",
+        "summary": "Channels the curse and the life-force together. Can grow deadly thorn fields, drain enemies' life force in a radius, or heal allies with the same energy. The pool is shared — healing takes from his own draining capacity and vice versa.",
         "tier": "core"
       },
       {
@@ -44,7 +44,7 @@
       {
         "id": "verdant_command",
         "label": "Verdant command",
-        "summary": "Commands plant life \u2014 moves trees, opens paths, closes them behind him. In a forest he is functionally untrackable.",
+        "summary": "Commands plant life — moves trees, opens paths, closes them behind him. In a forest he is functionally untrackable.",
         "tier": "core"
       },
       {
@@ -55,7 +55,7 @@
       }
     ],
     "weaknesses": [
-      "fire \u2014 clears the curse-roots from a battlefield faster than he can regrow them",
+      "fire — clears the curse-roots from a battlefield faster than he can regrow them",
       "the corruption advances every time he uses necrotic drain past a threshold; he resists for fear of becoming the thing he was meant to stop",
       "consecrated ground silences his magic entirely",
       "the bone beads in his hair are the anchors that keep his consciousness intact; remove them and he loses himself"
@@ -75,7 +75,7 @@
       {
         "npc_id": "nyx_torres",
         "type": "philosophical_kinship",
-        "notes": "CROSS-WORLD. Thorne does not understand cyber world's technology but understands resistance to a centralized self-correcting power. He has sent her one message \u2014 a riddle about wolves and walls \u2014 through a Concordia hub messenger. She framed it."
+        "notes": "CROSS-WORLD. Thorne does not understand cyber world's technology but understands resistance to a centralized self-correcting power. He has sent her one message — a riddle about wolves and walls — through a Concordia hub messenger. She framed it."
       },
       {
         "npc_id": "velora_mossheart",
@@ -85,7 +85,7 @@
     ],
     "narrative_context": {
       "current_goal": "Find the original source of the curse before it consumes the elder grove. Then decide whether to die with it or survive past it.",
-      "secret": "The curse did not come from outside the Wildwood Circle. It came from one of his own \u2014 a former apprentice he loved. He has not told anyone, not even himself, all the way through.",
+      "secret": "The curse did not come from outside the Wildwood Circle. It came from one of his own — a former apprentice he loved. He has not told anyone, not even himself, all the way through.",
       "fear": "That the apprentice is still alive somewhere, and that meeting them again will finish what the curse began."
     },
     "schedule": {
@@ -97,24 +97,182 @@
       "night": "rest"
     },
     "needs": [
-      { "id": "curse_containment", "priority": "primary", "satisfaction_method": "morning_grove_meditation" },
-      { "id": "apprentice_search", "priority": "primary", "satisfaction_method": "evening_root_listening" }
+      {
+        "id": "curse_containment",
+        "priority": "primary",
+        "satisfaction_method": "morning_grove_meditation"
+      },
+      {
+        "id": "apprentice_search",
+        "priority": "primary",
+        "satisfaction_method": "evening_root_listening"
+      }
     ],
     "daily_schedule": [
-      { "phase": "dawn", "phase_hours": [5, 8], "location": "thornwood_glade_inner", "activity": "wakes; the green tattoos pulse; meditates against the curse", "need_addressed": "curse_containment", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "thornwood_glade", "activity": "tends the corrupted edge of the elder grove; thornlashes anything that crosses the line", "need_addressed": "curse_containment", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "elder_grove", "activity": "communes with Velora when she'll see him; otherwise alone", "need_addressed": "curse_containment", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "bone_orchard", "activity": "listens through the root network for the apprentice's signature", "need_addressed": "apprentice_search", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 5], "location": "thornwood_glade_inner", "activity": "rests against a living tree; the curse darkens his right eye while he sleeps", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "thornwood_glade_inner",
+        "activity": "wakes; the green tattoos pulse; meditates against the curse",
+        "need_addressed": "curse_containment",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "thornwood_glade",
+        "activity": "tends the corrupted edge of the elder grove; thornlashes anything that crosses the line",
+        "need_addressed": "curse_containment",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "elder_grove",
+        "activity": "communes with Velora when she'll see him; otherwise alone",
+        "need_addressed": "curse_containment",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "bone_orchard",
+        "activity": "listens through the root network for the apprentice's signature",
+        "need_addressed": "apprentice_search",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          5
+        ],
+        "location": "thornwood_glade_inner",
+        "activity": "rests against a living tree; the curse darkens his right eye while he sleeps",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "thornwood_glade_inner",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "thornwood_glade",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "thornwood_glade",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "thornwood_glade",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "thornwood_glade",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "thornwood_glade_inner",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "thornwood_glade_inner", "dwelling_type": "living_grove_chamber" },
-    "job": { "profession_id": "corrupted_forest_guardian", "wage_per_diurnal_sparks": 0, "wage_source": "n/a — the forest provides" },
-    "apparel": ["robes_of_living_moss_bark_and_shadow_silk", "no_shoes", "vine_and_bone_bead_braids", "ceremonial_thorn_circlet"],
-    "gear": ["staff_of_thornlash", "personal_apprentice_search_journal_in_root_ink"],
-    "resources_consumed": ["the_forest_provides_food", "moss_and_bark_for_garments"],
-    "resources_produced": ["thornwood_perimeter_defense", "occasional_healing_when_a_pilgrim_truly_asks"],
-    "inventory": [{ "item": "staff_of_thornlash", "qty": 1 }, { "item": "personal_apprentice_search_journal", "qty": 1 }, { "item": "forest_marks", "qty": 18 }],
-    "starting_sparks": 0
+    "home": {
+      "district": "thornwood_glade_inner",
+      "dwelling_type": "living_grove_chamber"
+    },
+    "job": {
+      "profession_id": "corrupted_forest_guardian",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a — the forest provides"
+    },
+    "apparel": [
+      "robes_of_living_moss_bark_and_shadow_silk",
+      "no_shoes",
+      "vine_and_bone_bead_braids",
+      "ceremonial_thorn_circlet"
+    ],
+    "gear": [
+      "staff_of_thornlash",
+      "personal_apprentice_search_journal_in_root_ink"
+    ],
+    "resources_consumed": [
+      "the_forest_provides_food",
+      "moss_and_bark_for_garments"
+    ],
+    "resources_produced": [
+      "thornwood_perimeter_defense",
+      "occasional_healing_when_a_pilgrim_truly_asks"
+    ],
+    "inventory": [
+      {
+        "item": "staff_of_thornlash",
+        "qty": 1
+      },
+      {
+        "item": "personal_apprentice_search_journal",
+        "qty": 1
+      },
+      {
+        "item": "forest_marks",
+        "qty": 18
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "velora_mossheart",
@@ -166,7 +324,7 @@
     ],
     "weaknesses": [
       "she will not use the contingency unless Thorne kills first; everyone who knows her knows this and at least two factions have plans built around it",
-      "her grief for what Thorne was is her unguarded flank \u2014 confronting her with his old self destabilizes her",
+      "her grief for what Thorne was is her unguarded flank — confronting her with his old self destabilizes her",
       "stormcall requires open sky; covered ground silences her largest tool"
     ],
     "quest_hooks": [
@@ -195,7 +353,7 @@
     "narrative_context": {
       "current_goal": "Identify the original source of the curse before Thorne does, so she can decide whether to spare him or finish him on terms she chooses.",
       "secret": "She suspects the apprentice who became the curse is still alive. She has been quietly tracking rumors for eight years. She has not told Thorne because telling him would either save him or break him, and she does not yet know which.",
-      "fear": "That the contingency will not be enough \u2014 that Thorne is now bigger than the arrow she carved for him."
+      "fear": "That the contingency will not be enough — that Thorne is now bigger than the arrow she carved for him."
     },
     "schedule": {
       "dawn": "rest",
@@ -206,23 +364,183 @@
       "night": "rest"
     },
     "needs": [
-      { "id": "grove_stewardship", "priority": "primary", "satisfaction_method": "daily_elder_grove_communion" },
-      { "id": "thorne_oversight", "priority": "primary", "satisfaction_method": "afternoon_visit_to_thornwood" }
+      {
+        "id": "grove_stewardship",
+        "priority": "primary",
+        "satisfaction_method": "daily_elder_grove_communion"
+      },
+      {
+        "id": "thorne_oversight",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_visit_to_thornwood"
+      }
     ],
     "daily_schedule": [
-      { "phase": "dawn", "phase_hours": [5, 8], "location": "elder_grove_inner", "activity": "morning Circle meditation; storm-portent reading", "need_addressed": "grove_stewardship", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "elder_grove", "activity": "tends the elder grove; receives Circle apprentices", "need_addressed": "grove_stewardship", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 18], "location": "thornwood_glade", "activity": "visits Thorne; checks the curse line", "need_addressed": "thorne_oversight", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "elder_grove_inner", "activity": "evening Circle council", "need_addressed": "grove_stewardship", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "elder_grove_inner", "activity": "rests in the inner grove", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "elder_grove_inner",
+        "activity": "morning Circle meditation; storm-portent reading",
+        "need_addressed": "grove_stewardship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "elder_grove",
+        "activity": "tends the elder grove; receives Circle apprentices",
+        "need_addressed": "grove_stewardship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "thornwood_glade",
+        "activity": "visits Thorne; checks the curse line",
+        "need_addressed": "thorne_oversight",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "elder_grove_inner",
+        "activity": "evening Circle council",
+        "need_addressed": "grove_stewardship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "elder_grove_inner",
+        "activity": "rests in the inner grove",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "elder_grove_inner",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "elder_grove",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "elder_grove",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "elder_grove",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "elder_grove",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "elder_grove_inner",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "elder_grove_inner", "dwelling_type": "elder_grove_warden_chamber" },
-    "job": { "profession_id": "wildwood_elder_warden", "wage_per_diurnal_sparks": 80, "wage_source": "circle_pooled_donations" },
-    "apparel": ["green_warden_robe", "leather_belt_with_herb_pouches", "soft_grove_shoes", "moss_lined_cloak"],
-    "gear": ["staff_of_stormcall", "personal_apprentice_records_journal", "elder_grove_communion_focus"],
-    "resources_consumed": ["herbs", "ink", "circle_provisions"],
-    "resources_produced": ["grove_stewardship", "circle_apprentice_training"],
-    "inventory": [{ "item": "staff_of_stormcall", "qty": 1 }, { "item": "personal_apprentice_records_journal", "qty": 1 }, { "item": "forest_marks", "qty": 24 }],
+    "home": {
+      "district": "elder_grove_inner",
+      "dwelling_type": "elder_grove_warden_chamber"
+    },
+    "job": {
+      "profession_id": "wildwood_elder_warden",
+      "wage_per_diurnal_sparks": 80,
+      "wage_source": "circle_pooled_donations"
+    },
+    "apparel": [
+      "green_warden_robe",
+      "leather_belt_with_herb_pouches",
+      "soft_grove_shoes",
+      "moss_lined_cloak"
+    ],
+    "gear": [
+      "staff_of_stormcall",
+      "personal_apprentice_records_journal",
+      "elder_grove_communion_focus"
+    ],
+    "resources_consumed": [
+      "herbs",
+      "ink",
+      "circle_provisions"
+    ],
+    "resources_produced": [
+      "grove_stewardship",
+      "circle_apprentice_training"
+    ],
+    "inventory": [
+      {
+        "item": "staff_of_stormcall",
+        "qty": 1
+      },
+      {
+        "item": "personal_apprentice_records_journal",
+        "qty": 1
+      },
+      {
+        "item": "forest_marks",
+        "qty": 24
+      }
+    ],
     "starting_sparks": 980
   },
   {
@@ -243,8 +561,8 @@
       "hair": "long, flowing crimson",
       "eyes": "piercing violet",
       "outfit": "luxurious blood-red gowns with black lace and gold filigree; never the same one twice in public",
-      "weapon": "a delicate but deadly rapier that hums and sings when drawn \u2014 forged from a blood-pact alloy",
-      "tells": "she watches her host's pulse, always. When she's amused, her teeth show one beat too long. The fingertips of her right glove are reinforced \u2014 that's the hand that will move first."
+      "weapon": "a delicate but deadly rapier that hums and sings when drawn — forged from a blood-pact alloy",
+      "tells": "she watches her host's pulse, always. When she's amused, her teeth show one beat too long. The fingertips of her right glove are reinforced — that's the hand that will move first."
     },
     "backstory": "Heir to one of the oldest vampire bloodlines in the realm. Her great-grandmother was the consort of a king. Her grandmother poisoned that king and three of his successors. Her mother brokered the peace between the noble houses that has held for sixty years. Seraphine is the patient continuation of all of them. She does not need to rule openly because she already rules through everyone who thinks they do.",
     "personality_traits": [
@@ -265,7 +583,7 @@
       {
         "id": "illusion_weaving",
         "label": "Illusion weaving",
-        "summary": "Casts intricate illusions \u2014 extra guests at her balls, false escape routes for her prey, an entire empty room appearing as a packed hall. Targeted; high-fidelity; not detectable except by counter-magic or salt.",
+        "summary": "Casts intricate illusions — extra guests at her balls, false escape routes for her prey, an entire empty room appearing as a packed hall. Targeted; high-fidelity; not detectable except by counter-magic or salt.",
         "tier": "core"
       },
       {
@@ -277,7 +595,7 @@
       {
         "id": "sangueblade",
         "label": "Sangueblade",
-        "summary": "Her rapier sings when drawn \u2014 a clean tone audible across a ballroom. The blade drinks blood it draws and feeds her bloodline.",
+        "summary": "Her rapier sings when drawn — a clean tone audible across a ballroom. The blade drinks blood it draws and feeds her bloodline.",
         "tier": "core"
       },
       {
@@ -288,10 +606,10 @@
       }
     ],
     "weaknesses": [
-      "sunlight at full strength \u2014 she can be active in indoor daylight but full sun strips her power",
-      "consecrated holy items \u2014 most clergy don't have the courage to use them, but the few who do are real threats",
+      "sunlight at full strength — she can be active in indoor daylight but full sun strips her power",
+      "consecrated holy items — most clergy don't have the courage to use them, but the few who do are real threats",
       "her bloodline depends on continuity. Her death without an heir cascades through House Voss",
-      "her vanity \u2014 she will engage in a fair duel rather than win an unfair one if witnesses are watching"
+      "her vanity — she will engage in a fair duel rather than win an unfair one if witnesses are watching"
     ],
     "quest_hooks": [
       "masquerade_invitation",
@@ -323,13 +641,13 @@
       {
         "npc_id": "caelan_voss",
         "type": "deliberate_threat",
-        "notes": "Her cousin. Publicly her presumptive heir. Privately the person she has chosen as the failure-mode of her own succession plan \u2014 she will not name him publicly until she has confirmed he cannot be turned against her."
+        "notes": "Her cousin. Publicly her presumptive heir. Privately the person she has chosen as the failure-mode of her own succession plan — she will not name him publicly until she has confirmed he cannot be turned against her."
       }
     ],
     "narrative_context": {
       "current_goal": "Identify and quietly compromise an heir from each of the four other Great Houses, so that within a generation House Voss can move openly without fearing reprisal.",
       "secret": "She fed on her own mother to claim the bloodline early. The mother was complicit. The realm believes the mother died of a fever.",
-      "fear": "That the bloodline is ending with her \u2014 that her own ambition has made her too cautious to take a consort, and that without an heir her death undoes a thousand years of patience."
+      "fear": "That the bloodline is ending with her — that her own ambition has made her too cautious to take a consort, and that without an heir her death undoes a thousand years of patience."
     },
     "schedule": {
       "dawn": "rest",
@@ -340,22 +658,176 @@
       "night": "rest"
     },
     "needs": [
-      { "id": "feeding", "priority": "primary", "satisfaction_method": "masquerade_ball_disappearance" },
-      { "id": "political_leverage", "priority": "primary", "satisfaction_method": "evening_secret_brokering" }
+      {
+        "id": "feeding",
+        "priority": "primary",
+        "satisfaction_method": "masquerade_ball_disappearance"
+      },
+      {
+        "id": "political_leverage",
+        "priority": "primary",
+        "satisfaction_method": "evening_secret_brokering"
+      }
     ],
     "daily_schedule": [
-      { "phase": "dusk", "phase_hours": [19, 22], "location": "voss_estate", "activity": "rises; private council with Caelan; reviews the week's leverage portfolio", "need_addressed": "political_leverage", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 28], "location": "masquerade_district", "activity": "salon politics; courtship; occasional feeding from a marked guest", "need_addressed": "feeding", "interactable_by_player": true },
-      { "phase": "deep_night", "phase_hours": [28, 32], "location": "crimson_quarter", "activity": "private brokering meetings with other noble houses' compromised members", "need_addressed": "political_leverage", "interactable_by_player": true },
-      { "phase": "dawn_through_dusk", "phase_hours": [1, 19], "location": "voss_estate_inner_sanctum", "activity": "rests below ground; no sunlight tolerance", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "dusk",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "voss_estate",
+        "activity": "rises; private council with Caelan; reviews the week's leverage portfolio",
+        "need_addressed": "political_leverage",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          28
+        ],
+        "location": "masquerade_district",
+        "activity": "salon politics; courtship; occasional feeding from a marked guest",
+        "need_addressed": "feeding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "deep_night",
+        "phase_hours": [
+          28,
+          32
+        ],
+        "location": "crimson_quarter",
+        "activity": "private brokering meetings with other noble houses' compromised members",
+        "need_addressed": "political_leverage",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "dawn_through_dusk",
+        "phase_hours": [
+          1,
+          19
+        ],
+        "location": "voss_estate_inner_sanctum",
+        "activity": "rests below ground; no sunlight tolerance",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "voss_estate",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "masquerade_district",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "masquerade_district",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "masquerade_district",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "masquerade_district",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "voss_estate",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "voss_estate", "dwelling_type": "duchess_inner_sanctum_below_ground" },
-    "job": { "profession_id": "vampire_duchess", "wage_per_diurnal_sparks": 1400, "wage_source": "voss_estate_hereditary_treasury" },
-    "apparel": ["aristocratic_couture_evening_gowns", "blood_red_silk_choker", "polished_evening_shoes", "ceremonial_voss_crest_brooch"],
-    "gear": ["personal_leverage_portfolio_master_journal_locked", "voss_estate_mirror_concord_link_anchor_key", "ceremonial_dagger_silver_lined", "blood_pact_seal_master"],
-    "resources_consumed": ["fed_guests_quietly", "evening_salon_provisions"],
-    "resources_produced": ["leverage_arrangements", "political_consolidation"],
-    "inventory": [{ "item": "personal_leverage_portfolio_master_journal_locked", "qty": 1 }, { "item": "voss_estate_mirror_anchor_key", "qty": 1 }, { "item": "blood_pact_seal_master", "qty": 1 }, { "item": "blood_pacts", "qty": 90 }],
+    "home": {
+      "district": "voss_estate",
+      "dwelling_type": "duchess_inner_sanctum_below_ground"
+    },
+    "job": {
+      "profession_id": "vampire_duchess",
+      "wage_per_diurnal_sparks": 1400,
+      "wage_source": "voss_estate_hereditary_treasury"
+    },
+    "apparel": [
+      "aristocratic_couture_evening_gowns",
+      "blood_red_silk_choker",
+      "polished_evening_shoes",
+      "ceremonial_voss_crest_brooch"
+    ],
+    "gear": [
+      "personal_leverage_portfolio_master_journal_locked",
+      "voss_estate_mirror_concord_link_anchor_key",
+      "ceremonial_dagger_silver_lined",
+      "blood_pact_seal_master"
+    ],
+    "resources_consumed": [
+      "fed_guests_quietly",
+      "evening_salon_provisions"
+    ],
+    "resources_produced": [
+      "leverage_arrangements",
+      "political_consolidation"
+    ],
+    "inventory": [
+      {
+        "item": "personal_leverage_portfolio_master_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "voss_estate_mirror_anchor_key",
+        "qty": 1
+      },
+      {
+        "item": "blood_pact_seal_master",
+        "qty": 1
+      },
+      {
+        "item": "blood_pacts",
+        "qty": 90
+      }
+    ],
     "starting_sparks": 280000
   },
   {
@@ -375,10 +847,10 @@
       "skin": "porcelain pale, like Seraphine, like all of them",
       "hair": "ash-blond, cut short and unfashionable on purpose",
       "eyes": "pale grey",
-      "outfit": "plain black coats over white linen \u2014 deliberately understated against Seraphine's gowns",
+      "outfit": "plain black coats over white linen — deliberately understated against Seraphine's gowns",
       "tells": "pauses a half-second too long before answering Seraphine. Smiles politely whenever someone underestimates him."
     },
-    "backstory": "Born forty years after Seraphine into a junior branch of House Voss. Trained as a duelist, a poisoner, and a courtier \u2014 same curriculum every Voss child gets. Has spent his adult life one step behind Seraphine in every measurable way. He has come to suspect, correctly, that this is by design. The duchess does not need a strong heir; she needs a competent placeholder she can replace if the bloodline ever produces something better.",
+    "backstory": "Born forty years after Seraphine into a junior branch of House Voss. Trained as a duelist, a poisoner, and a courtier — same curriculum every Voss child gets. Has spent his adult life one step behind Seraphine in every measurable way. He has come to suspect, correctly, that this is by design. The duchess does not need a strong heir; she needs a competent placeholder she can replace if the bloodline ever produces something better.",
     "personality_traits": [
       "soft-spoken",
       "patient",
@@ -391,7 +863,7 @@
       {
         "id": "blood_thinning",
         "label": "Blood-thinning touch",
-        "summary": "Inverse of Seraphine's blood manipulation \u2014 slows or thins blood in a target. Used in duels to bleed an opponent out without obvious wounding.",
+        "summary": "Inverse of Seraphine's blood manipulation — slows or thins blood in a target. Used in duels to bleed an opponent out without obvious wounding.",
         "tier": "core"
       },
       {
@@ -425,7 +897,7 @@
       }
     ],
     "narrative_context": {
-      "current_goal": "Quietly identify whether Seraphine is grooming a replacement heir \u2014 and if so, surface the replacement before they are ready, on terms Caelan controls.",
+      "current_goal": "Quietly identify whether Seraphine is grooming a replacement heir — and if so, surface the replacement before they are ready, on terms Caelan controls.",
       "secret": "He has been corresponding with one of the other Great Houses for six years under a false signature. The other house believes they are corresponding with a sympathetic Voss insider. They are. They simply do not yet realize how sympathetic.",
       "fear": "That Seraphine already knows about the correspondence and is waiting for him to commit before she ends it."
     },
@@ -438,22 +910,175 @@
       "night": "rest"
     },
     "needs": [
-      { "id": "court_protocol", "priority": "primary", "satisfaction_method": "evening_court_attendance" },
-      { "id": "succession_preparation", "priority": "primary", "satisfaction_method": "weekly_inheritance_review" }
+      {
+        "id": "court_protocol",
+        "priority": "primary",
+        "satisfaction_method": "evening_court_attendance"
+      },
+      {
+        "id": "succession_preparation",
+        "priority": "primary",
+        "satisfaction_method": "weekly_inheritance_review"
+      }
     ],
     "daily_schedule": [
-      { "phase": "dusk", "phase_hours": [19, 22], "location": "voss_estate", "activity": "rises; council with Seraphine; protocol briefing for the evening's salon", "need_addressed": "court_protocol", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 28], "location": "masquerade_district", "activity": "salon attendance as Seraphine's chosen heir; learns court politics", "need_addressed": "court_protocol", "interactable_by_player": true },
-      { "phase": "deep_night", "phase_hours": [28, 32], "location": "voss_estate_inner_library", "activity": "succession studies — reads three centuries of Voss family lore", "need_addressed": "succession_preparation", "interactable_by_player": true },
-      { "phase": "dawn_through_dusk", "phase_hours": [1, 19], "location": "voss_estate_caelan_chamber", "activity": "rests below ground", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "dusk",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "voss_estate",
+        "activity": "rises; council with Seraphine; protocol briefing for the evening's salon",
+        "need_addressed": "court_protocol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          28
+        ],
+        "location": "masquerade_district",
+        "activity": "salon attendance as Seraphine's chosen heir; learns court politics",
+        "need_addressed": "court_protocol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "deep_night",
+        "phase_hours": [
+          28,
+          32
+        ],
+        "location": "voss_estate_inner_library",
+        "activity": "succession studies — reads three centuries of Voss family lore",
+        "need_addressed": "succession_preparation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "dawn_through_dusk",
+        "phase_hours": [
+          1,
+          19
+        ],
+        "location": "voss_estate_caelan_chamber",
+        "activity": "rests below ground",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "voss_estate",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "masquerade_district",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "masquerade_district",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "masquerade_district",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "masquerade_district",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "voss_estate",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "voss_estate", "dwelling_type": "heir_chamber_below_ground" },
-    "job": { "profession_id": "vampire_heir", "wage_per_diurnal_sparks": 420, "wage_source": "voss_hereditary_stipend" },
-    "apparel": ["aristocratic_evening_suits", "blood_red_silk_cravat", "polished_evening_shoes", "ceremonial_voss_heir_crest"],
-    "gear": ["personal_succession_studies_journal", "ceremonial_silver_lined_dagger", "voss_archive_master_key"],
-    "resources_consumed": ["fed_quietly", "salon_provisions"],
-    "resources_produced": ["court_attendance", "succession_progress"],
-    "inventory": [{ "item": "personal_succession_studies_journal", "qty": 1 }, { "item": "ceremonial_silver_lined_dagger", "qty": 1 }, { "item": "voss_archive_master_key", "qty": 1 }, { "item": "blood_pacts", "qty": 24 }],
+    "home": {
+      "district": "voss_estate",
+      "dwelling_type": "heir_chamber_below_ground"
+    },
+    "job": {
+      "profession_id": "vampire_heir",
+      "wage_per_diurnal_sparks": 420,
+      "wage_source": "voss_hereditary_stipend"
+    },
+    "apparel": [
+      "aristocratic_evening_suits",
+      "blood_red_silk_cravat",
+      "polished_evening_shoes",
+      "ceremonial_voss_heir_crest"
+    ],
+    "gear": [
+      "personal_succession_studies_journal",
+      "ceremonial_silver_lined_dagger",
+      "voss_archive_master_key"
+    ],
+    "resources_consumed": [
+      "fed_quietly",
+      "salon_provisions"
+    ],
+    "resources_produced": [
+      "court_attendance",
+      "succession_progress"
+    ],
+    "inventory": [
+      {
+        "item": "personal_succession_studies_journal",
+        "qty": 1
+      },
+      {
+        "item": "ceremonial_silver_lined_dagger",
+        "qty": 1
+      },
+      {
+        "item": "voss_archive_master_key",
+        "qty": 1
+      },
+      {
+        "item": "blood_pacts",
+        "qty": 24
+      }
+    ],
     "starting_sparks": 38000
   },
   {
@@ -462,7 +1087,7 @@
     "alias": "The Long Way",
     "archetype": "link_walker",
     "faction_id": "wildwood_circle",
-    "role": "Concord Link courier on the fantasy \u2194 Concordia route; trained by the Wildwood Circle",
+    "role": "Concord Link courier on the fantasy ↔ Concordia route; trained by the Wildwood Circle",
     "is_conscious": true,
     "is_immortal": false,
     "quest_giver": false,
@@ -496,22 +1121,179 @@
       "night": "rest"
     },
     "needs": [
-      { "id": "route_completion", "priority": "primary", "satisfaction_method": "monthly_long_walk" },
-      { "id": "rest", "priority": "secondary", "satisfaction_method": "post_arrival_rest" }
+      {
+        "id": "route_completion",
+        "priority": "primary",
+        "satisfaction_method": "monthly_long_walk"
+      },
+      {
+        "id": "rest",
+        "priority": "secondary",
+        "satisfaction_method": "post_arrival_rest"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [6, 11], "location": "varies_by_route_segment", "activity": "outbound walking — carries the Circle's messages between groves", "need_addressed": "route_completion", "interactable_by_player": false },
-      { "phase": "midday", "phase_hours": [11, 14], "location": "anchor_clearing", "activity": "rest stop; reads any pilgrim messages found at the clearing", "need_addressed": "route_completion", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "continues the walk", "need_addressed": "route_completion", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 6], "location": "moss_road_rest_spot", "activity": "rests on the road", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "varies_by_route_segment",
+        "activity": "outbound walking — carries the Circle's messages between groves",
+        "need_addressed": "route_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "anchor_clearing",
+        "activity": "rest stop; reads any pilgrim messages found at the clearing",
+        "need_addressed": "route_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "continues the walk",
+        "need_addressed": "route_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "moss_road_rest_spot",
+        "activity": "rests on the road",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "varies_by_route_segment",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "anchor_clearing",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "anchor_clearing",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "anchor_clearing",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "anchor_clearing",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "varies_by_route_segment",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "thornwood_glade_walker_lodge", "dwelling_type": "walker_lodge_bunk" },
-    "job": { "profession_id": "link_walker", "wage_per_diurnal_sparks": 60, "wage_source": "circle_pooled_per_delivery" },
-    "apparel": ["moss_lined_traveling_cloak", "circle_walker_tunic", "knee_high_road_boots", "weathered_hat"],
-    "gear": ["walking_staff_circle_anchor", "mail_satchel", "moss_signal_token", "small_dagger"],
-    "resources_consumed": ["trail_food", "circle_provisions"],
-    "resources_produced": ["delivered_messages"],
-    "inventory": [{ "item": "walking_staff_circle_anchor", "qty": 1 }, { "item": "mail_satchel", "qty": 1 }, { "item": "small_dagger", "qty": 1 }, { "item": "trail_rations", "qty": 6 }, { "item": "forest_marks", "qty": 14 }],
+    "home": {
+      "district": "thornwood_glade_walker_lodge",
+      "dwelling_type": "walker_lodge_bunk"
+    },
+    "job": {
+      "profession_id": "link_walker",
+      "wage_per_diurnal_sparks": 60,
+      "wage_source": "circle_pooled_per_delivery"
+    },
+    "apparel": [
+      "moss_lined_traveling_cloak",
+      "circle_walker_tunic",
+      "knee_high_road_boots",
+      "weathered_hat"
+    ],
+    "gear": [
+      "walking_staff_circle_anchor",
+      "mail_satchel",
+      "moss_signal_token",
+      "small_dagger"
+    ],
+    "resources_consumed": [
+      "trail_food",
+      "circle_provisions"
+    ],
+    "resources_produced": [
+      "delivered_messages"
+    ],
+    "inventory": [
+      {
+        "item": "walking_staff_circle_anchor",
+        "qty": 1
+      },
+      {
+        "item": "mail_satchel",
+        "qty": 1
+      },
+      {
+        "item": "small_dagger",
+        "qty": 1
+      },
+      {
+        "item": "trail_rations",
+        "qty": 6
+      },
+      {
+        "item": "forest_marks",
+        "qty": 14
+      }
+    ],
     "starting_sparks": 380
   },
   {
@@ -526,35 +1308,223 @@
     "quest_giver": true,
     "level": 28,
     "backstory": "Morwen has reigned for forty-one years. Her bloodline carries true draconic ancestry — she breathes ember when angry, her skin runs hot, and she cannot be killed by any blade not forged in dragon-fire. Her heir was born without scales last year. The court has not yet adjusted.",
-    "personality_traits": ["regal", "cold-fire-tempered", "lonely at the top of her own dynasty", "calculating"],
+    "personality_traits": [
+      "regal",
+      "cold-fire-tempered",
+      "lonely at the top of her own dynasty",
+      "calculating"
+    ],
     "speech_patterns": "Royal-we when ceremonial. First-person when private. Drops into a low draconic register when threatened.",
-    "narrative_context": { "secret": "Morwen suspects her heir's lack of scales is not a defect but a sign that the lost sister-line is returning. She has not told the court. She has begun secretly searching for the sister-line's surviving descendants." },
+    "narrative_context": {
+      "secret": "Morwen suspects her heir's lack of scales is not a defect but a sign that the lost sister-line is returning. She has not told the court. She has begun secretly searching for the sister-line's surviving descendants."
+    },
     "needs": [
-      { "id": "dynastic_continuity", "priority": "primary", "satisfaction_method": "morning_court_audience" },
-      { "id": "draconic_practice", "priority": "primary", "satisfaction_method": "evening_aerie_flight" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "royal_kitchen" }
+      {
+        "id": "dynastic_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_court_audience"
+      },
+      {
+        "id": "draconic_practice",
+        "priority": "primary",
+        "satisfaction_method": "evening_aerie_flight"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "royal_kitchen"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "obsidian_palace_private_chamber", "activity": "wakes; private breakfast; reads court correspondence", "need_addressed": "dynastic_continuity", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "obsidian_palace_throne_room", "activity": "morning court audience; receives petitioners", "need_addressed": "dynastic_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "obsidian_palace_council_chamber", "activity": "midday meal with privy council", "need_addressed": "dynastic_continuity", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "drake_aerie", "activity": "evening drake flight; privately speaks the old draconic to her mount", "need_addressed": "draconic_practice", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "obsidian_palace_private_chamber", "activity": "private supper; reviews secret search reports for the lost sister-line", "need_addressed": "dynastic_continuity", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 5], "location": "obsidian_palace_private_chamber", "activity": "rests; sometimes wakes to breathe ember at a dream-shadow", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "obsidian_palace_private_chamber",
+        "activity": "wakes; private breakfast; reads court correspondence",
+        "need_addressed": "dynastic_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "obsidian_palace_throne_room",
+        "activity": "morning court audience; receives petitioners",
+        "need_addressed": "dynastic_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "obsidian_palace_council_chamber",
+        "activity": "midday meal with privy council",
+        "need_addressed": "dynastic_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "drake_aerie",
+        "activity": "evening drake flight; privately speaks the old draconic to her mount",
+        "need_addressed": "draconic_practice",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "obsidian_palace_private_chamber",
+        "activity": "private supper; reviews secret search reports for the lost sister-line",
+        "need_addressed": "dynastic_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "obsidian_palace_private_chamber",
+        "activity": "rests; sometimes wakes to breathe ember at a dream-shadow",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "obsidian_palace_private_chamber",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "obsidian_palace_throne_room",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "obsidian_palace_throne_room",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "obsidian_palace_throne_room",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "obsidian_palace_throne_room",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "obsidian_palace_private_chamber",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "obsidian_palace", "dwelling_type": "royal_chambers" },
-    "job": { "profession_id": "monarch", "wage_per_diurnal_sparks": 1200, "wage_source": "crown_treasury" },
-    "apparel": ["obsidian_state_gown_with_dragon_scale_inlay", "draconic_circlet_seven_horns", "ceremonial_belt_with_scale_seal_pouch", "soft_palace_slippers"],
-    "gear": ["ceremonial_dragon_fire_dagger", "scale_seal_master", "personal_lost_sister_line_research_journal_locked", "draconic_translation_grimoire"],
-    "resources_consumed": ["royal_provisions", "ink", "rare_dragon_fire_oil"],
-    "resources_produced": ["royal_decrees", "court_judgments", "draconic_research"],
+    "home": {
+      "district": "obsidian_palace",
+      "dwelling_type": "royal_chambers"
+    },
+    "job": {
+      "profession_id": "monarch",
+      "wage_per_diurnal_sparks": 1200,
+      "wage_source": "crown_treasury"
+    },
+    "apparel": [
+      "obsidian_state_gown_with_dragon_scale_inlay",
+      "draconic_circlet_seven_horns",
+      "ceremonial_belt_with_scale_seal_pouch",
+      "soft_palace_slippers"
+    ],
+    "gear": [
+      "ceremonial_dragon_fire_dagger",
+      "scale_seal_master",
+      "personal_lost_sister_line_research_journal_locked",
+      "draconic_translation_grimoire"
+    ],
+    "resources_consumed": [
+      "royal_provisions",
+      "ink",
+      "rare_dragon_fire_oil"
+    ],
+    "resources_produced": [
+      "royal_decrees",
+      "court_judgments",
+      "draconic_research"
+    ],
     "inventory": [
-      { "item": "ceremonial_dragon_fire_dagger", "qty": 1 },
-      { "item": "scale_seal_master", "qty": 1 },
-      { "item": "personal_lost_sister_line_journal", "qty": 1 },
-      { "item": "draconic_translation_grimoire", "qty": 1 },
-      { "item": "scale_seal_token", "qty": 200 },
-      { "item": "blood_pact", "qty": 8 }
+      {
+        "item": "ceremonial_dragon_fire_dagger",
+        "qty": 1
+      },
+      {
+        "item": "scale_seal_master",
+        "qty": 1
+      },
+      {
+        "item": "personal_lost_sister_line_journal",
+        "qty": 1
+      },
+      {
+        "item": "draconic_translation_grimoire",
+        "qty": 1
+      },
+      {
+        "item": "scale_seal_token",
+        "qty": 200
+      },
+      {
+        "item": "blood_pact",
+        "qty": 8
+      }
     ],
     "starting_sparks": 24000
   },
@@ -570,34 +1540,219 @@
     "quest_giver": true,
     "level": 18,
     "backstory": "Grokka has led the league for nineteen years. She came up the hard way — won her first chieftain duel at fourteen and her first inter-warband mediation at seventeen. She is fair, ruthless, and quietly trying to hold the league together as two younger chieftains push to reorganize.",
-    "personality_traits": ["sharp", "fair within the league", "ruthless to outsiders", "long memory"],
+    "personality_traits": [
+      "sharp",
+      "fair within the league",
+      "ruthless to outsiders",
+      "long memory"
+    ],
     "speech_patterns": "Short. Calls outsiders 'crown-borns' or 'tusked' depending on respect.",
     "needs": [
-      { "id": "league_unity", "priority": "primary", "satisfaction_method": "weekly_inter_warband_council" },
-      { "id": "raid_economy", "priority": "primary", "satisfaction_method": "monthly_raid_review" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "warband_share" }
+      {
+        "id": "league_unity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_inter_warband_council"
+      },
+      {
+        "id": "raid_economy",
+        "priority": "primary",
+        "satisfaction_method": "monthly_raid_review"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "warband_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "goblin_warband_camp_north", "activity": "morning weapons drill with her own warband", "need_addressed": "raid_economy", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "goblin_warband_camp_north", "activity": "warband meeting; assigns the day's patrols and hunts", "need_addressed": "league_unity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "raid_corridor_three", "activity": "scouts the corridor for caravans worth raiding", "need_addressed": "raid_economy", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "raid run if scheduled, or inter-warband mediation if conflict", "need_addressed": "league_unity", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "goblin_warband_camp_north", "activity": "evening meal with warband; loud and warm", "need_addressed": "league_unity", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "warchief_tent", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "morning weapons drill with her own warband",
+        "need_addressed": "raid_economy",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "warband meeting; assigns the day's patrols and hunts",
+        "need_addressed": "league_unity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "raid_corridor_three",
+        "activity": "scouts the corridor for caravans worth raiding",
+        "need_addressed": "raid_economy",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "raid run if scheduled, or inter-warband mediation if conflict",
+        "need_addressed": "league_unity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "evening meal with warband; loud and warm",
+        "need_addressed": "league_unity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "warchief_tent",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "goblin_warband_camp_north",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "goblin_warband_camp_north", "dwelling_type": "warchief_tent_with_war_chest" },
-    "job": { "profession_id": "warchief", "wage_per_diurnal_sparks": 320, "wage_source": "raid_share_lead_cut" },
-    "apparel": ["heavy_leather_warlord_cuirass", "tusked_helm", "hide_leg_wraps", "raid_belt_with_trophy_tokens"],
-    "gear": ["greataxe_carved", "shortbow", "war_horn", "personal_warband_oath_journal"],
-    "resources_consumed": ["raid_food_share", "leather_repair", "weapon_oil"],
-    "resources_produced": ["raid_returns", "league_judgments"],
+    "home": {
+      "district": "goblin_warband_camp_north",
+      "dwelling_type": "warchief_tent_with_war_chest"
+    },
+    "job": {
+      "profession_id": "warchief",
+      "wage_per_diurnal_sparks": 320,
+      "wage_source": "raid_share_lead_cut"
+    },
+    "apparel": [
+      "heavy_leather_warlord_cuirass",
+      "tusked_helm",
+      "hide_leg_wraps",
+      "raid_belt_with_trophy_tokens"
+    ],
+    "gear": [
+      "greataxe_carved",
+      "shortbow",
+      "war_horn",
+      "personal_warband_oath_journal"
+    ],
+    "resources_consumed": [
+      "raid_food_share",
+      "leather_repair",
+      "weapon_oil"
+    ],
+    "resources_produced": [
+      "raid_returns",
+      "league_judgments"
+    ],
     "inventory": [
-      { "item": "greataxe_carved", "qty": 1 },
-      { "item": "shortbow", "qty": 1 },
-      { "item": "war_horn", "qty": 1 },
-      { "item": "personal_warband_oath_journal", "qty": 1 },
-      { "item": "warband_token", "qty": 38 },
-      { "item": "raid_food_ration", "qty": 6 }
+      {
+        "item": "greataxe_carved",
+        "qty": 1
+      },
+      {
+        "item": "shortbow",
+        "qty": 1
+      },
+      {
+        "item": "war_horn",
+        "qty": 1
+      },
+      {
+        "item": "personal_warband_oath_journal",
+        "qty": 1
+      },
+      {
+        "item": "warband_token",
+        "qty": 38
+      },
+      {
+        "item": "raid_food_ration",
+        "qty": 6
+      }
     ],
     "starting_sparks": 1900
   },
@@ -613,35 +1768,225 @@
     "quest_giver": true,
     "level": 22,
     "backstory": "Aria has commanded the Order for sixteen years. She has been quietly building a case against Lady Voss for thirty. The case is complete; the timing is not. She is devout, patient, and has never in her career executed a mission she has not first prayed about for thirty days.",
-    "personality_traits": ["devout", "patient", "incorruptible by gold but not by argument", "warm with her order"],
+    "personality_traits": [
+      "devout",
+      "patient",
+      "incorruptible by gold but not by argument",
+      "warm with her order"
+    ],
     "speech_patterns": "Formal in chapter; warm in private. Uses scripture to refuse rather than to demand.",
-    "narrative_context": { "secret": "Aria has had three visions in the past year suggesting she will not live to execute the Voss case. She has not told the order. She has begun training her successor without saying why." },
+    "narrative_context": {
+      "secret": "Aria has had three visions in the past year suggesting she will not live to execute the Voss case. She has not told the order. She has begun training her successor without saying why."
+    },
     "needs": [
-      { "id": "order_command", "priority": "primary", "satisfaction_method": "morning_chapter_house_audience" },
-      { "id": "the_voss_case_progression", "priority": "primary", "satisfaction_method": "private_evening_research" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "chapter_house_provided" }
+      {
+        "id": "order_command",
+        "priority": "primary",
+        "satisfaction_method": "morning_chapter_house_audience"
+      },
+      {
+        "id": "the_voss_case_progression",
+        "priority": "primary",
+        "satisfaction_method": "private_evening_research"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "chapter_house_provided"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "paladin_chapter_house_chapel", "activity": "morning prayer; thirty-minute meditation on the Lit Veil scripture", "need_addressed": "order_command", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "paladin_chapter_house", "activity": "chapter audience; reviews patrol reports; orders the day's vampire-perimeter checks", "need_addressed": "order_command", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "lit_veil_seminary", "activity": "trains the next generation of paladins; especially her chosen successor", "need_addressed": "order_command", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "vampire_crypt_perimeter", "activity": "personally inspects perimeter wards; meditates on the visions", "need_addressed": "the_voss_case_progression", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "commander_quarters", "activity": "evening study of the Voss case files; cross-references with the Wildwood Circle's accounts", "need_addressed": "the_voss_case_progression", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 4], "location": "commander_quarters", "activity": "rests; sometimes wakes to record a dream against the visions", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "paladin_chapter_house_chapel",
+        "activity": "morning prayer; thirty-minute meditation on the Lit Veil scripture",
+        "need_addressed": "order_command",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "paladin_chapter_house",
+        "activity": "chapter audience; reviews patrol reports; orders the day's vampire-perimeter checks",
+        "need_addressed": "order_command",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "lit_veil_seminary",
+        "activity": "trains the next generation of paladins; especially her chosen successor",
+        "need_addressed": "order_command",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "vampire_crypt_perimeter",
+        "activity": "personally inspects perimeter wards; meditates on the visions",
+        "need_addressed": "the_voss_case_progression",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "commander_quarters",
+        "activity": "evening study of the Voss case files; cross-references with the Wildwood Circle's accounts",
+        "need_addressed": "the_voss_case_progression",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "commander_quarters",
+        "activity": "rests; sometimes wakes to record a dream against the visions",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "paladin_chapter_house_chapel",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "paladin_chapter_house",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "paladin_chapter_house",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "paladin_chapter_house",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "paladin_chapter_house",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "paladin_chapter_house_chapel",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "paladin_chapter_house", "dwelling_type": "commander_quarters_with_attached_chapel" },
-    "job": { "profession_id": "paladin_commander", "wage_per_diurnal_sparks": 380, "wage_source": "lit_veil_seminary_tithe" },
-    "apparel": ["full_plate_polished_silver_with_lit_veil_sun_glyph", "ceremonial_white_tabard", "blessed_war_boots", "command_cloak_with_pantheon_seal"],
-    "gear": ["greatsword_blessed_dawnbreaker", "blessed_holy_water_phials", "voss_case_research_journal_locked", "personal_blessed_dagger", "vision_record_journal"],
-    "resources_consumed": ["holy_water_supplies", "ink", "candles", "chapter_house_provisions"],
-    "resources_produced": ["vampire_perimeter_assessments", "successor_training", "voss_case_files"],
+    "home": {
+      "district": "paladin_chapter_house",
+      "dwelling_type": "commander_quarters_with_attached_chapel"
+    },
+    "job": {
+      "profession_id": "paladin_commander",
+      "wage_per_diurnal_sparks": 380,
+      "wage_source": "lit_veil_seminary_tithe"
+    },
+    "apparel": [
+      "full_plate_polished_silver_with_lit_veil_sun_glyph",
+      "ceremonial_white_tabard",
+      "blessed_war_boots",
+      "command_cloak_with_pantheon_seal"
+    ],
+    "gear": [
+      "greatsword_blessed_dawnbreaker",
+      "blessed_holy_water_phials",
+      "voss_case_research_journal_locked",
+      "personal_blessed_dagger",
+      "vision_record_journal"
+    ],
+    "resources_consumed": [
+      "holy_water_supplies",
+      "ink",
+      "candles",
+      "chapter_house_provisions"
+    ],
+    "resources_produced": [
+      "vampire_perimeter_assessments",
+      "successor_training",
+      "voss_case_files"
+    ],
     "inventory": [
-      { "item": "greatsword_blessed_dawnbreaker", "qty": 1 },
-      { "item": "blessed_holy_water_phial", "qty": 8 },
-      { "item": "voss_case_research_journal_locked", "qty": 1 },
-      { "item": "personal_blessed_dagger", "qty": 1 },
-      { "item": "vision_record_journal", "qty": 1 },
-      { "item": "lit_veil_seal", "qty": 30 }
+      {
+        "item": "greatsword_blessed_dawnbreaker",
+        "qty": 1
+      },
+      {
+        "item": "blessed_holy_water_phial",
+        "qty": 8
+      },
+      {
+        "item": "voss_case_research_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "personal_blessed_dagger",
+        "qty": 1
+      },
+      {
+        "item": "vision_record_journal",
+        "qty": 1
+      },
+      {
+        "item": "lit_veil_seal",
+        "qty": 30
+      }
     ],
     "starting_sparks": 4200
   },
@@ -657,34 +2002,219 @@
     "quest_giver": true,
     "level": 26,
     "backstory": "Velith was the necromancy chair before she was elected Archmage Chair seven years ago. She is the youngest Chair in three centuries. Her predecessors mostly came from evocation or abjuration; her election surprised the faculty.",
-    "personality_traits": ["scholarly", "politically aware", "diplomatically careful", "loyal to the substrate-as-commons principle"],
+    "personality_traits": [
+      "scholarly",
+      "politically aware",
+      "diplomatically careful",
+      "loyal to the substrate-as-commons principle"
+    ],
     "speech_patterns": "Academic when in chambers; warmly direct in person. Refuses to use magic to settle administrative disputes.",
-    "narrative_context": { "secret": "Velith knows the necromancy department's enrollment surge is being driven by external recruiting — likely by House Voss. She has documented this. She has not yet decided how to act." },
+    "narrative_context": {
+      "secret": "Velith knows the necromancy department's enrollment surge is being driven by external recruiting — likely by House Voss. She has documented this. She has not yet decided how to act."
+    },
     "needs": [
-      { "id": "university_governance", "priority": "primary", "satisfaction_method": "morning_faculty_council" },
-      { "id": "substrate_research_continuity", "priority": "primary", "satisfaction_method": "afternoon_research_session" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "university_provided" }
+      {
+        "id": "university_governance",
+        "priority": "primary",
+        "satisfaction_method": "morning_faculty_council"
+      },
+      {
+        "id": "substrate_research_continuity",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_research_session"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "university_provided"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "spiremount_chair_quarters", "activity": "morning correspondence; reviews overnight necromancy department reports", "need_addressed": "university_governance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "spiremount_university_council_chamber", "activity": "faculty council session", "need_addressed": "university_governance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "spiremount_university_dining_hall", "activity": "midday meal at high table with senior faculty", "need_addressed": "university_governance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "arcane_library_research_wing", "activity": "personal research on the metaphysical substrate; cross-references with Wildwood reports on Thorne", "need_addressed": "substrate_research_continuity", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "spiremount_chair_quarters", "activity": "evening correspondence with the Pantheon and Wildwood", "need_addressed": "university_governance", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 5], "location": "spiremount_chair_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "spiremount_chair_quarters",
+        "activity": "morning correspondence; reviews overnight necromancy department reports",
+        "need_addressed": "university_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "spiremount_university_council_chamber",
+        "activity": "faculty council session",
+        "need_addressed": "university_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "spiremount_university_dining_hall",
+        "activity": "midday meal at high table with senior faculty",
+        "need_addressed": "university_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "arcane_library_research_wing",
+        "activity": "personal research on the metaphysical substrate; cross-references with Wildwood reports on Thorne",
+        "need_addressed": "substrate_research_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "spiremount_chair_quarters",
+        "activity": "evening correspondence with the Pantheon and Wildwood",
+        "need_addressed": "university_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "spiremount_chair_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "spiremount_chair_quarters",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "spiremount_university_council_chamber",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "spiremount_university_council_chamber",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "spiremount_university_council_chamber",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "spiremount_university_council_chamber",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "spiremount_chair_quarters",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "spiremount_university", "dwelling_type": "chair_quarters_with_attached_research_chamber" },
-    "job": { "profession_id": "archmage_chair", "wage_per_diurnal_sparks": 480, "wage_source": "university_endowment" },
-    "apparel": ["chair_robe_eight_school_pattern", "ceremonial_university_belt", "soft_indoor_shoes", "ceremonial_overrobe_for_council_days"],
-    "gear": ["staff_chair_authority_anchored_in_eight_schools", "personal_substrate_research_grimoire_locked", "ink_well_self_refilling_evocation_minor", "necromancy_recruitment_evidence_dossier_locked"],
-    "resources_consumed": ["ink", "research_paper", "candles", "university_provisions"],
-    "resources_produced": ["faculty_council_minutes", "substrate_research_findings"],
+    "home": {
+      "district": "spiremount_university",
+      "dwelling_type": "chair_quarters_with_attached_research_chamber"
+    },
+    "job": {
+      "profession_id": "archmage_chair",
+      "wage_per_diurnal_sparks": 480,
+      "wage_source": "university_endowment"
+    },
+    "apparel": [
+      "chair_robe_eight_school_pattern",
+      "ceremonial_university_belt",
+      "soft_indoor_shoes",
+      "ceremonial_overrobe_for_council_days"
+    ],
+    "gear": [
+      "staff_chair_authority_anchored_in_eight_schools",
+      "personal_substrate_research_grimoire_locked",
+      "ink_well_self_refilling_evocation_minor",
+      "necromancy_recruitment_evidence_dossier_locked"
+    ],
+    "resources_consumed": [
+      "ink",
+      "research_paper",
+      "candles",
+      "university_provisions"
+    ],
+    "resources_produced": [
+      "faculty_council_minutes",
+      "substrate_research_findings"
+    ],
     "inventory": [
-      { "item": "staff_chair_authority", "qty": 1 },
-      { "item": "personal_substrate_research_grimoire_locked", "qty": 1 },
-      { "item": "ink_well_self_refilling", "qty": 1 },
-      { "item": "necromancy_recruitment_evidence_dossier_locked", "qty": 1 },
-      { "item": "spire_mark", "qty": 60 }
+      {
+        "item": "staff_chair_authority",
+        "qty": 1
+      },
+      {
+        "item": "personal_substrate_research_grimoire_locked",
+        "qty": 1
+      },
+      {
+        "item": "ink_well_self_refilling",
+        "qty": 1
+      },
+      {
+        "item": "necromancy_recruitment_evidence_dossier_locked",
+        "qty": 1
+      },
+      {
+        "item": "spire_mark",
+        "qty": 60
+      }
     ],
     "starting_sparks": 5600
   },
@@ -700,36 +2230,228 @@
     "quest_giver": true,
     "level": 19,
     "backstory": "Renn rose through the Underwarrens for twenty-one years before being elected Guildmaster eight years ago. He is widely considered the most honest Guildmaster in three generations — by the standards of thieves' guilds, which is to say he keeps his word to other thieves.",
-    "personality_traits": ["polished", "principled-by-thief-code", "tired of House Voss's overtures", "loyal to the warrens"],
+    "personality_traits": [
+      "polished",
+      "principled-by-thief-code",
+      "tired of House Voss's overtures",
+      "loyal to the warrens"
+    ],
     "speech_patterns": "Underground polish — formal vocabulary, working-class cadence.",
-    "narrative_context": { "secret": "Renn has been quietly preparing the Guild for an eventual break with House Voss. The break would cost the Guild Voss's protection from the paladins; Renn believes the Guild can survive it." },
+    "narrative_context": {
+      "secret": "Renn has been quietly preparing the Guild for an eventual break with House Voss. The break would cost the Guild Voss's protection from the paladins; Renn believes the Guild can survive it."
+    },
     "needs": [
-      { "id": "guild_governance", "priority": "primary", "satisfaction_method": "morning_thieves_court" },
-      { "id": "warrens_sovereignty", "priority": "primary", "satisfaction_method": "evening_perimeter_walk" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "guild_share" }
+      {
+        "id": "guild_governance",
+        "priority": "primary",
+        "satisfaction_method": "morning_thieves_court"
+      },
+      {
+        "id": "warrens_sovereignty",
+        "priority": "primary",
+        "satisfaction_method": "evening_perimeter_walk"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "guild_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "thieves_court_inner_chamber", "activity": "morning intake of overnight scores; arbitrates disputes brought to him", "need_addressed": "guild_governance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "thieves_court", "activity": "guild court session; presides over thief-on-thief judgments", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "fence_market", "activity": "midday meal at the fence market; informal politics", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "underwarrens_main", "activity": "warren rounds; checks safehouse perimeters; tracks paladin movement", "need_addressed": "warrens_sovereignty", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "guildmaster_chambers", "activity": "evening meeting with senior thieves; sometimes a Voss courier", "need_addressed": "guild_governance", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "guildmaster_chambers_secret", "activity": "rests in a secret location only senior thieves know", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "thieves_court_inner_chamber",
+        "activity": "morning intake of overnight scores; arbitrates disputes brought to him",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "thieves_court",
+        "activity": "guild court session; presides over thief-on-thief judgments",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "fence_market",
+        "activity": "midday meal at the fence market; informal politics",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "underwarrens_main",
+        "activity": "warren rounds; checks safehouse perimeters; tracks paladin movement",
+        "need_addressed": "warrens_sovereignty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "guildmaster_chambers",
+        "activity": "evening meeting with senior thieves; sometimes a Voss courier",
+        "need_addressed": "guild_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "guildmaster_chambers_secret",
+        "activity": "rests in a secret location only senior thieves know",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "thieves_court_inner_chamber",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "thieves_court",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "thieves_court",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "thieves_court",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "thieves_court",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "thieves_court_inner_chamber",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "underwarrens_main", "dwelling_type": "guildmaster_chambers_with_three_secret_exits" },
-    "job": { "profession_id": "guildmaster", "wage_per_diurnal_sparks": 280, "wage_source": "guild_share_master_cut" },
-    "apparel": ["fine_dark_leather_jacket_concealed_blade_pockets", "tailored_dark_pants", "soft_traction_boots", "wide_belt_with_lockpick_pouches", "concealing_cloak_for_perimeter_walks"],
-    "gear": ["dagger_silver_chased", "lockpick_set_master_grade", "personal_voss_communications_journal_locked", "concealed_garrote", "guild_seal_ring"],
-    "resources_consumed": ["fence_market_food_share", "ink", "lockpick_replacement_supplies"],
-    "resources_produced": ["guild_judgments", "warren_perimeter_assessments"],
+    "home": {
+      "district": "underwarrens_main",
+      "dwelling_type": "guildmaster_chambers_with_three_secret_exits"
+    },
+    "job": {
+      "profession_id": "guildmaster",
+      "wage_per_diurnal_sparks": 280,
+      "wage_source": "guild_share_master_cut"
+    },
+    "apparel": [
+      "fine_dark_leather_jacket_concealed_blade_pockets",
+      "tailored_dark_pants",
+      "soft_traction_boots",
+      "wide_belt_with_lockpick_pouches",
+      "concealing_cloak_for_perimeter_walks"
+    ],
+    "gear": [
+      "dagger_silver_chased",
+      "lockpick_set_master_grade",
+      "personal_voss_communications_journal_locked",
+      "concealed_garrote",
+      "guild_seal_ring"
+    ],
+    "resources_consumed": [
+      "fence_market_food_share",
+      "ink",
+      "lockpick_replacement_supplies"
+    ],
+    "resources_produced": [
+      "guild_judgments",
+      "warren_perimeter_assessments"
+    ],
     "inventory": [
-      { "item": "dagger_silver_chased", "qty": 1 },
-      { "item": "lockpick_set_master_grade", "qty": 1 },
-      { "item": "personal_voss_communications_journal_locked", "qty": 1 },
-      { "item": "concealed_garrote", "qty": 1 },
-      { "item": "guild_seal_ring", "qty": 1 },
-      { "item": "warren_chit", "qty": 50 },
-      { "item": "blood_pact", "qty": 3 }
+      {
+        "item": "dagger_silver_chased",
+        "qty": 1
+      },
+      {
+        "item": "lockpick_set_master_grade",
+        "qty": 1
+      },
+      {
+        "item": "personal_voss_communications_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "concealed_garrote",
+        "qty": 1
+      },
+      {
+        "item": "guild_seal_ring",
+        "qty": 1
+      },
+      {
+        "item": "warren_chit",
+        "qty": 50
+      },
+      {
+        "item": "blood_pact",
+        "qty": 3
+      }
     ],
     "starting_sparks": 3800
   },
@@ -745,34 +2467,221 @@
     "quest_giver": true,
     "level": 21,
     "backstory": "Kaelan has held the high priestess role for eleven years. Her predecessor died of natural causes. Kaelan was elected by the council of Twelve sub-priestesses — one per god — on the third ballot. She has had three visions in the past year suggesting one of the Twelve is no longer answering her prayers.",
-    "personality_traits": ["serene in public", "private worry only her closest senior sees", "principled", "patient with doubt"],
+    "personality_traits": [
+      "serene in public",
+      "private worry only her closest senior sees",
+      "principled",
+      "patient with doubt"
+    ],
     "speech_patterns": "Liturgical when in temple; warm and direct in private.",
-    "narrative_context": { "secret": "The god she suspects is no longer answering is the goddess of prophecy. If true, every prophecy made in the past year is unanchored. She has not told the council." },
+    "narrative_context": {
+      "secret": "The god she suspects is no longer answering is the goddess of prophecy. If true, every prophecy made in the past year is unanchored. She has not told the council."
+    },
     "needs": [
-      { "id": "the_twelve_in_balance", "priority": "primary", "satisfaction_method": "morning_temple_ritual" },
-      { "id": "vision_interpretation", "priority": "primary", "satisfaction_method": "evening_solitary_meditation" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "temple_provided" }
+      {
+        "id": "the_twelve_in_balance",
+        "priority": "primary",
+        "satisfaction_method": "morning_temple_ritual"
+      },
+      {
+        "id": "vision_interpretation",
+        "priority": "primary",
+        "satisfaction_method": "evening_solitary_meditation"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "temple_provided"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "pantheon_temple_central", "activity": "morning ritual to all twelve gods; offers in turn", "need_addressed": "the_twelve_in_balance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "pantheon_temple_central", "activity": "receives congregants; interprets dreams; mediates disputes", "need_addressed": "the_twelve_in_balance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "twelve_shrine_path", "activity": "walks the shrine path; pauses at each god's shrine", "need_addressed": "the_twelve_in_balance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "pantheon_temple_central", "activity": "afternoon council session with sub-priestesses", "need_addressed": "the_twelve_in_balance", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "high_priestess_quarters_private_shrine", "activity": "private meditation; interprets the visions; records what she dares record", "need_addressed": "vision_interpretation", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 4], "location": "high_priestess_quarters", "activity": "rests; wakes once to record a dream", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "morning ritual to all twelve gods; offers in turn",
+        "need_addressed": "the_twelve_in_balance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "receives congregants; interprets dreams; mediates disputes",
+        "need_addressed": "the_twelve_in_balance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "twelve_shrine_path",
+        "activity": "walks the shrine path; pauses at each god's shrine",
+        "need_addressed": "the_twelve_in_balance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "afternoon council session with sub-priestesses",
+        "need_addressed": "the_twelve_in_balance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "high_priestess_quarters_private_shrine",
+        "activity": "private meditation; interprets the visions; records what she dares record",
+        "need_addressed": "vision_interpretation",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "high_priestess_quarters",
+        "activity": "rests; wakes once to record a dream",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "pantheon_temple_central",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "high_priestess_quarters", "dwelling_type": "ceremonial_quarters_with_private_shrine" },
-    "job": { "profession_id": "high_priestess", "wage_per_diurnal_sparks": 320, "wage_source": "pantheon_priesthood_tithe" },
-    "apparel": ["high_priestess_ceremonial_robe_twelve_god_pattern", "ceremonial_belt_with_twelve_god_sigils", "consecrated_sandals", "ceremonial_overrobe_for_temple_days"],
-    "gear": ["ceremonial_blessed_mace", "twelve_god_grimoire", "personal_vision_journal_unbreakable_cipher", "consecrated_oil_phials", "twelve_token_offering_pouch"],
-    "resources_consumed": ["consecrated_oil", "ink", "ceremonial_incense", "temple_provisions"],
-    "resources_produced": ["temple_rituals", "dream_interpretations", "council_judgments"],
+    "home": {
+      "district": "high_priestess_quarters",
+      "dwelling_type": "ceremonial_quarters_with_private_shrine"
+    },
+    "job": {
+      "profession_id": "high_priestess",
+      "wage_per_diurnal_sparks": 320,
+      "wage_source": "pantheon_priesthood_tithe"
+    },
+    "apparel": [
+      "high_priestess_ceremonial_robe_twelve_god_pattern",
+      "ceremonial_belt_with_twelve_god_sigils",
+      "consecrated_sandals",
+      "ceremonial_overrobe_for_temple_days"
+    ],
+    "gear": [
+      "ceremonial_blessed_mace",
+      "twelve_god_grimoire",
+      "personal_vision_journal_unbreakable_cipher",
+      "consecrated_oil_phials",
+      "twelve_token_offering_pouch"
+    ],
+    "resources_consumed": [
+      "consecrated_oil",
+      "ink",
+      "ceremonial_incense",
+      "temple_provisions"
+    ],
+    "resources_produced": [
+      "temple_rituals",
+      "dream_interpretations",
+      "council_judgments"
+    ],
     "inventory": [
-      { "item": "ceremonial_blessed_mace", "qty": 1 },
-      { "item": "twelve_god_grimoire", "qty": 1 },
-      { "item": "personal_vision_journal_unbreakable_cipher", "qty": 1 },
-      { "item": "consecrated_oil_phial", "qty": 12 },
-      { "item": "twelve_token", "qty": 36 }
+      {
+        "item": "ceremonial_blessed_mace",
+        "qty": 1
+      },
+      {
+        "item": "twelve_god_grimoire",
+        "qty": 1
+      },
+      {
+        "item": "personal_vision_journal_unbreakable_cipher",
+        "qty": 1
+      },
+      {
+        "item": "consecrated_oil_phial",
+        "qty": 12
+      },
+      {
+        "item": "twelve_token",
+        "qty": 36
+      }
     ],
     "starting_sparks": 3400
   }

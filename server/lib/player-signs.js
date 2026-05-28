@@ -19,12 +19,13 @@
 import crypto from "node:crypto";
 
 export const ALLOWED_KINDS = new Set(["arrow", "warning", "praise", "help", "poi"]);
-export const SIGN_TTL_DAYS = 7;
-export const MAX_ACTIVE_PER_USER = 50;
-export const PLACE_COOLDOWN_S = 60;
-export const MESSAGE_MAX_LEN = 80;
-export const NEARBY_DEFAULT_RADIUS_M = 60;
-export const MAX_NEARBY_LIMIT = 200;
+// Phase E1 — balance dials env-overridable. See docs/BALANCE_DIALS.md.
+export const SIGN_TTL_DAYS = Number(process.env.CONCORD_SIGN_TTL_DAYS) || 7;
+export const MAX_ACTIVE_PER_USER = Number(process.env.CONCORD_SIGN_MAX_ACTIVE_PER_USER) || 50;
+export const PLACE_COOLDOWN_S = Number(process.env.CONCORD_SIGN_PLACE_COOLDOWN_S) || 60;
+export const MESSAGE_MAX_LEN = Number(process.env.CONCORD_SIGN_MESSAGE_MAX_LEN) || 80;
+export const NEARBY_DEFAULT_RADIUS_M = Number(process.env.CONCORD_SIGN_NEARBY_DEFAULT_RADIUS_M) || 60;
+export const MAX_NEARBY_LIMIT = Number(process.env.CONCORD_SIGN_MAX_NEARBY_LIMIT) || 200;
 
 function _ttlSecondsFromNow(days = SIGN_TTL_DAYS) {
   return Math.floor(Date.now() / 1000) + days * 86400;

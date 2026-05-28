@@ -1,0 +1,8 @@
+[
+  { "id": "extra_slot", "name": "Extra Equipment Slot", "cost": 50, "description": "Permanent +1 inventory slot." },
+  { "id": "starter_potion", "name": "Starter Potion", "cost": 30, "description": "Begin every run with one healing potion." },
+  { "id": "damage_bump", "name": "Sharper Edge", "cost": 100, "description": "+5% damage on all weapons, persists across runs." },
+  { "id": "extra_life", "name": "Phylactery", "cost": 200, "description": "Once per run, resurrect with 25% HP after death." },
+  { "id": "deeper_drift", "name": "Drift Conductor", "cost": 75, "description": "Enter procgen regions that match higher drift severities." },
+  { "id": "currency_boost", "name": "Soul Tithe", "cost": 150, "description": "+25% meta-currency earned per run." }
+]

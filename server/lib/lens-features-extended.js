@@ -1065,4 +1065,20 @@ export const EXTENDED_FEATURES = {
     ],
     featureCount: 6, economicIntegrations: ["concord_coin", "citation_royalties"], emergentAccess: true, botAccess: true, usbIntegration: false,
   },
+
+  // Phase B+C+D+F — admin operator surface for the concurrency / threading
+  // stack. Heartbeat module timings, worker pool utilisation, brain endpoint
+  // inflight + failure counts, world shard status + restart action.
+  "ops-telemetry": {
+    lensId: "ops-telemetry",
+    lensNumber: 125,
+    category: "SYSTEM",
+    features: [
+      f("heartbeat_module_timings", "Heartbeat Module Timings", "Per-module p50/p90/p99/last/run-count from server/api/admin/heartbeat-stats", "infrastructure", []),
+      f("worker_pool_utilisation", "Worker Pool Utilisation", "Macro pool + heartbeat pool size / busy / idle / queue / errors / avg latency", "infrastructure", []),
+      f("brain_endpoint_health", "Brain Endpoint Health", "Per-brain endpoint inflight + failures + last healthy probe (Phase D multi-endpoint)", "infrastructure", []),
+      f("world_shard_status", "World Shard Status", "Per-world child status, pid, last tick, restart count, manual restart action (Phase F)", "infrastructure", []),
+    ],
+    featureCount: 4, economicIntegrations: [], emergentAccess: false, botAccess: false, usbIntegration: false,
+  },
 };

@@ -1,0 +1,66 @@
+{
+  "$schema": "disease-catalog.v1",
+  "tier": "common",
+  "diseases": [
+    {
+      "id": "common-cold",
+      "name": "Common cold",
+      "symptoms": ["coughing", "fatigue", "stuffy nose"],
+      "transmissionVector": "airborne",
+      "contagionRadiusM": 5,
+      "mortalityRisk": 0,
+      "severityHalfLifeHours": 36,
+      "severityIncreasePerTick": 0.005,
+      "endemicWorlds": ["concordia-hub", "tunya", "crime", "fantasy"],
+      "cureRecipeIds": ["honey_tea", "willow_bark"]
+    },
+    {
+      "id": "river-fever",
+      "name": "River fever",
+      "symptoms": ["chills", "muscle ache", "high fever"],
+      "transmissionVector": "waterborne",
+      "contagionRadiusM": 3,
+      "mortalityRisk": 0.01,
+      "severityHalfLifeHours": 48,
+      "severityIncreasePerTick": 0.012,
+      "endemicWorlds": ["tunya"],
+      "cureRecipeIds": ["river-fern_poultice", "boiled_willow"]
+    },
+    {
+      "id": "swamp-rot",
+      "name": "Swamp rot",
+      "symptoms": ["skin lesions", "swelling", "weeping wounds"],
+      "transmissionVector": "touch",
+      "contagionRadiusM": 1,
+      "mortalityRisk": 0.02,
+      "severityHalfLifeHours": 72,
+      "severityIncreasePerTick": 0.008,
+      "endemicWorlds": ["tunya", "sovereign-ruins"],
+      "cureRecipeIds": ["antiseptic_balm"]
+    },
+    {
+      "id": "drinking-sickness",
+      "name": "Drinking sickness",
+      "symptoms": ["headache", "nausea", "dehydration"],
+      "transmissionVector": "foodborne",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0,
+      "severityHalfLifeHours": 8,
+      "severityIncreasePerTick": 0.02,
+      "endemicWorlds": ["crime", "fantasy"],
+      "cureRecipeIds": ["water_and_rest"]
+    },
+    {
+      "id": "wound-fever",
+      "name": "Wound fever",
+      "symptoms": ["fever", "infected wound", "delirium"],
+      "transmissionVector": "bloodborne",
+      "contagionRadiusM": 0,
+      "mortalityRisk": 0.05,
+      "severityHalfLifeHours": 60,
+      "severityIncreasePerTick": 0.015,
+      "endemicWorlds": ["all"],
+      "cureRecipeIds": ["antiseptic_balm", "willow_bark"]
+    }
+  ]
+}

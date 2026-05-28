@@ -80,8 +80,55 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Concord heartbeat is overrunning its 15s interval"
-          description: "Skipped ticks > 0/sec for 5+ minutes — a prior governorTick is still running when the next tick fires. A heavy tick block (DTU consolidation, fauna spawn, world-event scheduler) is starving subsequent ticks. Investigate the slowest module via runHeartbeatModule timings."
+          summary: "Concord heartbeat is overrunning its tick interval"
+          description: "Skipped ticks > 0/sec for 5+ minutes — a prior governorTick is still running when the next tick fires. Default tick interval is 60s (15s minimum). A heavy tick block (DTU consolidation, fauna spawn, world-event scheduler) is starving subsequent ticks. Investigate via /api/admin/heartbeat-stats or the ops-telemetry lens."
+
+      - alert: ConcordHeartbeatModuleSlow
+        expr: histogram_quantile(0.99, sum(rate(concord_heartbeat_block_ms_bucket[5m])) by (le, module)) > 10000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Heartbeat module {{ $labels.module }} p99 latency above 10s"
+          description: "p99 of heartbeat module {{ $labels.module }} > 10000ms for 5+ minutes. This module is at risk of starving the next tick on the default 60s cadence. Inspect via /api/admin/heartbeat-stats."
+
+      - alert: ConcordHeartbeatModuleStuck
+        expr: rate(concord_heartbeat_module_timeout_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Heartbeat module {{ $labels.module }} timing out"
+          description: "Module {{ $labels.module }} exceeded MODULE_TIMEOUT_MS (default 30s) and was cancelled at the dispatcher boundary. Sustained timeouts indicate a deadlock or runaway external dependency."
+
+      - alert: ConcordWorldShardStuck
+        expr: rate(concord_world_shard_stuck_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "World shard {{ $labels.world }} unresponsive"
+          description: "World shard for {{ $labels.world }} stopped responding to ticks. The manager will attempt restart-with-backoff (Phase I). If this fires repeatedly, the per-world heartbeat is wedged."
+
+      - alert: ConcordWorldShardCantSpawn
+        expr: rate(concord_world_shard_spawn_failed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Cannot spawn world shard for {{ $labels.world }}"
+          description: "Worker thread spawn failed > 0.1/sec — players cannot travel to {{ $labels.world }}. Inspect logs for worker_construct_failed."
+
+      - alert: ConcordWorldDensityLow
+        expr: |
+          (concord_world_npc_count{} < concord_world_npc_target{} * 0.5)
+          and (concord_world_npc_target{} > 0)
+        for: 1h
+        labels:
+          severity: info
+        annotations:
+          summary: "World {{ $labels.world }} NPC density below 50% of target"
+          description: "world-population-cycle is not keeping up. Inspect the cycle's logs for failures or LLM-throttling."
 
       - alert: ConcordSyntheticCheckFailing
         expr: concord_synthetic_check_pass == 0

@@ -2,7 +2,7 @@
 // OpenAI-compatible Ollama wrapper used exclusively by the inference module.
 // Wraps BRAIN_CONFIG to produce typed BrainHandle objects.
 
-import { BRAIN_CONFIG } from "../brain-config.js";
+import { BRAIN_CONFIG, pickBrainEndpoint, noteEndpointStart, noteEndpointFinish } from "../brain-config.js";
 
 /**
  * Parse tool calls from an Ollama message (best-effort JSON extraction).
@@ -33,7 +33,8 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: `Unknown brain: ${brainName}` };
   }
 
-  const url = `${config.url}/api/chat`;
+  const endpoint = pickBrainEndpoint(brainName) || config.url;
+  const url = `${endpoint}/api/chat`;
   const timeoutMs = opts.timeoutMs ?? config.timeout ?? 30000;
   const temperature = opts.temperature ?? config.temperature ?? 0.7;
 
@@ -49,6 +50,7 @@ export async function ollamaChat(brainName, messages, opts = {}) {
   }
 
   const signal = opts.signal ?? AbortSignal.timeout(timeoutMs);
+  noteEndpointStart(endpoint);
 
   try {
     const res = await fetch(url, {
@@ -59,6 +61,7 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     });
 
     if (!res.ok) {
+      noteEndpointFinish(endpoint, { ok: false });
       return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: `HTTP ${res.status}` };
     }
 
@@ -69,8 +72,10 @@ export async function ollamaChat(brainName, messages, opts = {}) {
     const tokensIn = j?.prompt_eval_count || 0;
     const tokensOut = j?.eval_count || 0;
 
+    noteEndpointFinish(endpoint, { ok: true });
     return { ok: true, text, toolCalls, tokensIn, tokensOut };
   } catch (err) {
+    noteEndpointFinish(endpoint, { ok: false });
     return { ok: false, text: "", toolCalls: [], tokensIn: 0, tokensOut: 0, error: err?.message || String(err) };
   }
 }

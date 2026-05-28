@@ -1,0 +1,13 @@
+{
+  "id": "ruins_court_audience",
+  "name": "Court Audience",
+  "world_id": "sovereign-ruins",
+  "season_idx": 0,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "porcelain_masks",
+  "synopsis": "Citizens may petition the Archon directly. Once a year. Zaen Drift stands as champion.",
+  "achievements": [],
+  "quest_seeds": []
+}

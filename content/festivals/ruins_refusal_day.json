@@ -1,0 +1,13 @@
+{
+  "id": "ruins_refusal_day",
+  "name": "Refusal Day",
+  "world_id": "sovereign-ruins",
+  "season_idx": 5,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "purple_ash",
+  "synopsis": "The day the Ruined Court was unbroken. Purple ash strewn at the throne. Archon Thanis speaks once.",
+  "achievements": [],
+  "quest_seeds": []
+}

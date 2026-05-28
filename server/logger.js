@@ -74,7 +74,23 @@ function sanitizeLogMessage(input) {
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "?"); // eslint-disable-line no-control-regex
 }
 
+// Phase K bug-fix — argument-order normaliser.
+// The wrapper helpers below expose `logger.info(source, msg, meta)` but
+// several call sites accidentally invoke them as `logger.info(meta_obj,
+// "event_name")` — first arg ends up in the `source` slot, which is
+// stringified to `[object Object]` by sanitizeLogMessage. Boot logs
+// previously read `[[object Object]] [INFO] content_seeder_world_npcs_persisted`.
+// Detect the inversion here and reorder before formatting.
+function normalizeArgs(level, source, message, meta) {
+  if (source !== null && typeof source === "object" && typeof message === "string") {
+    return { level, source: "server", message, meta: source };
+  }
+  return { level, source, message, meta };
+}
+
 function log(level, source, message, meta = {}) {
+  const norm = normalizeArgs(level, source, message, meta);
+  level = norm.level; source = norm.source; message = norm.message; meta = norm.meta;
   const safeMeta = scrub(meta);
   const safeMessage = sanitizeLogMessage(message);
   const safeSource = sanitizeLogMessage(source);

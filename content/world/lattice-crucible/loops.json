@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Experimental arena — all loops at accelerated frequency, PvP-focused, deterministic combat. The tournament + AI-resident proving ground.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 3 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 2 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 3 },
+    "environment-sensor": { "enabled": true, "frequency": 3 },
+    "season-cycle": { "enabled": false },
+    "npc-economy-cycle": { "enabled": true, "frequency": 4 },
+    "land-claims-cycle": { "enabled": false },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 4 },
+    "procgen-settlement-cycle": { "enabled": false },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 180 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 4 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 15 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 1 },
+    "world-population-cycle": { "enabled": true, "frequency": 30 }
+  },
+  "climate": {
+    "baseTemp": 22,
+    "humidity": 50,
+    "airQuality": 100,
+    "illumination": 1.0,
+    "structuralStress": 0,
+    "ambientDb": 50,
+    "weather": "controlled-arena"
+  },
+  "factionStartState": {
+    "default": { "stance": "war", "momentum": 0.0 }
+  },
+  "skillCeilings": {
+    "physical": 1000, "fire": 1000, "ice": 1000, "water": 1000,
+    "lightning": 1000, "bio": 1000, "energy": 1000, "poison": 1000
+  },
+  "npcDensity": {
+    "targetPerFaction": 50,
+    "max": 300,
+    "archetypeWeights": { "warrior": 2.0, "scholar": 0.5, "trader": 0.5, "mystic": 1.5, "guard": 1.0, "healer": 0.7, "hunter": 0.8 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 0.85, "scarcityBias": -0.1 },
+  "worldVoice": {
+    "tone": "experimental, prose-styled, analytical, references to 'the lattice' and 'the proving'",
+    "vocabulary": ["the lattice", "the proving", "vector", "manifold", "iteration", "boundary", "the conditions hold"],
+    "avoid": ["small talk", "comfortable greetings", "humour"],
+    "examples": [
+      "Your iteration. The conditions hold. State your purpose against the manifold.",
+      "The lattice records every choice. There is no unobserved move here."
+    ]
+  }
+}

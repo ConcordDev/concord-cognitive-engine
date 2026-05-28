@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ChevronRight, Check, Footprints, MessageSquare, Axe, Hammer, Swords, X } from 'lucide-react';
+import { ChevronRight, Check, Footprints, MessageSquare, Axe, Hammer, Swords, X, Search, Building, Zap } from 'lucide-react';
 import { tutorialManager } from '@/lib/concordia/onboarding/tutorial';
 
 const panel = 'bg-black/90 backdrop-blur-sm border border-white/10 rounded-lg';
@@ -61,6 +61,40 @@ const TUTORIALS: TutorialStep[] = [
     icon: Swords,
     instruction: 'Travel to the frontier, target a hostile creature, attack with left-click. Aim for the body.',
     action: 'combat-hit',
+  },
+  // Phase E8 — Phase D loops.
+  {
+    id: 6,
+    title: 'Open the command palette',
+    description: 'Ctrl+K (or Cmd+K) opens the palette. Every lens + every world action is searchable from there.',
+    icon: Search,
+    instruction: 'Press Ctrl+K (Cmd+K on Mac). The palette appears at the top of the screen.',
+    action: 'palette-open',
+    highlightTarget: 'palette-trigger',
+  },
+  {
+    id: 7,
+    title: 'Click an NPC',
+    description: 'Click on any NPC to open the context menu. Seven actions surface — Talk, Mentor, Brawl, Court, Inspect Traits, Trade, Hire — depending on what the NPC offers.',
+    icon: MessageSquare,
+    instruction: 'Find a nearby NPC, click on them, and open the context menu.',
+    action: 'npc-menu-opened',
+  },
+  {
+    id: 8,
+    title: 'Walk into a workbench building',
+    description: 'Walk within 4 metres of a building like a farm plot, hacking terminal, karaoke booth, or mystery board. The workbench opens automatically.',
+    icon: Building,
+    instruction: 'Approach any workbench-type building (farm_plot, karaoke_booth, hacking_terminal, mystery_board) and the overlay opens.',
+    action: 'workbench-interact',
+  },
+  {
+    id: 9,
+    title: 'Launch a game mode',
+    description: 'The hotbar lets you start run-based modes: roguelite, horde wave, extraction, time loop, asymmetric horror, or brawl matchmaker.',
+    icon: Zap,
+    instruction: 'Click a mode button in the bottom-centre hotbar, or use Ctrl+K to search for a mode.',
+    action: 'mode-started',
   },
 ];
 

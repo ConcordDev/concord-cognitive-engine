@@ -1,0 +1,118 @@
+[
+  {
+    "id": "lattice_ono_01_sit",
+    "title": "The Sage's Hut — Sit and Wait",
+    "description": "Ono Kell will write to Nesha if you sit and wait. Drink the tea.",
+    "giver_npc_id": "sage_ono_kell",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ono1_visit",
+        "type": "reach_location",
+        "target": "lattice_sage_hut",
+        "required_count": 1,
+        "description": "Visit Ono during her open audience hours."
+      },
+      {
+        "id": "obj_ono1_tea",
+        "type": "interact",
+        "target": "ono_tea_table",
+        "required_count": 1,
+        "description": "Drink the tea while Ono writes."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_ono_02_carry"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "lattice-crucible",
+      "lattice_main"
+    ]
+  },
+  {
+    "id": "lattice_ono_02_carry",
+    "title": "The Bog — Carry the Letter",
+    "description": "Carry Ono's letter to Nesha in the hub. The bog is the fastest route — Nymeria will let you through.",
+    "giver_npc_id": "sage_ono_kell",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ono2_bog",
+        "type": "reach_location",
+        "target": "fantasy_bog_clearing",
+        "required_count": 1,
+        "description": "Pass through the bog (Nymeria will recognize Ono's seal)."
+      },
+      {
+        "id": "obj_ono2_arrive",
+        "type": "reach_location",
+        "target": "hub_refusal_keep_main_hall",
+        "required_count": 1,
+        "description": "Arrive at the Refusal Keep with the letter intact."
+      },
+      {
+        "id": "obj_ono2_deliver",
+        "type": "deliver",
+        "target": "ono_letter_to_nesha",
+        "required_count": 1,
+        "description": "Hand the letter to Nesha."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_ono_03_return"
+    ],
+    "prerequisites": [
+      "lattice_ono_01_sit"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_main"
+    ]
+  },
+  {
+    "id": "lattice_ono_03_return",
+    "title": "Return Letter — Nesha to Ono",
+    "description": "Nesha writes back the same day. Carry her letter home.",
+    "giver_npc_id": "oracle_nesha_keep",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_ono3_return",
+        "type": "deliver",
+        "target": "nesha_letter_to_ono",
+        "required_count": 1,
+        "description": "Return to Ono with Nesha's reply."
+      }
+    ],
+    "rewards": {
+      "xp": 700,
+      "skill_xp": {
+        "lattice_awareness": 100
+      },
+      "items": [
+        "ono_nesha_correspondence_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "lattice_ono_02_carry"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_main"
+    ]
+  }
+]

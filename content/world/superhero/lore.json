@@ -10,9 +10,13 @@
       "era": "Year 0 of The Superhero City",
       "description": "Elias Voss — exhausted delivery driver from the Bronx, a man who had lost his mother to illness, his brother to the streets, and his future to debt — installed Concord in a moment of rage and stayed logged in for seventy-two consecutive hours. The emergent layer did not just help him. It rewrote him at the biological level. When he finally stood up, purple veins of shadow reasoning ran across his body. He was the first.",
       "significance": "major",
-      "factions_involved": ["enforcers_movement"],
+      "factions_involved": [
+        "enforcers_movement"
+      ],
       "world_id": "superhero",
-      "known_by": ["enforcers_movement"],
+      "known_by": [
+        "enforcers_movement"
+      ],
       "hidden_truth": "The full set of changes is still unfolding inside Elias. Even he doesn't know what's left to surface."
     },
     {
@@ -22,9 +26,13 @@
       "era": "Year -3 of The Superhero City",
       "description": "Vesper Kane — born into Manhattan old money — quietly took control of his family's holdings and rebuilt them as Luminary Industries. Public face: orphanage funding, infrastructure builds, disaster relief. Private apparatus: drone swarms, a private super-soldier program, a private orbital platform, and a small army of lieutenants who know just enough to be useful and not enough to threaten him. The chemical accident that gave him red-gold plasma manipulation was deliberately orchestrated. He is, in every meaningful sense, the city's most powerful private citizen.",
       "significance": "major",
-      "factions_involved": ["luminary_empire"],
+      "factions_involved": [
+        "luminary_empire"
+      ],
       "world_id": "superhero",
-      "known_by": ["luminary_empire"],
+      "known_by": [
+        "luminary_empire"
+      ],
       "hidden_truth": "The chemical 'accident' was not an accident. Every aspect of Vesper's transformation was planned. The lab personnel who knew this are no longer alive."
     },
     {
@@ -34,9 +42,15 @@
       "era": "Year 0",
       "description": "Three weeks after the Awakening, Elias intervened in an attempted neighborhood-displacement operation in the Bronx. A film of the incident — purple lightning vaulting across cracked concrete, a man in a black phantom mask telling armed corporate-security personnel to leave — went viral within hours. The city had its first hero. Most people loved him on sight. The press could not decide whether to call him a hero or a vigilante. Vesper Kane, watching from Kane Tower, decided he was a problem.",
       "significance": "major",
-      "factions_involved": ["enforcers_movement", "luminary_empire"],
+      "factions_involved": [
+        "enforcers_movement",
+        "luminary_empire"
+      ],
       "world_id": "superhero",
-      "known_by": ["enforcers_movement", "luminary_empire"]
+      "known_by": [
+        "enforcers_movement",
+        "luminary_empire"
+      ]
     },
     {
       "id": "lore_drone_swarm_incident",
@@ -45,9 +59,14 @@
       "era": "Year 0",
       "description": "A Luminary drone swarm responding to a 'terror threat' in a low-rent district killed eleven civilians, including three children. Luminary's official statement blamed an 'unaffiliated extremist actor' and pledged a hundred million dollars in restitution. The press accepted the statement. The neighborhood did not. The Enforcer began his own investigation that night.",
       "significance": "major",
-      "factions_involved": ["luminary_empire", "enforcers_movement"],
+      "factions_involved": [
+        "luminary_empire",
+        "enforcers_movement"
+      ],
       "world_id": "superhero",
-      "known_by": ["luminary_empire"],
+      "known_by": [
+        "luminary_empire"
+      ],
       "hidden_truth": "Vesper Kane personally authorized the swarm. The 'unaffiliated extremist' was a cover identity built six months in advance. The eleven deaths were intended to justify Luminary deploying its private security force into the district permanently."
     },
     {
@@ -57,9 +76,15 @@
       "era": "Year 0",
       "description": "Vesper publicly invited The Enforcer to a 'unity summit' at Kane Tower, framing it as the city's two great protectors finally meeting. The press anticipated a handshake. Elias did not show up. Instead a single envelope was delivered to Vesper's office: Maren-style transcript fragments of a Luminary internal call discussing the drone-swarm cover identity. No demand, no signature, no follow-up. Vesper's lieutenants now know the empire has a leak. Vesper now knows The Enforcer is inside the wire.",
       "significance": "moderate",
-      "factions_involved": ["enforcers_movement", "luminary_empire"],
+      "factions_involved": [
+        "enforcers_movement",
+        "luminary_empire"
+      ],
       "world_id": "superhero",
-      "known_by": ["enforcers_movement", "luminary_empire"]
+      "known_by": [
+        "enforcers_movement",
+        "luminary_empire"
+      ]
     },
     {
       "id": "lore_first_battle_at_dawn",
@@ -68,9 +93,84 @@
       "era": "Year 1",
       "description": "Their first physical confrontation, on the rooftop of an unfinished Luminary-built skyscraper. Purple lightning against red-gold plasma. The fight lasted forty-three minutes. Both walked away. Two city blocks did not. The press the next morning split: Luminary Industries called it an unprovoked attack by The Enforcer; the neighborhood called it the moment they finally saw the city's two faces in the same frame. Neither side won. Both grew.",
       "significance": "major",
-      "factions_involved": ["enforcers_movement", "luminary_empire"],
+      "factions_involved": [
+        "enforcers_movement",
+        "luminary_empire"
+      ],
       "world_id": "superhero",
-      "known_by": ["enforcers_movement", "luminary_empire", "shadow_network"]
+      "known_by": [
+        "enforcers_movement",
+        "luminary_empire",
+        "shadow_network"
+      ]
+    },
+    {
+      "id": "superhero_champion_first_save",
+      "title": "Champion's First Save",
+      "type": "personal",
+      "era": "Year 0 of the Skyline",
+      "description": "A masked man caught a bus suspended over the canal. The city called him 'Champion' before he chose the name himself. He was twenty-three.",
+      "significance": "major",
+      "factions_involved": [
+        "skyline_champions"
+      ],
+      "known_by": [
+        "skyline_champions"
+      ],
+      "world_id": "superhero"
+    },
+    {
+      "id": "superhero_iron_hex_first_bomb",
+      "title": "Iron Hex's First Bomb",
+      "type": "catastrophe",
+      "era": "Year 3 of the Skyline",
+      "description": "Iron Hex evacuated a building before bombing it. Nobody died. The city argued for a week whether that made him a villain.",
+      "significance": "major",
+      "factions_involved": [
+        "iron_hex_cell"
+      ],
+      "known_by": [
+        "iron_hex_cell",
+        "skyline_champions"
+      ],
+      "world_id": "superhero"
+    },
+    {
+      "id": "superhero_silas_retirement",
+      "title": "Silas Crane Retires",
+      "type": "personal",
+      "era": "Year -20",
+      "description": "The city's first masked hero hangs up the mask. Cites 'too many right answers' as the reason. Goes home to roses.",
+      "significance": "minor",
+      "factions_involved": [
+        "skyline_champions"
+      ],
+      "known_by": [
+        "skyline_champions"
+      ],
+      "world_id": "superhero"
+    },
+    {
+      "id": "superhero_ana_breakthrough",
+      "title": "Dr. Pell's Breakthrough",
+      "type": "discovery",
+      "era": "Year 5 of the Skyline",
+      "description": "Dr. Ana Pell isolates the gene responsible for Champion's strength. She does not publish. Three people know.",
+      "significance": "major",
+      "factions_involved": [],
+      "known_by": [],
+      "world_id": "superhero"
+    },
+    {
+      "id": "superhero_helen_revelation",
+      "title": "Helen Knows",
+      "type": "personal",
+      "era": "Year 1 of the Skyline",
+      "description": "Kor's mother knows. She has known since the day after the bus. She has not told him she knows. Some nights she leaves an extra plate at supper.",
+      "significance": "minor",
+      "factions_involved": [],
+      "known_by": [],
+      "world_id": "superhero"
     }
   ]
 }

@@ -1,0 +1,125 @@
+[
+  {
+    "id": "fantasy_nymeria_01_fragment",
+    "title": "The Bog — A Lattice Fragment",
+    "description": "Nymeria will teach you to cross to the Crucible — but you need to bring her a lattice-fragment first. Any size.",
+    "giver_npc_id": "witch_nymeria",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_nym1_find",
+        "type": "interact",
+        "target": "lattice_fragment_anywhere",
+        "required_count": 1,
+        "description": "Find a lattice-fragment (in the Verge ruins, the hub bazaar, or a hub workshop)."
+      },
+      {
+        "id": "obj_nym1_bring",
+        "type": "deliver",
+        "target": "fragment_to_nymeria",
+        "required_count": 1,
+        "description": "Bring it to Nymeria in the bog at any phase."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_nym1",
+        "content": "The bog shares lattice underbrush with the lattice-Crucible world. Crossings are real but not lightly granted.",
+        "unlocks_after": "obj_nym1_bring",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "fantasy_nymeria_02_steps"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "fantasy",
+      "fantasy_lattice"
+    ]
+  },
+  {
+    "id": "fantasy_nymeria_02_steps",
+    "title": "The Bog — Eight Steps",
+    "description": "Nymeria teaches you eight steps. Three she makes up each time. You'll walk the bog with her at moonrise.",
+    "giver_npc_id": "witch_nymeria",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_nym2_walk",
+        "type": "reach_location",
+        "target": "fantasy_bog_crossing",
+        "required_count": 1,
+        "description": "Walk the eight steps under Nymeria's guidance."
+      },
+      {
+        "id": "obj_nym2_emerge",
+        "type": "reach_location",
+        "target": "lattice_verge_north",
+        "required_count": 1,
+        "description": "Emerge on the Crucible side."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "fantasy_nymeria_03_return"
+    ],
+    "prerequisites": [
+      "fantasy_nymeria_01_fragment"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_lattice"
+    ]
+  },
+  {
+    "id": "fantasy_nymeria_03_return",
+    "title": "The Bog — The Return Path",
+    "description": "The path back is the path in. Nymeria warned you. The path has changed.",
+    "giver_npc_id": "witch_nymeria",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_nym3_return",
+        "type": "reach_location",
+        "target": "fantasy_bog_clearing",
+        "required_count": 1,
+        "description": "Find the way back through the bog."
+      },
+      {
+        "id": "obj_nym3_report",
+        "type": "talk_to",
+        "target": "witch_nymeria",
+        "required_count": 1,
+        "description": "Report what you saw on the other side."
+      }
+    ],
+    "rewards": {
+      "xp": 400,
+      "skill_xp": {
+        "lattice_awareness": 60
+      },
+      "items": [
+        "nymeria_crossing_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "fantasy_nymeria_02_steps"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_lattice"
+    ]
+  }
+]

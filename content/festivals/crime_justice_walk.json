@@ -1,0 +1,13 @@
+{
+  "id": "crime_justice_walk",
+  "name": "The Justice Walk",
+  "world_id": "crime",
+  "season_idx": 4,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "judge_robes",
+  "synopsis": "Judge Haldane walks from the courthouse to the morgue to the pier and back. The city walks behind.",
+  "achievements": [],
+  "quest_seeds": []
+}

@@ -1,0 +1,14 @@
+{
+  "songId": "noir-corridor",
+  "bpm": 92,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Rain on the corridor, lamp at the end" },
+    { "at_ms": 2608,  "line": "Witness held a coat I could not mend" },
+    { "at_ms": 5216,  "line": "Detective Voss, cold case in hand" },
+    { "at_ms": 7824,  "line": "Smuggler's mark on the grain of sand" },
+    { "at_ms": 10432, "line": "Noir corridor, noir corridor" },
+    { "at_ms": 13040, "line": "Truth doesn't knock anymore" },
+    { "at_ms": 15648, "line": "Rain on the corridor, lamp at the end" },
+    { "at_ms": 18256, "line": "Witness held a coat I could not mend" }
+  ]
+}

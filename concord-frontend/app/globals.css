@@ -766,3 +766,39 @@ body.concord-time-dilated::after {
   20%  { opacity: 1; }
   100% { opacity: 0.3; }
 }
+
+/* Phase Z7 — shared HUD entry animations. The 11 station overlays
+   handle their own keyframes via _StationOverlayShell. These classes
+   give the standalone HUDs (RogueliteRunHUD, HordeWaveHUD, TimeLoopHUD,
+   DriftAlertToast, ExtractionRunHUD, ClimbingTracker, etc.) a soft
+   slide-in from their resting edge. Use one of:
+     - .concordia-hud-slide-left    (slides in from the left edge)
+     - .concordia-hud-slide-right   (slides in from the right edge)
+     - .concordia-hud-slide-top     (slides in from above)
+     - .concordia-hud-slide-bottom  (slides in from below)
+     - .concordia-hud-fade          (just a fade — for centred panels) */
+@keyframes concordiaHudSlideLeft {
+  0% { opacity: 0; transform: translateX(-16px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes concordiaHudSlideRight {
+  0% { opacity: 0; transform: translateX(16px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes concordiaHudSlideTop {
+  0% { opacity: 0; transform: translateY(-12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes concordiaHudSlideBottom {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes concordiaHudFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.concordia-hud-slide-left   { animation: concordiaHudSlideLeft   220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.concordia-hud-slide-right  { animation: concordiaHudSlideRight  220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.concordia-hud-slide-top    { animation: concordiaHudSlideTop    220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.concordia-hud-slide-bottom { animation: concordiaHudSlideBottom 220ms cubic-bezier(0.16, 1, 0.3, 1); }
+.concordia-hud-fade         { animation: concordiaHudFade        220ms ease-out; }

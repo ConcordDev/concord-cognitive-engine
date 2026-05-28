@@ -1,0 +1,13 @@
+{
+  "id": "superhero_anti_mask_march",
+  "name": "Anti-Mask March",
+  "world_id": "superhero",
+  "season_idx": 3,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "red_armbands",
+  "synopsis": "Civilian rights group marches against masked-hero impunity. Iron Hex used to attend. Doesn't anymore.",
+  "achievements": [],
+  "quest_seeds": []
+}

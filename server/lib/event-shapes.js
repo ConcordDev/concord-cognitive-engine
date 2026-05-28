@@ -282,6 +282,21 @@ export const EVENT_SHAPES = Object.freeze({
     required: ["from", "to", "kind", "payload"],
     optional: ["worldId", "cellKey"],
   },
+
+  // ── Phase F3 — simulation surfacing emit sites ────────────────────
+  "faction:war-declared":       { required: ["factionId", "targetFactionId", "move", "summary", "moveId"], optional: [] },
+  "faction:alliance-formed":    { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: [] },
+  "faction:truce-sought":       { required: ["factionId", "targetFactionId", "summary", "moveId"], optional: [] },
+  "npc:scheme-resolved":        { required: ["schemeId", "plotterKind", "plotterId", "kind", "outcome"], optional: ["targetKind", "targetId"] },
+  "dream:composed":             { required: ["userId", "dreamRowId", "dreamDtuId", "fragmentCount"], optional: ["worldId"] },
+  "prediction:realised":        { required: ["predictionId"], optional: ["userId", "subjectKind", "subjectId", "outcome"] },
+  "refusal:compound-threshold": { required: ["worldId", "strength"], optional: ["kind", "reason"] },
+
+  // ── Phase G1 — batched + chain + bridge surfacing ─────────────────
+  "combat:chain":               { required: ["originActorId", "targets"], optional: ["worldId", "magnitude", "element"] },
+  "npc:activity-batch":         { required: ["worldId", "count", "transitions"], optional: [] },
+  "npc:economy-batch":          { required: ["worldId", "gathers", "crafts", "trades", "rests", "notable"], optional: [] },
+  "social:shadows-synced":      { required: ["createdShadows", "totalCapacity"], optional: ["droppedForPrivacy"] },
 });
 
 /**

@@ -1,0 +1,52 @@
+{
+  "$schema": "world-flavor.v1",
+  "description": "Capeworld — constant skirmish action, high energy ceiling, no kingdoms. Hero/villain factions in perpetual flux.",
+  "loops": {
+    "npc-routine-cycle": { "enabled": true, "frequency": 5 },
+    "signal-propagation-cycle": { "enabled": true, "frequency": 3 },
+    "creature-flock-cycle": { "enabled": true, "frequency": 6 },
+    "environment-sensor": { "enabled": true, "frequency": 5 },
+    "season-cycle": { "enabled": true, "frequency": 480 },
+    "npc-economy-cycle": { "enabled": true, "frequency": 8 },
+    "land-claims-cycle": { "enabled": true, "frequency": 240 },
+    "kingdom-decree-cycle": { "enabled": false },
+    "npc-perception-snapshot": { "enabled": true, "frequency": 6 },
+    "procgen-settlement-cycle": { "enabled": false },
+    "procedural-npc-spawner": { "enabled": true, "frequency": 240 },
+    "npc-conversation-initiator": { "enabled": true, "frequency": 8 },
+    "npc-scheme-cycle": { "enabled": true, "frequency": 20 },
+    "war-skirmish-cycle": { "enabled": true, "frequency": 1 },
+    "world-population-cycle": { "enabled": true, "frequency": 60 }
+  },
+  "climate": {
+    "baseTemp": 20,
+    "humidity": 55,
+    "airQuality": 80,
+    "illumination": 1.0,
+    "structuralStress": 0.3,
+    "ambientDb": 55,
+    "weather": "metropolis-clear"
+  },
+  "factionStartState": {
+    "default": { "stance": "war", "momentum": 0.1 }
+  },
+  "skillCeilings": {
+    "physical": 500, "fire": 400, "ice": 400, "water": 400,
+    "lightning": 500, "bio": 350, "energy": 500, "poison": 200
+  },
+  "npcDensity": {
+    "targetPerFaction": 60,
+    "max": 500,
+    "archetypeWeights": { "warrior": 1.4, "scholar": 1.0, "trader": 0.8, "mystic": 1.1, "guard": 1.0, "healer": 0.7, "hunter": 0.5 }
+  },
+  "marketplaceModulators": { "feeMultiplier": 1.0, "scarcityBias": 0.0 },
+  "worldVoice": {
+    "tone": "comic-book bombast intercut with journalist asides, headline-cadence",
+    "vocabulary": ["citizen", "the city", "headlines", "the cape", "downtown", "incident", "manifested", "powered"],
+    "avoid": ["archaic terms", "rural metaphors", "noir grit"],
+    "examples": [
+      "Citizen, the city sleeps better tonight because somebody powered showed up. That you?",
+      "Bystander reports say the incident downtown lasted ninety seconds. The headlines will run for a week."
+    ]
+  }
+}

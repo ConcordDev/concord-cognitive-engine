@@ -23,6 +23,7 @@ import { DepthBadge } from '@/components/lens/DepthBadge';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { UxRepos } from '@/components/ux-suite/UxRepos';
 import { ComponentWorkbench } from '@/components/ux-suite/ComponentWorkbench';
+import { AvatarComputeToggle } from '@/components/ux-suite/AvatarComputeToggle';
 import Link from 'next/link';
 import {
   Accessibility, Settings, Save, Music2, Trophy, TrendingUp, Sun,
@@ -110,6 +111,10 @@ export default function UxSuiteLensPage() {
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
           <div className="mb-5">
             <ComponentWorkbench />
+          </div>
+
+          <div className="mb-5">
+            <AvatarComputeToggle />
           </div>
 
           <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">

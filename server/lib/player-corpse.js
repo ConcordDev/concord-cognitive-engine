@@ -17,10 +17,11 @@
 
 import crypto from "node:crypto";
 
-export const COIN_LOSS_FRACTION = 0.25;
-export const COIN_LOSS_MAX      = 1000;
-export const RECOVER_RADIUS_M   = 4;
-export const ACTIVE_TTL_S       = 7 * 86400;
+// Phase E1 — balance dials env-overridable. See docs/BALANCE_DIALS.md.
+export const COIN_LOSS_FRACTION = Number(process.env.CONCORD_CORPSE_COIN_LOSS_FRACTION) || 0.25;
+export const COIN_LOSS_MAX      = Number(process.env.CONCORD_CORPSE_COIN_LOSS_MAX) || 1000;
+export const RECOVER_RADIUS_M   = Number(process.env.CONCORD_CORPSE_RECOVER_RADIUS_M) || 4;
+export const ACTIVE_TTL_S       = Number(process.env.CONCORD_CORPSE_ACTIVE_TTL_S) || (7 * 86400);
 
 /**
  * Drop a corpse for `userId` at `position`. If they had an active

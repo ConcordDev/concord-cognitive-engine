@@ -122,6 +122,19 @@ export async function runSocialNpcBridge({ state, db, tickCount }) {
   state._socialNpcBridgeLastTick = tickCount;
   state._socialNpcBridgeLastCount = createdShadows;
 
+  // Phase G1.4 — surface the bridge to the player as a "world thought
+  // about your timeline" signal. Best-effort; never blocks the pass.
+  try {
+    const emitFn = globalThis._concordRealtimeEmit;
+    if (typeof emitFn === "function" && createdShadows > 0) {
+      emitFn("social:shadows-synced", {
+        createdShadows,
+        totalCapacity: state.shadowDtus.size,
+        droppedForPrivacy: rows.length - createdShadows,
+      });
+    }
+  } catch { /* emit failures never affect pass */ }
+
   // v2.0 Workstream 6b: federation pass. Pull public social shadows from
   // configured peers and import them as 'federated_signal' shadows. The
   // NPC narrative-bridge weights these lower than local shadows. We

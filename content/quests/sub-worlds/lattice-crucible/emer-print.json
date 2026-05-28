@@ -1,0 +1,104 @@
+[
+  {
+    "id": "lattice_emer_01_sketches",
+    "title": "The Verge — Sketches of the Print",
+    "description": "Emer has tracked the same impossible print as Kiren in the hub. Show Kiren's sketch to Emer.",
+    "giver_npc_id": "scout_emer_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_emer1_show",
+        "type": "deliver",
+        "target": "kiren_sketch_to_emer",
+        "required_count": 1,
+        "description": "Bring Kiren's sketch to Emer at the verge."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_emer_02_track"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "lattice-crucible",
+      "lattice_print"
+    ]
+  },
+  {
+    "id": "lattice_emer_02_track",
+    "title": "The Verge — Track Together",
+    "description": "Track the creature with Emer. The prints lead to the verge breach.",
+    "giver_npc_id": "scout_emer_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_emer2_track",
+        "type": "reach_location",
+        "target": "lattice_verge_breach",
+        "required_count": 1,
+        "description": "Track the prints with Emer to the breach point."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "lattice_emer_03_breach"
+    ],
+    "prerequisites": [
+      "lattice_emer_01_sketches"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_print"
+    ]
+  },
+  {
+    "id": "lattice_emer_03_breach",
+    "title": "The Breach — Cross to Meet Kiren",
+    "description": "Emer wants to meet Kiren in person. Lead Emer across the breach to the hub Verge outpost.",
+    "giver_npc_id": "scout_emer_voss",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_emer3_cross",
+        "type": "reach_location",
+        "target": "hub_verge_outpost",
+        "required_count": 1,
+        "description": "Bring Emer to Kiren at the hub Verge outpost."
+      },
+      {
+        "id": "obj_emer3_introduce",
+        "type": "talk_to",
+        "target": "ranger_kiren_owl",
+        "required_count": 1,
+        "description": "Introduce them."
+      }
+    ],
+    "rewards": {
+      "xp": 800,
+      "skill_xp": {
+        "tracking": 150
+      },
+      "items": [
+        "cross_world_scout_seal"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "lattice_emer_02_track"
+    ],
+    "tags": [
+      "lattice-crucible",
+      "lattice_print"
+    ]
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "id": "superhero_roof_rendezvous",
+  "name": "Roof Rendezvous",
+  "world_id": "superhero",
+  "season_idx": 4,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "string_lights",
+  "synopsis": "Once a year the city's rooftops open for public dinner. Silas Crane lights string lights over his garden.",
+  "achievements": [],
+  "quest_seeds": []
+}

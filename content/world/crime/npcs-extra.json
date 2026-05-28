@@ -1,0 +1,839 @@
+[
+  {
+    "id": "detective_iniko_voss",
+    "name": "Iniko Voss",
+    "title": "Detective Inspector",
+    "faction_id": "crime_watch",
+    "world_id": "crime",
+    "archetype": "guard",
+    "personality": "Iniko closes cases by the rule book and re-opens them by instinct. Coffee, never tea.",
+    "appearance": "Late forties, grey at the temples, long coat over a creased shirt. Notebook in left breast pocket, pencil behind ear.",
+    "background": "Twenty years on the force. Has been told no by every commissioner she's worked under.",
+    "narrative_context": {
+      "secret": "Iniko shares a cold case with Captain Ren Solare (hub) — a smuggling ring active in both worlds.",
+      "weaponise_at": "If a player ferries evidence between Iniko and Ren, the ring collapses."
+    },
+    "concord_link_resonance": "concordia-hub:captain_ren_solare",
+    "dialogue_style": "terse, observant, drops one line that turns out to be the case",
+    "needs": [
+      {
+        "id": "casework",
+        "priority": "primary",
+        "satisfaction_method": "daily_investigations"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_precinct",
+        "activity": "rotates night-watch; checks the perimeter",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          9
+        ],
+        "location": "crime_precinct",
+        "activity": "morning case file review",
+        "need_addressed": "casework",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          16
+        ],
+        "location": "crime_streets",
+        "activity": "interviews + canvas",
+        "need_addressed": "casework",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_streets",
+        "activity": "drills new recruits",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "crime_back_office",
+        "activity": "writing reports",
+        "need_addressed": "casework",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_precinct",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
+  },
+  {
+    "id": "mob_boss_silas_thorpe",
+    "name": "Silas Thorpe",
+    "title": "Boss of the Pier",
+    "faction_id": "thorpe_family",
+    "world_id": "crime",
+    "archetype": "warlord",
+    "personality": "Silas measures violence in delivered packages. Never threatens what he hasn't already moved.",
+    "appearance": "Sixty, broad, broken nose, three-piece suit always.",
+    "background": "Inherited the Pier from his father. Has buried two brothers and one informant.",
+    "narrative_context": {
+      "secret": "Silas's smuggling network connects to the hub Bazaar via Velka's off-ledger fence chain.",
+      "weaponise_at": "Cut the chain; one of the two networks starves."
+    },
+    "concord_link_resonance": "concordia-hub:merchant_velka_ironhand",
+    "dialogue_style": "slow, deliberate, never raises his voice",
+    "needs": [
+      {
+        "id": "control",
+        "priority": "primary",
+        "satisfaction_method": "daily_pier_round"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_pier_office",
+        "activity": "private war-vigil; speaks to no one",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          7,
+          10
+        ],
+        "location": "crime_pier_office",
+        "activity": "ledger review with lieutenants",
+        "need_addressed": "control",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "crime_thorpe_warehouse",
+        "activity": "inspects the levy; cohort training",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          17
+        ],
+        "location": "crime_thorpe_warehouse",
+        "activity": "inventory check",
+        "need_addressed": "control",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_thorpe_warehouse",
+        "activity": "open supper; clan business",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_pier_office",
+        "activity": "private correspondence; sleeps lightly",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
+  },
+  {
+    "id": "lawyer_dahlia_kress",
+    "name": "Dahlia Kress",
+    "title": "Defense Attorney",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "scholar",
+    "personality": "Dahlia treats the law as a chess board. Wins more than she loses, but only just.",
+    "appearance": "Forties, sharp-cut black suit, hair pinned back, half-rim glasses always pushed up.",
+    "background": "Defended Silas Thorpe twice. Defended an indigent kid against Silas once.",
+    "narrative_context": {
+      "secret": "Dahlia has Silas's ledger in her files for emergencies.",
+      "weaponise_at": "Steal the ledger; Silas falls in a week."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "polished, precise, occasionally cutting",
+    "needs": [
+      {
+        "id": "casework",
+        "priority": "primary",
+        "satisfaction_method": "daily_office"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_courthouse",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "crime_lawyer_office",
+        "activity": "client meetings",
+        "need_addressed": "casework",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "crime_lawyer_office",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          17
+        ],
+        "location": "crime_courthouse",
+        "activity": "trial work",
+        "need_addressed": "casework",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_lawyer_office",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_courthouse",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
+  },
+  {
+    "id": "fence_maddox_kray",
+    "name": "Maddox Kray",
+    "title": "Wharf Fence",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "trader",
+    "personality": "Maddox is friendly to anyone with cash. Friendly to nobody without.",
+    "appearance": "Skinny, salt-stained, two missing teeth, three coat pockets that never empty.",
+    "background": "Worked the wharf since he was fifteen. Knows what every dockworker is fencing.",
+    "narrative_context": {
+      "secret": "Maddox owes Iniko Voss three favours. He has not paid one yet.",
+      "weaponise_at": "Iniko can call the favours in to bust the Thorpe ring."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "fast, conspiratorial, drops his voice for no reason",
+    "needs": [
+      {
+        "id": "fence_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_wharf"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_wharf",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_wharf",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          16
+        ],
+        "location": "crime_wharf",
+        "activity": "fencing",
+        "need_addressed": "fence_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_wharf",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_wharf",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_wharf",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
+  },
+  {
+    "id": "informant_silas_bell",
+    "name": "Bell",
+    "title": "Streetcorner Informant",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "default",
+    "personality": "Bell never gives a tip for free. Bell never gives a wrong tip.",
+    "appearance": "Forty-ish, hooded, sits at the same alley corner every day.",
+    "background": "Has informed for three precincts and two crime families simultaneously.",
+    "narrative_context": {
+      "secret": "Bell saw the Thorpe ring's last shipment cross-loaded with hub Bazaar goods.",
+      "weaponise_at": "Bell will tell anyone with 50 sparks. Iniko has not bought yet."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "soft, transactional",
+    "needs": [
+      {
+        "id": "intel",
+        "priority": "primary",
+        "satisfaction_method": "daily_corner"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_alley_corner",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_alley_corner",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          22
+        ],
+        "location": "crime_alley_corner",
+        "activity": "sitting + watching",
+        "need_addressed": "intel",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_alley_corner",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_alley_corner",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_alley_corner",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
+  },
+  {
+    "id": "coroner_ada_pell",
+    "name": "Ada Pell",
+    "title": "City Coroner",
+    "faction_id": "crime_watch",
+    "world_id": "crime",
+    "archetype": "healer",
+    "personality": "Ada talks to the dead. The dead are mostly cooperative.",
+    "appearance": "Fifties, white coat, reading glasses, a small enamel pin shaped like a moth.",
+    "background": "Twenty-two years on the slab. Has signed off on more Thorpe deaths than anyone, and protested all of them.",
+    "narrative_context": {
+      "secret": "Ada has been logging cause-of-death anomalies that suggest cross-world creature predation.",
+      "weaponise_at": "If Iniko reads Ada's log, the impossible-print chain unlocks in the crime world too."
+    },
+    "concord_link_resonance": "concordia-hub:ranger_kiren_owl",
+    "dialogue_style": "quiet, exact, occasionally dryly funny",
+    "needs": [
+      {
+        "id": "morgue_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_morgue"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_morgue",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_morgue",
+        "activity": "morning clinic; treats the queue",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          17
+        ],
+        "location": "crime_morgue",
+        "activity": "autopsies + logging",
+        "need_addressed": "morgue_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_morgue",
+        "activity": "afternoon clinic; receives supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_morgue",
+        "activity": "private surgeries; teaches the apprentice",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_morgue",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
+  },
+  {
+    "id": "barkeep_old_lou",
+    "name": "Old Lou",
+    "title": "Barkeep of the Sunken Anchor",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "trader",
+    "personality": "Lou pretends to be deaf. Lou is not deaf.",
+    "appearance": "Sixty, broad shoulders narrowed by age, bald, towel over the shoulder.",
+    "background": "Owns the Sunken Anchor. Has thrown out three murderers, served drinks to seven others.",
+    "narrative_context": {
+      "secret": "The back room is neutral ground for the Thorpes and the precinct.",
+      "weaponise_at": "Burn the back room; the détente ends."
+    },
+    "concord_link_resonance": "concordia-hub:innkeep_baren_hollow",
+    "dialogue_style": "gruff, friendly, deflects with weather talk",
+    "needs": [
+      {
+        "id": "bar_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_bar"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "open shop; sells and negotiates",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          24
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "barkeeping",
+        "need_addressed": "bar_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_sunken_anchor",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
+  },
+  {
+    "id": "child_pidgeon",
+    "name": "Pidgeon",
+    "title": "Wharf Urchin",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "default",
+    "personality": "Ten years old. Knows every dock by the smell.",
+    "appearance": "Small, all elbows, wears a sailor's cap two sizes too big.",
+    "background": "Lives in a crate. Has informed for three different people without realising they were on opposite sides.",
+    "narrative_context": {
+      "secret": "Pidgeon saw a smuggler vanish into a shimmer at the wharf — the cyber/hub portal anomaly.",
+      "weaponise_at": "If a player asks about shimmers, Pidgeon shares the vanishing."
+    },
+    "concord_link_resonance": "cyber:child_pixel",
+    "dialogue_style": "fast, mistrustful, soft when given a snack",
+    "needs": [
+      {
+        "id": "survival",
+        "priority": "primary",
+        "satisfaction_method": "scavenging"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_wharf",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_wharf",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          18
+        ],
+        "location": "crime_wharf",
+        "activity": "scavenging",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_wharf",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_wharf",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_wharf",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
+  },
+  {
+    "id": "judge_pia_haldane",
+    "name": "Pia Haldane",
+    "title": "Judge of the Lower Court",
+    "faction_id": null,
+    "world_id": "crime",
+    "archetype": "default",
+    "personality": "Pia sentences fairly and writes opinions that nobody reads.",
+    "appearance": "Fifties, robes worn but neat, half-rim glasses on a chain.",
+    "background": "Refused to take the Thorpe bribe. Got demoted from High Court for it. Hasn't regretted it.",
+    "narrative_context": {
+      "secret": "Pia is collecting evidence for an indictment that requires Iniko's case files.",
+      "weaponise_at": "Hand off Dahlia's stolen ledger; the indictment lands."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "formal, precise, occasionally warm",
+    "needs": [
+      {
+        "id": "casework",
+        "priority": "primary",
+        "satisfaction_method": "daily_court"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crime_courthouse",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crime_courthouse",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          16
+        ],
+        "location": "crime_courthouse",
+        "activity": "bench",
+        "need_addressed": "casework",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crime_courthouse",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crime_courthouse",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crime_courthouse",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
+  }
+]

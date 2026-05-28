@@ -1,0 +1,14 @@
+{
+  "songId": "data-rain",
+  "bpm": 124,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Drop, drop, the green rain falls" },
+    { "at_ms": 1935,  "line": "Down through the lattice, down through the halls" },
+    { "at_ms": 3870,  "line": "Every packet, every key" },
+    { "at_ms": 5805,  "line": "Pooling at the boots of me" },
+    { "at_ms": 7740,  "line": "Data rain, data rain" },
+    { "at_ms": 9675,  "line": "Wash the city, wash the lane" },
+    { "at_ms": 11610, "line": "Drop, drop, the green rain falls" },
+    { "at_ms": 13545, "line": "Down through the lattice, down through the halls" }
+  ]
+}

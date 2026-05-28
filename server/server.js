@@ -64,6 +64,10 @@ import {
 registerHeartbeat("social-npc-bridge", {
   frequency: 5,
   handler: runSocialNpcBridge,
+  // Phase A: writes STATE.shadowDtus that npc-knowledge-bridge then reads.
+  // Serial so the bridge sees the freshest social signals.
+  serial: true,
+  scope: "global",
 });
 
 // Register every-10-tick (~10 minute) NPC knowledge bridge. Medical /
@@ -73,6 +77,10 @@ registerHeartbeat("social-npc-bridge", {
 registerHeartbeat("npc-knowledge-bridge", {
   frequency: 10,
   handler: runNpcKnowledgeBridge,
+  // Phase A: depends on social-NPC bridge having published shadow DTUs;
+  // runs after the parallel batch.
+  serial: true,
+  scope: "global",
 });
 
 // Decay refusal_debt slowly so a single misstep doesn't follow a player
@@ -80,6 +88,7 @@ registerHeartbeat("npc-knowledge-bridge", {
 registerHeartbeat("metrics-decay", {
   frequency: 20,
   handler: runMetricsDecay,
+  scope: "global",
 });
 
 // EvoEcosystem W1: ambient fauna spawner. Tops up per-biome populations
@@ -111,6 +120,10 @@ import { runSignalPropagationCycle } from "./emergent/signal-propagation-cycle.j
 registerHeartbeat("signal-propagation-cycle", {
   frequency: 3,
   handler: runSignalPropagationCycle,
+  // Phase A: writes embodied_signal_log rows that creature-flock-cycle and
+  // env-coupled handlers read on the same tick. Serial to keep the read
+  // path consistent.
+  serial: true,
 });
 
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
@@ -148,6 +161,10 @@ import {
 registerHeartbeat("refusal-field-sweep", {
   frequency: 1,
   handler: runRefusalFieldSweep,
+  // Phase C: every-tick glyph algebra is the highest-cumulative-cost
+  // pure-compute heartbeat — biggest win moving off main thread.
+  worker: true,
+  scope: "global",
 });
 
 // EvoEcosystem W2: prune expired creature corpses so the table doesn't
@@ -172,6 +189,166 @@ import { runDraftGcCycle } from "./emergent/draft-gc-cycle.js";
 registerHeartbeat("draft-gc-cycle", {
   frequency: 480,
   handler: runDraftGcCycle,
+  scope: "global",
+});
+
+// Phase W — disease tick cycle (~75s cadence per world). Advances
+// severity of every active infection in the world.
+registerHeartbeat("disease-tick-cycle", {
+  frequency: 5,
+  scope: "world",
+  handler: async ({ db: ctxDb, worldId }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
+    try {
+      // Get every user with an active disease in this world (or globally
+      // if no shard scope). For each, run tickDiseases.
+      const userRows = ctxDb.prepare(`
+        SELECT DISTINCT user_id FROM player_diseases
+        WHERE recovered_at IS NULL LIMIT 200
+      `).all();
+      let total = 0;
+      for (const u of userRows) {
+        const r = tickDiseases(ctxDb, u.user_id, { worldId });
+        total += r.ticked || 0;
+      }
+      return { ok: true, ticked: total };
+    } catch (err) {
+      return { ok: false, reason: "tick_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase W3 — plague watch (~15min cadence). Detects + declares plagues.
+registerHeartbeat("plague-watch", {
+  frequency: 60,
+  scope: "world",
+  handler: async (ctx) => {
+    if (process.env.CONCORD_DISEASE_ENGINE === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/plague-event.js");
+      return mod.plagueWatch(ctx);
+    } catch (err) {
+      return { ok: false, reason: "watch_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase E7 — brawl matchmaking queue (~1min cadence). Pops pairs of
+// queued users and synthesises invites between them. The HTTP join
+// route also runs popPair() once immediately so single-pair waits
+// don't have to wait for this heartbeat.
+registerHeartbeat("brawl-queue-cycle", {
+  frequency: 4,
+  scope: "global",
+  handler: async () => {
+    try {
+      const mod = await import("./emergent/brawl-queue-cycle.js");
+      return mod.runBrawlQueueCycle({ realtimeEmit });
+    } catch (err) {
+      return { ok: false, error: err?.message };
+    }
+  },
+});
+
+// Phase V4 — event reminder sweep (~1min cadence). Fires event:reminder
+// realtime to users whose RSVP'd event starts in the next 10min.
+registerHeartbeat("event-reminder-sweep", {
+  frequency: 4,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/event-rsvp.js");
+      return mod.sweepEventReminders(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase V1 — auction settler (~1min cadence). Auctions whose ends_at
+// passed get settled: winner gets the item, seller gets payout minus
+// 5% platform fee.
+registerHeartbeat("auction-settler", {
+  frequency: 4,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_AUCTION_HOUSE === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/auctions.js");
+      return mod.sweepEndedAuctions(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "settle_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase U6 — world markers cleanup (~60min cadence). Expired markers
+// are deleted to keep query cost bounded.
+registerHeartbeat("world-markers-cleanup", {
+  frequency: 240,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/world-markers.js");
+      return mod.sweepExpiredMarkers(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase U5 — LFG expiry sweep (~15min cadence). Open requests older
+// than 1h transition to 'expired' so the board stays fresh.
+registerHeartbeat("lfg-expiry-sweep", {
+  frequency: 60,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_LFG_ENABLED === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/lfg.js");
+      return mod.sweepExpiredLfg(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase U4 — faction reputation cache refresh (~15min cadence). Reads
+// character_opinions and writes player_faction_reputation_cache.
+registerHeartbeat("faction-rep-cache-refresh", {
+  frequency: 60,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    try {
+      const mod = await import("./lib/faction-reputation.js");
+      return mod.refreshFactionReputationCache(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "refresh_failed", error: err?.message };
+    }
+  },
+});
+
+// Phase U1 — mail expiry sweep (~2h cadence). Expired mail refunds
+// attachments to the sender; stays in outbox history as 'expired'.
+registerHeartbeat("mail-expiry-sweep", {
+  frequency: 480,
+  scope: "global",
+  handler: async ({ db: ctxDb }) => {
+    if (!ctxDb) return { ok: false, reason: "no_db" };
+    if (process.env.CONCORD_MAIL_ENABLED === "false") return { ok: false, reason: "disabled" };
+    try {
+      const mod = await import("./lib/player-mail.js");
+      return mod.sweepExpiredMail(ctxDb);
+    } catch (err) {
+      return { ok: false, reason: "sweep_failed", error: err?.message };
+    }
+  },
 });
 
 // Presence stale-entry sweep. Socket disconnect handlers
@@ -182,6 +359,7 @@ registerHeartbeat("draft-gc-cycle", {
 // (default 10 min). Implemented in lib/city-presence.js#sweepStalePresence.
 registerHeartbeat("presence-stale-sweep", {
   frequency: 20,
+  scope: "global",
   handler: async () => {
     try {
       const cp = await import("./lib/city-presence.js").catch((err) => {
@@ -216,20 +394,31 @@ import {
 registerHeartbeat("lattice-drift-scan", {
   frequency: 60,
   handler: runPeriodicDriftScan,
+  // Phase A: drift findings feed lattice-breakthrough-pass; keep them
+  // ordered so a single 60-tick coincidence sees the freshest alerts.
+  serial: true,
+  scope: "global",
+  // Phase C: pure-compute heavy (HLR + constraint check). Worker pool.
+  worker: true,
 });
 registerHeartbeat("lattice-breakthrough-pass", {
   frequency: 240,
   handler: runBreakthroughResearchPass,
+  serial: true,
+  scope: "global",
+  worker: true,
 });
 registerHeartbeat("lattice-federation-poll", {
   frequency: 120,
   handler: runFederationPoll,
+  scope: "global",
 });
 // Phase 3 wire-the-Lost: culture-layer drift pass (frequency 120, ~30 min).
 // 16 macros were registered via Ghost Fleet but never tick-scheduled.
 registerHeartbeat("culture-drift-pass", {
   frequency: 120,
   handler: runCultureDriftPass,
+  scope: "global",
 });
 // Phase 3 wire-the-Lost: forgetting-engine health-check pass. The engine
 // already runs inline in governorTick on TICK_FREQUENCIES.FORGETTING; this
@@ -238,6 +427,7 @@ registerHeartbeat("culture-drift-pass", {
 registerHeartbeat("forgetting-health-check", {
   frequency: 480,
   handler: runForgettingHealthCheck,
+  scope: "global",
 });
 
 // Code-quality detector sweep. Every 2880 ticks (~12h) runs the static
@@ -383,6 +573,9 @@ import { runFactionStrategyCycle } from "./emergent/faction-strategy-cycle.js";
 registerHeartbeat("faction-strategy-cycle", {
   frequency: 200,
   handler: runFactionStrategyCycle,
+  // Phase C: deterministic state-machine + seeded RNG, no live DB writes
+  // during pick (only at applyMove). Pure-compute heavy → worker pool.
+  worker: true,
 });
 
 // Layer 10: forward-sim anticipation cycle. Every 100 ticks (~25 min)
@@ -395,6 +588,8 @@ import { runForwardSimCycle } from "./emergent/forward-sim-cycle.js";
 registerHeartbeat("forward-sim-cycle", {
   frequency: 100,
   handler: runForwardSimCycle,
+  // Phase C: deterministic compose + a single INSERT per prediction.
+  worker: true,
 });
 
 // Layer 9: embodied-dream-cycle. Every 80 ticks (~20 min) the offline
@@ -410,6 +605,8 @@ import { runEmbodiedDreamCycle } from "./emergent/embodied-dream-cycle.js";
 registerHeartbeat("embodied-dream-cycle", {
   frequency: 80,
   handler: runEmbodiedDreamCycle,
+  // Phase C: fragment-gather + compose is the heavy lift; one INSERT at end.
+  worker: true,
 });
 
 // Phase 1: NPC skill evolution. Every 80 ticks (~20 min) auto-evolves any
@@ -539,6 +736,9 @@ import { runLatticeQuestCycle } from "./emergent/lattice-quest-cycle.js";
 registerHeartbeat("lattice-quest-cycle", {
   frequency: 180,
   handler: runLatticeQuestCycle,
+  // Phase C: drift→quest composer is pure compute; the actual insert is
+  // a small final transaction at the end.
+  worker: true,
 });
 
 // Phase 6: Ecology quest cycle. Drains ecology_imbalance_log rows (set
@@ -570,6 +770,9 @@ import { runSeasonCycle } from "./emergent/season-cycle.js";
 registerHeartbeat("season-cycle", {
   frequency: 480,
   handler: runSeasonCycle,
+  // Phase A: season transitions feed env-bias reads elsewhere on the
+  // same tick. Serial so downstream sees the post-transition values.
+  serial: true,
 });
 
 // Phase 5a: Player land claims. Every 240 ticks (~1h) ticks maintenance
@@ -581,14 +784,105 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
+// world scans for grief-bonds (kin of slain NPC), scheme betrayals
+// (npc_schemes outcome='betrayed' + character_opinions < -50), and
+// mentor pairings (authored ≥20 + procgen same archetype). Decay sweep
+// runs every tick. Kill-switch: CONCORD_NEMESIS_CYCLE=0.
+import { runNemesisCycle } from "./emergent/nemesis-cycle.js";
+registerHeartbeat("nemesis-cycle", {
+  frequency: 40,
+  handler: runNemesisCycle,
+});
+
+// Phase AG: ambient chat retention sweep. Every 60 ticks (~15 min) drops
+// expired messages so the district feed self-cleans. Scope global — one
+// table, no per-world isolation needed.
+import { sweepExpiredAmbientChat } from "./lib/ambient-chat.js";
+registerHeartbeat("ambient-chat-sweep", {
+  frequency: 60,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => sweepExpiredAmbientChat(ctxDb || db),
+});
+
+// Phase BB1: festival trigger heartbeat. Every 4 ticks (~1 min) checks
+// the calendar against the festivals table and opens any matching
+// window. Idempotent on (festival_id, world_id, year_idx). Kill-switch:
+// CONCORD_FESTIVALS_ENABLED=0.
+import { runFestivalTriggerCycle } from "./emergent/festival-trigger-cycle.js";
+registerHeartbeat("festival-trigger-cycle", {
+  frequency: 4,
+  handler: ({ db: ctxDb, worldId } = {}) => runFestivalTriggerCycle({
+    db: ctxDb || db, worldId, io: REALTIME?.io,
+  }),
+});
+
+// Phase BB3: operator announcements broadcast. Every 60 ticks (~15
+// min) pulls new rows from announcements (where last_broadcast_at IS
+// NULL) and emits concord:announcement. Scope global. Kill-switch:
+// CONCORD_ANNOUNCEMENTS_ENABLED=0.
+import { runAnnouncementBroadcaster } from "./emergent/announcement-broadcaster.js";
+registerHeartbeat("announcement-broadcaster", {
+  frequency: 60,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runAnnouncementBroadcaster({
+    db: ctxDb || db, io: REALTIME?.io,
+  }),
+});
+
+// Phase CC4: factory cycle. Every tick advances every claim's belts +
+// crafters. Kill-switch CONCORD_FACTORY_ENABLED=0.
+import { runFactoryCycle } from "./emergent/factory-cycle.js";
+registerHeartbeat("factory-cycle", {
+  frequency: 1,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runFactoryCycle({ db: ctxDb || db }),
+});
+
+// Phase CB3: farm crop growth heartbeat. Every 24 ticks (~6 min)
+// advances any crops whose planted season matches the current calendar
+// day. Kill-switch CONCORD_FARMING_ENABLED=0.
+import { runFarmGrowthCycle } from "./emergent/farm-growth-cycle.js";
+registerHeartbeat("farm-growth-cycle", {
+  frequency: 24,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runFarmGrowthCycle({ db: ctxDb || db }),
+});
+
+// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) per active
+// world runs a trigger pass (opens any schedule whose next_spawn_at <=
+// now), sweeps expired actives, advances next_spawn_at. Kill-switch:
+// CONCORD_WORLD_BOSSES_ENABLED=0.
+import { runWorldBossCycle } from "./emergent/world-boss-cycle.js";
+registerHeartbeat("world-boss-cycle", {
+  frequency: 16,
+  handler: ({ db: ctxDb, worldId } = {}) => runWorldBossCycle({
+    db: ctxDb || db, worldId, io: REALTIME?.io,
+  }),
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
 // any per-NPC authoring. Kill-switch: CONCORD_PROCGEN_NPCS=0.
+// Phase H — this is now the BACKSTOP (long-cadence safety net); the
+// world-population-cycle below is the primary populator.
 import { runProceduralNpcSpawner } from "./emergent/procedural-npc-spawner.js";
 registerHeartbeat("procedural-npc-spawner", {
   frequency: 360,
   handler: runProceduralNpcSpawner,
+});
+
+// Phase H — world-population-cycle. Every 60 ticks (~15 min) per active
+// world, tops factions to loops.json#npcDensity.targetPerFaction with
+// archetype-need bias + bloodline linkage + deterministic-or-LLM
+// backstory. Scoped per-world so it runs inside each shard. Kill-switch:
+// CONCORD_PROCGEN_NPCS=0.
+import { runWorldPopulationCycle } from "./emergent/world-population-cycle.js";
+registerHeartbeat("world-population-cycle", {
+  frequency: 60,
+  scope: "world",
+  handler: runWorldPopulationCycle,
 });
 
 // Phase 8: Combat polish substrate. Every 2 ticks (~30s) recovers gas
@@ -934,6 +1228,10 @@ import { recordObservation as recordInstitutionalDecision, getInstitutionalMemor
 
 // ---- Worker Pool: offload heavy macros to worker threads ----
 import { initPool, isHeavy, dispatch as dispatchToPool, syncState as syncPoolState, getPoolStats, shutdownPool } from "./workers/macro-pool.js";
+import { initHeartbeatPool, exec as execHeartbeatWorker, getPoolStats as getHeartbeatPoolStats, shutdownPool as shutdownHeartbeatPool } from "./workers/heartbeat-pool.js";
+import { setHeartbeatPool, getHeartbeatTimingStats } from "./emergent/heartbeat-registry.js";
+import { initWorldShards, broadcastTick as broadcastShardTick, getShardHealth, restartShard, shutdownShards, ensureWorldActive, markWorldUserCount, recordWorldActivity } from "./lib/world-shard-manager.js";
+import { shardingEnabled } from "./lib/world-shard-protocol.js";
 
 // ---- Repair Cortex: three-phase self-repair (Prophet + Surgeon + Guardian) ----
 import {
@@ -5622,6 +5920,26 @@ function authMiddleware(req, res, next) {
     "/api/search", "/api/species", "/api/events", "/api/schema",
     // Settings, metrics & context
     "/api/settings", "/api/growth", "/api/metrics", "/api/context",
+    // Phase N — public spectator counts. No PII; the world picker reads
+    // this anonymously to render "N watching" badges.
+    "/api/worlds/spectator-counts",
+    // Phase P — cross-world feed is the news layer of the federation.
+    // No PII; world-event summaries are server-generated.
+    "/api/cross-world/feed",
+    // Phase Q + S — UGC world list + active tournaments are public-safe.
+    "/api/foundry/worlds",
+    "/api/tournaments/active",
+    // Phase U2 — achievement catalog + recent unlocks are public-read.
+    "/api/achievements/catalog",
+    "/api/achievements/recent",
+    // Phase U5 — LFG board is public-read (anon browse before login).
+    "/api/lfg/open",
+    // Phase V1 — auction list + detail public-read so anon can browse.
+    "/api/auctions/active",
+    "/api/auctions/",
+    // Phase W — disease catalog + plague list public-read.
+    "/api/diseases/catalog",
+    "/api/diseases/plagues",
     // System
     "/api/brain", "/api/system", "/api/cognitive", "/api/status",
     "/api/backpressure", "/api/embeddings", "/api/pwa",
@@ -5637,6 +5955,11 @@ function authMiddleware(req, res, next) {
     "/api/atlas/signals", "/api/atlas/privacy",
     // Competitive parity modules
     "/api/messaging", "/api/sandbox",
+    // Phase K bug-fix: feed + social Discovery widget calls
+    // /api/connective-tissue/search — the route exists at
+    // routes/connective-tissue.js:229 but wasn't on the public-read list.
+    // Adding the prefix lets anon search land before requiring login.
+    "/api/connective-tissue",
     // Production integrity
     "/api/inference/slos", "/api/audit/provenance",
     // Plugins & extensions
@@ -5707,7 +6030,33 @@ function authMiddleware(req, res, next) {
     "/api/world/weather",
     // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
     "/api/world/bazaar", "/api/world/perf-telemetry",
-    "/api/combat/state",
+    "/api/combat/state", "/api/combat/frame-data",
+    // Phase BA5 — avatar scars + drift (public read).
+    "/api/avatars",
+    // Phase BB1 — festival catalog + active list (public read).
+    "/api/festivals",
+    // Phase BB3 — announcements (public read; POST is admin-gated).
+    "/api/announcements",
+    // Phase BC2 — mentor registry (public read).
+    "/api/mentors",
+    // Phase CF6 — creature lineage/bond (public read).
+    "/api/creatures",
+    // Phase CF12 — vehicle garage (public read).
+    "/api/garage",
+    // Phase CF14 — bloodline tree (public read).
+    "/api/bloodline",
+    // Phase CF1 — sports league teams (public read).
+    "/api/sports/league",
+    // Phase CF7-9 — Layer 12 ghost-fleet read surfaces.
+    "/api/drift", "/api/breakthroughs", "/api/reasoning/trace",
+    // Phase CA3 — climbing top routes (public read).
+    "/api/climbing/world",
+    // Phase CA5 — detective open crimes + evidence (public read).
+    "/api/detective/open", "/api/detective/crime",
+    // Phase BE1 — photos public feed.
+    "/api/photos/world",
+    // Ambient chat — public read (district feed); post requires auth.
+    "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
     // Auth is still enforced on /send, /inbox, /:id/read, /walkers/hire by
     // the route handlers themselves.
@@ -5762,6 +6111,16 @@ function authMiddleware(req, res, next) {
   // HTTP-Signature on the request, verified by the inbox handler itself
   // via lib/ap-signature.js + activitypub-bridge.js#receiveActivity.
   if (req.method === "POST" && /^\/api\/federation\/users\/[^/]+\/inbox$/.test(req.path)) return next();
+  // Phase F — per-world shard health badge. The world lens reads this to
+  // render "shard healthy / catching up / offline" — no PII, just shard
+  // status (alive, lastTick, restartCount).
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/health$/.test(req.path) && !_hasAuthHeader) return next();
+  // Phase G — per-world flavor JSON (loops + climate + voice). Static
+  // content, no PII; world picker reads this anon to render flavor chips.
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/flavor$/.test(req.path) && !_hasAuthHeader) return next();
+  // Phase U6 — public world-marker reads so the world map shows pings
+  // without requiring login (write requires auth).
+  if (req.method === "GET" && /^\/api\/worlds\/[^/]+\/markers$/.test(req.path) && !_hasAuthHeader) return next();
   // Gate 1 POST bypass: quality-pipeline preview is a pure stateless
   // classifier (query intent + domain + projection rules) with zero DB
   // writes — the POST sibling of the already-public /status GET.
@@ -6407,20 +6766,101 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
-    // Per-block heartbeat timing. Every call through runHeartbeatModule
-    // observes its duration here so a Grafana panel + alert can name the
-    // exact block that is starving the next tick. Buckets are tuned for
-    // the 15s tick interval — anything past 5s is already concerning.
+    // Per-block heartbeat timing. Every call through the heartbeat
+    // registry observes its duration here so a Grafana panel + alert can
+    // name the exact block that is starving the next tick. Buckets are
+    // tuned for the real 60s tick cadence — anything past 10s is already
+    // concerning, anything past 30s threatens the next tick.
     // Alert rule lives in monitoring/prometheus/alerts.yml
-    // (ConcordHeartbeatBlockSlow): histogram_quantile(0.99,
+    // (ConcordHeartbeatModuleSlow): histogram_quantile(0.99,
     //   rate(concord_heartbeat_block_ms_bucket[5m])) > 10000.
     METRICS.histograms.heartbeatBlockMs = new prom.Histogram({
       name: "concord_heartbeat_block_ms",
       help: "Wall-clock duration of an individual heartbeat tick block (ms), labeled by module",
       labelNames: ["module"],
-      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000],
+      buckets: [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000],
       registers: [METRICS.registry]
     });
+
+    // Phase A — heartbeat modules that exceed MODULE_TIMEOUT_MS are
+    // cancelled at the dispatcher boundary so they cannot starve the next
+    // tick. The counter labels by module so the operator can see which
+    // one is wedging. Alert: ConcordHeartbeatModuleStuck.
+    METRICS.counters.heartbeatModuleTimeout = new prom.Counter({
+      name: "concord_heartbeat_module_timeout_total",
+      help: "Heartbeat modules timed out at the dispatcher boundary, by module",
+      labelNames: ["module"],
+      registers: [METRICS.registry]
+    });
+
+    // Phase L — world-shard / NPC density observability.
+    METRICS.counters.worldShardStuck = new prom.Counter({
+      name: "concord_world_shard_stuck_total",
+      help: "World shards that stopped responding (Phase I)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.counters.worldShardSpawnFailed = new prom.Counter({
+      name: "concord_world_shard_spawn_failed_total",
+      help: "World shard spawn failures (Phase I)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldShardActiveCount = new prom.Gauge({
+      name: "concord_world_shard_active_count",
+      help: "Currently-active world shards (Phase I on-demand)",
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldNpcCount = new prom.Gauge({
+      name: "concord_world_npc_count",
+      help: "Living NPC count per world (Phase H density)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+    METRICS.gauges.worldNpcTarget = new prom.Gauge({
+      name: "concord_world_npc_target",
+      help: "Target NPC count per world (loops.json#npcDensity)",
+      labelNames: ["world"],
+      registers: [METRICS.registry],
+    });
+
+    // Phase C — heartbeat worker pool utilisation. Mirrors the macro-pool
+    // shape so operator UI can render both pools with the same widget.
+    METRICS.gauges.heartbeatWorkerPoolSize = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_size",
+      help: "Configured heartbeat worker pool size",
+      registers: [METRICS.registry]
+    });
+    METRICS.gauges.heartbeatWorkerPoolBusy = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_busy",
+      help: "Heartbeat workers currently executing a task",
+      registers: [METRICS.registry]
+    });
+    METRICS.gauges.heartbeatWorkerPoolQueueLen = new prom.Gauge({
+      name: "concord_heartbeat_worker_pool_queue_length",
+      help: "Tasks queued waiting for a free heartbeat worker",
+      registers: [METRICS.registry]
+    });
+
+    // Expose the counters/histograms via globalThis so cross-module
+    // observers (heartbeat-registry.js, world-shard-manager.js) can
+    // record without circular imports. The registry's own observation
+    // path uses globalThis._concordPromMetrics directly.
+    globalThis._concordPromMetrics = {
+      heartbeatTicks: METRICS.counters.heartbeatTicks,
+      heartbeatModuleErrors: METRICS.counters.heartbeatModuleErrors,
+      heartbeatModuleTimeout: METRICS.counters.heartbeatModuleTimeout,
+      heartbeatSkipped: METRICS.counters.heartbeatSkipped,
+      heartbeatBlockMs: METRICS.histograms.heartbeatBlockMs,
+      heartbeatWorkerPoolSize: METRICS.gauges.heartbeatWorkerPoolSize,
+      heartbeatWorkerPoolBusy: METRICS.gauges.heartbeatWorkerPoolBusy,
+      heartbeatWorkerPoolQueueLen: METRICS.gauges.heartbeatWorkerPoolQueueLen,
+      worldShardStuck: METRICS.counters.worldShardStuck,
+      worldShardSpawnFailed: METRICS.counters.worldShardSpawnFailed,
+      worldShardActiveCount: METRICS.gauges.worldShardActiveCount,
+      worldNpcCount: METRICS.gauges.worldNpcCount,
+      worldNpcTarget: METRICS.gauges.worldNpcTarget,
+    };
 
     structuredLog("info", "metrics_initialized", { provider: "prometheus" });
   } catch (e) {
@@ -6452,6 +6892,34 @@ setInterval(() => {
     METRICS.gauges.dtuCount.set(_realCount);
   }
   if (METRICS.gauges.activeConnections) METRICS.gauges.activeConnections.set(REALTIME.clients?.size || 0);
+
+  // Phase L — per-world density gauges. Cheap query, only fires every 30s.
+  try {
+    if (METRICS.gauges.worldNpcCount) {
+      const rows = db.prepare(`
+        SELECT world_id, COUNT(*) AS n FROM world_npcs
+        WHERE COALESCE(is_dead, 0) = 0
+        GROUP BY world_id
+      `).all();
+      for (const r of rows) {
+        METRICS.gauges.worldNpcCount.set({ world: r.world_id || "concordia-hub" }, Number(r.n) || 0);
+      }
+    }
+    if (METRICS.gauges.worldNpcTarget) {
+      // Pulled from loops.json#npcDensity.targetPerFaction × ~5 factions/world.
+      const flavors = listAllFlavors();
+      for (const f of flavors) {
+        if (f.npcDensityTarget != null) {
+          METRICS.gauges.worldNpcTarget.set({ world: f.worldId }, f.npcDensityTarget * 5);
+        }
+      }
+    }
+    if (METRICS.gauges.worldShardActiveCount) {
+      const shardHealth = getShardHealth();
+      const active = Array.isArray(shardHealth) ? shardHealth.filter(s => s.status === "ready" || s.status === "catching-up").length : 0;
+      METRICS.gauges.worldShardActiveCount.set(active);
+    }
+  } catch { /* density gauges best-effort */ }
 }, 30_000);
 
 // ---- Backup & Restore ----
@@ -7136,6 +7604,13 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", requestId = 
   // Sprint 8 — expose realtimeEmit globally so emergent modules can
   // route activity broadcasts without a circular import. Cheap stash.
   globalThis._concordRealtimeEmit = realtimeEmit;
+
+  // Phase U2 — achievement bridge intercepts every emit and dispatches
+  // matching events into the achievement engine. Best-effort; never
+  // blocks the emit path.
+  try {
+    bridgeRealtimeEvent?.(event, enrichedPayload);
+  } catch { /* bridge optional */ }
 
   // Sprint 8 — unified timeline persistence. Every emit also lands in
   // event_timeline_log so the /lenses/timeline lens has a queryable
@@ -11071,6 +11546,12 @@ register("voice","tts", async (ctx, input={}) => {
   return { ok:false, error:"No TTS backend configured. Set PIPER_BIN (local Piper TTS)" };
 }, { public:false });
 
+// Phase Z5 audit note: prior CLAUDE.md "Missing" claim said this register()
+// was a duplicate. Direct grep shows it's actually the SOLE
+// `tools.web_search` registration in the codebase — `expert-mode.js`
+// registers under `expert_mode.web_search`, not `tools`. The Phase-K
+// comment at server.js:24613 records an earlier dup-removal; that PR
+// resolved the duplicate. Today there's just this one. Keep.
 register("tools","web_search", (ctx, input={}) => {
   enforceEthosInvariant("web_search");
   const flags = _c3sessionFlags(ctx);
@@ -21443,7 +21924,11 @@ let localReply = formatCrispResponse({
     // returned `system` is functional directives + runtime context that
     // augment it. Pre-this-refactor a hardcoded `You are ConcordOS...`
     // override silently shadowed the Modelfile persona; now it doesn't.
-    const _composed = composeSystemPrompt("conscious", { mode, currentLens });
+    // Phase O — thread worldId through so per-world LLM voice (loops.json
+    // #worldVoice) injects into the system prompt. When the user is in a
+    // world lens, their session carries a worldId; otherwise null is fine.
+    const _worldId = input.worldId || sess_pre?.worldId || null;
+    const _composed = composeSystemPrompt("conscious", { mode, currentLens, worldId: _worldId });
     const _baseSystem = _composed.system;
 
     _pipelineBudget = assembleWithTokenBudget({
@@ -21887,6 +22372,7 @@ Rules for tool use:
         const _followUpSystem = composeSystemPrompt("conscious", {
           mode,
           currentLens,
+          worldId: _worldId,
           extra: "You previously called tools and received their results. Now synthesize a final answer for the user.",
         }).system;
         try {
@@ -24176,27 +24662,12 @@ register("slides", "compile", (_ctx, input = {}) => {
   };
 }, { description: "Compile a presentation deck spec from slide DTUs" });
 
-// ── tools.web_search ─────────────────────────────────────────────────────
-// Surfaces the chat-web-search infrastructure as a one-shot macro for
-// any lens. Falls back to documenting the fetch path if the chat web
-// adapter isn't loaded.
-register("tools", "web_search", async (_ctx, input = {}) => {
-  const query = String(input.query ?? "").slice(0, 500);
-  if (!query) return { ok: false, error: "query required" };
-  // Try existing web-search infra
-  try {
-    const mod = await import("./lib/web-search.js").catch(() => null);
-    if (mod?.searchWeb) {
-      const results = await mod.searchWeb(query, { limit: input.limit ?? 5 });
-      return { ok: true, query, results };
-    }
-  } catch (_e) { /* fall through */ }
-  // Fallback: return query + hint so the lens can still show something
-  return {
-    ok: true, query, results: [],
-    note: "web-search adapter not available on this build; chat lens emits chat:web_results socket events directly",
-  };
-}, { description: "One-shot web search returning DTU-ingestible results" });
+// Phase K bug-fix: a second `tools.web_search` registration used to live
+// here and silently shadowed the canonical one at server.js:11176. That
+// one carries the safety primitives (governed call, ethos invariant,
+// session opt-in) and is the production-correct path. This sibling has
+// been removed so `macro_duplicate_registration` no longer fires for
+// tools.web_search on every boot.
 
 // ── compile.transpile ────────────────────────────────────────────────────
 // TypeScript / modern-JS transpile via esbuild if available. Falls back
@@ -26096,11 +26567,14 @@ register("jobs","get", (ctx, input) => {
   return { ok:true, job: j };
 }, { summary:"Get a job by id." });
 
-register("jobs","list", (ctx, input) => {
-  const limit = clamp(Number(input.limit||50), 1, 200);
-  const jobs = Array.from(STATE.jobs.values()).slice(-limit).reverse();
-  return { ok:true, jobs };
-}, { summary:"List recent jobs." });
+// Phase K bug-fix: `jobs.list` used to be registered here against the
+// in-memory STATE.jobs queue, but `server/domains/jobs.js:18` registers
+// it second against the tunyan employment system in DB, silently
+// shadowing this version. Frontend JobsPanel.tsx wants the tunyan
+// version (paired with `jobs.my_employment` and `jobs.rations_table`),
+// so the domain registration is canonical. The in-memory version is
+// removed; callers needing the agent-job queue use `STATE.jobs`
+// directly (a 3-call codebase grep confirmed no external caller).
 
 // ---- Agents ----
 register("agent","create", (ctx, input) => {
@@ -27709,9 +28183,16 @@ try {
 
 // ── Validate required secrets at startup ──────────────────────────────────────
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
-  console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
-  if (process.env.NODE_ENV === "production") process.exit(1);
-  else console.warn("[WARN] Using insecure default JWT_SECRET for development");
+  // Phase K bug-fix: only print [FATAL] when we're actually about to exit.
+  // In dev we continue with an insecure default, so the right severity is
+  // [WARN] — printing [FATAL] then continuing makes operators distrust
+  // the severity tag.
+  if (process.env.NODE_ENV === "production") {
+    console.error("[FATAL] JWT_SECRET must be set and at least 16 characters. Generate with: openssl rand -hex 32");
+    process.exit(1);
+  } else {
+    console.warn("[WARN] JWT_SECRET is missing or too short — using an insecure default for development. Generate with: openssl rand -hex 32");
+  }
 }
 if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 16) {
   if (process.env.NODE_ENV === "production") {
@@ -28453,7 +28934,7 @@ registerDtuRoutes(app, { STATE, makeCtx, runMacro, dtuForClient, dtusArray, user
 registerSaveRoutes(app, { db, asyncHandler, STATE });
 
 // ---- World invites (extracted to routes/world-invites.js) ----
-registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth });
+registerWorldInviteRoutes(app, { db, asyncHandler, requireAuth, realtimeEmit });
 
 // ---- Analytics aggregator (extracted to routes/analytics.js) ----
 registerAnalyticsRoutes(app, { db, asyncHandler });
@@ -29705,6 +30186,10 @@ import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
+import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
+import { initAchievementCatalog, listEarned as listEarnedAchievements, listRecent as listRecentAchievements, listCatalog as listAchievementCatalog } from "./lib/achievement-engine.js";
+import { initAchievementBridge, bridgeRealtimeEvent } from "./lib/achievement-bridge.js";
+import { initDiseaseCatalog, listActiveDiseases as listActiveUserDiseases, listCatalog as listDiseaseCatalog, listEndemicTo as listDiseasesEndemicTo, contractDisease, tickDiseases } from "./lib/disease-engine.js";
 import { simulators as npcSimulators, NPCSimulator } from "./lib/npc-simulator.js";
 import { selectBrain as _selectBrainForNpc } from "./lib/inference/router.js";
 import { startPatternDetection } from "./lib/substrate-diffusion.js";
@@ -29777,6 +30262,22 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Phase G — load per-world flavor JSONs (loops.json per sub-world).
+    // Loops + climate + skill ceilings + NPC density + world voice all
+    // resolve through this cache. Idempotent.
+    try { initWorldFlavors(); } catch (e) { console.warn("[world-flavor]", e.message); }
+    // Phase U2 — achievement catalog from content/achievements/*.json
+    // persisted to achievement_catalog. Bridge subscribes to realtimeEmit.
+    try {
+      const r = initAchievementCatalog(db);
+      initAchievementBridge(db);
+      console.log("[achievement-engine] catalog loaded:", r.count);
+    } catch (e) { console.warn("[achievement-engine]", e.message); }
+    // Phase W — disease catalog from content/diseases/*.json
+    try {
+      const r = initDiseaseCatalog();
+      console.log("[disease-engine] catalog loaded:", r.count);
+    } catch (e) { console.warn("[disease-engine]", e.message); }
     // Concordia substrate seeder — populate npc_ancestry, actor_physique,
     // actor_culture, npc_ages for every authored NPC so Phase 2/3/12/13
     // calculation paths get real values. Idempotent on every boot.
@@ -30583,6 +31084,16 @@ app.post("/api/combat/block", requireAuth, (req, res) => {
   _setBlock(userId, Math.min(2000, Math.max(100, Number(req.body?.durationMs) || 600)));
   res.json({ ok: true });
 });
+
+// Phase AF — frame data (public read). Surfaces the per-skill
+// startup/active/recovery/parry/dodge envelope to the combat HUD +
+// training room.
+app.get("/api/combat/frame-data/:skillId", asyncHandler(async (req, res) => {
+  const { getFrameDataForSkillId } = await import("./lib/combat-frame-data.js");
+  const data = getFrameDataForSkillId(db, req.params.skillId);
+  if (!data) return res.status(404).json({ ok: false, error: "no_skill" });
+  res.json({ ok: true, frameData: data });
+}));
 
 // Start the world-clock broadcast loop once REALTIME is ready. We poll briefly
 // for it because REALTIME may finish initializing after this import runs.
@@ -32730,13 +33241,36 @@ async function governorTick(reason="heartbeat") {
     // server/emergent/heartbeat-registry.js and fire those whose tick is due.
     // Each handler is independently try/caught inside the registry — a single
     // module failure cannot stop the tick.
+    // Phase F: when CONCORD_SHARD_WORLDS=true, parent runs scope='global'
+    // modules only and broadcasts a tick to each world shard which runs
+    // its own scope='world' subset.
     try {
-      await tickAllRegistered({
-        state: STATE,
-        db,
-        tickCount: STATE.__bgTickCounter || 0,
-        reason,
-      });
+      if (shardingEnabled()) {
+        // Parent: run global heartbeats only.
+        await tickAllRegistered({
+          state: STATE,
+          db,
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+          scope: "global",
+        });
+        // Fan out to world shards. Each shard runs its scope='world' set
+        // against its own DB handle. Non-blocking: shard ticks are
+        // independent and emit results back via IPC.
+        broadcastShardTick({
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+          settings: STATE.settings || {},
+        });
+      } else {
+        // Default in-process path — run everything inline.
+        await tickAllRegistered({
+          state: STATE,
+          db,
+          tickCount: STATE.__bgTickCounter || 0,
+          reason,
+        });
+      }
     } catch (e) { observe(e, "governor_heartbeat_registry"); }
 
     return { ok:true };
@@ -33419,6 +33953,63 @@ register("persona", "delete", (ctx, input) => {
   saveStateDebounced();
   return { ok: true, deleted: input.id };
 });
+
+// Phase K bug-fix: the personas lens (concord-frontend/app/lenses/personas/page.tsx)
+// calls `lensRun('personas', …)` (plural) but the domain above is registered
+// singular. Alias every persona macro under the plural name so both lens
+// call sites and any legacy deep-link work. Cheaper than auditing 20+ call
+// sites for the rename.
+{
+  const personaDomain = MACROS.get("persona");
+  if (personaDomain) {
+    for (const [name, entry] of personaDomain) {
+      register("personas", name, entry.fn, { ...entry.spec, note: "intentional_shadow_ok" });
+    }
+  }
+}
+
+// Phase Z4 — the personas lens calls 5 additional actions that don't exist on
+// the singular `persona` domain either: get/stats/versions/publish/install.
+// These belong to a persona-marketplace flow that's roadmap material. Until
+// that ships, expose minimum-viable stubs so the lens renders without
+// crashing — `get` + `stats` are thin wrappers on existing data; the rest
+// return a clean `{ok:false, reason:'roadmap'}` that the UI can render as
+// "coming soon" badges.
+register("personas", "get", (ctx, input = {}) => {
+  const id = input.id;
+  if (!id) return { ok: false, error: "missing_id" };
+  const p = STATE.customPersonas.get(id);
+  if (!p) return { ok: false, error: "persona_not_found" };
+  return { ok: true, persona: p };
+}, { note: "Z4 thin wrapper" });
+
+register("personas", "stats", (ctx, input = {}) => {
+  const id = input.id;
+  if (!id) return { ok: false, error: "missing_id" };
+  const p = STATE.customPersonas.get(id);
+  if (!p) return { ok: false, error: "persona_not_found" };
+  return {
+    ok: true,
+    stats: {
+      uses: p.uses || 0,
+      installs: p.installs || 0,
+      lastUsedAt: p.lastUsedAt || null,
+      createdAt: p.createdAt || null,
+    },
+  };
+}, { note: "Z4 thin wrapper" });
+
+register("personas", "versions", (_ctx, input = {}) => {
+  return { ok: true, versions: [{ id: "v1", current: true, createdAt: null }], reason: "single_version_only" };
+}, { note: "Z4 roadmap stub" });
+
+register("personas", "publish", (_ctx, _input = {}) => {
+  return { ok: false, reason: "roadmap", message: "Persona marketplace publishing is roadmap." };
+}, { note: "Z4 roadmap stub" });
+
+register("personas", "install", (_ctx, _input = {}) => {
+  return { ok: false, reason: "roadmap", message: "Persona marketplace install is roadmap." };
+}, { note: "Z4 roadmap stub" });
 
 // ---- Admin Dashboard Endpoints ----
 // SECURITY: every admin macro runs through requireAdminRole() first so
@@ -47609,6 +48200,2362 @@ app.post("/api/reminders/:id/complete", (req, res) => {
   }
 });
 
+// Phase B + C + D — operator-facing telemetry for the concurrency stack.
+// Surfaces per-module heartbeat timing, worker-pool utilisation, and brain
+// endpoint inflight + failure counts. Powers the ops-telemetry lens.
+app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      modules: getHeartbeatTimingStats(),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/worker-stats", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({
+      ok: true,
+      macroPool: getPoolStats(),
+      heartbeatPool: getHeartbeatPoolStats(),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── Phase X2 — intoxication ─────────────────────────────────────────────
+
+app.post("/api/intoxication/drink", requireAuth(), asyncHandler(async (req, res) => {
+  if (process.env.CONCORD_INTOXICATION === "false") return res.status(503).json({ ok: false, error: "feature_disabled" });
+  const { drink } = await import("./lib/intoxication.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(drink(db, userId, req.body?.drinkStrength));
+}));
+
+app.get("/api/intoxication/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getBac, getTier } = await import("./lib/intoxication.js");
+  const userId = req.user?.id || req.user?.userId;
+  const bac = getBac(db, userId);
+  res.json({ ok: true, bac, tier: getTier(bac) });
+}));
+
+// ── Phase W — disease engine + medical profession + plague ─────────────
+
+app.get("/api/diseases/catalog", (req, res) => {
+  try {
+    const worldId = req.query.worldId;
+    const list = worldId ? listDiseasesEndemicTo(String(worldId)) : listDiseaseCatalog();
+    res.json({ ok: true, diseases: list });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/diseases/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, diseases: listActiveUserDiseases(db, userId) });
+}));
+
+app.post("/api/admin/diseases/contract", requireAuth(), asyncHandler(async (req, res) => {
+  // Admin-only endpoint to trigger an infection (for testing + GM use).
+  const isAdmin = ["owner", "admin", "founder", "sovereign"].includes(req.user?.role);
+  if (!isAdmin) return res.status(403).json({ ok: false, error: "admin_only" });
+  res.json(contractDisease(db, req.body?.userId, req.body?.diseaseId, req.body || {}));
+}));
+
+app.post("/api/medical/diagnose", requireAuth(), asyncHandler(async (req, res) => {
+  const { diagnose } = await import("./lib/medical-profession.js");
+  const healerId = req.user?.id || req.user?.userId;
+  res.json(diagnose(db, healerId, req.body?.patientId));
+}));
+
+app.post("/api/medical/treat", requireAuth(), asyncHandler(async (req, res) => {
+  const { treatPatient } = await import("./lib/medical-profession.js");
+  const healerId = req.user?.id || req.user?.userId;
+  res.json(treatPatient(db, healerId, req.body?.patientId, req.body?.diseaseId, req.body?.cureRecipeId));
+}));
+
+app.get("/api/medical/diagnose-xp", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDiagnoseXp } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, ...getDiagnoseXp(db, userId) });
+}));
+
+// Phase AD — hygiene (modulates touch + airborne contraction).
+app.get("/api/medical/hygiene", requireAuth(), asyncHandler(async (req, res) => {
+  const { getHygiene } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, hygiene: getHygiene(db, userId) });
+}));
+
+app.post("/api/medical/bath", requireAuth(), asyncHandler(async (req, res) => {
+  const { improveHygiene } = await import("./lib/medical-profession.js");
+  const userId = req.user?.id || req.user?.userId;
+  const delta = Number(req.body?.delta) || 0.5;
+  res.json(improveHygiene(db, userId, delta));
+}));
+
+app.get("/api/diseases/plagues", asyncHandler(async (req, res) => {
+  const { listActivePlagues } = await import("./lib/plague-event.js");
+  res.json({ ok: true, plagues: listActivePlagues() });
+}));
+
+// ── Phase V3 — wardrobe ─────────────────────────────────────────────────
+
+app.post("/api/wardrobe", requireAuth(), asyncHandler(async (req, res) => {
+  const { saveOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(saveOutfit(db, userId, req.body || {}));
+}));
+
+app.get("/api/wardrobe/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyOutfits, listSlotTypes } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, outfits: listMyOutfits(db, userId), slotTypes: listSlotTypes(db) });
+}));
+
+app.post("/api/wardrobe/:outfitId/equip", requireAuth(), asyncHandler(async (req, res) => {
+  const { equipOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = equipOutfit(db, req.params.outfitId, userId);
+  if (r.ok) {
+    try { realtimeEmit?.("wardrobe:outfit-equipped", { userId, outfitId: req.params.outfitId, slots: r.slots }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/wardrobe/:outfitId/share", requireAuth(), asyncHandler(async (req, res) => {
+  const { shareOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(shareOutfit(db, req.params.outfitId, userId));
+}));
+
+app.delete("/api/wardrobe/:outfitId", requireAuth(), asyncHandler(async (req, res) => {
+  const { deleteOutfit } = await import("./lib/wardrobe.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(deleteOutfit(db, req.params.outfitId, userId));
+}));
+
+// ── Phase V4 — calendar / event RSVP ────────────────────────────────────
+
+app.post("/api/calendar/rsvp", requireAuth(), asyncHandler(async (req, res) => {
+  const { rsvpToEvent } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(rsvpToEvent(db, { ...req.body, userId }));
+}));
+
+app.post("/api/calendar/:eventId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelRsvp } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelRsvp(db, req.params.eventId, userId));
+}));
+
+app.get("/api/calendar/upcoming", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyUpcomingEvents } = await import("./lib/event-rsvp.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, rsvps: listMyUpcomingEvents(db, userId) });
+}));
+
+// ── Phase V1 — auction house ────────────────────────────────────────────
+
+app.post("/api/auctions", requireAuth(), asyncHandler(async (req, res) => {
+  const { createAuction } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(createAuction(db, userId, req.body || {}));
+}));
+
+app.post("/api/auctions/:auctionId/bid", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeBid } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeBid(db, req.params.auctionId, userId, req.body?.amountCc);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:bid-placed", { auctionId: req.params.auctionId, bidderUserId: userId, amountCc: r.bid, endsAt: r.endsAt });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/:auctionId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelAuction } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelAuction(db, req.params.auctionId, userId));
+}));
+
+app.get("/api/auctions/active", asyncHandler(async (req, res) => {
+  const { listActiveAuctions } = await import("./lib/auctions.js");
+  res.json({ ok: true, auctions: listActiveAuctions(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
+  const { getAuction } = await import("./lib/auctions.js");
+  const a = getAuction(db, req.params.auctionId);
+  if (!a) return res.status(404).json({ ok: false, error: "no_auction" });
+  res.json({ ok: true, auction: a });
+}));
+
+// ── Phase AC — EVE-style buy orders ────────────────────────────────────
+
+app.post("/api/auctions/buy-orders", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeBuyOrder(db, userId, req.body || {});
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:buy-order-placed", {
+        buyOrderId: r.buyOrderId,
+        buyerUserId: userId,
+        escrowCc: r.escrowCc,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/buy-orders/:buyOrderId/fill", requireAuth(), asyncHandler(async (req, res) => {
+  const { fillBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  const qty = Number(req.body?.quantity) || 1;
+  const r = fillBuyOrder(db, req.params.buyOrderId, userId, qty);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("auction:buy-order-filled", {
+        buyOrderId: req.params.buyOrderId,
+        sellerUserId: userId,
+        fillQty: r.fillQty,
+        payment: r.payment,
+        newStatus: r.newStatus,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/auctions/buy-orders/:buyOrderId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelBuyOrder } = await import("./lib/auctions.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelBuyOrder(db, req.params.buyOrderId, userId));
+}));
+
+app.get("/api/auctions/buy-orders", asyncHandler(async (req, res) => {
+  const { listOpenBuyOrders } = await import("./lib/auctions.js");
+  res.json({
+    ok: true,
+    buyOrders: listOpenBuyOrders(db, {
+      worldId: req.query.worldId,
+      itemDescriptor: req.query.itemDescriptor,
+      limit: Number(req.query.limit) || 50,
+    }),
+  });
+}));
+
+// ── Phase AG — district ambient chat (co-presence) ─────────────────────
+
+app.post("/api/ambient-chat/post", requireAuth(), asyncHandler(async (req, res) => {
+  const { postAmbientMessage } = await import("./lib/ambient-chat.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { worldId, districtId, body } = req.body || {};
+  const r = postAmbientMessage(db, { userId, worldId, districtId, body });
+  if (r.ok) {
+    try {
+      // Per-district room fan-out.
+      realtimeEmit?.(`world:${worldId}:district:${districtId}:ambient`, {
+        id: r.id, userId, body: r.body, postedAt: Math.floor(Date.now() / 1000),
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/ambient-chat/list", asyncHandler(async (req, res) => {
+  const { listRecentInDistrict } = await import("./lib/ambient-chat.js");
+  const { worldId, districtId } = req.query;
+  if (!worldId || !districtId) return res.status(400).json({ ok: false, error: "missing_params" });
+  res.json({ ok: true, messages: listRecentInDistrict(db, worldId, districtId, { limit: Number(req.query.limit) || 15 }) });
+}));
+
+// ── Phase BA1 — player housing (wire land_claims → building → rooms) ───
+
+app.post("/api/housing/claim", requireAuth(), asyncHandler(async (req, res) => {
+  const { claimHouse } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(claimHouse(db, userId, req.body || {}));
+}));
+
+app.get("/api/housing/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyHouses } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, houses: listMyHouses(db, userId) });
+}));
+
+app.get("/api/housing/:houseId", asyncHandler(async (req, res) => {
+  const { getHouse } = await import("./lib/player-housing.js");
+  const house = getHouse(db, req.params.houseId);
+  if (!house) return res.status(404).json({ ok: false, error: "no_house" });
+  res.json({ ok: true, house });
+}));
+
+app.post("/api/housing/:houseId/visibility", requireAuth(), asyncHandler(async (req, res) => {
+  const { setVisibility, setAllowLiveVisits } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  if (req.body?.visibility) {
+    const v = setVisibility(db, userId, req.params.houseId, req.body.visibility);
+    if (!v.ok) return res.status(400).json(v);
+  }
+  if (typeof req.body?.allowLiveVisits === "boolean") {
+    const a = setAllowLiveVisits(db, userId, req.params.houseId, req.body.allowLiveVisits);
+    if (!a.ok) return res.status(400).json(a);
+  }
+  res.json({ ok: true });
+}));
+
+app.post("/api/housing/:houseId/lock", requireAuth(), asyncHandler(async (req, res) => {
+  const { setLockTier } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(setLockTier(db, userId, req.params.houseId, req.body?.roomId, req.body?.lockTier));
+}));
+
+app.post("/api/housing/:houseId/furniture/place", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeFurniture } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(placeFurniture(db, userId, req.params.houseId, req.body?.roomId, req.body?.item || {}));
+}));
+
+app.post("/api/housing/:houseId/furniture/remove", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeFurniture } = await import("./lib/player-housing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(removeFurniture(db, userId, req.params.houseId, req.body?.roomId, req.body?.itemId));
+}));
+
+// ── Phase BA2 — house visit (snapshot OR live) ─────────────────────────
+
+app.post("/api/housing/:houseId/visit", requireAuth(), asyncHandler(async (req, res) => {
+  const { requestVisit } = await import("./lib/house-visit.js");
+  const userId = req.user?.id || req.user?.userId;
+  // friend check is best-effort; visitors without explicit friend status
+  // get isFriend:false.
+  const isFriend = Boolean(req.body?.isFriend);
+  const r = requestVisit(db, userId, req.params.houseId, { isFriend, io: REALTIME?.io });
+  res.status(r.ok ? 200 : 403).json(r);
+}));
+
+// ── Phase BA3 — dye / cosmetic overrides ───────────────────────────────
+
+app.post("/api/cosmetics/dye", requireAuth(), asyncHandler(async (req, res) => {
+  const { setDye } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { avatarId, slot, channel, colorHex } = req.body || {};
+  res.json(setDye(db, userId, avatarId, slot, channel, colorHex));
+}));
+
+app.post("/api/cosmetics/dye/remove", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeDye } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  const { avatarId, slot, channel } = req.body || {};
+  res.json(removeDye(db, userId, avatarId, slot, channel));
+}));
+
+app.get("/api/cosmetics/overrides", requireAuth(), asyncHandler(async (req, res) => {
+  const { getOverrides } = await import("./lib/cosmetics.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, overrides: getOverrides(db, userId, req.query.avatarId) });
+}));
+
+// Phase BA5 — scar query for the avatar renderer (public read by user
+// scope; visiting another player's avatar shows their scars too).
+app.get("/api/avatars/:userId/scars", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, region, source, severity, acquired_at, visible_label
+      FROM player_scars WHERE user_id = ?
+      ORDER BY acquired_at DESC LIMIT 100
+    `).all(req.params.userId);
+    res.json({ ok: true, scars: rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase BB1 — festival read APIs.
+app.get("/api/festivals/active", asyncHandler(async (req, res) => {
+  const { listActiveFestivals } = await import("./lib/festivals.js");
+  const worldId = req.query.worldId;
+  if (!worldId) return res.status(400).json({ ok: false, error: "missing_worldId" });
+  res.json({ ok: true, festivals: listActiveFestivals(db, worldId) });
+}));
+
+app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
+  const { listFestivals } = await import("./lib/festivals.js");
+  res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CF1 — sports leagues (surface sports-league-engine.js).
+app.post("/api/sports/league", requireAuth(), asyncHandler(async (req, res) => {
+  const { openLeague } = await import("./lib/sports-league-engine.js");
+  res.json(openLeague(db, req.body || {}));
+}));
+
+app.post("/api/sports/league/:leagueId/team", requireAuth(), asyncHandler(async (req, res) => {
+  const { addTeam } = await import("./lib/sports-league-engine.js");
+  res.json(addTeam(db, req.params.leagueId, req.body?.name, req.body?.powerScore || 50));
+}));
+
+app.post("/api/sports/team/:teamId/roster", requireAuth(), asyncHandler(async (req, res) => {
+  const { addRosterMember } = await import("./lib/sports-league-engine.js");
+  res.json(addRosterMember(db, req.params.teamId, req.body?.memberKind, req.body?.memberId, req.body?.role));
+}));
+
+app.post("/api/sports/tryout", requireAuth(), asyncHandler(async (req, res) => {
+  const { requestTryout } = await import("./lib/sports-league-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(requestTryout(db, userId, req.body?.leagueId, req.body || {}));
+}));
+
+app.post("/api/sports/match/schedule", requireAuth(), asyncHandler(async (req, res) => {
+  const { scheduleMatch } = await import("./lib/sports-league-engine.js");
+  res.json(scheduleMatch(db, req.body?.leagueId, req.body?.homeTeamId, req.body?.awayTeamId, req.body?.scheduledAt));
+}));
+
+app.post("/api/sports/match/:matchId/play", requireAuth(), asyncHandler(async (req, res) => {
+  const { playMatch } = await import("./lib/sports-league-engine.js");
+  res.json(playMatch(db, req.params.matchId, req.body || {}));
+}));
+
+app.get("/api/sports/league/:leagueId/teams", asyncHandler(async (req, res) => {
+  const { listTeamsInLeague } = await import("./lib/sports-league-engine.js");
+  res.json({ ok: true, teams: listTeamsInLeague(db, req.params.leagueId) });
+}));
+
+// Phase CF2 — romance/dating sim (surface romance-engine.js).
+app.get("/api/courtship/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyCourtships } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, courtships: listMyCourtships(db, userId, req.query.status) });
+}));
+
+app.post("/api/courtship/interact", requireAuth(), asyncHandler(async (req, res) => {
+  const { courtInteraction } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(courtInteraction(db, userId, req.body?.partnerKind, req.body?.partnerId, req.body?.sentiment || 1));
+}));
+
+app.get("/api/courtship/:partnerKind/:partnerId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getCourtship } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, courtship: getCourtship(db, userId, req.params.partnerKind, req.params.partnerId) });
+}));
+
+// Phase DC2 — Courtship propose + wed + marriage list + children
+app.post("/api/courtship/propose", requireAuth(), asyncHandler(async (req, res) => {
+  const { propose } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(propose(db, userId, req.body?.partnerKind, req.body?.partnerId));
+}));
+
+app.post("/api/courtship/wed", requireAuth(), asyncHandler(async (req, res) => {
+  const { wed } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(wed(db, userId, req.body?.partnerKind, req.body?.partnerId));
+}));
+
+app.get("/api/courtship/marriages/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyMarriages, listChildren } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    marriages: listMyMarriages(db, userId, true),
+    children: listChildren(db, userId),
+  });
+}));
+
+// Phase CF3 — fishing (surface lib/fishing + minigame-resolvers#resolveFishing).
+app.post("/api/fishing/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveFishing } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveFishing(req.body || {}));
+}));
+
+// Phase DC3 — fishing hub: catalog, recent catches, cast.
+app.get("/api/fishing/catalog", asyncHandler(async (req, res) => {
+  const { listFishForWorld } = await import("./lib/fishing.js");
+  const worldId = req.query.worldId ? String(req.query.worldId) : "concordia-hub";
+  const biome = req.query.biome ? String(req.query.biome) : null;
+  res.json({ ok: true, fish: listFishForWorld(worldId, biome) });
+}));
+
+app.get("/api/fishing/catches/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, item_id, item_name, acquired_at, meta_json
+      FROM player_inventory
+      WHERE user_id = ? AND item_type = 'raw_fish'
+      ORDER BY acquired_at DESC LIMIT 50
+    `).all(userId);
+    res.json({ ok: true, catches: rows });
+  } catch (e) {
+    res.json({ ok: true, catches: [], error: e?.message });
+  }
+}));
+
+app.post("/api/fishing/cast", requireAuth(), asyncHandler(async (req, res) => {
+  const { castLine } = await import("./lib/fishing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(castLine({ userId, ...(req.body || {}) }));
+}));
+
+// Phase CF4 — karaoke (surface resolveKaraoke).
+app.post("/api/karaoke/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveKaraoke } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveKaraoke(req.body || {}));
+}));
+
+// Phase Z2 — karaoke song catalog (reads content/karaoke-songs.json).
+app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const file = path.resolve(__dirname, "..", "content", "karaoke-songs.json");
+    const songs = JSON.parse(readFileSync(file, "utf8"));
+    res.json({ ok: true, songs });
+  } catch (e) {
+    res.json({ ok: true, songs: [], error: e?.message });
+  }
+}));
+
+// Phase E4 — full mahjong tile sim. The old /api/mahjong/resolve route
+// stays for back-compat with the declarative-yaku UI; new routes below
+// drive the real 136-tile session.
+app.post("/api/mahjong/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/mahjong/session.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, {
+    worldId: req.body?.worldId || "concordia-hub",
+    playerUserId: userId,
+    seed: req.body?.seed,
+    npcIds: req.body?.npcIds,
+    npcStyles: req.body?.npcStyles,
+  }));
+}));
+
+app.post("/api/mahjong/:sessionId/discard", requireAuth(), asyncHandler(async (req, res) => {
+  const { discardTile } = await import("./lib/mahjong/session.js");
+  res.json(discardTile(db, req.params.sessionId, req.body?.tile));
+}));
+
+app.post("/api/mahjong/:sessionId/tsumo", requireAuth(), asyncHandler(async (req, res) => {
+  const { declareTsumo } = await import("./lib/mahjong/session.js");
+  const result = declareTsumo(db, req.params.sessionId);
+  // On a successful tsumo, route through the existing scorer for points.
+  if (result.ok && result.winnerSeat === 0) {
+    try {
+      const { detectYaku } = await import("./lib/mahjong/yaku-detect.js");
+      const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");
+      const yaku = detectYaku(result.hand, { roundWind: result.roundWind, seatWind: "east", opened: false });
+      const score = resolveMahjongHand({ winningHand: yaku, opponents: 3, wind: "east", mahjongSkill: 30, tsumo: true });
+      result.scoring = { yaku, ...score };
+    } catch (e) { result.scoring = { yaku: [], error: e?.message }; }
+  }
+  res.json(result);
+}));
+
+app.get("/api/mahjong/:sessionId/state", asyncHandler(async (req, res) => {
+  const { getState } = await import("./lib/mahjong/session.js");
+  const s = getState(db, req.params.sessionId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_session" });
+  res.json({ ok: true, session: s });
+}));
+
+// Phase E5 — karaoke lyrics endpoint. Per-song lyrics in
+// content/karaoke-lyrics/<songId>.json, time-stamped against the song's BPM.
+app.get("/api/karaoke/lyrics/:songId", asyncHandler(async (req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const safe = String(req.params.songId).replace(/[^a-z0-9_-]/gi, "");
+    const file = path.resolve(__dirname, "..", "content", "karaoke-lyrics", `${safe}.json`);
+    const lyrics = JSON.parse(readFileSync(file, "utf8"));
+    res.json({ ok: true, lyrics });
+  } catch (e) {
+    res.json({ ok: true, lyrics: null, error: e?.message });
+  }
+}));
+
+// Phase CF5 — mahjong (surface resolveMahjongHand).
+app.post("/api/mahjong/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveMahjongHand(req.body || {}));
+}));
+
+// Phase CF6 — creature crossbreeding (surface creature-crossbreeding.js).
+app.post("/api/creatures/encounter", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordEncounter } = await import("./lib/creature-crossbreeding.js");
+  res.json(recordEncounter(db, req.body || {}));
+}));
+
+app.post("/api/creatures/breed", requireAuth(), asyncHandler(async (req, res) => {
+  const { maybeCrossbreed } = await import("./lib/creature-crossbreeding.js");
+  res.json(maybeCrossbreed(db, req.body || {}));
+}));
+
+// Phase DC6 — creatures lens needs a list endpoint.
+app.get("/api/creatures/world/:worldId", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, biome, species_id, lifestyle, current_count, target_count
+      FROM creature_population WHERE world_id = ?
+      ORDER BY current_count DESC LIMIT 100
+    `).all(req.params.worldId);
+    res.json({ ok: true, populations: rows });
+  } catch (e) {
+    res.json({ ok: true, populations: [], error: e?.message });
+  }
+}));
+
+app.get("/api/creatures/:creatureId/lineage", asyncHandler(async (req, res) => {
+  const { getLineage } = await import("./lib/creature-crossbreeding.js");
+  res.json({ ok: true, lineage: getLineage(db, req.params.creatureId) });
+}));
+
+app.get("/api/creatures/bond/:a/:b", asyncHandler(async (req, res) => {
+  const { getBond } = await import("./lib/creature-crossbreeding.js");
+  res.json({ ok: true, bond: getBond(db, req.params.a, req.params.b) });
+}));
+
+// Phase CF11 — glyph spell composer (surface glyph-spells.js).
+app.post("/api/glyph-spells/compose", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    if (m.composeSpell) {
+      res.json(m.composeSpell(db, req.body?.chain || []));
+    } else { res.status(503).json({ ok: false, error: "compose_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/glyph-spells/components", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    res.json({ ok: true, components: m.listGlyphComponents ? m.listGlyphComponents(db) : [] });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/glyph-spells/mine", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, spells: m.listSpellsForUser ? m.listSpellsForUser(db, userId) : [] });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.post("/api/glyph-spells/mint", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    const userId = req.user?.id || req.user?.userId;
+    if (m.mintSpell) res.json(m.mintSpell(db, userId, req.body || {}));
+    else res.status(503).json({ ok: false, error: "mint_unavailable" });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF12 — vehicle garage (surface world-vehicles.js).
+app.get("/api/garage/world/:worldId", asyncHandler(async (req, res) => {
+  const { listVehiclesInWorld } = await import("./lib/world-vehicles.js");
+  res.json({ ok: true, vehicles: listVehiclesInWorld(db, req.params.worldId, { kind: req.query.kind }) });
+}));
+
+app.post("/api/garage/spawn", requireAuth(), asyncHandler(async (req, res) => {
+  const { spawnVehicle } = await import("./lib/world-vehicles.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(spawnVehicle(db, {
+    ...(req.body || {}),
+    ownerKind: req.body?.ownerKind || "player",
+    ownerId: req.body?.ownerKind === "player" ? userId : (req.body?.ownerId || ""),
+  }));
+}));
+
+app.get("/api/garage/vehicle/:vehicleId", asyncHandler(async (req, res) => {
+  const { getVehicle } = await import("./lib/world-vehicles.js");
+  const v = getVehicle(db, req.params.vehicleId);
+  if (!v) return res.status(404).json({ ok: false, error: "no_vehicle" });
+  res.json({ ok: true, vehicle: v });
+}));
+
+// Phase CF13 — tracking footprints (surface tracking_skill_xp).
+app.get("/api/tracking/skill", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  try {
+    const r = db.prepare(`SELECT xp, level FROM tracking_skill_xp WHERE user_id = ?`).get(userId);
+    res.json({ ok: true, xp: r?.xp || 0, level: r?.level || 0 });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase DC12 — recent creature tracks for the FootprintLayer overlay.
+// Returns damage_events from the last N minutes where the target is a
+// creature (npc with creature_kind set or species_id linkage).
+app.get("/api/tracking/recent/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  const minutes = Math.max(1, Math.min(60, Number(req.query.minutes) || 10));
+  try {
+    const skill = db.prepare(`SELECT level FROM tracking_skill_xp WHERE user_id = ?`).get(userId);
+    if (!skill || (skill.level || 0) < 5) {
+      return res.json({ ok: true, tracks: [], gated: true, requiredLevel: 5 });
+    }
+    const since = Math.floor(Date.now() / 1000) - minutes * 60;
+    // Best-effort: damage_events table shape varies by build.
+    let rows = [];
+    try {
+      rows = db.prepare(`
+        SELECT id, attacker_id, target_id, x, z, occurred_at
+        FROM damage_events
+        WHERE world_id = ? AND occurred_at >= ?
+        ORDER BY occurred_at DESC LIMIT 50
+      `).all(req.params.worldId, since);
+    } catch { rows = []; }
+    res.json({ ok: true, tracks: rows, gated: false });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF14 — bloodline tree (surface mig 173 ancestry).
+app.get("/api/bloodline/npc/:npcId", asyncHandler(async (req, res) => {
+  try {
+    const ancestry = db.prepare(`
+      SELECT * FROM npc_ancestry WHERE npc_id = ?
+    `).get(req.params.npcId);
+    res.json({ ok: true, ancestry: ancestry || null });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF7 — Drift monitor findings (surface drift-monitor.js).
+app.get("/api/drift/alerts", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/drift-monitor.js");
+    const state = globalThis._concordStateRef || null;
+    if (!state) return res.json({ ok: true, alerts: [], reason: "state_not_initialised" });
+    const alerts = m.getDriftAlerts(state, req.query || {});
+    res.json({ ok: true, alerts, types: m.ALL_DRIFT_TYPES, severities: Object.values(m.DRIFT_SEVERITY) });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/drift/metrics", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/drift-monitor.js");
+    const state = globalThis._concordStateRef || null;
+    res.json({ ok: true, metrics: state ? m.getDriftMetrics(state) : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF8 — Breakthrough clusters (surface breakthrough-clusters.js).
+app.get("/api/breakthroughs/clusters", asyncHandler(async (req, res) => {
+  const { listClusters, getBreakthroughMetrics } = await import("./emergent/breakthrough-clusters.js");
+  res.json({ ok: true, clusters: listClusters(), metrics: getBreakthroughMetrics() });
+}));
+
+app.post("/api/breakthroughs/cluster/:clusterId/research", requireAuth(), asyncHandler(async (req, res) => {
+  const { triggerClusterResearch } = await import("./emergent/breakthrough-clusters.js");
+  res.json(triggerClusterResearch(req.params.clusterId));
+}));
+
+app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) => {
+  const { getClusterStatus } = await import("./emergent/breakthrough-clusters.js");
+  const s = getClusterStatus(req.params.clusterId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_cluster" });
+  res.json({ ok: true, cluster: s });
+}));
+
+// Phase CF9 — HLR reasoning trace (surface hlr-engine.js).
+app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
+  const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
+  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+}));
+
+app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
+  const m = await import("./emergent/hlr-engine.js");
+  res.json({ ok: true, traces: m.listTraces(Number(req.query.limit) || 50), modes: Object.values(m.REASONING_MODES) });
+}));
+
+app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
+  const { getReasoningTrace } = await import("./emergent/hlr-engine.js");
+  const t = getReasoningTrace(req.params.traceId);
+  if (!t) return res.status(404).json({ ok: false, error: "no_trace" });
+  res.json({ ok: true, trace: t });
+}));
+
+// Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
+app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/npc-asymmetry.js");
+    const userId = req.user?.id || req.user?.userId;
+    if (m.composeAsymmetryContext) {
+      const ctx = m.composeAsymmetryContext(db, req.params.npcId, userId);
+      res.json({ ok: true, asymmetry: ctx });
+    } else { res.status(503).json({ ok: false, error: "asymmetry_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CC4 — factory automation (claim-bounded).
+app.post("/api/factory/place", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeEntity } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(placeEntity(db, userId, { ...(req.body || {}), isOwner }));
+}));
+
+app.post("/api/factory/connect", requireAuth(), asyncHandler(async (req, res) => {
+  const { connectEntities } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(connectEntities(db, userId, req.body?.sourceId, req.body?.targetId, { isOwner }));
+}));
+
+app.post("/api/factory/remove/:entityId", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeEntity } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(removeEntity(db, userId, req.params.entityId, { isOwner }));
+}));
+
+app.post("/api/factory/deposit/:entityId", requireAuth(), asyncHandler(async (req, res) => {
+  const { depositToEntity } = await import("./lib/factory.js");
+  res.json(depositToEntity(db, req.params.entityId, req.body?.item || {}));
+}));
+
+app.get("/api/factory/claim/:claimId", asyncHandler(async (req, res) => {
+  const { listEntities } = await import("./lib/factory.js");
+  res.json({ ok: true, entities: listEntities(db, req.params.claimId) });
+}));
+
+app.get("/api/factory/entity/:entityId/inventory", asyncHandler(async (req, res) => {
+  const { getInventory } = await import("./lib/factory.js");
+  res.json({ ok: true, inventory: getInventory(db, req.params.entityId) });
+}));
+
+// Phase CC2 — hacking puzzle.
+app.post("/api/hacking/puzzle", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorPuzzle } = await import("./lib/hacking.js");
+  res.json(authorPuzzle(db, req.body || {}));
+}));
+
+app.post("/api/hacking/:puzzleId/command", requireAuth(), asyncHandler(async (req, res) => {
+  const { attemptCommand } = await import("./lib/hacking.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(attemptCommand(db, req.params.puzzleId, userId, req.body?.command));
+}));
+
+app.get("/api/hacking/puzzles", asyncHandler(async (req, res) => {
+  const { listPuzzles } = await import("./lib/hacking.js");
+  res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/hacking/:puzzleId", asyncHandler(async (req, res) => {
+  const { getPuzzle } = await import("./lib/hacking.js");
+  const p = getPuzzle(db, req.params.puzzleId);
+  if (!p) return res.status(404).json({ ok: false, error: "no_puzzle" });
+  res.json({ ok: true, puzzle: p });
+}));
+
+// Phase CC3 — programming puzzle (VM).
+app.post("/api/code-puzzle/puzzle", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorPuzzle: authorCp } = await import("./lib/programming-puzzle.js");
+  res.json(authorCp(db, req.body || {}));
+}));
+
+app.post("/api/code-puzzle/:puzzleId/run", asyncHandler(async (req, res) => {
+  const { runSolution } = await import("./lib/programming-puzzle.js");
+  res.json(runSolution(db, req.params.puzzleId, req.body?.program || []));
+}));
+
+app.post("/api/code-puzzle/:puzzleId/submit", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitSolution } = await import("./lib/programming-puzzle.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(submitSolution(db, userId, req.params.puzzleId, req.body?.program || []));
+}));
+
+app.get("/api/code-puzzle/:puzzleId/leaderboard", asyncHandler(async (req, res) => {
+  const { leaderboardForPuzzle } = await import("./lib/programming-puzzle.js");
+  res.json({ ok: true, leaderboard: leaderboardForPuzzle(db, req.params.puzzleId) });
+}));
+
+app.get("/api/code-puzzle/puzzles", asyncHandler(async (req, res) => {
+  const { listPuzzles } = await import("./lib/programming-puzzle.js");
+  res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/code-puzzle/:puzzleId", asyncHandler(async (req, res) => {
+  const { getPuzzle } = await import("./lib/programming-puzzle.js");
+  const p = getPuzzle(db, req.params.puzzleId);
+  if (!p) return res.status(404).json({ ok: false, error: "no_puzzle" });
+  res.json({ ok: true, puzzle: p });
+}));
+
+// Phase CC7 — theme park tycoon.
+app.post("/api/theme-park/attraction", requireAuth(), asyncHandler(async (req, res) => {
+  const { openAttraction } = await import("./lib/theme-park.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(openAttraction(db, userId, req.body || {}));
+}));
+
+app.post("/api/theme-park/attraction/:id/close", requireAuth(), asyncHandler(async (req, res) => {
+  const { closeAttraction } = await import("./lib/theme-park.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(closeAttraction(db, req.params.id, userId));
+}));
+
+app.post("/api/theme-park/tick", requireAuth(), asyncHandler(async (req, res) => {
+  const { tickVisitors } = await import("./lib/theme-park.js");
+  res.json(tickVisitors(db, req.body?.worldId, { newArrivals: req.body?.newArrivals }));
+}));
+
+app.get("/api/theme-park/world/:worldId", asyncHandler(async (req, res) => {
+  const { listAttractionsInWorld } = await import("./lib/theme-park.js");
+  res.json({ ok: true, attractions: listAttractionsInWorld(db, req.params.worldId) });
+}));
+
+// Phase CC8 — extraction shooter.
+app.post("/api/extraction/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startRun } = await import("./lib/extraction.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startRun(db, userId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/loot", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickupLoot } = await import("./lib/extraction.js");
+  res.json(pickupLoot(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/extract", requireAuth(), asyncHandler(async (req, res) => {
+  const { extract } = await import("./lib/extraction.js");
+  res.json(extract(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/die", requireAuth(), asyncHandler(async (req, res) => {
+  const { dieDuringRun } = await import("./lib/extraction.js");
+  res.json(dieDuringRun(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/zone", requireAuth(), asyncHandler(async (req, res) => {
+  const { declareExtractionZone } = await import("./lib/extraction.js");
+  res.json(declareExtractionZone(db, req.body || {}));
+}));
+
+app.get("/api/extraction/zones/:worldId", asyncHandler(async (req, res) => {
+  const { listActiveZones } = await import("./lib/extraction.js");
+  res.json({ ok: true, zones: listActiveZones(db, req.params.worldId) });
+}));
+
+app.get("/api/extraction/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveRun } = await import("./lib/extraction.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveRun(db, userId) });
+}));
+
+// Phase CC6 — asymmetric horror.
+app.post("/api/horror/session/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, userId, req.body || {}));
+}));
+
+app.post("/api/horror/session/:id/join", requireAuth(), asyncHandler(async (req, res) => {
+  const { joinAsInvestigator } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(joinAsInvestigator(db, req.params.id, userId));
+}));
+
+app.post("/api/horror/session/:id/sighting", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordSighting } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(recordSighting(db, req.params.id, userId, req.body || {}));
+}));
+
+app.post("/api/horror/session/:id/down", requireAuth(), asyncHandler(async (req, res) => {
+  const { downInvestigator } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(downInvestigator(db, req.params.id, userId, req.body?.targetUserId));
+}));
+
+app.post("/api/horror/session/:id/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endSession } = await import("./lib/horror.js");
+  res.json(endSession(db, req.params.id, req.body || {}));
+}));
+
+// Phase DB14 — active session lookup for ghost / investigator HUDs.
+app.get("/api/horror/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { findActiveSessionForUser } = await import("./lib/horror.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId ? String(req.query.worldId) : null;
+  const sess = findActiveSessionForUser(db, userId, worldId);
+  res.json({ ok: true, session: sess });
+}));
+
+// Phase CC5 — time loop substrate.
+app.post("/api/time-loop/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startLoop } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startLoop(db, userId, req.body || {}));
+}));
+
+app.post("/api/time-loop/:sessionId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endLoop } = await import("./lib/time-loop.js");
+  res.json(endLoop(db, req.params.sessionId, req.body || {}));
+}));
+
+app.post("/api/time-loop/memory", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordMemory } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(recordMemory(db, userId, req.body || {}));
+}));
+
+app.get("/api/time-loop/memories/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMemories } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, memories: getMemories(db, userId, req.params.worldId) });
+}));
+
+app.get("/api/time-loop/active/:worldId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveLoop } = await import("./lib/time-loop.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, session: getActiveLoop(db, userId, req.params.worldId) });
+}));
+
+// Phase CC1 — fluid party combat (real-time-with-pause; Tactical/CRPG).
+// All combat in Concordia is fluid. Party combat layers an RTwP command
+// queue on top — pause via setTimeScale(0), queue per-character
+// abilities, they fire when each combatant's cooldown elapses.
+app.post("/api/party-combat/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startCombat } = await import("./lib/party-combat.js");
+  res.json(startCombat(db, req.body || {}));
+}));
+
+app.post("/api/party-combat/:sessionId/queue", requireAuth(), asyncHandler(async (req, res) => {
+  const { queueAction } = await import("./lib/party-combat.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(queueAction(db, req.params.sessionId, req.body?.actorId || userId, req.body?.action || {}));
+}));
+
+app.post("/api/party-combat/:sessionId/time-scale", requireAuth(), asyncHandler(async (req, res) => {
+  const { setTimeScale } = await import("./lib/party-combat.js");
+  res.json(setTimeScale(db, req.params.sessionId, Number(req.body?.scale ?? 1)));
+}));
+
+app.post("/api/party-combat/:sessionId/tick", asyncHandler(async (req, res) => {
+  // Public — heartbeat or client can drive resolution.
+  const { resolveTick } = await import("./lib/party-combat.js");
+  res.json(resolveTick(db, req.params.sessionId, req.body?.nowMs));
+}));
+
+app.get("/api/party-combat/:sessionId/state", asyncHandler(async (req, res) => {
+  const { getCombatState } = await import("./lib/party-combat.js");
+  const s = getCombatState(db, req.params.sessionId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_session" });
+  res.json({ ok: true, session: s });
+}));
+
+app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
+  const { listActionLog } = await import("./lib/party-combat.js");
+  res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
+}));
+
+// Phase DB9 — active session lookup for the fluid combat HUD.
+app.get("/api/party-combat/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { findActiveSessionForPlayer, getCombatState } = await import("./lib/party-combat.js");
+  const userId = req.user?.id || req.user?.userId;
+  const sess = findActiveSessionForPlayer(db, userId);
+  if (!sess) return res.json({ ok: true, session: null });
+  res.json({ ok: true, session: getCombatState(db, sess.id) });
+}));
+
+// Phase CB6 — hidden object via photo gallery.
+app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res) => {
+  const { createScene } = await import("./lib/hidden-object.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(createScene(db, userId, req.body || {}));
+}));
+
+// Phase E3 — list all authored hidden-object scenes.
+app.get("/api/hidden-object/scenes", asyncHandler(async (req, res) => {
+  const { listScenes } = await import("./lib/hidden-object.js");
+  res.json({ ok: true, scenes: listScenes(db, Number(req.query.limit) || 50) });
+}));
+
+// Phase E3 — image-serving for authored hidden-object scenes.
+// Reads the SVG inline from content/hidden-object-scenes.json by sceneId,
+// returns it with image/svg+xml content-type so a plain <img src=...>
+// renders it. The component constructs this URL when scene_dtu_id
+// matches `authored:<sceneId>`.
+app.get("/api/hidden-object/scene/:sceneId/image", asyncHandler(async (req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const file = path.resolve(__dirname, "..", "content", "hidden-object-scenes.json");
+    const arr = JSON.parse(readFileSync(file, "utf8"));
+    const safe = String(req.params.sceneId).replace(/[^a-z0-9_-]/gi, "");
+    const scene = arr.find((s) => s.sceneId === safe);
+    if (!scene || !scene.svg) return res.status(404).send("not_found");
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(scene.svg);
+  } catch (e) {
+    res.status(500).send(String(e?.message || "error"));
+  }
+}));
+
+app.post("/api/hidden-object/play/:sceneId", requireAuth(), asyncHandler(async (req, res) => {
+  const { playScene } = await import("./lib/hidden-object.js");
+  const userId = req.user?.id || req.user?.userId;
+  const result = playScene(db, userId, req.params.sceneId);
+  // Phase DB8 — enrich with scene metadata so the panel can render the photo.
+  if (result?.ok) {
+    try {
+      const scene = db.prepare(`SELECT id, scene_dtu_id, title, host_user_id FROM hidden_object_scenes WHERE id = ?`).get(req.params.sceneId);
+      if (scene) result.scene = scene;
+    } catch { /* best-effort */ }
+  }
+  res.json(result);
+}));
+
+app.post("/api/hidden-object/find/:runId", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitFind } = await import("./lib/hidden-object.js");
+  res.json(submitFind(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/hidden-object/scene/:sceneId/leaderboard", asyncHandler(async (req, res) => {
+  const { leaderboardForScene } = await import("./lib/hidden-object.js");
+  res.json({ ok: true, leaderboard: leaderboardForScene(db, req.params.sceneId) });
+}));
+
+// Phase CB5 — trivia (DTU-native).
+app.post("/api/trivia/question", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorQuestion } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(authorQuestion(db, { ...(req.body || {}), createdBy: userId }));
+}));
+
+app.post("/api/trivia/session/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, userId, req.body || {}));
+}));
+
+app.post("/api/trivia/session/:id/answer", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitAnswer } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(submitAnswer(db, req.params.id, userId, req.body || {}));
+}));
+
+app.post("/api/trivia/session/:id/tally", requireAuth(), asyncHandler(async (req, res) => {
+  const { tallySession } = await import("./lib/trivia.js");
+  const t = tallySession(db, req.params.id);
+  res.json({ ok: !!t, tally: t });
+}));
+
+app.get("/api/trivia/questions", asyncHandler(async (req, res) => {
+  const { listQuestions } = await import("./lib/trivia.js");
+  res.json({ ok: true, questions: listQuestions(db, {
+    difficulty: req.query.difficulty ? Number(req.query.difficulty) : undefined,
+    limit: Number(req.query.limit) || 50,
+  }) });
+}));
+
+// Phase CB4 — restaurant management.
+app.post("/api/restaurant/open", requireAuth(), asyncHandler(async (req, res) => {
+  const { openRestaurant } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(openRestaurant(db, userId, req.body || {}));
+}));
+
+app.post("/api/restaurant/:id/close", requireAuth(), asyncHandler(async (req, res) => {
+  const { closeRestaurant } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(closeRestaurant(db, req.params.id, userId));
+}));
+
+app.post("/api/restaurant/:id/order", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeOrder } = await import("./lib/restaurant.js");
+  res.json(placeOrder(db, req.params.id, req.body || {}));
+}));
+
+app.post("/api/restaurant/order/:orderId/serve", requireAuth(), asyncHandler(async (req, res) => {
+  const { serveOrder } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(serveOrder(db, userId, req.params.orderId));
+}));
+
+app.get("/api/restaurant/:id/pending", asyncHandler(async (req, res) => {
+  const { listPendingOrders, getRestaurantSummary } = await import("./lib/restaurant.js");
+  res.json({
+    ok: true,
+    summary: getRestaurantSummary(db, req.params.id),
+    pending: listPendingOrders(db, req.params.id),
+  });
+}));
+
+// Phase DB6 — building-scoped restaurant. Auto-opens a restaurant for
+// the building if the building owner hits this endpoint and none exists.
+app.get("/api/restaurant/building/:buildingId", requireAuth(), asyncHandler(async (req, res) => {
+  const { openRestaurant, listPendingOrders, getRestaurantSummary } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, world_id, owner_id, owner_type, name FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  let restaurant = db.prepare(`SELECT id FROM restaurants WHERE building_id = ? AND closed_at IS NULL`).get(b.id);
+  if (!restaurant && b.owner_type === "player" && b.owner_id === userId) {
+    const opened = openRestaurant(db, userId, { worldId: b.world_id, buildingId: b.id, name: b.name || "Diner" });
+    if (opened?.ok) restaurant = { id: opened.restaurantId };
+  }
+  if (!restaurant) return res.json({ ok: true, restaurant: null });
+  res.json({
+    ok: true,
+    restaurant: { id: restaurant.id },
+    summary: getRestaurantSummary(db, restaurant.id),
+    pending: listPendingOrders(db, restaurant.id),
+  });
+}));
+
+// Phase CB3 — farm plots.
+app.post("/api/farming/plant", requireAuth(), asyncHandler(async (req, res) => {
+  const { plantSeed } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  // Caller-supplied ownership check — for now, gate by land-claim
+  // owner_user_id direct query.
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(await import("./lib/farming.js").then(f => f.plantSeed(db, userId, { ...(req.body || {}), isOwner })));
+}));
+
+app.post("/api/farming/harvest", requireAuth(), asyncHandler(async (req, res) => {
+  const { harvestCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(harvestCrop(db, userId, { ...(req.body || {}), isOwner }));
+}));
+
+app.get("/api/farming/claim/:claimId", asyncHandler(async (req, res) => {
+  const { listCropsOnClaim } = await import("./lib/farming.js");
+  res.json({ ok: true, crops: listCropsOnClaim(db, req.params.claimId) });
+}));
+
+app.get("/api/farming/catalog", asyncHandler(async (req, res) => {
+  const { listCrops } = await import("./lib/farming.js");
+  res.json({ ok: true, crops: listCrops() });
+}));
+
+// Phase DB5 — building-scoped farming. Treats the farm_plot building.id
+// as the claim_id; owner is checked against world_buildings.owner_id so
+// players don't need a separate land_claim record for a single farm.
+app.get("/api/farming/building/:buildingId", asyncHandler(async (req, res) => {
+  const { listCropsOnClaim, listCrops } = await import("./lib/farming.js");
+  const b = db.prepare(`SELECT id, owner_id, owner_type, building_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  res.json({
+    ok: true,
+    building: b,
+    crops: listCropsOnClaim(db, b.id),
+    catalog: listCrops(),
+  });
+}));
+
+app.post("/api/farming/building/:buildingId/plant", requireAuth(), asyncHandler(async (req, res) => {
+  const { plantSeed } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, owner_id, owner_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  if (b.owner_type === "player" && b.owner_id !== userId) {
+    return res.status(403).json({ ok: false, error: "not_owner" });
+  }
+  res.json(plantSeed(db, userId, {
+    ...(req.body || {}),
+    claimId: b.id,
+    isOwner: () => true,
+  }));
+}));
+
+app.post("/api/farming/building/:buildingId/harvest", requireAuth(), asyncHandler(async (req, res) => {
+  const { harvestCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, owner_id, owner_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  if (b.owner_type === "player" && b.owner_id !== userId) {
+    return res.status(403).json({ ok: false, error: "not_owner" });
+  }
+  res.json(harvestCrop(db, userId, {
+    ...(req.body || {}),
+    claimId: b.id,
+    isOwner: () => true,
+  }));
+}));
+
+// Phase CB2 — bullet heaven horde mode.
+app.post("/api/horde/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startHorde } = await import("./lib/horde-mode.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startHorde(db, userId, req.body || {}));
+}));
+
+app.post("/api/horde/:runId/wave", requireAuth(), asyncHandler(async (req, res) => {
+  const { tickWave } = await import("./lib/horde-mode.js");
+  res.json(tickWave(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/horde/:runId/upgrade", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickUpgrade } = await import("./lib/horde-mode.js");
+  res.json(pickUpgrade(db, req.params.runId, req.body?.upgradeId));
+}));
+
+app.post("/api/horde/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endHorde } = await import("./lib/horde-mode.js");
+  res.json(endHorde(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveHorde } = await import("./lib/horde-mode.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveHorde(db, userId) });
+}));
+
+// Phase CB1 — roguelite meta-progression.
+app.post("/api/roguelite/run/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startRun } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startRun(db, userId, req.body || {}));
+}));
+
+app.post("/api/roguelite/run/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endRun } = await import("./lib/roguelite.js");
+  res.json(endRun(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) => {
+  const { getBalance } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, ...getBalance(db, userId) });
+}));
+
+app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) => {
+  const { purchaseUnlock } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(purchaseUnlock(db, userId, req.body?.unlockId, req.body?.costCc));
+}));
+
+app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {
+  const { listUnlocks } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, unlocks: listUnlocks(db, userId) });
+}));
+
+app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveRun } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveRun(db, userId) });
+}));
+
+// Phase DB3 — Roguelite unlock catalog (public read of the JSON content file).
+app.get("/api/roguelite/catalog", asyncHandler(async (req, res) => {
+  try {
+    const fs = await import("node:fs");
+    const pathMod = await import("node:path");
+    // Try repo-root content path; fallback to one-up if cwd is server/.
+    const cwd = process.cwd();
+    const candidates = [
+      pathMod.resolve(cwd, "content", "roguelite-unlocks.json"),
+      pathMod.resolve(cwd, "..", "content", "roguelite-unlocks.json"),
+    ];
+    for (const file of candidates) {
+      try {
+        const data = JSON.parse(fs.readFileSync(file, "utf8"));
+        return res.json({ ok: true, unlocks: data });
+      } catch { /* try next */ }
+    }
+    res.json({ ok: true, unlocks: [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message, unlocks: [] });
+  }
+}));
+
+app.get("/api/roguelite/recent", requireAuth(), asyncHandler(async (req, res) => {
+  const { listRecentRuns } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, runs: listRecentRuns(db, userId, Number(req.query.limit) || 10) });
+}));
+
+// Phase CA7 — Brawl mode (sifu_brawler profile 1v1 invite).
+app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteBrawl } = await import("./lib/brawl.js");
+  const fromUserId = req.user?.id || req.user?.userId;
+  const r = inviteBrawl(fromUserId, req.body?.toUserId);
+  if (r.ok && !r.alreadyOpen) {
+    try {
+      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
+        inviteId: r.inviteId, from: fromUserId,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/combat/brawl/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(acceptBrawl(req.body?.inviteId, userId));
+}));
+
+app.post("/api/combat/brawl/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { declineBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(declineBrawl(req.body?.inviteId, userId));
+}));
+
+app.post("/api/combat/brawl/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endBrawl } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(endBrawl(userId));
+}));
+
+app.get("/api/combat/brawl/invites", requireAuth(), asyncHandler(async (req, res) => {
+  const { listOpenInvitesFor } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, invites: listOpenInvitesFor(userId) });
+}));
+
+// Phase E7 — brawl matchmaking queue. The brawl-queue-cycle heartbeat
+// pops pairs every minute; these routes let players join/leave/check.
+app.post("/api/brawl/queue/join", requireAuth(), asyncHandler(async (req, res) => {
+  const { joinQueue, popPair } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  const result = joinQueue(userId, { userName: req.user?.name || null });
+  // Try one immediate popPair — if someone else is already waiting,
+  // pair them right away instead of forcing a 1-minute heartbeat wait.
+  if (result.ok && !result.alreadyQueued) {
+    const r = popPair();
+    if (r?.ok && r.paired) {
+      try {
+        req.app.locals.io?.to(`user:${r.paired.a}`).emit("brawl-invited", {
+          inviteId: r.paired.inviteId, from: r.paired.b, via: "matchmaking",
+        });
+        req.app.locals.io?.to(`user:${r.paired.b}`).emit("brawl-invited", {
+          inviteId: r.paired.inviteId, from: r.paired.a, via: "matchmaking",
+        });
+      } catch { /* best-effort emit */ }
+    }
+  }
+  res.json(result);
+}));
+
+app.post("/api/brawl/queue/leave", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaveQueue } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(leaveQueue(userId));
+}));
+
+app.get("/api/brawl/queue/status", requireAuth(), asyncHandler(async (req, res) => {
+  const { queueStatus } = await import("./lib/brawl.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(queueStatus(userId));
+}));
+
+// Phase CA6 — soulslike corpse list (active TTL corpses for the caller).
+app.get("/api/players/me/corpses", requireAuth(), asyncHandler(async (req, res) => {
+  const { activeCorpsesFor } = await import("./lib/player-corpse.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, corpses: activeCorpsesFor(db, { userId }) });
+}));
+
+// Phase CA5 — detective deduction board.
+app.get("/api/detective/open/:worldId", asyncHandler(async (req, res) => {
+  const { listOpenCrimes } = await import("./lib/detective.js");
+  res.json({ ok: true, crimes: listOpenCrimes(db, req.params.worldId, Number(req.query.limit) || 50) });
+}));
+
+app.get("/api/detective/crime/:crimeId/evidence", asyncHandler(async (req, res) => {
+  const { listEvidenceForCrime } = await import("./lib/detective.js");
+  res.json({ ok: true, evidence: listEvidenceForCrime(db, req.params.crimeId) });
+}));
+
+app.post("/api/detective/crime/:crimeId/deduce", requireAuth(), asyncHandler(async (req, res) => {
+  const { lockInDeduction } = await import("./lib/detective.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(lockInDeduction(db, userId, req.params.crimeId, req.body || {}));
+}));
+
+app.get("/api/detective/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDeductionsByUser } = await import("./lib/detective.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, deductions: getDeductionsByUser(db, userId) });
+}));
+
+// Phase DB1 — player stamina state surfacing (climbing tracker reads this).
+app.get("/api/players/me/stamina", requireAuth(), asyncHandler(async (req, res) => {
+  const { getStamina } = await import("./lib/player-stamina.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId || "concordia-hub";
+  try {
+    const s = getStamina(db, userId, worldId);
+    if (!s) return res.json({ ok: true, stamina: { state: "rest", remaining_pct: 100 } });
+    res.json({ ok: true, stamina: {
+      state: s.state || "rest",
+      remaining_pct: Math.max(0, Math.min(100, Number(s.remaining_pct) || 100)),
+    }});
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CA3 — climbing routes ledger.
+app.post("/api/climbing/route", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordRoute } = await import("./lib/climbing.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = recordRoute(db, userId, req.body || {});
+  if (r.ok) {
+    try {
+      realtimeEmit?.("climbing:route-completed", {
+        userId, worldId: req.body?.worldId,
+        heightClimbed: r.heightClimbed,
+      });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/climbing/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listRoutes } = await import("./lib/climbing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, routes: listRoutes(db, userId, Number(req.query.limit) || 20) });
+}));
+
+app.get("/api/climbing/world/:worldId/top", asyncHandler(async (req, res) => {
+  const { getTopRoutes } = await import("./lib/climbing.js");
+  res.json({ ok: true, top: getTopRoutes(db, req.params.worldId, Number(req.query.limit) || 10) });
+}));
+
+// Phase CA2 — submarine dive-state aggregator. Joins player_oxygen,
+// world_visits (is_swimming + swim_depth), and creature_swim_depth for
+// sonar contacts. Used by SubmarineHUD.tsx.
+app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+  try {
+    const visit = db.prepare(`
+      SELECT world_id, is_swimming, swim_depth, last_position
+      FROM world_visits
+      WHERE user_id = ? AND departed_at IS NULL
+      ORDER BY entered_at DESC LIMIT 1
+    `).get(userId);
+
+    if (!visit || !visit.is_swimming) {
+      return res.json({ ok: true, diveState: { isSwimming: false } });
+    }
+
+    let oxRow = null;
+    try {
+      oxRow = db.prepare(`
+        SELECT oxygen_pct, max_depth_explored, drowning_damage
+        FROM player_oxygen WHERE user_id = ? AND world_id = ?
+      `).get(userId, visit.world_id);
+    } catch { /* table optional */ }
+
+    let sonar = [];
+    let playerX = 0, playerZ = 0;
+    try {
+      const pos = JSON.parse(visit.last_position || "{}");
+      playerX = Number(pos.x) || 0;
+      playerZ = Number(pos.z) || 0;
+    } catch { /* malformed */ }
+    try {
+      sonar = db.prepare(`
+        SELECT id, species_id AS speciesId, current_depth AS depth,
+               x, z
+        FROM creature_swim_depth
+        WHERE world_id = ? AND ABS(current_depth - ?) < 8
+        LIMIT 8
+      `).all(visit.world_id, visit.swim_depth).map(r => ({
+        id: r.id,
+        speciesId: r.speciesId,
+        depth: r.depth,
+        distance: Math.hypot((r.x || 0) - playerX, (r.z || 0) - playerZ),
+      })).filter(c => c.distance < 80).sort((a, b) => a.distance - b.distance);
+    } catch { /* table optional */ }
+
+    res.json({
+      ok: true,
+      diveState: {
+        isSwimming: !!visit.is_swimming,
+        swimDepth: Number(visit.swim_depth) || 0,
+        oxygenPct: oxRow ? Number(oxRow.oxygen_pct) : 100,
+        maxDepthExplored: oxRow ? Number(oxRow.max_depth_explored) : 0,
+        drowningDamage: oxRow ? Number(oxRow.drowning_damage) : 0,
+        sonarContacts: sonar,
+      },
+    });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase BC2 — mentor registry (public read).
+app.get("/api/mentors/world/:worldId", asyncHandler(async (req, res) => {
+  const { listMentorsInWorld } = await import("./lib/mentorship.js");
+  res.json({ ok: true, mentors: listMentorsInWorld(db, req.params.worldId, {
+    skillCategory: req.query.skillCategory,
+    limit: Number(req.query.limit) || 50,
+  }) });
+}));
+
+app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
+  const { getMentorProfile } = await import("./lib/mentorship.js");
+  const profile = getMentorProfile(db, req.params.npcId);
+  if (!profile) return res.status(404).json({ ok: false, error: "no_profile" });
+  res.json({ ok: true, profile });
+}));
+
+// ── Phase BE1 — photo gallery + freecam screenshots ────────────────────
+
+app.post("/api/photos/save", requireAuth(), asyncHandler(async (req, res) => {
+  const { savePhoto } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(savePhoto(db, userId, req.body || {}));
+}));
+
+app.post("/api/photos/:photoId/share", requireAuth(), asyncHandler(async (req, res) => {
+  const { sharePhoto } = await import("./lib/photo-gallery.js");
+  res.json(sharePhoto(db, req.params.photoId));
+}));
+
+app.post("/api/photos/:photoId/delete", requireAuth(), asyncHandler(async (req, res) => {
+  const { deletePhoto } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(deletePhoto(db, userId, req.params.photoId));
+}));
+
+app.get("/api/photos/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyPhotos } = await import("./lib/photo-gallery.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, photos: listMyPhotos(db, userId, Number(req.query.limit) || 50) });
+}));
+
+app.get("/api/photos/world/:worldId/public", asyncHandler(async (req, res) => {
+  const { listPublicPhotosInWorld } = await import("./lib/photo-gallery.js");
+  res.json({ ok: true, photos: listPublicPhotosInWorld(db, req.params.worldId, Number(req.query.limit) || 50) });
+}));
+
+// Phase BB3 — operator announcements. Admin only on POST; public read.
+app.post("/api/announcements", requireAuth(), asyncHandler(async (req, res) => {
+  const { publishAnnouncement } = await import("./lib/announcements.js");
+  const userId = req.user?.id || req.user?.userId;
+  const role = req.user?.role || "";
+  if (role !== "admin") return res.status(403).json({ ok: false, error: "admin_only" });
+  res.json(publishAnnouncement(db, { ...(req.body || {}), authorUserId: userId }));
+}));
+
+app.get("/api/announcements", asyncHandler(async (req, res) => {
+  const { listRecentAnnouncements } = await import("./lib/announcements.js");
+  res.json({ ok: true, announcements: listRecentAnnouncements(db, {
+    kind: req.query.kind,
+    limit: Number(req.query.limit) || 50,
+  }) });
+}));
+
+app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {
+  try {
+    const row = db.prepare(`
+      SELECT drift_score FROM avatar_drift WHERE user_id = ?
+    `).get(req.params.userId);
+    res.json({ ok: true, drift_score: row?.drift_score || 0 });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {
+  try {
+    const houses = db.prepare(`
+      SELECT id, user_id, name, building_id, visibility, allow_live_visits,
+             last_decorated_at
+      FROM player_houses
+      WHERE world_id = ? AND visibility = 'public'
+      ORDER BY last_decorated_at DESC
+      LIMIT 100
+    `).all(req.params.worldId);
+    res.json({ ok: true, houses });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// ── Phase U6 — world markers (wire migration 188) ───────────────────────
+
+app.post("/api/worlds/:worldId/markers", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeMarker } = await import("./lib/world-markers.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = placeMarker(db, { ...req.body, worldId: req.params.worldId, userId });
+  if (r.ok) {
+    try {
+      realtimeEmit?.("world:marker-placed", { id: r.id, worldId: r.worldId, kind: r.kind, label: r.label, x: r.x, z: r.z, placedBy: userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/worlds/:worldId/markers", asyncHandler(async (req, res) => {
+  const { listMarkersForWorld } = await import("./lib/world-markers.js");
+  res.json({ ok: true, markers: listMarkersForWorld(db, req.params.worldId, { limit: Number(req.query.limit) || 100 }) });
+}));
+
+app.delete("/api/worlds/:worldId/markers/:markerId", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeMarker } = await import("./lib/world-markers.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(removeMarker(db, req.params.markerId, userId));
+}));
+
+// ── Phase U5 — parties + LFG ────────────────────────────────────────────
+
+app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
+  const { createParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = createParty(db, userId, req.body || {});
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteToParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = inviteToParty(db, req.params.partyId, userId, req.body?.toUserId);
+  if (r.ok) {
+    try {
+      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/invites/:inviteId/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptPartyInvite } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = acceptPartyInvite(db, req.params.inviteId, userId);
+  if (r.ok && r.partyId) {
+    try { realtimeEmit?.("party:member-joined", { partyId: r.partyId, userId }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/leave", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaveParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = leaveParty(db, req.params.partyId, userId);
+  if (r.ok) {
+    try { realtimeEmit?.("party:member-left", { partyId: req.params.partyId, userId, disbanded: !!r.disbanded }); } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/kick", requireAuth(), asyncHandler(async (req, res) => {
+  const { kickFromParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = kickFromParty(db, req.params.partyId, userId, req.body?.targetUserId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/parties/:partyId/disband", requireAuth(), asyncHandler(async (req, res) => {
+  const { disbandParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = disbandParty(db, req.params.partyId, userId);
+  if (r.ok) { try { realtimeEmit?.("party:disbanded", { partyId: req.params.partyId }); } catch { /* best-effort */ } }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/parties/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMyParty, listIncomingInvites } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    party: getMyParty(db, userId),
+    incomingInvites: listIncomingInvites(db, userId),
+  });
+}));
+
+app.post("/api/parties/:partyId/share-quest", requireAuth(), asyncHandler(async (req, res) => {
+  const { shareQuestWithParty } = await import("./lib/parties.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = shareQuestWithParty(db, req.params.partyId, req.body?.questId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// LFG
+app.post("/api/lfg/post", requireAuth(), asyncHandler(async (req, res) => {
+  const { postLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = postLfg(db, userId, req.body || {});
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/lfg/:lfgId/cancel", requireAuth(), asyncHandler(async (req, res) => {
+  const { cancelLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(cancelLfg(db, req.params.lfgId, userId));
+}));
+
+app.get("/api/lfg/open", asyncHandler(async (req, res) => {
+  const { listOpenLfg } = await import("./lib/lfg.js");
+  res.json({ ok: true, requests: listOpenLfg(db, { worldId: req.query.worldId, role: req.query.role, limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.post("/api/lfg/:lfgId/invite", requireAuth(), asyncHandler(async (req, res) => {
+  const { inviteFromLfg } = await import("./lib/lfg.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = inviteFromLfg(db, req.params.lfgId, userId);
+  if (r.ok) { try { realtimeEmit?.("lfg:matched", { lfgId: req.params.lfgId, partyId: r.partyId }); } catch { /* best-effort */ } }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// ── Phase U4 — faction reputation aggregate ─────────────────────────────
+
+app.get("/api/factions/:factionId/reputation", requireAuth(), asyncHandler(async (req, res) => {
+  const { getFactionReputation } = await import("./lib/faction-reputation.js");
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = req.query.worldId || "concordia-hub";
+  res.json({ ok: true, ...getFactionReputation(db, userId, req.params.factionId, worldId) });
+}));
+
+app.get("/api/factions/reputation/me", requireAuth(), asyncHandler(async (req, res) => {
+  const { getAllReputations } = await import("./lib/faction-reputation.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, reputations: getAllReputations(db, userId, req.query.worldId || null) });
+}));
+
+// ── Phase U3 — titles ───────────────────────────────────────────────────
+
+app.get("/api/titles/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listOwnedTitles, getActiveTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({
+    ok: true,
+    owned: listOwnedTitles(db, userId),
+    active: getActiveTitle(db, userId),
+  });
+}));
+
+app.post("/api/titles/:titleId/equip", requireAuth(), asyncHandler(async (req, res) => {
+  const { equipTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = equipTitle(db, userId, req.params.titleId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/titles/unequip", requireAuth(), asyncHandler(async (req, res) => {
+  const { unequipTitle } = await import("./lib/player-titles.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = unequipTitle(db, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// ── Phase U2 — achievements ─────────────────────────────────────────────
+
+app.get("/api/achievements/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, earned: listEarnedAchievements(db, userId) });
+}));
+
+app.get("/api/achievements/catalog", (req, res) => {
+  try {
+    const catalog = listAchievementCatalog().map(a => ({
+      id: a.id, title: a.title, description: a.description,
+      category: a.category, icon: a.icon, rarity: a.rarity,
+      hidden: !!a.hidden, rewardCc: a.rewardCc || 0, rewardTitle: a.rewardTitle || null,
+    }));
+    res.json({ ok: true, catalog });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/achievements/recent", (req, res) => {
+  try {
+    res.json({ ok: true, recent: listRecentAchievements(db, { limit: Number(req.query.limit) || 50 }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// ── Phase U1 — async player-to-player mail (WoW-style) ──────────────────
+//
+// Distinct from social.js#sendMessage (in-memory instant DM): survives
+// logout, supports DTU + CC attachments + COD. 30-day TTL with sweep.
+
+app.post("/api/mail/send", requireAuth(), asyncHandler(async (req, res) => {
+  const { sendMail } = await import("./lib/player-mail.js");
+  const fromUserId = req.user?.id || req.user?.userId;
+  const r = sendMail(db, { ...req.body, fromUserId });
+  if (r.ok) {
+    try {
+      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId });
+    } catch { /* best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/mail/inbox", requireAuth(), asyncHandler(async (req, res) => {
+  const { listInbox } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, mail: listInbox(db, userId, { status: req.query.status, limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/mail/sent", requireAuth(), asyncHandler(async (req, res) => {
+  const { listSent } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, mail: listSent(db, userId, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/mail/:id", requireAuth(), asyncHandler(async (req, res) => {
+  const { getMail } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const mail = getMail(db, req.params.id, userId);
+  if (!mail) return res.status(404).json({ ok: false, error: "not_found" });
+  res.json({ ok: true, mail });
+}));
+
+app.post("/api/mail/:id/read", requireAuth(), asyncHandler(async (req, res) => {
+  const { readMail } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = readMail(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/mail/:id/claim", requireAuth(), asyncHandler(async (req, res) => {
+  const { claimAttachments } = await import("./lib/player-mail.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = claimAttachments(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// ── Meet-up flow — friends + presence + invites ─────────────────────────
+//
+// Pieces:
+//   POST   /api/friends/request        send friend request
+//   POST   /api/friends/:id/accept     accept incoming request
+//   POST   /api/friends/:id/decline    decline incoming request
+//   DELETE /api/friends/:friendUserId  unfriend
+//   GET    /api/friends                list accepted friends
+//   GET    /api/friends/requests       list incoming + outgoing pending
+//   GET    /api/friends/presence       list friends with live world / online
+//
+// The /api/worlds/invites endpoint already exists (routes/world-invites.js)
+// so the "come to my world" send path is just a UI button that POSTs
+// there. The presence + friends additions complete the meet-up loop.
+
+app.post("/api/friends/request", requireAuth(), asyncHandler(async (req, res) => {
+  const { sendFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const targetId = String(req.body?.toUserId || "").trim();
+  if (!targetId) return res.status(400).json({ ok: false, error: "toUserId required" });
+  const r = sendFriendRequest(db, userId, targetId);
+  if (r.ok) {
+    // Realtime nudge to the addressee — their friends panel shows the new
+    // pending request without a refresh.
+    try {
+      realtimeEmit?.("friend:request-received", { id: r.id, fromUserId: userId, status: r.status }, { targetUserId: targetId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/friends/:id/accept", requireAuth(), asyncHandler(async (req, res) => {
+  const { acceptFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = acceptFriendRequest(db, req.params.id, userId);
+  if (r.ok) {
+    try {
+      // Tell BOTH parties so each panel updates. The route caller knows
+      // who they are; the requester id has to come from the row.
+      realtimeEmit?.("friend:request-accepted", { id: req.params.id, acceptedBy: userId });
+    } catch { /* emit best-effort */ }
+  }
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/friends/:id/decline", requireAuth(), asyncHandler(async (req, res) => {
+  const { declineFriendRequest } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = declineFriendRequest(db, req.params.id, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.delete("/api/friends/:friendUserId", requireAuth(), asyncHandler(async (req, res) => {
+  const { unfriend } = await import("./lib/friendships.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = unfriend(db, userId, req.params.friendUserId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/friends", requireAuth(), asyncHandler(async (req, res) => {
+  const { listFriends } = await import("./lib/friendships.js");
+  const { resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const friends = listFriends(db, userId);
+  const display = resolveUserDisplay(db, friends.map(f => f.friendUserId));
+  res.json({
+    ok: true,
+    friends: friends.map(f => ({ ...f, displayName: display[f.friendUserId]?.displayName ?? f.friendUserId })),
+  });
+}));
+
+app.get("/api/friends/requests", requireAuth(), asyncHandler(async (req, res) => {
+  const { listIncomingRequests, listOutgoingRequests } = await import("./lib/friendships.js");
+  const { resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const incoming = listIncomingRequests(db, userId);
+  const outgoing = listOutgoingRequests(db, userId);
+  const ids = [...incoming.map(r => r.fromUser), ...outgoing.map(r => r.toUser)];
+  const display = resolveUserDisplay(db, ids);
+  res.json({
+    ok: true,
+    incoming: incoming.map(r => ({ ...r, fromDisplayName: display[r.fromUser]?.displayName ?? r.fromUser })),
+    outgoing: outgoing.map(r => ({ ...r, toDisplayName: display[r.toUser]?.displayName ?? r.toUser })),
+  });
+}));
+
+app.get("/api/friends/presence", requireAuth(), asyncHandler(async (req, res) => {
+  const { getFriendsPresence, resolveUserDisplay } = await import("./lib/friend-presence.js");
+  const userId = req.user?.id || req.user?.userId;
+  const presence = getFriendsPresence(db, userId);
+  const display = resolveUserDisplay(db, presence.map(p => p.friendUserId));
+  res.json({
+    ok: true,
+    presence: presence.map(p => ({ ...p, displayName: display[p.friendUserId]?.displayName ?? p.friendUserId })),
+  });
+}));
+
+// Phase Q — UGC worlds. Authors publish via POST; their content drops
+// into content/world/usergen-<slug>/ and is auto-picked up by next
+// discoverSubWorlds() pass (the publisher also reloads the flavor cache).
+app.post("/api/foundry/world/publish", requireAuth(), asyncHandler(async (req, res) => {
+  const { publishUgcWorld } = await import("./lib/foundry-publisher.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = await publishUgcWorld(db, { ...req.body, authorUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/foundry/worlds", async (req, res) => {
+  try {
+    const { listActiveUgcWorlds } = await import("./lib/foundry-publisher.js");
+    res.json({ ok: true, worlds: listActiveUgcWorlds(db, { limit: Number(req.query.limit) || 50 }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/foundry/my-worlds", requireAuth(), async (req, res) => {
+  try {
+    const { listMyUgcWorlds } = await import("./lib/foundry-publisher.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, worlds: listMyUgcWorlds(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase R — world marketplace. Users lease worlds as private tenants.
+app.post("/api/world-marketplace/lease", requireAuth(), asyncHandler(async (req, res) => {
+  const { leaseWorld } = await import("./lib/world-tenancy.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = leaseWorld(db, { ...req.body, ownerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/world-marketplace/my-leases", requireAuth(), async (req, res) => {
+  try {
+    const { listMyTenancies } = await import("./lib/world-tenancy.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, tenancies: listMyTenancies(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/world-marketplace/:tenantWorldId/members", requireAuth(), asyncHandler(async (req, res) => {
+  const { addTenantMember, getMemberRole } = await import("./lib/world-tenancy.js");
+  const userId = req.user?.id || req.user?.userId;
+  // Only the owner / admin can add members.
+  const myRole = getMemberRole(db, req.params.tenantWorldId, userId);
+  if (myRole !== "owner" && myRole !== "admin") {
+    return res.status(403).json({ ok: false, error: "not_authorized" });
+  }
+  const r = addTenantMember(db, req.params.tenantWorldId, req.body?.userId, req.body?.role || "member");
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+// Phase S — tournaments per world.
+app.post("/api/tournaments/create", requireAuth(), asyncHandler(async (req, res) => {
+  const { createTournament } = await import("./lib/tournaments.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = createTournament(db, { ...req.body, organizerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/tournaments/:tournamentId/register", requireAuth(), asyncHandler(async (req, res) => {
+  const { registerForTournament } = await import("./lib/tournaments.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = registerForTournament(db, req.params.tournamentId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/tournaments/active", async (req, res) => {
+  try {
+    const { listActiveTournaments } = await import("./lib/tournaments.js");
+    res.json({ ok: true, tournaments: listActiveTournaments(db, { limit: Number(req.query.limit) || 50 }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/tournaments/:tournamentId", async (req, res) => {
+  try {
+    const { getTournament } = await import("./lib/tournaments.js");
+    const t = getTournament(db, req.params.tournamentId);
+    if (!t) return res.status(404).json({ ok: false, error: "no_tournament" });
+    res.json({ ok: true, tournament: t });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase T — AI residents.
+app.post("/api/residents/deploy", requireAuth(), asyncHandler(async (req, res) => {
+  const { deployResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = deployResident(db, { ...req.body, ownerUserId: userId });
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/pause", requireAuth(), asyncHandler(async (req, res) => {
+  const { pauseResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = pauseResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/resume", requireAuth(), asyncHandler(async (req, res) => {
+  const { resumeResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = resumeResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.post("/api/residents/:npcId/recall", requireAuth(), asyncHandler(async (req, res) => {
+  const { recallResident } = await import("./lib/ai-residents.js");
+  const userId = req.user?.id || req.user?.userId;
+  const r = recallResident(db, req.params.npcId, userId);
+  res.status(r.ok ? 200 : 400).json(r);
+}));
+
+app.get("/api/residents/mine", requireAuth(), async (req, res) => {
+  try {
+    const { listMyResidents } = await import("./lib/ai-residents.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json({ ok: true, residents: listMyResidents(db, userId) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase P — cross-world feed surfaces in the concord-link-frontier lens.
+// Public-read; the news ticker has no PII.
+app.get("/api/cross-world/feed", async (req, res) => {
+  try {
+    const { getCrossWorldFeed } = await import("./lib/cross-world-feed.js");
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const sinceMs = Number(req.query.sinceMs) || 3_600_000;
+    const kindFilter = req.query.kind ? String(req.query.kind) : undefined;
+    res.json({ ok: true, ...getCrossWorldFeed(db, { limit, sinceMs, kindFilter }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/cross-world/royalty-flow", requireAuth(), async (req, res) => {
+  try {
+    const { getCrossWorldRoyaltyFlow } = await import("./lib/cross-world-feed.js");
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const sinceMs = Number(req.query.sinceMs) || 86_400_000;
+    res.json({ ok: true, ...getCrossWorldRoyaltyFlow(db, { limit, sinceMs }) });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase N — public spectator counts per world. Spectators don't write
+// presence rows so this is the cheap way to surface "1,243 watching"
+// next to the world card.
+app.get("/api/worlds/spectator-counts", async (req, res) => {
+  try {
+    const { listSpectatorCounts } = await import("./lib/spectator-mode.js");
+    res.json({ ok: true, counts: listSpectatorCounts(), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase G — per-world flavor (public-safe; static JSON, no PII).
+app.get("/api/worlds/:worldId/flavor", (req, res) => {
+  try {
+    const flavor = getWorldFlavor(req.params.worldId);
+    res.json({ ok: true, worldId: req.params.worldId, flavor });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/world-flavors", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({ ok: true, worlds: listAllFlavors(), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase I + J — travel endpoint. POST /api/worlds/travel with { worldId }.
+// Ensures the target world's worker is active (on-demand spawn, ~2-3s
+// cold start), then opens a world_visits row for the user and emits a
+// realtime user:traveled event. Returns shard status + readiness ETA.
+app.post("/api/worlds/travel", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  const worldId = String(req.body?.worldId || "").trim();
+  if (!worldId) return res.status(400).json({ ok: false, error: "worldId required" });
+
+  // 1. Validate worldId exists. Check authored sub-worlds OR DB worlds table.
+  let isKnown = false;
+  try {
+    const r = db.prepare(`SELECT id FROM worlds WHERE id = ?`).get(worldId);
+    isKnown = !!r;
+  } catch { /* worlds table optional in minimal builds */ }
+  if (!isKnown) {
+    // Fallback: accept the 8+1 authored worlds even if DB table absent.
+    const authored = ["concordia-hub", "tunya", "sovereign-ruins", "crime", "cyber", "superhero", "fantasy", "lattice-crucible", "concord-link-frontier"];
+    if (!authored.includes(worldId)) {
+      return res.status(404).json({ ok: false, error: "unknown_world" });
+    }
+  }
+
+  // Phase M — soft cap. Reject travel if the world is at capacity. The
+  // default cap (200) is per-world; ops can override via env or future
+  // instance-pooling work (currently a hard 503 with retry hint).
+  const SOFT_CAP = Number(process.env.CONCORD_WORLD_USER_SOFT_CAP) || 200;
+  try {
+    const presence = await import("./lib/city-presence.js");
+    const liveCount = presence.getWorldUserCount?.(worldId) ?? 0;
+    if (liveCount >= SOFT_CAP) {
+      return res.status(503).json({
+        ok: false,
+        error: "world_at_capacity",
+        currentUsers: liveCount,
+        softCap: SOFT_CAP,
+        retryAfterMs: 5_000,
+      });
+    }
+  } catch { /* presence module optional in minimal builds */ }
+
+  // 2. Spawn / activate the world's worker if sharding enabled. When
+  //    sharding is off this is a no-op that returns ok immediately.
+  let shardStatus = { ok: true, status: "in-process", firstTickEtaMs: 0 };
+  if (shardingEnabled()) {
+    shardStatus = await ensureWorldActive(worldId);
+    if (!shardStatus.ok) {
+      return res.status(503).json({ ok: false, error: "shard_spawn_failed", shardStatus });
+    }
+    markWorldUserCount(worldId, 1);
+  }
+
+  // 3. Update world_visits — close any prior open visit; open the new one.
+  try {
+    db.prepare(`
+      UPDATE world_visits SET departed_at = unixepoch(),
+        total_time_minutes = ROUND((unixepoch() - arrived_at) / 60.0, 2)
+      WHERE user_id = ? AND departed_at IS NULL
+    `).run(userId);
+    const visitId = `wv_${Date.now()}_${Math.floor(Math.random() * 1e6).toString(36)}`;
+    db.prepare(`
+      INSERT INTO world_visits (id, user_id, world_id, arrived_at)
+      VALUES (?, ?, ?, unixepoch())
+    `).run(visitId, userId, worldId);
+  } catch (err) {
+    structuredLog?.("warn", "world_visit_record_failed", { userId, worldId, error: err?.message });
+  }
+
+  // 4. Realtime emit so other clients (multiplayer, spectators) know.
+  try {
+    realtimeEmit?.("user:traveled", { userId, worldId, shardStatus });
+  } catch { /* emit best-effort */ }
+
+  res.json({
+    ok: true,
+    worldId,
+    shardStatus,
+    sharded: shardingEnabled(),
+  });
+}));
+
+// Phase F — per-world shard health (public-safe; reveals shard status only).
+app.get("/api/worlds/:worldId/health", (req, res) => {
+  try {
+    const worldId = req.params.worldId;
+    res.json({ ok: true, ...getShardHealth(worldId), generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+// Phase F — admin: cross-world shard table + manual restart.
+app.get("/api/admin/world-shards", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    res.json({ ok: true, sharded: shardingEnabled(), shards: getShardHealth() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.post("/api/admin/world-shards/:worldId/restart", requireRole("owner", "admin", "sovereign", "founder"), (req, res) => {
+  try {
+    const r = restartShard(req.params.worldId);
+    res.status(r.ok ? 200 : 404).json(r);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
+app.get("/api/admin/brain-endpoints", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { getEndpointStats, getActiveBrainConfig } = await import("./lib/brain-config.js");
+    const stats = getEndpointStats();
+    const cfg = getActiveBrainConfig();
+    const brains = Object.entries(stats).map(([brainName, endpoints]) => ({
+      brain: brainName,
+      model: cfg[brainName]?.model || "unknown",
+      maxConcurrent: cfg[brainName]?.maxConcurrent ?? null,
+      endpoints,
+    }));
+    res.json({ ok: true, brains, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: String(e?.message || e) });
+  }
+});
+
 // ---- Wave 14: Enterprise Endpoints ----
 app.get("/api/admin/stats", requireRole("owner", "admin"), (req, res) => {
   res.json(getAdminStats());
@@ -51309,6 +54256,44 @@ try {
   console.warn("[Concord] Worker pool failed to initialize:", e.message);
 }
 
+// ── Heartbeat Worker Pool Initialization (Phase C) ───────────────────────────
+// Routes `worker:true` heartbeat modules off the main thread so a heavy tick
+// (refusal-field-sweep, faction-strategy, lattice-quest, embodied-dream,
+// forward-sim) can't starve the rest of the dispatch loop. Workers open
+// their own read-only better-sqlite3 handle and return side effects the
+// main thread replays.
+try {
+  initHeartbeatPool({
+    db,
+    realtimeEmit: (...args) => {
+      try { realtimeEmit(...args); } catch { /* main-thread emit best-effort */ }
+    },
+    dbPath: DB_PATH,
+  });
+  setHeartbeatPool({ exec: execHeartbeatWorker });
+  structuredLog("info", "module_loaded", { detail: `Heartbeat Worker Pool: ${getHeartbeatPoolStats().poolSize} workers initialized` });
+} catch (e) {
+  console.warn("[Concord] Heartbeat worker pool failed to initialize:", e.message);
+}
+
+// ── World shard manager (Phase F) ────────────────────────────────────────────
+// Activated by CONCORD_SHARD_WORLDS=true. Spawns one child_process.fork per
+// active world; per-world heartbeat modules (`scope: 'world'`) run inside
+// the shard. Global modules (`scope: 'global'`) keep running on the parent.
+if (shardingEnabled()) {
+  initWorldShards({
+    dbPath: DB_PATH,
+    realtimeEmit: (...args) => {
+      try { realtimeEmit(...args); } catch { /* main-thread emit best-effort */ }
+    },
+    db,
+  }).then((r) => {
+    structuredLog("info", "world_shard_manager_started", { enabled: r.enabled, shards: r.shards });
+  }).catch((err) => {
+    structuredLog("warn", "world_shard_manager_failed", { error: err?.message });
+  });
+}
+
 // ── Memory Ceiling Monitor ──────────────────────────────────────────────────
 // Tracks RSS (not just heap) every 30s. Native memory (mmap, ArrayBuffers,
 // worker V8 isolates) is the primary bloat source — heap alone misses it.
@@ -53424,6 +56409,70 @@ app.get("/api/dreams/history", (_req, res) => {
     lastInsights: ds.insights.slice(-10),
   });
 });
+
+// Phase F3.2 — morning-brief DreamReader endpoint.
+// Returns the player's last N composed dreams (Layer 9 embodied dreams,
+// `dreams` table — distinct from the system-level dreamState above).
+// Joins dtus.human_summary for the readable prose. Public-read for
+// the authenticated user's own dreams only.
+app.get("/api/dreams/recent", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
+  const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 3));
+  try {
+    const rows = db.prepare(`
+      SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
+             d.composer, d.composed_at,
+             dt.human_summary, dt.title
+      FROM dreams d
+      LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
+      WHERE d.user_id = ?
+      ORDER BY d.composed_at DESC
+      LIMIT ?
+    `).all(userId, limit);
+    res.json({ ok: true, dreams: rows });
+  } catch (err) {
+    res.json({ ok: true, dreams: [], error: err?.message });
+  }
+}));
+
+// Phase F3.3 — forward-predictions feed.
+app.get("/api/forward-predictions/active", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
+  const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 6));
+  try {
+    const rows = db.prepare(`
+      SELECT id, subject_kind, subject_id, anticipated AS anticipated_text, confidence,
+             composer, composed_at, expires_at
+      FROM forward_predictions
+      WHERE user_id = ? AND realised_at IS NULL AND expires_at > unixepoch()
+      ORDER BY composed_at DESC LIMIT ?
+    `).all(userId, limit);
+    res.json({ ok: true, predictions: rows });
+  } catch (err) {
+    res.json({ ok: true, predictions: [], error: err?.message });
+  }
+}));
+
+// Phase F3.3 — active factions wars (in current world).
+app.get("/api/factions/active-wars", asyncHandler(async (req, res) => {
+  const worldId = String(req.query.worldId || "");
+  try {
+    const rows = db.prepare(`
+      SELECT s.faction_id, s.stance, s.target_id, s.momentum, s.updated_at,
+             s.last_move_id
+      FROM faction_strategy_state s
+      WHERE s.stance = 'war'
+      ORDER BY s.updated_at DESC LIMIT 20
+    `).all();
+    // worldId filter is advisory — factions are world-spanning at this layer,
+    // so we return all active wars. Frontend can choose to display or hide.
+    res.json({ ok: true, wars: rows, worldId });
+  } catch (err) {
+    res.json({ ok: true, wars: [], error: err?.message });
+  }
+}));
 
 // ---------- DTU METABOLISM — digestion + consolidation + excretion + growth ----------
 // DTUs are living entities that metabolize: they digest input, consolidate knowledge,

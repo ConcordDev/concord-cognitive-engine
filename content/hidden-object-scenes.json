@@ -1,0 +1,143 @@
+[
+  {
+    "sceneId": "hub_bazaar_morning",
+    "title": "Concordant Bazaar — Morning Rush",
+    "subtitle": "Velka opens the central row. Three things shouldn't be there.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:linear-gradient(180deg,#3b2a1a,#1a1208)'><rect x='0' y='460' width='1000' height='140' fill='#5a3b1d'/><rect x='100' y='200' width='160' height='260' fill='#7a5230' stroke='#3a2418' stroke-width='3'/><rect x='320' y='180' width='180' height='280' fill='#8b5e35' stroke='#3a2418' stroke-width='3'/><rect x='560' y='210' width='160' height='250' fill='#7a5230' stroke='#3a2418' stroke-width='3'/><rect x='780' y='200' width='160' height='260' fill='#7a5230' stroke='#3a2418' stroke-width='3'/><text x='180' y='250' fill='#fde68a' font-size='14' text-anchor='middle'>Velka</text><circle cx='420' cy='240' r='14' fill='#dc2626'/><circle cx='420' cy='260' r='8' fill='#dc2626'/><text x='420' y='285' fill='#fda4af' font-size='10' text-anchor='middle'>fruit stall</text><rect x='220' y='320' width='12' height='40' fill='#94a3b8'/><text x='226' y='378' fill='#cbd5e1' font-size='9' text-anchor='middle'>scroll</text><circle cx='840' cy='340' r='10' fill='#fbbf24'/><text x='840' y='370' fill='#fde68a' font-size='9' text-anchor='middle'>brass coin</text><polygon points='620,330 640,300 660,330' fill='#a78bfa'/><text x='640' y='350' fill='#c4b5fd' font-size='9' text-anchor='middle'>pendant</text></svg>",
+    "targets": [
+      { "id": "brass_coin", "label": "Brass coin (stall 4)", "x": 0.82, "y": 0.55, "w": 0.04, "h": 0.06 },
+      { "id": "scroll",     "label": "Rolled scroll",        "x": 0.21, "y": 0.53, "w": 0.03, "h": 0.10 },
+      { "id": "pendant",    "label": "Lost pendant",         "x": 0.61, "y": 0.49, "w": 0.04, "h": 0.07 }
+    ]
+  },
+  {
+    "sceneId": "watch_briefing_room",
+    "title": "Watch Briefing Room",
+    "subtitle": "Captain Ren's morning roll-call. Find the off-rotation gear.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#1e293b'><rect x='0' y='480' width='1000' height='120' fill='#334155'/><rect x='80' y='200' width='260' height='280' fill='#475569' stroke='#0f172a' stroke-width='3'/><rect x='380' y='180' width='240' height='300' fill='#64748b' stroke='#0f172a' stroke-width='3'/><rect x='660' y='200' width='260' height='280' fill='#475569' stroke='#0f172a' stroke-width='3'/><text x='500' y='220' fill='#e2e8f0' font-size='14' text-anchor='middle'>WATCH</text><circle cx='160' cy='320' r='8' fill='#dc2626'/><text x='160' y='345' fill='#fca5a5' font-size='9' text-anchor='middle'>red badge</text><rect x='420' y='380' width='20' height='80' fill='#94a3b8'/><text x='430' y='475' fill='#cbd5e1' font-size='9' text-anchor='middle'>baton</text><polygon points='760,330 780,310 800,330 780,350' fill='#fbbf24'/><text x='780' y='370' fill='#fde68a' font-size='9' text-anchor='middle'>captain pin</text><circle cx='870' cy='420' r='10' fill='#10b981'/><text x='870' y='450' fill='#6ee7b7' font-size='9' text-anchor='middle'>green coin</text></svg>",
+    "targets": [
+      { "id": "red_badge",    "label": "Red Watch badge",    "x": 0.15, "y": 0.51, "w": 0.04, "h": 0.07 },
+      { "id": "captain_pin",  "label": "Captain's pin",      "x": 0.75, "y": 0.51, "w": 0.05, "h": 0.07 },
+      { "id": "baton",        "label": "Spare baton",        "x": 0.41, "y": 0.62, "w": 0.04, "h": 0.15 },
+      { "id": "green_coin",   "label": "Green merit coin",   "x": 0.85, "y": 0.67, "w": 0.04, "h": 0.07 }
+    ]
+  },
+  {
+    "sceneId": "archive_curator_chamber",
+    "title": "Archive Curator's Chamber",
+    "subtitle": "Asbir's audience room. Find what's hiding.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#0f172a'><rect x='0' y='480' width='1000' height='120' fill='#1e293b'/><rect x='100' y='80' width='180' height='400' fill='#1e3a5f' stroke='#0f172a' stroke-width='3'/><rect x='720' y='80' width='180' height='400' fill='#1e3a5f' stroke='#0f172a' stroke-width='3'/><rect x='400' y='320' width='200' height='160' fill='#7c2d12'/><text x='500' y='400' fill='#fed7aa' font-size='12' text-anchor='middle'>desk</text><rect x='180' y='150' width='30' height='40' fill='#d97706'/><text x='195' y='205' fill='#fbbf24' font-size='8' text-anchor='middle'>brass key</text><rect x='790' y='200' width='40' height='6' fill='#dc2626'/><text x='810' y='220' fill='#fca5a5' font-size='8' text-anchor='middle'>red ribbon</text><circle cx='460' cy='370' r='6' fill='#fde047'/><text x='460' y='390' fill='#fef08a' font-size='8' text-anchor='middle'>brass stylus</text><rect x='550' y='340' width='30' height='40' fill='#1f2937' stroke='#475569'/><text x='565' y='395' fill='#9ca3af' font-size='8' text-anchor='middle'>sealed letter</text></svg>",
+    "targets": [
+      { "id": "brass_key",       "label": "Brass key on shelf", "x": 0.17, "y": 0.24, "w": 0.04, "h": 0.08 },
+      { "id": "red_ribbon",      "label": "Red ribbon",          "x": 0.78, "y": 0.32, "w": 0.05, "h": 0.02 },
+      { "id": "brass_stylus",    "label": "Brass stylus",        "x": 0.45, "y": 0.60, "w": 0.03, "h": 0.04 },
+      { "id": "sealed_letter",   "label": "Sealed letter",       "x": 0.54, "y": 0.55, "w": 0.04, "h": 0.08 }
+    ]
+  },
+  {
+    "sceneId": "dome_perimeter_dusk",
+    "title": "Dome Perimeter at Dusk",
+    "subtitle": "Oracle Nesha walks the southern arc. Spot the disturbance.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:linear-gradient(180deg,#1e1b4b,#312e81 60%,#0f172a)'><circle cx='500' cy='620' r='480' fill='none' stroke='#a78bfa' stroke-width='3' opacity='0.4'/><circle cx='500' cy='620' r='460' fill='none' stroke='#a78bfa' stroke-width='2' opacity='0.3'/><rect x='200' y='420' width='600' height='80' fill='#1e1b4b'/><circle cx='340' cy='450' r='4' fill='#fcd34d'/><text x='340' y='470' fill='#fef3c7' font-size='8' text-anchor='middle'>signal</text><polygon points='540,400 555,440 525,440' fill='#dc2626' opacity='0.7'/><text x='540' y='460' fill='#fecaca' font-size='8' text-anchor='middle'>crack</text><circle cx='720' cy='430' r='6' fill='#a78bfa'/><text x='720' y='450' fill='#c4b5fd' font-size='8' text-anchor='middle'>glyph</text><circle cx='180' cy='480' r='8' fill='#fb923c'/><text x='180' y='505' fill='#fed7aa' font-size='8' text-anchor='middle'>watchman</text></svg>",
+    "targets": [
+      { "id": "anchor_signal", "label": "Yellow signal flare",  "x": 0.33, "y": 0.73, "w": 0.03, "h": 0.04 },
+      { "id": "field_crack",   "label": "Field-line crack",     "x": 0.52, "y": 0.65, "w": 0.04, "h": 0.10 },
+      { "id": "stray_glyph",   "label": "Stray glyph",          "x": 0.71, "y": 0.69, "w": 0.03, "h": 0.04 },
+      { "id": "watchman_lamp", "label": "Watchman's lamp",      "x": 0.17, "y": 0.78, "w": 0.04, "h": 0.05 }
+    ]
+  },
+  {
+    "sceneId": "seven_spokes_evening",
+    "title": "Seven Spokes Inn — Evening",
+    "subtitle": "Baren works the common room. Find the contraband.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#451a03'><rect x='0' y='480' width='1000' height='120' fill='#7c2d12'/><rect x='100' y='240' width='200' height='240' fill='#92400e' stroke='#451a03' stroke-width='3'/><rect x='350' y='240' width='300' height='240' fill='#9a3412' stroke='#451a03' stroke-width='3'/><rect x='700' y='240' width='200' height='240' fill='#92400e' stroke='#451a03' stroke-width='3'/><text x='500' y='285' fill='#fde68a' font-size='14' text-anchor='middle'>SEVEN SPOKES</text><circle cx='430' cy='400' r='12' fill='#f59e0b'/><text x='430' y='430' fill='#fde68a' font-size='9' text-anchor='middle'>ale mug</text><rect x='550' y='370' width='14' height='50' fill='#7f1d1d'/><text x='557' y='435' fill='#fecaca' font-size='9' text-anchor='middle'>flask</text><polygon points='200,380 220,360 240,380 220,400' fill='#1f2937'/><text x='220' y='420' fill='#9ca3af' font-size='9' text-anchor='middle'>hooded coin</text><circle cx='780' cy='420' r='8' fill='#84cc16'/><text x='780' y='445' fill='#bef264' font-size='9' text-anchor='middle'>poison vial</text></svg>",
+    "targets": [
+      { "id": "ale_mug",      "label": "Spilled ale mug",   "x": 0.41, "y": 0.62, "w": 0.05, "h": 0.07 },
+      { "id": "flask",        "label": "Dark flask",        "x": 0.55, "y": 0.59, "w": 0.04, "h": 0.10 },
+      { "id": "hooded_coin",  "label": "Hooded coin",       "x": 0.19, "y": 0.59, "w": 0.05, "h": 0.07 },
+      { "id": "poison_vial",  "label": "Green vial",        "x": 0.76, "y": 0.66, "w": 0.05, "h": 0.07 }
+    ]
+  },
+  {
+    "sceneId": "bell_tower_brackish",
+    "title": "Bell Tower — Brackish's Nest",
+    "subtitle": "What the urchin keeps. Find four trinkets.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:linear-gradient(180deg,#1e1b4b,#0f172a)'><polygon points='100,500 100,200 500,80 900,200 900,500' fill='#312e81' stroke='#1e1b4b' stroke-width='4'/><circle cx='500' cy='280' r='90' fill='#1e1b4b' stroke='#312e81' stroke-width='6'/><text x='500' y='290' fill='#a5b4fc' font-size='30' text-anchor='middle'>♦</text><rect x='200' y='430' width='30' height='40' fill='#7f1d1d'/><text x='215' y='480' fill='#fecaca' font-size='8' text-anchor='middle'>red shoe</text><circle cx='350' cy='400' r='8' fill='#fbbf24'/><text x='350' y='425' fill='#fde68a' font-size='8' text-anchor='middle'>coin</text><polygon points='620,420 640,395 660,420 640,445' fill='#10b981'/><text x='640' y='465' fill='#6ee7b7' font-size='8' text-anchor='middle'>emerald</text><rect x='790' y='400' width='14' height='30' fill='#94a3b8'/><text x='797' y='450' fill='#cbd5e1' font-size='8' text-anchor='middle'>brass pin</text></svg>",
+    "targets": [
+      { "id": "red_shoe",  "label": "Single red shoe", "x": 0.19, "y": 0.71, "w": 0.04, "h": 0.07 },
+      { "id": "coin",      "label": "Gold coin",       "x": 0.34, "y": 0.65, "w": 0.04, "h": 0.05 },
+      { "id": "emerald",   "label": "Cut emerald",     "x": 0.61, "y": 0.65, "w": 0.05, "h": 0.10 },
+      { "id": "brass_pin", "label": "Brass pin",       "x": 0.78, "y": 0.65, "w": 0.03, "h": 0.06 }
+    ]
+  },
+  {
+    "sceneId": "brawl_pit_floor",
+    "title": "Brawling Pit — Sand & Sweat",
+    "subtitle": "Taro Sandren's domain. Spot the missing gear.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#7c2d12'><ellipse cx='500' cy='450' rx='400' ry='100' fill='#a16207'/><circle cx='500' cy='450' r='4' fill='#451a03' opacity='0.6'/><circle cx='320' cy='460' r='3' fill='#451a03' opacity='0.6'/><circle cx='680' cy='455' r='3' fill='#451a03' opacity='0.6'/><rect x='160' y='400' width='30' height='80' fill='#451a03'/><text x='175' y='495' fill='#fed7aa' font-size='9' text-anchor='middle'>broken stool</text><circle cx='450' cy='430' r='14' fill='#dc2626'/><text x='450' y='465' fill='#fecaca' font-size='9' text-anchor='middle'>red sash</text><polygon points='620,420 630,400 645,420 630,440' fill='#94a3b8'/><text x='630' y='460' fill='#cbd5e1' font-size='9' text-anchor='middle'>iron buckle</text><rect x='820' y='420' width='30' height='14' fill='#fde047'/><text x='835' y='455' fill='#fef08a' font-size='9' text-anchor='middle'>gold tooth</text></svg>",
+    "targets": [
+      { "id": "broken_stool", "label": "Broken stool",   "x": 0.16, "y": 0.67, "w": 0.04, "h": 0.14 },
+      { "id": "red_sash",     "label": "Red sash",       "x": 0.43, "y": 0.69, "w": 0.05, "h": 0.07 },
+      { "id": "iron_buckle",  "label": "Iron buckle",    "x": 0.61, "y": 0.67, "w": 0.04, "h": 0.07 },
+      { "id": "gold_tooth",   "label": "Gold tooth",     "x": 0.81, "y": 0.70, "w": 0.04, "h": 0.04 }
+    ]
+  },
+  {
+    "sceneId": "foundry_workshop",
+    "title": "Brassgate Foundry",
+    "subtitle": "Lyra's workshop. Find the diagrams that shouldn't be public.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#1f2937'><rect x='0' y='460' width='1000' height='140' fill='#374151'/><rect x='80' y='280' width='200' height='180' fill='#7f1d1d'/><circle cx='180' cy='370' r='30' fill='#fbbf24' opacity='0.7'/><text x='180' y='375' fill='#451a03' font-size='14' text-anchor='middle'>FORGE</text><rect x='320' y='320' width='300' height='140' fill='#475569' stroke='#1f2937' stroke-width='2'/><text x='470' y='350' fill='#cbd5e1' font-size='12' text-anchor='middle'>workbench</text><rect x='660' y='280' width='240' height='180' fill='#374151'/><rect x='380' y='370' width='40' height='4' fill='#fde047'/><text x='400' y='390' fill='#fef08a' font-size='8' text-anchor='middle'>focus lattice schematic</text><circle cx='540' cy='400' r='6' fill='#10b981'/><text x='540' y='425' fill='#6ee7b7' font-size='8' text-anchor='middle'>green dial</text><rect x='720' y='380' width='30' height='40' fill='#dc2626'/><text x='735' y='445' fill='#fca5a5' font-size='8' text-anchor='middle'>warning seal</text></svg>",
+    "targets": [
+      { "id": "lattice_schematic", "label": "Focus-lattice schematic", "x": 0.38, "y": 0.61, "w": 0.05, "h": 0.04 },
+      { "id": "green_dial",        "label": "Green calibration dial",  "x": 0.53, "y": 0.65, "w": 0.03, "h": 0.04 },
+      { "id": "warning_seal",      "label": "Red warning seal",        "x": 0.72, "y": 0.63, "w": 0.04, "h": 0.08 }
+    ]
+  },
+  {
+    "sceneId": "stables_morning",
+    "title": "Verge Stables — Morning Feed",
+    "subtitle": "Orin's pattern says one horse came back wrong. Spot the off-detail.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:linear-gradient(180deg,#365314,#1a2e05)'><rect x='0' y='450' width='1000' height='150' fill='#3f6212'/><rect x='80' y='250' width='200' height='210' fill='#92400e' stroke='#451a03' stroke-width='3'/><rect x='320' y='250' width='200' height='210' fill='#a16207' stroke='#451a03' stroke-width='3'/><rect x='560' y='250' width='200' height='210' fill='#92400e' stroke='#451a03' stroke-width='3'/><rect x='800' y='250' width='180' height='210' fill='#92400e' stroke='#451a03' stroke-width='3'/><circle cx='180' cy='380' r='18' fill='#451a03'/><circle cx='420' cy='380' r='18' fill='#7f1d1d'/><circle cx='660' cy='380' r='18' fill='#451a03'/><circle cx='890' cy='380' r='18' fill='#451a03'/><text x='420' y='430' fill='#fde68a' font-size='9' text-anchor='middle'>off-pattern</text><rect x='190' y='460' width='30' height='30' fill='#fbbf24'/><text x='205' y='495' fill='#fde68a' font-size='8' text-anchor='middle'>oats bag</text><polygon points='430,460 450,445 470,460 450,475' fill='#94a3b8'/><text x='450' y='495' fill='#cbd5e1' font-size='8' text-anchor='middle'>broken bit</text><circle cx='890' cy='460' r='8' fill='#dc2626'/><text x='890' y='485' fill='#fca5a5' font-size='8' text-anchor='middle'>blood</text></svg>",
+    "targets": [
+      { "id": "off_pattern_horse", "label": "Off-pattern horse",  "x": 0.39, "y": 0.60, "w": 0.05, "h": 0.08 },
+      { "id": "oats_bag",          "label": "Spilled oats bag",   "x": 0.19, "y": 0.76, "w": 0.04, "h": 0.06 },
+      { "id": "broken_bit",        "label": "Broken bit",         "x": 0.43, "y": 0.74, "w": 0.05, "h": 0.05 },
+      { "id": "blood_drop",        "label": "Dried blood drop",   "x": 0.86, "y": 0.75, "w": 0.04, "h": 0.04 }
+    ]
+  },
+  {
+    "sceneId": "portal_plaza_offcycle",
+    "title": "Portal Plaza — Off-Schedule Surge",
+    "subtitle": "Kel's portal opens minutes early. Note the anomalies.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#0f172a'><rect x='0' y='460' width='1000' height='140' fill='#1e293b'/><ellipse cx='500' cy='280' rx='180' ry='200' fill='url(#portalGrad)'/><defs><radialGradient id='portalGrad'><stop offset='0%' stop-color='#a78bfa' stop-opacity='0.8'/><stop offset='60%' stop-color='#7c3aed' stop-opacity='0.4'/><stop offset='100%' stop-color='#312e81' stop-opacity='0.1'/></radialGradient></defs><ellipse cx='500' cy='280' rx='180' ry='200' fill='none' stroke='#a78bfa' stroke-width='3' opacity='0.6'/><circle cx='500' cy='280' r='30' fill='#0f172a'/><text x='500' y='560' fill='#cbd5e1' font-size='13' text-anchor='middle'>PORTAL PLAZA</text><rect x='220' y='400' width='40' height='80' fill='#451a03'/><text x='240' y='495' fill='#fed7aa' font-size='9' text-anchor='middle'>satchel</text><polygon points='720,420 740,395 760,420 740,445' fill='#fbbf24'/><text x='740' y='465' fill='#fef08a' font-size='9' text-anchor='middle'>coin pile</text><circle cx='150' cy='250' r='6' fill='#06b6d4'/><text x='150' y='275' fill='#67e8f9' font-size='8' text-anchor='middle'>shimmer</text><circle cx='850' cy='250' r='6' fill='#06b6d4'/><text x='850' y='275' fill='#67e8f9' font-size='8' text-anchor='middle'>shimmer</text></svg>",
+    "targets": [
+      { "id": "abandoned_satchel", "label": "Abandoned satchel", "x": 0.22, "y": 0.66, "w": 0.04, "h": 0.14 },
+      { "id": "spilled_coins",     "label": "Spilled coin pile", "x": 0.72, "y": 0.66, "w": 0.04, "h": 0.08 },
+      { "id": "left_shimmer",      "label": "Left-side shimmer", "x": 0.14, "y": 0.40, "w": 0.04, "h": 0.04 },
+      { "id": "right_shimmer",     "label": "Right-side shimmer","x": 0.83, "y": 0.40, "w": 0.04, "h": 0.04 }
+    ]
+  },
+  {
+    "sceneId": "kiren_forest_dawn",
+    "title": "Northern Woodline — Dawn Patrol",
+    "subtitle": "Ranger Kiren has been tracking a print no catalogue lists. Spot the signs.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:linear-gradient(180deg,#0f172a,#1e3a3a,#365314)'><circle cx='800' cy='100' r='40' fill='#fcd34d' opacity='0.6'/><polygon points='100,500 130,200 160,500' fill='#14532d'/><polygon points='250,500 280,180 310,500' fill='#166534'/><polygon points='400,500 430,160 460,500' fill='#14532d'/><polygon points='550,500 580,200 610,500' fill='#166534'/><polygon points='700,500 730,180 760,500' fill='#14532d'/><polygon points='850,500 880,220 910,500' fill='#166534'/><ellipse cx='500' cy='510' rx='40' ry='10' fill='#451a03'/><text x='500' y='540' fill='#fed7aa' font-size='9' text-anchor='middle'>strange print</text><polygon points='200,470 220,455 240,470' fill='#dc2626'/><text x='220' y='495' fill='#fca5a5' font-size='8' text-anchor='middle'>broken twig</text><circle cx='750' cy='480' r='5' fill='#fbbf24'/><text x='750' y='505' fill='#fde68a' font-size='8' text-anchor='middle'>fur tuft</text></svg>",
+    "targets": [
+      { "id": "strange_print", "label": "Print not in catalogue", "x": 0.46, "y": 0.81, "w": 0.08, "h": 0.05 },
+      { "id": "broken_twig",   "label": "Snapped twig",           "x": 0.20, "y": 0.77, "w": 0.04, "h": 0.04 },
+      { "id": "fur_tuft",      "label": "Tuft of fur",            "x": 0.74, "y": 0.78, "w": 0.03, "h": 0.04 }
+    ]
+  },
+  {
+    "sceneId": "infirmary_back_door",
+    "title": "Infirmary Back Door — Refugee Hour",
+    "subtitle": "Pia opens the back door to refugees. Find the off-ledger.",
+    "svg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 600' width='1000' height='600' style='background:#1f2937'><rect x='0' y='460' width='1000' height='140' fill='#374151'/><rect x='100' y='180' width='800' height='280' fill='#86efac' opacity='0.1' stroke='#10b981' stroke-width='2'/><rect x='400' y='250' width='200' height='210' fill='#1e3a2a' stroke='#10b981' stroke-width='3'/><text x='500' y='280' fill='#bbf7d0' font-size='12' text-anchor='middle'>INFIRMARY</text><rect x='160' y='370' width='40' height='90' fill='#7c2d12'/><text x='180' y='480' fill='#fed7aa' font-size='9' text-anchor='middle'>herb basket</text><rect x='280' y='370' width='40' height='90' fill='#1f2937' stroke='#94a3b8'/><text x='300' y='480' fill='#cbd5e1' font-size='9' text-anchor='middle'>satchel</text><circle cx='720' cy='420' r='10' fill='#dc2626'/><text x='720' y='450' fill='#fca5a5' font-size='9' text-anchor='middle'>blood vial</text><rect x='820' y='400' width='30' height='40' fill='#fde047'/><text x='835' y='455' fill='#fef08a' font-size='9' text-anchor='middle'>bribe coin</text></svg>",
+    "targets": [
+      { "id": "herb_basket",   "label": "Refugee herb basket", "x": 0.16, "y": 0.61, "w": 0.04, "h": 0.15 },
+      { "id": "off_satchel",   "label": "Unmarked satchel",     "x": 0.28, "y": 0.61, "w": 0.04, "h": 0.15 },
+      { "id": "blood_vial",    "label": "Blood vial",           "x": 0.71, "y": 0.68, "w": 0.04, "h": 0.05 },
+      { "id": "bribe_coin",    "label": "Off-ledger coin",      "x": 0.82, "y": 0.66, "w": 0.04, "h": 0.07 }
+    ]
+  }
+]

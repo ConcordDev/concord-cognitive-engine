@@ -1,0 +1,30 @@
+{
+  "coroner_ada_pell:idle": {
+    "greeting": "Ada looks up from the slab. \"Walker. The dead are cooperative tonight. Make it quick.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Three logs. One open to the public. Two not. Which interests you?\"",
+        "playerOptions": [
+          { "text": "Your anomaly log.", "leadsTo": "node_anomaly" },
+          { "text": "Just paying respects.", "leadsTo": "node_close" }
+        ]
+      },
+      { "id": "node_anomaly", "npcText": "\"The pattern matches Kiren Owl's. Same creature, two worlds. Take the log to him; come back with his countersignature.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "She pulls the sheet back over the slab.", "playerOptions": [] }
+    ]
+  },
+  "fence_maddox_kray:idle": {
+    "greeting": "Maddox glances around. \"You alone? Good.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Buying, selling, or trouble?\"",
+        "playerOptions": [
+          { "text": "Detective Voss wants your statement.", "leadsTo": "node_voss" },
+          { "text": "Just browsing.", "leadsTo": "node_close" }
+        ]
+      },
+      { "id": "node_voss", "npcText": "\"Damn. Three favours unpaid. I'll sign — once. Make it count.\"",
+        "playerOptions": [ { "text": "Now.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He folds the conversation away.", "playerOptions": [] }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "warrior_zaen_drift:idle": {
+    "greeting": "Zaen Drift faces the wall, sword sheathed. \"Walker. The Court is busy. Speak.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"What did you bring?\"",
+        "playerOptions": [
+          { "text": "A message from Calla.", "leadsTo": "node_calla" },
+          { "text": "Train me.", "leadsTo": "node_train" }
+        ]
+      },
+      { "id": "node_calla", "npcText": "His shoulders do not move. \"Speak the message. Quietly.\"",
+        "playerOptions": [ { "text": "The southern arc is thinning.", "leadsTo": "node_close" } ] },
+      { "id": "node_train", "npcText": "\"Dawn. The court-yard. Bring a blade you trust.\"",
+        "playerOptions": [ { "text": "I'll be there.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He turns back to the wall.", "playerOptions": [] }
+    ]
+  },
+  "healer_arn_tev:idle": {
+    "greeting": "Arn wipes his hands. \"Walker. The clinic is open. Talk while I work.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Refused-coin only. Or talk.\"",
+        "playerOptions": [
+          { "text": "Sevn Orn sends greeting from the Crucible.", "leadsTo": "node_sevn" },
+          { "text": "I'm injured.", "leadsTo": "node_injured" }
+        ]
+      },
+      { "id": "node_sevn", "npcText": "\"Good. Carry a satchel back. Under the tarp at the third tent.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_injured", "npcText": "\"Sit. Bandage. Don't move.\"",
+        "playerOptions": [ { "text": "Thank you.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "Already on the next patient.", "playerOptions": [] }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "songId": "iron-witness",
+  "bpm": 104,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Iron witness, iron word" },
+    { "at_ms": 2308,  "line": "What the courtroom never heard" },
+    { "at_ms": 4616,  "line": "Stand and swear, stand and lie" },
+    { "at_ms": 6924,  "line": "Either way, the killer's nigh" },
+    { "at_ms": 9232,  "line": "Verdict in, verdict in" },
+    { "at_ms": 11540, "line": "Sometimes mercy is a sin" },
+    { "at_ms": 13848, "line": "Iron witness, iron word" },
+    { "at_ms": 16156, "line": "What the courtroom never heard" }
+  ]
+}

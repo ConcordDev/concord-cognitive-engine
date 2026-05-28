@@ -1,0 +1,13 @@
+{
+  "id": "frontier_smithing_festival",
+  "name": "Smithing Festival",
+  "world_id": "concord-link-frontier",
+  "season_idx": 2,
+  "day_in_season_start": 28,
+  "day_in_season_end": 28,
+  "repeats_yearly": true,
+  "decoration_tag": "iron_filings",
+  "synopsis": "Hane Okra opens the smithy. Repairs free that day. The militia brings broken rifles in stacks.",
+  "achievements": [],
+  "quest_seeds": []
+}

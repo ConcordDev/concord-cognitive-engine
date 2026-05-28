@@ -1,0 +1,111 @@
+[
+  {
+    "id": "ruins_thanis_01_audience",
+    "title": "The Ruined Court — Audience with the Archon",
+    "description": "Archon Thanis accepts gifts of one kind: glyphs. Bring a fragment of the cross-world glyph you've composed.",
+    "giver_npc_id": "archon_thanis",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thanis1_compose",
+        "type": "interact",
+        "target": "hub_glyph_altar",
+        "required_count": 1,
+        "description": "Compose a strength-3 glyph at the hub altar."
+      },
+      {
+        "id": "obj_thanis1_visit",
+        "type": "reach_location",
+        "target": "ruins_throne_court",
+        "required_count": 1,
+        "description": "Bring it to the Ruined Court during audience hours."
+      },
+      {
+        "id": "obj_thanis1_present",
+        "type": "talk_to",
+        "target": "archon_thanis",
+        "required_count": 1,
+        "description": "Present the glyph to Thanis."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "ruins_thanis_02_layer"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_main"
+    ]
+  },
+  {
+    "id": "ruins_thanis_02_layer",
+    "title": "The Ruined Court — A Half-Layer Further",
+    "description": "Thanis gives you a fragment half a layer further along the same glyph. Carry it back to Nesha.",
+    "giver_npc_id": "archon_thanis",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thanis2_carry",
+        "type": "deliver",
+        "target": "thanis_glyph_to_nesha",
+        "required_count": 1,
+        "description": "Bring Thanis's fragment to Nesha in the hub."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "ruins_thanis_03_compose"
+    ],
+    "prerequisites": [
+      "ruins_thanis_01_audience"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_main"
+    ]
+  },
+  {
+    "id": "ruins_thanis_03_compose",
+    "title": "The Refusal Keep — Compose the Composite",
+    "description": "Nesha and Thanis's fragments compose to a strength-6 glyph. Mint it at the altar.",
+    "giver_npc_id": "oracle_nesha_keep",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_thanis3_mint",
+        "type": "interact",
+        "target": "hub_glyph_altar",
+        "required_count": 1,
+        "description": "Mint the composite glyph at the altar."
+      }
+    ],
+    "rewards": {
+      "xp": 1000,
+      "skill_xp": {
+        "glyph_composition": 200
+      },
+      "items": [
+        "thanis_nesha_composite_dtu"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "ruins_thanis_02_layer"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_main"
+    ]
+  }
+]

@@ -1,0 +1,160 @@
+{
+  "champion_kor_blackstar:idle": {
+    "greeting": "Kor Blackstar lowers his mask just enough to talk normally — not far enough to show his whole face. \"Walker. The city's quiet tonight. That usually means it isn't.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"You're here on the roof, which means you're a walker who isn't afraid of heights. That narrows it down.\"",
+        "playerOptions": [
+          { "text": "I've come about your old Sifu — he's alive in the hub.", "leadsTo": "node_sifu" },
+          { "text": "I want to talk to you about Iron Hex.", "leadsTo": "node_hex" },
+          { "text": "Just paying my respects.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sifu",
+        "npcText": "The mask comes back up an inch. \"That's not possible. He died when I was nineteen.\"",
+        "playerOptions": [
+          { "text": "I've met him. He tends roses.", "leadsTo": "node_sifu_2" },
+          { "text": "I was wrong. Apologies.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_sifu_2",
+        "npcText": "A long pause. \"If you're telling the truth, you have changed my year. If you're lying, I will find out.\" He nods once. \"Tell me where.\"",
+        "playerOptions": [
+          { "text": "Taro Sandren's brawling pit, hub. Mornings.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_hex",
+        "npcText": "His voice does not change. \"Iron Hex was my apprentice. I failed him. If you came to tell me to stop saying that, save your breath.\"",
+        "playerOptions": [
+          { "text": "I came to ask if you'd meet him.", "leadsTo": "node_hex_2" },
+          { "text": "I came to ask why you haven't killed him.", "leadsTo": "node_hex_3" }
+        ]
+      },
+      {
+        "id": "node_hex_2",
+        "npcText": "\"On neutral ground. No mask. No suit. If you can arrange that, do. Bring him to the rooftop above the noodle shop on 7th. Midnight, any Wednesday.\"",
+        "playerOptions": [
+          { "text": "I'll try.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_hex_3",
+        "npcText": "\"Because I owe him better than killing him. Don't ask me that again.\"",
+        "playerOptions": [
+          { "text": "Understood.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "He turns toward the edge. The cape catches. He's gone before you can answer.",
+        "playerOptions": []
+      }
+    ]
+  },
+  "reporter_mira_vance:idle": {
+    "greeting": "Mira Vance is on her third coffee of the morning. \"Walker. Give me thirty seconds — I have a deadline.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"Twenty-eight seconds. What.\"",
+        "playerOptions": [
+          { "text": "You're building a profile on Champion's identity. Don't publish.", "leadsTo": "node_dont" },
+          { "text": "I have information you'd want.", "leadsTo": "node_info" },
+          { "text": "Quick question about a story you ran.", "leadsTo": "node_story" }
+        ]
+      },
+      {
+        "id": "node_dont",
+        "npcText": "The coffee comes down hard. \"How do you know that?\"",
+        "playerOptions": [
+          { "text": "I know. Don't ask. Burn the profile.", "leadsTo": "node_dont_2" },
+          { "text": "Champion told me himself.", "leadsTo": "node_dont_3" }
+        ]
+      },
+      {
+        "id": "node_dont_2",
+        "npcText": "\"I won't burn it. I can sit on it. Tell Champion that. I'm a journalist, not a vigilante.\"",
+        "playerOptions": [
+          { "text": "Fair.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_dont_3",
+        "npcText": "She studies you. \"That would be more impressive if it weren't also a thing a liar would say. I'll sit on the story for now. Don't waste my discretion.\"",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_info",
+        "npcText": "\"Speak.\"",
+        "playerOptions": [
+          { "text": "Officer Carver is negotiating a truce with Iron Hex.", "leadsTo": "node_info_2" }
+        ]
+      },
+      {
+        "id": "node_info_2",
+        "npcText": "\"That's a column. That's two columns. If I run this, the city erupts before the truce takes hold. Tell me who told you so I can verify.\"",
+        "playerOptions": [
+          { "text": "I won't name them.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_story",
+        "npcText": "\"Which one?\"",
+        "playerOptions": [
+          { "text": "Just a follow-up question.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "She is already typing again. \"Get out of my doorway.\"",
+        "playerOptions": []
+      }
+    ]
+  },
+  "mentor_old_silas:idle": {
+    "greeting": "Silas Crane straightens from his rose bed, garden gloves caked with soil. \"Walker. The roses are blooming early this year. Sit if you like; the bench is dry.\"",
+    "nodes": [
+      {
+        "id": "node_1",
+        "npcText": "\"I haven't worn the mask in twenty years. Don't ask me to. Anything else, I'll answer.\"",
+        "playerOptions": [
+          { "text": "Tell me about Iron Hex. The truth.", "leadsTo": "node_hex" },
+          { "text": "Why did you stop?", "leadsTo": "node_stopped" },
+          { "text": "Just visiting.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_hex",
+        "npcText": "He sits on the bench. \"His name is Avery. He was my best student. He believed harder than I did. I broke first — quit, retired, came home to roses. He didn't. Now he wears that armour.\"",
+        "playerOptions": [
+          { "text": "Should Kor know?", "leadsTo": "node_hex_2" }
+        ]
+      },
+      {
+        "id": "node_hex_2",
+        "npcText": "\"Kor figures it out without help, or he doesn't. I won't tell him. If you do, you'll be the agent of that, not me.\"",
+        "playerOptions": [
+          { "text": "I'll think about it.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_stopped",
+        "npcText": "\"Because I started winning fights I shouldn't have. That kind of certainty kills more people than uncertainty. The roses are honest. They die when you stop watering them.\"",
+        "playerOptions": [
+          { "text": "Thank you.", "leadsTo": "node_close" }
+        ]
+      },
+      {
+        "id": "node_close",
+        "npcText": "He returns to the rose bed. \"Watch your step on the path.\"",
+        "playerOptions": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "scientist_dr_ana_pell:idle": {
+    "greeting": "Dr. Pell does not look up from the microscope. \"Walker. Two minutes. I'm at a delicate stage.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Make them count.\"",
+        "playerOptions": [
+          { "text": "Your gene treatment is six months from generalisable.", "leadsTo": "node_treatment" },
+          { "text": "Mira Vance is asking after you.", "leadsTo": "node_mira" }
+        ]
+      },
+      { "id": "node_treatment", "npcText": "Pause. \"You know that and you came here anyway. State your interest.\"",
+        "playerOptions": [ { "text": "I want it kept private.", "leadsTo": "node_close" } ] },
+      { "id": "node_mira", "npcText": "\"Tell her I'm two months from publishing my own column. She'll understand the message.\"",
+        "playerOptions": [ { "text": "Will do.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "Back to the microscope.", "playerOptions": [] }
+    ]
+  },
+  "officer_dale_carver:idle": {
+    "greeting": "Officer Carver folds his arms. \"Walker. You here to file something?\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"State it plainly.\"",
+        "playerOptions": [
+          { "text": "I know about your truce with Iron Hex.", "leadsTo": "node_truce" },
+          { "text": "Nothing — paying respects.", "leadsTo": "node_close" }
+        ]
+      },
+      { "id": "node_truce", "npcText": "His expression does not change. \"Then you also know it doesn't survive being said out loud. Don't say it again. Anywhere. Including here.\"",
+        "playerOptions": [ { "text": "Understood.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He returns to the desk.", "playerOptions": [] }
+    ]
+  }
+}

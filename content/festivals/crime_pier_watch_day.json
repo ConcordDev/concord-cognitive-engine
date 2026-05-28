@@ -1,0 +1,13 @@
+{
+  "id": "crime_pier_watch_day",
+  "name": "Pier Watch Day",
+  "world_id": "crime",
+  "season_idx": 1,
+  "day_in_season_start": 7,
+  "day_in_season_end": 7,
+  "repeats_yearly": true,
+  "decoration_tag": "watch_blue_banners",
+  "synopsis": "The Watch parades the pier. Half-civic, half-warning. Silas Thorpe never attends.",
+  "achievements": [],
+  "quest_seeds": []
+}

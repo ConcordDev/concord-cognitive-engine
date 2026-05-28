@@ -1,0 +1,13 @@
+{
+  "id": "fantasy_thornwood_investiture",
+  "name": "Thornwood Investiture",
+  "world_id": "fantasy",
+  "season_idx": 0,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "thorn_banners",
+  "synopsis": "The Lady reaffirms her oaths to the Keep. Thornwood banners across the great hall. Knights kneel and rise.",
+  "achievements": [],
+  "quest_seeds": []
+}

@@ -947,6 +947,18 @@ export default function ConcordiaScene({
       });
 
       setIsReady(true);
+      // Phase J — signal the travel hook that the new scene's first frame
+      // is about to render. The hook resolves its `travel()` Promise and
+      // hides the portal load screen.
+      try {
+        if (typeof window !== 'undefined') {
+          // Fire on the next animation frame so React has a chance to paint
+          // the scene before we hide the overlay.
+          requestAnimationFrame(() => {
+            window.dispatchEvent(new CustomEvent('concordia:scene-ready'));
+          });
+        }
+      } catch { /* SSR */ }
 
       // Camera follow / collision support refs (reused across frames)
       const cameraLookStateRef = cameraLookState;
@@ -1250,12 +1262,18 @@ export default function ConcordiaScene({
             | { isNPC?: boolean; isOtherPlayer?: boolean; avatarId?: string; name?: string; occupation?: string }
             | undefined;
           if (ud?.isNPC && ud.avatarId) {
+            // Phase DA1 — NPC click opens a contextual action menu near
+            // the cursor; the menu's "Talk" action forwards to dialogue.
+            // Backward compat: legacy listeners on concordia:open-dialogue
+            // still work via the menu's onTalk callback.
             try {
-              window.dispatchEvent(new CustomEvent('concordia:open-dialogue', {
+              window.dispatchEvent(new CustomEvent('concordia:npc-context-menu', {
                 detail: {
                   npcId:      ud.avatarId,
                   npcName:    ud.name ?? ud.avatarId,
                   occupation: ud.occupation ?? null,
+                  screenX:    e.clientX,
+                  screenY:    e.clientY,
                 },
               }));
             } catch { /* dispatch best-effort */ }
@@ -1426,6 +1444,14 @@ export default function ConcordiaScene({
       layersRef.current = {};
       buildingMap.clear();
       setIsReady(false);
+      // Phase J — signal the travel hook that the previous scene is fully
+      // disposed so it can safely set activeWorldId + wait for the next
+      // scene to mount.
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('concordia:scene-disposed'));
+        }
+      } catch { /* SSR */ }
     };
   }, [districtId, quality, themeProp, renderStyle, onBuildingClick, onTerrainClick]);
 

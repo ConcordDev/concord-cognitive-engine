@@ -1,0 +1,14 @@
+{
+  "songId": "dome-collapse",
+  "bpm": 140,
+  "lyrics": [
+    { "at_ms": 0,     "line": "Southern arc, southern arc" },
+    { "at_ms": 1714,  "line": "Crack in the field, crack in the dark" },
+    { "at_ms": 3428,  "line": "Ren saw it first, Nesha confirmed" },
+    { "at_ms": 5142,  "line": "Mira holds the secret, the Assembly unwarned" },
+    { "at_ms": 6856,  "line": "Run, run, the dome may break" },
+    { "at_ms": 8570,  "line": "Run for the centre, run for the lake" },
+    { "at_ms": 10284, "line": "Southern arc, southern arc" },
+    { "at_ms": 11998, "line": "Crack in the field, crack in the dark" }
+  ]
+}

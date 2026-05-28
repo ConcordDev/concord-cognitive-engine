@@ -264,7 +264,7 @@ function seedNPCs(npcs, opts = {}) {
     count++;
   }
   if (db) {
-    try { logger.info?.({ count, worldNpcs, defaultWorldId }, "content_seeder_world_npcs_persisted"); }
+    try { logger.info?.("content_seeder", "world_npcs_persisted", { count, worldNpcs, defaultWorldId }); }
     catch { /* noop */ }
   }
   return count;
@@ -483,8 +483,34 @@ export async function seedContent({ db = null } = {}) {
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
     const subNpcs = readJSON(`${sub.path}/npcs.json`);
     if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs, { db, defaultWorldId: sub.id });
+    // Phase E2 — npcs-extra.json is an opt-in append slot for density bumps,
+    // so we don't have to splice into the rich primary file.
+    const subNpcsExtra = readJSON(`${sub.path}/npcs-extra.json`);
+    if (Array.isArray(subNpcsExtra)) results.npcs += seedNPCs(subNpcsExtra, { db, defaultWorldId: sub.id });
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
+  }
+
+  // Phase F1.2 — boot-time asymmetric-traits seeding.
+  // npc-asymmetry.js#seedNPCAsymmetry was previously called lazily on first
+  // interaction. Walking every authored NPC at boot means grudges /
+  // preoccupations / desires are populated before the player ever talks
+  // to anyone. Idempotent at the row level — re-running is safe.
+  if (db) {
+    try {
+      const { seedNPCAsymmetry } = await import("./npc-asymmetry.js");
+      const authored = [..._authoredNPCs.values()];
+      let asymPatched = 0;
+      for (const npc of authored) {
+        try {
+          const r = await seedNPCAsymmetry(db, npc);
+          if (r?.ok && r?.reason !== "already_seeded") asymPatched++;
+        } catch { /* per-NPC best-effort */ }
+      }
+      results.npcAsymmetrySeeded = asymPatched;
+    } catch (err) {
+      logger.warn("content_seeder", "asymmetry_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain
@@ -511,10 +537,36 @@ export async function seedContent({ db = null } = {}) {
     "quests/kael-torchlight.json",
     "quests/first-day-arc.json",
     "quests/the-handshake-revelation.json",
+    // Phase E6 — Phase D substrate-connecting quest chains.
+    "quests/southern-arc-mystery.json",
+    "quests/impossible-print.json",
+    "quests/brackish-trust.json",
+    "quests/nesha-old-seam.json",
+    "quests/sealed-record.json",
+    // Phase E8 — Phase D onboarding extension chained from first_cycle_commune.
+    "quests/first_cycle_phase_d.json",
   ]) {
     const side = readJSON(sideFile);
     if (Array.isArray(side)) results.quests += seedQuestFile(side);
   }
+
+  // Phase F2.1 — sub-world quest chains. Walk content/quests/sub-worlds/<world>/
+  // and load every .json file as a chain. New worlds + new chains drop in
+  // without editing the seeder.
+  try {
+    const subWorldDir = join(CONTENT_ROOT, "quests", "sub-worlds");
+    for (const worldName of readdirSync(subWorldDir)) {
+      const worldPath = join(subWorldDir, worldName);
+      let isDir = false;
+      try { isDir = statSync(worldPath).isDirectory(); } catch { /* skip */ }
+      if (!isDir) continue;
+      for (const fname of readdirSync(worldPath)) {
+        if (!fname.endsWith(".json")) continue;
+        const chain = readJSON(`quests/sub-worlds/${worldName}/${fname}`);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+      }
+    }
+  } catch { /* no sub-worlds dir — fine */ }
 
   // Authored dialogue trees — keyed by `npcId:questId:phase`. The narrative
   // bridge looks these up and short-circuits the LLM dialogue path when a
@@ -574,11 +626,127 @@ export async function seedContent({ db = null } = {}) {
     }
   }
 
+  // Phase Z2 — wire boot-time seeders for the 5 substrates that were
+  // empty at launch (hacking puzzles, code puzzles, trivia questions,
+  // glyph components, karaoke songs). Each is idempotent (gated by row
+  // count or PK).
+  if (db) {
+    try {
+      const { seedDefaultGlyphLibrary } = await import("./glyph-spells.js");
+      const r = seedDefaultGlyphLibrary(db);
+      results.glyphComponents = r?.seeded ?? r?.inserted ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "glyph_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const hpJson = readJSON("hacking-puzzles.json");
+      if (Array.isArray(hpJson) && hpJson.length > 0) {
+        const { authorPuzzle: authorHack } = await import("./hacking.js");
+        let inserted = 0;
+        for (const p of hpJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM hacking_puzzles WHERE name = ?`).get(p.name);
+            if (existing) continue;
+            const r = authorHack(db, p);
+            if (r?.ok) inserted++;
+          } catch { /* per-puzzle best-effort */ }
+        }
+        results.hackingPuzzles = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "hacking_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const cpJson = readJSON("code-puzzles.json");
+      if (Array.isArray(cpJson) && cpJson.length > 0) {
+        const { authorPuzzle: authorCp } = await import("./programming-puzzle.js");
+        let inserted = 0;
+        for (const p of cpJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM programming_puzzles WHERE name = ?`).get(p.name);
+            if (existing) continue;
+            const r = authorCp(db, p);
+            if (r?.ok) inserted++;
+          } catch { /* per-puzzle best-effort */ }
+        }
+        results.codePuzzles = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "code_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const tqJson = readJSON("trivia-questions.json");
+      if (Array.isArray(tqJson) && tqJson.length > 0) {
+        const { authorQuestion } = await import("./trivia.js");
+        // Author DTUs for the answers first so the citation flow works.
+        let inserted = 0;
+        for (const q of tqJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM trivia_questions WHERE question_text = ?`).get(q.questionText);
+            if (existing) continue;
+            // Mint a lightweight answer-DTU.
+            const dtuId = `trivia_answer_${q.id}`;
+            try {
+              db.prepare(`
+                INSERT OR IGNORE INTO dtus (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
+                VALUES (?, 'trivia_answer', ?, ?, unixepoch(), 'system', 'global', 'public')
+              `).run(dtuId, `Trivia: ${q.questionText.slice(0, 60)}`, q.answerHumanSummary || "");
+            } catch { /* DTU table shape may differ — best-effort */ }
+            const r = authorQuestion(db, {
+              dtuId,
+              questionText: q.questionText,
+              answerDtuId: dtuId,
+              difficulty: q.difficulty || 1,
+              createdBy: "system",
+            });
+            if (r?.ok) inserted++;
+          } catch { /* per-question best-effort */ }
+        }
+        results.triviaQuestions = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "trivia_seed_failed", { err: err?.message });
+    }
+
+    // Phase E3 — hidden-object scenes.
+    try {
+      const hoJson = readJSON("hidden-object-scenes.json");
+      if (Array.isArray(hoJson) && hoJson.length > 0) {
+        const { createScene: createHoScene } = await import("./hidden-object.js");
+        let inserted = 0;
+        for (const s of hoJson) {
+          try {
+            // Idempotent by sceneId — the lib uses random ids but we want
+            // stable ones for authored content. Check first.
+            const existing = db.prepare(`SELECT id FROM hidden_object_scenes WHERE id = ?`).get(s.sceneId);
+            if (existing) continue;
+            // The lib's createScene generates a fresh id; we insert
+            // directly with the authored sceneId so the image-route URL
+            // is stable.
+            db.prepare(`
+              INSERT INTO hidden_object_scenes
+                (id, scene_dtu_id, host_user_id, title, target_objects_json)
+              VALUES (?, ?, ?, ?, ?)
+            `).run(s.sceneId, `authored:${s.sceneId}`, "system", s.title || "Untitled scene", JSON.stringify(s.targets || []));
+            inserted++;
+          } catch { /* per-scene best-effort */ }
+        }
+        results.hiddenObjectScenes = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "hidden_object_seed_failed", { err: err?.message });
+    }
+  }
+
   _seeded = true;
 
   logger.info(
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0 },
-    "content_seeded"
+    "content_seeder",
+    "content_seeded",
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0, hiddenObjectScenes: results.hiddenObjectScenes || 0 }
   );
 
   return { ok: true, counts: results };

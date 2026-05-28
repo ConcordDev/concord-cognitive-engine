@@ -1,0 +1,93 @@
+{
+  "$schema": "achievement-catalog.v1",
+  "category": "combat",
+  "achievements": [
+    {
+      "id": "first_blood",
+      "title": "First Blood",
+      "description": "Land your first hit in combat.",
+      "rarity": "bronze",
+      "icon": "Swords",
+      "rewardCc": 5,
+      "triggers": [{ "kind": "event", "event": "combat:hit", "condition": { "isPlayer": true } }]
+    },
+    {
+      "id": "first_kill",
+      "title": "First Kill",
+      "description": "Defeat your first opponent.",
+      "rarity": "bronze",
+      "icon": "Skull",
+      "rewardCc": 10,
+      "triggers": [{ "kind": "event", "event": "combat:kill", "condition": {} }]
+    },
+    {
+      "id": "duel_champion",
+      "title": "Duel Champion",
+      "description": "Win 25 duels.",
+      "rarity": "silver",
+      "icon": "Crown",
+      "rewardCc": 50,
+      "rewardTitle": "the Duelist",
+      "triggers": [{ "kind": "stat", "stat": "duels_won", "threshold": 25 }]
+    },
+    {
+      "id": "boss_slayer",
+      "title": "Boss Slayer",
+      "description": "Slay a world boss.",
+      "rarity": "gold",
+      "icon": "Trophy",
+      "rewardCc": 200,
+      "rewardTitle": "Slayer of Giants",
+      "triggers": [{ "kind": "event", "event": "boss:defeated", "condition": {} }]
+    },
+    {
+      "id": "untouchable",
+      "title": "Untouchable",
+      "description": "Win a duel without taking damage.",
+      "rarity": "gold",
+      "icon": "Shield",
+      "rewardCc": 100,
+      "triggers": [{ "kind": "event", "event": "combat:flawless-victory", "condition": {} }]
+    },
+    {
+      "id": "tournament_winner",
+      "title": "Tournament Winner",
+      "description": "Place 1st in any tournament.",
+      "rarity": "gold",
+      "icon": "Medal",
+      "rewardCc": 300,
+      "rewardTitle": "the Crowned",
+      "triggers": [{ "kind": "event", "event": "tournament:complete", "condition": { "placement": 1 } }]
+    },
+    {
+      "id": "legendary_combatant",
+      "title": "Legendary Combatant",
+      "description": "Win 1000 fights across all worlds.",
+      "rarity": "legendary",
+      "icon": "Flame",
+      "rewardCc": 5000,
+      "rewardTitle": "the Legendary",
+      "hidden": true,
+      "triggers": [{ "kind": "stat", "stat": "fights_won", "threshold": 1000 }]
+    },
+    {
+      "id": "tavern_brawler",
+      "title": "Tavern Brawler",
+      "description": "Win 5 unarmed brawls.",
+      "rarity": "bronze",
+      "icon": "Beer",
+      "rewardCc": 25,
+      "triggers": [{ "kind": "stat", "stat": "brawls_won", "threshold": 5 }]
+    },
+    {
+      "id": "frame_perfect",
+      "title": "Frame Perfect",
+      "description": "Parry within the active window (50ms tolerance) ten times.",
+      "rarity": "gold",
+      "icon": "Timer",
+      "rewardCc": 150,
+      "rewardTitle": "the Reflexive",
+      "triggers": [{ "kind": "stat", "stat": "perfect_parries", "threshold": 10 }]
+    }
+  ]
+}

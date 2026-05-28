@@ -4,6 +4,7 @@
 import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
+import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
 import { loadWorld, listWorlds, getActiveWorldForPlayer } from "../lib/world-loader.js";
 import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
@@ -64,13 +65,26 @@ function _validateCombatReach(userId, npcRow, skillData) {
  * produced — this is the second guard, defending against a future bug
  * in computeDamage that drops a sanity check.
  */
-function _validateDamageCap(damageResult, skillData) {
+function _validateDamageCap(damageResult, skillData, opts = {}) {
   if (!damageResult || typeof damageResult.damage !== "number") {
     return { ok: false, reason: "damage_missing" };
   }
   const skillCap = Number(skillData?.max_damage) || 0;
   const isCrit = !!damageResult.isCrit;
-  const cap = (skillCap > 0 ? skillCap * COMBAT_DAMAGE_CRIT_MULT : COMBAT_DAMAGE_HARD_CAP);
+  let cap = (skillCap > 0 ? skillCap * COMBAT_DAMAGE_CRIT_MULT : COMBAT_DAMAGE_HARD_CAP);
+  // Phase G — per-world skill ceiling. loops.json#skillCeilings[element]
+  // sets the maximum raw damage allowed before env amplification. World
+  // builders can tune fire-50 in tunya so fire spells stay weak there
+  // even when the skill's authored max_damage is higher. Caller passes
+  // `{ worldId, element }` to opt in; missing → no override (legacy cap).
+  if (opts?.worldId && opts?.element) {
+    try {
+      const worldCeiling = getWorldSkillCeiling(opts.worldId, opts.element);
+      if (typeof worldCeiling === "number" && worldCeiling > 0) {
+        cap = Math.min(cap, worldCeiling);
+      }
+    } catch { /* flavor lookup best-effort — fall back to skill cap only */ }
+  }
   if (damageResult.damage > cap + 0.5) {
     return { ok: false, reason: "damage_cap_exceeded", computed: damageResult.damage, cap, isCrit };
   }
@@ -496,6 +510,29 @@ export default function createWorldsRouter({ requireAuth, db }) {
     try {
       const record = db.prepare("SELECT * FROM nemesis_records WHERE player_id = ?").get(req.user.id);
       res.json({ nemesis: record || null });
+    } catch (e) { serverError(res, e); }
+  });
+
+  // GET /api/worlds/:worldId/npc-relationships/gossip-feed — Phase AB
+  // village gossip events scoped to a world, newest first.
+  router.get("/:worldId/npc-relationships/gossip-feed", requireAuth, async (req, res) => {
+    try {
+      const { getVillageGossipFeed } = await import("../lib/npc-relationships.js");
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+      const sinceS = req.query.sinceS ? parseInt(req.query.sinceS, 10) : undefined;
+      const entries = getVillageGossipFeed(db, req.params.worldId, { limit, sinceS });
+      res.json({ entries });
+    } catch (e) { serverError(res, e); }
+  });
+
+  // GET /api/worlds/:worldId/npc-relationships/list — relationships in a world
+  router.get("/:worldId/npc-relationships/list", requireAuth, async (req, res) => {
+    try {
+      const { listInWorld } = await import("../lib/npc-relationships.js");
+      const kind = req.query.kind || undefined;
+      const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+      const rels = listInWorld(db, req.params.worldId, { kind, limit });
+      res.json({ relationships: rels });
     } catch (e) { serverError(res, e); }
   });
 
@@ -1422,6 +1459,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // Phase DA2 — single-building lookup for station interaction router.
+  router.get("/:worldId/buildings/:buildingId", (req, res) => {
+    try {
+      const { worldId, buildingId } = req.params;
+      const building = db.prepare(
+        'SELECT * FROM world_buildings WHERE world_id = ? AND id = ?'
+      ).get(worldId, buildingId);
+      if (!building) return res.status(404).json({ ok: false, error: "no_building" });
+      res.json({ ok: true, building });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/buildings — player places a building
   // Requires matching resources in player_inventory based on material + floor count
   router.post("/:worldId/buildings", requireAuth, (req, res) => {
@@ -1930,7 +1981,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // 500 absolute fallback. Cap is applied to RAW computed damage
       // before Layer-7.5 env amplification so client-side bug exploits
       // can't stack with legit env boosts to bypass the gate.
-      const dmgCheck = _validateDamageCap(damageResult, skillData);
+      // Phase G — pass world + element so per-world skill ceilings apply.
+      const dmgCheck = _validateDamageCap(damageResult, skillData, {
+        worldId: req.params.worldId,
+        element: skillData?.element,
+      });
       if (!dmgCheck.ok) {
         logger.warn?.('worlds', 'combat_damage_rejected', { userId, npcId, ...dmgCheck });
         return res.status(422).json({ ok: false, error: "damage_cap_exceeded", reason: dmgCheck.reason });

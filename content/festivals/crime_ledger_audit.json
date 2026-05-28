@@ -1,0 +1,13 @@
+{
+  "id": "crime_ledger_audit",
+  "name": "Smugglers' Ledger Audit",
+  "world_id": "crime",
+  "season_idx": 2,
+  "day_in_season_start": 28,
+  "day_in_season_end": 28,
+  "repeats_yearly": true,
+  "decoration_tag": "open_ledger",
+  "synopsis": "Comic civic ritual. The Watch publishes a satirical 'ledger' of last year's smuggling figures. Maddox Kray hates it.",
+  "achievements": [],
+  "quest_seeds": []
+}
