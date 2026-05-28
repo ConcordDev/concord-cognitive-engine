@@ -1,0 +1,69 @@
+{
+  "sprint": "G3.3",
+  "games": 500,
+  "gamesWon": 323,
+  "gamesLost": 177,
+  "winRate": 0.646,
+  "avgTurnsToTerminal": 51.2,
+  "yakuDistribution": [
+    {
+      "yaku": "iipeiko",
+      "count": 109,
+      "frequency": 0.33746130030959753
+    },
+    {
+      "yaku": "toitoi",
+      "count": 82,
+      "frequency": 0.25386996904024767
+    },
+    {
+      "yaku": "tanyao",
+      "count": 73,
+      "frequency": 0.2260061919504644
+    },
+    {
+      "yaku": "yakuhai",
+      "count": 63,
+      "frequency": 0.19504643962848298
+    },
+    {
+      "yaku": "chinitsu",
+      "count": 43,
+      "frequency": 0.13312693498452013
+    },
+    {
+      "yaku": "honitsu",
+      "count": 38,
+      "frequency": 0.11764705882352941
+    },
+    {
+      "yaku": "pinfu",
+      "count": 15,
+      "frequency": 0.04643962848297214
+    },
+    {
+      "yaku": "ittsuu",
+      "count": 2,
+      "frequency": 0.006191950464396285
+    }
+  ],
+  "meanFrequency": 0.164,
+  "outliers": [
+    {
+      "yaku": "iipeiko",
+      "count": 109,
+      "frequency": 0.33746130030959753
+    },
+    {
+      "yaku": "pinfu",
+      "count": 15,
+      "frequency": 0.04643962848297214
+    },
+    {
+      "yaku": "ittsuu",
+      "count": 2,
+      "frequency": 0.006191950464396285
+    }
+  ],
+  "note": "Outlier yaku detected — consider re-weighting scoring"
+}

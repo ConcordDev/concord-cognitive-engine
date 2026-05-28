@@ -1,0 +1,338 @@
+{
+  "sprint": "G3.1",
+  "grid": {
+    "fastValues": [
+      0.2,
+      0.3,
+      0.4
+    ],
+    "okValues": [
+      0.05,
+      0.1,
+      0.15
+    ],
+    "slowValues": [
+      0,
+      0.05,
+      0.1
+    ]
+  },
+  "gamesPerCell": 200,
+  "ordersPerGame": 30,
+  "ttlS": 300,
+  "cells": [
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.05,
+        "slow": 0
+      },
+      "incomeMean": 482.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.05,
+        "slow": 0.05
+      },
+      "incomeMean": 482.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.05,
+        "slow": 0.1
+      },
+      "incomeMean": 482.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.1,
+        "slow": 0
+      },
+      "incomeMean": 501.72,
+      "incomeSd": 2.84,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.1,
+        "slow": 0.05
+      },
+      "incomeMean": 501.72,
+      "incomeSd": 2.84,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.1,
+        "slow": 0.1
+      },
+      "incomeMean": 501.72,
+      "incomeSd": 2.84,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.15,
+        "slow": 0
+      },
+      "incomeMean": 520.86,
+      "incomeSd": 1.42,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.15,
+        "slow": 0.05
+      },
+      "incomeMean": 520.86,
+      "incomeSd": 1.42,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.2,
+        "ok": 0.15,
+        "slow": 0.1
+      },
+      "incomeMean": 520.86,
+      "incomeSd": 1.42,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.05,
+        "slow": 0
+      },
+      "incomeMean": 489.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.05,
+        "slow": 0.05
+      },
+      "incomeMean": 489.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.05,
+        "slow": 0.1
+      },
+      "incomeMean": 489.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.1,
+        "slow": 0
+      },
+      "incomeMean": 508.44,
+      "incomeSd": 5.68,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.1,
+        "slow": 0.05
+      },
+      "incomeMean": 508.44,
+      "incomeSd": 5.68,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.1,
+        "slow": 0.1
+      },
+      "incomeMean": 508.44,
+      "incomeSd": 5.68,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.15,
+        "slow": 0
+      },
+      "incomeMean": 527.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.15,
+        "slow": 0.05
+      },
+      "incomeMean": 527.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.3,
+        "ok": 0.15,
+        "slow": 0.1
+      },
+      "incomeMean": 527.58,
+      "incomeSd": 4.26,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.05,
+        "slow": 0
+      },
+      "incomeMean": 496.02,
+      "incomeSd": 9.95,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.05,
+        "slow": 0.05
+      },
+      "incomeMean": 496.02,
+      "incomeSd": 9.95,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.05,
+        "slow": 0.1
+      },
+      "incomeMean": 496.02,
+      "incomeSd": 9.95,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.1,
+        "slow": 0
+      },
+      "incomeMean": 515.16,
+      "incomeSd": 8.53,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.1,
+        "slow": 0.05
+      },
+      "incomeMean": 515.16,
+      "incomeSd": 8.53,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.1,
+        "slow": 0.1
+      },
+      "incomeMean": 515.16,
+      "incomeSd": 8.53,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.15,
+        "slow": 0
+      },
+      "incomeMean": 534.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.15,
+        "slow": 0.05
+      },
+      "incomeMean": 534.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    },
+    {
+      "cell": {
+        "fast": 0.4,
+        "ok": 0.15,
+        "slow": 0.1
+      },
+      "incomeMean": 534.3,
+      "incomeSd": 7.1,
+      "expiredMean": 0,
+      "expiredRatio": 0
+    }
+  ],
+  "recommendation": {
+    "cell": {
+      "fast": 0.2,
+      "ok": 0.15,
+      "slow": 0
+    },
+    "incomeMean": 520.86,
+    "incomeSd": 1.42,
+    "expiredMean": 0,
+    "expiredRatio": 0
+  },
+  "currentDefault": {
+    "fast": 0.3,
+    "ok": 0.1,
+    "slow": 0
+  }
+}

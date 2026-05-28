@@ -25,13 +25,15 @@ These two are locked by economic + legal contract. They're hardcoded in source a
 
 ### Restaurant (Phase CB4)
 
-| Env var | Default | Effect |
-|---|---|---|
-| `CONCORD_RESTAURANT_ORDER_TTL_S` | `300` (5 min) | How long an order stays open before expiring. Lower → frantic Diner-Dash; higher → leisurely service. |
-| `CONCORD_RESTAURANT_BASE_PRICE_CC` | `15` | Coins per dish before tips. |
-| `CONCORD_RESTAURANT_TIP_FRACTION_FAST` | `0.30` | Bonus when served within 30s of order. |
-| `CONCORD_RESTAURANT_TIP_FRACTION_OK` | `0.10` | Bonus when served within `ORDER_TTL_S`. |
-| `CONCORD_RESTAURANT_TIP_FRACTION_SLOW` | `0` | Bonus when served beyond TTL. |
+| Env var | Default | Sim-recommended | Effect |
+|---|---|---|---|
+| `CONCORD_RESTAURANT_ORDER_TTL_S` | `300` (5 min) | unchanged (playtest) | How long an order stays open before expiring. Lower → frantic Diner-Dash; higher → leisurely service. |
+| `CONCORD_RESTAURANT_BASE_PRICE_CC` | `15` | unchanged | Coins per dish before tips. |
+| `CONCORD_RESTAURANT_TIP_FRACTION_FAST` | `0.30` | **`0.20`** ([G3.1](../audit/balance/restaurant-tips.json)) | Bonus when served within 30s of order. |
+| `CONCORD_RESTAURANT_TIP_FRACTION_OK` | `0.10` | **`0.15`** ([G3.1](../audit/balance/restaurant-tips.json)) | Bonus when served within `ORDER_TTL_S`. |
+| `CONCORD_RESTAURANT_TIP_FRACTION_SLOW` | `0` | unchanged | Bonus when served beyond TTL. |
+
+**Phase G3.1 sim notes**: 200 games × 27-cell grid sweep. Best income-variance/expired-ratio cell is fast=0.20, ok=0.15, slow=0.00 (incomeSd=1.42, expiredRatio=0). Current default fast=0.30 maximises burst income but adds variance — re-weighting toward `ok` produces steadier earnings without changing total payout meaningfully.
 
 ### Asymmetric Horror (Phase CC6)
 
@@ -49,9 +51,11 @@ These two are locked by economic + legal contract. They're hardcoded in source a
 
 ### Programming Puzzle (Phase CC3)
 
-| Env var | Default | Effect |
-|---|---|---|
-| `CONCORD_CODE_PUZZLE_MAX_CYCLES` | `10000` | Per-test-case execution cap. Lower → tight challenges; higher → permits inefficient solutions. |
+| Env var | Default | Sim-recommended | Effect |
+|---|---|---|---|
+| `CONCORD_CODE_PUZZLE_MAX_CYCLES` | `10000` | `10000` ([G3.2](../audit/balance/code-puzzle-cycles.json)) | Per-test-case execution cap. Lower → tight challenges; higher → permits inefficient solutions. |
+
+**Phase G3.2 sim notes**: Puzzles file lacks `reference_solution` fields, so the cycle-budget histogram could not be computed. Default stands. Once reference solutions are authored, re-run `npm run test:sim` to update.
 
 ### Player Signs (Death Stranding-pattern async cooperation)
 
@@ -90,6 +94,17 @@ These have been env-overridable since the multi-tenant cap-lift sprint. See CLAU
 | `CONCORD_DIALOGUE_MAX_CONCURRENT` | `50` | `schema.js` |
 | `CONCORD_ARCHIVED_SUMMARIES` | `200` | `conversation-summarizer.js` |
 | `MAX_OLD_SPACE_SIZE` | `32768` | node `--max-old-space-size` |
+
+## Phase G3 sim — mahjong yaku distribution
+
+500-game dealer-hand sim ([G3.3](../audit/balance/mahjong-yaku.json)) reports a 64.6% win rate over the deterministic seed range and a yaku distribution centred on simple shapes (pinfu, tanyao, yakuhai). No outlier yaku detected — all classes fall within 0.5×–2× of mean frequency. **No re-weighting recommended.** The existing yaku table from the rule book is balanced.
+
+## How to run the sims
+
+```bash
+cd server
+npm run test:sim      # runs all G3 sims, regenerates audit/balance/*.json
+```
 
 ## When to update this file
 

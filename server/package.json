@@ -11,6 +11,7 @@
     "test:coverage": "node --test --test-force-exit --test-timeout=60000 --experimental-test-coverage 'tests/**/*.test.js' 'tests/**/*-tests.js'",
     "test:e2e": "node --test --test-force-exit --test-timeout=60000 'tests/e2e/**/*.test.js'",
     "test:behavior": "node --test --test-force-exit --test-timeout=600000 tests/behavior/lens-behavior-smoke.behavior.js",
+    "test:sim": "node --test --test-force-exit --test-timeout=120000 'tests/sim/**/*.test.js'",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:ci": "eslint . --max-warnings=0",
