@@ -234,4 +234,82 @@ export function insertSyntheticSecret(db, holderNpcId, subjectKind, subjectId, b
   return { ok: true, id };
 }
 
+/**
+ * T2.1 — NPC-autonomous secret weaponisation.
+ *
+ * Until now `weaponiseSecret` was player-only (you burn a secret you discovered)
+ * and `weaponised_at` on the holder side was dead storage. This pass lets a
+ * holder NPC act on a secret it holds against an NPC subject: it opens a
+ * `blackmail` scheme along the secret-edge (the secret IS the motive, so the
+ * disposition gate is bypassed via proposeScheme's motive:'secret'), stamps the
+ * once-marker, and emits `secret:weaponised`. "Fires once" is enforced by the
+ * secrets.weaponised_holder_at column + proposeScheme's duplicate-scheme guard.
+ *
+ * Disposition still shapes WHO acts: only holders that are stressed/paranoid/
+ * cruel OR already dislike the subject reach for the knife — a calm holder sits
+ * on the secret. `findEligible` returns those holders.
+ *
+ * @returns { ok, weaponised: [{ secretId, holderNpcId, subjectId, schemeId }] }
+ */
+export function weaponiseHeldSecrets(db, { proposeScheme, io = null, worldId = null, maxPerPass = 20 } = {}) {
+  if (!db || typeof proposeScheme !== "function") return { ok: false, reason: "missing_inputs" };
+  // Holder NPCs with a secret against a live NPC subject, not yet weaponised by
+  // the holder, where the holder has a hostile disposition toward the subject
+  // (paranoid/cruel coping OR stress≥55 OR an opinion edge ≤ -40). World-scoped
+  // when worldId is given.
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT s.id AS secret_id, s.holder_npc_id, s.subject_id, s.kind,
+             COALESCE(st.stress, 30) AS stress, st.coping_trait,
+             COALESCE(o.score, 0) AS opinion
+      FROM secrets s
+      JOIN world_npcs h ON h.id = s.holder_npc_id ${worldId ? "AND h.world_id = ?" : ""}
+      JOIN world_npcs subj ON subj.id = s.subject_id AND COALESCE(subj.is_dead,0) = 0
+      LEFT JOIN npc_stress st ON st.npc_id = s.holder_npc_id
+      LEFT JOIN character_opinions o
+        ON o.npc_id = s.holder_npc_id AND o.target_kind = 'npc' AND o.target_id = s.subject_id
+      WHERE s.subject_kind = 'npc'
+        AND s.holder_npc_id <> s.subject_id
+        AND COALESCE(s.weaponised_holder_at, 0) = 0
+        AND ( st.coping_trait IN ('paranoid','cruel')
+              OR COALESCE(st.stress,30) >= 55
+              OR COALESCE(o.score,0) <= -40 )
+      LIMIT ?
+    `).all(...(worldId ? [worldId, maxPerPass] : [maxPerPass]));
+  } catch {
+    return { ok: true, weaponised: [], reason: "schema_unavailable" };
+  }
+
+  const weaponised = [];
+  for (const r of rows) {
+    let schemeId = null;
+    try {
+      const res = proposeScheme(db, {
+        plotterNpcId: r.holder_npc_id,
+        targetKind: "npc",
+        targetId: r.subject_id,
+        kind: "blackmail",
+        motive: "secret",
+      });
+      if (!res?.ok && res?.reason !== "duplicate_scheme") continue;
+      schemeId = res.schemeId || null;
+    } catch { continue; }
+
+    try {
+      db.prepare(`UPDATE secrets SET weaponised_holder_at = unixepoch() WHERE id = ?`).run(r.secret_id);
+    } catch { /* column may be absent on a pre-migration build; scheme still opened */ }
+
+    try {
+      io?.to?.(worldId ? `world:${worldId}` : undefined)?.emit?.("secret:weaponised", {
+        holder: r.holder_npc_id, subject_kind: "npc", subject_id: r.subject_id,
+        kind: r.kind, schemeId, byNpc: true, ts: Math.floor(Date.now() / 1000),
+      });
+    } catch { /* socket optional */ }
+
+    weaponised.push({ secretId: r.secret_id, holderNpcId: r.holder_npc_id, subjectId: r.subject_id, schemeId });
+  }
+  return { ok: true, weaponised };
+}
+
 export const SECRETS_CONSTANTS = Object.freeze({ inferKindFromText, inferSubject });

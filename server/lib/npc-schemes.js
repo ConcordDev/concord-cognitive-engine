@@ -40,7 +40,7 @@ function nextTickAt(now = Math.floor(Date.now() / 1000)) {
  * Propose a scheme: deterministic gate based on plotter's stress, opinion
  * of target, and coping trait. Returns { ok, action, schemeId? }.
  */
-export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null }) {
+export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null }) {
   if (!db || !plotterNpcId || !targetKind || !targetId) return { ok: false, reason: "missing_inputs" };
 
   // Don't propose against yourself.
@@ -51,12 +51,17 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
   const opinionScore = op?.score ?? 0;
 
   // Gate: stress ≥ 60 AND opinion ≤ -50 (or coping trait paranoid/cruel
-  // which are wild-card propose triggers).
-  const wildCard = stress?.coping_trait === "paranoid" || stress?.coping_trait === "cruel";
-  const stressed = (stress?.stress ?? 30) >= 60;
-  const hates = opinionScore <= -50;
-  if (!wildCard && !(stressed && hates)) {
-    return { ok: false, reason: "no_motive" };
+  // which are wild-card propose triggers). T2.1: a held secret is itself a
+  // motive — when the caller passes motive:'secret' (a real secret backs the
+  // plot) the disposition gate is bypassed; the leverage is the secret, not
+  // hatred.
+  if (motive !== "secret") {
+    const wildCard = stress?.coping_trait === "paranoid" || stress?.coping_trait === "cruel";
+    const stressed = (stress?.stress ?? 30) >= 60;
+    const hates = opinionScore <= -50;
+    if (!wildCard && !(stressed && hates)) {
+      return { ok: false, reason: "no_motive" };
+    }
   }
 
   // Don't open a parallel scheme of the same kind on the same target.
