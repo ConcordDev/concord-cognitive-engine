@@ -133,6 +133,13 @@ const FestivalBanner = dynamic(
     })),
   { ssr: false }
 );
+const FlightHUD = dynamic(
+  () =>
+    import('@/components/world/FlightHUD').then((m) => ({
+      default: m.FlightHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4721,6 +4728,9 @@ export default function WorldLensPage() {
 
           {/* Phase BB1 — active festival banner */}
           <FestivalBanner worldId={activeDistrict.id} />
+
+          {/* Phase CA1 — Flight HUD (subscribes to concordia:flight-state) */}
+          <FlightHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
