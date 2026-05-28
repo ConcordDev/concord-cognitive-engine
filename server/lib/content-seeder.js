@@ -720,6 +720,18 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn({ err: err.message }, "content_seeder_faction_strategy_failed");
     }
+
+    // T3.2 — derive NPC↔NPC scheme edges from authored faction rivalries so
+    // CK3 plots fire along the authored lines (no invented relationships).
+    // Runs after NPCs are seeded so the live-NPC existence check passes.
+    try {
+      const { seedRivalryOpinionEdges } = await import("./faction-rivalry-schemes.js");
+      const factions = Array.from(_authoredFactions.values());
+      const r = seedRivalryOpinionEdges(db, factions);
+      results.rivalrySchemeEdges = r?.edges || 0;
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_rivalry_edges_failed");
+    }
   }
 
   // T3.2 — cross-world codex seeding (idempotent). Mints the Eight Refusals
