@@ -86,7 +86,7 @@ async function doSynthesize({ text, voiceId, apiKey, stability, similarity, styl
     });
     if (!r.ok) {
       const txt = await r.text().catch(() => "");
-      try { logger.warn?.({ voiceId, status: r.status, body: txt.slice(0, 200) }, "voice_synthesis_api_error"); } catch { /* noop */ }
+      try { logger.warn?.("voice_synthesis", "api_error", { voiceId, status: r.status, body: txt.slice(0, 200) }); } catch { /* noop */ }
       return { ok: false, reason: `api_error_${r.status}` };
     }
     const buf = new Uint8Array(await r.arrayBuffer());
@@ -95,7 +95,7 @@ async function doSynthesize({ text, voiceId, apiKey, stability, similarity, styl
     void pruneCacheIfNeeded(cacheDir);
     return { ok: true, url: publicUrl, hit: false };
   } catch (err) {
-    try { logger.warn?.({ err: err?.message }, "voice_synthesis_failed"); } catch { /* noop */ }
+    try { logger.warn?.("voice_synthesis", "synthesis_failed", { err: err?.message }); } catch { /* noop */ }
     return { ok: false, reason: "exception" };
   } finally {
     inflight--;

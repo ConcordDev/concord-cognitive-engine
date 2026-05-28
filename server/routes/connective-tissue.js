@@ -243,6 +243,26 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
     }
   });
 
+  // Phase Z4 — POST alias for the feed + social lenses which call
+  // POST /search with a JSON body instead of GET with query params.
+  router.post("/search", async (req, res) => {
+    try {
+      const { q, query, lensId, tier, minCreti, maxPrice, sortBy, limit, offset } = req.body || {};
+      const result = await searchDTUs(db, {
+        query: query ?? q,
+        lensId, tier,
+        minCreti: minCreti != null ? parseInt(minCreti) : 0,
+        maxPrice: maxPrice != null ? parseFloat(maxPrice) : undefined,
+        sortBy: sortBy || "creti_score",
+        limit: limit != null ? parseInt(limit) : 50,
+        offset: offset != null ? parseInt(offset) : 0,
+      });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ── EMERGENT / BOT AUTH ────────────────────────────────────────────
 
   router.post("/emergent/register", requireAuth(), async (req, res) => {

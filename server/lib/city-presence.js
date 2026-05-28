@@ -617,7 +617,7 @@ export function sweepStalePresence(now = Date.now()) {
       // Reuse removeUser for consistency: same chunk-removal + flush path
       // happy-path disconnect uses.
       try { removeUser(userId); pruned++; }
-      catch (err) { logger.warn?.({ userId, err: err?.message }, "city_presence_sweep_remove_failed"); }
+      catch (err) { logger.warn?.("city_presence", "sweep_remove_failed", { userId, err: err?.message }); }
     }
   }
   return { ok: true, pruned, scanned };

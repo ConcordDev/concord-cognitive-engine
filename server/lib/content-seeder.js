@@ -264,7 +264,7 @@ function seedNPCs(npcs, opts = {}) {
     count++;
   }
   if (db) {
-    try { logger.info?.({ count, worldNpcs, defaultWorldId }, "content_seeder_world_npcs_persisted"); }
+    try { logger.info?.("content_seeder", "world_npcs_persisted", { count, worldNpcs, defaultWorldId }); }
     catch { /* noop */ }
   }
   return count;

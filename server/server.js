@@ -11529,6 +11529,12 @@ register("voice","tts", async (ctx, input={}) => {
   return { ok:false, error:"No TTS backend configured. Set PIPER_BIN (local Piper TTS)" };
 }, { public:false });
 
+// Phase Z5 audit note: prior CLAUDE.md "Missing" claim said this register()
+// was a duplicate. Direct grep shows it's actually the SOLE
+// `tools.web_search` registration in the codebase — `expert-mode.js`
+// registers under `expert_mode.web_search`, not `tools`. The Phase-K
+// comment at server.js:24613 records an earlier dup-removal; that PR
+// resolved the duplicate. Today there's just this one. Keep.
 register("tools","web_search", (ctx, input={}) => {
   enforceEthosInvariant("web_search");
   const flags = _c3sessionFlags(ctx);
@@ -33944,6 +33950,49 @@ register("persona", "delete", (ctx, input) => {
     }
   }
 }
+
+// Phase Z4 — the personas lens calls 5 additional actions that don't exist on
+// the singular `persona` domain either: get/stats/versions/publish/install.
+// These belong to a persona-marketplace flow that's roadmap material. Until
+// that ships, expose minimum-viable stubs so the lens renders without
+// crashing — `get` + `stats` are thin wrappers on existing data; the rest
+// return a clean `{ok:false, reason:'roadmap'}` that the UI can render as
+// "coming soon" badges.
+register("personas", "get", (ctx, input = {}) => {
+  const id = input.id;
+  if (!id) return { ok: false, error: "missing_id" };
+  const p = STATE.customPersonas.get(id);
+  if (!p) return { ok: false, error: "persona_not_found" };
+  return { ok: true, persona: p };
+}, { note: "Z4 thin wrapper" });
+
+register("personas", "stats", (ctx, input = {}) => {
+  const id = input.id;
+  if (!id) return { ok: false, error: "missing_id" };
+  const p = STATE.customPersonas.get(id);
+  if (!p) return { ok: false, error: "persona_not_found" };
+  return {
+    ok: true,
+    stats: {
+      uses: p.uses || 0,
+      installs: p.installs || 0,
+      lastUsedAt: p.lastUsedAt || null,
+      createdAt: p.createdAt || null,
+    },
+  };
+}, { note: "Z4 thin wrapper" });
+
+register("personas", "versions", (_ctx, input = {}) => {
+  return { ok: true, versions: [{ id: "v1", current: true, createdAt: null }], reason: "single_version_only" };
+}, { note: "Z4 roadmap stub" });
+
+register("personas", "publish", (_ctx, _input = {}) => {
+  return { ok: false, reason: "roadmap", message: "Persona marketplace publishing is roadmap." };
+}, { note: "Z4 roadmap stub" });
+
+register("personas", "install", (_ctx, _input = {}) => {
+  return { ok: false, reason: "roadmap", message: "Persona marketplace install is roadmap." };
+}, { note: "Z4 roadmap stub" });
 
 // ---- Admin Dashboard Endpoints ----
 // SECURITY: every admin macro runs through requireAdminRole() first so
