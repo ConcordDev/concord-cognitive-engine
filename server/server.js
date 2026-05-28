@@ -5958,6 +5958,8 @@ function authMiddleware(req, res, next) {
     // World player surfaces — bazaar (vendor stalls), perf telemetry GET.
     "/api/world/bazaar", "/api/world/perf-telemetry",
     "/api/combat/state", "/api/combat/frame-data",
+    // Phase BA5 — avatar scars + drift (public read).
+    "/api/avatars",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -48416,6 +48418,28 @@ app.get("/api/cosmetics/overrides", requireAuth(), asyncHandler(async (req, res)
   const { getOverrides } = await import("./lib/cosmetics.js");
   const userId = req.user?.id || req.user?.userId;
   res.json({ ok: true, overrides: getOverrides(db, userId, req.query.avatarId) });
+}));
+
+// Phase BA5 — scar query for the avatar renderer (public read by user
+// scope; visiting another player's avatar shows their scars too).
+app.get("/api/avatars/:userId/scars", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT id, region, source, severity, acquired_at, visible_label
+      FROM player_scars WHERE user_id = ?
+      ORDER BY acquired_at DESC LIMIT 100
+    `).all(req.params.userId);
+    res.json({ ok: true, scars: rows });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {
+  try {
+    const row = db.prepare(`
+      SELECT drift_score FROM avatar_drift WHERE user_id = ?
+    `).get(req.params.userId);
+    res.json({ ok: true, drift_score: row?.drift_score || 0 });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
 app.get("/api/housing/world/:worldId/public", asyncHandler(async (req, res) => {

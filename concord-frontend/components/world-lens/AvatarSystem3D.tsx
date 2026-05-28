@@ -50,6 +50,7 @@ import { physicsWorld } from '@/lib/world-lens/physics-world';
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
 import { useAvatarAnimator } from '@/hooks/useAvatarAnimator';
+import { useAvatarScars } from '@/hooks/useAvatarScars';
 import { serializableToGaitPose } from '@/lib/concordia/animator-protocol';
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -293,6 +294,17 @@ export default function AvatarSystem3D({
   // inline synthesizeGait happens automatically when the worker isn't
   // ready or has failed (the hook returns null).
   const avatarAnimator = useAvatarAnimator();
+  // Phase BA5 — scars + drift feed the avatar renderer. `scars` maps
+  // onto bone regions via THREE.DecalGeometry; `drift` modulates the
+  // `u_wear` uniform on the avatar material (0 = pristine, 1 = grimy).
+  // The decal application lives in the per-frame render block; here we
+  // surface the values via a ref so deeper render code can read them
+  // without making them React-stateful.
+  const { scars: avatarScars, drift: avatarDrift } = useAvatarScars(playerAvatar?.id);
+  const wearUniformRef = useRef<{ u_wear: number; scars: typeof avatarScars }>({ u_wear: 0, scars: [] });
+  useEffect(() => {
+    wearUniformRef.current = { u_wear: avatarDrift, scars: avatarScars };
+  }, [avatarDrift, avatarScars]);
   // Phase B3 — flight-physics shadow state. Initialised when player
   // enters glide; ticked per frame; emitted as `concordia:flight-state`
   // so HUD / camera systems can read it.
