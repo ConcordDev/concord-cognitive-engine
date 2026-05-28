@@ -739,39 +739,6 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "hidden_object_seed_failed", { err: err?.message });
     }
-
-    // Phase G2 — per-lens demo seed content.
-    // Walks content/seed-lenses/*.json and inserts each item as a demo
-    // DTU with kind=item.kind, creator_id='system', scope='global',
-    // visibility='public'. Lens UIs that want the demo content render
-    // DTUs with creator_id='system' and a DemoBadge.
-    // Idempotent on item.id (INSERT OR IGNORE).
-    try {
-      const seedDir = join(CONTENT_ROOT, "seed-lenses");
-      const files = readdirSync(seedDir).filter((f) => f.endsWith(".json"));
-      let totalInserted = 0;
-      for (const f of files) {
-        try {
-          const lensSeed = readJSON(`seed-lenses/${f}`);
-          if (!lensSeed?.items || !Array.isArray(lensSeed.items)) continue;
-          const kind = lensSeed.kind || `${lensSeed.lens}_demo`;
-          for (const item of lensSeed.items) {
-            if (!item.id || !item.title) continue;
-            try {
-              const r = db.prepare(`
-                INSERT OR IGNORE INTO dtus
-                  (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
-                VALUES (?, ?, ?, ?, unixepoch(), 'system', 'global', 'public')
-              `).run(item.id, kind, item.title, item.summary || "");
-              if (r.changes > 0) totalInserted++;
-            } catch { /* per-item best-effort */ }
-          }
-        } catch { /* per-file best-effort */ }
-      }
-      results.demoLensItems = totalInserted;
-    } catch (err) {
-      logger.warn("content_seeder", "lens_seed_failed", { err: err?.message });
-    }
   }
 
   _seeded = true;
@@ -779,7 +746,7 @@ export async function seedContent({ db = null } = {}) {
   logger.info(
     "content_seeder",
     "content_seeded",
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0, hiddenObjectScenes: results.hiddenObjectScenes || 0, demoLensItems: results.demoLensItems || 0 }
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0, hiddenObjectScenes: results.hiddenObjectScenes || 0 }
   );
 
   return { ok: true, counts: results };
