@@ -813,6 +813,18 @@ registerHeartbeat("announcement-broadcaster", {
   }),
 });
 
+// Phase BD1: world boss scheduler. Every 16 ticks (~4 min) per active
+// world runs a trigger pass (opens any schedule whose next_spawn_at <=
+// now), sweeps expired actives, advances next_spawn_at. Kill-switch:
+// CONCORD_WORLD_BOSSES_ENABLED=0.
+import { runWorldBossCycle } from "./emergent/world-boss-cycle.js";
+registerHeartbeat("world-boss-cycle", {
+  frequency: 16,
+  handler: ({ db: ctxDb, worldId } = {}) => runWorldBossCycle({
+    db: ctxDb || db, worldId, io: REALTIME?.io,
+  }),
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
