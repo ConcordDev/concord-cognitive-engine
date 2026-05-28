@@ -2561,6 +2561,55 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // POST /api/worlds/:worldId/schemes/:id/intervene — T2.3 barge-in.
+  // The player clicks an active eavesdrop bubble within range and chooses to
+  // expose / abet / ignore the plot. Proximity-gated to the plotter NPC so you
+  // must actually be there to intervene. Branches the scheme state machine,
+  // shifts opinions, and emits the resolution. body: { action }
+  router.post("/:worldId/schemes/:id/intervene", requireAuth, async (req, res) => {
+    try {
+      const { worldId, id: schemeId } = req.params;
+      const userId = req.user.id;
+      const action = String(req.body?.action || "ignore");
+      if (!["expose", "abet", "ignore"].includes(action)) {
+        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore" });
+      }
+
+      const { interveneInScheme } = await import("../lib/npc-schemes.js");
+
+      // Proximity gate (skip for 'ignore' — dismissing from anywhere is fine).
+      if (action !== "ignore") {
+        try {
+          const db2 = db;
+          const sch = db2.prepare(`SELECT plotter_id, plotter_kind FROM npc_schemes WHERE id = ?`).get(schemeId);
+          if (sch?.plotter_kind === "npc") {
+            const plotter = db2.prepare(`SELECT x, z FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+            const pos = cityPresence.getUserPosition?.(userId);
+            if (plotter && pos && Number.isFinite(plotter.x) && Number.isFinite(pos.x)) {
+              const dist = Math.hypot(pos.x - plotter.x, (pos.z ?? 0) - (plotter.z ?? 0));
+              if (dist > 30) {
+                return res.status(403).json({ ok: false, error: "too_far", reason: "Move closer to intervene.", dist: Math.round(dist) });
+              }
+            }
+          }
+        } catch { /* proximity gate best-effort — fall through to the action */ }
+      }
+
+      const result = interveneInScheme(db, userId, schemeId, action);
+      if (result.ok) {
+        try {
+          req.app?.locals?.io?.to(`world:${worldId}`).emit("scheme:intervened", {
+            schemeId, worldId, userId, action,
+            exposed: !!result.exposed, ts: Date.now(),
+          });
+        } catch { /* socket optional */ }
+      }
+      return res.status(result.ok ? 200 : 422).json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /api/worlds/:worldId/resource-bars — player resource bars (with regen)
   router.get("/:worldId/resource-bars", requireAuth, async (req, res) => {
     try {

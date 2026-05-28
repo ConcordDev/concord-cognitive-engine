@@ -56,15 +56,35 @@ export async function runSchemeOverhearCycle({ db, io } = {}) {
     for (const f of res.fired || []) {
       totalFired++;
       try {
+        // T2.3 — enrich the payload with who + why so the toast/bubble can say
+        // "Sandrun smith ↔ Medici guard: a debt that ends in a knife" without
+        // a second lookup. Secrets stay out (only archetype/faction/kind).
+        let ctx = null;
+        try {
+          ctx = db.prepare(`
+            SELECT p.archetype AS plotter_archetype, p.faction AS plotter_faction,
+                   t.archetype AS target_archetype, t.faction AS target_faction,
+                   s.kind AS scheme_kind, s.target_kind
+            FROM npc_schemes s
+            LEFT JOIN world_npcs p ON p.id = s.plotter_id
+            LEFT JOIN world_npcs t ON t.id = s.target_id AND s.target_kind = 'npc'
+            WHERE s.id = ?
+          `).get(f.schemeId);
+        } catch { /* enrichment best-effort */ }
         // Targeted emit to the player who overheard (their socket room is the
         // userId; fall back to the world room). Carries the snippet + scheme id
         // so the client can surface a "you overheard something" prompt that
-        // opens the discover/expose flow.
+        // opens the discover/expose/intervene flow.
         const payload = {
           schemeId: f.schemeId,
           plotterId: f.plotterId,
           worldId,
           snippet: f.snippet,
+          plotterArchetype: ctx?.plotter_archetype || null,
+          plotterFaction: ctx?.plotter_faction || null,
+          targetArchetype: ctx?.target_archetype || null,
+          targetFaction: ctx?.target_faction || null,
+          schemeKind: ctx?.scheme_kind || null,
           ts: Date.now(),
         };
         io?.to?.(`user:${f.userId}`)?.emit?.("scheme:overheard", payload);

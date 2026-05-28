@@ -356,6 +356,70 @@ function requireWeaponise() {
 // is discovered (the import resolves on the next microtask).
 requireWeaponise();
 
+/**
+ * T2.3 — barge-in: the player intervenes in an active scheme they overheard.
+ * Three branches, all real state-machine effects:
+ *   - expose: surfaces evidence (via discoverScheme) → may flip to 'exposed';
+ *     plotter's opinion of the player drops (you named their plot).
+ *   - abet:   the player joins as an accomplice → success_pct climbs, the
+ *     plotter's opinion of the player rises (you helped).
+ *   - ignore: the player walks away; recorded so the bubble dismisses, no
+ *     state change beyond a dismissal marker.
+ * Returns { ok, action, scheme:{...}, exposed? } or { ok:false, reason }.
+ */
+export function interveneInScheme(db, userId, schemeId, action = "ignore") {
+  if (!db || !userId || !schemeId) return { ok: false, reason: "missing_inputs" };
+  const sch = db.prepare(`
+    SELECT id, plotter_kind, plotter_id, target_kind, target_id, kind, phase, success_pct, accomplice_count
+    FROM npc_schemes WHERE id = ?
+  `).get(schemeId);
+  if (!sch) return { ok: false, reason: "scheme_not_found" };
+  if (["complete", "abandoned", "exposed"].includes(sch.phase)) {
+    return { ok: false, reason: "scheme_terminal", phase: sch.phase };
+  }
+
+  if (action === "expose") {
+    const r = discoverScheme(db, userId, schemeId, "barge_in");
+    // Player named the plot to the plotter's face → plotter resents it.
+    if (sch.plotter_kind === "npc") {
+      try {
+        recordOpinionEvent(db, { npcId: sch.plotter_id, targetKind: "player", targetId: userId },
+          -20, "barged in and exposed my scheme");
+      } catch { /* opinions optional */ }
+    }
+    const after = db.prepare(`SELECT phase, success_pct FROM npc_schemes WHERE id = ?`).get(schemeId);
+    return { ok: true, action: "expose", exposed: !!r.exposed, scheme: { id: schemeId, ...after } };
+  }
+
+  if (action === "abet") {
+    // Join as accomplice (idempotent) + boost success; plotter warms to you.
+    let added = false;
+    try {
+      const exists = db.prepare(
+        `SELECT 1 FROM npc_scheme_accomplices WHERE scheme_id = ? AND npc_id = ?`
+      ).get(schemeId, `player:${userId}`);
+      if (!exists) {
+        db.prepare(`INSERT INTO npc_scheme_accomplices (scheme_id, npc_id, role) VALUES (?, ?, 'player_abettor')`)
+          .run(schemeId, `player:${userId}`);
+        added = true;
+      }
+    } catch { /* accomplices table optional */ }
+    const newSuccess = Math.min(100, (sch.success_pct || 30) + (added ? 15 : 0));
+    db.prepare(`UPDATE npc_schemes SET success_pct = ?, accomplice_count = accomplice_count + ? WHERE id = ?`)
+      .run(newSuccess, added ? 1 : 0, schemeId);
+    if (sch.plotter_kind === "npc") {
+      try {
+        recordOpinionEvent(db, { npcId: sch.plotter_id, targetKind: "player", targetId: userId },
+          +18, "abetted my scheme");
+      } catch { /* opinions optional */ }
+    }
+    return { ok: true, action: "abet", scheme: { id: schemeId, success_pct: newSuccess, accomplice_added: added } };
+  }
+
+  // ignore — mark dismissed so the eavesdrop bubble closes; no state change.
+  return { ok: true, action: "ignore", scheme: { id: schemeId, phase: sch.phase } };
+}
+
 /** List active schemes a user is suspected of being targeted by. */
 export function listSchemesAgainstUser(db, userId) {
   if (!db || !userId) return [];
