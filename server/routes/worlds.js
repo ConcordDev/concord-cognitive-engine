@@ -2190,6 +2190,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
         if (io && (landed || severity !== "none" || kill)) {
           const { buildImpactPayload } = await import("../lib/combat/impact-feel.js");
           const { skillVfxDescriptor } = await import("../lib/skills/skill-mastery.js");
+          const { skillKeyForSkill } = await import("../lib/skills/skill-key.js");
+          const skillKey = skillKeyForSkill(skillData);
           const tPos = npcPosRow && Number.isFinite(npcPosRow.x)
             ? { x: npcPosRow.x, y: npcPosRow.y ?? 0, z: npcPosRow.z }
             : null;
@@ -2217,6 +2219,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
               attackerPosition: aPos,
             }),
             vfx,
+            skillKey,
           });
         }
       } catch { /* combat:impact feel emit best-effort — never blocks combat */ }

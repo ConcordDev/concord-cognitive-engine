@@ -27,7 +27,7 @@ const RESERVED = new Set(["ts", "_seq", "_rid", "_evt"]);
 export const EVENT_SHAPES = Object.freeze({
   // ── Combat ────────────────────────────────────────────────────────
   "combat:attack": { required: ["attackerId"], optional: ["weapon", "animation", "direction", "position"] },
-  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style"] },
+  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey"] },
   "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
 
@@ -296,7 +296,7 @@ export const EVENT_SHAPES = Object.freeze({
   "combat:chain":               { required: ["originActorId", "targets"], optional: ["worldId", "magnitude", "element"] },
   // T1.4b — server-authoritative combat feel. `feel` carries the exact
   // hitstop/knockback/wince parameters the client applies verbatim.
-  "combat:impact":              { required: ["attackerId", "targetId", "severity", "feel"], optional: ["worldId", "targetKind", "impactMomentum", "element", "damage", "isKill", "targetPosition", "attackerPosition", "vfx", "ts"] },
+  "combat:impact":              { required: ["attackerId", "targetId", "severity", "feel"], optional: ["worldId", "targetKind", "impactMomentum", "element", "damage", "isKill", "targetPosition", "attackerPosition", "vfx", "skillKey", "ts"] },
   "npc:activity-batch":         { required: ["worldId", "count", "transitions"], optional: [] },
   "npc:economy-batch":          { required: ["worldId", "gathers", "crafts", "trades", "rests", "notable"], optional: [] },
   "social:shadows-synced":      { required: ["createdShadows", "totalCapacity"], optional: ["droppedForPrivacy"] },

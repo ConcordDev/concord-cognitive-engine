@@ -8377,6 +8377,8 @@ async function tryInitWebSockets(server) {
           weapon: data.weapon || "fist",
           tier: Math.max(1, Math.min(5, Number(data.tier) || 2)),
           style: data.style || null,
+          // T3.1 — canonical catalog key for the client per-skill descriptor.
+          skillKey: skillKeyForSkill({ element: data.element, weapon: data.weapon, kind: data.weapon, name: data.skillId }),
         });
 
         // Companion assist XP: deployed companions of the attacker get
@@ -30662,6 +30664,9 @@ import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONST
 import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
 import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
 import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+// T3.1 — resolve a combat payload to a SKILL_CATALOG key for the client's
+// per-skill descriptor (shipped on combat:hit).
+import { skillKeyForSkill } from "./lib/skills/skill-key.js";
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
