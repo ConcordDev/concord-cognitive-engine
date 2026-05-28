@@ -189,6 +189,20 @@ const ClimbingTracker = dynamic(
     })),
   { ssr: false }
 );
+const BrawlInviteToast = dynamic(
+  () =>
+    import('@/components/world/BrawlInviteToast').then((m) => ({
+      default: m.BrawlInviteToast,
+    })),
+  { ssr: false }
+);
+const BrawlActiveHUD = dynamic(
+  () =>
+    import('@/components/world/BrawlInviteToast').then((m) => ({
+      default: m.BrawlActiveHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4822,6 +4836,10 @@ export default function WorldLensPage() {
           <div className="pointer-events-auto fixed left-4 top-32 z-20 w-44">
             <ClimbingTracker worldId={activeDistrict.id} playerY={playerAvatar.position.y} />
           </div>
+
+          {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
+          <BrawlInviteToast />
+          <BrawlActiveHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
