@@ -48505,6 +48505,39 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CB5 — trivia (DTU-native).
+app.post("/api/trivia/question", requireAuth(), asyncHandler(async (req, res) => {
+  const { authorQuestion } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(authorQuestion(db, { ...(req.body || {}), createdBy: userId }));
+}));
+
+app.post("/api/trivia/session/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, userId, req.body || {}));
+}));
+
+app.post("/api/trivia/session/:id/answer", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitAnswer } = await import("./lib/trivia.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(submitAnswer(db, req.params.id, userId, req.body || {}));
+}));
+
+app.post("/api/trivia/session/:id/tally", requireAuth(), asyncHandler(async (req, res) => {
+  const { tallySession } = await import("./lib/trivia.js");
+  const t = tallySession(db, req.params.id);
+  res.json({ ok: !!t, tally: t });
+}));
+
+app.get("/api/trivia/questions", asyncHandler(async (req, res) => {
+  const { listQuestions } = await import("./lib/trivia.js");
+  res.json({ ok: true, questions: listQuestions(db, {
+    difficulty: req.query.difficulty ? Number(req.query.difficulty) : undefined,
+    limit: Number(req.query.limit) || 50,
+  }) });
+}));
+
 // Phase CB4 — restaurant management.
 app.post("/api/restaurant/open", requireAuth(), asyncHandler(async (req, res) => {
   const { openRestaurant } = await import("./lib/restaurant.js");
