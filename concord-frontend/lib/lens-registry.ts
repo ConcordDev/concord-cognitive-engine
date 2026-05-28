@@ -2700,6 +2700,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['news', 'announcements', 'roadmap', 'patch', 'changelog'],
   },
   {
+    id: 'narrative-walk',
+    name: 'Narrative trail',
+    icon: BookOpen,
+    description: 'Authored story beats. Walk through Concordia as a Firewatch-style film.',
+    category: 'creative',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/narrative-walk',
+    order: 24,
+    keywords: ['cinematic', 'cutscene', 'narrative', 'walking sim', 'film'],
+  },
+  {
     id: 'photos',
     name: 'Photos',
     icon: Camera,
