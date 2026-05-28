@@ -349,7 +349,7 @@
         "qty": 40
       }
     ],
-    "starting_sparks": 0
+    "starting_sparks": 600
   },
   {
     "id": "lord_curator_renn_asbir",
@@ -439,6 +439,17 @@
         "location": "curator_quarters",
         "activity": "rests poorly",
         "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "asbir_curator_residence",
+        "activity": "private study; writes the next day's archive briefings",
+        "need_addressed": "archive_work",
         "interactable_by_player": false
       }
     ],
@@ -580,6 +591,17 @@
         "location": "elder_walker_dwelling",
         "activity": "rests",
         "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "nil_elder_grove",
+        "activity": "night-walks the spirit paths; reads the stars",
+        "need_addressed": "spirit_walk",
         "interactable_by_player": false
       }
     ],
@@ -858,6 +880,17 @@
         "activity": "rests in the grove itself",
         "need_addressed": "rest",
         "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "nil_grove_mother_residence",
+        "activity": "private rituals; tends the sacred fire",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
       }
     ],
     "home": {
@@ -890,7 +923,7 @@
         "qty": 7
       }
     ],
-    "starting_sparks": 0
+    "starting_sparks": 600
   },
   {
     "id": "high_mason_torrek_masond",
@@ -980,6 +1013,17 @@
         "location": "masond_first_city_high_mason_quarters",
         "activity": "rests",
         "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "masond_high_mason_residence",
+        "activity": "studies blueprints; writes commission ledgers",
+        "need_addressed": "masonry",
         "interactable_by_player": false
       }
     ],
@@ -1496,7 +1540,76 @@
     "narrative_context": {
       "secret": "Oren agreed to a back-channel mediation with the Akeia matriarch six annums ago."
     },
-    "country_id": "dinye"
+    "country_id": "dinye",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "dinye_chair_private_chamber",
+        "activity": "reviews overnight clan reports; quiet meditation",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "dinye_council_hall",
+        "activity": "morning chair audience; signs decrees with the registrar",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "dinye_marketplace",
+        "activity": "walks the market; receives petitions",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "dinye_council_hall",
+        "activity": "private chair council; faction policy",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "dinye_chair_dining_hall",
+        "activity": "open dinner with senior clan members",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "dinye_chair_private_chamber",
+        "activity": "private correspondence; closes the day with the registrar",
+        "need_addressed": "clan_governance",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "dinye_registrar_kira",
@@ -1515,7 +1628,76 @@
     "narrative_context": {
       "secret": "Kira's grandmother was Fluxom-born; the lineage is hidden."
     },
-    "country_id": "dinye"
+    "country_id": "dinye",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "dinye_records_archive",
+        "activity": "early indexing pass on overnight filings",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "dinye_council_hall_anteroom",
+        "activity": "attends Chair Oren's morning audience as scribe",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "dinye_records_archive",
+        "activity": "open archive hours; citizens come to verify lineage",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "dinye_archive_back_office",
+        "activity": "cross-checks contested filings; coordinates with Sahm",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "dinye_marketplace_tavern",
+        "activity": "supper with the merchant guild liaisons",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "dinye_registrar_quarters",
+        "activity": "personal study; reads forbidden Sandrun mirror-letters",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "dinye_guard_volk",
@@ -1531,7 +1713,76 @@
       "loyal",
       "stubborn"
     ],
-    "country_id": "dinye"
+    "country_id": "dinye",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "dinye_guard_barracks",
+        "activity": "rotates night-watch; checks the south gate seal",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "dinye_council_hall_perimeter",
+        "activity": "secures the chair's morning audience",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "dinye_marketplace",
+        "activity": "open patrol; market dispute mediation",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "dinye_guard_drill_yard",
+        "activity": "drills new recruits; ember-discipline practice",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "dinye_marketplace_tavern",
+        "activity": "off-duty supper with the watch",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "dinye_guard_barracks",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "aekon_warden_hild",
@@ -1548,7 +1799,76 @@
       "honorable",
       "cold"
     ],
-    "country_id": "aekon"
+    "country_id": "aekon",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "aekon_warden_tower",
+        "activity": "private vigil at the ice-glass altar",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "aekon_perimeter_ice_wall",
+        "activity": "walks the perimeter; checks the seal-stones",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "aekon_warden_audience_hall",
+        "activity": "receives the clan's morning grievances",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "aekon_council_chamber",
+        "activity": "war-council with the smith and the courier",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "aekon_warden_audience_hall",
+        "activity": "evening audience; permits travel out of Aekon",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "aekon_warden_tower",
+        "activity": "writes the day's report; sleeps",
+        "need_addressed": "warden_duty",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "aekon_smith_jera",
@@ -1564,7 +1884,76 @@
       "careful",
       "patient"
     ],
-    "country_id": "aekon"
+    "country_id": "aekon",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "aekon_ice_forge",
+        "activity": "banks the forge fire; checks ice-tempering vats",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "aekon_ice_forge",
+        "activity": "morning forging; ice-glass blade work",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "aekon_forge_shopfront",
+        "activity": "open shop; sells finished work",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "aekon_ice_forge",
+        "activity": "afternoon commissions; apprentice training",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "aekon_smith_residence",
+        "activity": "supper; consults with the courier on caravan orders",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "aekon_smith_residence",
+        "activity": "private study; reads forge-master letters",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "aekon_courier_yon",
@@ -1580,7 +1969,76 @@
       "taciturn",
       "enduring"
     ],
-    "country_id": "aekon"
+    "country_id": "aekon",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "aekon_courier_post",
+        "activity": "sorts overnight mail; preps the morning run",
+        "need_addressed": "courier_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "aekon_perimeter_road",
+        "activity": "first run to Asbir; observes patrol shifts",
+        "need_addressed": "courier_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "aekon_courier_post",
+        "activity": "receives outbound mail; sorts by destination",
+        "need_addressed": "courier_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "aekon_perimeter_road",
+        "activity": "afternoon run to Sandrun; carries the mirror-letter",
+        "need_addressed": "courier_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "aekon_courier_post",
+        "activity": "evening drop-off; reconciles the day's ledger",
+        "need_addressed": "courier_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "aekon_courier_quarters",
+        "activity": "sleeps; on emergency-call rotation",
+        "need_addressed": "courier_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2000
   },
   {
     "id": "asbir_keeper_vera",
@@ -1599,7 +2057,76 @@
     "narrative_context": {
       "secret": "Vera has accessed the scrubbed-memory chamber twice and not reported it."
     },
-    "country_id": "asbir"
+    "country_id": "asbir",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "asbir_archive_inner_vault",
+        "activity": "early indexing; checks the sealed records",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "asbir_archive_main_hall",
+        "activity": "opens the archive; receives morning scholars",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "asbir_archive_main_hall",
+        "activity": "research consultations; runs lineage searches",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "asbir_archive_inner_vault",
+        "activity": "private cataloguing; coordinates with hub curator",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "asbir_keeper_residence",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "asbir_archive_main_hall",
+        "activity": "evening lock-up walk; reads in the dim",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "asbir_engineer_rann",
@@ -1615,7 +2142,76 @@
       "practical",
       "skeptical"
     ],
-    "country_id": "asbir"
+    "country_id": "asbir",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "asbir_engineering_workshop",
+        "activity": "pre-dawn calibration of focus-lattice components",
+        "need_addressed": "engineering",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "asbir_engineering_workshop",
+        "activity": "morning bench work; correspondence with Lyra in the hub",
+        "need_addressed": "engineering",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "asbir_engineering_yard",
+        "activity": "field-test of lattice apparatus; apprentice training",
+        "need_addressed": "engineering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "asbir_engineering_workshop",
+        "activity": "afternoon bench work; consults the archive",
+        "need_addressed": "engineering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "asbir_engineer_residence",
+        "activity": "supper with Keeper Vera",
+        "need_addressed": "engineering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "asbir_engineer_residence",
+        "activity": "personal study; writes reports",
+        "need_addressed": "engineering",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "asbir_guard_lior",
@@ -1630,7 +2226,76 @@
     "personality_traits": [
       "alert"
     ],
-    "country_id": "asbir"
+    "country_id": "asbir",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "asbir_archive_perimeter",
+        "activity": "night watch on the sealed records vault",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "asbir_archive_main_gate",
+        "activity": "morning shift; admits incoming scholars",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "asbir_archive_main_hall",
+        "activity": "interior watch; coordinates with the keeper",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "asbir_archive_main_gate",
+        "activity": "afternoon shift; logs visitors",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "asbir_guard_barracks",
+        "activity": "off-duty supper",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "asbir_guard_barracks",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "fluxom_lord_skarn",
@@ -1649,7 +2314,76 @@
     "narrative_context": {
       "secret": "Skarn is bleeding silver to bribe an Asbir Warden for ark intel."
     },
-    "country_id": "fluxom"
+    "country_id": "fluxom",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fluxom_lord_war_chamber",
+        "activity": "private dawn-vigil; speaks to no one",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fluxom_war_hall",
+        "activity": "morning hall; receives the war captains",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fluxom_drill_yard",
+        "activity": "inspects the levy; cactem-mount training",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fluxom_war_hall",
+        "activity": "war-council; receives Sandrun and Akeia envoys",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fluxom_great_hall_dining",
+        "activity": "open supper; clan business",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fluxom_lord_war_chamber",
+        "activity": "private correspondence; sleeps lightly",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "fluxom_breeder_rena",
@@ -1665,7 +2399,76 @@
       "pragmatic",
       "tired"
     ],
-    "country_id": "fluxom"
+    "country_id": "fluxom",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fluxom_cactem_pens",
+        "activity": "checks the night-born calves; tends the herd",
+        "need_addressed": "breeding",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fluxom_cactem_pens",
+        "activity": "morning rotation; feeds and waters the herd",
+        "need_addressed": "breeding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fluxom_breeder_shopfront",
+        "activity": "open shop; sells mounts and breeding rights",
+        "need_addressed": "breeding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fluxom_cactem_pens",
+        "activity": "afternoon training; mounts the new riders",
+        "need_addressed": "breeding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fluxom_breeder_residence",
+        "activity": "supper; reviews the breeder ledger",
+        "need_addressed": "breeding",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fluxom_cactem_pens",
+        "activity": "last walk of the pens; sleeps in the herd-loft",
+        "need_addressed": "breeding",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "fluxom_refugee_tova",
@@ -1681,7 +2484,76 @@
       "resilient",
       "haunted"
     ],
-    "country_id": "fluxom"
+    "country_id": "fluxom",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fluxom_refugee_tent_cluster",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fluxom_refugee_kitchens",
+        "activity": "distributes morning rations; logs need",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fluxom_refugee_clinic",
+        "activity": "open clinic; treats the wounded and the wandering",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fluxom_refugee_clinic",
+        "activity": "afternoon clinic; receives Medici supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fluxom_refugee_kitchens",
+        "activity": "evening rations; comforts the children",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fluxom_refugee_clinic",
+        "activity": "night rounds; sleeps in the clinic loft",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "nil_elder_mevra",
@@ -1702,7 +2574,76 @@
     "narrative_context": {
       "secret": "Mevra knows what is inside Nil; the silence is intentional."
     },
-    "country_id": "nil"
+    "country_id": "nil",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "nil_elder_grove",
+        "activity": "moon-vigil at the stone circle",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "nil_elder_residence",
+        "activity": "morning meditation; brews the day's tea",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "nil_council_circle",
+        "activity": "open audience; receives petitioners",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "nil_elder_grove",
+        "activity": "spirit-walk along the wind-paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "nil_council_circle",
+        "activity": "evening audience; clan disputes",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "nil_elder_residence",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "akeia_matriarch_iola",
@@ -1719,7 +2660,76 @@
       "kind",
       "shrewd"
     ],
-    "country_id": "akeia"
+    "country_id": "akeia",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "akeia_matriarch_chambers",
+        "activity": "private prayer at the tide-altar",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "akeia_council_hall",
+        "activity": "morning hall; receives clan elders",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "akeia_tide_temple",
+        "activity": "tide-blessing of fishing fleets",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "akeia_matriarch_chambers",
+        "activity": "private correspondence; consults the tidesinger",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "akeia_council_hall",
+        "activity": "evening hall; settles disputes",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "akeia_matriarch_chambers",
+        "activity": "sleeps; the night belongs to the tide",
+        "need_addressed": "matriarchal_rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "akeia_tidesinger_vesh",
@@ -1735,7 +2745,76 @@
       "serene",
       "musical"
     ],
-    "country_id": "akeia"
+    "country_id": "akeia",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "akeia_tide_temple",
+        "activity": "low-tide vigil; reads the receding sea",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "akeia_tide_temple",
+        "activity": "morning tide-song; blesses the fleet",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "akeia_tide_temple_garden",
+        "activity": "trains the tidesinger acolytes",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "akeia_dock_promenade",
+        "activity": "walks the docks; receives sailors' offerings",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "akeia_tide_temple",
+        "activity": "high-tide song; meditation",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "akeia_tidesinger_quarters",
+        "activity": "reads the celestial tide-charts; sleeps",
+        "need_addressed": "tide_singing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "akeia_dock_jano",
@@ -1751,7 +2830,76 @@
       "bluff",
       "fair"
     ],
-    "country_id": "akeia"
+    "country_id": "akeia",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "akeia_dock_master_office",
+        "activity": "logs overnight arrivals; updates the harbour ledger",
+        "need_addressed": "dock_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "akeia_main_pier",
+        "activity": "morning fleet departure; assigns berths",
+        "need_addressed": "dock_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "akeia_main_pier",
+        "activity": "open hours; receives cargo and travellers",
+        "need_addressed": "dock_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "akeia_dock_master_office",
+        "activity": "afternoon logs; arbitrates dockside disputes",
+        "need_addressed": "dock_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "akeia_dockside_tavern",
+        "activity": "evening with the captains",
+        "need_addressed": "dock_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "akeia_dock_master_residence",
+        "activity": "sleeps; rises for emergencies",
+        "need_addressed": "dock_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "sangree_chief_thal",
@@ -1768,7 +2916,76 @@
       "honourable",
       "blunt"
     ],
-    "country_id": "sangree"
+    "country_id": "sangree",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "sangree_chief_war_tent",
+        "activity": "pre-dawn drill; sharpens his own blade",
+        "need_addressed": "clan_war",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "sangree_war_council",
+        "activity": "morning council; receives scouts",
+        "need_addressed": "clan_war",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "sangree_drill_yard",
+        "activity": "drills the war-band; takes challenges",
+        "need_addressed": "clan_war",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "sangree_war_council",
+        "activity": "afternoon council; coordinates Medici war",
+        "need_addressed": "clan_war",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "sangree_clan_hall",
+        "activity": "open clan supper; settles internal grievances",
+        "need_addressed": "clan_war",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "sangree_chief_war_tent",
+        "activity": "reads scout reports; sleeps with the blade beside him",
+        "need_addressed": "clan_war",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "sangree_smith_orla",
@@ -1784,7 +3001,76 @@
       "proud",
       "patient"
     ],
-    "country_id": "sangree"
+    "country_id": "sangree",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "sangree_war_forge",
+        "activity": "banks the forge; checks the quench vats",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "sangree_war_forge",
+        "activity": "morning forging; blades for the war-band",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "sangree_forge_shop",
+        "activity": "open shop; sells finished work",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "sangree_war_forge",
+        "activity": "afternoon commissions; trains the apprentices",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "sangree_smith_residence",
+        "activity": "supper; rolls the day's edge-scraps",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "sangree_smith_residence",
+        "activity": "studies the war-blade ledgers; sleeps",
+        "need_addressed": "forge_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "medici_archhealer_yev",
@@ -1801,7 +3087,76 @@
       "wise",
       "old"
     ],
-    "country_id": "medici"
+    "country_id": "medici",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "medici_archhealer_private_clinic",
+        "activity": "tends the gravely wounded through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "medici_main_clinic",
+        "activity": "open clinic; treats the morning queue",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "medici_clinic_garden",
+        "activity": "tends the medicinal herb beds",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "medici_main_clinic",
+        "activity": "afternoon clinic; receives Medici cartel envoys",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "medici_archhealer_private_clinic",
+        "activity": "private surgeries; teaches the apprentice",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "medici_archhealer_residence",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "medici_apprentice_lin",
@@ -1816,7 +3171,76 @@
     "personality_traits": [
       "earnest"
     ],
-    "country_id": "medici"
+    "country_id": "medici",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "medici_apprentice_quarters",
+        "activity": "studies the herbarium; sleeps four hours",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "medici_main_clinic",
+        "activity": "morning prep; sterilises instruments; arranges the day",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "medici_main_clinic",
+        "activity": "assists Arch-Healer Yev; takes notes",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "medici_clinic_garden",
+        "activity": "studies the herb beds; runs errands",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "medici_archhealer_private_clinic",
+        "activity": "evening lecture from Yev; observed surgeries",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "medici_apprentice_quarters",
+        "activity": "private reading; writes letters home to Sahm",
+        "need_addressed": "apprenticeship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "sahm_provost_kez",
@@ -1835,7 +3259,76 @@
     "narrative_context": {
       "secret": "Kez has drafted a Sahm-led federation charter that the other Tunyan factions have not seen."
     },
-    "country_id": "sahm"
+    "country_id": "sahm",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "sahm_provost_residence",
+        "activity": "reads overnight correspondence; meditates",
+        "need_addressed": "provostship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "sahm_chancellery",
+        "activity": "morning hall; signs decrees and travel papers",
+        "need_addressed": "provostship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "sahm_chancellery",
+        "activity": "open hours; receives faculty and merchants",
+        "need_addressed": "provostship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "sahm_council_chamber",
+        "activity": "scholar's council; coordinates with the Asbir keeper",
+        "need_addressed": "provostship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "sahm_provost_dining_hall",
+        "activity": "private supper with the visiting scholars",
+        "need_addressed": "provostship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "sahm_provost_residence",
+        "activity": "writes the day's letter to the chancellor of Iyatte's son",
+        "need_addressed": "provostship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "bahiij_caravan_master_rema",
@@ -1851,7 +3344,76 @@
       "pragmatic",
       "warm"
     ],
-    "country_id": "bahiij"
+    "country_id": "bahiij",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "bahiij_caravan_camp",
+        "activity": "checks the wagons; reviews the day's route",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "bahiij_caravan_road",
+        "activity": "morning trek; the caravan moves",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "bahiij_marketplace",
+        "activity": "open trade at the next post; sells and buys",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "bahiij_caravan_road",
+        "activity": "afternoon trek; tends the mahout train",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "bahiij_caravan_camp",
+        "activity": "evening camp; ledger reconciliation with the mahout",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "bahiij_caravan_camp",
+        "activity": "sleeps in the master tent",
+        "need_addressed": "caravan_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "bahiij_mahout_dev",
@@ -1867,7 +3429,76 @@
       "quiet",
       "loyal"
     ],
-    "country_id": "bahiij"
+    "country_id": "bahiij",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "bahiij_mahout_yards",
+        "activity": "tends the mahout train; checks the elephants' feet",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "bahiij_caravan_road",
+        "activity": "leads the train at the head of the caravan",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "bahiij_marketplace_yard",
+        "activity": "waters the train; shows the trade-bulls",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "bahiij_caravan_road",
+        "activity": "afternoon march; rotates the working pairs",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "bahiij_mahout_yards",
+        "activity": "evening feed; checks for foot-injuries",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "bahiij_mahout_quarters",
+        "activity": "sleeps in the yard-loft above the train",
+        "need_addressed": "mahout_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2000
   },
   {
     "id": "ruins_scholar_aldra",
@@ -1886,7 +3517,76 @@
     "narrative_context": {
       "secret": "Aldra has translated one ruin glyph; the translation contradicts every Tunyan creation myth."
     },
-    "country_id": "ancient-tunyan-ruins"
+    "country_id": "ancient-tunyan-ruins",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_scholar_camp_tent",
+        "activity": "transcribes overnight rubbings by lamp-light",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ruins_excavation_site",
+        "activity": "morning excavation; documents new findings",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "ruins_excavation_site",
+        "activity": "supervises diggers; takes rubbings",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_scholar_camp_tent",
+        "activity": "afternoon cataloguing; cross-references with Asbir",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_camp_communal_fire",
+        "activity": "supper with the dig crew; tells the day's discovery",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_scholar_camp_tent",
+        "activity": "private writing; the contested theory takes shape",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "strip_captain_mara",
@@ -1902,6 +3602,75 @@
       "vengeful",
       "disciplined"
     ],
-    "country_id": "cactem-strip"
+    "country_id": "cactem-strip",
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "strip_captain_office",
+        "activity": "reviews the night watch; checks the strip's lock-ups",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "strip_main_avenue",
+        "activity": "morning patrol; checks every storefront and beggar",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "strip_main_avenue",
+        "activity": "open patrol; mediates merchant disputes",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "strip_captain_office",
+        "activity": "afternoon paperwork; coordinates with the dock-master",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "strip_taverns_row",
+        "activity": "evening rounds; keeps the brawls contained",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "strip_captain_quarters",
+        "activity": "sleeps in the strip-house; rises for trouble",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   }
 ]

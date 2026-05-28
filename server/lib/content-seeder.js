@@ -491,6 +491,28 @@ export async function seedContent({ db = null } = {}) {
     if (subLore) results.lore += seedLore(subLore);
   }
 
+  // Phase F1.2 — boot-time asymmetric-traits seeding.
+  // npc-asymmetry.js#seedNPCAsymmetry was previously called lazily on first
+  // interaction. Walking every authored NPC at boot means grudges /
+  // preoccupations / desires are populated before the player ever talks
+  // to anyone. Idempotent at the row level — re-running is safe.
+  if (db) {
+    try {
+      const { seedNPCAsymmetry } = await import("./npc-asymmetry.js");
+      const authored = [..._authoredNPCs.values()];
+      let asymPatched = 0;
+      for (const npc of authored) {
+        try {
+          const r = await seedNPCAsymmetry(db, npc);
+          if (r?.ok && r?.reason !== "already_seeded") asymPatched++;
+        } catch { /* per-NPC best-effort */ }
+      }
+      results.npcAsymmetrySeeded = asymPatched;
+    } catch (err) {
+      logger.warn("content_seeder", "asymmetry_seed_skipped", { err: err?.message });
+    }
+  }
+
   // Onboarding quest chain
   const onboarding = readJSON("quests/onboarding.json");
   if (Array.isArray(onboarding)) {

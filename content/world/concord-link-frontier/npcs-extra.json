@@ -9,13 +9,88 @@
     "personality": "Zara holds the frontier the way a roof holds a storm — by stubbornness.",
     "appearance": "Forty, dust-tanned, leather coat, repeating rifle slung over the shoulder.",
     "background": "Held the line through three frontier incursions. Hasn't slept eight hours in a year.",
-    "narrative_context": { "secret": "Zara has noticed lattice-Crucible scouts probing her perimeter.", "weaponise_at": "Open a back-channel with Emer Voss; mutual perimeter watch." },
+    "narrative_context": {
+      "secret": "Zara has noticed lattice-Crucible scouts probing her perimeter.",
+      "weaponise_at": "Open a back-channel with Emer Voss; mutual perimeter watch."
+    },
     "concord_link_resonance": "lattice-crucible:scout_emer_voss",
     "dialogue_style": "terse, professional, occasionally warm",
-    "needs": [{ "id": "patrol", "priority": "primary", "satisfaction_method": "daily_perimeter" }],
+    "needs": [
+      {
+        "id": "patrol",
+        "priority": "primary",
+        "satisfaction_method": "daily_perimeter"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 11], "location": "frontier_perimeter", "activity": "patrol", "need_addressed": "patrol", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_perimeter",
+        "activity": "private war-vigil; speaks to no one",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "frontier_perimeter",
+        "activity": "patrol",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "frontier_perimeter",
+        "activity": "inspects the levy; cohort training",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_perimeter",
+        "activity": "war-council; coordinates with envoys",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_perimeter",
+        "activity": "open supper; clan business",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_perimeter",
+        "activity": "private correspondence; sleeps lightly",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "smith_hane_okra",
@@ -27,13 +102,88 @@
     "personality": "Hane has fixed every rifle on the frontier at least twice.",
     "appearance": "Fifties, broad, soot-streaked, leather apron, hands that don't shake.",
     "background": "Repairs everything. Asks no questions.",
-    "narrative_context": { "secret": "Hane learned forging from Rina Calvex's master — they don't know each other.", "weaponise_at": "Bring them together; lattice alloy comes to the frontier." },
+    "narrative_context": {
+      "secret": "Hane learned forging from Rina Calvex's master — they don't know each other.",
+      "weaponise_at": "Bring them together; lattice alloy comes to the frontier."
+    },
     "concord_link_resonance": "lattice-crucible:smith_rina_calvex",
     "dialogue_style": "technical, dry",
-    "needs": [{ "id": "forge_work", "priority": "primary", "satisfaction_method": "daily_smithy" }],
+    "needs": [
+      {
+        "id": "forge_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_smithy"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [9, 17], "location": "frontier_smithy", "activity": "forging + repair", "need_addressed": "forge_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_smithy",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "frontier_smithy",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          17
+        ],
+        "location": "frontier_smithy",
+        "activity": "forging + repair",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_smithy",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_smithy",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_smithy",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "trader_oren_voss",
@@ -45,13 +195,88 @@
     "personality": "Oren tells the truth about distance and lies about price.",
     "appearance": "Forty, dusty linen, fingerless gloves, ledger always in hand.",
     "background": "Runs supplies between the frontier and the hub. Has been robbed twice and survived both.",
-    "narrative_context": { "secret": "Oren has a customer in the hub Bazaar who pays for off-ledger frontier goods.", "weaponise_at": "Expose the route; Velka and the frontier both take losses." },
+    "narrative_context": {
+      "secret": "Oren has a customer in the hub Bazaar who pays for off-ledger frontier goods.",
+      "weaponise_at": "Expose the route; Velka and the frontier both take losses."
+    },
     "concord_link_resonance": "concordia-hub:merchant_velka_ironhand",
     "dialogue_style": "fast, friendly, slightly evasive",
-    "needs": [{ "id": "trade", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "needs": [
+      {
+        "id": "trade",
+        "priority": "primary",
+        "satisfaction_method": "daily_route"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [5, 9], "location": "frontier_caravan_camp", "activity": "morning haul", "need_addressed": "trade", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          9
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "morning haul",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "open shop; sells and negotiates",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_caravan_camp",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "healer_jensa_bell",
@@ -63,13 +288,88 @@
     "personality": "Jensa is patient with the frontier's casualties and impatient with the frontier's politics.",
     "appearance": "Thirties, copper hair pinned back, leather satchel, dust-coloured smock.",
     "background": "Trained in the hub infirmary. Came west to be useful.",
-    "narrative_context": { "secret": "Jensa receives Pia Thalis's smuggled satchels.", "weaponise_at": "Cut the chain; the frontier loses its only steady supply of refugee medicine." },
+    "narrative_context": {
+      "secret": "Jensa receives Pia Thalis's smuggled satchels.",
+      "weaponise_at": "Cut the chain; the frontier loses its only steady supply of refugee medicine."
+    },
     "concord_link_resonance": "concordia-hub:healer_pia_thalis",
     "dialogue_style": "warm, busy",
-    "needs": [{ "id": "healing", "priority": "primary", "satisfaction_method": "daily_round" }],
+    "needs": [
+      {
+        "id": "healing",
+        "priority": "primary",
+        "satisfaction_method": "daily_round"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "frontier_infirmary", "activity": "morning patients", "need_addressed": "healing", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_infirmary",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "frontier_infirmary",
+        "activity": "morning patients",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "frontier_infirmary",
+        "activity": "tends the herb beds and the recovering",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_infirmary",
+        "activity": "afternoon clinic; receives supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_infirmary",
+        "activity": "private surgeries; teaches the apprentice",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_infirmary",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "scout_pell_orange",
@@ -81,13 +381,88 @@
     "personality": "Pell trusts the dust more than the bunkhouse.",
     "appearance": "Late twenties, sun-baked, leather hood, repeating rifle and tracking-knife.",
     "background": "Has tracked the lattice-Crucible scouts twice and let them go each time.",
-    "narrative_context": { "secret": "Pell saw an impossible print at the western perimeter. Same as Kiren and Brann and Emer.", "weaponise_at": "Four-scout cross-world chain unlocks the print's source." },
+    "narrative_context": {
+      "secret": "Pell saw an impossible print at the western perimeter. Same as Kiren and Brann and Emer.",
+      "weaponise_at": "Four-scout cross-world chain unlocks the print's source."
+    },
     "concord_link_resonance": "concordia-hub:ranger_kiren_owl",
     "dialogue_style": "spare, observational",
-    "needs": [{ "id": "scouting", "priority": "primary", "satisfaction_method": "dawn_patrol" }],
+    "needs": [
+      {
+        "id": "scouting",
+        "priority": "primary",
+        "satisfaction_method": "dawn_patrol"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [3, 8], "location": "frontier_western_perimeter", "activity": "tracking", "need_addressed": "scouting", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          3,
+          8
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "tracking",
+        "need_addressed": "scouting",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "morning patrol; scouts the perimeter",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "open hunt; gathers food and intel",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "afternoon return; processes the take",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "evening reports to the chief",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_western_perimeter",
+        "activity": "sleeps; on alarm-call rotation",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2000
   },
   {
     "id": "child_dust_rose",
@@ -99,13 +474,88 @@
     "personality": "Ten years old. Knows the dust patterns by smell.",
     "appearance": "Small, dirty, eyes too bright, leather cap.",
     "background": "Showed up at the militia camp three years ago. Refuses to say from where.",
-    "narrative_context": { "secret": "Dust Rose crossed from sovereign-ruins through a bog road she remembers but can't explain.", "weaponise_at": "Trace her path; the cross-world bog opens." },
+    "narrative_context": {
+      "secret": "Dust Rose crossed from sovereign-ruins through a bog road she remembers but can't explain.",
+      "weaponise_at": "Trace her path; the cross-world bog opens."
+    },
     "concord_link_resonance": "sovereign-ruins:child_finn_bren",
     "dialogue_style": "fast, mistrustful",
-    "needs": [{ "id": "survival", "priority": "primary", "satisfaction_method": "scavenging" }],
+    "needs": [
+      {
+        "id": "survival",
+        "priority": "primary",
+        "satisfaction_method": "scavenging"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 17], "location": "frontier_camp_edges", "activity": "scavenging", "need_addressed": "survival", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          17
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "scavenging",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_camp_edges",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "councillor_mara_pin",
@@ -117,13 +567,88 @@
     "personality": "Mara writes letters. Many letters. Some get read.",
     "appearance": "Fifty, prim, grey braid, half-rim spectacles, three pencils in the breast pocket.",
     "background": "Elected on a platform of writing letters and refusing the militia's worse ideas.",
-    "narrative_context": { "secret": "Mara corresponds with Elder Mira Lattice (hub) about frontier autonomy.", "weaponise_at": "If the correspondence surfaces, frontier secession becomes plausible." },
+    "narrative_context": {
+      "secret": "Mara corresponds with Elder Mira Lattice (hub) about frontier autonomy.",
+      "weaponise_at": "If the correspondence surfaces, frontier secession becomes plausible."
+    },
     "concord_link_resonance": "concordia-hub:elder_mira_lattice",
     "dialogue_style": "considered, dry",
-    "needs": [{ "id": "council_work", "priority": "primary", "satisfaction_method": "daily_letters" }],
+    "needs": [
+      {
+        "id": "council_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_letters"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [9, 15], "location": "frontier_council_room", "activity": "letters + council", "need_addressed": "council_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_council_room",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "frontier_council_room",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          15
+        ],
+        "location": "frontier_council_room",
+        "activity": "letters + council",
+        "need_addressed": "council_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_council_room",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_council_room",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_council_room",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "rider_silas_quinn",
@@ -135,12 +660,87 @@
     "personality": "Silas rides further than anyone, says less than anyone, drinks more than most.",
     "appearance": "Forty, sun-darkened, dust-streaked coat, two pistols at the hip.",
     "background": "Has ridden between the frontier and the hub for twenty years.",
-    "narrative_context": { "secret": "Silas knows a portal that opens off-schedule on the frontier's western perimeter — same as Kel Sandren's hub anomaly.", "weaponise_at": "Cross-reference Silas and Kel; the cross-world breach is fully traced." },
+    "narrative_context": {
+      "secret": "Silas knows a portal that opens off-schedule on the frontier's western perimeter — same as Kel Sandren's hub anomaly.",
+      "weaponise_at": "Cross-reference Silas and Kel; the cross-world breach is fully traced."
+    },
     "concord_link_resonance": "concordia-hub:courier_kel_sandren",
     "dialogue_style": "terse, weathered",
-    "needs": [{ "id": "riding", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "needs": [
+      {
+        "id": "riding",
+        "priority": "primary",
+        "satisfaction_method": "daily_route"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [5, 12], "location": "frontier_western_road", "activity": "riding", "need_addressed": "riding", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "frontier_western_road",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          12
+        ],
+        "location": "frontier_western_road",
+        "activity": "riding",
+        "need_addressed": "riding",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "frontier_western_road",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "frontier_western_road",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "frontier_western_road",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "frontier_western_road",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   }
 ]

@@ -17,17 +17,86 @@
     "cross_world_hook": "Asbir's hidden cavity is the proof-of-concept for Concordia's cross-world memory bridge. If a player surfaces the sealed letter — by stealth, persuasion, or being given it — the Sanguire-Medici plotline shifts in tunya.",
     "dialogue_style": "long sentences with pauses; never interrupts; reframes questions before answering",
     "needs": [
-      { "id": "archive_integrity", "priority": "primary", "satisfaction_method": "morning_archive_audit" },
-      { "id": "correspondence", "priority": "primary", "satisfaction_method": "weekly_letter_writing" }
+      {
+        "id": "archive_integrity",
+        "priority": "primary",
+        "satisfaction_method": "morning_archive_audit"
+      },
+      {
+        "id": "correspondence",
+        "priority": "primary",
+        "satisfaction_method": "weekly_letter_writing"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_archive_curator_chambers", "activity": "rises early; writes morning notes", "need_addressed": "correspondence", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_archive_main_floor", "activity": "audit of the seven-spoke vault", "need_addressed": "archive_integrity", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_archive_audience_chamber", "activity": "grants audience to petitioners and travellers", "need_addressed": "archive_integrity", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_archive_curator_chambers", "activity": "writes letters; receives no visitors", "need_addressed": "correspondence", "interactable_by_player": false },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "walks the plaza, observes city pulse", "need_addressed": "archive_integrity", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_archive_curator_chambers", "activity": "reads; sleeps after midnight", "need_addressed": "archive_integrity", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_archive_curator_chambers",
+        "activity": "rises early; writes morning notes",
+        "need_addressed": "correspondence",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_archive_main_floor",
+        "activity": "audit of the seven-spoke vault",
+        "need_addressed": "archive_integrity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_archive_audience_chamber",
+        "activity": "grants audience to petitioners and travellers",
+        "need_addressed": "archive_integrity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_archive_curator_chambers",
+        "activity": "writes letters; receives no visitors",
+        "need_addressed": "correspondence",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_great_plaza",
+        "activity": "walks the plaza, observes city pulse",
+        "need_addressed": "archive_integrity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_archive_curator_chambers",
+        "activity": "reads; sleeps after midnight",
+        "need_addressed": "archive_integrity",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "captain_ren_solare",
@@ -47,17 +116,86 @@
     "cross_world_hook": "Ren and Detective Iniko Voss (crime world) have a cold case in common — a smuggling ring that operates in both worlds. They've never spoken. The cross-world bridge would form when a player carries evidence between them.",
     "dialogue_style": "short, observant, never lies but elides freely",
     "needs": [
-      { "id": "city_order", "priority": "primary", "satisfaction_method": "patrol_rounds" },
-      { "id": "dome_intelligence", "priority": "primary", "satisfaction_method": "private_southern_arc_check" }
+      {
+        "id": "city_order",
+        "priority": "primary",
+        "satisfaction_method": "patrol_rounds"
+      },
+      {
+        "id": "dome_intelligence",
+        "priority": "primary",
+        "satisfaction_method": "private_southern_arc_check"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_watch_barracks", "activity": "rises pre-dawn; coffee with the night shift", "need_addressed": "city_order", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_southern_arc_road", "activity": "private patrol of the southern arc; checks Refusal Field strength", "need_addressed": "dome_intelligence", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "open patrol; talks to merchants and travellers", "need_addressed": "city_order", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_watch_barracks", "activity": "shift briefing; trains new recruits", "need_addressed": "city_order", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_market_district", "activity": "evening patrol; watches the dusk-trade", "need_addressed": "city_order", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_watch_barracks", "activity": "off-shift; reads in the barracks library", "need_addressed": "city_order", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_watch_barracks",
+        "activity": "rises pre-dawn; coffee with the night shift",
+        "need_addressed": "city_order",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_southern_arc_road",
+        "activity": "private patrol of the southern arc; checks Refusal Field strength",
+        "need_addressed": "dome_intelligence",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_great_plaza",
+        "activity": "open patrol; talks to merchants and travellers",
+        "need_addressed": "city_order",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_watch_barracks",
+        "activity": "shift briefing; trains new recruits",
+        "need_addressed": "city_order",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_market_district",
+        "activity": "evening patrol; watches the dusk-trade",
+        "need_addressed": "city_order",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_watch_barracks",
+        "activity": "off-shift; reads in the barracks library",
+        "need_addressed": "city_order",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "merchant_velka_ironhand",
@@ -77,17 +215,86 @@
     "cross_world_hook": "Velka and Kix Orange (cyber-world fence) share a cipher language. Items can cross between hubs via their network. The bridge is gated by a one-time codeword.",
     "dialogue_style": "warm, peppered with bazaar idioms, slips in numbers without warning",
     "needs": [
-      { "id": "market_pulse", "priority": "primary", "satisfaction_method": "morning_stall_round" },
-      { "id": "guild_arbitration", "priority": "secondary", "satisfaction_method": "afternoon_dispute_chamber" }
+      {
+        "id": "market_pulse",
+        "priority": "primary",
+        "satisfaction_method": "morning_stall_round"
+      },
+      {
+        "id": "guild_arbitration",
+        "priority": "secondary",
+        "satisfaction_method": "afternoon_dispute_chamber"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_merchant_quarters", "activity": "sleeps; the bazaar runs without her at this hour", "need_addressed": "market_pulse", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "morning stall round; greets vendors", "need_addressed": "market_pulse", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_bazaar_central_row", "activity": "high-volume trading", "need_addressed": "market_pulse", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_bazaar_dispute_chamber", "activity": "arbitrates guild disputes", "need_addressed": "guild_arbitration", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_market_district", "activity": "evening trade; meets fences quietly", "need_addressed": "market_pulse", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_merchant_quarters", "activity": "reviews ledger; sleeps after midnight", "need_addressed": "market_pulse", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_merchant_quarters",
+        "activity": "sleeps; the bazaar runs without her at this hour",
+        "need_addressed": "market_pulse",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_market_district",
+        "activity": "morning stall round; greets vendors",
+        "need_addressed": "market_pulse",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_bazaar_central_row",
+        "activity": "high-volume trading",
+        "need_addressed": "market_pulse",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_bazaar_dispute_chamber",
+        "activity": "arbitrates guild disputes",
+        "need_addressed": "guild_arbitration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_market_district",
+        "activity": "evening trade; meets fences quietly",
+        "need_addressed": "market_pulse",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_merchant_quarters",
+        "activity": "reviews ledger; sleeps after midnight",
+        "need_addressed": "market_pulse",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "oracle_nesha_keep",
@@ -107,17 +314,86 @@
     "cross_world_hook": "Nesha and Archon Thanis share a glyph-language. A spell composed in one world can be heard by the other Oracle. The bridge fires the first time a player mints a strength >=6 compound spell.",
     "dialogue_style": "present-tense, observational, uses second person rarely and with deliberate weight",
     "needs": [
-      { "id": "field_attendance", "priority": "primary", "satisfaction_method": "morning_dome_walk" },
-      { "id": "glyph_practice", "priority": "primary", "satisfaction_method": "evening_glyph_meditation" }
+      {
+        "id": "field_attendance",
+        "priority": "primary",
+        "satisfaction_method": "morning_dome_walk"
+      },
+      {
+        "id": "glyph_practice",
+        "priority": "primary",
+        "satisfaction_method": "evening_glyph_meditation"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_refusal_keep_quarters", "activity": "wakes in the dark; greets the field's pre-dawn silence", "need_addressed": "field_attendance", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_dome_perimeter", "activity": "morning dome walk; checks each of the seven anchors", "need_addressed": "field_attendance", "interactable_by_player": false },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_refusal_keep_main_hall", "activity": "receives petitioners seeking field-readings", "need_addressed": "field_attendance", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_glyph_altar", "activity": "glyph practice; composes; teaches advanced students", "need_addressed": "glyph_practice", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_refusal_keep_main_hall", "activity": "evening audience; offers tea and prophecy in equal measure", "need_addressed": "field_attendance", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_refusal_keep_quarters", "activity": "meditates; sleeps under glyph-light", "need_addressed": "glyph_practice", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_refusal_keep_quarters",
+        "activity": "wakes in the dark; greets the field's pre-dawn silence",
+        "need_addressed": "field_attendance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_dome_perimeter",
+        "activity": "morning dome walk; checks each of the seven anchors",
+        "need_addressed": "field_attendance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_refusal_keep_main_hall",
+        "activity": "receives petitioners seeking field-readings",
+        "need_addressed": "field_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_glyph_altar",
+        "activity": "glyph practice; composes; teaches advanced students",
+        "need_addressed": "glyph_practice",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_refusal_keep_main_hall",
+        "activity": "evening audience; offers tea and prophecy in equal measure",
+        "need_addressed": "field_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_refusal_keep_quarters",
+        "activity": "meditates; sleeps under glyph-light",
+        "need_addressed": "glyph_practice",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "healer_pia_thalis",
@@ -137,17 +413,86 @@
     "cross_world_hook": "Pia and Apothecary Lyra Thorne exchange herb cuttings by smuggled satchel. Their network feeds the refugee infirmaries in both worlds.",
     "dialogue_style": "warm with patients, terse with bureaucrats, factual with researchers",
     "needs": [
-      { "id": "infirmary_supply", "priority": "primary", "satisfaction_method": "morning_supply_audit" },
-      { "id": "patient_rounds", "priority": "primary", "satisfaction_method": "midday_ward_round" }
+      {
+        "id": "infirmary_supply",
+        "priority": "primary",
+        "satisfaction_method": "morning_supply_audit"
+      },
+      {
+        "id": "patient_rounds",
+        "priority": "primary",
+        "satisfaction_method": "midday_ward_round"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_infirmary_quarters", "activity": "on-call sleep; may be roused for emergencies", "need_addressed": "patient_rounds", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_infirmary_supply_room", "activity": "morning supply audit; mixes day's herbal preparations", "need_addressed": "infirmary_supply", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_infirmary_ward", "activity": "patient rounds; surgery if scheduled", "need_addressed": "patient_rounds", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_infirmary_ward", "activity": "afternoon rounds; receives walk-ins", "need_addressed": "patient_rounds", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_infirmary_back_door", "activity": "off-ledger refugee clinic", "need_addressed": "patient_rounds", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_infirmary_quarters", "activity": "paperwork; tea; sleep", "need_addressed": "infirmary_supply", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_infirmary_quarters",
+        "activity": "on-call sleep; may be roused for emergencies",
+        "need_addressed": "patient_rounds",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_infirmary_supply_room",
+        "activity": "morning supply audit; mixes day's herbal preparations",
+        "need_addressed": "infirmary_supply",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_infirmary_ward",
+        "activity": "patient rounds; surgery if scheduled",
+        "need_addressed": "patient_rounds",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_infirmary_ward",
+        "activity": "afternoon rounds; receives walk-ins",
+        "need_addressed": "patient_rounds",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_infirmary_back_door",
+        "activity": "off-ledger refugee clinic",
+        "need_addressed": "patient_rounds",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_infirmary_quarters",
+        "activity": "paperwork; tea; sleep",
+        "need_addressed": "infirmary_supply",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "ranger_kiren_owl",
@@ -167,17 +512,86 @@
     "cross_world_hook": "Kiren and Scout Emer Voss have crossed sign in three places. They have never met. Their tracks both follow the same impossible creature.",
     "dialogue_style": "spare, factual, observational, occasional dry humour",
     "needs": [
-      { "id": "verge_patrol", "priority": "primary", "satisfaction_method": "wilderness_walks" },
-      { "id": "track_log", "priority": "secondary", "satisfaction_method": "evening_journal" }
+      {
+        "id": "verge_patrol",
+        "priority": "primary",
+        "satisfaction_method": "wilderness_walks"
+      },
+      {
+        "id": "track_log",
+        "priority": "secondary",
+        "satisfaction_method": "evening_journal"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_verge_outpost", "activity": "pre-dawn watch", "need_addressed": "verge_patrol", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_northern_woodline", "activity": "tracking patrol; checks the impossible print", "need_addressed": "verge_patrol", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_verge_outpost", "activity": "returns; brief; teaches new rangers", "need_addressed": "verge_patrol", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_market_district", "activity": "city errand; resupplies; tolerates crowds", "need_addressed": "verge_patrol", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_verge_outpost", "activity": "evening journal; sketches the print", "need_addressed": "track_log", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_verge_outpost", "activity": "sleeps", "need_addressed": "verge_patrol", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_verge_outpost",
+        "activity": "pre-dawn watch",
+        "need_addressed": "verge_patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_northern_woodline",
+        "activity": "tracking patrol; checks the impossible print",
+        "need_addressed": "verge_patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_verge_outpost",
+        "activity": "returns; brief; teaches new rangers",
+        "need_addressed": "verge_patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_market_district",
+        "activity": "city errand; resupplies; tolerates crowds",
+        "need_addressed": "verge_patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_verge_outpost",
+        "activity": "evening journal; sketches the print",
+        "need_addressed": "track_log",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_verge_outpost",
+        "activity": "sleeps",
+        "need_addressed": "verge_patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2000
   },
   {
     "id": "warrior_taro_sandren",
@@ -197,17 +611,86 @@
     "cross_world_hook": "Taro and Champion Kor Blackstar trained under the same Sifu, in different worlds, ten years apart. The Sifu is dead in one world, still alive in the other.",
     "dialogue_style": "loud, warm, profane, occasionally caught off-guard by his own kindness",
     "needs": [
-      { "id": "pit_attendance", "priority": "primary", "satisfaction_method": "daily_pit_open" },
-      { "id": "veteran_brotherhood", "priority": "secondary", "satisfaction_method": "evening_veterans_table" }
+      {
+        "id": "pit_attendance",
+        "priority": "primary",
+        "satisfaction_method": "daily_pit_open"
+      },
+      {
+        "id": "veteran_brotherhood",
+        "priority": "secondary",
+        "satisfaction_method": "evening_veterans_table"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_brawl_pit_loft", "activity": "sleeps in the loft above the pit", "need_addressed": "pit_attendance", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_brawl_pit_floor", "activity": "morning conditioning; sweeps the sand", "need_addressed": "pit_attendance", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_brawl_pit_floor", "activity": "trains apprentices; spars with willing brawlers", "need_addressed": "pit_attendance", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_brawl_pit_floor", "activity": "midday matches; takes bets at the door", "need_addressed": "pit_attendance", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_brawl_pit_floor", "activity": "evening matches; pit fills up; pours beer", "need_addressed": "pit_attendance", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_veterans_tavern", "activity": "drinks with the veteran's table", "need_addressed": "veteran_brotherhood", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_brawl_pit_loft",
+        "activity": "sleeps in the loft above the pit",
+        "need_addressed": "pit_attendance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_brawl_pit_floor",
+        "activity": "morning conditioning; sweeps the sand",
+        "need_addressed": "pit_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_brawl_pit_floor",
+        "activity": "trains apprentices; spars with willing brawlers",
+        "need_addressed": "pit_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_brawl_pit_floor",
+        "activity": "midday matches; takes bets at the door",
+        "need_addressed": "pit_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_brawl_pit_floor",
+        "activity": "evening matches; pit fills up; pours beer",
+        "need_addressed": "pit_attendance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_veterans_tavern",
+        "activity": "drinks with the veteran's table",
+        "need_addressed": "veteran_brotherhood",
+        "interactable_by_player": true
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "engineer_lyra_brassgate",
@@ -227,17 +710,86 @@
     "cross_world_hook": "Lyra and Fixer Oren Lim correspond about a shared engineering puzzle — the focus-lattice that anchors the dome may be the same substrate as the cyber-world's neural firewall.",
     "dialogue_style": "technical, dryly funny, will explain in detail if you ask twice",
     "needs": [
-      { "id": "foundry_work", "priority": "primary", "satisfaction_method": "daily_foundry_session" },
-      { "id": "apprentice_teaching", "priority": "secondary", "satisfaction_method": "afternoon_lessons" }
+      {
+        "id": "foundry_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_foundry_session"
+      },
+      {
+        "id": "apprentice_teaching",
+        "priority": "secondary",
+        "satisfaction_method": "afternoon_lessons"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_foundry_quarters", "activity": "sleeps; reads engineering papers in bed", "need_addressed": "foundry_work", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_brassgate_foundry", "activity": "morning forge-fire; checks the day's commissions", "need_addressed": "foundry_work", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_brassgate_foundry", "activity": "active commission work; takes drop-ins", "need_addressed": "foundry_work", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_brassgate_foundry", "activity": "apprentice lessons", "need_addressed": "apprentice_teaching", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_brassgate_foundry", "activity": "private project: the focus-lattice diagrams", "need_addressed": "foundry_work", "interactable_by_player": false },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_veterans_tavern", "activity": "supper; sometimes drinks with Taro and Pia", "need_addressed": "foundry_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_foundry_quarters",
+        "activity": "sleeps; reads engineering papers in bed",
+        "need_addressed": "foundry_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_brassgate_foundry",
+        "activity": "morning forge-fire; checks the day's commissions",
+        "need_addressed": "foundry_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_brassgate_foundry",
+        "activity": "active commission work; takes drop-ins",
+        "need_addressed": "foundry_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_brassgate_foundry",
+        "activity": "apprentice lessons",
+        "need_addressed": "apprentice_teaching",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_brassgate_foundry",
+        "activity": "private project: the focus-lattice diagrams",
+        "need_addressed": "foundry_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_veterans_tavern",
+        "activity": "supper; sometimes drinks with Taro and Pia",
+        "need_addressed": "foundry_work",
+        "interactable_by_player": true
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "elder_mira_lattice",
@@ -257,17 +809,86 @@
     "cross_world_hook": null,
     "dialogue_style": "considered, formal in public, warm in private",
     "needs": [
-      { "id": "assembly_business", "priority": "primary", "satisfaction_method": "morning_assembly_chamber" },
-      { "id": "public_audience", "priority": "primary", "satisfaction_method": "afternoon_petitioners" }
+      {
+        "id": "assembly_business",
+        "priority": "primary",
+        "satisfaction_method": "morning_assembly_chamber"
+      },
+      {
+        "id": "public_audience",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_petitioners"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_assembly_quarters", "activity": "sleeps poorly; sometimes reads at dawn", "need_addressed": "assembly_business", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_assembly_chamber", "activity": "morning briefing with clerks", "need_addressed": "assembly_business", "interactable_by_player": false },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_assembly_chamber", "activity": "Assembly session", "need_addressed": "assembly_business", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_assembly_audience_hall", "activity": "petitioner audience; citizens may request her time", "need_addressed": "public_audience", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "walks the plaza informally", "need_addressed": "public_audience", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_assembly_quarters", "activity": "private correspondence; sleeps", "need_addressed": "assembly_business", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_assembly_quarters",
+        "activity": "sleeps poorly; sometimes reads at dawn",
+        "need_addressed": "assembly_business",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_assembly_chamber",
+        "activity": "morning briefing with clerks",
+        "need_addressed": "assembly_business",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_assembly_chamber",
+        "activity": "Assembly session",
+        "need_addressed": "assembly_business",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_assembly_audience_hall",
+        "activity": "petitioner audience; citizens may request her time",
+        "need_addressed": "public_audience",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_great_plaza",
+        "activity": "walks the plaza informally",
+        "need_addressed": "public_audience",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_assembly_quarters",
+        "activity": "private correspondence; sleeps",
+        "need_addressed": "assembly_business",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "innkeep_baren_hollow",
@@ -287,16 +908,81 @@
     "cross_world_hook": null,
     "dialogue_style": "warm, anecdotal, pretends bad memory and has perfect memory",
     "needs": [
-      { "id": "inn_running", "priority": "primary", "satisfaction_method": "daily_inn_open" }
+      {
+        "id": "inn_running",
+        "priority": "primary",
+        "satisfaction_method": "daily_inn_open"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_seven_spokes_loft", "activity": "sleeps", "need_addressed": "inn_running", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_seven_spokes_kitchen", "activity": "opens kitchen; brews coffee", "need_addressed": "inn_running", "interactable_by_player": false },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_seven_spokes_common_room", "activity": "serves breakfast trade", "need_addressed": "inn_running", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_seven_spokes_common_room", "activity": "midday trade; bookkeeping in slow moments", "need_addressed": "inn_running", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "evening rush", "need_addressed": "inn_running", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_seven_spokes_cellar_room", "activity": "the private room is open if needed", "need_addressed": "inn_running", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_seven_spokes_loft",
+        "activity": "sleeps",
+        "need_addressed": "inn_running",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_seven_spokes_kitchen",
+        "activity": "opens kitchen; brews coffee",
+        "need_addressed": "inn_running",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "serves breakfast trade",
+        "need_addressed": "inn_running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "midday trade; bookkeeping in slow moments",
+        "need_addressed": "inn_running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "evening rush",
+        "need_addressed": "inn_running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_seven_spokes_cellar_room",
+        "activity": "the private room is open if needed",
+        "need_addressed": "inn_running",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "scribe_isa_velt",
@@ -316,17 +1002,86 @@
     "cross_world_hook": null,
     "dialogue_style": "quick, articulate, occasionally self-deprecating, sharp under stress",
     "needs": [
-      { "id": "archive_work", "priority": "primary", "satisfaction_method": "daily_indexing" },
-      { "id": "promotion_anxiety", "priority": "secondary", "satisfaction_method": "evening_self_study" }
+      {
+        "id": "archive_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_indexing"
+      },
+      {
+        "id": "promotion_anxiety",
+        "priority": "secondary",
+        "satisfaction_method": "evening_self_study"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_archive_apprentice_quarters", "activity": "sleeps", "need_addressed": "archive_work", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_archive_main_floor", "activity": "morning indexing", "need_addressed": "archive_work", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_archive_main_floor", "activity": "cataloguing; assists Asbir's audience when summoned", "need_addressed": "archive_work", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_archive_main_floor", "activity": "afternoon cross-referencing", "need_addressed": "archive_work", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "supper at the Inn; eavesdrops politely", "need_addressed": "promotion_anxiety", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_archive_apprentice_quarters", "activity": "self-study; reads about the dome", "need_addressed": "promotion_anxiety", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_archive_apprentice_quarters",
+        "activity": "sleeps",
+        "need_addressed": "archive_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_archive_main_floor",
+        "activity": "morning indexing",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_archive_main_floor",
+        "activity": "cataloguing; assists Asbir's audience when summoned",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_archive_main_floor",
+        "activity": "afternoon cross-referencing",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "supper at the Inn; eavesdrops politely",
+        "need_addressed": "promotion_anxiety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_archive_apprentice_quarters",
+        "activity": "self-study; reads about the dome",
+        "need_addressed": "promotion_anxiety",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "bard_jora_kell",
@@ -346,16 +1101,81 @@
     "cross_world_hook": null,
     "dialogue_style": "musical, flirtatious, switches register effortlessly",
     "needs": [
-      { "id": "performance", "priority": "primary", "satisfaction_method": "evening_show" }
+      {
+        "id": "performance",
+        "priority": "primary",
+        "satisfaction_method": "evening_show"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_seven_spokes_loft", "activity": "sleeps; the lute next to her on the floor", "need_addressed": "performance", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_seven_spokes_common_room", "activity": "writes in the corner; nurses a coffee", "need_addressed": "performance", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "busks for coin", "need_addressed": "performance", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_market_district", "activity": "wanders the bazaar; collects gossip", "need_addressed": "performance", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "evening show; pays for her room", "need_addressed": "performance", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_seven_spokes_common_room", "activity": "after-show drinks", "need_addressed": "performance", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_seven_spokes_loft",
+        "activity": "sleeps; the lute next to her on the floor",
+        "need_addressed": "performance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "writes in the corner; nurses a coffee",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_great_plaza",
+        "activity": "busks for coin",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_market_district",
+        "activity": "wanders the bazaar; collects gossip",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "evening show; pays for her room",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "after-show drinks",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "stablemaster_orin_rede",
@@ -375,16 +1195,81 @@
     "cross_world_hook": null,
     "dialogue_style": "spare, slow, drops one observation that turns out to be the whole story",
     "needs": [
-      { "id": "stable_work", "priority": "primary", "satisfaction_method": "daily_stable_round" }
+      {
+        "id": "stable_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_stable_round"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_stable_loft", "activity": "sleeps", "need_addressed": "stable_work", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_stables", "activity": "morning round; feeds, brushes, inspects", "need_addressed": "stable_work", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_stables", "activity": "intake of travellers' mounts", "need_addressed": "stable_work", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_stable_paddock", "activity": "trains a young pair of geldings", "need_addressed": "stable_work", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_stables", "activity": "evening round; settles the herd for the night", "need_addressed": "stable_work", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_stable_loft", "activity": "pipe; sleep", "need_addressed": "stable_work", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_stable_loft",
+        "activity": "sleeps",
+        "need_addressed": "stable_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_stables",
+        "activity": "morning round; feeds, brushes, inspects",
+        "need_addressed": "stable_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_stables",
+        "activity": "intake of travellers' mounts",
+        "need_addressed": "stable_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_stable_paddock",
+        "activity": "trains a young pair of geldings",
+        "need_addressed": "stable_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_stables",
+        "activity": "evening round; settles the herd for the night",
+        "need_addressed": "stable_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_stable_loft",
+        "activity": "pipe; sleep",
+        "need_addressed": "stable_work",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "child_mira_brackish",
@@ -404,16 +1289,81 @@
     "cross_world_hook": null,
     "dialogue_style": "fast, cheeky, drops to honesty when surprised",
     "needs": [
-      { "id": "survival", "priority": "primary", "satisfaction_method": "scavenging_and_trading_info" }
+      {
+        "id": "survival",
+        "priority": "primary",
+        "satisfaction_method": "scavenging_and_trading_info"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_bell_tower", "activity": "sleeps in the bell-tower", "need_addressed": "survival", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "morning scavenge", "need_addressed": "survival", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "watches the plaza; trades information", "need_addressed": "survival", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_back_alleys", "activity": "explores; sometimes shadows the Watch", "need_addressed": "survival", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "evening scavenge; cadges meals", "need_addressed": "survival", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_bell_tower", "activity": "climbs to the bell-tower for the night", "need_addressed": "survival", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_bell_tower",
+        "activity": "sleeps in the bell-tower",
+        "need_addressed": "survival",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_market_district",
+        "activity": "morning scavenge",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_great_plaza",
+        "activity": "watches the plaza; trades information",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_back_alleys",
+        "activity": "explores; sometimes shadows the Watch",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_great_plaza",
+        "activity": "evening scavenge; cadges meals",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_bell_tower",
+        "activity": "climbs to the bell-tower for the night",
+        "need_addressed": "survival",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "courier_kel_sandren",
@@ -433,16 +1383,81 @@
     "cross_world_hook": "Kel runs between Concordia-hub and the sub-worlds. If a player wants a message delivered cross-world, Kel is the channel.",
     "dialogue_style": "fast, friendly, occasionally lets slip a piece of route gossip",
     "needs": [
-      { "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }
+      {
+        "id": "running",
+        "priority": "primary",
+        "satisfaction_method": "daily_route"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_courier_house", "activity": "sleeps in the courier house dormitory", "need_addressed": "running", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_portal_plaza", "activity": "morning crossing", "need_addressed": "running", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_portal_plaza", "activity": "deliveries inbound; sorts the bags", "need_addressed": "running", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_great_plaza", "activity": "deliveries within the hub", "need_addressed": "running", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_portal_plaza", "activity": "evening crossing; checks the off-schedule portal", "need_addressed": "running", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_courier_house", "activity": "supper with the courier house; logs the day's runs", "need_addressed": "running", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_courier_house",
+        "activity": "sleeps in the courier house dormitory",
+        "need_addressed": "running",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_portal_plaza",
+        "activity": "morning crossing",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_portal_plaza",
+        "activity": "deliveries inbound; sorts the bags",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_great_plaza",
+        "activity": "deliveries within the hub",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_portal_plaza",
+        "activity": "evening crossing; checks the off-schedule portal",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_courier_house",
+        "activity": "supper with the courier house; logs the day's runs",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "preacher_old_seam",
@@ -462,15 +1477,80 @@
     "cross_world_hook": null,
     "dialogue_style": "cryptic but kind; will answer plainly if you wait through the cryptic part",
     "needs": [
-      { "id": "wandering", "priority": "primary", "satisfaction_method": "daily_wandering" }
+      {
+        "id": "wandering",
+        "priority": "primary",
+        "satisfaction_method": "daily_wandering"
+      }
     ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_great_plaza", "activity": "sleeps wherever evening ended", "need_addressed": "wandering", "interactable_by_player": false },
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "begs bread", "need_addressed": "wandering", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "preaches softly; mostly to herself", "need_addressed": "wandering", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_dome_perimeter", "activity": "walks the dome perimeter; sometimes follows Nesha at a distance", "need_addressed": "wandering", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "the Innkeep gives her a small supper", "need_addressed": "wandering", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_great_plaza", "activity": "settles in for the night", "need_addressed": "wandering", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "hub_great_plaza",
+        "activity": "sleeps wherever evening ended",
+        "need_addressed": "wandering",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "hub_market_district",
+        "activity": "begs bread",
+        "need_addressed": "wandering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "hub_great_plaza",
+        "activity": "preaches softly; mostly to herself",
+        "need_addressed": "wandering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "hub_dome_perimeter",
+        "activity": "walks the dome perimeter; sometimes follows Nesha at a distance",
+        "need_addressed": "wandering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "hub_seven_spokes_common_room",
+        "activity": "the Innkeep gives her a small supper",
+        "need_addressed": "wandering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "hub_great_plaza",
+        "activity": "settles in for the night",
+        "need_addressed": "wandering",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   }
 ]

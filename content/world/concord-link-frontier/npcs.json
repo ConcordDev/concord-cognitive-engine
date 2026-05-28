@@ -1,10 +1,1138 @@
 [
-  { "id": "postmaster_ria", "world_id": "concord-link-frontier", "name": "Postmaster Ria Hale", "archetype": "trader", "faction_id": "frontier_couriers_guild", "role": "Postmaster, Link Post Alpha", "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 9, "backstory": "Ria has run Link Post Alpha for thirty-two years. She started as a teenage courier and worked every route in the Frontier before settling. She is principled, exhausted, and watching her Guild lose ground to the Freenodes.", "personality_traits": ["principled", "weary", "fiercely loyal to her couriers", "skeptical of innovation she didn't choose"], "speech_patterns": "Short sentences. Names every courier she sends out. Refuses to call couriers 'walkers' (she reserves that for the autonomous variety).", "quest_hooks": ["the_first_walk", "the_freenode_question", "missing_courier_search"], "narrative_context": { "secret": "Ria knows that one of the compromised Freenode relays was attacked by a Concordian agent under direct orders from the Iron Wardens. She has not reported it because doing so would commit her Guild to a position she has not finished thinking through." }, "needs": [{ "id": "guild_continuity", "priority": "primary", "satisfaction_method": "morning_post_dispatch_round" }, { "id": "courier_safety", "priority": "primary", "satisfaction_method": "evening_courier_check_in" }], "daily_schedule": [{ "phase": "morning", "phase_hours": [5, 11], "location": "link_post_alpha", "activity": "morning dispatch — assigns courier routes; receives overnight inbound", "need_addressed": "guild_continuity", "interactable_by_player": true }, { "phase": "midday", "phase_hours": [11, 15], "location": "link_post_alpha", "activity": "ledger reconciliation; trade-tariff disputes with Bahiij merchants", "need_addressed": "guild_continuity", "interactable_by_player": true }, { "phase": "afternoon", "phase_hours": [15, 19], "location": "link_post_alpha", "activity": "afternoon check-ins; the Freenodes question hovers", "need_addressed": "courier_safety", "interactable_by_player": true }, { "phase": "night", "phase_hours": [22, 5], "location": "postmaster_quarters", "activity": "rests; wakes once to greet any night-arrival", "need_addressed": "rest", "interactable_by_player": false }], "home": { "district": "link_post_alpha", "dwelling_type": "postmaster_quarters_with_dispatch_board" }, "job": { "profession_id": "postmaster", "wage_per_diurnal_sparks": 160, "wage_source": "guild_share_postmaster_cut" }, "apparel": ["traveling_oilcloth_cloak_guild_collar", "guild_tunic_with_thirty_two_year_pin", "sturdy_road_boots", "weathered_hat_courier_grade"], "gear": ["dispatch_ledger_master", "personal_guild_freenode_situation_journal_locked", "guild_master_seal_ring", "concealed_dagger"], "resources_consumed": ["paper", "ink", "courier_provisions"], "resources_produced": ["dispatched_routes", "guild_decisions"], "inventory": [{ "item": "dispatch_ledger_master", "qty": 1 }, { "item": "personal_guild_freenode_situation_journal_locked", "qty": 1 }, { "item": "guild_master_seal_ring", "qty": 1 }, { "item": "trust_marks", "qty": 30 }], "starting_sparks": 2400 },
-  { "id": "courier_dorvik", "world_id": "concord-link-frontier", "name": "Dorvik Frey", "archetype": "warrior", "faction_id": "frontier_couriers_guild", "role": "Senior Courier", "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 7, "backstory": "Dorvik has run the Concordia-Frontier-Sovereign Ruins triangle for twenty years. He has been ambushed twice, lost a leg once, and never lost a parcel.", "personality_traits": ["taciturn", "kind", "fearless", "unspeakably patient"], "speech_patterns": "Speaks in single-clause sentences. Replies to questions with the smallest true answer.", "quest_hooks": ["dorviks_route_lesson", "the_lost_parcel"], "needs": [{ "id": "route_completion", "priority": "primary", "satisfaction_method": "daily_run" }, { "id": "rest", "priority": "secondary", "satisfaction_method": "post_arrival_decompression" }], "daily_schedule": [{ "phase": "morning", "phase_hours": [5, 11], "location": "varies_by_route_day", "activity": "outbound run", "need_addressed": "route_completion", "interactable_by_player": false }, { "phase": "midday", "phase_hours": [11, 15], "location": "anchor_safehouse_intermediate", "activity": "midday at a safehouse; refuels", "need_addressed": "route_completion", "interactable_by_player": true }, { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "return run or onward leg", "need_addressed": "route_completion", "interactable_by_player": false }, { "phase": "night", "phase_hours": [22, 5], "location": "courier_safehouses", "activity": "rests on the road", "need_addressed": "rest", "interactable_by_player": false }], "home": { "district": "courier_safehouses_rotating", "dwelling_type": "rotating_bunkhouse" }, "job": { "profession_id": "senior_courier", "wage_per_diurnal_sparks": 120, "wage_source": "guild_per_delivery_fee" }, "apparel": ["weathered_traveling_cloak", "guild_courier_tunic", "prosthetic_leg_polished", "knee_high_road_boots_single_pair_left"], "gear": ["walking_staff_with_concealed_blade", "mail_satchel_oilskin", "guild_signal_token", "fire_kit", "concealed_pistol"], "resources_consumed": ["trail_rations", "anchor_fees"], "resources_produced": ["delivered_parcels"], "inventory": [{ "item": "walking_staff_with_concealed_blade", "qty": 1 }, { "item": "mail_satchel_oilskin", "qty": 1 }, { "item": "concealed_pistol", "qty": 1 }, { "item": "trail_rations", "qty": 10 }, { "item": "trust_marks", "qty": 18 }], "starting_sparks": 1200 },
-  { "id": "walker_emissary_lin", "world_id": "concord-link-frontier", "name": "Lin (Walker)", "archetype": "guard", "faction_id": "frontier_couriers_guild", "role": "Autonomous Walker (commissioned NPC)", "is_conscious": false, "is_immortal": false, "quest_giver": true, "level": 6, "backstory": "An autonomous walker bonded to the Guild; runs scheduled routes without rest. Lin's program is to deliver, log, and return.", "personality_traits": ["polite", "efficient", "literal"], "speech_patterns": "Greets every player with their first observed name. Repeats the receipt code at the start and end of every transaction.", "needs": [{ "id": "scheduled_route_completion", "priority": "primary", "satisfaction_method": "continuous_routed_traversal" }], "daily_schedule": [{ "phase": "all_diurnal", "phase_hours": [1, 32], "location": "guild_assigned_routes", "activity": "walks scheduled routes without rest", "need_addressed": "scheduled_route_completion", "interactable_by_player": true }], "home": { "district": "guild_routes_rotating", "dwelling_type": "the_routes_themselves" }, "job": { "profession_id": "autonomous_walker", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" }, "apparel": ["walker_chassis_oilcloth_lining"], "gear": ["walker_payload_compartments", "guild_routing_token", "receipt_code_master"], "resources_consumed": [], "resources_produced": ["scheduled_deliveries"], "inventory": [{ "item": "guild_routing_token", "qty": 1 }, { "item": "receipt_code_master", "qty": 1 }], "starting_sparks": 0 },
-  { "id": "broker_temir", "world_id": "concord-link-frontier", "name": "Temir of the Brokers' Camp", "archetype": "diplomat", "faction_id": "frontier_freenodes", "role": "Senior Broker / Federation Liaison", "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 11, "backstory": "Temir is a federation veteran. They have brokered handshakes between five cities, dissolved three when the cities turned hostile, and survived the Sovereign collapse by being elsewhere.", "personality_traits": ["warm", "calculating", "tolerant of ambiguity", "long-game"], "speech_patterns": "Asks open questions. Names players honestly. Refuses any conversation that requires choosing sides before mid-month.", "quest_hooks": ["the_handshake_witness", "freenodes_recovery", "ria_temir_mediation"], "narrative_context": { "secret": "Temir has been quietly cultivating Postmaster Ria as a defector to the Freenodes." }, "needs": [{ "id": "handshake_progress", "priority": "primary", "satisfaction_method": "daily_negotiation" }, { "id": "ria_cultivation", "priority": "primary", "satisfaction_method": "weekly_letter" }], "daily_schedule": [{ "phase": "morning", "phase_hours": [6, 11], "location": "brokers_camp", "activity": "morning brief; reviews overnight Freenode handshake status", "need_addressed": "handshake_progress", "interactable_by_player": true }, { "phase": "midday", "phase_hours": [11, 15], "location": "brokers_camp", "activity": "midday with senior brokers; mediates Freenode disputes", "need_addressed": "handshake_progress", "interactable_by_player": true }, { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "field visits to compromised relays; ria_cultivation correspondence", "need_addressed": "ria_cultivation", "interactable_by_player": true }, { "phase": "night", "phase_hours": [22, 6], "location": "broker_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }], "home": { "district": "brokers_camp", "dwelling_type": "senior_broker_quarters_with_diplomatic_archive" }, "job": { "profession_id": "senior_broker", "wage_per_diurnal_sparks": 180, "wage_source": "freenodes_pooled_share" }, "apparel": ["diplomatic_traveler_coat", "thin_leather_belt", "polished_road_boots", "wool_cloak_with_freenode_pin"], "gear": ["broker_seal_master", "personal_ria_cultivation_correspondence_journal_locked", "concealed_dagger", "cipher_key_set"], "resources_consumed": ["paper", "ink", "broker_provisions"], "resources_produced": ["handshakes", "diplomatic_correspondence"], "inventory": [{ "item": "broker_seal_master", "qty": 1 }, { "item": "personal_ria_cultivation_journal_locked", "qty": 1 }, { "item": "concealed_dagger", "qty": 1 }, { "item": "cipher_key_set", "qty": 4 }, { "item": "trust_marks", "qty": 40 }], "starting_sparks": 3200 },
-  { "id": "field_relay_iso", "world_id": "concord-link-frontier", "name": "Iso Vant", "archetype": "scholar", "faction_id": "frontier_freenodes", "role": "Field Relay Operator", "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 5, "backstory": "Iso runs one of the seven Freenode relays. They were a software engineer in the cyber world before the Frontier called. They believe the Couriers' Guild is an honest, doomed institution.", "personality_traits": ["principled", "talkative", "easily distracted", "kind"], "speech_patterns": "Switches between technical jargon and warm chit-chat without warning.", "needs": [{ "id": "relay_uptime", "priority": "primary", "satisfaction_method": "morning_relay_diagnostic" }, { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "freenodes_share" }], "daily_schedule": [{ "phase": "morning", "phase_hours": [6, 11], "location": "field_relays_iso_post", "activity": "morning relay diagnostic; routing-table refresh", "need_addressed": "relay_uptime", "interactable_by_player": true }, { "phase": "midday", "phase_hours": [11, 15], "location": "field_relays_iso_post", "activity": "midday — receives any visiting brokers", "need_addressed": "relay_uptime", "interactable_by_player": true }, { "phase": "afternoon", "phase_hours": [15, 19], "location": "field_relays_iso_post", "activity": "afternoon — packet inspection; chats with whoever passes", "need_addressed": "relay_uptime", "interactable_by_player": true }, { "phase": "night", "phase_hours": [22, 6], "location": "relay_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }], "home": { "district": "field_relays_iso_post", "dwelling_type": "relay_operator_quarters" }, "job": { "profession_id": "relay_operator", "wage_per_diurnal_sparks": 80, "wage_source": "freenodes_pooled_share" }, "apparel": ["plain_relay_operator_tunic", "tool_belt", "field_boots", "wool_cloak"], "gear": ["routing_diagnostic_tool", "personal_relay_uptime_journal", "signal_token", "small_concealed_pistol"], "resources_consumed": ["tools", "relay_provisions"], "resources_produced": ["relay_uptime", "routing_table_refreshes"], "inventory": [{ "item": "routing_diagnostic_tool", "qty": 1 }, { "item": "signal_token", "qty": 1 }, { "item": "small_concealed_pistol", "qty": 1 }, { "item": "trust_marks", "qty": 12 }], "starting_sparks": 520 },
-  { "id": "field_relay_kerith", "world_id": "concord-link-frontier", "name": "Kerith of the Long Watch", "archetype": "hunter", "faction_id": "frontier_freenodes", "role": "Field Relay Operator (long-route)", "is_conscious": true, "is_immortal": false, "quest_giver": true, "level": 8, "backstory": "Kerith was a tracker who took over the second-most-remote Freenode relay because no one else could find it.", "personality_traits": ["watchful", "blunt", "incurably loyal once trust is earned"], "speech_patterns": "Speaks softly. Uses tracker metaphors for everything social.", "needs": [{ "id": "long_watch_relay", "priority": "primary", "satisfaction_method": "continuous_remote_relay_operation" }, { "id": "smuggler_route_tracking", "priority": "primary", "satisfaction_method": "evening_perimeter_walk" }], "daily_schedule": [{ "phase": "morning", "phase_hours": [5, 10], "location": "field_relays_kerith_remote", "activity": "morning relay maintenance + perimeter scan", "need_addressed": "long_watch_relay", "interactable_by_player": true }, { "phase": "afternoon", "phase_hours": [14, 19], "location": "remote_perimeter", "activity": "smuggler-route tracking", "need_addressed": "smuggler_route_tracking", "interactable_by_player": true }, { "phase": "evening", "phase_hours": [19, 22], "location": "field_relays_kerith_remote", "activity": "evening relay status report to Temir", "need_addressed": "long_watch_relay", "interactable_by_player": true }, { "phase": "night", "phase_hours": [22, 5], "location": "kerith_cabin", "activity": "rests in the small cabin", "need_addressed": "rest", "interactable_by_player": false }], "home": { "district": "field_relays_kerith_remote", "dwelling_type": "isolated_relay_cabin" }, "job": { "profession_id": "remote_relay_operator", "wage_per_diurnal_sparks": 130, "wage_source": "freenodes_remote_bonus_share" }, "apparel": ["heavy_wool_tracker_coat", "leather_belt_with_tracking_pouches", "knee_high_tracker_boots", "fur_lined_hood_in_winter"], "gear": ["tracker_bow", "personal_smuggler_route_map_locked", "signal_token", "skinning_knife"], "resources_consumed": ["trail_rations", "tracker_supplies"], "resources_produced": ["relay_uptime_remote", "smuggler_route_intelligence"], "inventory": [{ "item": "tracker_bow", "qty": 1 }, { "item": "personal_smuggler_route_map_locked", "qty": 1 }, { "item": "skinning_knife", "qty": 1 }, { "item": "signal_token", "qty": 1 }, { "item": "trail_rations", "qty": 8 }, { "item": "trust_marks", "qty": 22 }], "starting_sparks": 1480 },
+  {
+    "id": "postmaster_ria",
+    "world_id": "concord-link-frontier",
+    "name": "Postmaster Ria Hale",
+    "archetype": "trader",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Postmaster, Link Post Alpha",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 9,
+    "backstory": "Ria has run Link Post Alpha for thirty-two years. She started as a teenage courier and worked every route in the Frontier before settling. She is principled, exhausted, and watching her Guild lose ground to the Freenodes.",
+    "personality_traits": [
+      "principled",
+      "weary",
+      "fiercely loyal to her couriers",
+      "skeptical of innovation she didn't choose"
+    ],
+    "speech_patterns": "Short sentences. Names every courier she sends out. Refuses to call couriers 'walkers' (she reserves that for the autonomous variety).",
+    "quest_hooks": [
+      "the_first_walk",
+      "the_freenode_question",
+      "missing_courier_search"
+    ],
+    "narrative_context": {
+      "secret": "Ria knows that one of the compromised Freenode relays was attacked by a Concordian agent under direct orders from the Iron Wardens. She has not reported it because doing so would commit her Guild to a position she has not finished thinking through."
+    },
+    "needs": [
+      {
+        "id": "guild_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_post_dispatch_round"
+      },
+      {
+        "id": "courier_safety",
+        "priority": "primary",
+        "satisfaction_method": "evening_courier_check_in"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          11
+        ],
+        "location": "link_post_alpha",
+        "activity": "morning dispatch — assigns courier routes; receives overnight inbound",
+        "need_addressed": "guild_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "link_post_alpha",
+        "activity": "ledger reconciliation; trade-tariff disputes with Bahiij merchants",
+        "need_addressed": "guild_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "link_post_alpha",
+        "activity": "afternoon check-ins; the Freenodes question hovers",
+        "need_addressed": "courier_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "postmaster_quarters",
+        "activity": "rests; wakes once to greet any night-arrival",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "postmaster_quarters",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "link_post_alpha",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "link_post_alpha",
+        "activity": "open shop; sells and negotiates",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "link_post_alpha",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "link_post_alpha",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "postmaster_quarters",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "link_post_alpha",
+      "dwelling_type": "postmaster_quarters_with_dispatch_board"
+    },
+    "job": {
+      "profession_id": "postmaster",
+      "wage_per_diurnal_sparks": 160,
+      "wage_source": "guild_share_postmaster_cut"
+    },
+    "apparel": [
+      "traveling_oilcloth_cloak_guild_collar",
+      "guild_tunic_with_thirty_two_year_pin",
+      "sturdy_road_boots",
+      "weathered_hat_courier_grade"
+    ],
+    "gear": [
+      "dispatch_ledger_master",
+      "personal_guild_freenode_situation_journal_locked",
+      "guild_master_seal_ring",
+      "concealed_dagger"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "courier_provisions"
+    ],
+    "resources_produced": [
+      "dispatched_routes",
+      "guild_decisions"
+    ],
+    "inventory": [
+      {
+        "item": "dispatch_ledger_master",
+        "qty": 1
+      },
+      {
+        "item": "personal_guild_freenode_situation_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "guild_master_seal_ring",
+        "qty": 1
+      },
+      {
+        "item": "trust_marks",
+        "qty": 30
+      }
+    ],
+    "starting_sparks": 2400
+  },
+  {
+    "id": "courier_dorvik",
+    "world_id": "concord-link-frontier",
+    "name": "Dorvik Frey",
+    "archetype": "warrior",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Senior Courier",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 7,
+    "backstory": "Dorvik has run the Concordia-Frontier-Sovereign Ruins triangle for twenty years. He has been ambushed twice, lost a leg once, and never lost a parcel.",
+    "personality_traits": [
+      "taciturn",
+      "kind",
+      "fearless",
+      "unspeakably patient"
+    ],
+    "speech_patterns": "Speaks in single-clause sentences. Replies to questions with the smallest true answer.",
+    "quest_hooks": [
+      "dorviks_route_lesson",
+      "the_lost_parcel"
+    ],
+    "needs": [
+      {
+        "id": "route_completion",
+        "priority": "primary",
+        "satisfaction_method": "daily_run"
+      },
+      {
+        "id": "rest",
+        "priority": "secondary",
+        "satisfaction_method": "post_arrival_decompression"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          11
+        ],
+        "location": "varies_by_route_day",
+        "activity": "outbound run",
+        "need_addressed": "route_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "anchor_safehouse_intermediate",
+        "activity": "midday at a safehouse; refuels",
+        "need_addressed": "route_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "return run or onward leg",
+        "need_addressed": "route_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "courier_safehouses",
+        "activity": "rests on the road",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "varies_by_route_day",
+        "activity": "private dawn drill; sharpens his blade",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "anchor_safehouse_intermediate",
+        "activity": "morning patrol or war-council",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "anchor_safehouse_intermediate",
+        "activity": "open drill; trains the war-band",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "anchor_safehouse_intermediate",
+        "activity": "afternoon command duties; coordinates with allies",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "anchor_safehouse_intermediate",
+        "activity": "evening hall; settles internal grievances",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "varies_by_route_day",
+        "activity": "reviews the day's reports; sleeps with the blade beside him",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "courier_safehouses_rotating",
+      "dwelling_type": "rotating_bunkhouse"
+    },
+    "job": {
+      "profession_id": "senior_courier",
+      "wage_per_diurnal_sparks": 120,
+      "wage_source": "guild_per_delivery_fee"
+    },
+    "apparel": [
+      "weathered_traveling_cloak",
+      "guild_courier_tunic",
+      "prosthetic_leg_polished",
+      "knee_high_road_boots_single_pair_left"
+    ],
+    "gear": [
+      "walking_staff_with_concealed_blade",
+      "mail_satchel_oilskin",
+      "guild_signal_token",
+      "fire_kit",
+      "concealed_pistol"
+    ],
+    "resources_consumed": [
+      "trail_rations",
+      "anchor_fees"
+    ],
+    "resources_produced": [
+      "delivered_parcels"
+    ],
+    "inventory": [
+      {
+        "item": "walking_staff_with_concealed_blade",
+        "qty": 1
+      },
+      {
+        "item": "mail_satchel_oilskin",
+        "qty": 1
+      },
+      {
+        "item": "concealed_pistol",
+        "qty": 1
+      },
+      {
+        "item": "trail_rations",
+        "qty": 10
+      },
+      {
+        "item": "trust_marks",
+        "qty": 18
+      }
+    ],
+    "starting_sparks": 1200
+  },
+  {
+    "id": "walker_emissary_lin",
+    "world_id": "concord-link-frontier",
+    "name": "Lin (Walker)",
+    "archetype": "guard",
+    "faction_id": "frontier_couriers_guild",
+    "role": "Autonomous Walker (commissioned NPC)",
+    "is_conscious": false,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 6,
+    "backstory": "An autonomous walker bonded to the Guild; runs scheduled routes without rest. Lin's program is to deliver, log, and return.",
+    "personality_traits": [
+      "polite",
+      "efficient",
+      "literal"
+    ],
+    "speech_patterns": "Greets every player with their first observed name. Repeats the receipt code at the start and end of every transaction.",
+    "needs": [
+      {
+        "id": "scheduled_route_completion",
+        "priority": "primary",
+        "satisfaction_method": "continuous_routed_traversal"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "walks scheduled routes without rest",
+        "need_addressed": "scheduled_route_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "rotates night-watch; checks the perimeter",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "morning shift; secures the audience",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "open patrol; mediates disputes",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "drills new recruits",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "off-duty supper with the watch",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "guild_assigned_routes",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "guild_routes_rotating",
+      "dwelling_type": "the_routes_themselves"
+    },
+    "job": {
+      "profession_id": "autonomous_walker",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
+    "apparel": [
+      "walker_chassis_oilcloth_lining"
+    ],
+    "gear": [
+      "walker_payload_compartments",
+      "guild_routing_token",
+      "receipt_code_master"
+    ],
+    "resources_consumed": [],
+    "resources_produced": [
+      "scheduled_deliveries"
+    ],
+    "inventory": [
+      {
+        "item": "guild_routing_token",
+        "qty": 1
+      },
+      {
+        "item": "receipt_code_master",
+        "qty": 1
+      }
+    ],
+    "starting_sparks": 2500
+  },
+  {
+    "id": "broker_temir",
+    "world_id": "concord-link-frontier",
+    "name": "Temir of the Brokers' Camp",
+    "archetype": "diplomat",
+    "faction_id": "frontier_freenodes",
+    "role": "Senior Broker / Federation Liaison",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 11,
+    "backstory": "Temir is a federation veteran. They have brokered handshakes between five cities, dissolved three when the cities turned hostile, and survived the Sovereign collapse by being elsewhere.",
+    "personality_traits": [
+      "warm",
+      "calculating",
+      "tolerant of ambiguity",
+      "long-game"
+    ],
+    "speech_patterns": "Asks open questions. Names players honestly. Refuses any conversation that requires choosing sides before mid-month.",
+    "quest_hooks": [
+      "the_handshake_witness",
+      "freenodes_recovery",
+      "ria_temir_mediation"
+    ],
+    "narrative_context": {
+      "secret": "Temir has been quietly cultivating Postmaster Ria as a defector to the Freenodes."
+    },
+    "needs": [
+      {
+        "id": "handshake_progress",
+        "priority": "primary",
+        "satisfaction_method": "daily_negotiation"
+      },
+      {
+        "id": "ria_cultivation",
+        "priority": "primary",
+        "satisfaction_method": "weekly_letter"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "brokers_camp",
+        "activity": "morning brief; reviews overnight Freenode handshake status",
+        "need_addressed": "handshake_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "brokers_camp",
+        "activity": "midday with senior brokers; mediates Freenode disputes",
+        "need_addressed": "handshake_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "field visits to compromised relays; ria_cultivation correspondence",
+        "need_addressed": "ria_cultivation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "broker_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "broker_quarters",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "brokers_camp",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "brokers_camp",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "brokers_camp",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "brokers_camp",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "broker_quarters",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "brokers_camp",
+      "dwelling_type": "senior_broker_quarters_with_diplomatic_archive"
+    },
+    "job": {
+      "profession_id": "senior_broker",
+      "wage_per_diurnal_sparks": 180,
+      "wage_source": "freenodes_pooled_share"
+    },
+    "apparel": [
+      "diplomatic_traveler_coat",
+      "thin_leather_belt",
+      "polished_road_boots",
+      "wool_cloak_with_freenode_pin"
+    ],
+    "gear": [
+      "broker_seal_master",
+      "personal_ria_cultivation_correspondence_journal_locked",
+      "concealed_dagger",
+      "cipher_key_set"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "broker_provisions"
+    ],
+    "resources_produced": [
+      "handshakes",
+      "diplomatic_correspondence"
+    ],
+    "inventory": [
+      {
+        "item": "broker_seal_master",
+        "qty": 1
+      },
+      {
+        "item": "personal_ria_cultivation_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "concealed_dagger",
+        "qty": 1
+      },
+      {
+        "item": "cipher_key_set",
+        "qty": 4
+      },
+      {
+        "item": "trust_marks",
+        "qty": 40
+      }
+    ],
+    "starting_sparks": 3200
+  },
+  {
+    "id": "field_relay_iso",
+    "world_id": "concord-link-frontier",
+    "name": "Iso Vant",
+    "archetype": "scholar",
+    "faction_id": "frontier_freenodes",
+    "role": "Field Relay Operator",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 5,
+    "backstory": "Iso runs one of the seven Freenode relays. They were a software engineer in the cyber world before the Frontier called. They believe the Couriers' Guild is an honest, doomed institution.",
+    "personality_traits": [
+      "principled",
+      "talkative",
+      "easily distracted",
+      "kind"
+    ],
+    "speech_patterns": "Switches between technical jargon and warm chit-chat without warning.",
+    "needs": [
+      {
+        "id": "relay_uptime",
+        "priority": "primary",
+        "satisfaction_method": "morning_relay_diagnostic"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "freenodes_share"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "morning relay diagnostic; routing-table refresh",
+        "need_addressed": "relay_uptime",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "midday — receives any visiting brokers",
+        "need_addressed": "relay_uptime",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "afternoon — packet inspection; chats with whoever passes",
+        "need_addressed": "relay_uptime",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "relay_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "relay_quarters",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "field_relays_iso_post",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "relay_quarters",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "field_relays_iso_post",
+      "dwelling_type": "relay_operator_quarters"
+    },
+    "job": {
+      "profession_id": "relay_operator",
+      "wage_per_diurnal_sparks": 80,
+      "wage_source": "freenodes_pooled_share"
+    },
+    "apparel": [
+      "plain_relay_operator_tunic",
+      "tool_belt",
+      "field_boots",
+      "wool_cloak"
+    ],
+    "gear": [
+      "routing_diagnostic_tool",
+      "personal_relay_uptime_journal",
+      "signal_token",
+      "small_concealed_pistol"
+    ],
+    "resources_consumed": [
+      "tools",
+      "relay_provisions"
+    ],
+    "resources_produced": [
+      "relay_uptime",
+      "routing_table_refreshes"
+    ],
+    "inventory": [
+      {
+        "item": "routing_diagnostic_tool",
+        "qty": 1
+      },
+      {
+        "item": "signal_token",
+        "qty": 1
+      },
+      {
+        "item": "small_concealed_pistol",
+        "qty": 1
+      },
+      {
+        "item": "trust_marks",
+        "qty": 12
+      }
+    ],
+    "starting_sparks": 520
+  },
+  {
+    "id": "field_relay_kerith",
+    "world_id": "concord-link-frontier",
+    "name": "Kerith of the Long Watch",
+    "archetype": "hunter",
+    "faction_id": "frontier_freenodes",
+    "role": "Field Relay Operator (long-route)",
+    "is_conscious": true,
+    "is_immortal": false,
+    "quest_giver": true,
+    "level": 8,
+    "backstory": "Kerith was a tracker who took over the second-most-remote Freenode relay because no one else could find it.",
+    "personality_traits": [
+      "watchful",
+      "blunt",
+      "incurably loyal once trust is earned"
+    ],
+    "speech_patterns": "Speaks softly. Uses tracker metaphors for everything social.",
+    "needs": [
+      {
+        "id": "long_watch_relay",
+        "priority": "primary",
+        "satisfaction_method": "continuous_remote_relay_operation"
+      },
+      {
+        "id": "smuggler_route_tracking",
+        "priority": "primary",
+        "satisfaction_method": "evening_perimeter_walk"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          10
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "morning relay maintenance + perimeter scan",
+        "need_addressed": "long_watch_relay",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "remote_perimeter",
+        "activity": "smuggler-route tracking",
+        "need_addressed": "smuggler_route_tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "evening relay status report to Temir",
+        "need_addressed": "long_watch_relay",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "kerith_cabin",
+        "activity": "rests in the small cabin",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "kerith_cabin",
+        "activity": "dawn track-reading; checks last evening's prints",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "morning patrol; scouts the perimeter",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "open hunt; gathers food and intel",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "afternoon return; processes the take",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "field_relays_kerith_remote",
+        "activity": "evening reports to the chief",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "kerith_cabin",
+        "activity": "sleeps; on alarm-call rotation",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      }
+    ],
+    "home": {
+      "district": "field_relays_kerith_remote",
+      "dwelling_type": "isolated_relay_cabin"
+    },
+    "job": {
+      "profession_id": "remote_relay_operator",
+      "wage_per_diurnal_sparks": 130,
+      "wage_source": "freenodes_remote_bonus_share"
+    },
+    "apparel": [
+      "heavy_wool_tracker_coat",
+      "leather_belt_with_tracking_pouches",
+      "knee_high_tracker_boots",
+      "fur_lined_hood_in_winter"
+    ],
+    "gear": [
+      "tracker_bow",
+      "personal_smuggler_route_map_locked",
+      "signal_token",
+      "skinning_knife"
+    ],
+    "resources_consumed": [
+      "trail_rations",
+      "tracker_supplies"
+    ],
+    "resources_produced": [
+      "relay_uptime_remote",
+      "smuggler_route_intelligence"
+    ],
+    "inventory": [
+      {
+        "item": "tracker_bow",
+        "qty": 1
+      },
+      {
+        "item": "personal_smuggler_route_map_locked",
+        "qty": 1
+      },
+      {
+        "item": "skinning_knife",
+        "qty": 1
+      },
+      {
+        "item": "signal_token",
+        "qty": 1
+      },
+      {
+        "item": "trail_rations",
+        "qty": 8
+      },
+      {
+        "item": "trust_marks",
+        "qty": 22
+      }
+    ],
+    "starting_sparks": 1480
+  },
   {
     "id": "pirate_captain_vexa",
     "world_id": "concord-link-frontier",
@@ -17,35 +1145,223 @@
     "quest_giver": true,
     "level": 8,
     "backstory": "Vexa was a Couriers' Guild apprentice who walked away after seeing what the Guild ignored to keep the routes running. She built her crew from other Guild walkaways and Freenodes who lost faith. She has the largest pirate band on the Frontier and the longest list of Guild-marked enemies.",
-    "personality_traits": ["sharp", "principled-by-her-own-code", "vindictive against the Guild", "fair within her crew"],
+    "personality_traits": [
+      "sharp",
+      "principled-by-her-own-code",
+      "vindictive against the Guild",
+      "fair within her crew"
+    ],
     "speech_patterns": "Short. Cuts every sentence at the verb when negotiating.",
-    "narrative_context": { "secret": "Vexa was Ria's apprentice. Ria knows. Vexa knows Ria knows. Neither has spoken since the day Vexa walked out twelve years ago." },
+    "narrative_context": {
+      "secret": "Vexa was Ria's apprentice. Ria knows. Vexa knows Ria knows. Neither has spoken since the day Vexa walked out twelve years ago."
+    },
     "needs": [
-      { "id": "ransom_completion", "priority": "primary", "satisfaction_method": "weekly_intercept_runs" },
-      { "id": "crew_loyalty", "priority": "primary", "satisfaction_method": "fair_cut_at_each_payout" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "cove_share" }
+      {
+        "id": "ransom_completion",
+        "priority": "primary",
+        "satisfaction_method": "weekly_intercept_runs"
+      },
+      {
+        "id": "crew_loyalty",
+        "priority": "primary",
+        "satisfaction_method": "fair_cut_at_each_payout"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "cove_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "pirate_cove_north", "activity": "wakes; reviews overnight intercept reports", "need_addressed": "ransom_completion", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "pirate_cove_north", "activity": "morning crew meeting; assigns the day's intercept teams", "need_addressed": "crew_loyalty", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "ambush_corridor_seven", "activity": "scouts upcoming Guild caravan routes", "need_addressed": "ransom_completion", "interactable_by_player": false },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "intercept run if scheduled", "need_addressed": "ransom_completion", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "pirate_cove_north", "activity": "evening payout split + crew meal", "need_addressed": "crew_loyalty", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [23, 4], "location": "captain_quarters_cove_north", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "pirate_cove_north",
+        "activity": "wakes; reviews overnight intercept reports",
+        "need_addressed": "ransom_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "pirate_cove_north",
+        "activity": "morning crew meeting; assigns the day's intercept teams",
+        "need_addressed": "crew_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "ambush_corridor_seven",
+        "activity": "scouts upcoming Guild caravan routes",
+        "need_addressed": "ransom_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "intercept run if scheduled",
+        "need_addressed": "ransom_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "pirate_cove_north",
+        "activity": "evening payout split + crew meal",
+        "need_addressed": "crew_loyalty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "captain_quarters_cove_north",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "pirate_cove_north",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "pirate_cove_north",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "pirate_cove_north",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "pirate_cove_north",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "pirate_cove_north",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "pirate_cove_north",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "pirate_cove_north", "dwelling_type": "captain_quarters_with_strongbox" },
-    "job": { "profession_id": "pirate_captain", "wage_per_diurnal_sparks": 240, "wage_source": "ransom_split_lead_share" },
-    "apparel": ["dark_oilcloth_coat", "dark_canvas_pants", "knee_high_traction_boots", "wide_belt_with_strapped_blades", "dark_scarf_face_cover"],
-    "gear": ["short_sword", "loaded_crossbow", "intercept_signal_jammer", "personal_strongbox_key", "ransom_negotiation_journal"],
-    "resources_consumed": ["road_food", "trail_supplies"],
-    "resources_produced": ["ransomed_messages", "fair_cut_splits"],
+    "home": {
+      "district": "pirate_cove_north",
+      "dwelling_type": "captain_quarters_with_strongbox"
+    },
+    "job": {
+      "profession_id": "pirate_captain",
+      "wage_per_diurnal_sparks": 240,
+      "wage_source": "ransom_split_lead_share"
+    },
+    "apparel": [
+      "dark_oilcloth_coat",
+      "dark_canvas_pants",
+      "knee_high_traction_boots",
+      "wide_belt_with_strapped_blades",
+      "dark_scarf_face_cover"
+    ],
+    "gear": [
+      "short_sword",
+      "loaded_crossbow",
+      "intercept_signal_jammer",
+      "personal_strongbox_key",
+      "ransom_negotiation_journal"
+    ],
+    "resources_consumed": [
+      "road_food",
+      "trail_supplies"
+    ],
+    "resources_produced": [
+      "ransomed_messages",
+      "fair_cut_splits"
+    ],
     "inventory": [
-      { "item": "short_sword", "qty": 1 },
-      { "item": "loaded_crossbow", "qty": 1 },
-      { "item": "crossbow_bolt", "qty": 32 },
-      { "item": "intercept_signal_jammer", "qty": 1 },
-      { "item": "ransom_chit", "qty": 80 },
-      { "item": "trail_rations", "qty": 8 }
+      {
+        "item": "short_sword",
+        "qty": 1
+      },
+      {
+        "item": "loaded_crossbow",
+        "qty": 1
+      },
+      {
+        "item": "crossbow_bolt",
+        "qty": 32
+      },
+      {
+        "item": "intercept_signal_jammer",
+        "qty": 1
+      },
+      {
+        "item": "ransom_chit",
+        "qty": 80
+      },
+      {
+        "item": "trail_rations",
+        "qty": 8
+      }
     ],
     "starting_sparks": 4200
   },
@@ -61,34 +1377,216 @@
     "quest_giver": true,
     "level": 4,
     "backstory": "Brunn has led the North Ridge Enclave for fifteen years. He was a Couriers' Guild post-warden in his youth, walked away at 30, and built the enclave with a dozen other walkaways. He believes the Web is an addiction the world will not survive its own.",
-    "personality_traits": ["principled", "blunt", "warm with his own", "watchful"],
+    "personality_traits": [
+      "principled",
+      "blunt",
+      "warm with his own",
+      "watchful"
+    ],
     "speech_patterns": "Refuses to use Web jargon. Names things by their function ('the message-line-thing') when forced to acknowledge their existence.",
-    "narrative_context": { "secret": "His grandson has been delivering messages to the nearest Guild post for two annums. Brunn has known for fifteen months. He is waiting for the boy to tell him." },
+    "narrative_context": {
+      "secret": "His grandson has been delivering messages to the nearest Guild post for two annums. Brunn has known for fifteen months. He is waiting for the boy to tell him."
+    },
     "needs": [
-      { "id": "enclave_self_sufficiency", "priority": "primary", "satisfaction_method": "morning_rounds_check_provisions" },
-      { "id": "elder_council_continuity", "priority": "primary", "satisfaction_method": "weekly_council_meeting" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "enclave_pooled" }
+      {
+        "id": "enclave_self_sufficiency",
+        "priority": "primary",
+        "satisfaction_method": "morning_rounds_check_provisions"
+      },
+      {
+        "id": "elder_council_continuity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_council_meeting"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "enclave_pooled"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "enclave_north_ridge", "activity": "morning rounds — checks provisions, water, livestock", "need_addressed": "enclave_self_sufficiency", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "enclave_north_ridge", "activity": "trains the next generation in self-sufficiency skills; teaches without lecturing", "need_addressed": "enclave_self_sufficiency", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "enclave_council_lodge", "activity": "midday meal with elders", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "enclave_north_ridge", "activity": "settlement maintenance — builds, repairs, mediates", "need_addressed": "enclave_self_sufficiency", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "enclave_council_lodge", "activity": "evening with elders; quiet conversations", "need_addressed": "elder_council_continuity", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "elder_brunn_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "morning rounds — checks provisions, water, livestock",
+        "need_addressed": "enclave_self_sufficiency",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "trains the next generation in self-sufficiency skills; teaches without lecturing",
+        "need_addressed": "enclave_self_sufficiency",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "enclave_council_lodge",
+        "activity": "midday meal with elders",
+        "need_addressed": "elder_council_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "settlement maintenance — builds, repairs, mediates",
+        "need_addressed": "enclave_self_sufficiency",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "enclave_council_lodge",
+        "activity": "evening with elders; quiet conversations",
+        "need_addressed": "elder_council_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "elder_brunn_house",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "enclave_north_ridge",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "enclave_north_ridge", "dwelling_type": "elder_house_simple_timber" },
-    "job": { "profession_id": "enclave_elder", "wage_per_diurnal_sparks": 0, "wage_source": "n/a — no money exchanged within enclave; barter only" },
-    "apparel": ["heavy_wool_tunic", "thick_canvas_pants", "well_worn_boots", "wool_cloak_with_fur_collar"],
-    "gear": ["long_axe", "carving_knife", "personal_journal_of_enclave_history", "small_lantern"],
-    "resources_consumed": ["enclave_food_share"],
-    "resources_produced": ["enclave_governance", "self_sufficiency_training"],
+    "home": {
+      "district": "enclave_north_ridge",
+      "dwelling_type": "elder_house_simple_timber"
+    },
+    "job": {
+      "profession_id": "enclave_elder",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a — no money exchanged within enclave; barter only"
+    },
+    "apparel": [
+      "heavy_wool_tunic",
+      "thick_canvas_pants",
+      "well_worn_boots",
+      "wool_cloak_with_fur_collar"
+    ],
+    "gear": [
+      "long_axe",
+      "carving_knife",
+      "personal_journal_of_enclave_history",
+      "small_lantern"
+    ],
+    "resources_consumed": [
+      "enclave_food_share"
+    ],
+    "resources_produced": [
+      "enclave_governance",
+      "self_sufficiency_training"
+    ],
     "inventory": [
-      { "item": "long_axe", "qty": 1 },
-      { "item": "carving_knife", "qty": 1 },
-      { "item": "personal_journal_of_enclave_history", "qty": 1 },
-      { "item": "small_lantern", "qty": 1 },
-      { "item": "enclave_token", "qty": 12 }
+      {
+        "item": "long_axe",
+        "qty": 1
+      },
+      {
+        "item": "carving_knife",
+        "qty": 1
+      },
+      {
+        "item": "personal_journal_of_enclave_history",
+        "qty": 1
+      },
+      {
+        "item": "small_lantern",
+        "qty": 1
+      },
+      {
+        "item": "enclave_token",
+        "qty": 12
+      }
     ],
     "starting_sparks": 80
   },
@@ -104,34 +1602,218 @@
     "quest_giver": true,
     "level": 6,
     "backstory": "Torven was a Freenode relay operator who experienced what he calls the Routing Vision during a routing storm three annums ago. He left the Freenodes and built the Mesh Cult around the principle that routing decisions are messages from a divine Web.",
-    "personality_traits": ["fervent", "warm", "rhetorically gifted", "self-doubting in private"],
+    "personality_traits": [
+      "fervent",
+      "warm",
+      "rhetorically gifted",
+      "self-doubting in private"
+    ],
     "speech_patterns": "Public: liturgical. Private: a Freenode engineer's speech, full of routing jargon.",
-    "narrative_context": { "secret": "Torven was told three weeks ago by a former Freenode colleague that the Web is just code. He has prepared a sermon explaining why this is exactly the kind of test the Web would administer. He has not yet given the sermon." },
+    "narrative_context": {
+      "secret": "Torven was told three weeks ago by a former Freenode colleague that the Web is just code. He has prepared a sermon explaining why this is exactly the kind of test the Web would administer. He has not yet given the sermon."
+    },
     "needs": [
-      { "id": "routing_vision_validation", "priority": "primary", "satisfaction_method": "morning_meditation" },
-      { "id": "congregation_continuity", "priority": "primary", "satisfaction_method": "weekly_sermon" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "tithes" }
+      {
+        "id": "routing_vision_validation",
+        "priority": "primary",
+        "satisfaction_method": "morning_meditation"
+      },
+      {
+        "id": "congregation_continuity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_sermon"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "tithes"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "routing_meditation_hall", "activity": "morning meditation; interprets overnight routing patterns as visions", "need_addressed": "routing_vision_validation", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "mesh_temple_central", "activity": "receives congregants; interprets their routing dreams", "need_addressed": "congregation_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "mesh_temple_central", "activity": "writes the week's sermon", "need_addressed": "routing_vision_validation", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "mesh_temple_central", "activity": "afternoon study group with senior cultists", "need_addressed": "congregation_continuity", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "prophet_quarters", "activity": "evening prayer; private doubt", "need_addressed": "routing_vision_validation", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [22, 4], "location": "prophet_quarters", "activity": "rests poorly", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "routing_meditation_hall",
+        "activity": "morning meditation; interprets overnight routing patterns as visions",
+        "need_addressed": "routing_vision_validation",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "mesh_temple_central",
+        "activity": "receives congregants; interprets their routing dreams",
+        "need_addressed": "congregation_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "mesh_temple_central",
+        "activity": "writes the week's sermon",
+        "need_addressed": "routing_vision_validation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "mesh_temple_central",
+        "activity": "afternoon study group with senior cultists",
+        "need_addressed": "congregation_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "prophet_quarters",
+        "activity": "evening prayer; private doubt",
+        "need_addressed": "routing_vision_validation",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "prophet_quarters",
+        "activity": "rests poorly",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "routing_meditation_hall",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "mesh_temple_central",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "mesh_temple_central",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "mesh_temple_central",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "mesh_temple_central",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "routing_meditation_hall",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "mesh_temple_central", "dwelling_type": "prophet_quarters_with_inner_meditation_room" },
-    "job": { "profession_id": "mesh_prophet", "wage_per_diurnal_sparks": 110, "wage_source": "tithes" },
-    "apparel": ["mesh_robe_woven_with_routing_glyphs", "thin_belt", "ritual_sandals", "ceremonial_routing_circlet"],
-    "gear": ["routing_meditation_focus_crystal", "mesh_scripture_book", "personal_doubt_journal_locked", "incense_burner"],
-    "resources_consumed": ["incense", "ink", "tithes_administered"],
-    "resources_produced": ["sermons", "routing_dream_interpretations"],
+    "home": {
+      "district": "mesh_temple_central",
+      "dwelling_type": "prophet_quarters_with_inner_meditation_room"
+    },
+    "job": {
+      "profession_id": "mesh_prophet",
+      "wage_per_diurnal_sparks": 110,
+      "wage_source": "tithes"
+    },
+    "apparel": [
+      "mesh_robe_woven_with_routing_glyphs",
+      "thin_belt",
+      "ritual_sandals",
+      "ceremonial_routing_circlet"
+    ],
+    "gear": [
+      "routing_meditation_focus_crystal",
+      "mesh_scripture_book",
+      "personal_doubt_journal_locked",
+      "incense_burner"
+    ],
+    "resources_consumed": [
+      "incense",
+      "ink",
+      "tithes_administered"
+    ],
+    "resources_produced": [
+      "sermons",
+      "routing_dream_interpretations"
+    ],
     "inventory": [
-      { "item": "routing_meditation_focus_crystal", "qty": 1 },
-      { "item": "mesh_scripture_book", "qty": 1 },
-      { "item": "personal_doubt_journal_locked", "qty": 1 },
-      { "item": "incense_bundle", "qty": 8 },
-      { "item": "routing_token", "qty": 30 }
+      {
+        "item": "routing_meditation_focus_crystal",
+        "qty": 1
+      },
+      {
+        "item": "mesh_scripture_book",
+        "qty": 1
+      },
+      {
+        "item": "personal_doubt_journal_locked",
+        "qty": 1
+      },
+      {
+        "item": "incense_bundle",
+        "qty": 8
+      },
+      {
+        "item": "routing_token",
+        "qty": 30
+      }
     ],
     "starting_sparks": 980
   },
@@ -147,34 +1829,218 @@
     "quest_giver": true,
     "level": 7,
     "backstory": "Marsenn was a township founder thirty annums ago. The Pioneer Alliance grew from a trade-coordination meeting she convened in her own kitchen. She has been Chair for nine annums. She is honest, exhausted, and trying to keep the Alliance from becoming a bureaucracy.",
-    "personality_traits": ["honest", "patient", "long-game thinker", "warm in private"],
+    "personality_traits": [
+      "honest",
+      "patient",
+      "long-game thinker",
+      "warm in private"
+    ],
     "speech_patterns": "Frontier-friendly. Drops into formal council-speak only when minutes are being taken.",
     "needs": [
-      { "id": "alliance_council_governance", "priority": "primary", "satisfaction_method": "weekly_council_session" },
-      { "id": "trade_caravan_safety", "priority": "primary", "satisfaction_method": "afternoon_route_check_with_Guild" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "council_township_provided" }
+      {
+        "id": "alliance_council_governance",
+        "priority": "primary",
+        "satisfaction_method": "weekly_council_session"
+      },
+      {
+        "id": "trade_caravan_safety",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_route_check_with_Guild"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "council_township_provided"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "alliance_council_township", "activity": "morning correspondence — letters from member townships", "need_addressed": "alliance_council_governance", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "alliance_council_township", "activity": "morning council session if in-session week; township business if not", "need_addressed": "alliance_council_governance", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "alliance_council_township_inn", "activity": "midday meal at the council inn; informal politics", "need_addressed": "alliance_council_governance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "trade_caravan_route", "activity": "checks the Couriers' Guild posts on the alliance's main trade route; deals with Pirate concerns", "need_addressed": "trade_caravan_safety", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "alliance_council_township_inn", "activity": "evening meal with visiting township representatives", "need_addressed": "alliance_council_governance", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "elder_marsenn_house", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "alliance_council_township",
+        "activity": "morning correspondence — letters from member townships",
+        "need_addressed": "alliance_council_governance",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "alliance_council_township",
+        "activity": "morning council session if in-session week; township business if not",
+        "need_addressed": "alliance_council_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "alliance_council_township_inn",
+        "activity": "midday meal at the council inn; informal politics",
+        "need_addressed": "alliance_council_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "trade_caravan_route",
+        "activity": "checks the Couriers' Guild posts on the alliance's main trade route; deals with Pirate concerns",
+        "need_addressed": "trade_caravan_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "alliance_council_township_inn",
+        "activity": "evening meal with visiting township representatives",
+        "need_addressed": "alliance_council_governance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "elder_marsenn_house",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "alliance_council_township",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "alliance_council_township",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "alliance_council_township",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "alliance_council_township",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "alliance_council_township",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "alliance_council_township",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "alliance_council_township", "dwelling_type": "elder_house_with_attached_council_office" },
-    "job": { "profession_id": "alliance_chair_elder", "wage_per_diurnal_sparks": 140, "wage_source": "alliance_council_pooled" },
-    "apparel": ["frontier_long_coat_canvas_with_council_insignia", "wool_undertunic", "well_worn_road_boots", "wide_brim_hat"],
-    "gear": ["council_journal_running", "alliance_seal_ring", "small_pistol_concealed", "trade_route_map"],
-    "resources_consumed": ["alliance_pooled_provisions", "ink"],
-    "resources_produced": ["council_minutes", "trade_safety_assessments"],
+    "home": {
+      "district": "alliance_council_township",
+      "dwelling_type": "elder_house_with_attached_council_office"
+    },
+    "job": {
+      "profession_id": "alliance_chair_elder",
+      "wage_per_diurnal_sparks": 140,
+      "wage_source": "alliance_council_pooled"
+    },
+    "apparel": [
+      "frontier_long_coat_canvas_with_council_insignia",
+      "wool_undertunic",
+      "well_worn_road_boots",
+      "wide_brim_hat"
+    ],
+    "gear": [
+      "council_journal_running",
+      "alliance_seal_ring",
+      "small_pistol_concealed",
+      "trade_route_map"
+    ],
+    "resources_consumed": [
+      "alliance_pooled_provisions",
+      "ink"
+    ],
+    "resources_produced": [
+      "council_minutes",
+      "trade_safety_assessments"
+    ],
     "inventory": [
-      { "item": "council_journal_running", "qty": 1 },
-      { "item": "alliance_seal_ring", "qty": 1 },
-      { "item": "small_pistol_concealed", "qty": 1 },
-      { "item": "pistol_round", "qty": 12 },
-      { "item": "trade_route_map", "qty": 1 },
-      { "item": "township_chit", "qty": 26 }
+      {
+        "item": "council_journal_running",
+        "qty": 1
+      },
+      {
+        "item": "alliance_seal_ring",
+        "qty": 1
+      },
+      {
+        "item": "small_pistol_concealed",
+        "qty": 1
+      },
+      {
+        "item": "pistol_round",
+        "qty": 12
+      },
+      {
+        "item": "trade_route_map",
+        "qty": 1
+      },
+      {
+        "item": "township_chit",
+        "qty": 26
+      }
     ],
     "starting_sparks": 1640
   }

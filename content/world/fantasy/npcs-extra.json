@@ -9,14 +9,88 @@
     "personality": "Seraphine governs by half-spoken sentences and held silences. The court fills in the rest.",
     "appearance": "Tall, ivory-skinned, raven hair coiled high, gown of deep forest green with bronze thorn-clasps.",
     "background": "Crowned at twenty-one after her father's mysterious death. Has held the keep for fifteen years.",
-    "narrative_context": { "secret": "Seraphine corresponds with Iyatte of Sandrun via mirror-letter. Both hide an heir; both know the other does.", "weaponise_at": "Reveal either heir and the other kingdom collapses too." },
+    "narrative_context": {
+      "secret": "Seraphine corresponds with Iyatte of Sandrun via mirror-letter. Both hide an heir; both know the other does.",
+      "weaponise_at": "Reveal either heir and the other kingdom collapses too."
+    },
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
     "dialogue_style": "considered, slightly archaic, never raises voice",
-    "needs": [{ "id": "kingdom_rule", "priority": "primary", "satisfaction_method": "morning_audience" }],
+    "needs": [
+      {
+        "id": "kingdom_rule",
+        "priority": "primary",
+        "satisfaction_method": "morning_audience"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "fantasy_thornwood_throne", "activity": "morning audience", "need_addressed": "kingdom_rule", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 17], "location": "fantasy_thornwood_garden", "activity": "private correspondence", "need_addressed": "kingdom_rule", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_thornwood_garden",
+        "activity": "private war-vigil; speaks to no one",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "fantasy_thornwood_throne",
+        "activity": "morning audience",
+        "need_addressed": "kingdom_rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_thornwood_throne",
+        "activity": "inspects the levy; cohort training",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          17
+        ],
+        "location": "fantasy_thornwood_garden",
+        "activity": "private correspondence",
+        "need_addressed": "kingdom_rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fantasy_thornwood_throne",
+        "activity": "open supper; clan business",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_thornwood_garden",
+        "activity": "private correspondence; sleeps lightly",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "apothecary_lyra_thorne",
@@ -28,14 +102,88 @@
     "personality": "Lyra smiles when she's listening and frowns when she's mixing. Doesn't tolerate fools or poison.",
     "appearance": "Mid-forties, copper hair in a braid, apron of stained linen, herb satchel always at hand.",
     "background": "Trained at the Moonleaf Vigil. Came south after her teacher disappeared.",
-    "narrative_context": { "secret": "Exchanges herb cuttings with Pia Thalis (hub infirmary) through a smuggled satchel chain.", "weaponise_at": "Break the chain; refugee infirmaries close in both worlds." },
+    "narrative_context": {
+      "secret": "Exchanges herb cuttings with Pia Thalis (hub infirmary) through a smuggled satchel chain.",
+      "weaponise_at": "Break the chain; refugee infirmaries close in both worlds."
+    },
     "concord_link_resonance": "concordia-hub:healer_pia_thalis",
     "dialogue_style": "warm, brisk, never gossips",
-    "needs": [{ "id": "apothecary_work", "priority": "primary", "satisfaction_method": "daily_shop" }],
+    "needs": [
+      {
+        "id": "apothecary_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_shop"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 12], "location": "fantasy_verge_shop", "activity": "mixing + patients", "need_addressed": "apothecary_work", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [18, 20], "location": "fantasy_verge_shop_back", "activity": "satchel exchange", "need_addressed": "apothecary_work", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_verge_shop_back",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          12
+        ],
+        "location": "fantasy_verge_shop",
+        "activity": "mixing + patients",
+        "need_addressed": "apothecary_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_verge_shop",
+        "activity": "tends the herb beds and the recovering",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_verge_shop",
+        "activity": "afternoon clinic; receives supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          20
+        ],
+        "location": "fantasy_verge_shop_back",
+        "activity": "satchel exchange",
+        "need_addressed": "apothecary_work",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_verge_shop_back",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "knight_corin_hale",
@@ -47,14 +195,88 @@
     "personality": "Corin keeps his word. Even when he shouldn't.",
     "appearance": "Twenty-eight, sandy hair, plate armour worn in the right places, blue cloak.",
     "background": "Knighted at twenty for saving Seraphine's youngest cousin. Has not asked for a favour since.",
-    "narrative_context": { "secret": "Corin knows where the hidden heir is. He has told nobody for nine years.", "weaponise_at": "Make Corin choose between his oath and his conscience." },
+    "narrative_context": {
+      "secret": "Corin knows where the hidden heir is. He has told nobody for nine years.",
+      "weaponise_at": "Make Corin choose between his oath and his conscience."
+    },
     "concord_link_resonance": null,
     "dialogue_style": "formal, plainspoken, occasionally tender",
-    "needs": [{ "id": "duty", "priority": "primary", "satisfaction_method": "daily_patrol" }],
+    "needs": [
+      {
+        "id": "duty",
+        "priority": "primary",
+        "satisfaction_method": "daily_patrol"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 11], "location": "fantasy_thornwood_grounds", "activity": "drill + patrol", "need_addressed": "duty", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [18, 22], "location": "fantasy_thornwood_great_hall", "activity": "court duties", "need_addressed": "duty", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_thornwood_great_hall",
+        "activity": "private dawn drill; sharpens his blade",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "fantasy_thornwood_grounds",
+        "activity": "drill + patrol",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_thornwood_grounds",
+        "activity": "open drill; trains the war-band",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_thornwood_grounds",
+        "activity": "afternoon command duties; coordinates with allies",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "fantasy_thornwood_great_hall",
+        "activity": "court duties",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_thornwood_great_hall",
+        "activity": "reviews the day's reports; sleeps with the blade beside him",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "witch_nymeria",
@@ -66,13 +288,88 @@
     "personality": "Nymeria laughs more than people expect. She does not laugh about the bog.",
     "appearance": "Forties, long dark hair with one streak of bone-white, ragged green dress, copper bracelets.",
     "background": "Lives in the bog. Refuses Thornwood invitations. Treats anyone who finds her.",
-    "narrative_context": { "secret": "Nymeria sees through the bog into the lattice-crucible world. The two share underbrush.", "weaponise_at": "Bring her a lattice fragment; she will teach you to cross." },
+    "narrative_context": {
+      "secret": "Nymeria sees through the bog into the lattice-crucible world. The two share underbrush.",
+      "weaponise_at": "Bring her a lattice fragment; she will teach you to cross."
+    },
     "concord_link_resonance": "lattice-crucible:scout_emer_voss",
     "dialogue_style": "musical, allusive, drops one prophecy at a time",
-    "needs": [{ "id": "bog_communion", "priority": "primary", "satisfaction_method": "nightly_wade" }],
+    "needs": [
+      {
+        "id": "bog_communion",
+        "priority": "primary",
+        "satisfaction_method": "nightly_wade"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Penanus", "phase_hours": [18, 22], "location": "fantasy_bog_clearing", "activity": "receives petitioners", "need_addressed": "bog_communion", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "moon-vigil at the holy place",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "morning meditation",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "open audience; receives petitioners",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "receives petitioners",
+        "need_addressed": "bog_communion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_bog_clearing",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "bard_finn_oakheart",
@@ -84,13 +381,88 @@
     "personality": "Finn writes songs to remember and sings them to forget.",
     "appearance": "Twenty-five, brown skin, locs tied with a red ribbon, lute slung over the shoulder.",
     "background": "Studied at the Bards' College. Travels between Thornwood and the Verge, paid in supper.",
-    "narrative_context": { "secret": "Finn has heard Jora Kell (hub) singing the same Concordia song with different verses. Believes the lattice is leaking lyrics.", "weaponise_at": "Both bards meet; the song unlocks a cross-world ballad arc." },
+    "narrative_context": {
+      "secret": "Finn has heard Jora Kell (hub) singing the same Concordia song with different verses. Believes the lattice is leaking lyrics.",
+      "weaponise_at": "Both bards meet; the song unlocks a cross-world ballad arc."
+    },
     "concord_link_resonance": "concordia-hub:bard_jora_kell",
     "dialogue_style": "musical, charming, switches register",
-    "needs": [{ "id": "performance", "priority": "primary", "satisfaction_method": "evening_show" }],
+    "needs": [
+      {
+        "id": "performance",
+        "priority": "primary",
+        "satisfaction_method": "evening_show"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Penanus", "phase_hours": [18, 23], "location": "fantasy_verge_tavern", "activity": "performance", "need_addressed": "performance", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          23
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "performance",
+        "need_addressed": "performance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_verge_tavern",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "hunter_old_brann",
@@ -102,13 +474,88 @@
     "personality": "Brann doesn't waste an arrow. Or a sentence.",
     "appearance": "Seventy, weathered, leather hood, antler-handled knife at the belt.",
     "background": "Has hunted the Verge for fifty years. Saw the witch's bog before it was a bog.",
-    "narrative_context": { "secret": "Brann has tracked a creature whose print matches Kiren Owl's hub mystery exactly.", "weaponise_at": "Cross-reference Brann and Kiren; the impossible-print arc crosses worlds." },
+    "narrative_context": {
+      "secret": "Brann has tracked a creature whose print matches Kiren Owl's hub mystery exactly.",
+      "weaponise_at": "Cross-reference Brann and Kiren; the impossible-print arc crosses worlds."
+    },
     "concord_link_resonance": "concordia-hub:ranger_kiren_owl",
     "dialogue_style": "spare, factual, occasionally dryly funny",
-    "needs": [{ "id": "tracking", "priority": "primary", "satisfaction_method": "dawn_patrol" }],
+    "needs": [
+      {
+        "id": "tracking",
+        "priority": "primary",
+        "satisfaction_method": "dawn_patrol"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [2, 6], "location": "fantasy_moonleaf_woods", "activity": "tracking patrol", "need_addressed": "tracking", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          2,
+          6
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "tracking patrol",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "morning patrol; scouts the perimeter",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "open hunt; gathers food and intel",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "afternoon return; processes the take",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "evening reports to the chief",
+        "need_addressed": "tracking",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_moonleaf_woods",
+        "activity": "sleeps; on alarm-call rotation",
+        "need_addressed": "tracking",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2000
   },
   {
     "id": "smith_ada_mora",
@@ -120,13 +567,88 @@
     "personality": "Ada measures everything twice and forges once.",
     "appearance": "Forties, broad shoulders, soot-streaked, leather apron over a homespun shirt.",
     "background": "Apprenticed under three masters. Now the only smith in the Verge who can make a longbow string sing.",
-    "narrative_context": { "secret": "Ada knows the witch's bog yields an ore that doesn't appear in any catalogue.", "weaponise_at": "Smelt the ore with Lyra's apothecary heat; the result crosses worlds." },
+    "narrative_context": {
+      "secret": "Ada knows the witch's bog yields an ore that doesn't appear in any catalogue.",
+      "weaponise_at": "Smelt the ore with Lyra's apothecary heat; the result crosses worlds."
+    },
     "concord_link_resonance": null,
     "dialogue_style": "technical, blunt, warm to apprentices",
-    "needs": [{ "id": "forge_work", "priority": "primary", "satisfaction_method": "daily_forge" }],
+    "needs": [
+      {
+        "id": "forge_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_forge"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [9, 17], "location": "fantasy_verge_forge", "activity": "forging", "need_addressed": "forge_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          17
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "forging",
+        "need_addressed": "forge_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_verge_forge",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "child_robin_wren",
@@ -138,13 +660,88 @@
     "personality": "Ten years old. Doesn't speak much. Knows every herb by the leaf.",
     "appearance": "Small, freckled, hooded cape patched with brown wool.",
     "background": "Found in the bog by Nymeria. Has lived between the witch's hut and the apothecary ever since.",
-    "narrative_context": { "secret": "Robin can see the bog's lattice leakage as a colour.", "weaponise_at": "If the player gains trust, Robin guides them through to lattice-crucible." },
+    "narrative_context": {
+      "secret": "Robin can see the bog's lattice leakage as a colour.",
+      "weaponise_at": "If the player gains trust, Robin guides them through to lattice-crucible."
+    },
     "concord_link_resonance": "concordia-hub:child_mira_brackish",
     "dialogue_style": "quiet, observant, sudden bursts of accuracy",
-    "needs": [{ "id": "wandering", "priority": "primary", "satisfaction_method": "daily_walks" }],
+    "needs": [
+      {
+        "id": "wandering",
+        "priority": "primary",
+        "satisfaction_method": "daily_walks"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 16], "location": "fantasy_verge_streets", "activity": "wandering", "need_addressed": "wandering", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          16
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "wandering",
+        "need_addressed": "wandering",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_verge_streets",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "priest_father_galen",
@@ -156,13 +753,87 @@
     "personality": "Galen is patient with sinners and impatient with hypocrites.",
     "appearance": "Sixty, white robes with silver moonleaf embroidery, scarred left hand.",
     "background": "Tended the Vigil for thirty years. Has buried two kings and three bandits in unmarked graves.",
-    "narrative_context": { "secret": "Galen knows Seraphine's hidden heir is alive and has not told anyone.", "weaponise_at": "Galen will tell anyone who confesses to him; only one player has." },
+    "narrative_context": {
+      "secret": "Galen knows Seraphine's hidden heir is alive and has not told anyone.",
+      "weaponise_at": "Galen will tell anyone who confesses to him; only one player has."
+    },
     "concord_link_resonance": null,
     "dialogue_style": "calm, quietly amused, never gossips",
-    "needs": [{ "id": "tending", "priority": "primary", "satisfaction_method": "daily_vigil" }],
+    "needs": [
+      {
+        "id": "tending",
+        "priority": "primary",
+        "satisfaction_method": "daily_vigil"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "fantasy_moonleaf_chapel", "activity": "morning service", "need_addressed": "tending", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [18, 21], "location": "fantasy_moonleaf_chapel", "activity": "evening confession", "need_addressed": "tending", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "moon-vigil at the holy place",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "morning service",
+        "need_addressed": "tending",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "open audience; receives petitioners",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          21
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "evening confession",
+        "need_addressed": "tending",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "fantasy_moonleaf_chapel",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   }
 ]

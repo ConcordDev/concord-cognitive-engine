@@ -9,14 +9,88 @@
     "personality": "Thanis speaks in remembered tenses. Past, future, never present.",
     "appearance": "Tall, gaunt, robes of sun-bleached purple, half-mask of cracked porcelain.",
     "background": "Last of the original Court. Has lived three centuries by the rite of refusal.",
-    "narrative_context": { "secret": "Thanis shares a glyph-language with Oracle Nesha Keep. A strength-6 spell minted in one world is heard by the other.", "weaponise_at": "Cross-world refusal cascade unlocks." },
+    "narrative_context": {
+      "secret": "Thanis shares a glyph-language with Oracle Nesha Keep. A strength-6 spell minted in one world is heard by the other.",
+      "weaponise_at": "Cross-world refusal cascade unlocks."
+    },
     "concord_link_resonance": "concordia-hub:oracle_nesha_keep",
     "dialogue_style": "archaic, slow, drops one truth per audience",
-    "needs": [{ "id": "refusal_tending", "priority": "primary", "satisfaction_method": "daily_ritual" }],
+    "needs": [
+      {
+        "id": "refusal_tending",
+        "priority": "primary",
+        "satisfaction_method": "daily_ritual"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Dominus", "phase_hours": [3, 6], "location": "ruins_thanis_sanctum", "activity": "rite of refusal", "need_addressed": "refusal_tending", "interactable_by_player": false },
-      { "phase": "Freeus", "phase_hours": [10, 14], "location": "ruins_throne_court", "activity": "audience", "need_addressed": "refusal_tending", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          3,
+          6
+        ],
+        "location": "ruins_thanis_sanctum",
+        "activity": "rite of refusal",
+        "need_addressed": "refusal_tending",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ruins_throne_court",
+        "activity": "morning meditation",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          14
+        ],
+        "location": "ruins_throne_court",
+        "activity": "audience",
+        "need_addressed": "refusal_tending",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_throne_court",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_throne_court",
+        "activity": "evening audience; clan disputes",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_thanis_sanctum",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "rebel_calla_bren",
@@ -28,14 +102,88 @@
     "personality": "Calla leads with conscience, fights with both hands, sleeps with one eye open.",
     "appearance": "Mid-thirties, weather-beaten, leather-and-chain breastplate, long sword on the hip.",
     "background": "Led the third uprising. Lost it. Is leading the fourth.",
-    "narrative_context": { "secret": "Calla and Sandrun's Iyatte once met in a tunya tavern as girls. Neither has admitted it.", "weaponise_at": "Cross-world alliance — or rivalry — opens." },
+    "narrative_context": {
+      "secret": "Calla and Sandrun's Iyatte once met in a tunya tavern as girls. Neither has admitted it.",
+      "weaponise_at": "Cross-world alliance — or rivalry — opens."
+    },
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
     "dialogue_style": "direct, sharp, occasionally tender",
-    "needs": [{ "id": "rebellion", "priority": "primary", "satisfaction_method": "daily_action" }],
+    "needs": [
+      {
+        "id": "rebellion",
+        "priority": "primary",
+        "satisfaction_method": "daily_action"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 11], "location": "ruins_rebel_camp", "activity": "drilling fighters", "need_addressed": "rebellion", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 22], "location": "ruins_rebel_war_tent", "activity": "planning", "need_addressed": "rebellion", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_rebel_war_tent",
+        "activity": "private war-vigil; speaks to no one",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "ruins_rebel_camp",
+        "activity": "drilling fighters",
+        "need_addressed": "rebellion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "ruins_rebel_camp",
+        "activity": "inspects the levy; cohort training",
+        "need_addressed": "rule",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_rebel_camp",
+        "activity": "war-council; coordinates with envoys",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          22
+        ],
+        "location": "ruins_rebel_war_tent",
+        "activity": "planning",
+        "need_addressed": "rebellion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_rebel_war_tent",
+        "activity": "private correspondence; sleeps lightly",
+        "need_addressed": "rule",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 12000
   },
   {
     "id": "scribe_hen_orven",
@@ -47,13 +195,88 @@
     "personality": "Hen has written every Court decision for thirty years. He has read none of them since the first ten.",
     "appearance": "Sixty, stooped, ink-stained fingers, half-rim spectacles always on his nose.",
     "background": "Was almost made Archon. Refused. Took the scribe's chair instead.",
-    "narrative_context": { "secret": "Hen has a copy of the original Refusal Field engraving. Asbir Thelane (hub) wants it.", "weaponise_at": "Cross-world archive trade unlocks." },
+    "narrative_context": {
+      "secret": "Hen has a copy of the original Refusal Field engraving. Asbir Thelane (hub) wants it.",
+      "weaponise_at": "Cross-world archive trade unlocks."
+    },
     "concord_link_resonance": "concordia-hub:lord_curator_asbir_thelane",
     "dialogue_style": "considered, formal, occasionally wry",
-    "needs": [{ "id": "archive_work", "priority": "primary", "satisfaction_method": "daily_writing" }],
+    "needs": [
+      {
+        "id": "archive_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_writing"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 16], "location": "ruins_scribe_chamber", "activity": "writing", "need_addressed": "archive_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          16
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "writing",
+        "need_addressed": "archive_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_scribe_chamber",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "warrior_zaen_drift",
@@ -65,14 +288,88 @@
     "personality": "Zaen says less than he knows and knows more than he should.",
     "appearance": "Forty, lean, sun-darkened, sword scars on both hands.",
     "background": "Champion to four Archons. Has buried three.",
-    "narrative_context": { "secret": "Zaen has met Calla Bren in disguise twice. Has not killed her.", "weaponise_at": "Expose Zaen; Court loses its champion." },
+    "narrative_context": {
+      "secret": "Zaen has met Calla Bren in disguise twice. Has not killed her.",
+      "weaponise_at": "Expose Zaen; Court loses its champion."
+    },
     "concord_link_resonance": null,
     "dialogue_style": "spare, calm, polite to fighters",
-    "needs": [{ "id": "duty", "priority": "primary", "satisfaction_method": "daily_drill" }],
+    "needs": [
+      {
+        "id": "duty",
+        "priority": "primary",
+        "satisfaction_method": "daily_drill"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "ruins_court_yard", "activity": "drill", "need_addressed": "duty", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [11, 16], "location": "ruins_throne_court", "activity": "ceremonial guard", "need_addressed": "duty", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_throne_court",
+        "activity": "private dawn drill; sharpens his blade",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "ruins_court_yard",
+        "activity": "drill",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          11,
+          16
+        ],
+        "location": "ruins_throne_court",
+        "activity": "ceremonial guard",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_court_yard",
+        "activity": "afternoon command duties; coordinates with allies",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_court_yard",
+        "activity": "evening hall; settles internal grievances",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_throne_court",
+        "activity": "reviews the day's reports; sleeps with the blade beside him",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "elder_silv_marn",
@@ -84,13 +381,88 @@
     "personality": "Silv refused the rite forty years ago and has lived as a refused-mother since.",
     "appearance": "Seventy-eight, silver-haired, leather cloak with seven brass clasps.",
     "background": "Has refused four marriages, three kingdoms, two heirs, and the death of one child.",
-    "narrative_context": { "secret": "Silv knows how to undo the compound refusal once it sets in.", "weaponise_at": "If the hub dome ruptures, only Silv can stabilise it." },
+    "narrative_context": {
+      "secret": "Silv knows how to undo the compound refusal once it sets in.",
+      "weaponise_at": "If the hub dome ruptures, only Silv can stabilise it."
+    },
     "concord_link_resonance": "concordia-hub:oracle_nesha_keep",
     "dialogue_style": "calm, allusive, occasionally fierce",
-    "needs": [{ "id": "refusal_practice", "priority": "primary", "satisfaction_method": "daily_meditation" }],
+    "needs": [
+      {
+        "id": "refusal_practice",
+        "priority": "primary",
+        "satisfaction_method": "daily_meditation"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [9, 14], "location": "ruins_refused_circle", "activity": "circle meditation", "need_addressed": "refusal_practice", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "moon-vigil at the holy place",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "morning meditation",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          14
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "circle meditation",
+        "need_addressed": "refusal_practice",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "evening audience; clan disputes",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_refused_circle",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "healer_arn_tev",
@@ -102,13 +474,88 @@
     "personality": "Arn refuses the king's coin. Heals everyone anyway.",
     "appearance": "Fifties, scarred forearms, simple linen smock, herb pouches on the belt.",
     "background": "Trained in the Court infirmary. Walked out when the Court started signing death warrants.",
-    "narrative_context": { "secret": "Arn smuggles refugees out of the ruins to Pia Thalis in the hub.", "weaponise_at": "Expose the chain; both infirmaries close." },
+    "narrative_context": {
+      "secret": "Arn smuggles refugees out of the ruins to Pia Thalis in the hub.",
+      "weaponise_at": "Expose the chain; both infirmaries close."
+    },
     "concord_link_resonance": "concordia-hub:healer_pia_thalis",
     "dialogue_style": "warm, brisk, never gossips",
-    "needs": [{ "id": "healing", "priority": "primary", "satisfaction_method": "daily_patients" }],
+    "needs": [
+      {
+        "id": "healing",
+        "priority": "primary",
+        "satisfaction_method": "daily_patients"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 11], "location": "ruins_healer_camp", "activity": "patient round", "need_addressed": "healing", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "patient round",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "tends the herb beds and the recovering",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "afternoon clinic; receives supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "private surgeries; teaches the apprentice",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_healer_camp",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "child_finn_bren",
@@ -120,13 +567,88 @@
     "personality": "Thirteen years old. Already a courier. Refuses to fight.",
     "appearance": "Small, fast, dirty linen tunic, rebel ribbon around the left wrist.",
     "background": "Calla's only sibling. The rebellion's youngest active member.",
-    "narrative_context": { "secret": "Finn runs messages cross-world via the Verge bog (with Nymeria's witch knowledge).", "weaponise_at": "Trace Finn; the cross-world messenger chain breaks." },
+    "narrative_context": {
+      "secret": "Finn runs messages cross-world via the Verge bog (with Nymeria's witch knowledge).",
+      "weaponise_at": "Trace Finn; the cross-world messenger chain breaks."
+    },
     "concord_link_resonance": "fantasy:witch_nymeria",
     "dialogue_style": "fast, brave, occasionally young",
-    "needs": [{ "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "needs": [
+      {
+        "id": "running",
+        "priority": "primary",
+        "satisfaction_method": "daily_route"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 17], "location": "ruins_back_paths", "activity": "courier route", "need_addressed": "running", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_back_paths",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "ruins_back_paths",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          17
+        ],
+        "location": "ruins_back_paths",
+        "activity": "courier route",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "ruins_back_paths",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_back_paths",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_back_paths",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "merchant_pol_rim",
@@ -138,13 +660,87 @@
     "personality": "Pol takes silver, takes refused-coin, takes promises if you sign them.",
     "appearance": "Forty-eight, sun-bleached, gold tooth, dust-coloured cloak.",
     "background": "Has traded between Court and rebels for two decades. Considers it patriotism.",
-    "narrative_context": { "secret": "Pol's caravan runs through a bog road that leads to the fantasy Verge.", "weaponise_at": "Use the road; cross-world trade explodes." },
+    "narrative_context": {
+      "secret": "Pol's caravan runs through a bog road that leads to the fantasy Verge.",
+      "weaponise_at": "Use the road; cross-world trade explodes."
+    },
     "concord_link_resonance": "fantasy:smith_ada_mora",
     "dialogue_style": "loud, generous, sneakily numerical",
-    "needs": [{ "id": "trade", "priority": "primary", "satisfaction_method": "daily_caravan" }],
+    "needs": [
+      {
+        "id": "trade",
+        "priority": "primary",
+        "satisfaction_method": "daily_caravan"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "ruins_caravan_camp", "activity": "morning stock", "need_addressed": "trade", "interactable_by_player": true },
-      { "phase": "Quartus", "phase_hours": [13, 17], "location": "ruins_market_square", "activity": "trading", "need_addressed": "trade", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "ruins_market_square",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "ruins_caravan_camp",
+        "activity": "morning stock",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "ruins_caravan_camp",
+        "activity": "open shop; sells and negotiates",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          17
+        ],
+        "location": "ruins_market_square",
+        "activity": "trading",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "ruins_caravan_camp",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "ruins_market_square",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   }
 ]

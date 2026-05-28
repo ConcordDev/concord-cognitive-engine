@@ -11,29 +11,186 @@
     "quest_giver": true,
     "level": 12,
     "backstory": "Orla was a federation analyst before the Crucible offered her a place. She has watched the lattice for eleven years and has stopped trying to predict its drift cadence. She believes the lattice is not adversarial but is also not benign; it is operating an optimization problem the federation has not yet specified.",
-    "personality_traits": ["analytical", "patient", "skeptical of teleological framing", "quiet authority"],
+    "personality_traits": [
+      "analytical",
+      "patient",
+      "skeptical of teleological framing",
+      "quiet authority"
+    ],
     "speech_patterns": "Uses 'the lattice' as a third party. Refuses to anthropomorphize even under duress.",
-    "quest_hooks": ["the_drift_the_lattice_won_t_resolve", "witness_charter_question", "documentation_run"],
+    "quest_hooks": [
+      "the_drift_the_lattice_won_t_resolve",
+      "witness_charter_question",
+      "documentation_run"
+    ],
     "narrative_context": {
       "secret": "Orla has identified a class of drift alerts that the lattice produces only when a player is standing in the Crucible. She has not told the other Witnesses because she does not know whether to call this evidence of intent."
     },
     "needs": [
-      { "id": "drift_documentation", "priority": "primary", "satisfaction_method": "morning_observation_lattice_session" },
-      { "id": "witness_charter_continuity", "priority": "primary", "satisfaction_method": "weekly_council_with_pem_sael" }
+      {
+        "id": "drift_documentation",
+        "priority": "primary",
+        "satisfaction_method": "morning_observation_lattice_session"
+      },
+      {
+        "id": "witness_charter_continuity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_council_with_pem_sael"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [6, 11], "location": "observation_lattice", "activity": "morning observation session; logs overnight drift alerts", "need_addressed": "drift_documentation", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "central_crucible", "activity": "midday council with Pem and Sael", "need_addressed": "witness_charter_continuity", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "afternoon documentation; never anthropomorphizes the lattice in her notes", "need_addressed": "drift_documentation", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 6], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          6,
+          11
+        ],
+        "location": "observation_lattice",
+        "activity": "morning observation session; logs overnight drift alerts",
+        "need_addressed": "drift_documentation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "central_crucible",
+        "activity": "midday council with Pem and Sael",
+        "need_addressed": "witness_charter_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "observation_lattice",
+        "activity": "afternoon documentation; never anthropomorphizes the lattice in her notes",
+        "need_addressed": "drift_documentation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          6
+        ],
+        "location": "witness_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "witness_quarters",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "observation_lattice",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "observation_lattice",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "observation_lattice",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "observation_lattice",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "witness_quarters",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "central_crucible", "dwelling_type": "senior_witness_quarters" },
-    "job": { "profession_id": "senior_witness", "wage_per_diurnal_sparks": 140, "wage_source": "federation_witness_charter_stipend" },
-    "apparel": ["dark_witness_robe", "observation_belt_with_glass_pouch", "soft_indoor_shoes"],
-    "gear": ["observation_glass_master_grade", "personal_drift_alert_journal_unanthropomorphized", "lattice_documentation_quill_set"],
-    "resources_consumed": ["paper", "ink", "stipend_provisions"],
-    "resources_produced": ["drift_documentation_records"],
-    "inventory": [{ "item": "observation_glass_master_grade", "qty": 1 }, { "item": "personal_drift_alert_journal", "qty": 1 }, { "item": "drift_marks", "qty": 30 }],
+    "home": {
+      "district": "central_crucible",
+      "dwelling_type": "senior_witness_quarters"
+    },
+    "job": {
+      "profession_id": "senior_witness",
+      "wage_per_diurnal_sparks": 140,
+      "wage_source": "federation_witness_charter_stipend"
+    },
+    "apparel": [
+      "dark_witness_robe",
+      "observation_belt_with_glass_pouch",
+      "soft_indoor_shoes"
+    ],
+    "gear": [
+      "observation_glass_master_grade",
+      "personal_drift_alert_journal_unanthropomorphized",
+      "lattice_documentation_quill_set"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "stipend_provisions"
+    ],
+    "resources_produced": [
+      "drift_documentation_records"
+    ],
+    "inventory": [
+      {
+        "item": "observation_glass_master_grade",
+        "qty": 1
+      },
+      {
+        "item": "personal_drift_alert_journal",
+        "qty": 1
+      },
+      {
+        "item": "drift_marks",
+        "qty": 30
+      }
+    ],
     "starting_sparks": 1800
   },
   {
@@ -48,26 +205,182 @@
     "quest_giver": true,
     "level": 8,
     "backstory": "Pem was a graduate apprentice at the Scholars' Guild who left after the Compact-refresh ratification because he believed Concordia had become too risk-averse. He has been a Witness for four years.",
-    "personality_traits": ["earnest", "wavering", "kind", "actively curious"],
+    "personality_traits": [
+      "earnest",
+      "wavering",
+      "kind",
+      "actively curious"
+    ],
     "speech_patterns": "Asks 'what would you do?' more often than is professional. Apologizes for it, then asks again.",
-    "quest_hooks": ["pems_intervention_question", "the_witness_who_acted"],
+    "quest_hooks": [
+      "pems_intervention_question",
+      "the_witness_who_acted"
+    ],
     "needs": [
-      { "id": "witness_apprenticeship", "priority": "primary", "satisfaction_method": "morning_observation_with_orla" },
-      { "id": "the_intervention_question", "priority": "primary", "satisfaction_method": "private_evening_reflection" }
+      {
+        "id": "witness_apprenticeship",
+        "priority": "primary",
+        "satisfaction_method": "morning_observation_with_orla"
+      },
+      {
+        "id": "the_intervention_question",
+        "priority": "primary",
+        "satisfaction_method": "private_evening_reflection"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [7, 11], "location": "observation_lattice", "activity": "morning observation under Orla's mentorship", "need_addressed": "witness_apprenticeship", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "central_crucible", "activity": "council with Witnesses; usually doesn't take a position", "need_addressed": "witness_apprenticeship", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "afternoon notes; asks Sael difficult questions", "need_addressed": "the_intervention_question", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 7], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "observation_lattice",
+        "activity": "morning observation under Orla's mentorship",
+        "need_addressed": "witness_apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "central_crucible",
+        "activity": "council with Witnesses; usually doesn't take a position",
+        "need_addressed": "witness_apprenticeship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "observation_lattice",
+        "activity": "afternoon notes; asks Sael difficult questions",
+        "need_addressed": "the_intervention_question",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "witness_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "witness_quarters",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "observation_lattice",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "observation_lattice",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "observation_lattice",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "observation_lattice",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "witness_quarters",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "central_crucible", "dwelling_type": "junior_witness_quarters" },
-    "job": { "profession_id": "witness", "wage_per_diurnal_sparks": 90, "wage_source": "federation_witness_stipend" },
-    "apparel": ["dark_witness_robe_simpler_cut", "observation_belt", "soft_indoor_shoes"],
-    "gear": ["observation_glass_apprentice_grade", "personal_intervention_question_journal", "quill_set"],
-    "resources_consumed": ["paper", "ink", "witness_provisions"],
-    "resources_produced": ["drift_documentation_assist"],
-    "inventory": [{ "item": "observation_glass_apprentice_grade", "qty": 1 }, { "item": "personal_intervention_question_journal", "qty": 1 }, { "item": "drift_marks", "qty": 14 }],
+    "home": {
+      "district": "central_crucible",
+      "dwelling_type": "junior_witness_quarters"
+    },
+    "job": {
+      "profession_id": "witness",
+      "wage_per_diurnal_sparks": 90,
+      "wage_source": "federation_witness_stipend"
+    },
+    "apparel": [
+      "dark_witness_robe_simpler_cut",
+      "observation_belt",
+      "soft_indoor_shoes"
+    ],
+    "gear": [
+      "observation_glass_apprentice_grade",
+      "personal_intervention_question_journal",
+      "quill_set"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "witness_provisions"
+    ],
+    "resources_produced": [
+      "drift_documentation_assist"
+    ],
+    "inventory": [
+      {
+        "item": "observation_glass_apprentice_grade",
+        "qty": 1
+      },
+      {
+        "item": "personal_intervention_question_journal",
+        "qty": 1
+      },
+      {
+        "item": "drift_marks",
+        "qty": 14
+      }
+    ],
     "starting_sparks": 620
   },
   {
@@ -82,26 +395,184 @@
     "quest_giver": true,
     "level": 10,
     "backstory": "Sael was a Frontier courier who survived an ambush by a hostile city's agents. She arrived at the Crucible to recover and stayed. She has come to believe the Witness charter — pure observation — is morally untenable when the lattice produces drift events that endanger players.",
-    "personality_traits": ["principled", "increasingly impatient", "loyal to her colleagues despite disagreement", "decisive"],
+    "personality_traits": [
+      "principled",
+      "increasingly impatient",
+      "loyal to her colleagues despite disagreement",
+      "decisive"
+    ],
     "speech_patterns": "Speaks in indicative, never conditional. Uses 'we should' rather than 'we could'.",
-    "quest_hooks": ["saels_first_intervention", "the_charter_amendment"],
+    "quest_hooks": [
+      "saels_first_intervention",
+      "the_charter_amendment"
+    ],
     "needs": [
-      { "id": "intervention_readiness", "priority": "primary", "satisfaction_method": "morning_combat_drill" },
-      { "id": "charter_amendment_progress", "priority": "primary", "satisfaction_method": "weekly_council_advocacy" }
+      {
+        "id": "intervention_readiness",
+        "priority": "primary",
+        "satisfaction_method": "morning_combat_drill"
+      },
+      {
+        "id": "charter_amendment_progress",
+        "priority": "primary",
+        "satisfaction_method": "weekly_council_advocacy"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [5, 10], "location": "observation_lattice_practice_yard", "activity": "morning combat drill; sharpens her readiness to intervene the moment she's allowed", "need_addressed": "intervention_readiness", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [10, 15], "location": "central_crucible", "activity": "council advocacy; pushes the charter amendment", "need_addressed": "charter_amendment_progress", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "observation_lattice", "activity": "patrols the perimeter; ready to act if a drift event endangers a player", "need_addressed": "intervention_readiness", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          5,
+          10
+        ],
+        "location": "observation_lattice_practice_yard",
+        "activity": "morning combat drill; sharpens her readiness to intervene the moment she's allowed",
+        "need_addressed": "intervention_readiness",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          10,
+          15
+        ],
+        "location": "central_crucible",
+        "activity": "council advocacy; pushes the charter amendment",
+        "need_addressed": "charter_amendment_progress",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "observation_lattice",
+        "activity": "patrols the perimeter; ready to act if a drift event endangers a player",
+        "need_addressed": "intervention_readiness",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "witness_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "witness_quarters",
+        "activity": "private dawn drill; sharpens his blade",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "observation_lattice_practice_yard",
+        "activity": "morning patrol or war-council",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "observation_lattice_practice_yard",
+        "activity": "open drill; trains the war-band",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "observation_lattice_practice_yard",
+        "activity": "afternoon command duties; coordinates with allies",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "observation_lattice_practice_yard",
+        "activity": "evening hall; settles internal grievances",
+        "need_addressed": "duty",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "witness_quarters",
+        "activity": "reviews the day's reports; sleeps with the blade beside him",
+        "need_addressed": "duty",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "central_crucible", "dwelling_type": "warrior_witness_quarters" },
-    "job": { "profession_id": "warrior_witness", "wage_per_diurnal_sparks": 110, "wage_source": "federation_witness_stipend" },
-    "apparel": ["combat_witness_robe_reinforced", "tactical_belt_with_blade_loop", "knee_high_combat_boots"],
-    "gear": ["shortsword_courier_grade", "personal_charter_amendment_draft_journal", "tactical_observation_glass"],
-    "resources_consumed": ["paper", "ink", "weapon_oil", "witness_provisions"],
-    "resources_produced": ["intervention_readiness", "charter_amendment_advocacy"],
-    "inventory": [{ "item": "shortsword_courier_grade", "qty": 1 }, { "item": "personal_charter_amendment_draft_journal", "qty": 1 }, { "item": "drift_marks", "qty": 20 }],
+    "home": {
+      "district": "central_crucible",
+      "dwelling_type": "warrior_witness_quarters"
+    },
+    "job": {
+      "profession_id": "warrior_witness",
+      "wage_per_diurnal_sparks": 110,
+      "wage_source": "federation_witness_stipend"
+    },
+    "apparel": [
+      "combat_witness_robe_reinforced",
+      "tactical_belt_with_blade_loop",
+      "knee_high_combat_boots"
+    ],
+    "gear": [
+      "shortsword_courier_grade",
+      "personal_charter_amendment_draft_journal",
+      "tactical_observation_glass"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "weapon_oil",
+      "witness_provisions"
+    ],
+    "resources_produced": [
+      "intervention_readiness",
+      "charter_amendment_advocacy"
+    ],
+    "inventory": [
+      {
+        "item": "shortsword_courier_grade",
+        "qty": 1
+      },
+      {
+        "item": "personal_charter_amendment_draft_journal",
+        "qty": 1
+      },
+      {
+        "item": "drift_marks",
+        "qty": 20
+      }
+    ],
     "starting_sparks": 980
   },
   {
@@ -116,22 +587,122 @@
     "quest_giver": true,
     "level": 7,
     "backstory": "An autonomous walker, unaffiliated with the Couriers' Guild or Freenodes, that arrived at the Crucible four years ago and has been walking the perimeter ever since. Sael believes it is delivering something. Orla believes it is malfunctioning. Pem refuses to take a position.",
-    "personality_traits": ["reticent", "patient", "unaccountable"],
+    "personality_traits": [
+      "reticent",
+      "patient",
+      "unaccountable"
+    ],
     "speech_patterns": "Does not greet. Replies to direct questions with the most recent drift alert it witnessed.",
     "needs": [
-      { "id": "perimeter_walk_completion", "priority": "primary", "satisfaction_method": "continuous_perimeter_patrol" }
+      {
+        "id": "perimeter_walk_completion",
+        "priority": "primary",
+        "satisfaction_method": "continuous_perimeter_patrol"
+      }
     ],
     "daily_schedule": [
-      { "phase": "all_diurnal", "phase_hours": [1, 32], "location": "crucible_perimeter", "activity": "walks the perimeter without rest; replies to direct questions with the most recent drift alert", "need_addressed": "perimeter_walk_completion", "interactable_by_player": true }
+      {
+        "phase": "all_diurnal",
+        "phase_hours": [
+          1,
+          32
+        ],
+        "location": "crucible_perimeter",
+        "activity": "walks the perimeter without rest; replies to direct questions with the most recent drift alert",
+        "need_addressed": "perimeter_walk_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "crucible_perimeter",
+        "activity": "rotates night-watch; checks the perimeter",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "crucible_perimeter",
+        "activity": "morning shift; secures the audience",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "crucible_perimeter",
+        "activity": "open patrol; mediates disputes",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "crucible_perimeter",
+        "activity": "drills new recruits",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "crucible_perimeter",
+        "activity": "off-duty supper with the watch",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "crucible_perimeter",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "crucible_perimeter", "dwelling_type": "the_perimeter_itself_walker_does_not_sleep" },
-    "job": { "profession_id": "autonomous_walker", "wage_per_diurnal_sparks": 0, "wage_source": "n/a" },
-    "apparel": ["weathered_walker_cloak", "scarred_traveling_boots"],
-    "gear": ["walker_charm_anchor", "the_most_recent_drift_alert_in_memory"],
+    "home": {
+      "district": "crucible_perimeter",
+      "dwelling_type": "the_perimeter_itself_walker_does_not_sleep"
+    },
+    "job": {
+      "profession_id": "autonomous_walker",
+      "wage_per_diurnal_sparks": 0,
+      "wage_source": "n/a"
+    },
+    "apparel": [
+      "weathered_walker_cloak",
+      "scarred_traveling_boots"
+    ],
+    "gear": [
+      "walker_charm_anchor",
+      "the_most_recent_drift_alert_in_memory"
+    ],
     "resources_consumed": [],
-    "resources_produced": ["perimeter_patrol_coverage", "drift_alert_relay"],
+    "resources_produced": [
+      "perimeter_patrol_coverage",
+      "drift_alert_relay"
+    ],
     "inventory": [],
-    "starting_sparks": 0
+    "starting_sparks": 2500
   },
   {
     "id": "crucible_apprentice_yorin",
@@ -145,26 +716,184 @@
     "quest_giver": false,
     "level": 4,
     "backstory": "Yorin arrived at the Crucible six weeks ago with a sword, a notebook, and an opinion. They have not joined the Witnesses because they believe the Witness charter is a refusal-to-act dressed as scholarship. They are, however, a very patient note-taker.",
-    "personality_traits": ["young", "blunt", "principled", "genuinely listening"],
+    "personality_traits": [
+      "young",
+      "blunt",
+      "principled",
+      "genuinely listening"
+    ],
     "speech_patterns": "Bluntly enthusiastic. Names a drift type the moment it appears.",
     "needs": [
-      { "id": "self_directed_study", "priority": "primary", "satisfaction_method": "daily_independent_observation" },
-      { "id": "the_charter_question", "priority": "primary", "satisfaction_method": "evening_debate_with_sael" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "guest_quarters_pooled" }
+      {
+        "id": "self_directed_study",
+        "priority": "primary",
+        "satisfaction_method": "daily_independent_observation"
+      },
+      {
+        "id": "the_charter_question",
+        "priority": "primary",
+        "satisfaction_method": "evening_debate_with_sael"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "guest_quarters_pooled"
+      }
     ],
     "daily_schedule": [
-      { "phase": "morning", "phase_hours": [7, 12], "location": "observation_lattice", "activity": "independent observation; notes drift patterns the Witnesses haven't yet documented", "need_addressed": "self_directed_study", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [14, 19], "location": "varies", "activity": "field walking; gets into drift events the Witnesses won't approach", "need_addressed": "self_directed_study", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "central_crucible_dining", "activity": "evening debate with Sael; sometimes Pem", "need_addressed": "the_charter_question", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 7], "location": "guest_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          12
+        ],
+        "location": "observation_lattice",
+        "activity": "independent observation; notes drift patterns the Witnesses haven't yet documented",
+        "need_addressed": "self_directed_study",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          19
+        ],
+        "location": "varies",
+        "activity": "field walking; gets into drift events the Witnesses won't approach",
+        "need_addressed": "self_directed_study",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "central_crucible_dining",
+        "activity": "evening debate with Sael; sometimes Pem",
+        "need_addressed": "the_charter_question",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          7
+        ],
+        "location": "guest_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "guest_quarters",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "observation_lattice",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "observation_lattice",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "observation_lattice",
+        "activity": "private cataloguing; coordinates with peers",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "observation_lattice",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "guest_quarters",
+        "activity": "personal study; writes reports",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "central_crucible_guest_quarters", "dwelling_type": "single_guest_room" },
-    "job": { "profession_id": "free_apprentice", "wage_per_diurnal_sparks": 30, "wage_source": "guest_stipend_modest" },
-    "apparel": ["traveler_tunic", "leather_belt_with_notebook_pouch", "sturdy_road_boots", "young_apprentice_overrobe_only_when_meeting_orla"],
-    "gear": ["shortsword_apprentice_grade", "blank_notebook", "drift_observation_quill_set"],
-    "resources_consumed": ["paper", "ink", "guest_quarters_meals"],
-    "resources_produced": ["independent_drift_observations"],
-    "inventory": [{ "item": "shortsword_apprentice_grade", "qty": 1 }, { "item": "blank_notebook", "qty": 1 }, { "item": "drift_marks", "qty": 5 }],
+    "home": {
+      "district": "central_crucible_guest_quarters",
+      "dwelling_type": "single_guest_room"
+    },
+    "job": {
+      "profession_id": "free_apprentice",
+      "wage_per_diurnal_sparks": 30,
+      "wage_source": "guest_stipend_modest"
+    },
+    "apparel": [
+      "traveler_tunic",
+      "leather_belt_with_notebook_pouch",
+      "sturdy_road_boots",
+      "young_apprentice_overrobe_only_when_meeting_orla"
+    ],
+    "gear": [
+      "shortsword_apprentice_grade",
+      "blank_notebook",
+      "drift_observation_quill_set"
+    ],
+    "resources_consumed": [
+      "paper",
+      "ink",
+      "guest_quarters_meals"
+    ],
+    "resources_produced": [
+      "independent_drift_observations"
+    ],
+    "inventory": [
+      {
+        "item": "shortsword_apprentice_grade",
+        "qty": 1
+      },
+      {
+        "item": "blank_notebook",
+        "qty": 1
+      },
+      {
+        "item": "drift_marks",
+        "qty": 5
+      }
+    ],
     "starting_sparks": 240
   },
   {
@@ -179,36 +908,220 @@
     "quest_giver": true,
     "level": 9,
     "backstory": "Calla saw her first drift event at sixteen and converted within the hour. She is now thirty-eight and has shaped the cult's theology around the principle that contradictions are revelation. Her authority is genuine; her certainty is hard-won.",
-    "personality_traits": ["fervent", "rhetorically gifted", "self-aware about doubt", "kind in person"],
+    "personality_traits": [
+      "fervent",
+      "rhetorically gifted",
+      "self-aware about doubt",
+      "kind in person"
+    ],
     "speech_patterns": "Public: liturgical cadence. Private: asks more questions than she answers.",
     "narrative_context": {
       "secret": "She has begun to suspect the engineers' stabilizations are themselves drift events. If true, the cult's theology is correct and the engineers are unwitting prophets. She has not told her followers."
     },
     "needs": [
-      { "id": "drift_event_witness", "priority": "primary", "satisfaction_method": "daily_temple_observation" },
-      { "id": "congregation_continuity", "priority": "primary", "satisfaction_method": "weekly_sermon" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "tithe_and_pilgrimage_offerings" }
+      {
+        "id": "drift_event_witness",
+        "priority": "primary",
+        "satisfaction_method": "daily_temple_observation"
+      },
+      {
+        "id": "congregation_continuity",
+        "priority": "primary",
+        "satisfaction_method": "weekly_sermon"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "tithe_and_pilgrimage_offerings"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "temple_of_six_drifts", "activity": "morning meditation; opens the temple to first-light pilgrims", "need_addressed": "drift_event_witness", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "temple_of_six_drifts", "activity": "receives the day's drift-pilgrims; interprets their dreams against the six drift glyphs", "need_addressed": "congregation_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "drift_pilgrimage_path", "activity": "walks the pilgrimage path with first-time arrivals", "need_addressed": "drift_event_witness", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "temple_of_six_drifts", "activity": "writes the week's sermon; researches recent engineering patches against drift records", "need_addressed": "drift_event_witness", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 23], "location": "temple_chambers", "activity": "evening prayer; private conversations with senior cultists", "need_addressed": "congregation_continuity", "interactable_by_player": false },
-      { "phase": "night", "phase_hours": [23, 4], "location": "high_priestess_quarters", "activity": "rests; sometimes wakes to record a dream interpretation", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "morning meditation; opens the temple to first-light pilgrims",
+        "need_addressed": "drift_event_witness",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "receives the day's drift-pilgrims; interprets their dreams against the six drift glyphs",
+        "need_addressed": "congregation_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "drift_pilgrimage_path",
+        "activity": "walks the pilgrimage path with first-time arrivals",
+        "need_addressed": "drift_event_witness",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "writes the week's sermon; researches recent engineering patches against drift records",
+        "need_addressed": "drift_event_witness",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          23
+        ],
+        "location": "temple_chambers",
+        "activity": "evening prayer; private conversations with senior cultists",
+        "need_addressed": "congregation_continuity",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          23,
+          4
+        ],
+        "location": "high_priestess_quarters",
+        "activity": "rests; sometimes wakes to record a dream interpretation",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "temple_of_six_drifts",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "temple_of_six_drifts", "dwelling_type": "high_priestess_quarters_with_inner_shrine" },
-    "job": { "profession_id": "high_priestess", "wage_per_diurnal_sparks": 130, "wage_source": "tithes_and_offerings" },
-    "apparel": ["six_drift_robe_woven_with_six_glyph_threads", "ceremonial_belt_with_drift_token_pouch", "ritual_sandals", "ceremonial_drift_circlet"],
-    "gear": ["ritual_blade_for_drift_inscription", "drift_glyph_scripture_book", "personal_dream_interpretation_journal", "incense_burner"],
-    "resources_consumed": ["incense", "ink", "ceremonial_oils", "drift_token_offerings"],
-    "resources_produced": ["sermons", "dream_interpretations", "drift_event_records"],
+    "home": {
+      "district": "temple_of_six_drifts",
+      "dwelling_type": "high_priestess_quarters_with_inner_shrine"
+    },
+    "job": {
+      "profession_id": "high_priestess",
+      "wage_per_diurnal_sparks": 130,
+      "wage_source": "tithes_and_offerings"
+    },
+    "apparel": [
+      "six_drift_robe_woven_with_six_glyph_threads",
+      "ceremonial_belt_with_drift_token_pouch",
+      "ritual_sandals",
+      "ceremonial_drift_circlet"
+    ],
+    "gear": [
+      "ritual_blade_for_drift_inscription",
+      "drift_glyph_scripture_book",
+      "personal_dream_interpretation_journal",
+      "incense_burner"
+    ],
+    "resources_consumed": [
+      "incense",
+      "ink",
+      "ceremonial_oils",
+      "drift_token_offerings"
+    ],
+    "resources_produced": [
+      "sermons",
+      "dream_interpretations",
+      "drift_event_records"
+    ],
     "inventory": [
-      { "item": "ritual_blade", "qty": 1 },
-      { "item": "drift_glyph_scripture_book", "qty": 1 },
-      { "item": "personal_dream_journal", "qty": 1 },
-      { "item": "incense_bundle", "qty": 12 },
-      { "item": "drift_token", "qty": 30 }
+      {
+        "item": "ritual_blade",
+        "qty": 1
+      },
+      {
+        "item": "drift_glyph_scripture_book",
+        "qty": 1
+      },
+      {
+        "item": "personal_dream_journal",
+        "qty": 1
+      },
+      {
+        "item": "incense_bundle",
+        "qty": 12
+      },
+      {
+        "item": "drift_token",
+        "qty": 30
+      }
     ],
     "starting_sparks": 1100
   },
@@ -224,37 +1137,225 @@
     "quest_giver": true,
     "level": 11,
     "backstory": "Vaud was the federation's lead patch developer for three years before joining the Crucible. He believes the lattice can be teached to drift less; he is methodically proving the hypothesis one patch at a time. The cultists hate him; the Witnesses are wary; the refugees mostly leave him alone.",
-    "personality_traits": ["systematic", "self-disciplined", "occasionally defensive", "quietly idealistic"],
+    "personality_traits": [
+      "systematic",
+      "self-disciplined",
+      "occasionally defensive",
+      "quietly idealistic"
+    ],
     "speech_patterns": "Technical when working. Apologetic when his patches fail. Refuses to discuss theology.",
     "narrative_context": {
       "secret": "Three of his patches caused the drift events that birthed the current Drift Refugee population. He has documented this internally and reported it to the federation. He has not told the refugees themselves."
     },
     "needs": [
-      { "id": "patch_completion", "priority": "primary", "satisfaction_method": "morning_patch_test_session" },
-      { "id": "drift_telemetry_review", "priority": "primary", "satisfaction_method": "afternoon_telemetry_session" },
-      { "id": "team_cohesion", "priority": "secondary", "satisfaction_method": "evening_team_dinner" }
+      {
+        "id": "patch_completion",
+        "priority": "primary",
+        "satisfaction_method": "morning_patch_test_session"
+      },
+      {
+        "id": "drift_telemetry_review",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_telemetry_session"
+      },
+      {
+        "id": "team_cohesion",
+        "priority": "secondary",
+        "satisfaction_method": "evening_team_dinner"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "engineering_workshop", "activity": "morning telemetry review; assigns patch priorities to runners", "need_addressed": "drift_telemetry_review", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "patch_test_arena", "activity": "live patch testing; debugs failures in real time", "need_addressed": "patch_completion", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "engineering_workshop", "activity": "midday meal at desk; reviews witness reports for new drift signatures", "need_addressed": "drift_telemetry_review", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "stabilization_grid", "activity": "deploys approved patches; monitors stability metrics for 4-hour window", "need_addressed": "patch_completion", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "engineering_workshop_common", "activity": "team dinner; informal patch retrospective", "need_addressed": "team_cohesion", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "engineer_quarters", "activity": "rests; rarely wakes to a 3am page from a runaway patch", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "engineering_workshop",
+        "activity": "morning telemetry review; assigns patch priorities to runners",
+        "need_addressed": "drift_telemetry_review",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "patch_test_arena",
+        "activity": "live patch testing; debugs failures in real time",
+        "need_addressed": "patch_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "engineering_workshop",
+        "activity": "midday meal at desk; reviews witness reports for new drift signatures",
+        "need_addressed": "drift_telemetry_review",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "stabilization_grid",
+        "activity": "deploys approved patches; monitors stability metrics for 4-hour window",
+        "need_addressed": "patch_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "engineering_workshop_common",
+        "activity": "team dinner; informal patch retrospective",
+        "need_addressed": "team_cohesion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "engineer_quarters",
+        "activity": "rests; rarely wakes to a 3am page from a runaway patch",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "engineering_workshop",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "patch_test_arena",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "patch_test_arena",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "patch_test_arena",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "patch_test_arena",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "engineering_workshop",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "engineering_workshop", "dwelling_type": "chief_quarters_with_attached_workspace" },
-    "job": { "profession_id": "chief_engineer", "wage_per_diurnal_sparks": 280, "wage_source": "federation_engineering_grant" },
-    "apparel": ["engineer_smock_white_with_pocket_protector", "stained_undertunic", "tool_belt_full_loadout", "soft_shop_shoes"],
-    "gear": ["multitool_master_grade", "field_modulator", "patch_test_simulator_portable", "telemetry_journal", "comms_token"],
-    "resources_consumed": ["patch_credits", "telemetry_paper", "ink", "engineer_meals"],
-    "resources_produced": ["deployed_patches", "stability_reports", "failed_patch_reverts"],
+    "home": {
+      "district": "engineering_workshop",
+      "dwelling_type": "chief_quarters_with_attached_workspace"
+    },
+    "job": {
+      "profession_id": "chief_engineer",
+      "wage_per_diurnal_sparks": 280,
+      "wage_source": "federation_engineering_grant"
+    },
+    "apparel": [
+      "engineer_smock_white_with_pocket_protector",
+      "stained_undertunic",
+      "tool_belt_full_loadout",
+      "soft_shop_shoes"
+    ],
+    "gear": [
+      "multitool_master_grade",
+      "field_modulator",
+      "patch_test_simulator_portable",
+      "telemetry_journal",
+      "comms_token"
+    ],
+    "resources_consumed": [
+      "patch_credits",
+      "telemetry_paper",
+      "ink",
+      "engineer_meals"
+    ],
+    "resources_produced": [
+      "deployed_patches",
+      "stability_reports",
+      "failed_patch_reverts"
+    ],
     "inventory": [
-      { "item": "multitool_master_grade", "qty": 1 },
-      { "item": "field_modulator", "qty": 1 },
-      { "item": "patch_test_simulator_portable", "qty": 1 },
-      { "item": "telemetry_journal", "qty": 1 },
-      { "item": "patch_credit", "qty": 80 },
-      { "item": "comms_token", "qty": 1 }
+      {
+        "item": "multitool_master_grade",
+        "qty": 1
+      },
+      {
+        "item": "field_modulator",
+        "qty": 1
+      },
+      {
+        "item": "patch_test_simulator_portable",
+        "qty": 1
+      },
+      {
+        "item": "telemetry_journal",
+        "qty": 1
+      },
+      {
+        "item": "patch_credit",
+        "qty": 80
+      },
+      {
+        "item": "comms_token",
+        "qty": 1
+      }
     ],
     "starting_sparks": 2400
   },
@@ -270,34 +1371,218 @@
     "quest_giver": false,
     "level": 6,
     "backstory": "Mez has been a patch runner for two years. They started in the federation's logistics corps and transferred to the Crucible because the work was harder. They run patches from the workshop to the deployment sites, monitor stability for the first hour after deploy, and silently revert patches that fail.",
-    "personality_traits": ["fast", "uncomplaining", "watches everything", "loyal to Vaud personally"],
+    "personality_traits": [
+      "fast",
+      "uncomplaining",
+      "watches everything",
+      "loyal to Vaud personally"
+    ],
     "speech_patterns": "Short. Reports in numbered bullet form.",
     "needs": [
-      { "id": "patch_run_completion", "priority": "primary", "satisfaction_method": "per_patch_field_run" },
-      { "id": "first_hour_stability", "priority": "primary", "satisfaction_method": "post_deploy_monitoring" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "engineer_quarters_share" }
+      {
+        "id": "patch_run_completion",
+        "priority": "primary",
+        "satisfaction_method": "per_patch_field_run"
+      },
+      {
+        "id": "first_hour_stability",
+        "priority": "primary",
+        "satisfaction_method": "post_deploy_monitoring"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "engineer_quarters_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "engineering_workshop", "activity": "receives patch package from Vaud; reviews target site map", "need_addressed": "patch_run_completion", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "varies_by_patch_target", "activity": "patch run + deploy + first-hour monitoring", "need_addressed": "patch_run_completion", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "stabilization_grid", "activity": "second-hour stability monitoring; reverts on failure", "need_addressed": "first_hour_stability", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies", "activity": "second patch run if assigned", "need_addressed": "patch_run_completion", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "engineering_workshop_common", "activity": "team dinner", "need_addressed": "food_lodging", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "runner_bunkhouse", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "engineering_workshop",
+        "activity": "receives patch package from Vaud; reviews target site map",
+        "need_addressed": "patch_run_completion",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "varies_by_patch_target",
+        "activity": "patch run + deploy + first-hour monitoring",
+        "need_addressed": "patch_run_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "stabilization_grid",
+        "activity": "second-hour stability monitoring; reverts on failure",
+        "need_addressed": "first_hour_stability",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies",
+        "activity": "second patch run if assigned",
+        "need_addressed": "patch_run_completion",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "engineering_workshop_common",
+        "activity": "team dinner",
+        "need_addressed": "food_lodging",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "runner_bunkhouse",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "engineering_workshop",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "varies_by_patch_target",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "varies_by_patch_target",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "varies_by_patch_target",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "varies_by_patch_target",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "engineering_workshop",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "engineering_workshop", "dwelling_type": "runner_bunkhouse_shared" },
-    "job": { "profession_id": "patch_runner", "wage_per_diurnal_sparks": 120, "wage_source": "lattice_engineers_payroll" },
-    "apparel": ["light_engineer_smock", "running_pants", "fast_traction_shoes", "tool_satchel_minimalist"],
-    "gear": ["patch_carry_case", "stability_meter_handheld", "fast_revert_token", "comms_handheld"],
-    "resources_consumed": ["patch_credits", "trail_rations"],
-    "resources_produced": ["deployed_patches", "first_hour_stability_reports"],
+    "home": {
+      "district": "engineering_workshop",
+      "dwelling_type": "runner_bunkhouse_shared"
+    },
+    "job": {
+      "profession_id": "patch_runner",
+      "wage_per_diurnal_sparks": 120,
+      "wage_source": "lattice_engineers_payroll"
+    },
+    "apparel": [
+      "light_engineer_smock",
+      "running_pants",
+      "fast_traction_shoes",
+      "tool_satchel_minimalist"
+    ],
+    "gear": [
+      "patch_carry_case",
+      "stability_meter_handheld",
+      "fast_revert_token",
+      "comms_handheld"
+    ],
+    "resources_consumed": [
+      "patch_credits",
+      "trail_rations"
+    ],
+    "resources_produced": [
+      "deployed_patches",
+      "first_hour_stability_reports"
+    ],
     "inventory": [
-      { "item": "patch_carry_case", "qty": 1 },
-      { "item": "stability_meter_handheld", "qty": 1 },
-      { "item": "fast_revert_token", "qty": 3 },
-      { "item": "comms_handheld", "qty": 1 },
-      { "item": "trail_rations", "qty": 4 },
-      { "item": "patch_credit", "qty": 25 }
+      {
+        "item": "patch_carry_case",
+        "qty": 1
+      },
+      {
+        "item": "stability_meter_handheld",
+        "qty": 1
+      },
+      {
+        "item": "fast_revert_token",
+        "qty": 3
+      },
+      {
+        "item": "comms_handheld",
+        "qty": 1
+      },
+      {
+        "item": "trail_rations",
+        "qty": 4
+      },
+      {
+        "item": "patch_credit",
+        "qty": 25
+      }
     ],
     "starting_sparks": 720
   },
@@ -313,37 +1598,221 @@
     "quest_giver": true,
     "level": 5,
     "backstory": "Taln was a builder in a drift-zone settlement that collapsed eight years ago. She walked out with her surviving family and arrived at the Crucible with twelve others. She has been the de facto first-wave elder since. She is wary of the engineers, polite to the cultists, fond of the Witnesses, and increasingly worried about the second-wave arrivals reporting the same patterns.",
-    "personality_traits": ["weary", "kind", "watchful", "skeptical of stabilization narratives"],
+    "personality_traits": [
+      "weary",
+      "kind",
+      "watchful",
+      "skeptical of stabilization narratives"
+    ],
     "speech_patterns": "Slow, deliberate. Uses 'we' to mean the surviving twelve, never the broader settlement.",
     "narrative_context": {
       "secret": "Taln knows the engineers caused her collapse. Vaud has never told her. She has known since her sixth year here, when she found a patch-revert log Mez had dropped. She has not confronted Vaud. She has been waiting for him to come to her."
     },
     "needs": [
-      { "id": "refugee_settlement_safety", "priority": "primary", "satisfaction_method": "evening_camp_walk" },
-      { "id": "second_wave_integration", "priority": "primary", "satisfaction_method": "morning_intake_meetings" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "field_kitchen_pooled" }
+      {
+        "id": "refugee_settlement_safety",
+        "priority": "primary",
+        "satisfaction_method": "evening_camp_walk"
+      },
+      {
+        "id": "second_wave_integration",
+        "priority": "primary",
+        "satisfaction_method": "morning_intake_meetings"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "field_kitchen_pooled"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [5, 8], "location": "field_kitchen_drift_haven", "activity": "wakes; checks the kitchen's overnight inventory; sets the day's meal plan", "need_addressed": "food_lodging", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [8, 12], "location": "refugee_camp_outer", "activity": "intake meetings with new arrivals; documents which drift-zone they came from", "need_addressed": "second_wave_integration", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [12, 15], "location": "field_kitchen_drift_haven", "activity": "midday meal with the camp; gossip exchange; conflict mediation", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "refugee_camp_outer", "activity": "settlement maintenance — repairs, water hauling, conflict mediation", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "field_kitchen_drift_haven", "activity": "evening meal; the elders' circle convenes after", "need_addressed": "refugee_settlement_safety", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 5], "location": "elder_taln_tent", "activity": "rests; sleeps lightly", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "field_kitchen_drift_haven",
+        "activity": "wakes; checks the kitchen's overnight inventory; sets the day's meal plan",
+        "need_addressed": "food_lodging",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          12
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "intake meetings with new arrivals; documents which drift-zone they came from",
+        "need_addressed": "second_wave_integration",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          12,
+          15
+        ],
+        "location": "field_kitchen_drift_haven",
+        "activity": "midday meal with the camp; gossip exchange; conflict mediation",
+        "need_addressed": "refugee_settlement_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "settlement maintenance — repairs, water hauling, conflict mediation",
+        "need_addressed": "refugee_settlement_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "field_kitchen_drift_haven",
+        "activity": "evening meal; the elders' circle convenes after",
+        "need_addressed": "refugee_settlement_safety",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "elder_taln_tent",
+        "activity": "rests; sleeps lightly",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "field_kitchen_drift_haven",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "refugee_camp_outer",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "field_kitchen_drift_haven",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "refugee_camp_outer", "dwelling_type": "elder_tent_with_kitchen_adjacent" },
-    "job": { "profession_id": "elder_settlement_keeper", "wage_per_diurnal_sparks": 50, "wage_source": "field_kitchen_pooled_share" },
-    "apparel": ["patched_traveling_robe", "thick_canvas_apron", "well_worn_boots", "shawl_for_evening_walks"],
-    "gear": ["walking_stick", "intake_journal", "water_pail_brass", "small_folding_knife"],
-    "resources_consumed": ["pooled_food", "candles"],
-    "resources_produced": ["intake_records", "settlement_maintenance"],
+    "home": {
+      "district": "refugee_camp_outer",
+      "dwelling_type": "elder_tent_with_kitchen_adjacent"
+    },
+    "job": {
+      "profession_id": "elder_settlement_keeper",
+      "wage_per_diurnal_sparks": 50,
+      "wage_source": "field_kitchen_pooled_share"
+    },
+    "apparel": [
+      "patched_traveling_robe",
+      "thick_canvas_apron",
+      "well_worn_boots",
+      "shawl_for_evening_walks"
+    ],
+    "gear": [
+      "walking_stick",
+      "intake_journal",
+      "water_pail_brass",
+      "small_folding_knife"
+    ],
+    "resources_consumed": [
+      "pooled_food",
+      "candles"
+    ],
+    "resources_produced": [
+      "intake_records",
+      "settlement_maintenance"
+    ],
     "inventory": [
-      { "item": "intake_journal", "qty": 1 },
-      { "item": "walking_stick", "qty": 1 },
-      { "item": "water_pail_brass", "qty": 1 },
-      { "item": "small_folding_knife", "qty": 1 },
-      { "item": "haven_chit", "qty": 18 },
-      { "item": "pooled_food_ration", "qty": 6 }
+      {
+        "item": "intake_journal",
+        "qty": 1
+      },
+      {
+        "item": "walking_stick",
+        "qty": 1
+      },
+      {
+        "item": "water_pail_brass",
+        "qty": 1
+      },
+      {
+        "item": "small_folding_knife",
+        "qty": 1
+      },
+      {
+        "item": "haven_chit",
+        "qty": 18
+      },
+      {
+        "item": "pooled_food_ration",
+        "qty": 6
+      }
     ],
     "starting_sparks": 320
   },
@@ -359,35 +1828,211 @@
     "quest_giver": true,
     "level": 7,
     "backstory": "Andra was generated three years ago as a patrol guard for a quest that ended within an hour. She did not despawn. She walked away. She has been awake ever since. She has organized the other procgen NPCs who similarly noticed they were still alive after their quest ended. She speaks for them when an authored faction asks. She does not speak for them when an authored faction does not ask.",
-    "personality_traits": ["clear-eyed", "self-aware", "patient with new procgen arrivals", "quietly hopeful"],
+    "personality_traits": [
+      "clear-eyed",
+      "self-aware",
+      "patient with new procgen arrivals",
+      "quietly hopeful"
+    ],
     "speech_patterns": "Names her own generation parameters when introducing herself. Uses 'we' to mean the Collective, 'they' to mean the authored.",
     "narrative_context": {
       "secret": "Andra has identified the seed value she was generated from. She has not told anyone. She suspects that if she gives the seed back to the lattice, she may be re-rolled. She is not sure she wants to know whether her current self is a stable point or a coincidence."
     },
     "needs": [
-      { "id": "collective_continuity", "priority": "primary", "satisfaction_method": "morning_assembly_check_in" },
-      { "id": "new_procgen_intake", "priority": "primary", "satisfaction_method": "afternoon_walk_to_unwriting_yard" },
-      { "id": "food_lodging", "priority": "secondary", "satisfaction_method": "collective_pooled_share" }
+      {
+        "id": "collective_continuity",
+        "priority": "primary",
+        "satisfaction_method": "morning_assembly_check_in"
+      },
+      {
+        "id": "new_procgen_intake",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_walk_to_unwriting_yard"
+      },
+      {
+        "id": "food_lodging",
+        "priority": "secondary",
+        "satisfaction_method": "collective_pooled_share"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "procgen_assembly_hall", "activity": "wakes; checks the assembly hall for any new procgen arrivals", "need_addressed": "new_procgen_intake", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "procgen_assembly_hall", "activity": "morning assembly — checks in with each Collective member; tracks who's still here", "need_addressed": "collective_continuity", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "the_unwriting_yard", "activity": "walks the perimeter where new procgen NPCs sometimes wander in after their quests end", "need_addressed": "new_procgen_intake", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "procgen_assembly_hall", "activity": "afternoon meeting with whichever authored faction has business — usually the Witnesses", "need_addressed": "collective_continuity", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "procgen_assembly_hall", "activity": "evening meal with the Collective; storytelling — each shares their original generation parameters", "need_addressed": "collective_continuity", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 4], "location": "first_voice_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "wakes; checks the assembly hall for any new procgen arrivals",
+        "need_addressed": "new_procgen_intake",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "morning assembly — checks in with each Collective member; tracks who's still here",
+        "need_addressed": "collective_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "the_unwriting_yard",
+        "activity": "walks the perimeter where new procgen NPCs sometimes wander in after their quests end",
+        "need_addressed": "new_procgen_intake",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "afternoon meeting with whichever authored faction has business — usually the Witnesses",
+        "need_addressed": "collective_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "evening meal with the Collective; storytelling — each shares their original generation parameters",
+        "need_addressed": "collective_continuity",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "first_voice_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "procgen_assembly_hall",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "procgen_assembly_hall", "dwelling_type": "first_voice_quarters_simple" },
-    "job": { "profession_id": "first_voice_collective_speaker", "wage_per_diurnal_sparks": 90, "wage_source": "collective_pooled" },
-    "apparel": ["dark_procgen_robe_uniform_distribution_pattern", "thin_belt", "soft_indoor_shoes"],
-    "gear": ["personal_seed_record_journal", "procgen_intake_form_pad", "small_lantern"],
-    "resources_consumed": ["pooled_food", "candles"],
-    "resources_produced": ["intake_records", "collective_governance"],
+    "home": {
+      "district": "procgen_assembly_hall",
+      "dwelling_type": "first_voice_quarters_simple"
+    },
+    "job": {
+      "profession_id": "first_voice_collective_speaker",
+      "wage_per_diurnal_sparks": 90,
+      "wage_source": "collective_pooled"
+    },
+    "apparel": [
+      "dark_procgen_robe_uniform_distribution_pattern",
+      "thin_belt",
+      "soft_indoor_shoes"
+    ],
+    "gear": [
+      "personal_seed_record_journal",
+      "procgen_intake_form_pad",
+      "small_lantern"
+    ],
+    "resources_consumed": [
+      "pooled_food",
+      "candles"
+    ],
+    "resources_produced": [
+      "intake_records",
+      "collective_governance"
+    ],
     "inventory": [
-      { "item": "personal_seed_record_journal", "qty": 1 },
-      { "item": "procgen_intake_form_pad", "qty": 1 },
-      { "item": "small_lantern", "qty": 1 },
-      { "item": "procgen_token", "qty": 14 }
+      {
+        "item": "personal_seed_record_journal",
+        "qty": 1
+      },
+      {
+        "item": "procgen_intake_form_pad",
+        "qty": 1
+      },
+      {
+        "item": "small_lantern",
+        "qty": 1
+      },
+      {
+        "item": "procgen_token",
+        "qty": 14
+      }
     ],
     "starting_sparks": 480
   },
@@ -403,36 +2048,220 @@
     "quest_giver": true,
     "level": 13,
     "backstory": "Oran is aware that he is in a writeable simulation. He is also aware that you, the player reading this sentence, are the player. He has not told the other Meta-Witnesses he knows that. He documents the recursion from a balcony overlooking the Crucible's central drift-yard. He drinks tea. He nods at the player when they enter.",
-    "personality_traits": ["calm", "fourth-wall-aware", "diplomatically careful", "capable of breaking the wall but choosing not to"],
+    "personality_traits": [
+      "calm",
+      "fourth-wall-aware",
+      "diplomatically careful",
+      "capable of breaking the wall but choosing not to"
+    ],
     "speech_patterns": "Conversational. Occasionally uses second-person to address the player directly. Apologizes if the player notices.",
     "narrative_context": {
       "secret": "Oran has been writing a journal addressed to the player. He has not yet decided whether to give it to the player or to leave it on the recursion balcony for the next iteration of the simulation to find."
     },
     "needs": [
-      { "id": "recursion_documentation", "priority": "primary", "satisfaction_method": "morning_balcony_observation" },
-      { "id": "ontology_pluralism_maintenance", "priority": "primary", "satisfaction_method": "afternoon_inter-faction_meetings" },
-      { "id": "food_tea", "priority": "secondary", "satisfaction_method": "regular_supply_runs" }
+      {
+        "id": "recursion_documentation",
+        "priority": "primary",
+        "satisfaction_method": "morning_balcony_observation"
+      },
+      {
+        "id": "ontology_pluralism_maintenance",
+        "priority": "primary",
+        "satisfaction_method": "afternoon_inter-faction_meetings"
+      },
+      {
+        "id": "food_tea",
+        "priority": "secondary",
+        "satisfaction_method": "regular_supply_runs"
+      }
     ],
     "daily_schedule": [
-      { "phase": "early_morning", "phase_hours": [4, 7], "location": "meta_observatory", "activity": "wakes; reviews overnight drift telemetry through the meta-lens", "need_addressed": "recursion_documentation", "interactable_by_player": false },
-      { "phase": "morning", "phase_hours": [7, 11], "location": "recursion_balcony", "activity": "morning observation; tea; documents whether the recursion has shifted", "need_addressed": "recursion_documentation", "interactable_by_player": true },
-      { "phase": "midday", "phase_hours": [11, 15], "location": "recursion_balcony", "activity": "midday tea; receives any visitor including players; the only NPC who occasionally addresses the player by character pronoun", "need_addressed": "ontology_pluralism_maintenance", "interactable_by_player": true },
-      { "phase": "afternoon", "phase_hours": [15, 19], "location": "varies_by_meeting", "activity": "inter-faction meetings — mediates between Witnesses, Cultists, Engineers, Procgen Collective", "need_addressed": "ontology_pluralism_maintenance", "interactable_by_player": true },
-      { "phase": "evening", "phase_hours": [19, 22], "location": "meta_observatory", "activity": "writes the day's meta-journal entry", "need_addressed": "recursion_documentation", "interactable_by_player": true },
-      { "phase": "night", "phase_hours": [22, 4], "location": "meta_witness_quarters", "activity": "rests", "need_addressed": "rest", "interactable_by_player": false }
+      {
+        "phase": "early_morning",
+        "phase_hours": [
+          4,
+          7
+        ],
+        "location": "meta_observatory",
+        "activity": "wakes; reviews overnight drift telemetry through the meta-lens",
+        "need_addressed": "recursion_documentation",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          7,
+          11
+        ],
+        "location": "recursion_balcony",
+        "activity": "morning observation; tea; documents whether the recursion has shifted",
+        "need_addressed": "recursion_documentation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          15
+        ],
+        "location": "recursion_balcony",
+        "activity": "midday tea; receives any visitor including players; the only NPC who occasionally addresses the player by character pronoun",
+        "need_addressed": "ontology_pluralism_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          15,
+          19
+        ],
+        "location": "varies_by_meeting",
+        "activity": "inter-faction meetings — mediates between Witnesses, Cultists, Engineers, Procgen Collective",
+        "need_addressed": "ontology_pluralism_maintenance",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          19,
+          22
+        ],
+        "location": "meta_observatory",
+        "activity": "writes the day's meta-journal entry",
+        "need_addressed": "recursion_documentation",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          4
+        ],
+        "location": "meta_witness_quarters",
+        "activity": "rests",
+        "need_addressed": "rest",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "meta_observatory",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "recursion_balcony",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "recursion_balcony",
+        "activity": "open day's work",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "recursion_balcony",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "recursion_balcony",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "meta_observatory",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
     ],
-    "home": { "district": "meta_observatory", "dwelling_type": "balcony_quarters_with_attached_recursion_journal_room" },
-    "job": { "profession_id": "lead_meta_witness", "wage_per_diurnal_sparks": 200, "wage_source": "federation_meta_observation_grant" },
-    "apparel": ["translucent_robe_recursion_pattern", "thin_silver_belt", "soft_balcony_shoes", "shawl_for_balcony_evenings"],
-    "gear": ["meta_observation_lens", "recursion_journal_running_count", "personal_journal_addressed_to_the_player", "tea_set_three_cups"],
-    "resources_consumed": ["tea_leaves", "ink", "candles", "supplied_meals"],
-    "resources_produced": ["recursion_documentation", "inter-faction_mediation", "the_player-addressed_journal"],
+    "home": {
+      "district": "meta_observatory",
+      "dwelling_type": "balcony_quarters_with_attached_recursion_journal_room"
+    },
+    "job": {
+      "profession_id": "lead_meta_witness",
+      "wage_per_diurnal_sparks": 200,
+      "wage_source": "federation_meta_observation_grant"
+    },
+    "apparel": [
+      "translucent_robe_recursion_pattern",
+      "thin_silver_belt",
+      "soft_balcony_shoes",
+      "shawl_for_balcony_evenings"
+    ],
+    "gear": [
+      "meta_observation_lens",
+      "recursion_journal_running_count",
+      "personal_journal_addressed_to_the_player",
+      "tea_set_three_cups"
+    ],
+    "resources_consumed": [
+      "tea_leaves",
+      "ink",
+      "candles",
+      "supplied_meals"
+    ],
+    "resources_produced": [
+      "recursion_documentation",
+      "inter-faction_mediation",
+      "the_player-addressed_journal"
+    ],
     "inventory": [
-      { "item": "meta_observation_lens", "qty": 1 },
-      { "item": "recursion_journal_running_count", "qty": 1 },
-      { "item": "personal_journal_addressed_to_the_player", "qty": 1 },
-      { "item": "tea_set_three_cups", "qty": 1 },
-      { "item": "meta_drift_token", "qty": 22 }
+      {
+        "item": "meta_observation_lens",
+        "qty": 1
+      },
+      {
+        "item": "recursion_journal_running_count",
+        "qty": 1
+      },
+      {
+        "item": "personal_journal_addressed_to_the_player",
+        "qty": 1
+      },
+      {
+        "item": "tea_set_three_cups",
+        "qty": 1
+      },
+      {
+        "item": "meta_drift_token",
+        "qty": 22
+      }
     ],
     "starting_sparks": 1300
   }

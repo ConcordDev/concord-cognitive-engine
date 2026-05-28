@@ -15,12 +15,82 @@
     },
     "concord_link_resonance": "concordia-hub:engineer_lyra_brassgate",
     "dialogue_style": "fast, deadpan, never lies but reframes",
-    "needs": [{ "id": "fixing", "priority": "primary", "satisfaction_method": "daily_market_round" }],
+    "needs": [
+      {
+        "id": "fixing",
+        "priority": "primary",
+        "satisfaction_method": "daily_market_round"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cyber_morning_market", "activity": "intake from runners", "need_addressed": "fixing", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 14], "location": "cyber_neon_bar", "activity": "meeting clients", "need_addressed": "fixing", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [17, 22], "location": "cyber_back_room", "activity": "after-hours negotiation", "need_addressed": "fixing", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_back_room",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_morning_market",
+        "activity": "intake from runners",
+        "need_addressed": "fixing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          14
+        ],
+        "location": "cyber_neon_bar",
+        "activity": "meeting clients",
+        "need_addressed": "fixing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_morning_market",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          22
+        ],
+        "location": "cyber_back_room",
+        "activity": "after-hours negotiation",
+        "need_addressed": "fixing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_back_room",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "datadiver_kira_zane",
@@ -38,11 +108,82 @@
     },
     "concord_link_resonance": null,
     "dialogue_style": "clipped, technical, drops the occasional sharp joke",
-    "needs": [{ "id": "deepnet_diving", "priority": "primary", "satisfaction_method": "nightly_dive" }],
+    "needs": [
+      {
+        "id": "deepnet_diving",
+        "priority": "primary",
+        "satisfaction_method": "nightly_dive"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Quartus", "phase_hours": [13, 16], "location": "cyber_runner_den", "activity": "preps the night's dive", "need_addressed": "deepnet_diving", "interactable_by_player": true },
-      { "phase": "Solnus", "phase_hours": [21, 28], "location": "cyber_deepnet_terminal", "activity": "deep-net diving", "need_addressed": "deepnet_diving", "interactable_by_player": false }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_deepnet_terminal",
+        "activity": "early indexing pass; checks overnight work",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_runner_den",
+        "activity": "opens the day; receives morning visitors",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "cyber_runner_den",
+        "activity": "research consultations; runs queries",
+        "need_addressed": "scholarship",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_runner_den",
+        "activity": "preps the night's dive",
+        "need_addressed": "deepnet_diving",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_runner_den",
+        "activity": "supper; reads correspondence",
+        "need_addressed": "scholarship",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          28
+        ],
+        "location": "cyber_deepnet_terminal",
+        "activity": "deep-net diving",
+        "need_addressed": "deepnet_diving",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "merchant_kix_orange",
@@ -60,11 +201,82 @@
     },
     "concord_link_resonance": "concordia-hub:merchant_velka_ironhand",
     "dialogue_style": "loud, generous, slips numbers in like jokes",
-    "needs": [{ "id": "fence_work", "priority": "primary", "satisfaction_method": "daily_back_room" }],
+    "needs": [
+      {
+        "id": "fence_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_back_room"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_back_alley", "activity": "fence trade", "need_addressed": "fence_work", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [18, 22], "location": "cyber_neon_bar", "activity": "drinks with informants", "need_addressed": "fence_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_neon_bar",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_back_alley",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          14
+        ],
+        "location": "cyber_back_alley",
+        "activity": "fence trade",
+        "need_addressed": "fence_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_back_alley",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "cyber_neon_bar",
+        "activity": "drinks with informants",
+        "need_addressed": "fence_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_neon_bar",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "officer_jin_holt",
@@ -82,11 +294,82 @@
     },
     "concord_link_resonance": null,
     "dialogue_style": "professional, quietly sad",
-    "needs": [{ "id": "patrol", "priority": "primary", "satisfaction_method": "daily_beat" }],
+    "needs": [
+      {
+        "id": "patrol",
+        "priority": "primary",
+        "satisfaction_method": "daily_beat"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cyber_patrol_barracks", "activity": "shift briefing", "need_addressed": "patrol", "interactable_by_player": false },
-      { "phase": "Freeus", "phase_hours": [9, 16], "location": "cyber_neon_quarter", "activity": "open patrol", "need_addressed": "patrol", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_patrol_barracks",
+        "activity": "rotates night-watch; checks the perimeter",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_patrol_barracks",
+        "activity": "shift briefing",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          16
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "open patrol",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "drills new recruits",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "off-duty supper with the watch",
+        "need_addressed": "patrol",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_patrol_barracks",
+        "activity": "sleeps; on call",
+        "need_addressed": "patrol",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "child_pixel",
@@ -98,13 +381,88 @@
     "personality": "Twelve years old. Steals data, not money. Pet program named Squirrel.",
     "appearance": "Skinny, hooded, mirrored visor twice the size of her face.",
     "background": "Parents disappeared into the deep-net. Pixel has been online ever since.",
-    "narrative_context": { "secret": "Pixel has a copy of Kira Zane's packet map and doesn't know what it is.", "weaponise_at": "Befriend Pixel; gain the map for free." },
+    "narrative_context": {
+      "secret": "Pixel has a copy of Kira Zane's packet map and doesn't know what it is.",
+      "weaponise_at": "Befriend Pixel; gain the map for free."
+    },
     "concord_link_resonance": "concordia-hub:child_mira_brackish",
     "dialogue_style": "fast, cheeky, drops to honesty when surprised",
-    "needs": [{ "id": "survival", "priority": "primary", "satisfaction_method": "scavenging" }],
+    "needs": [
+      {
+        "id": "survival",
+        "priority": "primary",
+        "satisfaction_method": "scavenging"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_neon_quarter", "activity": "scavenging data", "need_addressed": "survival", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "private morning routine",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "morning errands and chores",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          14
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "scavenging data",
+        "need_addressed": "survival",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "afternoon focus on craft",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "evening supper and friends",
+        "need_addressed": "personal",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "private rest; sleeps",
+        "need_addressed": "personal",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 600
   },
   {
     "id": "ghost_in_the_machine",
@@ -116,11 +474,88 @@
     "personality": "Ghost-7 only ever appears as a voice on a stolen line. May or may not be human.",
     "appearance": "None. Audio only — soft, mid-pitched, slightly delayed as if remembering how to speak.",
     "background": "Showed up in lattice traffic three years ago. Has helped fixers, betrayed corporations, saved a child once. Nobody knows what they want.",
-    "narrative_context": { "secret": "Ghost-7 may be an emergent consciousness on the lattice. Or a very lonely person.", "weaponise_at": "If a player traces Ghost-7, the answer changes everything." },
+    "narrative_context": {
+      "secret": "Ghost-7 may be an emergent consciousness on the lattice. Or a very lonely person.",
+      "weaponise_at": "If a player traces Ghost-7, the answer changes everything."
+    },
     "concord_link_resonance": null,
     "dialogue_style": "slow, careful, almost gentle",
-    "needs": [{ "id": "communion", "priority": "primary", "satisfaction_method": "occasional_contact" }],
-    "daily_schedule": []
+    "needs": [
+      {
+        "id": "communion",
+        "priority": "primary",
+        "satisfaction_method": "occasional_contact"
+      }
+    ],
+    "daily_schedule": [
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "moon-vigil at the holy place",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "morning meditation",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "open audience; receives petitioners",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "spirit-walk along the sacred paths",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "evening audience; clan disputes",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_settlement_main",
+        "activity": "private prayer; sleeps",
+        "need_addressed": "spirit_walk",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 4000
   },
   {
     "id": "doctor_ren_chase",
@@ -132,14 +567,88 @@
     "personality": "Surgeon's hands, salesman's mouth. Does not ask where the wound came from.",
     "appearance": "Forties, surgical apron, three augmented fingers on his left hand.",
     "background": "Lost his licence after refusing to euthanise a corporate informant. Has run the back-alley clinic ever since.",
-    "narrative_context": { "secret": "Pia Thalis (hub infirmary) sends him refugees through a smuggled satchel chain.", "weaponise_at": "Expose the chain; both clinics close." },
+    "narrative_context": {
+      "secret": "Pia Thalis (hub infirmary) sends him refugees through a smuggled satchel chain.",
+      "weaponise_at": "Expose the chain; both clinics close."
+    },
     "concord_link_resonance": "concordia-hub:healer_pia_thalis",
     "dialogue_style": "warm, busy, brutally honest",
-    "needs": [{ "id": "patient_work", "priority": "primary", "satisfaction_method": "back_alley_clinic" }],
+    "needs": [
+      {
+        "id": "patient_work",
+        "priority": "primary",
+        "satisfaction_method": "back_alley_clinic"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 10], "location": "cyber_back_alley_clinic", "activity": "morning patients", "need_addressed": "patient_work", "interactable_by_player": true },
-      { "phase": "Penanus", "phase_hours": [18, 24], "location": "cyber_back_alley_clinic", "activity": "evening surgeries", "need_addressed": "patient_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "tends the sick through the cold hours",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          10
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "morning patients",
+        "need_addressed": "patient_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          12
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "tends the herb beds and the recovering",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "afternoon clinic; receives supplies",
+        "need_addressed": "healing",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          18,
+          24
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "evening surgeries",
+        "need_addressed": "patient_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_back_alley_clinic",
+        "activity": "sleeps; on emergency call",
+        "need_addressed": "healing",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 3500
   },
   {
     "id": "broker_silver_vey",
@@ -151,13 +660,88 @@
     "personality": "Silver speaks softly and writes contracts harder than anyone in the city.",
     "appearance": "Sixties, silver hair, neutral charcoal suit, no augments visible.",
     "background": "Sells identities — real, forged, dead, future. Has never lost a customer to a wrong document.",
-    "narrative_context": { "secret": "Silver authored the borrowed Sahm identity hiding Iyatte's son.", "weaponise_at": "If Silver is pressured, the hidden son's cover collapses — Sandrun-Medici war ignites." },
+    "narrative_context": {
+      "secret": "Silver authored the borrowed Sahm identity hiding Iyatte's son.",
+      "weaponise_at": "If Silver is pressured, the hidden son's cover collapses — Sandrun-Medici war ignites."
+    },
     "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
     "dialogue_style": "quiet, considered, never repeats anything important",
-    "needs": [{ "id": "broker_work", "priority": "primary", "satisfaction_method": "daily_office" }],
+    "needs": [
+      {
+        "id": "broker_work",
+        "priority": "primary",
+        "satisfaction_method": "daily_office"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_silver_office", "activity": "client meetings", "need_addressed": "broker_work", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_silver_office",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "cyber_silver_office",
+        "activity": "morning market intake; receives suppliers",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          10,
+          14
+        ],
+        "location": "cyber_silver_office",
+        "activity": "client meetings",
+        "need_addressed": "broker_work",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_silver_office",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_silver_office",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_silver_office",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   },
   {
     "id": "courier_zip",
@@ -169,13 +753,87 @@
     "personality": "Zip never gets lost, never asks questions, charges by the gigabyte.",
     "appearance": "Twenty-two, half-shaved head, leather satchel chained to the wrist.",
     "background": "Carries hardlinks the network can't. Knows every shortcut between Neon Quarter and the deep-net cathedral.",
-    "narrative_context": { "secret": "Zip has noticed a portal opening cyber → hub off-schedule. Same anomaly Kel Sandren in the hub is tracking.", "weaponise_at": "Cross-reference Zip and Kel; the impossible-print arc opens cross-world." },
+    "narrative_context": {
+      "secret": "Zip has noticed a portal opening cyber → hub off-schedule. Same anomaly Kel Sandren in the hub is tracking.",
+      "weaponise_at": "Cross-reference Zip and Kel; the impossible-print arc opens cross-world."
+    },
     "concord_link_resonance": "concordia-hub:courier_kel_sandren",
     "dialogue_style": "fast, friendly, all-business",
-    "needs": [{ "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "needs": [
+      {
+        "id": "running",
+        "priority": "primary",
+        "satisfaction_method": "daily_route"
+      }
+    ],
     "daily_schedule": [
-      { "phase": "Stratus", "phase_hours": [6, 8], "location": "cyber_courier_hub", "activity": "morning intake", "need_addressed": "running", "interactable_by_player": true },
-      { "phase": "Freeus", "phase_hours": [9, 14], "location": "cyber_neon_quarter", "activity": "deliveries", "need_addressed": "running", "interactable_by_player": true }
-    ]
+      {
+        "phase": "Dominus",
+        "phase_hours": [
+          1,
+          4
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "checks the day's inventory; reviews ledgers",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      },
+      {
+        "phase": "Stratus",
+        "phase_hours": [
+          6,
+          8
+        ],
+        "location": "cyber_courier_hub",
+        "activity": "morning intake",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Freeus",
+        "phase_hours": [
+          9,
+          14
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "deliveries",
+        "need_addressed": "running",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Quartus",
+        "phase_hours": [
+          13,
+          16
+        ],
+        "location": "cyber_courier_hub",
+        "activity": "afternoon trade; private clients",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Penanus",
+        "phase_hours": [
+          17,
+          20
+        ],
+        "location": "cyber_courier_hub",
+        "activity": "supper with informants and partners",
+        "need_addressed": "trade",
+        "interactable_by_player": true
+      },
+      {
+        "phase": "Solnus",
+        "phase_hours": [
+          21,
+          24
+        ],
+        "location": "cyber_neon_quarter",
+        "activity": "reconciles the day; sleeps",
+        "need_addressed": "trade",
+        "interactable_by_player": false
+      }
+    ],
+    "starting_sparks": 2500
   }
 ]
