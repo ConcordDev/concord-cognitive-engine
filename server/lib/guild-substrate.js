@@ -86,7 +86,9 @@ export function claimHallBuilding(db, userId, orgId, buildingId, opts = {}) {
     db.prepare(`
       UPDATE world_buildings SET owner_type = 'org', owner_id = ? WHERE id = ?
     `).run(orgId, buildingId);
-    return { ok: true, buildingId, worldId: building.world_id };
+    // Sprint 1 — claiming a hall is a major guild milestone → org XP.
+    const xp = awardOrgXp(db, orgId, 200, "hall_claimed");
+    return { ok: true, buildingId, worldId: building.world_id, orgLevel: xp.newLevel, orgLeveledUp: xp.leveledUp };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -119,7 +121,11 @@ export function depositToOrgInventory(db, userId, orgId, opts = {}) {
                     deposited_at = unixepoch()
     `).run(orgId, itemKind, itemDescriptor, quantity, userId);
     _logInventoryAction(db, orgId, "deposit", userId, itemDescriptor, quantity);
-    return { ok: true, deposited: quantity };
+    // Sprint 1 — guild progression was dead (awardOrgXp had zero non-test
+    // callers). Treasury contribution is real guild progress: 5 XP/item,
+    // capped at 100/deposit so a stack-dump doesn't spike a level.
+    const xp = awardOrgXp(db, orgId, Math.min(100, quantity * 5), "treasury_deposit");
+    return { ok: true, deposited: quantity, orgXp: xp.newXp, orgLevel: xp.newLevel, orgLeveledUp: xp.leveledUp };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

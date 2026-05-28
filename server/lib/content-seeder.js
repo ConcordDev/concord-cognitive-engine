@@ -732,6 +732,22 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn({ err: err.message }, "content_seeder_rivalry_edges_failed");
     }
+
+    // Sprint 1 — wire the built-but-unwired cross-world relationship seeder:
+    // authored NPCs with a `concord_link_resonance` ref become cross-world
+    // correspondents (feeds the cross-world relationship graph). Zero non-test
+    // callers before this.
+    try {
+      const { seedRelationshipsFromAuthored } = await import("./cross-world-relationships.js");
+      const npcRows = Array.from(_authoredNPCs.values())
+        .filter((n) => n?.id && n?.world_id && n?.concord_link_resonance);
+      if (npcRows.length) {
+        const r = seedRelationshipsFromAuthored(db, npcRows);
+        results.crossWorldRelationships = r?.created || 0;
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_cross_world_rel_failed");
+    }
   }
 
   // T3.2 — cross-world codex seeding (idempotent). Mints the Eight Refusals

@@ -20456,7 +20456,13 @@ register("dtu", "create", async (ctx, input) => {
           hasPurchasedLicense: _lineageUnlockedByLicense.has(parentId),
           generation: 1,
         });
-        if (!result?.ok && result?.error !== "citation_cycle_detected") {
+        if (result?.ok) {
+          // Sprint 1 — award the cited creator XP for being cited. awardCitationXP
+          // was built-but-unwired (zero non-test callers); the citation register
+          // is its natural site. awardXP is the hoisted module fn.
+          try { awardCitationXP(awardXP, { ownerId: parentDtu.ownerId, dtuId: parentId, citedById: dtu.ownerId }); }
+          catch { /* XP best-effort — never blocks the cascade */ }
+        } else if (result?.error !== "citation_cycle_detected") {
           // Non-fatal — log and continue. Lineage on the DTU itself is
           // still recorded even if the royalty ledger insert failed.
           logger.debug('server', 'auto_register_citation_skipped', {
@@ -35564,6 +35570,17 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   } catch (_e) {
     structuredLog("error", "buyer_debit_failed", { error: _e?.message });
   }
+  // Sprint 1 — award marketplace XP to seller + buyer. awardMarketplaceSaleXP
+  // was built-but-unwired (zero non-test callers); the royalty-aware purchase
+  // is its natural site. Best-effort — never blocks settlement.
+  try {
+    awardMarketplaceSaleXP(awardXP, {
+      sellerId: dtu.marketplace?.seller || dtu.meta?.createdBy || dtu.ownerId,
+      buyerId: ctx?.actor?.userId,
+      itemId: dtuId,
+      price,
+    });
+  } catch { /* XP best-effort */ }
   saveStateDebounced();
 
   // Clone DTU to buyer
@@ -55915,7 +55932,7 @@ app.post("/api/xp/award", (req, res) => {
 });
 
 // Wire XP hooks so all real activity events auto-award XP
-import { installXPHooks } from "./lib/xp-hooks.js";
+import { installXPHooks, awardCitationXP, awardMarketplaceSaleXP } from "./lib/xp-hooks.js";
 try {
   installXPHooks({ awardXP, getXPProfile, STATE, saveStateDebounced });
 } catch (e) {
