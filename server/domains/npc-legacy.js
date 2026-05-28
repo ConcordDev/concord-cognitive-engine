@@ -15,6 +15,7 @@ import {
   getLegacy,
   getTombsForWorld,
   getInheritanceForHeir,
+  getInheritanceFromDeceased,
 } from "../lib/npc-legacy.js";
 
 export default function registerNpcLegacyMacros(register) {
@@ -50,6 +51,18 @@ export default function registerNpcLegacyMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     if (!input.heirNpcId) return { ok: false, reason: "missing_heir_npc_id" };
     const links = getInheritanceForHeir(db, input.heirNpcId);
+    return { ok: true, links, count: links.length };
+  });
+
+  // npc_legacy.inheritance_from_deceased — T2.2: outgoing thread from a tomb.
+  // The InheritanceLog UI reads this when a player opens a tomb: "this NPC's
+  // grudges/recipes/wealth passed to these heirs". Heir names joined when
+  // world_npcs is available.
+  register("npc_legacy", "inheritance_from_deceased", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!input.deceasedNpcId) return { ok: false, reason: "missing_deceased_npc_id" };
+    const links = getInheritanceFromDeceased(db, input.deceasedNpcId);
     return { ok: true, links, count: links.length };
   });
 }

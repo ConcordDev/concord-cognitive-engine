@@ -10425,7 +10425,7 @@ async function runMacro(domain, name, input, ctx) {
     //  Set to avoid a duplicate-key lint error.)
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
-    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir", "inheritance_from_deceased"]),
     // cross_world_effectiveness (Sprint 5) — per-world skill potency
     // chip for the HUD. All read-only: explain a single (domain, world,
     // level) triple, dump every domain for the current player, list
