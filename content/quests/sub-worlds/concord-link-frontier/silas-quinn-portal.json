@@ -1,0 +1,118 @@
+[
+  {
+    "id": "frontier_silas_01_observe",
+    "title": "The Western Road — Watch the Portal",
+    "description": "Silas Quinn has seen a portal opening off-schedule on the western perimeter. Same anomaly Kel Sandren tracks in the hub.",
+    "giver_npc_id": "rider_silas_quinn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silas1_ride",
+        "type": "interact",
+        "target": "frontier_western_road",
+        "required_count": 1,
+        "description": "Ride with Silas during his morning route."
+      },
+      {
+        "id": "obj_silas1_observe",
+        "type": "observe",
+        "target": "frontier_portal_anomaly",
+        "required_count": 1,
+        "description": "Witness the off-schedule opening."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_silas1",
+        "content": "Same anomaly Kel Sandren noticed in the hub. The breach is wide enough that two worlds notice.",
+        "unlocks_after": "obj_silas1_observe",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "frontier_silas_02_kel"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_high"
+    ]
+  },
+  {
+    "id": "frontier_silas_02_kel",
+    "title": "The Hub — Find Kel",
+    "description": "Carry Silas's observation to Kel Sandren at the hub portal plaza.",
+    "giver_npc_id": "rider_silas_quinn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silas2_carry",
+        "type": "deliver",
+        "target": "silas_observation_to_kel",
+        "required_count": 1,
+        "description": "Bring Silas's observation log to Kel."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "frontier_silas_03_synth"
+    ],
+    "prerequisites": [
+      "frontier_silas_01_observe"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_high"
+    ]
+  },
+  {
+    "id": "frontier_silas_03_synth",
+    "title": "The Portal Plaza — Synthesise",
+    "description": "Kel and Silas's observations align. Bring them together at a meeting at the impossible-print breach.",
+    "giver_npc_id": "courier_kel_sandren",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silas3_arrange",
+        "type": "deliver",
+        "target": "silas_kel_meeting_arranged",
+        "required_count": 1,
+        "description": "Arrange the meeting."
+      },
+      {
+        "id": "obj_silas3_attend",
+        "type": "reach_location",
+        "target": "hub_seven_spokes_cellar_room",
+        "required_count": 1,
+        "description": "Attend the synthesis meeting."
+      }
+    ],
+    "rewards": {
+      "xp": 800,
+      "skill_xp": {
+        "lattice_awareness": 120
+      },
+      "items": [
+        "frontier_portal_log"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "frontier_silas_02_kel"
+    ],
+    "tags": [
+      "concord-link-frontier",
+      "frontier_high"
+    ]
+  }
+]

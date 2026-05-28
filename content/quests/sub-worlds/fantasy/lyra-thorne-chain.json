@@ -1,0 +1,132 @@
+[
+  {
+    "id": "fantasy_lyra_01_satchel",
+    "title": "The Verge Apothecary — The Smuggled Satchel",
+    "description": "Lyra's monthly satchel to Pia Thalis is overdue. The Verge road has been unsafe. She needs a runner.",
+    "giver_npc_id": "apothecary_lyra_thorne",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_lyra1_collect",
+        "type": "interact",
+        "target": "fantasy_verge_shop_back",
+        "required_count": 1,
+        "description": "Receive the satchel from Lyra after hours."
+      },
+      {
+        "id": "obj_lyra1_carry",
+        "type": "deliver",
+        "target": "satchel_to_pia_thalis",
+        "required_count": 1,
+        "description": "Deliver to Pia Thalis in the hub infirmary."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [
+      {
+        "id": "bc_lyra1",
+        "content": "The smuggling chain has held twenty years. One missed satchel and refugee infirmaries close in both worlds.",
+        "unlocks_after": "obj_lyra1_carry",
+        "release_mode": "on_completion"
+      }
+    ],
+    "follow_up_quest_ids": [
+      "fantasy_lyra_02_moonleaf"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "fantasy",
+      "fantasy_side"
+    ]
+  },
+  {
+    "id": "fantasy_lyra_02_moonleaf",
+    "title": "The Verge Apothecary — Moonleaf Cuttings",
+    "description": "Pia sends moonleaf cuttings every spring. This year's are seedlings, not cuttings — they need a fast carrier and dawn light.",
+    "giver_npc_id": "apothecary_lyra_thorne",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_lyra2_collect",
+        "type": "interact",
+        "target": "hub_infirmary_garden",
+        "required_count": 1,
+        "description": "Pick up the seedlings before Stratus phase."
+      },
+      {
+        "id": "obj_lyra2_plant",
+        "type": "interact",
+        "target": "fantasy_verge_shop_garden",
+        "required_count": 1,
+        "description": "Plant them in Lyra's garden before midday."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "fantasy_lyra_03_master"
+    ],
+    "prerequisites": [
+      "fantasy_lyra_01_satchel"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_side"
+    ]
+  },
+  {
+    "id": "fantasy_lyra_03_master",
+    "title": "The Verge Apothecary — Master and Student",
+    "description": "Lyra's teacher disappeared into the Moonleaf Vigil twenty years ago. She thinks the bog witch Nymeria knows what happened.",
+    "giver_npc_id": "apothecary_lyra_thorne",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_lyra3_visit",
+        "type": "reach_location",
+        "target": "fantasy_bog_clearing",
+        "required_count": 1,
+        "description": "Visit Nymeria in the bog at twilight."
+      },
+      {
+        "id": "obj_lyra3_ask",
+        "type": "talk_to",
+        "target": "witch_nymeria",
+        "required_count": 1,
+        "description": "Ask about Lyra's teacher."
+      },
+      {
+        "id": "obj_lyra3_return",
+        "type": "talk_to",
+        "target": "apothecary_lyra_thorne",
+        "required_count": 1,
+        "description": "Bring back what you learn."
+      }
+    ],
+    "rewards": {
+      "xp": 300,
+      "skill_xp": {
+        "healing": 80
+      },
+      "items": [
+        "lyra_master_tincture"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "fantasy_lyra_02_moonleaf"
+    ],
+    "tags": [
+      "fantasy",
+      "fantasy_side"
+    ]
+  }
+]

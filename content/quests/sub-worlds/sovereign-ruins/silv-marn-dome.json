@@ -1,0 +1,101 @@
+[
+  {
+    "id": "ruins_silv_01_circle",
+    "title": "The Refused Circle — Find the Refused-Mother",
+    "description": "Silv Marn refused everything four decades ago. She knows how to undo a compound refusal. Find her at the refused circle at noon.",
+    "giver_npc_id": "elder_silv_marn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silv1_visit",
+        "type": "reach_location",
+        "target": "ruins_refused_circle",
+        "required_count": 1,
+        "description": "Visit Silv at the refused circle during meditation hours."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "ruins_silv_02_teach"
+    ],
+    "prerequisites": [],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_high"
+    ]
+  },
+  {
+    "id": "ruins_silv_02_teach",
+    "title": "The Refused Circle — Learn the Undoing",
+    "description": "Silv will teach you the undoing if you can compose a strength-6 refusal in her presence.",
+    "giver_npc_id": "elder_silv_marn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silv2_compose",
+        "type": "interact",
+        "target": "silv_refused_circle_glyph",
+        "required_count": 1,
+        "description": "Compose a strength-6 refusal under Silv's watch."
+      }
+    ],
+    "rewards": {
+      "xp": 200
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [
+      "ruins_silv_03_dome"
+    ],
+    "prerequisites": [
+      "ruins_silv_01_circle"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_high"
+    ]
+  },
+  {
+    "id": "ruins_silv_03_dome",
+    "title": "The Hub Dome — Stabilise the Field",
+    "description": "The hub Refusal Field is thinning. Carry Silv's undoing to the dome and stabilise the field.",
+    "giver_npc_id": "elder_silv_marn",
+    "difficulty": "intermediate",
+    "estimated_time": "15m",
+    "objectives": [
+      {
+        "id": "obj_silv3_cross",
+        "type": "reach_location",
+        "target": "hub_southern_arc_field_line",
+        "required_count": 1,
+        "description": "Travel to the hub southern arc."
+      },
+      {
+        "id": "obj_silv3_stabilise",
+        "type": "interact",
+        "target": "silv_undoing_application",
+        "required_count": 1,
+        "description": "Apply Silv's undoing at the field-line crack."
+      }
+    ],
+    "rewards": {
+      "xp": 1200,
+      "items": [
+        "silv_undoing_token"
+      ]
+    },
+    "breadcrumbs": [],
+    "follow_up_quest_ids": [],
+    "prerequisites": [
+      "ruins_silv_02_teach"
+    ],
+    "tags": [
+      "sovereign-ruins",
+      "ruins_high"
+    ]
+  }
+]

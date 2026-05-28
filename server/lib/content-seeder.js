@@ -550,6 +550,24 @@ export async function seedContent({ db = null } = {}) {
     if (Array.isArray(side)) results.quests += seedQuestFile(side);
   }
 
+  // Phase F2.1 — sub-world quest chains. Walk content/quests/sub-worlds/<world>/
+  // and load every .json file as a chain. New worlds + new chains drop in
+  // without editing the seeder.
+  try {
+    const subWorldDir = join(CONTENT_ROOT, "quests", "sub-worlds");
+    for (const worldName of readdirSync(subWorldDir)) {
+      const worldPath = join(subWorldDir, worldName);
+      let isDir = false;
+      try { isDir = statSync(worldPath).isDirectory(); } catch { /* skip */ }
+      if (!isDir) continue;
+      for (const fname of readdirSync(worldPath)) {
+        if (!fname.endsWith(".json")) continue;
+        const chain = readJSON(`quests/sub-worlds/${worldName}/${fname}`);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+      }
+    }
+  } catch { /* no sub-worlds dir — fine */ }
+
   // Authored dialogue trees — keyed by `npcId:questId:phase`. The narrative
   // bridge looks these up and short-circuits the LLM dialogue path when a
   // hand-authored tree exists for the requested context.
