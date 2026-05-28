@@ -26,6 +26,16 @@ import { FishingScreen } from '../screens/FishingScreen';
 import { CreaturesScreen } from '../screens/CreaturesScreen';
 import { GarageScreen } from '../screens/GarageScreen';
 import { ReasoningTracesScreen } from '../screens/ReasoningTracesScreen';
+// Phase G4.3 — WebView HUD wrappers.
+import { DreamReaderScreen } from '../screens/DreamReaderScreen';
+import { StrategicWarBannerScreen } from '../screens/StrategicWarBannerScreen';
+import { ForwardPredictionsScreen } from '../screens/ForwardPredictionsScreen';
+import { NPCSchemeOverhearScreen } from '../screens/NPCSchemeOverhearScreen';
+import { LFGBoardScreen } from '../screens/LFGBoardScreen';
+import { BrawlMatchmakingScreen } from '../screens/BrawlMatchmakingScreen';
+import { SpectatorScreen } from '../screens/SpectatorScreen';
+import { EmergentEventFeedScreen } from '../screens/EmergentEventFeedScreen';
+import { PersonalBeatScreen } from '../screens/PersonalBeatScreen';
 
 export type RootTabParamList = {
   Chat: undefined;
@@ -50,6 +60,16 @@ export type RootStackParamList = {
   Creatures: undefined;
   Garage: undefined;
   ReasoningTraces: undefined;
+  // Phase G4.3 — WebView HUD wrappers.
+  DreamReader: undefined;
+  StrategicWarBanner: undefined;
+  ForwardPredictions: undefined;
+  NPCSchemeOverhear: undefined;
+  LFGBoard: undefined;
+  BrawlMatchmaking: undefined;
+  Spectator: undefined;
+  EmergentEventFeed: undefined;
+  PersonalBeat: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -126,6 +146,16 @@ const linking: LinkingOptions<RootStackParamList> = {
       Creatures: 'lenses/creatures',
       Garage: 'lenses/garage',
       ReasoningTraces: 'lenses/reasoning/traces',
+      // Phase G4.3 — WebView HUD deep-link routes.
+      DreamReader: 'hud/dream-reader',
+      StrategicWarBanner: 'hud/war-banner',
+      ForwardPredictions: 'hud/forward-predictions',
+      NPCSchemeOverhear: 'hud/scheme-overhear',
+      LFGBoard: 'hud/lfg-board',
+      BrawlMatchmaking: 'hud/brawl-queue',
+      Spectator: 'hud/spectator',
+      EmergentEventFeed: 'hud/event-feed',
+      PersonalBeat: 'hud/personal-beat',
     },
   },
 };
@@ -192,6 +222,16 @@ export function AppNavigator() {
         <Stack.Screen name="Creatures" component={CreaturesScreen} options={{ headerShown: true, title: 'Creatures', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#c4b5fd' }} />
         <Stack.Screen name="Garage" component={GarageScreen} options={{ headerShown: true, title: 'Garage', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fde68a' }} />
         <Stack.Screen name="ReasoningTraces" component={ReasoningTracesScreen} options={{ headerShown: true, title: 'HLR Traces', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#a5f3fc' }} />
+        {/* Phase G4.3 — WebView HUD wrappers */}
+        <Stack.Screen name="DreamReader" component={DreamReaderScreen} options={{ headerShown: true, title: "Last night's dreams", headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#a5b4fc' }} />
+        <Stack.Screen name="StrategicWarBanner" component={StrategicWarBannerScreen} options={{ headerShown: true, title: 'Active wars', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fcd34d' }} />
+        <Stack.Screen name="ForwardPredictions" component={ForwardPredictionsScreen} options={{ headerShown: true, title: 'Anticipating', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#c4b5fd' }} />
+        <Stack.Screen name="NPCSchemeOverhear" component={NPCSchemeOverhearScreen} options={{ headerShown: true, title: 'Overheard', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#d8b4fe' }} />
+        <Stack.Screen name="LFGBoard" component={LFGBoardScreen} options={{ headerShown: true, title: 'Find a group', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#6ee7b7' }} />
+        <Stack.Screen name="BrawlMatchmaking" component={BrawlMatchmakingScreen} options={{ headerShown: true, title: 'Brawl matchmaker', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fda4af' }} />
+        <Stack.Screen name="Spectator" component={SpectatorScreen} options={{ headerShown: true, title: 'Spectator', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#d8b4fe' }} />
+        <Stack.Screen name="EmergentEventFeed" component={EmergentEventFeedScreen} options={{ headerShown: true, title: 'World events', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#86efac' }} />
+        <Stack.Screen name="PersonalBeat" component={PersonalBeatScreen} options={{ headerShown: true, title: 'Personal beats', headerStyle: { backgroundColor: '#0a0a0f' }, headerTintColor: '#fda4af' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
