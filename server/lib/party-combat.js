@@ -283,6 +283,22 @@ export function getCombatState(db, sessionId) {
   } catch { return null; }
 }
 
+/**
+ * Find the active combat session a player is in (if any). Returns the
+ * first session where the player is a combatant and ended_at_ms IS NULL.
+ */
+export function findActiveSessionForPlayer(db, userId) {
+  if (!db || !userId) return null;
+  try {
+    return db.prepare(`
+      SELECT s.* FROM party_combat_sessions s
+      JOIN party_combatants c ON c.session_id = s.id
+      WHERE s.ended_at_ms IS NULL AND c.entity_id = ? AND c.entity_kind = 'player'
+      ORDER BY s.started_at_ms DESC LIMIT 1
+    `).get(userId) || null;
+  } catch { return null; }
+}
+
 export function listActionLog(db, sessionId, limit = 100) {
   if (!db || !sessionId) return [];
   try {

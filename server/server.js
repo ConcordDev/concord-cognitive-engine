@@ -48983,6 +48983,15 @@ app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
   res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
 }));
 
+// Phase DB9 — active session lookup for the fluid combat HUD.
+app.get("/api/party-combat/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { findActiveSessionForPlayer, getCombatState } = await import("./lib/party-combat.js");
+  const userId = req.user?.id || req.user?.userId;
+  const sess = findActiveSessionForPlayer(db, userId);
+  if (!sess) return res.json({ ok: true, session: null });
+  res.json({ ok: true, session: getCombatState(db, sess.id) });
+}));
+
 // Phase CB6 — hidden object via photo gallery.
 app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res) => {
   const { createScene } = await import("./lib/hidden-object.js");
@@ -48993,7 +49002,15 @@ app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res
 app.post("/api/hidden-object/play/:sceneId", requireAuth(), asyncHandler(async (req, res) => {
   const { playScene } = await import("./lib/hidden-object.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(playScene(db, userId, req.params.sceneId));
+  const result = playScene(db, userId, req.params.sceneId);
+  // Phase DB8 — enrich with scene metadata so the panel can render the photo.
+  if (result?.ok) {
+    try {
+      const scene = db.prepare(`SELECT id, scene_dtu_id, title, host_user_id FROM hidden_object_scenes WHERE id = ?`).get(req.params.sceneId);
+      if (scene) result.scene = scene;
+    } catch { /* best-effort */ }
+  }
+  res.json(result);
 }));
 
 app.post("/api/hidden-object/find/:runId", requireAuth(), asyncHandler(async (req, res) => {

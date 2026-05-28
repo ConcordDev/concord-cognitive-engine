@@ -224,6 +224,20 @@ const HordeWaveHUD = dynamic(
     })),
   { ssr: false }
 );
+const HiddenObjectScenePanel = dynamic(
+  () =>
+    import('@/components/world/HiddenObjectScenePanel').then((m) => ({
+      default: m.HiddenObjectScenePanel,
+    })),
+  { ssr: false }
+);
+const PartyCombatHUD = dynamic(
+  () =>
+    import('@/components/world/PartyCombatHUD').then((m) => ({
+      default: m.PartyCombatHUD,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4868,6 +4882,12 @@ export default function WorldLensPage() {
 
           {/* Phase DB4 — Horde wave HUD + upgrade picker */}
           <HordeWaveHUD />
+
+          {/* Phase DB8 — Hidden object scene viewer (event-triggered) */}
+          <HiddenObjectScenePanel />
+
+          {/* Phase DB9 — Fluid party combat HUD (RTwP, not turn-based) */}
+          <PartyCombatHUD />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
