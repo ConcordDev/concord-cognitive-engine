@@ -4950,7 +4950,9 @@ export default function WorldLensPage() {
           {/* Phase DB8 — Hidden object scene viewer (event-triggered) */}
           <HiddenObjectScenePanel />
 
-          {/* Phase DB9 — Fluid party combat HUD (RTwP, not turn-based) */}
+          {/* Phase DB9 — Optional tactical-party RTwP HUD (renders null
+              unless inside a party_combat_sessions row). The canonical
+              action combat surface is CombatInputController, not this. */}
           <PartyCombatHUD />
 
           {/* Phase DB13 — Time loop indicator */}

@@ -75,10 +75,15 @@ describe("Phase D — Production sprint structural", () => {
     assert.match(lib, /findActiveSessionForPlayer/);
   });
 
-  it("DB9 fluid combat: NO turn-based mode anywhere in world page", () => {
-    // Sanity — the canonical Phase D combat is RTwP via party-combat.
+  it("DB9 NO turn-based combat mode anywhere in world page", () => {
+    // Sanity — the canonical combat is Skyrim-style action via
+    // CombatInputController. PartyCombatHUD is an optional tactical RTwP
+    // layer that only activates inside a party_combat_sessions row.
     // Turn-based draft (CC1) was explicitly reverted.
     assert.doesNotMatch(WORLD, /TurnCombatHUD/);
+    // Canonical action-combat surface is mounted upstream:
+    const scene = readFile("concord-frontend/components/world-lens/ConcordiaScene.tsx");
+    assert.match(scene + WORLD, /CombatInputController|combat:attack/);
   });
 
   it("DB11 code-puzzle list + get routes", () => {

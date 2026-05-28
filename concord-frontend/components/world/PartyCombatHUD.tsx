@@ -1,9 +1,18 @@
 'use client';
 
-// Phase DB9 — Party combat HUD (fluid RTwP, not turn-based).
-// Polls /api/party-combat/active every 1s to discover the player's session,
-// then polls .../state every 200ms while active. Renders per-combatant HP +
-// cooldown rings; queues actions per combatant; RTwP pause via time-scale.
+// Phase DB9 — Party combat HUD (OPTIONAL tactical RTwP layer).
+//
+// IMPORTANT: this is NOT the canonical combat surface. The canonical combat
+// in Concordia is Skyrim-style action — keyboard input via
+// CombatInputController (E/F/R/Q + Shift) → real-time socket events,
+// driven by the procedural biomechanics + PD-motor pipeline in
+// lib/concordia/combat-{biomechanics,motor-driver}.ts. No pause.
+//
+// This HUD only surfaces when the player is inside a `party_combat_sessions`
+// row (a separate optional tactical-party substrate, mig 259). It polls
+// /api/party-combat/active at 1Hz to detect that, then /tick + /state at
+// 5Hz while active. Pause via setTimeScale(0) — same primitive as PhotoMode.
+// If you never start a party-tactics session, this component renders null.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pause, Play, FastForward, Zap, Heart, X } from 'lucide-react';
