@@ -48505,6 +48505,39 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CB4 — restaurant management.
+app.post("/api/restaurant/open", requireAuth(), asyncHandler(async (req, res) => {
+  const { openRestaurant } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(openRestaurant(db, userId, req.body || {}));
+}));
+
+app.post("/api/restaurant/:id/close", requireAuth(), asyncHandler(async (req, res) => {
+  const { closeRestaurant } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(closeRestaurant(db, req.params.id, userId));
+}));
+
+app.post("/api/restaurant/:id/order", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeOrder } = await import("./lib/restaurant.js");
+  res.json(placeOrder(db, req.params.id, req.body || {}));
+}));
+
+app.post("/api/restaurant/order/:orderId/serve", requireAuth(), asyncHandler(async (req, res) => {
+  const { serveOrder } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(serveOrder(db, userId, req.params.orderId));
+}));
+
+app.get("/api/restaurant/:id/pending", asyncHandler(async (req, res) => {
+  const { listPendingOrders, getRestaurantSummary } = await import("./lib/restaurant.js");
+  res.json({
+    ok: true,
+    summary: getRestaurantSummary(db, req.params.id),
+    pending: listPendingOrders(db, req.params.id),
+  });
+}));
+
 // Phase CB3 — farm plots.
 app.post("/api/farming/plant", requireAuth(), asyncHandler(async (req, res) => {
   const { plantSeed } = await import("./lib/farming.js");
