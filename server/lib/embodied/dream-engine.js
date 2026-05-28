@@ -316,6 +316,18 @@ export async function tryComposeForUser(db, userId, opts = {}) {
     return { ok: false, reason: 'insert_failed', error: err?.message };
   }
 
+  // Phase F3.1 — surface dream composition to the player.
+  try {
+    const emitFn = globalThis._concordRealtimeEmit;
+    if (typeof emitFn === "function") {
+      emitFn("dream:composed", {
+        userId, dreamRowId, dreamDtuId: dtuId,
+        fragmentCount: fragments.length,
+        worldId: fragments[0]?.worldId ?? null,
+      });
+    }
+  } catch { /* never blocks composition */ }
+
   return {
     ok: true, dreamRowId, dreamDtuId: dtuId, fragments: fragments.length,
     signature, composer: dreamData?.machine?.composer || 'deterministic',

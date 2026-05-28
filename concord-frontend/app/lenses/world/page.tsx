@@ -315,6 +315,23 @@ const SpectatorOverlay = dynamic(
     })),
   { ssr: false }
 );
+// Phase F3 — simulation surfacing.
+const DreamReader = dynamic(
+  () => import('@/components/world/DreamReader').then((m) => ({ default: m.DreamReader })),
+  { ssr: false }
+);
+const StrategicWarBanner = dynamic(
+  () => import('@/components/world/StrategicWarBanner').then((m) => ({ default: m.StrategicWarBanner })),
+  { ssr: false }
+);
+const ForwardPredictionsPanel = dynamic(
+  () => import('@/components/world/ForwardPredictionsPanel').then((m) => ({ default: m.ForwardPredictionsPanel })),
+  { ssr: false }
+);
+const NPCSchemeOverhearTip = dynamic(
+  () => import('@/components/world/NPCSchemeOverhearTip').then((m) => ({ default: m.NPCSchemeOverhearTip })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -5001,6 +5018,12 @@ export default function WorldLensPage() {
           <LFGBoardPanel />
           <BrawlMatchmakingQueue />
           <SpectatorOverlay />
+
+          {/* Phase F3 — simulation surfacing */}
+          <DreamReader />
+          <StrategicWarBanner />
+          <ForwardPredictionsPanel />
+          <NPCSchemeOverhearTip />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (

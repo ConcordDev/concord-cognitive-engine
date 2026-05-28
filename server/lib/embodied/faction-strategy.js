@@ -339,6 +339,31 @@ export function applyMove(db, factionId, picked, peerStates) {
   try { tx(); }
   catch { return null; }
 
+  // Phase F3.1 — fire realtime event so the player sees factions doing
+  // things. Three event names for the three high-impact move classes.
+  // Best-effort; never blocks the cycle.
+  try {
+    const emitFn = globalThis._concordRealtimeEmit;
+    if (typeof emitFn === "function" && picked.move) {
+      if (picked.move === "DECLARE_WAR" || picked.move === "RAID") {
+        emitFn("faction:war-declared", {
+          factionId, targetFactionId: picked.target ?? null,
+          move: picked.move, summary: picked.summary, moveId,
+        });
+      } else if (picked.move === "PROPOSE_ALLIANCE" || picked.move === "FORM_ALLIANCE") {
+        emitFn("faction:alliance-formed", {
+          factionId, targetFactionId: picked.target ?? null,
+          summary: picked.summary, moveId,
+        });
+      } else if (picked.move === "SEEK_TRUCE") {
+        emitFn("faction:truce-sought", {
+          factionId, targetFactionId: picked.target ?? null,
+          summary: picked.summary, moveId,
+        });
+      }
+    }
+  } catch { /* emit failure never affects the cycle */ }
+
   // Phase 2 — refresh NPC preoccupations when the faction's stance changes.
   // Best-effort; never throws back into the strategy cycle.
   if (picked.newStance && picked.newStance !== "consolidate") {

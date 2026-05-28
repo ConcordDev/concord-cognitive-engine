@@ -138,6 +138,20 @@ export function realisePrediction(db, predictionId, outcome) {
              reality_outcome = ?
        WHERE id = ? AND realised_at IS NULL
     `).run(typeof outcome === 'string' ? outcome : JSON.stringify(outcome ?? {}), predictionId);
+    // Phase F3.1 — surface prediction realisation to the player.
+    try {
+      const emitFn = globalThis._concordRealtimeEmit;
+      if (typeof emitFn === "function") {
+        const row = db.prepare(`SELECT user_id, subject_kind, subject_id FROM forward_predictions WHERE id = ?`).get(predictionId);
+        emitFn("prediction:realised", {
+          predictionId,
+          userId: row?.user_id,
+          subjectKind: row?.subject_kind,
+          subjectId: row?.subject_id,
+          outcome,
+        });
+      }
+    } catch { /* emit failure never affects the call */ }
     return { ok: true };
   } catch {
     return null;

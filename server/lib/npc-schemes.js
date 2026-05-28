@@ -187,6 +187,22 @@ export function advanceScheme(db, schemeId, opts = {}) {
       SET phase = ?, next_tick_at = ?, resolved_at = CASE WHEN ? IN ('complete','exposed','abandoned') THEN unixepoch() ELSE NULL END
       WHERE id = ?
     `).run(nextPhase, nextTickAt(now), nextPhase, schemeId);
+
+    // Phase F3.1 — surface terminal scheme resolutions to the player.
+    if (["complete", "exposed", "abandoned"].includes(nextPhase)) {
+      try {
+        const emitFn = globalThis._concordRealtimeEmit;
+        if (typeof emitFn === "function") {
+          emitFn("npc:scheme-resolved", {
+            schemeId,
+            plotterKind: sch.plotter_kind, plotterId: sch.plotter_id,
+            targetKind: sch.target_kind, targetId: sch.target_id,
+            kind: sch.kind,
+            outcome: nextPhase,
+          });
+        }
+      } catch { /* never blocks the cycle */ }
+    }
   } else {
     db.prepare(`UPDATE npc_schemes SET next_tick_at = ? WHERE id = ?`).run(nextTickAt(now), schemeId);
   }

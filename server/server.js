@@ -56410,6 +56410,70 @@ app.get("/api/dreams/history", (_req, res) => {
   });
 });
 
+// Phase F3.2 — morning-brief DreamReader endpoint.
+// Returns the player's last N composed dreams (Layer 9 embodied dreams,
+// `dreams` table — distinct from the system-level dreamState above).
+// Joins dtus.human_summary for the readable prose. Public-read for
+// the authenticated user's own dreams only.
+app.get("/api/dreams/recent", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
+  const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 3));
+  try {
+    const rows = db.prepare(`
+      SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
+             d.composer, d.composed_at,
+             dt.human_summary, dt.title
+      FROM dreams d
+      LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
+      WHERE d.user_id = ?
+      ORDER BY d.composed_at DESC
+      LIMIT ?
+    `).all(userId, limit);
+    res.json({ ok: true, dreams: rows });
+  } catch (err) {
+    res.json({ ok: true, dreams: [], error: err?.message });
+  }
+}));
+
+// Phase F3.3 — forward-predictions feed.
+app.get("/api/forward-predictions/active", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  if (!userId) return res.status(401).json({ ok: false, error: "unauthenticated" });
+  const limit = Math.max(1, Math.min(20, Number(req.query.limit) || 6));
+  try {
+    const rows = db.prepare(`
+      SELECT id, subject_kind, subject_id, anticipated AS anticipated_text, confidence,
+             composer, composed_at, expires_at
+      FROM forward_predictions
+      WHERE user_id = ? AND realised_at IS NULL AND expires_at > unixepoch()
+      ORDER BY composed_at DESC LIMIT ?
+    `).all(userId, limit);
+    res.json({ ok: true, predictions: rows });
+  } catch (err) {
+    res.json({ ok: true, predictions: [], error: err?.message });
+  }
+}));
+
+// Phase F3.3 — active factions wars (in current world).
+app.get("/api/factions/active-wars", asyncHandler(async (req, res) => {
+  const worldId = String(req.query.worldId || "");
+  try {
+    const rows = db.prepare(`
+      SELECT s.faction_id, s.stance, s.target_id, s.momentum, s.updated_at,
+             s.last_move_id
+      FROM faction_strategy_state s
+      WHERE s.stance = 'war'
+      ORDER BY s.updated_at DESC LIMIT 20
+    `).all();
+    // worldId filter is advisory — factions are world-spanning at this layer,
+    // so we return all active wars. Frontend can choose to display or hide.
+    res.json({ ok: true, wars: rows, worldId });
+  } catch (err) {
+    res.json({ ok: true, wars: [], error: err?.message });
+  }
+}));
+
 // ---------- DTU METABOLISM — digestion + consolidation + excretion + growth ----------
 // DTUs are living entities that metabolize: they digest input, consolidate knowledge,
 // excrete waste, and grow in tier.
