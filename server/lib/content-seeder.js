@@ -626,6 +626,26 @@ export async function seedContent({ db = null } = {}) {
     }
   }
 
+  // T1.1 — faction strategy state seeding (idempotent). The Layer-11
+  // faction-strategy cycle only advances faction_strategy_state rows that
+  // already exist; nothing seeded them, so the EVE-style autonomy layer
+  // booted dark (zero rows -> zero moves -> no wars ever). Seed a strategy
+  // row + initial relations (from authored rival_factions/allied_factions)
+  // for every authored faction so the cycle has something to advance.
+  if (db) {
+    try {
+      const { seedFactionStrategyState } = await import("./embodied/faction-strategy.js");
+      const factions = Array.from(_authoredFactions.values());
+      const r = seedFactionStrategyState(db, factions);
+      if (r?.ok) {
+        results.factionStrategySeeded = r.seeded || 0;
+        results.factionRelationsSeeded = r.relations || 0;
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_faction_strategy_failed");
+    }
+  }
+
   // Phase Z2 — wire boot-time seeders for the 5 substrates that were
   // empty at launch (hacking puzzles, code puzzles, trivia questions,
   // glyph components, karaoke songs). Each is idempotent (gated by row
