@@ -48495,6 +48495,34 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CB2 — bullet heaven horde mode.
+app.post("/api/horde/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startHorde } = await import("./lib/horde-mode.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startHorde(db, userId, req.body || {}));
+}));
+
+app.post("/api/horde/:runId/wave", requireAuth(), asyncHandler(async (req, res) => {
+  const { tickWave } = await import("./lib/horde-mode.js");
+  res.json(tickWave(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/horde/:runId/upgrade", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickUpgrade } = await import("./lib/horde-mode.js");
+  res.json(pickUpgrade(db, req.params.runId, req.body?.upgradeId));
+}));
+
+app.post("/api/horde/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endHorde } = await import("./lib/horde-mode.js");
+  res.json(endHorde(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/horde/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveHorde } = await import("./lib/horde-mode.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveHorde(db, userId) });
+}));
+
 // Phase CB1 — roguelite meta-progression.
 app.post("/api/roguelite/run/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startRun } = await import("./lib/roguelite.js");
