@@ -1168,3 +1168,61 @@ stability, and its real deficits are concentrated in *connection + commitment + 
 is therefore not "build the missing 40% of a game" — it's **"connect and commit what's already built, tune
 the numbers, then construct a focused ~20%"** (talents, itemization, endgame, relationships). That is a
 months-scale finishing campaign for one developer, not a multi-year build.
+
+---
+
+# Phase H — Path to 100% (per-dimension completion roadmap)
+
+**What "100%" means here (honest definition).** Not "matches the genre specialist's lifetime output" —
+no solo dev out-volumes FFXIV's 17 years of quests or AAA mocap/recorded-audio budgets. **100% = every
+dimension is at or above the credible-AAA *floor* (no dimension is a dismissal point), the leads stay ahead,
+and where literal parity is impossible the chosen approach (procedural / stylized / economic) converts the
+gap into a deliberate identity rather than a deficit.** Each row below has a concrete "done-when" so 100% is
+checkable, not aspirational.
+
+| Dimension | Now | Closing work to 100% | Done when | Sprint |
+|---|---:|---|---|---|
+| Emergence/sim | 95% | Player can *influence/join* faction wars + schemes (T2.3 + intrigue UI), surfaced legibly | A stranger can tip a war / expose a scheme and see it ripple | 1+4 |
+| Creator economy | 90% | Price-history + order-book viz (F7.1) + discovery/curation surface | Markets are legible + creations discoverable; fiat rail already done | 3/4 |
+| Juice | 88% | SFX pitch variation + controller rumble + wire weapon-trail + local-predicted feedback | All 7 juice techniques + haptics fire on every impact | 1 |
+| Stability | 85% | Enforce `CONCORD_MAX_SHADOWS` (LRU) + fix heap default | No unbounded Maps; watchdog trips at the real heap | 1 (bugfix) |
+| Rendering | 85% | TAA + true sun disk/skybox + occlusion culling + cached bounding spheres | No frame-cost scaling with hidden geometry; sky reads real | 2/4 (small) |
+| Audio | 82% | Pitch variation + transition stingers + optional recorded "hero" cues over procedural bed | No two hits sound identical; transitions punctuated | 1 (+opt 4) |
+| Animation | 80% | Parametric blend trees + micro-noise/weight-shift to kill the "floaty" tell (or lean procedural-as-style) | Motion reads intentional, not engine-demo | 4 |
+| Performance | 80% | Occlusion cull + bounding-sphere cache + 20Hz broadcast | 60fps held in dense cities; remote avatars smooth | 1/4 (small) |
+| UX/FTUE | 75% | Mount full settings + accessibility *in the world lens*; gamepad remap + write-through keybinds | Every option reachable in-world; rebinds actually take | 1 |
+| Art direction | 70% | **G1.1 cel-shade+ink-outline committed uniformly** + CC0 crowd GLBs + PBR pack + 2–3 landmark meshes/world + per-world architecture variety | Crowd bodies read as deliberate style, not primitives; worlds look different-shaped | 2 |
+| Narrative | 70% | Author dialogue trees for remaining NPCs (G3.3) + demote LLM to labeled "improvised" fallback + persist choice-consequence | Every clicked NPC has authored voice; LLM clearly flagged | 4 (content) |
+| Movement feel | 66% | Coyote time + jump buffer + variable jump height + accel/decel curve + combat input buffer + lock-on camera reframe | Ledges/landings/turns feel "forgiving"; lock-on frames the enemy | 1 (+small 4) |
+| Combat feel | 63% | Wire defensive loop (parry/dodge/i-frame/perfect-slow-mo via the dodge/block handlers) + client prediction + per-skill VFX + hyperarmor + execution moves + anim-cancel/input-buffer + camera-punch | Defending feels as good as attacking; reads at Sekiro/Sifu floor | 1+4 |
+| Netcode | 50% | Client prediction + reconciliation (input-seq + replay) + lag-comp/rollback + 20Hz broadcast | Combat input→feedback ≤16ms; no felt desync | 1 (predict) + 4 |
+| Accessibility | 40% | Bridge the two stores + apply colorblind/text-scale/contrast/reduced-motion to DOM+world + subtitle renderer w/ speaker labels + gamepad remap + screen-reader live-region | Selecting any option visibly changes the game; meets TLOU2 floor | 1+4 |
+| Progression | 65% | Talent allocation (F2.3) + itemization affixes/sets (F2.1/2.2) + reshape XP curve power-fantasy | Players make builds; gear drives diversity; leveling *feels* like climbing | 4 (+tune) |
+| Balance | 30% | Adopt logged fixes + repair the degenerate restaurant sim + playtest-pin the ~25 dials + per-difficulty itemization tuning | Every dial has a played-evidenced value; sims non-degenerate | 3 |
+| Retention | 55% | A D30 endgame loop (escalating ladder above world bosses / paragon / frame royalties as endgame) + weekly meta | A reason to log in at day 30 beyond "another daily" | 4 |
+| Polish/finish | 60% | Execute the Connection sprint (wire all built-but-unwired) + extend the T2.4 reconciliation audit to a **CI gate that fails on zero-caller built systems** | No shipped system has zero non-test callers; CI guards it | 1 + process |
+| Social | 50% | Wire `awardOrgXp` (guild XP) + a guild-vs-guild progression sink (keep manual LFG — better for bonds) | Guilds actually level + have something to compete over | 1 (+small 4) |
+| Horror-tension | 28% | Route ghost→HRTF + tension stem + terror-radius heartbeat (wiring existing primitives) + chase state + comeback/bleed-out + dread-pacing director | A cold-booted stranger feels dread + a chase in the first session | 1+4 |
+
+## Aggregate path to 100%
+
+Running the four sprints in order closes the dimensions in this rhythm:
+- **After Sprint 1 (Connection):** combat feel 63→~85, accessibility 40→~75, juice 88→~95, stability/perf →~95, social 50→~70, horror 28→~55, netcode 50→~65 (prediction), UX 75→~90. *This single sprint moves the most dimensions the most, for the least effort — it is the path to ~100% of the cheap wins.*
+- **After Sprint 2 (Commitment):** art direction 70→~95 (the biggest *visible* jump; one art-direction decision).
+- **After Sprint 3 (Tuning):** balance 30→~90, retention/progression numbers pinned.
+- **After Sprint 4 (Construction):** progression 65→~95 (talents+itemization), retention 55→~95 (endgame), narrative 70→~90 (authored coverage), netcode →~90 (full reconciliation), animation 80→~95, horror →~90, combat feel →~100, emergence →100 (player agency).
+
+**Net:** the weighted average crosses the "no-dismissal-point, leads-stay-ahead" 100%-of-achievable bar at the
+*end of Sprint 4* — with the steepest climb in Sprint 1. The honest ceilings (content volume vs a 17-year
+MMO; mocap-grade micro-motion; fully-recorded VO) are *defined out of "100%"* on purpose: Concordia's
+procedural-animation, authored-LLM-hybrid, and stylized-art approaches are the deliberate substitutes, and
+"100%" is reached when each reads as an intentional identity, not a missing AAA checkbox.
+
+## A standing rule to *stay* at 100% (the meta-fix)
+
+The single most repeated finding across every audit was **built-but-unwired / documented-but-unenforced**.
+The durable fix is process, not a one-time sweep: **extend the T2.4 emergent-reconciliation audit into a CI
+gate** that flags any exported "system" function (engine/handler/reaction) with **zero non-test callers**, and
+any documented constant (`CONCORD_*`) that is never read. That converts "we built a thing and forgot to plug
+it in" from the dominant failure mode into a build-time error — keeping the connection-debt at zero as new
+systems land. This is itself a Sprint-1 ticket and arguably the highest-leverage line in the whole plan.
