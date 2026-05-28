@@ -48505,6 +48505,29 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CB6 — hidden object via photo gallery.
+app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res) => {
+  const { createScene } = await import("./lib/hidden-object.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(createScene(db, userId, req.body || {}));
+}));
+
+app.post("/api/hidden-object/play/:sceneId", requireAuth(), asyncHandler(async (req, res) => {
+  const { playScene } = await import("./lib/hidden-object.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(playScene(db, userId, req.params.sceneId));
+}));
+
+app.post("/api/hidden-object/find/:runId", requireAuth(), asyncHandler(async (req, res) => {
+  const { submitFind } = await import("./lib/hidden-object.js");
+  res.json(submitFind(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/hidden-object/scene/:sceneId/leaderboard", asyncHandler(async (req, res) => {
+  const { leaderboardForScene } = await import("./lib/hidden-object.js");
+  res.json({ ok: true, leaderboard: leaderboardForScene(db, req.params.sceneId) });
+}));
+
 // Phase CB5 — trivia (DTU-native).
 app.post("/api/trivia/question", requireAuth(), asyncHandler(async (req, res) => {
   const { authorQuestion } = await import("./lib/trivia.js");
