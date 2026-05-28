@@ -6030,6 +6030,8 @@ function authMiddleware(req, res, next) {
     "/api/bloodline",
     // Phase CF1 — sports league teams (public read).
     "/api/sports/league",
+    // Phase CF7-9 — Layer 12 ghost-fleet read surfaces.
+    "/api/drift", "/api/breakthroughs", "/api/reasoning/trace",
     // Phase CA3 — climbing top routes (public read).
     "/api/climbing/world",
     // Phase CA5 — detective open crimes + evidence (public read).
@@ -48666,6 +48668,56 @@ app.get("/api/bloodline/npc/:npcId", asyncHandler(async (req, res) => {
     `).get(req.params.npcId);
     res.json({ ok: true, ancestry: ancestry || null });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF7 — Drift monitor findings (surface drift-monitor.js).
+app.get("/api/drift/alerts", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/drift-monitor.js");
+    const state = globalThis._concordStateRef || null;
+    if (!state) return res.json({ ok: true, alerts: [], reason: "state_not_initialised" });
+    const alerts = m.getDriftAlerts(state, req.query || {});
+    res.json({ ok: true, alerts, types: m.ALL_DRIFT_TYPES, severities: Object.values(m.DRIFT_SEVERITY) });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.get("/api/drift/metrics", asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./emergent/drift-monitor.js");
+    const state = globalThis._concordStateRef || null;
+    res.json({ ok: true, metrics: state ? m.getDriftMetrics(state) : null });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF8 — Breakthrough clusters (surface breakthrough-clusters.js).
+app.get("/api/breakthroughs/clusters", asyncHandler(async (req, res) => {
+  const { listClusters, getBreakthroughMetrics } = await import("./emergent/breakthrough-clusters.js");
+  res.json({ ok: true, clusters: listClusters(), metrics: getBreakthroughMetrics() });
+}));
+
+app.post("/api/breakthroughs/cluster/:clusterId/research", requireAuth(), asyncHandler(async (req, res) => {
+  const { triggerClusterResearch } = await import("./emergent/breakthrough-clusters.js");
+  res.json(triggerClusterResearch(req.params.clusterId));
+}));
+
+app.get("/api/breakthroughs/cluster/:clusterId", asyncHandler(async (req, res) => {
+  const { getClusterStatus } = await import("./emergent/breakthrough-clusters.js");
+  const s = getClusterStatus(req.params.clusterId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_cluster" });
+  res.json({ ok: true, cluster: s });
+}));
+
+// Phase CF9 — HLR reasoning trace (surface hlr-engine.js).
+app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
+  const { runHLR, REASONING_MODES } = await import("./emergent/hlr-engine.js");
+  res.json({ ok: true, modes: Object.keys(REASONING_MODES), result: runHLR(req.body || {}) });
+}));
+
+app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
+  const { getReasoningTrace } = await import("./emergent/hlr-engine.js");
+  const t = getReasoningTrace(req.params.traceId);
+  if (!t) return res.status(404).json({ ok: false, error: "no_trace" });
+  res.json({ ok: true, trace: t });
 }));
 
 // Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
