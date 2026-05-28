@@ -20,7 +20,13 @@
 
 import crypto from "node:crypto";
 
-export const OVERHEAR_RADIUS_M = 12;
+// T3.4 balance dial — how close a player must be to a plotting NPC to overhear
+// the scheme. Lower → must really be on top of them; higher → overhear from
+// across a plaza. Override CONCORD_SCHEME_OVERHEAR_RADIUS_M.
+export const OVERHEAR_RADIUS_M = (() => {
+  const v = Number(process.env.CONCORD_SCHEME_OVERHEAR_RADIUS_M);
+  return Number.isFinite(v) && v > 0 ? Math.min(100, v) : 12;
+})();
 
 // Schemes are only overhearable while actively being worked (not terminal, not
 // yet exposed). 'planning' is too early (nothing to overhear yet).

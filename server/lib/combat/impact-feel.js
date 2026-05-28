@@ -50,6 +50,14 @@ export function maxSeverity(a, b) {
  * same severity tier (a warhammer rocked vs a longsword rocked still differ),
  * while staying inside a sane band so it can't be exploited.
  */
+// T3.4 balance dial — global knockback multiplier. 1.0 = tuned default; lower
+// for a grittier/grounded feel, higher for a more arcadey shove. Bounded so a
+// bad value can't launch entities off the map.
+function knockbackScale() {
+  const v = Number(process.env.CONCORD_KNOCKBACK_SCALE);
+  return Number.isFinite(v) && v > 0 ? Math.min(3, v) : 1;
+}
+
 export function impactFeel(severity, momentum = 0) {
   const base = SEVERITY_FEEL[severity] || SEVERITY_FEEL.none;
   const m = Number.isFinite(momentum) ? momentum : 0;
@@ -58,7 +66,7 @@ export function impactFeel(severity, momentum = 0) {
   return {
     targetPauseMs: base.targetPauseMs,
     attackerPauseMs: base.attackerPauseMs,
-    knockback: Math.round(base.knockback * scale * 10) / 10,
+    knockback: Math.round(base.knockback * scale * knockbackScale() * 10) / 10,
     knockMs: base.knockMs,
     wince: base.wince,
   };

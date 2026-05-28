@@ -95,6 +95,26 @@ These have been env-overridable since the multi-tenant cap-lift sprint. See CLAU
 | `CONCORD_ARCHIVED_SUMMARIES` | `200` | `conversation-summarizer.js` |
 | `MAX_OLD_SPACE_SIZE` | `32768` | node `--max-old-space-size` |
 
+### Combat feel, mastery, intrigue & zones (T-series, this sprint)
+
+These dials were introduced with the T1.4b / T2.1 / T2.3 / T3.3 work and made
+tunable in T3.4. Defaults are tuned-by-reasoning (no full playtest yet); each is
+bounded so a bad value can't break the game.
+
+| Env var | Default | Bound | File | Effect |
+|---|---|---|---|---|
+| `CONCORD_KNOCKBACK_SCALE` | `1.0` | 0–3 | `lib/combat/impact-feel.js` | Global multiplier on T1.4b knockback. Lower → grounded/gritty; higher → arcadey shove. Hitstop + wince are unaffected (they read off poise severity). |
+| `CONCORD_BEFRIEND_THRESHOLD` | `45` | 0–100 | `lib/embodied/weaponise-triggers.js` | NPC→player opinion (−100..100) that counts as "befriended" and fires a T2.1 befriend weaponise-trigger. Lower → secrets surface sooner; higher → grindier. |
+| `CONCORD_SCHEME_OVERHEAR_RADIUS_M` | `12` | 0–100 (m) | `lib/scheme-overhear.js` | How close a player must stand to a plotting NPC to overhear the scheme (T2.3). |
+| `CONCORD_HAZARD_DEFAULT_DPS` | `6` | 0–100 | `lib/world-zones.js` | Per-tick damage for a `hazard` zone that doesn't set its own `hazard` in `rules_json` (T3.3). Applied via the Layer-8 pain ledger every ~75s. |
+
+Kill-switches added alongside (set to `0` to disable): `CONCORD_SCHEME_OVERHEAR`
+(scheme barge-in), `CONCORD_ZONE_HAZARD` (hazard-zone damage tick).
+
+Guarded by `server/tests/integration/balance-dials.test.js` — pins each
+default, its bounds, and that an out-of-range/garbage env value falls back to
+the default.
+
 ## Phase G3 sim — mahjong yaku distribution
 
 500-game dealer-hand sim ([G3.3](../audit/balance/mahjong-yaku.json)) reports a 64.6% win rate over the deterministic seed range and a yaku distribution centred on simple shapes (pinfu, tanyao, yakuhai). No outlier yaku detected — all classes fall within 0.5×–2× of mean frequency. **No re-weighting recommended.** The existing yaku table from the rule book is balanced.

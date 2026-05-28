@@ -16,13 +16,20 @@ import crypto from "node:crypto";
 
 export const ZONE_KINDS = Object.freeze(["safe", "sanctuary", "pvp", "lawless", "hazard"]);
 
+// T3.4 balance dial — default per-tick damage for a hazard zone that doesn't
+// set its own `hazard` in rules_json. Override CONCORD_HAZARD_DEFAULT_DPS.
+const HAZARD_DEFAULT_DPS = (() => {
+  const v = Number(process.env.CONCORD_HAZARD_DEFAULT_DPS);
+  return Number.isFinite(v) && v >= 0 ? Math.min(100, v) : 6;
+})();
+
 // Per-kind default rules. Overridden by a zone's rules_json.
 export const ZONE_DEFAULTS = Object.freeze({
   safe:      { combat: false, pvp: false, hazard: 0 },
   sanctuary: { combat: false, pvp: false, hazard: 0, regenPerTick: 2, noAggro: true },
   pvp:       { combat: true,  pvp: true,  hazard: 0 },
   lawless:   { combat: true,  pvp: true,  hazard: 0, suppressWitness: true },
-  hazard:    { combat: true,  pvp: false, hazard: 6, element: "fire" },
+  hazard:    { combat: true,  pvp: false, hazard: HAZARD_DEFAULT_DPS, element: "fire" },
 });
 
 function tableExists(db, name) {

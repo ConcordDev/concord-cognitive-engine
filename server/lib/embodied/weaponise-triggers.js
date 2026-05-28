@@ -24,7 +24,13 @@
 
 import crypto from "node:crypto";
 
-export const BEFRIEND_OPINION_THRESHOLD = 45; // NPC→player opinion that reads as "befriended"
+// T3.4 balance dial — NPC→player opinion (−100..100) that reads as
+// "befriended" and fires a befriend weaponise-trigger. Lower → easier to
+// unlock secret reveals; higher → grindier. Override CONCORD_BEFRIEND_THRESHOLD.
+export const BEFRIEND_OPINION_THRESHOLD = (() => {
+  const v = Number(process.env.CONCORD_BEFRIEND_THRESHOLD);
+  return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 45;
+})();
 
 const STOP = new Set([
   "Befriend", "Bring", "Expose", "Cross-reference", "Cross", "Cut", "Burn",
