@@ -813,6 +813,15 @@ registerHeartbeat("announcement-broadcaster", {
   }),
 });
 
+// Phase CC4: factory cycle. Every tick advances every claim's belts +
+// crafters. Kill-switch CONCORD_FACTORY_ENABLED=0.
+import { runFactoryCycle } from "./emergent/factory-cycle.js";
+registerHeartbeat("factory-cycle", {
+  frequency: 1,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runFactoryCycle({ db: ctxDb || db }),
+});
+
 // Phase CB3: farm crop growth heartbeat. Every 24 ticks (~6 min)
 // advances any crops whose planted season matches the current calendar
 // day. Kill-switch CONCORD_FARMING_ENABLED=0.
@@ -48503,6 +48512,58 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CC4 — factory automation (claim-bounded).
+app.post("/api/factory/place", requireAuth(), asyncHandler(async (req, res) => {
+  const { placeEntity } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(placeEntity(db, userId, { ...(req.body || {}), isOwner }));
+}));
+
+app.post("/api/factory/connect", requireAuth(), asyncHandler(async (req, res) => {
+  const { connectEntities } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(connectEntities(db, userId, req.body?.sourceId, req.body?.targetId, { isOwner }));
+}));
+
+app.post("/api/factory/remove/:entityId", requireAuth(), asyncHandler(async (req, res) => {
+  const { removeEntity } = await import("./lib/factory.js");
+  const userId = req.user?.id || req.user?.userId;
+  const isOwner = (uid, claimId) => {
+    try {
+      const r = db.prepare(`SELECT owner_user_id FROM land_claims WHERE id = ?`).get(claimId);
+      return r?.owner_user_id === uid;
+    } catch { return false; }
+  };
+  res.json(removeEntity(db, userId, req.params.entityId, { isOwner }));
+}));
+
+app.post("/api/factory/deposit/:entityId", requireAuth(), asyncHandler(async (req, res) => {
+  const { depositToEntity } = await import("./lib/factory.js");
+  res.json(depositToEntity(db, req.params.entityId, req.body?.item || {}));
+}));
+
+app.get("/api/factory/claim/:claimId", asyncHandler(async (req, res) => {
+  const { listEntities } = await import("./lib/factory.js");
+  res.json({ ok: true, entities: listEntities(db, req.params.claimId) });
+}));
+
+app.get("/api/factory/entity/:entityId/inventory", asyncHandler(async (req, res) => {
+  const { getInventory } = await import("./lib/factory.js");
+  res.json({ ok: true, inventory: getInventory(db, req.params.entityId) });
 }));
 
 // Phase CC2 — hacking puzzle.
