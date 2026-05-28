@@ -49246,6 +49246,36 @@ app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res
   res.json(createScene(db, userId, req.body || {}));
 }));
 
+// Phase E3 — list all authored hidden-object scenes.
+app.get("/api/hidden-object/scenes", asyncHandler(async (req, res) => {
+  const { listScenes } = await import("./lib/hidden-object.js");
+  res.json({ ok: true, scenes: listScenes(db, Number(req.query.limit) || 50) });
+}));
+
+// Phase E3 — image-serving for authored hidden-object scenes.
+// Reads the SVG inline from content/hidden-object-scenes.json by sceneId,
+// returns it with image/svg+xml content-type so a plain <img src=...>
+// renders it. The component constructs this URL when scene_dtu_id
+// matches `authored:<sceneId>`.
+app.get("/api/hidden-object/scene/:sceneId/image", asyncHandler(async (req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const file = path.resolve(__dirname, "..", "content", "hidden-object-scenes.json");
+    const arr = JSON.parse(readFileSync(file, "utf8"));
+    const safe = String(req.params.sceneId).replace(/[^a-z0-9_-]/gi, "");
+    const scene = arr.find((s) => s.sceneId === safe);
+    if (!scene || !scene.svg) return res.status(404).send("not_found");
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(scene.svg);
+  } catch (e) {
+    res.status(500).send(String(e?.message || "error"));
+  }
+}));
+
 app.post("/api/hidden-object/play/:sceneId", requireAuth(), asyncHandler(async (req, res) => {
   const { playScene } = await import("./lib/hidden-object.js");
   const userId = req.user?.id || req.user?.userId;

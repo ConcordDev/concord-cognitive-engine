@@ -32,6 +32,8 @@ export const ROOM_TEMPLATES = {
   attraction_booth:    { capacity: 8, typical_furniture: ['ticket_box', 'seating', 'safety_rail'],        width: 8,  depth: 6,  height: 4 },
   creature_pen:        { capacity: 6, typical_furniture: ['feeding_trough', 'nest_box', 'water_dish'],    width: 8,  depth: 8,  height: 0 },
   glyph_altar:         { capacity: 4, typical_furniture: ['altar_stone', 'glyph_braziers', 'tome_stand'], width: 6,  depth: 6,  height: 4 },
+  // Phase E3 — mystery-board buildings dispatch hidden-object scene viewing.
+  mystery_board:       { capacity: 1, typical_furniture: ['pinboard', 'photo_pile', 'string_and_pins'],   width: 4,  depth: 4,  height: 3 },
 };
 
 // Default room layouts per building type

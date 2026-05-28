@@ -32,6 +32,7 @@ const FactoryEditor           = lazy(() => import('./FactoryEditor').then(m => (
 const ThemeParkAttractionPanel = lazy(() => import('./ThemeParkAttractionPanel').then(m => ({ default: m.ThemeParkAttractionPanel })));
 const CreatureBreedingPanel   = lazy(() => import('./CreatureBreedingPanel').then(m => ({ default: m.CreatureBreedingPanel })));
 const GlyphSpellComposer      = lazy(() => import('./GlyphSpellComposer').then(m => ({ default: m.GlyphSpellComposer })));
+const MysteryBoardLauncher    = lazy(() => import('./MysteryBoardLauncher').then(m => ({ default: m.MysteryBoardLauncher })));
 
 // Production invariant: this is the canonical building_type → overlay map.
 // New gameplay stations slot here, nowhere else.
@@ -47,6 +48,7 @@ const ROUTER_TABLE: Record<string, React.LazyExoticComponent<React.ComponentType
   attraction_booth:    ThemeParkAttractionPanel,
   creature_pen:        CreatureBreedingPanel,
   glyph_altar:         GlyphSpellComposer,
+  mystery_board:       MysteryBoardLauncher,
 };
 
 export const STATION_TYPES = Object.freeze(Object.keys(ROUTER_TABLE));

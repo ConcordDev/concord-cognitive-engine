@@ -102,10 +102,18 @@ export function HiddenObjectScenePanel() {
         </header>
 
         <div className="relative">
-          {sceneDtuId ? (
+          {sceneId ? (
             <img
               ref={imgRef}
-              src={`/api/dtu/${sceneDtuId}/artifact`}
+              src={
+                /* Phase E3 — authored scenes serve SVG via the dedicated
+                   image route; legacy scenes still come through DTU artifact. */
+                sceneDtuId?.startsWith('authored:')
+                  ? `/api/hidden-object/scene/${sceneId}/image`
+                  : sceneDtuId
+                    ? `/api/dtus/${sceneDtuId}/artifact`
+                    : `/api/hidden-object/scene/${sceneId}/image`
+              }
               alt={title}
               className="block w-full cursor-crosshair rounded border border-violet-500/30"
               onClick={onClick}

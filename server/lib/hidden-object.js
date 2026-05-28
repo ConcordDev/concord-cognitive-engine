@@ -102,6 +102,18 @@ export function submitFind(db, runId, opts = {}) {
   }
 }
 
+// Phase E3 — list authored scenes for the MysteryBoardLauncher.
+export function listScenes(db, limit = 50) {
+  if (!db) return [];
+  try {
+    return db.prepare(`
+      SELECT id, scene_dtu_id, title, host_user_id
+      FROM hidden_object_scenes
+      ORDER BY id ASC LIMIT ?
+    `).all(Math.max(1, Math.min(200, limit)));
+  } catch { return []; }
+}
+
 export function leaderboardForScene(db, sceneId, limit = 10) {
   if (!db || !sceneId) return [];
   try {

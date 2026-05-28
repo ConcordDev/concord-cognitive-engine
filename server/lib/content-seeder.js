@@ -658,6 +658,35 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "trivia_seed_failed", { err: err?.message });
     }
+
+    // Phase E3 — hidden-object scenes.
+    try {
+      const hoJson = readJSON("hidden-object-scenes.json");
+      if (Array.isArray(hoJson) && hoJson.length > 0) {
+        const { createScene: createHoScene } = await import("./hidden-object.js");
+        let inserted = 0;
+        for (const s of hoJson) {
+          try {
+            // Idempotent by sceneId — the lib uses random ids but we want
+            // stable ones for authored content. Check first.
+            const existing = db.prepare(`SELECT id FROM hidden_object_scenes WHERE id = ?`).get(s.sceneId);
+            if (existing) continue;
+            // The lib's createScene generates a fresh id; we insert
+            // directly with the authored sceneId so the image-route URL
+            // is stable.
+            db.prepare(`
+              INSERT INTO hidden_object_scenes
+                (id, scene_dtu_id, host_user_id, title, target_objects_json)
+              VALUES (?, ?, ?, ?, ?)
+            `).run(s.sceneId, `authored:${s.sceneId}`, "system", s.title || "Untitled scene", JSON.stringify(s.targets || []));
+            inserted++;
+          } catch { /* per-scene best-effort */ }
+        }
+        results.hiddenObjectScenes = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "hidden_object_seed_failed", { err: err?.message });
+    }
   }
 
   _seeded = true;
@@ -665,7 +694,7 @@ export async function seedContent({ db = null } = {}) {
   logger.info(
     "content_seeder",
     "content_seeded",
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0 }
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0, hiddenObjectScenes: results.hiddenObjectScenes || 0 }
   );
 
   return { ok: true, counts: results };
