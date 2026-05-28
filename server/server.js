@@ -24481,6 +24481,18 @@ registerHeartbeat("cross-world-scheme-cycle", {
   handler: runCrossWorldSchemeCycle,
 });
 
+// T2.4 — emergent-module reconciliation: population-migration-cycle declared
+// itself a frequency-30 heartbeat in its own header but was never registered,
+// so due population_flow_events (kingdom decrees / refugee flows / voluntary
+// NPC migration arrivals) silently never landed. Wire it (the Layer-12
+// wire-the-unwired pattern). Cross-world infra → scope 'global'.
+import { runPopulationMigrationCycle } from "./emergent/population-migration-cycle.js";
+registerHeartbeat("population-migration-cycle", {
+  frequency: 30,   // ~7.5 min, matches the module's documented cadence
+  scope: "global",
+  handler: runPopulationMigrationCycle,
+});
+
 // Open-corpus ingest — pulls free + legal slices of OpenStax, Wikipedia,
 // PubMed Central, CourtListener, deeper arXiv categories, and a sampled
 // Common Crawl CDX lookup into the DTU substrate. Each source has its

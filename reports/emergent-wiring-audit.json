@@ -1,0 +1,963 @@
+{
+  "wired": [
+    {
+      "file": "agent-marathon-cycle.js",
+      "handlers": [
+        "runAgentMarathonCycle"
+      ]
+    },
+    {
+      "file": "agent-system.js",
+      "handlers": [
+        "runAgent"
+      ]
+    },
+    {
+      "file": "announcement-broadcaster.js",
+      "handlers": [
+        "runAnnouncementBroadcaster"
+      ]
+    },
+    {
+      "file": "atlas-antigaming.js",
+      "handlers": [
+        "runAntiGamingScan"
+      ]
+    },
+    {
+      "file": "atlas-autogen-v2.js",
+      "handlers": [
+        "runAutogenV2"
+      ]
+    },
+    {
+      "file": "atlas-heartbeat.js",
+      "handlers": [
+        "tickLocal",
+        "tickGlobal",
+        "tickMarketplace",
+        "tick",
+        "tickAll"
+      ]
+    },
+    {
+      "file": "atlas-write-guard.js",
+      "handlers": [
+        "runAutoPromoteGate"
+      ]
+    },
+    {
+      "file": "autogen-pipeline.js",
+      "handlers": [
+        "runPipeline"
+      ]
+    },
+    {
+      "file": "avoidance-learning.js",
+      "handlers": [
+        "tickWounds"
+      ]
+    },
+    {
+      "file": "bootstrap-ingestion.js",
+      "handlers": [
+        "runBootstrapIngestion"
+      ]
+    },
+    {
+      "file": "brawl-queue-cycle.js",
+      "handlers": [
+        "runBrawlQueueCycle"
+      ]
+    },
+    {
+      "file": "capability-bridge.js",
+      "handlers": [
+        "runBeaconCheck",
+        "runHeartbeatBridgeTick"
+      ]
+    },
+    {
+      "file": "combat-recovery-cycle.js",
+      "handlers": [
+        "runCombatRecoveryCycle"
+      ]
+    },
+    {
+      "file": "controller.js",
+      "handlers": [
+        "runDialogueSession"
+      ]
+    },
+    {
+      "file": "corpus-ingest-cycle.js",
+      "handlers": [
+        "runCorpusIngestCycle"
+      ]
+    },
+    {
+      "file": "corpus-ingest.js",
+      "handlers": [
+        "runCorpusIngest"
+      ]
+    },
+    {
+      "file": "council-voices.js",
+      "handlers": [
+        "runCouncilVoices"
+      ]
+    },
+    {
+      "file": "creature-flock-cycle.js",
+      "handlers": [
+        "runCreatureFlockCycle"
+      ]
+    },
+    {
+      "file": "cri-system.js",
+      "handlers": [
+        "runSummit"
+      ]
+    },
+    {
+      "file": "cross-lens-pipeline.js",
+      "handlers": [
+        "advancePipeline"
+      ]
+    },
+    {
+      "file": "cross-world-economy-cycle.js",
+      "handlers": [
+        "runCrossWorldEconomyCycle"
+      ]
+    },
+    {
+      "file": "cross-world-scheme-cycle.js",
+      "handlers": [
+        "runCrossWorldSchemeCycle"
+      ]
+    },
+    {
+      "file": "deep-health.js",
+      "handlers": [
+        "runDeepHealthCheck"
+      ]
+    },
+    {
+      "file": "draft-gc-cycle.js",
+      "handlers": [
+        "runDraftGcCycle"
+      ]
+    },
+    {
+      "file": "dream-cycle.js",
+      "handlers": [
+        "runDreamCycle"
+      ]
+    },
+    {
+      "file": "drift-monitor.js",
+      "handlers": [
+        "runDriftScan"
+      ]
+    },
+    {
+      "file": "dual-path.js",
+      "handlers": [
+        "runDualPathSimulation"
+      ]
+    },
+    {
+      "file": "ecology-quest-cycle.js",
+      "handlers": [
+        "runEcologyQuestCycle"
+      ]
+    },
+    {
+      "file": "embodied-dream-cycle.js",
+      "handlers": [
+        "runEmbodiedDreamCycle"
+      ]
+    },
+    {
+      "file": "empirical-gates.js",
+      "handlers": [
+        "runEmpiricalGates"
+      ]
+    },
+    {
+      "file": "entity-teaching.js",
+      "handlers": [
+        "advanceStep"
+      ]
+    },
+    {
+      "file": "environment-sensor.js",
+      "handlers": [
+        "runEnvironmentSensor"
+      ]
+    },
+    {
+      "file": "faction-strategy-cycle.js",
+      "handlers": [
+        "runFactionStrategyCycle"
+      ]
+    },
+    {
+      "file": "factory-cycle.js",
+      "handlers": [
+        "runFactoryCycle"
+      ]
+    },
+    {
+      "file": "farm-growth-cycle.js",
+      "handlers": [
+        "runFarmGrowthCycle"
+      ]
+    },
+    {
+      "file": "federation-outbox-pump.js",
+      "handlers": [
+        "runFederationOutboxPump"
+      ]
+    },
+    {
+      "file": "festival-trigger-cycle.js",
+      "handlers": [
+        "runFestivalTriggerCycle"
+      ]
+    },
+    {
+      "file": "forgetting-engine.js",
+      "handlers": [
+        "runForgettingCycle"
+      ]
+    },
+    {
+      "file": "forward-sim-cycle.js",
+      "handlers": [
+        "runForwardSimCycle"
+      ]
+    },
+    {
+      "file": "foundry-preview-cleanup.js",
+      "handlers": [
+        "runFoundryPreviewCleanup"
+      ]
+    },
+    {
+      "file": "gates.js",
+      "handlers": [
+        "runAllGates",
+        "runAntiEchoGate"
+      ]
+    },
+    {
+      "file": "ghost-threads.js",
+      "handlers": [
+        "runGhostThread"
+      ]
+    },
+    {
+      "file": "heartbeat-registry.js",
+      "handlers": [
+        "tickAllRegistered"
+      ]
+    },
+    {
+      "file": "hlm-engine.js",
+      "handlers": [
+        "runHLMPass"
+      ]
+    },
+    {
+      "file": "hlr-engine.js",
+      "handlers": [
+        "runHLR"
+      ]
+    },
+    {
+      "file": "idle-behavior.js",
+      "handlers": [
+        "runIdleBehavior"
+      ]
+    },
+    {
+      "file": "kingdom-decree-cycle.js",
+      "handlers": [
+        "runKingdomDecreeCycle"
+      ]
+    },
+    {
+      "file": "land-claims-cycle.js",
+      "handlers": [
+        "runLandClaimsCycle"
+      ]
+    },
+    {
+      "file": "lattice-orchestrator.js",
+      "handlers": [
+        "runPeriodicDriftScan",
+        "runBreakthroughResearchPass",
+        "runCultureDriftPass",
+        "runForgettingHealthCheck",
+        "runFederationPoll"
+      ]
+    },
+    {
+      "file": "lattice-quest-cycle.js",
+      "handlers": [
+        "runLatticeQuestCycle"
+      ]
+    },
+    {
+      "file": "lens-learning.js",
+      "handlers": [
+        "runLensLearningCycle"
+      ]
+    },
+    {
+      "file": "meta-derivation.js",
+      "handlers": [
+        "runMetaDerivationSession",
+        "runConvergenceCheck"
+      ]
+    },
+    {
+      "file": "mount-behavior-cycle.js",
+      "handlers": [
+        "runMountBehaviorCycle"
+      ]
+    },
+    {
+      "file": "mount-care-cycle.js",
+      "handlers": [
+        "runMountCareCycle"
+      ]
+    },
+    {
+      "file": "nemesis-cycle.js",
+      "handlers": [
+        "runNemesisCycle"
+      ]
+    },
+    {
+      "file": "npc-ambition-cycle.js",
+      "handlers": [
+        "runNpcAmbitionCycle"
+      ]
+    },
+    {
+      "file": "npc-conversation-initiator.js",
+      "handlers": [
+        "runNpcConversationInitiator"
+      ]
+    },
+    {
+      "file": "npc-economy-cycle.js",
+      "handlers": [
+        "runNpcEconomyCycle"
+      ]
+    },
+    {
+      "file": "npc-marketplace-cycle.js",
+      "handlers": [
+        "runNpcMarketplaceCycle"
+      ]
+    },
+    {
+      "file": "npc-perception-snapshot.js",
+      "handlers": [
+        "runNpcPerceptionSnapshot"
+      ]
+    },
+    {
+      "file": "npc-routine-cycle.js",
+      "handlers": [
+        "runNpcRoutineCycle"
+      ]
+    },
+    {
+      "file": "npc-scheme-cycle.js",
+      "handlers": [
+        "runNpcSchemeCycle"
+      ]
+    },
+    {
+      "file": "npc-skill-evolve-cycle.js",
+      "handlers": [
+        "runNpcSkillEvolveCycle"
+      ]
+    },
+    {
+      "file": "npc-travel-cycle.js",
+      "handlers": [
+        "runNpcTravelCycle"
+      ]
+    },
+    {
+      "file": "npc-vs-npc-combat-cycle.js",
+      "handlers": [
+        "runNpcVsNpcCombatCycle"
+      ]
+    },
+    {
+      "file": "outcomes.js",
+      "handlers": [
+        "runWeightLearning"
+      ]
+    },
+    {
+      "file": "personal-beat-scheduler.js",
+      "handlers": [
+        "runPersonalBeatScheduler"
+      ]
+    },
+    {
+      "file": "player-signs-cleanup.js",
+      "handlers": [
+        "runPlayerSignsCleanup"
+      ]
+    },
+    {
+      "file": "population-migration-cycle.js",
+      "handlers": [
+        "runPopulationMigrationCycle"
+      ]
+    },
+    {
+      "file": "procedural-npc-spawner.js",
+      "handlers": [
+        "runProceduralNpcSpawner"
+      ]
+    },
+    {
+      "file": "procgen-settlement-cycle.js",
+      "handlers": [
+        "runProcgenSettlementCycle"
+      ]
+    },
+    {
+      "file": "realtime-feeds.js",
+      "handlers": [
+        "tickRealTimeFeeds"
+      ]
+    },
+    {
+      "file": "reflex-cortex.js",
+      "handlers": [
+        "runArchitecturalDrift",
+        "runScalingPressure"
+      ]
+    },
+    {
+      "file": "repair-cortex.js",
+      "handlers": [
+        "runProphet",
+        "runSurgeon",
+        "runGuardianCheck",
+        "runFullDeploy"
+      ]
+    },
+    {
+      "file": "repair-cycle.js",
+      "handlers": [
+        "runRepairCycle"
+      ]
+    },
+    {
+      "file": "research-jobs.js",
+      "handlers": [
+        "runResearchStep"
+      ]
+    },
+    {
+      "file": "scenario-engine.js",
+      "handlers": [
+        "runScenario"
+      ]
+    },
+    {
+      "file": "scheme-overhear-cycle.js",
+      "handlers": [
+        "runSchemeOverhearCycle"
+      ]
+    },
+    {
+      "file": "scope-separation.js",
+      "handlers": [
+        "runGlobalTick"
+      ]
+    },
+    {
+      "file": "season-cycle.js",
+      "handlers": [
+        "runSeasonCycle"
+      ]
+    },
+    {
+      "file": "signal-propagation-cycle.js",
+      "handlers": [
+        "runSignalPropagationCycle"
+      ]
+    },
+    {
+      "file": "sleep-consolidation.js",
+      "handlers": [
+        "tickFatigue",
+        "runConsolidation",
+        "runREMPhase"
+      ]
+    },
+    {
+      "file": "social-npc-bridge.js",
+      "handlers": [
+        "runSocialNpcBridge"
+      ]
+    },
+    {
+      "file": "verification-pipeline.js",
+      "handlers": [
+        "runPipeline"
+      ]
+    },
+    {
+      "file": "war-skirmish-cycle.js",
+      "handlers": [
+        "runWarSkirmishCycle"
+      ]
+    },
+    {
+      "file": "world-boss-cycle.js",
+      "handlers": [
+        "runWorldBossCycle"
+      ]
+    },
+    {
+      "file": "world-population-cycle.js",
+      "handlers": [
+        "runWorldPopulationCycle"
+      ]
+    }
+  ],
+  "entityInline": [
+    {
+      "file": "action-slots.js",
+      "handlers": []
+    },
+    {
+      "file": "activation.js",
+      "handlers": []
+    },
+    {
+      "file": "analytics-dashboard.js",
+      "handlers": []
+    },
+    {
+      "file": "app-maker.js",
+      "handlers": []
+    },
+    {
+      "file": "artifacts.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-chat.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-config.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-council.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-epistemic.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-invariants.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-retrieval.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-rights.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-scope-router.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-scope-state.js",
+      "handlers": []
+    },
+    {
+      "file": "atlas-store.js",
+      "handlers": []
+    },
+    {
+      "file": "attention-allocator.js",
+      "handlers": []
+    },
+    {
+      "file": "body-instantiation.js",
+      "handlers": []
+    },
+    {
+      "file": "breakthrough-clusters.js",
+      "handlers": []
+    },
+    {
+      "file": "cnet-federation.js",
+      "handlers": []
+    },
+    {
+      "file": "cognitive-fingerprint.js",
+      "handlers": []
+    },
+    {
+      "file": "collaboration.js",
+      "handlers": []
+    },
+    {
+      "file": "communication.js",
+      "handlers": []
+    },
+    {
+      "file": "compliance.js",
+      "handlers": []
+    },
+    {
+      "file": "compute-efficiency.js",
+      "handlers": []
+    },
+    {
+      "file": "concordia-cycles.js",
+      "handlers": []
+    },
+    {
+      "file": "conflict-resolution.js",
+      "handlers": []
+    },
+    {
+      "file": "conscious-web-search.js",
+      "handlers": []
+    },
+    {
+      "file": "consequence-cascade.js",
+      "handlers": []
+    },
+    {
+      "file": "constitution.js",
+      "handlers": []
+    },
+    {
+      "file": "content-shield.js",
+      "handlers": []
+    },
+    {
+      "file": "context-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "creative-generation.js",
+      "handlers": []
+    },
+    {
+      "file": "culture-layer.js",
+      "handlers": []
+    },
+    {
+      "file": "death-protocol.js",
+      "handlers": []
+    },
+    {
+      "file": "developer-sdk.js",
+      "handlers": []
+    },
+    {
+      "file": "dialogue.js",
+      "handlers": []
+    },
+    {
+      "file": "districts.js",
+      "handlers": []
+    },
+    {
+      "file": "dream-capture.js",
+      "handlers": []
+    },
+    {
+      "file": "edges.js",
+      "handlers": []
+    },
+    {
+      "file": "emergent-comms.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-autonomy.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-economy.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-emergence.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-growth.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-hive.js",
+      "handlers": []
+    },
+    {
+      "file": "entity-web-exploration.js",
+      "handlers": []
+    },
+    {
+      "file": "event-scoping.js",
+      "handlers": []
+    },
+    {
+      "file": "event-to-dtu-bridge.js",
+      "handlers": []
+    },
+    {
+      "file": "evidence.js",
+      "handlers": []
+    },
+    {
+      "file": "federation-peering.js",
+      "handlers": []
+    },
+    {
+      "file": "feed.js",
+      "handlers": []
+    },
+    {
+      "file": "forge-template-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "goals.js",
+      "handlers": []
+    },
+    {
+      "file": "governance.js",
+      "handlers": []
+    },
+    {
+      "file": "growth.js",
+      "handlers": []
+    },
+    {
+      "file": "history-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "hypothesis-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "index.js",
+      "handlers": []
+    },
+    {
+      "file": "ingest-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "injection-defense.js",
+      "handlers": []
+    },
+    {
+      "file": "institutional-memory.js",
+      "handlers": []
+    },
+    {
+      "file": "journal.js",
+      "handlers": []
+    },
+    {
+      "file": "lattice-interface.js",
+      "handlers": []
+    },
+    {
+      "file": "lattice-ops.js",
+      "handlers": []
+    },
+    {
+      "file": "lens-integration.js",
+      "handlers": []
+    },
+    {
+      "file": "merge.js",
+      "handlers": []
+    },
+    {
+      "file": "microbond-governance.js",
+      "handlers": []
+    },
+    {
+      "file": "minor-agent-scheduler.js",
+      "handlers": []
+    },
+    {
+      "file": "minor-agent.js",
+      "handlers": []
+    },
+    {
+      "file": "module-registry.js",
+      "handlers": []
+    },
+    {
+      "file": "name-validation.js",
+      "handlers": []
+    },
+    {
+      "file": "naming.js",
+      "handlers": []
+    },
+    {
+      "file": "news-lens-hub.js",
+      "handlers": []
+    },
+    {
+      "file": "onboarding.js",
+      "handlers": []
+    },
+    {
+      "file": "persistence.js",
+      "handlers": []
+    },
+    {
+      "file": "physical-dtu.js",
+      "handlers": []
+    },
+    {
+      "file": "projects.js",
+      "handlers": []
+    },
+    {
+      "file": "promotion-pipeline.js",
+      "handlers": []
+    },
+    {
+      "file": "public-api.js",
+      "handlers": []
+    },
+    {
+      "file": "purpose-tracking.js",
+      "handlers": []
+    },
+    {
+      "file": "quest-engine.js",
+      "handlers": []
+    },
+    {
+      "file": "rbac.js",
+      "handlers": []
+    },
+    {
+      "file": "reality-explorer.js",
+      "handlers": []
+    },
+    {
+      "file": "reality.js",
+      "handlers": []
+    },
+    {
+      "file": "relational-emotion.js",
+      "handlers": []
+    },
+    {
+      "file": "repair-network.js",
+      "handlers": []
+    },
+    {
+      "file": "reproduction.js",
+      "handlers": []
+    },
+    {
+      "file": "scheduler.js",
+      "handlers": []
+    },
+    {
+      "file": "schema-guard.js",
+      "handlers": []
+    },
+    {
+      "file": "schema.js",
+      "handlers": []
+    },
+    {
+      "file": "sectors.js",
+      "handlers": []
+    },
+    {
+      "file": "shadow-graph.js",
+      "handlers": []
+    },
+    {
+      "file": "skills.js",
+      "handlers": []
+    },
+    {
+      "file": "social-layer.js",
+      "handlers": []
+    },
+    {
+      "file": "spam-prevention.js",
+      "handlers": []
+    },
+    {
+      "file": "species.js",
+      "handlers": []
+    },
+    {
+      "file": "state-migration.js",
+      "handlers": []
+    },
+    {
+      "file": "store.js",
+      "handlers": []
+    },
+    {
+      "file": "subjective-time.js",
+      "handlers": []
+    },
+    {
+      "file": "threat-surface.js",
+      "handlers": []
+    },
+    {
+      "file": "trust-network.js",
+      "handlers": []
+    },
+    {
+      "file": "user-constitution.js",
+      "handlers": []
+    },
+    {
+      "file": "user-feedback.js",
+      "handlers": []
+    },
+    {
+      "file": "vulnerability-engine.js",
+      "handlers": []
+    }
+  ],
+  "orphan": [],
+  "scannedAt": "2026-05-28T22:53:17.290Z"
+}
