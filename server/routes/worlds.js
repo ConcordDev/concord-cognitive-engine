@@ -1924,6 +1924,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       }
 
+      // ── T3.3 — world-zone combat gate ──────────────────────────────────────
+      // Off-hub, a 'safe'/'sanctuary' zone at the attacker's position refuses
+      // combat the same way the hub does (server-authoritative). Other zone
+      // kinds (pvp/lawless/hazard) allow combat; their extra effects apply
+      // farther down. Best-effort — no zone / no table → world default.
+      try {
+        const { combatRuleFor } = await import("../lib/world-zones.js");
+        const aPos = cityPresence.getUserPosition?.(userId);
+        if (aPos && Number.isFinite(aPos.x)) {
+          const rule = combatRuleFor(db, worldId, aPos.x, aPos.z ?? 0);
+          if (!rule.combatAllowed) {
+            return res.status(403).json({
+              ok: false,
+              error: "zone_combat_refusal",
+              reason: `Combat is refused in ${rule.zone?.name || "this sanctuary"}.`,
+              zone: rule.zone,
+            });
+          }
+        }
+      } catch { /* zone gate best-effort — combat falls through to world default */ }
+
       const {
         computeDamage,
         applyDamageToNPC,

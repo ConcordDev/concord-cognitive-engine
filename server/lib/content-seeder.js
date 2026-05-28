@@ -576,6 +576,17 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "weaponise_seed_skipped", { err: err?.message });
     }
+
+    // T3.3 — seed default world zones (hub sanctuary that agrees with the
+    // hardcoded Concordant Law + a spawn sanctuary per authored world).
+    try {
+      const { seedDefaultZones } = await import("./world-zones.js");
+      const worldIds = [...new Set([..._authoredNPCs.values()].map((n) => n.world_id).filter(Boolean))];
+      if (!worldIds.includes("concordia-hub")) worldIds.push("concordia-hub");
+      results.worldZonesSeeded = seedDefaultZones(db, worldIds);
+    } catch (err) {
+      logger.warn("content_seeder", "world_zones_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain

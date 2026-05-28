@@ -454,6 +454,10 @@ const TombsOverlay = dynamic(
   () => import('@/components/world/TombsOverlay'),
   { ssr: false }
 );
+const ZoneBadge = dynamic(
+  () => import('@/components/world/ZoneBadge'),
+  { ssr: false }
+);
 const ProcgenSettlementNpcs = dynamic(
   () => import('@/components/world/ProcgenSettlementNpcs'),
   { ssr: false }
@@ -4814,6 +4818,7 @@ export default function WorldLensPage() {
               scene-add API; this is the substrate-bridge surface so
               players see their world's death log. */}
           <TombsOverlay worldId={activeDistrict?.id || 'concordia-hub'} />
+          <ZoneBadge worldId={activeDistrict?.id || 'concordia-hub'} />
 
           {/* Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
               Pulls procgen_settlement_npcs rows for this world via the

@@ -538,6 +538,12 @@
       "handlers": [
         "runWorldPopulationCycle"
       ]
+    },
+    {
+      "file": "world-zone-hazard-cycle.js",
+      "handlers": [
+        "runWorldZoneHazardCycle"
+      ]
     }
   ],
   "entityInline": [
@@ -959,5 +965,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-05-28T22:53:17.290Z"
+  "scannedAt": "2026-05-28T22:58:11.458Z"
 }

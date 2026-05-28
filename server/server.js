@@ -671,6 +671,15 @@ registerHeartbeat("scheme-overhear-cycle", {
   handler: runSchemeOverhearCycle,
 });
 
+// T3.3 — hazard zones bite: players standing in a 'hazard' world-zone take
+// steady damage through the Layer-8 pain ledger (~every 75s). Scope 'world'.
+import { runWorldZoneHazardCycle } from "./emergent/world-zone-hazard-cycle.js";
+registerHeartbeat("world-zone-hazard-cycle", {
+  frequency: 5,
+  scope: "world",
+  handler: runWorldZoneHazardCycle,
+});
+
 // Phase T — NPC equal-agency cross-world. Three heartbeats:
 //   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
 //                                             ambition-driven goal-seeks
@@ -10426,6 +10435,8 @@ async function runMacro(domain, name, input, ctx) {
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
     npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir", "inheritance_from_deceased"]),
+    // zones (T3.3) — read-only world-zone surface for the map overlay + gate.
+    zones: new Set(["list_for_world", "at"]),
     // cross_world_effectiveness (Sprint 5) — per-world skill potency
     // chip for the HUD. All read-only: explain a single (domain, world,
     // level) triple, dump every domain for the current player, list
@@ -24421,6 +24432,11 @@ registerCombatPolishMacros(register);
 // players can see tombs, last words, and inheritance lineage.
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
+
+// T3.3 — world zones (safe/sanctuary/pvp/lawless/hazard regions). Read surface
+// for the map overlay + the combat route's zone gate; upsert for authoring.
+import registerZonesMacros from "./domains/zones.js";
+registerZonesMacros(register);
 
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
