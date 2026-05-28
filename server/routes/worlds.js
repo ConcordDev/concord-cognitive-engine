@@ -2111,6 +2111,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // E0#3 — boss HP/phase HUD + light up the dormant boss-phase scaling.
+      // The phase-state created at spawn (STATE.bossPhases) was never ticked in
+      // combat, so its damage scaling was dead. If the target is a boss, tick
+      // its phases on the post-damage hp and emit boss:state for the HUD.
+      try {
+        const bossRow = db.prepare(
+          `SELECT name, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
+        ).get(npcId);
+        const bossPhases = globalThis.__CONCORD_STATE__?.bossPhases?.get?.(npcId);
+        const { isBossRow, computeBossState } = await import("../lib/combat/boss-hud.js");
+        if (isBossRow(bossRow, bossPhases)) {
+          const payload = computeBossState({
+            npcId, worldId,
+            name: bossRow.name, archetype: bossRow.archetype,
+            currentHp: bossRow.current_hp, maxHp: bossRow.max_hp,
+            phases: bossPhases, defeated: !!kill,
+          });
+          req.app.locals.io?.to(`world:${worldId}`).emit('boss:state', payload);
+        }
+      } catch { /* boss HUD emit best-effort — never blocks combat */ }
+
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at
       // resisting (combat skill bumps). NPCs that out-grind players
