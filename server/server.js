@@ -48725,6 +48725,49 @@ app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
   }
 }));
 
+// Phase E4 — full mahjong tile sim. The old /api/mahjong/resolve route
+// stays for back-compat with the declarative-yaku UI; new routes below
+// drive the real 136-tile session.
+app.post("/api/mahjong/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startSession } = await import("./lib/mahjong/session.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startSession(db, {
+    worldId: req.body?.worldId || "concordia-hub",
+    playerUserId: userId,
+    seed: req.body?.seed,
+    npcIds: req.body?.npcIds,
+    npcStyles: req.body?.npcStyles,
+  }));
+}));
+
+app.post("/api/mahjong/:sessionId/discard", requireAuth(), asyncHandler(async (req, res) => {
+  const { discardTile } = await import("./lib/mahjong/session.js");
+  res.json(discardTile(db, req.params.sessionId, req.body?.tile));
+}));
+
+app.post("/api/mahjong/:sessionId/tsumo", requireAuth(), asyncHandler(async (req, res) => {
+  const { declareTsumo } = await import("./lib/mahjong/session.js");
+  const result = declareTsumo(db, req.params.sessionId);
+  // On a successful tsumo, route through the existing scorer for points.
+  if (result.ok && result.winnerSeat === 0) {
+    try {
+      const { detectYaku } = await import("./lib/mahjong/yaku-detect.js");
+      const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");
+      const yaku = detectYaku(result.hand, { roundWind: result.roundWind, seatWind: "east", opened: false });
+      const score = resolveMahjongHand({ winningHand: yaku, opponents: 3, wind: "east", mahjongSkill: 30, tsumo: true });
+      result.scoring = { yaku, ...score };
+    } catch (e) { result.scoring = { yaku: [], error: e?.message }; }
+  }
+  res.json(result);
+}));
+
+app.get("/api/mahjong/:sessionId/state", asyncHandler(async (req, res) => {
+  const { getState } = await import("./lib/mahjong/session.js");
+  const s = getState(db, req.params.sessionId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_session" });
+  res.json({ ok: true, session: s });
+}));
+
 // Phase E5 — karaoke lyrics endpoint. Per-song lyrics in
 // content/karaoke-lyrics/<songId>.json, time-stamped against the song's BPM.
 app.get("/api/karaoke/lyrics/:songId", asyncHandler(async (req, res) => {
