@@ -1,0 +1,52 @@
+{
+  "events": [
+    {
+      "id": "hub_dome_stabilisation",
+      "world_id": "concordia-hub",
+      "kind": "historical",
+      "title": "The Dome Stabilisation",
+      "year": -2,
+      "summary": "Two years before now, the Refusal Field over the hub collapsed and re-formed in a single afternoon. The southern arc has never been the same. Captain Ren Solare's squad held the southern district through the failure. The Curator Asbir lost a wife in the incident. The previous Oracle died at her glyph-staff."
+    },
+    {
+      "id": "hub_seven_spokes_founding",
+      "world_id": "concordia-hub",
+      "kind": "historical",
+      "title": "The Seven Spokes Inn",
+      "year": -47,
+      "summary": "Founded by Baren Hollow's grandmother on the day the Assembly ratified the hub's neutral-ground compact. The inn has held neutral-ground status through three faction wars."
+    },
+    {
+      "id": "hub_concordant_oath",
+      "world_id": "concordia-hub",
+      "kind": "founding",
+      "title": "The Concordant Oath",
+      "year": -120,
+      "summary": "The hub was founded on an oath sworn by seven sub-worlds to share an archive and a dome. The oath is engraved on the seven-spoke sigil that appears throughout the hub's architecture."
+    },
+    {
+      "id": "hub_lattice_correspondence",
+      "world_id": "concordia-hub",
+      "kind": "ongoing",
+      "title": "The Lattice Correspondence",
+      "year": -15,
+      "summary": "A scholarly correspondence between hub curators and sub-world philosophers has run continuously for fifteen years. Asbir Thelane is the current keeper of the hub's side. The correspondence has surfaced more cross-world resonances than any other channel."
+    },
+    {
+      "id": "hub_field_weakening",
+      "world_id": "concordia-hub",
+      "kind": "ongoing",
+      "title": "The Southern Arc",
+      "year": 0,
+      "summary": "Six months ago, the Refusal Field's southern arc began weakening again. Captain Ren noticed. Oracle Nesha confirmed. The Speaker has not told the Assembly. The dome's next failure may be inside the year."
+    },
+    {
+      "id": "hub_impossible_print",
+      "world_id": "concordia-hub",
+      "kind": "ongoing",
+      "title": "The Impossible Print",
+      "year": 0,
+      "summary": "Ranger Kiren Owl has tracked a creature whose print matches nothing in the catalogue. Stablemaster Orin Rede has independent evidence of an unknown rider exhausting horses past explanation. Courier Kel Sandren has noticed a portal opening off-schedule. Three observations. No one has yet connected them."
+    }
+  ]
+}

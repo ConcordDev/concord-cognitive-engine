@@ -574,11 +574,98 @@ export async function seedContent({ db = null } = {}) {
     }
   }
 
+  // Phase Z2 — wire boot-time seeders for the 5 substrates that were
+  // empty at launch (hacking puzzles, code puzzles, trivia questions,
+  // glyph components, karaoke songs). Each is idempotent (gated by row
+  // count or PK).
+  if (db) {
+    try {
+      const { seedDefaultGlyphLibrary } = await import("./glyph-spells.js");
+      const r = seedDefaultGlyphLibrary(db);
+      results.glyphComponents = r?.seeded ?? r?.inserted ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "glyph_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const hpJson = readJSON("hacking-puzzles.json");
+      if (Array.isArray(hpJson) && hpJson.length > 0) {
+        const { authorPuzzle: authorHack } = await import("./hacking.js");
+        let inserted = 0;
+        for (const p of hpJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM hacking_puzzles WHERE name = ?`).get(p.name);
+            if (existing) continue;
+            const r = authorHack(db, p);
+            if (r?.ok) inserted++;
+          } catch { /* per-puzzle best-effort */ }
+        }
+        results.hackingPuzzles = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "hacking_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const cpJson = readJSON("code-puzzles.json");
+      if (Array.isArray(cpJson) && cpJson.length > 0) {
+        const { authorPuzzle: authorCp } = await import("./programming-puzzle.js");
+        let inserted = 0;
+        for (const p of cpJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM programming_puzzles WHERE name = ?`).get(p.name);
+            if (existing) continue;
+            const r = authorCp(db, p);
+            if (r?.ok) inserted++;
+          } catch { /* per-puzzle best-effort */ }
+        }
+        results.codePuzzles = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "code_seed_failed", { err: err?.message });
+    }
+
+    try {
+      const tqJson = readJSON("trivia-questions.json");
+      if (Array.isArray(tqJson) && tqJson.length > 0) {
+        const { authorQuestion } = await import("./trivia.js");
+        // Author DTUs for the answers first so the citation flow works.
+        let inserted = 0;
+        for (const q of tqJson) {
+          try {
+            const existing = db.prepare(`SELECT id FROM trivia_questions WHERE question_text = ?`).get(q.questionText);
+            if (existing) continue;
+            // Mint a lightweight answer-DTU.
+            const dtuId = `trivia_answer_${q.id}`;
+            try {
+              db.prepare(`
+                INSERT OR IGNORE INTO dtus (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
+                VALUES (?, 'trivia_answer', ?, ?, unixepoch(), 'system', 'global', 'public')
+              `).run(dtuId, `Trivia: ${q.questionText.slice(0, 60)}`, q.answerHumanSummary || "");
+            } catch { /* DTU table shape may differ — best-effort */ }
+            const r = authorQuestion(db, {
+              dtuId,
+              questionText: q.questionText,
+              answerDtuId: dtuId,
+              difficulty: q.difficulty || 1,
+              createdBy: "system",
+            });
+            if (r?.ok) inserted++;
+          } catch { /* per-question best-effort */ }
+        }
+        results.triviaQuestions = inserted;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "trivia_seed_failed", { err: err?.message });
+    }
+  }
+
   _seeded = true;
 
   logger.info(
-    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0 },
-    "content_seeded"
+    "content_seeder",
+    "content_seeded",
+    { factions: results.factions, npcs: results.npcs, lore: results.lore, quests: results.quests, walkers: results.walkers || 0, dialogues: results.dialogues || 0, glyphComponents: results.glyphComponents || 0, hackingPuzzles: results.hackingPuzzles || 0, codePuzzles: results.codePuzzles || 0, triviaQuestions: results.triviaQuestions || 0 }
   );
 
   return { ok: true, counts: results };

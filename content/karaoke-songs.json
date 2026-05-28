@@ -1,0 +1,12 @@
+[
+  { "id": "lattice-lullaby",    "name": "Lattice Lullaby",       "difficulty": 0.20, "bpm": 76,  "key": "C minor" },
+  { "id": "warm-tide",          "name": "Warm Tide",             "difficulty": 0.30, "bpm": 84,  "key": "G major" },
+  { "id": "concord-rising",     "name": "Concord Rising",        "difficulty": 0.45, "bpm": 100, "key": "D major" },
+  { "id": "sovereign-march",    "name": "Sovereign March",       "difficulty": 0.55, "bpm": 112, "key": "A minor" },
+  { "id": "twin-suns",          "name": "Twin Suns",             "difficulty": 0.60, "bpm": 120, "key": "E minor" },
+  { "id": "glyph-procession",   "name": "Glyph Procession",      "difficulty": 0.70, "bpm": 128, "key": "F# minor" },
+  { "id": "dome-collapse",      "name": "Dome Collapse",         "difficulty": 0.80, "bpm": 140, "key": "B minor" },
+  { "id": "eternal-refusal",    "name": "Eternal Refusal",       "difficulty": 0.90, "bpm": 150, "key": "C# minor" },
+  { "id": "cathedral-of-keys",  "name": "Cathedral of Keys",     "difficulty": 0.95, "bpm": 60,  "key": "G minor" },
+  { "id": "tunyan-fire-song",   "name": "Tunyan Fire Song",      "difficulty": 0.85, "bpm": 132, "key": "D minor" }
+]

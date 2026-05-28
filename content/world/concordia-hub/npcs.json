@@ -1,0 +1,476 @@
+[
+  {
+    "id": "lord_curator_asbir_thelane",
+    "name": "Asbir Thelane",
+    "title": "Lord Curator of the Concordant Archive",
+    "faction_id": "concordant_curators",
+    "world_id": "concordia-hub",
+    "archetype": "scholar",
+    "personality": "Asbir keeps three notebooks at all times — one for facts, one for inferences, one for the difference. He distrusts urgency. He grants audience but never haste.",
+    "appearance": "Silver-bearded, lean, wears a grey-blue overrobe with the archive's seven-spoke sigil at the collar. Carries a brass stylus and a stack of ungloved letters in his off-hand.",
+    "background": "Lord Curator for nineteen years. Saw the seed of the Refusal Field carved into the dome before the public knew what a dome was. Maintains correspondences with Iyatte of Sandrun, Lady Seraphine Voss, and the Sahm chancellor; trusted by all three.",
+    "narrative_context": {
+      "secret": "Asbir has seen Iyatte's record about her hidden son. He chose not to share it with Sanguire elders, Medici scouts, or Fluxom inquisitors. He keeps a copy in a sealed wall-cavity behind his audience-chamber.",
+      "weaponise_at": "If the Sanguire-Medici war breaks open, Asbir is the only neutral party who could broker. Both sides know he has the record. Both sides have offered him things to release it."
+    },
+    "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
+    "cross_world_hook": "Asbir's hidden cavity is the proof-of-concept for Concordia's cross-world memory bridge. If a player surfaces the sealed letter — by stealth, persuasion, or being given it — the Sanguire-Medici plotline shifts in tunya.",
+    "dialogue_style": "long sentences with pauses; never interrupts; reframes questions before answering",
+    "needs": [
+      { "id": "archive_integrity", "priority": "primary", "satisfaction_method": "morning_archive_audit" },
+      { "id": "correspondence", "priority": "primary", "satisfaction_method": "weekly_letter_writing" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_archive_curator_chambers", "activity": "rises early; writes morning notes", "need_addressed": "correspondence", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_archive_main_floor", "activity": "audit of the seven-spoke vault", "need_addressed": "archive_integrity", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_archive_audience_chamber", "activity": "grants audience to petitioners and travellers", "need_addressed": "archive_integrity", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_archive_curator_chambers", "activity": "writes letters; receives no visitors", "need_addressed": "correspondence", "interactable_by_player": false },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "walks the plaza, observes city pulse", "need_addressed": "archive_integrity", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_archive_curator_chambers", "activity": "reads; sleeps after midnight", "need_addressed": "archive_integrity", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "captain_ren_solare",
+    "name": "Ren Solare",
+    "title": "Captain of the Concordant Watch",
+    "faction_id": "concordant_watch",
+    "world_id": "concordia-hub",
+    "archetype": "guard",
+    "personality": "Ren is exactly as warm as the job allows, which is barely. She remembers every face she's seen twice. She will hand back a stolen purse before she'll arrest you for stealing it — but she'll know.",
+    "appearance": "Mid-thirties, hair cropped short, scar along the jawline from a brawl she lost on purpose. Wears the Watch's dark-blue half-plate and carries a baton that's also a focus for the protective Refusal-Field invocation.",
+    "background": "Promoted to captain after the Dome Stabilisation Incident two years ago; her squad held the southern district while the field collapsed and re-formed. She turns down promotions to Marshal because she likes the streets.",
+    "narrative_context": {
+      "secret": "Ren is the only Watch officer who knows the Refusal Field has been weakening at its southern arc for six months. She has not reported it because she does not yet know who in the Watch can be trusted with the information.",
+      "weaponise_at": "If the dome ruptures and the player is nearby, Ren is the NPC who decides to trust them with the truth. Her trust gates the southern-arc questline."
+    },
+    "concord_link_resonance": "crime:detective_iniko_voss",
+    "cross_world_hook": "Ren and Detective Iniko Voss (crime world) have a cold case in common — a smuggling ring that operates in both worlds. They've never spoken. The cross-world bridge would form when a player carries evidence between them.",
+    "dialogue_style": "short, observant, never lies but elides freely",
+    "needs": [
+      { "id": "city_order", "priority": "primary", "satisfaction_method": "patrol_rounds" },
+      { "id": "dome_intelligence", "priority": "primary", "satisfaction_method": "private_southern_arc_check" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_watch_barracks", "activity": "rises pre-dawn; coffee with the night shift", "need_addressed": "city_order", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_southern_arc_road", "activity": "private patrol of the southern arc; checks Refusal Field strength", "need_addressed": "dome_intelligence", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "open patrol; talks to merchants and travellers", "need_addressed": "city_order", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_watch_barracks", "activity": "shift briefing; trains new recruits", "need_addressed": "city_order", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_market_district", "activity": "evening patrol; watches the dusk-trade", "need_addressed": "city_order", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_watch_barracks", "activity": "off-shift; reads in the barracks library", "need_addressed": "city_order", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "merchant_velka_ironhand",
+    "name": "Velka Ironhand",
+    "title": "Master of the Concordant Bazaar",
+    "faction_id": "bazaar_consortium",
+    "world_id": "concordia-hub",
+    "archetype": "trader",
+    "personality": "Velka treats every price as a story whose middle she's writing. She is generous with her time and ruthless with her terms. She loathes liars and tolerates haggling as artisan craft.",
+    "appearance": "Broad-shouldered, copper hair coiled at the crown, wears a leather apron over a merchant's tunic, brass abacus on the belt. Mechanical right forearm — a Sahm craftwork — replaced after a market-fire seven years ago.",
+    "background": "Started as a stall-hand at thirteen. Bought her first stall at twenty. Now controls the central row of the Bazaar Consortium and arbitrates disputes when guild law fails.",
+    "narrative_context": {
+      "secret": "Velka quietly fences low-tier creature components for a smuggling network — but only items below a certain ethical line she defined herself. She has refused contraband from the Medici cartel three times.",
+      "weaponise_at": "If a player needs a rare component, Velka is the cheapest path — but using her network leaks the player's name into the smuggling ledger."
+    },
+    "concord_link_resonance": "cyber:merchant_kix_orange",
+    "cross_world_hook": "Velka and Kix Orange (cyber-world fence) share a cipher language. Items can cross between hubs via their network. The bridge is gated by a one-time codeword.",
+    "dialogue_style": "warm, peppered with bazaar idioms, slips in numbers without warning",
+    "needs": [
+      { "id": "market_pulse", "priority": "primary", "satisfaction_method": "morning_stall_round" },
+      { "id": "guild_arbitration", "priority": "secondary", "satisfaction_method": "afternoon_dispute_chamber" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_merchant_quarters", "activity": "sleeps; the bazaar runs without her at this hour", "need_addressed": "market_pulse", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "morning stall round; greets vendors", "need_addressed": "market_pulse", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_bazaar_central_row", "activity": "high-volume trading", "need_addressed": "market_pulse", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_bazaar_dispute_chamber", "activity": "arbitrates guild disputes", "need_addressed": "guild_arbitration", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_market_district", "activity": "evening trade; meets fences quietly", "need_addressed": "market_pulse", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_merchant_quarters", "activity": "reviews ledger; sleeps after midnight", "need_addressed": "market_pulse", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "oracle_nesha_keep",
+    "name": "Nesha Keep",
+    "title": "Oracle of the Refusal Field",
+    "faction_id": "refusal_keep",
+    "world_id": "concordia-hub",
+    "archetype": "mystic",
+    "personality": "Nesha speaks in present tense even about the past. She does not predict; she observes what has not yet decided to happen. She is not unkind but the kindness costs her something each time.",
+    "appearance": "Mid-fifties, hair white at the temples, wears a deep-indigo robe with seven brass clasps. Eyes pale grey, faintly clouded. Walks with a glyph-staff that hums when the field shifts.",
+    "background": "Trained by the previous Oracle for eighteen years before inheriting the role. Has seen three Field collapses and one re-formation. Refuses to share which of those was the most recent.",
+    "narrative_context": {
+      "secret": "Nesha knows the player's ecosystem score the moment they approach. She also knows that compound refusal (strength >= 6) is rising in the hub for the first time in a decade.",
+      "weaponise_at": "If the player accumulates compound refusal, Nesha's dialogue tone shifts to deep cold. That same tone is the trigger for the Goddess Concordia's dome-collapse phase."
+    },
+    "concord_link_resonance": "sovereign-ruins:archon_thanis",
+    "cross_world_hook": "Nesha and Archon Thanis share a glyph-language. A spell composed in one world can be heard by the other Oracle. The bridge fires the first time a player mints a strength >=6 compound spell.",
+    "dialogue_style": "present-tense, observational, uses second person rarely and with deliberate weight",
+    "needs": [
+      { "id": "field_attendance", "priority": "primary", "satisfaction_method": "morning_dome_walk" },
+      { "id": "glyph_practice", "priority": "primary", "satisfaction_method": "evening_glyph_meditation" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_refusal_keep_quarters", "activity": "wakes in the dark; greets the field's pre-dawn silence", "need_addressed": "field_attendance", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_dome_perimeter", "activity": "morning dome walk; checks each of the seven anchors", "need_addressed": "field_attendance", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_refusal_keep_main_hall", "activity": "receives petitioners seeking field-readings", "need_addressed": "field_attendance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_glyph_altar", "activity": "glyph practice; composes; teaches advanced students", "need_addressed": "glyph_practice", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_refusal_keep_main_hall", "activity": "evening audience; offers tea and prophecy in equal measure", "need_addressed": "field_attendance", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_refusal_keep_quarters", "activity": "meditates; sleeps under glyph-light", "need_addressed": "glyph_practice", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "healer_pia_thalis",
+    "name": "Pia Thalis",
+    "title": "Chief Healer of the Concordant Infirmary",
+    "faction_id": "infirmary_thalis",
+    "world_id": "concordia-hub",
+    "archetype": "healer",
+    "personality": "Pia is exactingly cheerful with patients and exactingly grim with paperwork. She believes in herbalism, surgery, prayer, and good nutrition in roughly that order. She has no patience for theatrics.",
+    "appearance": "Round-faced, late forties, wears a pale-green smock with the infirmary's three-bladed sigil. Tied-back braid, herb pouches on the belt. Always smells faintly of mint and clean linen.",
+    "background": "Studied with the Sahm scholars for a decade before returning home. Took over the infirmary after her predecessor died in the dome incident. Lost a husband and a sister in the same week.",
+    "narrative_context": {
+      "secret": "Pia keeps an off-ledger supply of pain remedies she gives to refugees from the sub-worlds — Sandrun ash-burns, cyber-world neural debt, fantasy-world cursed wounds. She does not charge them and does not file the visits.",
+      "weaponise_at": "If a faction wants to trace a refugee, Pia knows. If Pia trusts the player, the refugee questline opens."
+    },
+    "concord_link_resonance": "fantasy:apothecary_lyra_thorne",
+    "cross_world_hook": "Pia and Apothecary Lyra Thorne exchange herb cuttings by smuggled satchel. Their network feeds the refugee infirmaries in both worlds.",
+    "dialogue_style": "warm with patients, terse with bureaucrats, factual with researchers",
+    "needs": [
+      { "id": "infirmary_supply", "priority": "primary", "satisfaction_method": "morning_supply_audit" },
+      { "id": "patient_rounds", "priority": "primary", "satisfaction_method": "midday_ward_round" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_infirmary_quarters", "activity": "on-call sleep; may be roused for emergencies", "need_addressed": "patient_rounds", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_infirmary_supply_room", "activity": "morning supply audit; mixes day's herbal preparations", "need_addressed": "infirmary_supply", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_infirmary_ward", "activity": "patient rounds; surgery if scheduled", "need_addressed": "patient_rounds", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_infirmary_ward", "activity": "afternoon rounds; receives walk-ins", "need_addressed": "patient_rounds", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_infirmary_back_door", "activity": "off-ledger refugee clinic", "need_addressed": "patient_rounds", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_infirmary_quarters", "activity": "paperwork; tea; sleep", "need_addressed": "infirmary_supply", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "ranger_kiren_owl",
+    "name": "Kiren Owl",
+    "title": "Ranger of the Concordant Verge",
+    "faction_id": "verge_rangers",
+    "world_id": "concordia-hub",
+    "archetype": "hunter",
+    "personality": "Kiren is quiet and patient and faintly amused by city people. He treats the wild the way a librarian treats a private collection. He notices everything but only mentions what matters.",
+    "appearance": "Late twenties, weathered tan, dark hair tied back. Wears layered leathers in greens and browns, a Verge-mark on the right shoulder. Carries a recurve bow and a tracking knife that's older than he is.",
+    "background": "Born in a Verge village; orphaned at nine; raised by the Rangers. Has tracked everything that walks, swims, or flies within fifty leagues of the hub.",
+    "narrative_context": {
+      "secret": "Kiren has tracked a creature he cannot identify — three nights running, leaves a print no fauna catalogue lists. He has not reported it because he is not sure he wants the Watch involved.",
+      "weaponise_at": "If a player has tracking skill >= 5, Kiren will share the print. The hunt that follows leads to a cross-world creature crossing — the first evidence of breached fauna boundaries."
+    },
+    "concord_link_resonance": "lattice-crucible:scout_emer_voss",
+    "cross_world_hook": "Kiren and Scout Emer Voss have crossed sign in three places. They have never met. Their tracks both follow the same impossible creature.",
+    "dialogue_style": "spare, factual, observational, occasional dry humour",
+    "needs": [
+      { "id": "verge_patrol", "priority": "primary", "satisfaction_method": "wilderness_walks" },
+      { "id": "track_log", "priority": "secondary", "satisfaction_method": "evening_journal" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_verge_outpost", "activity": "pre-dawn watch", "need_addressed": "verge_patrol", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_northern_woodline", "activity": "tracking patrol; checks the impossible print", "need_addressed": "verge_patrol", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_verge_outpost", "activity": "returns; brief; teaches new rangers", "need_addressed": "verge_patrol", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_market_district", "activity": "city errand; resupplies; tolerates crowds", "need_addressed": "verge_patrol", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_verge_outpost", "activity": "evening journal; sketches the print", "need_addressed": "track_log", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_verge_outpost", "activity": "sleeps", "need_addressed": "verge_patrol", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "warrior_taro_sandren",
+    "name": "Taro Sandren",
+    "title": "Master of the Concordant Brawling Pit",
+    "faction_id": "brawling_pit",
+    "world_id": "concordia-hub",
+    "archetype": "warrior",
+    "personality": "Taro is loud, grinning, generous with bruises and beer in equal measure. He believes a properly thrown punch resolves more problems than a properly written letter. He likes the player on sight, regardless.",
+    "appearance": "Heavily built, sun-darkened, mid-forties, broken nose set twice. Wears the pit's red tunic and a leather wrap on each forearm. A scar from a Sandrun ember-strike runs from collarbone to shoulder.",
+    "background": "Veteran of three caravan-war seasons. Retired from active fighting at thirty-eight; opened the pit as a sanctioned brawl venue. The pit follows Sifu-brawler rules. No deaths, no lasting injuries, no questions about technique.",
+    "narrative_context": {
+      "secret": "Taro is funding Pia's off-ledger refugee clinic out of pit profits. Only Pia knows.",
+      "weaponise_at": "If a player needs leverage on Taro, the funding is the lever — but exposing it would shut down the clinic."
+    },
+    "concord_link_resonance": "superhero:champion_kor_blackstar",
+    "cross_world_hook": "Taro and Champion Kor Blackstar trained under the same Sifu, in different worlds, ten years apart. The Sifu is dead in one world, still alive in the other.",
+    "dialogue_style": "loud, warm, profane, occasionally caught off-guard by his own kindness",
+    "needs": [
+      { "id": "pit_attendance", "priority": "primary", "satisfaction_method": "daily_pit_open" },
+      { "id": "veteran_brotherhood", "priority": "secondary", "satisfaction_method": "evening_veterans_table" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_brawl_pit_loft", "activity": "sleeps in the loft above the pit", "need_addressed": "pit_attendance", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_brawl_pit_floor", "activity": "morning conditioning; sweeps the sand", "need_addressed": "pit_attendance", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_brawl_pit_floor", "activity": "trains apprentices; spars with willing brawlers", "need_addressed": "pit_attendance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_brawl_pit_floor", "activity": "midday matches; takes bets at the door", "need_addressed": "pit_attendance", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_brawl_pit_floor", "activity": "evening matches; pit fills up; pours beer", "need_addressed": "pit_attendance", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_veterans_tavern", "activity": "drinks with the veteran's table", "need_addressed": "veteran_brotherhood", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "engineer_lyra_brassgate",
+    "name": "Lyra Brassgate",
+    "title": "Master Engineer of the Concordant Foundry",
+    "faction_id": "brassgate_foundry",
+    "world_id": "concordia-hub",
+    "archetype": "scholar",
+    "personality": "Lyra speaks in tolerances. She is impatient with imprecision and gentle with apprentices. She loves a good problem more than a good meal — and she loves a good meal.",
+    "appearance": "Goggles permanently pushed up onto a wild dark crown of hair. Leather apron stained with metal, fingers thick with calluses. Mid-thirties, deep laugh-lines.",
+    "background": "Studied with the Sahm scholar-engineers. Returned to the hub to open Brassgate Foundry. Builds prosthetics, mechanical creatures, and the focus-lattices that anchor the Refusal Field.",
+    "narrative_context": {
+      "secret": "Lyra made Velka Ironhand's mechanical forearm. She has the diagrams. Anyone with the diagrams could disable the forearm at distance — a fact Lyra has never told Velka.",
+      "weaponise_at": "If a player gains Lyra's trust, the diagrams open up. They become a lever in the bazaar's politics."
+    },
+    "concord_link_resonance": "cyber:fixer_oren_lim",
+    "cross_world_hook": "Lyra and Fixer Oren Lim correspond about a shared engineering puzzle — the focus-lattice that anchors the dome may be the same substrate as the cyber-world's neural firewall.",
+    "dialogue_style": "technical, dryly funny, will explain in detail if you ask twice",
+    "needs": [
+      { "id": "foundry_work", "priority": "primary", "satisfaction_method": "daily_foundry_session" },
+      { "id": "apprentice_teaching", "priority": "secondary", "satisfaction_method": "afternoon_lessons" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_foundry_quarters", "activity": "sleeps; reads engineering papers in bed", "need_addressed": "foundry_work", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_brassgate_foundry", "activity": "morning forge-fire; checks the day's commissions", "need_addressed": "foundry_work", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_brassgate_foundry", "activity": "active commission work; takes drop-ins", "need_addressed": "foundry_work", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_brassgate_foundry", "activity": "apprentice lessons", "need_addressed": "apprentice_teaching", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_brassgate_foundry", "activity": "private project: the focus-lattice diagrams", "need_addressed": "foundry_work", "interactable_by_player": false },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_veterans_tavern", "activity": "supper; sometimes drinks with Taro and Pia", "need_addressed": "foundry_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "elder_mira_lattice",
+    "name": "Mira Lattice",
+    "title": "Speaker of the Concordant Assembly",
+    "faction_id": "concordant_assembly",
+    "world_id": "concordia-hub",
+    "archetype": "default",
+    "personality": "Mira is patient by office and impatient by temperament. She has spent thirty years learning to choose her words and ten years learning when not to. She believes in the hub more than she believes in any one person who lives in it.",
+    "appearance": "Sixty, white hair coiled in two thick braids, wears the Assembly's grey-and-saffron robe of office. Small reading-glasses on a brass chain. Speaks with her hands when she's tired.",
+    "background": "First elected to the Assembly at thirty-one; Speaker for twelve years. Lost her wife in the dome incident and never remarried; the Assembly is her remaining family.",
+    "narrative_context": {
+      "secret": "Mira knows the dome will fail again within the year. The Oracle Nesha told her in private. Mira has not told the Assembly because she does not know how to vote on it.",
+      "weaponise_at": "If a player surfaces the field-weakness publicly, the Assembly meets in emergency session. Mira's secret choice becomes a public referendum."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "considered, formal in public, warm in private",
+    "needs": [
+      { "id": "assembly_business", "priority": "primary", "satisfaction_method": "morning_assembly_chamber" },
+      { "id": "public_audience", "priority": "primary", "satisfaction_method": "afternoon_petitioners" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_assembly_quarters", "activity": "sleeps poorly; sometimes reads at dawn", "need_addressed": "assembly_business", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_assembly_chamber", "activity": "morning briefing with clerks", "need_addressed": "assembly_business", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_assembly_chamber", "activity": "Assembly session", "need_addressed": "assembly_business", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_assembly_audience_hall", "activity": "petitioner audience; citizens may request her time", "need_addressed": "public_audience", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "walks the plaza informally", "need_addressed": "public_audience", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_assembly_quarters", "activity": "private correspondence; sleeps", "need_addressed": "assembly_business", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "innkeep_baren_hollow",
+    "name": "Baren Hollow",
+    "title": "Innkeeper of the Seven Spokes",
+    "faction_id": "seven_spokes_inn",
+    "world_id": "concordia-hub",
+    "archetype": "trader",
+    "personality": "Baren remembers your usual order after one visit. He pretends to be uninterested in gossip and remembers all of it. The Seven Spokes is the unofficial neutral ground for every faction in the hub.",
+    "appearance": "Mid-fifties, round, bald, white moustache. Wears a wine-coloured vest over a cream linen shirt. Always a cleaning rag in one hand.",
+    "background": "Inherited the Seven Spokes from his mother. Has kept neutral-ground status through three faction wars and one dome incident.",
+    "narrative_context": {
+      "secret": "Baren has a private room behind the cellar where the Watch, the Bazaar, and the Refusal Keep occasionally meet without records. He runs the meetings himself.",
+      "weaponise_at": "If a player needs three factions in one room, Baren can arrange it. The cost is a favour owed to all three."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "warm, anecdotal, pretends bad memory and has perfect memory",
+    "needs": [
+      { "id": "inn_running", "priority": "primary", "satisfaction_method": "daily_inn_open" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_seven_spokes_loft", "activity": "sleeps", "need_addressed": "inn_running", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_seven_spokes_kitchen", "activity": "opens kitchen; brews coffee", "need_addressed": "inn_running", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_seven_spokes_common_room", "activity": "serves breakfast trade", "need_addressed": "inn_running", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_seven_spokes_common_room", "activity": "midday trade; bookkeeping in slow moments", "need_addressed": "inn_running", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "evening rush", "need_addressed": "inn_running", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_seven_spokes_cellar_room", "activity": "the private room is open if needed", "need_addressed": "inn_running", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "scribe_isa_velt",
+    "name": "Isa Velt",
+    "title": "Junior Curator of the Concordant Archive",
+    "faction_id": "concordant_curators",
+    "world_id": "concordia-hub",
+    "archetype": "scholar",
+    "personality": "Isa is twenty-six, sharp, ambitious, and deeply uncertain whether to admire or resent Asbir Thelane. She drinks too much coffee. She catches things the other curators miss.",
+    "appearance": "Thin, dark hair in a working knot, ink-stained fingers, the junior curator's slate-grey robe. Always has a stylus tucked behind one ear.",
+    "background": "Trained in the Sahm scholar-tradition. Arrived at the hub three years ago and has not been promoted, which she experiences as a personal injury.",
+    "narrative_context": {
+      "secret": "Isa has noticed the sealed wall-cavity in Asbir's chamber. She does not know what's in it. She wants to know.",
+      "weaponise_at": "If a player can persuade or trick Isa into revealing what she's noticed, the Asbir-Iyatte plotline accelerates dangerously."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "quick, articulate, occasionally self-deprecating, sharp under stress",
+    "needs": [
+      { "id": "archive_work", "priority": "primary", "satisfaction_method": "daily_indexing" },
+      { "id": "promotion_anxiety", "priority": "secondary", "satisfaction_method": "evening_self_study" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_archive_apprentice_quarters", "activity": "sleeps", "need_addressed": "archive_work", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_archive_main_floor", "activity": "morning indexing", "need_addressed": "archive_work", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_archive_main_floor", "activity": "cataloguing; assists Asbir's audience when summoned", "need_addressed": "archive_work", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_archive_main_floor", "activity": "afternoon cross-referencing", "need_addressed": "archive_work", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "supper at the Inn; eavesdrops politely", "need_addressed": "promotion_anxiety", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_archive_apprentice_quarters", "activity": "self-study; reads about the dome", "need_addressed": "promotion_anxiety", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "bard_jora_kell",
+    "name": "Jora Kell",
+    "title": "Bard of the Seven Spokes",
+    "faction_id": "concordant_bards",
+    "world_id": "concordia-hub",
+    "archetype": "default",
+    "personality": "Jora is twenty-three and treats every social interaction as research for a future song. She is flirtatious, perceptive, and exhausting to lie to.",
+    "appearance": "Tall, dark-skinned, locs to mid-back, wears a travelling minstrel's coat patched with theatre-colours. Carries a long-necked lute with three hand-tuned strings.",
+    "background": "Trained at the Bards' College in the eastern Verge. Plays the Seven Spokes most nights for room and meals. Knows every faction's drinking song.",
+    "narrative_context": {
+      "secret": "Jora is composing an epic about the next dome collapse. She believes one is coming. She does not know Nesha and Mira already know.",
+      "weaponise_at": "If a player asks Jora about the dome, she'll perform a verse — and the verse contains real information drawn from her bardic listening."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "musical, flirtatious, switches register effortlessly",
+    "needs": [
+      { "id": "performance", "priority": "primary", "satisfaction_method": "evening_show" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_seven_spokes_loft", "activity": "sleeps; the lute next to her on the floor", "need_addressed": "performance", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_seven_spokes_common_room", "activity": "writes in the corner; nurses a coffee", "need_addressed": "performance", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "busks for coin", "need_addressed": "performance", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_market_district", "activity": "wanders the bazaar; collects gossip", "need_addressed": "performance", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "evening show; pays for her room", "need_addressed": "performance", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_seven_spokes_common_room", "activity": "after-show drinks", "need_addressed": "performance", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "stablemaster_orin_rede",
+    "name": "Orin Rede",
+    "title": "Stablemaster of the Concordant Verge",
+    "faction_id": "verge_rangers",
+    "world_id": "concordia-hub",
+    "archetype": "default",
+    "personality": "Orin is taciturn and tender, in roughly equal measure, with the horses if not the humans. He distrusts hurry and praises good water.",
+    "appearance": "Sixty-three, salt-and-pepper, weathered hands, wears a long oilcloth coat over a workshirt. Smells of hay and pipesmoke.",
+    "background": "Verge-born. Has run the stables since his mother died. Knows every mount in the hub by name.",
+    "narrative_context": {
+      "secret": "Orin keeps a record of every horse and mount that's been brought back wrong — exhausted past explanation. The pattern points to a single rider who has never given a name.",
+      "weaponise_at": "If a player asks the right question, Orin shares the pattern. It's the second clue (with Kiren's print) toward the cross-world creature."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "spare, slow, drops one observation that turns out to be the whole story",
+    "needs": [
+      { "id": "stable_work", "priority": "primary", "satisfaction_method": "daily_stable_round" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_stable_loft", "activity": "sleeps", "need_addressed": "stable_work", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_stables", "activity": "morning round; feeds, brushes, inspects", "need_addressed": "stable_work", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_stables", "activity": "intake of travellers' mounts", "need_addressed": "stable_work", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_stable_paddock", "activity": "trains a young pair of geldings", "need_addressed": "stable_work", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_stables", "activity": "evening round; settles the herd for the night", "need_addressed": "stable_work", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_stable_loft", "activity": "pipe; sleep", "need_addressed": "stable_work", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "child_mira_brackish",
+    "name": "Brackish",
+    "title": "Plaza Urchin",
+    "faction_id": null,
+    "world_id": "concordia-hub",
+    "archetype": "default",
+    "personality": "Eleven years old. Knows every gutter, alley, and rooftop in the hub. Trades information for coin and small kindnesses. Trusts almost no one and adores Ren Solare without admitting it.",
+    "appearance": "Skinny, dirty, fast, wearing a patched coat too big for her. Hair always coming loose from whatever knot she made that morning.",
+    "background": "Doesn't remember her parents. Sleeps in the bell-tower above the plaza when the weather permits. Knows where every secret door is.",
+    "narrative_context": {
+      "secret": "Brackish has been watching the player since they arrived. She has not yet decided whether to introduce herself or steal something first.",
+      "weaponise_at": "If the player is kind to Brackish in the first hour, she becomes a hub-wide intelligence source. If they aren't, she becomes a recurring thief."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "fast, cheeky, drops to honesty when surprised",
+    "needs": [
+      { "id": "survival", "priority": "primary", "satisfaction_method": "scavenging_and_trading_info" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_bell_tower", "activity": "sleeps in the bell-tower", "need_addressed": "survival", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "morning scavenge", "need_addressed": "survival", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "watches the plaza; trades information", "need_addressed": "survival", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_back_alleys", "activity": "explores; sometimes shadows the Watch", "need_addressed": "survival", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_great_plaza", "activity": "evening scavenge; cadges meals", "need_addressed": "survival", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_bell_tower", "activity": "climbs to the bell-tower for the night", "need_addressed": "survival", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "courier_kel_sandren",
+    "name": "Kel Sandren",
+    "title": "Crosswind Courier of the Concordant Hub",
+    "faction_id": "crosswind_couriers",
+    "world_id": "concordia-hub",
+    "archetype": "trader",
+    "personality": "Kel is twenty-two, talks fast, makes friends in transit, takes pride in never having lost a parcel. Cousin to Taro Sandren but with no interest in fighting.",
+    "appearance": "Wiry, dust-tanned, wears the Crosswind's grey-and-white tabard with a brass courier-pin. Carries a satchel and a long staff carved with weight markings.",
+    "background": "Apprenticed at fifteen. Runs routes between the hub and the sub-worlds via the standing portals; pays the Refusal Keep a small toll each crossing.",
+    "narrative_context": {
+      "secret": "Kel has noticed that one of the standing portals has been opening slightly off-schedule — by minutes, then hours. They have not reported it because they're not sure who to tell.",
+      "weaponise_at": "If the player has any rapport with Kel, the portal anomaly surfaces. That anomaly is the third clue toward the cross-world creature breach."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": "Kel runs between Concordia-hub and the sub-worlds. If a player wants a message delivered cross-world, Kel is the channel.",
+    "dialogue_style": "fast, friendly, occasionally lets slip a piece of route gossip",
+    "needs": [
+      { "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_courier_house", "activity": "sleeps in the courier house dormitory", "need_addressed": "running", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_portal_plaza", "activity": "morning crossing", "need_addressed": "running", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_portal_plaza", "activity": "deliveries inbound; sorts the bags", "need_addressed": "running", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_great_plaza", "activity": "deliveries within the hub", "need_addressed": "running", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_portal_plaza", "activity": "evening crossing; checks the off-schedule portal", "need_addressed": "running", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_courier_house", "activity": "supper with the courier house; logs the day's runs", "need_addressed": "running", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "preacher_old_seam",
+    "name": "Old Seam",
+    "title": "Wandering Preacher of the Goddess Concordia",
+    "faction_id": "preachers_of_concordia",
+    "world_id": "concordia-hub",
+    "archetype": "mystic",
+    "personality": "Old Seam is exactly as cryptic as her age allows her to be. She is faintly amused by most people and serious about exactly three things: the Goddess, the dome, and good bread.",
+    "appearance": "Stooped, leather-skinned, wears a patched grey shawl over a homespun tunic. Walking-stick worn smooth at the grip. Could be sixty-eight or ninety, depending on the light.",
+    "background": "Has wandered the hub for as long as anyone alive remembers. Sleeps where the day ends. Refuses faction affiliation. Will accept bread.",
+    "narrative_context": {
+      "secret": "Old Seam was the previous Oracle's master. Nesha was her student, briefly. The two have not spoken in twenty years.",
+      "weaponise_at": "If the dome reaches crisis, Old Seam is the only person who can compel Nesha to act outside protocol. A player who introduces them again would reset something old."
+    },
+    "concord_link_resonance": null,
+    "cross_world_hook": null,
+    "dialogue_style": "cryptic but kind; will answer plainly if you wait through the cryptic part",
+    "needs": [
+      { "id": "wandering", "priority": "primary", "satisfaction_method": "daily_wandering" }
+    ],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [1, 4], "location": "hub_great_plaza", "activity": "sleeps wherever evening ended", "need_addressed": "wandering", "interactable_by_player": false },
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "hub_market_district", "activity": "begs bread", "need_addressed": "wandering", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 12], "location": "hub_great_plaza", "activity": "preaches softly; mostly to herself", "need_addressed": "wandering", "interactable_by_player": true },
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "hub_dome_perimeter", "activity": "walks the dome perimeter; sometimes follows Nesha at a distance", "need_addressed": "wandering", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 20], "location": "hub_seven_spokes_common_room", "activity": "the Innkeep gives her a small supper", "need_addressed": "wandering", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 24], "location": "hub_great_plaza", "activity": "settles in for the night", "need_addressed": "wandering", "interactable_by_player": false }
+    ]
+  }
+]

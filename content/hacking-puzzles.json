@@ -1,0 +1,223 @@
+[
+  {
+    "id": "intro-grep-the-system",
+    "name": "First Breach",
+    "difficulty": 1,
+    "rewardCc": 25,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "home": {
+          "type": "dir",
+          "contents": {
+            "readme.txt": { "type": "file", "text": "Welcome, operator. ls is your friend." },
+            "guest_node": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["ls", "cd home", "ls", "connect guest_node"]
+  },
+  {
+    "id": "lattice-mailroom",
+    "name": "Lattice Mailroom",
+    "difficulty": 1,
+    "rewardCc": 30,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "mail": {
+          "type": "dir",
+          "contents": {
+            "inbox.log": { "type": "file", "text": "ECHO REQUEST from courier-7" },
+            "courier-7": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd mail", "cat inbox.log", "connect courier-7"]
+  },
+  {
+    "id": "broken-relay",
+    "name": "Broken Relay",
+    "difficulty": 2,
+    "rewardCc": 60,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "relays": {
+          "type": "dir",
+          "contents": {
+            "r01": { "type": "service" },
+            "r02": { "type": "service" },
+            "r03": { "type": "service" }
+          }
+        },
+        "manifest.txt": { "type": "file", "text": "Active relay: r02" }
+      }
+    },
+    "solutionPath": ["cat manifest.txt", "cd relays", "connect r02"]
+  },
+  {
+    "id": "cipher-fragment",
+    "name": "Cipher Fragment",
+    "difficulty": 2,
+    "rewardCc": 70,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "vault": {
+          "type": "dir",
+          "contents": {
+            "fragment.enc": { "type": "file", "text": "Encrypted payload — decrypt before exec." },
+            "core": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd vault", "cat fragment.enc", "decrypt fragment.enc", "exec core"]
+  },
+  {
+    "id": "ghost-in-the-bazaar",
+    "name": "Ghost in the Bazaar",
+    "difficulty": 3,
+    "rewardCc": 110,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "market": {
+          "type": "dir",
+          "contents": {
+            "stalls.log": { "type": "file", "text": "anomaly@stall_3 — non-merchant signature" },
+            "stall_1": { "type": "service" },
+            "stall_3": { "type": "service" }
+          }
+        },
+        "shadow": {
+          "type": "dir",
+          "contents": {
+            "trace": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd market", "cat stalls.log", "ssh stall_3", "cd ..", "cd shadow", "connect trace"]
+  },
+  {
+    "id": "dome-sentinel",
+    "name": "Dome Sentinel",
+    "difficulty": 3,
+    "rewardCc": 130,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "dome": {
+          "type": "dir",
+          "contents": {
+            "watchers.list": { "type": "file", "text": "active: sentinel_a, sentinel_b" },
+            "sentinel_a": { "type": "service" },
+            "sentinel_b": { "type": "service" }
+          }
+        },
+        "override.key": { "type": "file", "text": "override unlocks both sentinels" }
+      }
+    },
+    "solutionPath": ["cat override.key", "cd dome", "cat watchers.list", "decrypt sentinel_a", "decrypt sentinel_b"]
+  },
+  {
+    "id": "concordant-keep",
+    "name": "Concordant Keep",
+    "difficulty": 4,
+    "rewardCc": 200,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "keep": {
+          "type": "dir",
+          "contents": {
+            "guard.log": { "type": "file", "text": "patrol rotation every 90s — exec gate within window" },
+            "gate": { "type": "service" },
+            "armory": {
+              "type": "dir",
+              "contents": {
+                "ledger.txt": { "type": "file", "text": "key cached at archive_root" }
+              }
+            }
+          }
+        },
+        "archive_root": { "type": "service" }
+      }
+    },
+    "solutionPath": ["cd keep", "cat guard.log", "cd armory", "cat ledger.txt", "cd ..", "cd ..", "connect archive_root", "ssh gate"]
+  },
+  {
+    "id": "lattice-cathedral",
+    "name": "Lattice Cathedral",
+    "difficulty": 4,
+    "rewardCc": 240,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "cathedral": {
+          "type": "dir",
+          "contents": {
+            "litany.txt": { "type": "file", "text": "Three relics. Three altars. Decrypt in order: bell, chime, vow." },
+            "altar_bell": { "type": "service" },
+            "altar_chime": { "type": "service" },
+            "altar_vow": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd cathedral", "cat litany.txt", "decrypt altar_bell", "decrypt altar_chime", "decrypt altar_vow"]
+  },
+  {
+    "id": "sovereign-archive",
+    "name": "Sovereign Archive",
+    "difficulty": 5,
+    "rewardCc": 380,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "archive": {
+          "type": "dir",
+          "contents": {
+            "rooms.idx": { "type": "file", "text": "rooms: alpha, beta, gamma — gamma holds the seal." },
+            "alpha": { "type": "service" },
+            "beta": { "type": "service" },
+            "gamma": {
+              "type": "dir",
+              "contents": {
+                "seal.enc": { "type": "file", "text": "encrypted — exec only after decrypt" },
+                "vault_door": { "type": "service" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd archive", "cat rooms.idx", "cd gamma", "cat seal.enc", "decrypt seal.enc", "exec vault_door"]
+  },
+  {
+    "id": "concord-singularity",
+    "name": "Concord Singularity",
+    "difficulty": 5,
+    "rewardCc": 450,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "singularity": {
+          "type": "dir",
+          "contents": {
+            "manifest.txt": { "type": "file", "text": "Reach the core via shell, mirror, and trace in sequence." },
+            "shell": { "type": "service" },
+            "mirror": { "type": "service" },
+            "trace": { "type": "service" },
+            "core": { "type": "service" }
+          }
+        }
+      }
+    },
+    "solutionPath": ["cd singularity", "cat manifest.txt", "ssh shell", "ssh mirror", "ssh trace", "exec core"]
+  }
+]

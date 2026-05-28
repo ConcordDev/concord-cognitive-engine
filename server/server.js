@@ -48693,6 +48693,21 @@ app.post("/api/karaoke/resolve", requireAuth(), asyncHandler(async (req, res) =>
   res.json(resolveKaraoke(req.body || {}));
 }));
 
+// Phase Z2 — karaoke song catalog (reads content/karaoke-songs.json).
+app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
+  try {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const file = path.resolve(__dirname, "..", "content", "karaoke-songs.json");
+    const songs = JSON.parse(readFileSync(file, "utf8"));
+    res.json({ ok: true, songs });
+  } catch (e) {
+    res.json({ ok: true, songs: [], error: e?.message });
+  }
+}));
+
 // Phase CF5 — mahjong (surface resolveMahjongHand).
 app.post("/api/mahjong/resolve", requireAuth(), asyncHandler(async (req, res) => {
   const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");

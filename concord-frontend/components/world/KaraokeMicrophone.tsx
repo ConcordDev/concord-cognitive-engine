@@ -10,14 +10,8 @@ import { Mic, MicOff, Square, Loader2, Music } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 
-interface Song { id: string; name: string; difficulty: number; bpm: number; }
+interface Song { id: string; name: string; difficulty: number; bpm: number; key?: string; }
 interface Result { score: number; xpGained: number; payload: { grade: string; pitchScore: number; rhythmScore: number; }; }
-
-const SONGS: Song[] = [
-  { id: 'lattice-lullaby',    name: 'Lattice Lullaby',     difficulty: 0.3, bpm: 80 },
-  { id: 'concord-rising',     name: 'Concord Rising',      difficulty: 0.6, bpm: 110 },
-  { id: 'eternal-refusal',    name: 'Eternal Refusal',     difficulty: 0.9, bpm: 140 },
-];
 
 // Autocorrelation pitch detector (simplified). Returns Hz or 0.
 function detectPitch(buf: Float32Array, sampleRate: number): number {
@@ -40,6 +34,7 @@ function detectPitch(buf: Float32Array, sampleRate: number): number {
 }
 
 export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) {
+  const [songs, setSongs] = useState<Song[]>([]);
   const [song, setSong] = useState<Song | null>(null);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -47,6 +42,15 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
   const [result, setResult] = useState<Result | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const j = await fetch('/api/karaoke/songs', { credentials: 'include' }).then(r => r.json());
+        if (j?.ok && Array.isArray(j.songs)) setSongs(j.songs);
+      } catch { /* fallback empty */ }
+    })();
+  }, []);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -145,7 +149,7 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
           <>
             <p className="text-xs text-zinc-400">Pick a song.</p>
             <div className="space-y-1">
-              {SONGS.map((s) => (
+              {songs.map((s) => (
                 <button key={s.id} onClick={() => setSong(s)} className="block w-full rounded border border-pink-500/30 bg-pink-950/30 p-2 text-left hover:border-pink-400/60 hover:bg-pink-900/30">
                   <div className="flex items-center gap-2">
                     <Music size={14} className="text-pink-300" />
