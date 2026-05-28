@@ -48495,6 +48495,48 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CB1 — roguelite meta-progression.
+app.post("/api/roguelite/run/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startRun } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startRun(db, userId, req.body || {}));
+}));
+
+app.post("/api/roguelite/run/:runId/end", requireAuth(), asyncHandler(async (req, res) => {
+  const { endRun } = await import("./lib/roguelite.js");
+  res.json(endRun(db, req.params.runId, req.body || {}));
+}));
+
+app.get("/api/roguelite/balance", requireAuth(), asyncHandler(async (req, res) => {
+  const { getBalance } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, ...getBalance(db, userId) });
+}));
+
+app.post("/api/roguelite/unlock", requireAuth(), asyncHandler(async (req, res) => {
+  const { purchaseUnlock } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(purchaseUnlock(db, userId, req.body?.unlockId, req.body?.costCc));
+}));
+
+app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) => {
+  const { listUnlocks } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, unlocks: listUnlocks(db, userId) });
+}));
+
+app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) => {
+  const { getActiveRun } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, run: getActiveRun(db, userId) });
+}));
+
+app.get("/api/roguelite/recent", requireAuth(), asyncHandler(async (req, res) => {
+  const { listRecentRuns } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, runs: listRecentRuns(db, userId, Number(req.query.limit) || 10) });
+}));
+
 // Phase CA7 — Brawl mode (sifu_brawler profile 1v1 invite).
 app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res) => {
   const { inviteBrawl } = await import("./lib/brawl.js");
