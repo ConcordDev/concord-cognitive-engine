@@ -20,10 +20,16 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { registerAsset } from "./registry.js";
 
 const CACHE_DIR = process.env.EVO_ASSET_CACHE_DIR
   || path.join(process.env.DATA_DIR || "./data", "evo-asset-cache");
+
+// Committed offline seed pack — guarantees the evo-asset registry is never
+// empty even with zero outbound network access. Override with EVO_SEED_DIR.
+const SEED_DIR = process.env.EVO_SEED_DIR
+  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../content/evo-seed");
 
 function ensureCacheDir(sub) {
   const dir = path.join(CACHE_DIR, sub);
@@ -231,16 +237,65 @@ export async function bootstrapKenneyFromDir(db, dir, { limit = 200 } = {}) {
 }
 
 /**
+ * T1.6 — committed offline seed loader. Reads content/evo-seed/manifest.json
+ * and registers each bundled CC0 primitive mesh. The whole point: the registry
+ * is never empty even fully offline, so runEvolutionTick always has candidates
+ * to chew on. The network loaders below are *enrichment on top of this floor*,
+ * not the only source. Idempotent via registerAsset's (source, source_id) dedup.
+ */
+export function bootstrapLocalSeed(db, dir = SEED_DIR) {
+  const stats = { found: 0, registered: 0 };
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
+  } catch {
+    return stats; // no seed pack present
+  }
+  for (const entry of (manifest.assets || [])) {
+    const file = entry?.file;
+    if (!file) continue;
+    const localPath = path.join(dir, file);
+    if (!fs.existsSync(localPath)) continue;
+    stats.found += 1;
+    try {
+      const r = registerAsset(db, {
+        // evo_assets.source CHECK admits 'authored' — the seed primitives are
+        // authored CC0 geometry, so this is the honest, schema-valid source.
+        kind: entry.kind || "mesh",
+        source: "authored",
+        sourceId: `seed:${file}`,
+        localPath,
+        category: entry.category ?? null,
+        tags: entry.tags ?? ["seed"],
+        qualityLevel: entry.qualityLevel ?? 1,
+      });
+      if (r?.created) stats.registered += 1;
+    } catch { /* registration best-effort */ }
+  }
+  return stats;
+}
+
+/**
  * Run all available bootstrappers. Caller controls ordering + limits.
  * Designed to be invoked once at server boot (best-effort, behind try/catch).
+ *
+ * The local seed runs FIRST and unconditionally, so even if every network
+ * loader fails (offline / rate-limited / source down) the registry has a
+ * guaranteed non-empty floor. Returns a `total` count + `empty` flag so the
+ * caller can warn loudly if the engine would otherwise be silently starved.
  */
 export async function bootstrapAllSources(db, opts = {}) {
   const out = {};
+  try { out.localSeed = bootstrapLocalSeed(db, opts.seedDir ?? SEED_DIR); } catch { out.localSeed = { error: true }; }
   try { out.polyhaven = await bootstrapPolyHaven(db, opts.polyhaven ?? {}); } catch { out.polyhaven = { error: true }; }
   try { out.ambientcg = await bootstrapAmbientCG(db, opts.ambientcg ?? {}); } catch { out.ambientcg = { error: true }; }
   try { out.os3a      = await bootstrapOS3A(db, opts.os3a ?? {}); } catch { out.os3a = { error: true }; }
   if (opts.kenneyDir) {
     try { out.kenney = await bootstrapKenneyFromDir(db, opts.kenneyDir, opts.kenney ?? {}); } catch { out.kenney = { error: true }; }
   }
+  try {
+    out.total = db.prepare(`SELECT COUNT(*) AS c FROM evo_assets`).get().c;
+  } catch { out.total = null; }
+  out.empty = out.total === 0;
   return out;
 }
