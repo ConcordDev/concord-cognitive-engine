@@ -571,7 +571,10 @@ NPC Name: ${npcTraits.name || "Citizen"}
 Personality: ${npcTraits.personality || "reserved"}
 Role: ${npcTraits.role || "resident"}
 Player Relationship: ${playerRelationship}
-Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})
+Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})${
+  npcTraits.persistent_grudge ? `\nPersistent grudge (color the tone; never recite it verbatim): ${npcTraits.persistent_grudge}` : ""}${
+  npcTraits.current_preoccupation ? `\nCurrent preoccupation: ${npcTraits.current_preoccupation}` : ""}${
+  npcTraits.desire_for_this_player ? `\nWhat you quietly want from this player (surface only if it fits): ${npcTraits.desire_for_this_player}` : ""}
 ${policyLine}
 Output this exact JSON structure:
 {
