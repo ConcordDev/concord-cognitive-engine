@@ -1,0 +1,93 @@
+[
+  {
+    "id": "sealed_01_notice",
+    "title": "The Sealed Record — Asbir's Distraction",
+    "description": "Lord Curator Asbir Thelane has been distracted for weeks. His audience hours stretch. He looks at the south wall of his chamber too often. Junior Curator Isa Velt has noticed.",
+    "giver_npc_id": "scribe_isa_velt",
+    "difficulty": "intermediate",
+    "domain": "hub_epic_arc",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_seal1_visit_archive", "type": "reach_location", "target": "hub_archive_main_floor", "required_count": 1, "description": "Visit the Concordant Archive during work hours." },
+      { "id": "obj_seal1_observe_asbir", "type": "observe", "target": "asbir_distraction", "required_count": 1, "description": "Watch Asbir during an audience. He glances at the wall." },
+      { "id": "obj_seal1_talk_isa", "type": "talk_to", "target": "scribe_isa_velt", "required_count": 1, "description": "Approach Isa Velt about what you saw." }
+    ],
+    "rewards": { "xp": 80 },
+    "breadcrumbs": [
+      { "id": "bc_seal1_isa_noticed", "content": "Isa has noticed the wall too. She thinks there's a cavity. She does not know what's inside. She wants to.", "unlocks_after": "obj_seal1_talk_isa", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["sealed_02_isa"],
+    "prerequisites": [],
+    "tags": ["hub", "sealed_record", "epic"]
+  },
+  {
+    "id": "sealed_02_isa",
+    "title": "The Sealed Record — Isa's Trust",
+    "description": "Isa needs to know you. Three small tasks — index a corner of the archive, fetch supper from the inn for her, deliver a private letter to her cousin in the watch. Earn her confidence.",
+    "giver_npc_id": "scribe_isa_velt",
+    "difficulty": "intermediate",
+    "domain": "hub_epic_arc",
+    "estimated_time": "30m",
+    "objectives": [
+      { "id": "obj_seal2_index", "type": "interact", "target": "archive_corner_shelf", "required_count": 1, "description": "Help Isa index a corner of the archive." },
+      { "id": "obj_seal2_fetch_supper", "type": "deliver", "target": "isa_supper_tray", "required_count": 1, "description": "Fetch supper from the Seven Spokes for Isa." },
+      { "id": "obj_seal2_deliver_letter", "type": "deliver", "target": "isa_private_letter", "required_count": 1, "description": "Deliver a private letter to Isa's cousin in the Watch barracks." }
+    ],
+    "rewards": { "xp": 200, "items": ["isa_confidence_token"], "skill_xp": { "concord_link_resonance": 30 } },
+    "breadcrumbs": [
+      { "id": "bc_seal2_isa_trusts", "content": "Isa trusts you. She will tell you what she has noticed about the wall. The rest is up to you.", "unlocks_after": "obj_seal2_deliver_letter", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["sealed_03_cavity"],
+    "prerequisites": ["sealed_01_notice"],
+    "tags": ["hub", "sealed_record", "isa_confidence"]
+  },
+  {
+    "id": "sealed_03_cavity",
+    "title": "The Sealed Record — The Cavity",
+    "description": "Isa has marked the wall. Wait for Asbir's private writing hours. Enter his chamber. Open the cavity. See what's inside.",
+    "giver_npc_id": "scribe_isa_velt",
+    "difficulty": "advanced",
+    "domain": "hub_epic_arc",
+    "estimated_time": "20m",
+    "objectives": [
+      { "id": "obj_seal3_wait", "type": "time_window", "target": "asbir_writing_hours", "required_count": 1, "description": "Wait for Quartus phase (Asbir's private hours)." },
+      { "id": "obj_seal3_stealth", "type": "stealth_traverse", "target": "asbir_chamber", "required_count": 1, "description": "Enter the Curator's chamber without being seen." },
+      { "id": "obj_seal3_open_cavity", "type": "interact", "target": "wall_cavity", "required_count": 1, "description": "Locate and open the sealed cavity." },
+      { "id": "obj_seal3_read", "type": "observe", "target": "iyatte_sealed_letter", "required_count": 1, "description": "Read what's inside." }
+    ],
+    "rewards": { "xp": 300, "items": ["iyatte_son_record_copy"], "skill_xp": { "stealth": 40 } },
+    "breadcrumbs": [
+      { "id": "bc_seal3_iyatte_son", "content": "Iyatte of Sandrun's youngest son was born without flame. She has hidden him in a Sahm boarding-house. Asbir has the record. So now do you.", "unlocks_after": "obj_seal3_read", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["sealed_04_choice"],
+    "prerequisites": ["sealed_02_isa"],
+    "tags": ["hub", "sealed_record", "stealth", "epic"]
+  },
+  {
+    "id": "sealed_04_choice",
+    "title": "The Sealed Record — Three Paths",
+    "description": "You have the record. Three things to do with it. Carry it to Iyatte in Sandrun. Return it to Asbir and confess. Sell it to the Medici cartel. Each ends differently.",
+    "giver_npc_id": null,
+    "difficulty": "advanced",
+    "domain": "hub_epic_arc",
+    "estimated_time": "60m",
+    "objectives": [
+      { "id": "obj_seal4_choose", "type": "any_of", "target": "sealed_record_choice", "required_count": 1, "description": "Choose: deliver, return, or sell." }
+    ],
+    "rewards": { "xp": 800, "permanent_modifiers": { "sealed_record_resolution": "branch_chosen" }, "creates_combat_style_dtu": "branch_specific_dtu" },
+    "moral_branch": {
+      "description": "What happens to Iyatte's son?",
+      "options": [
+        { "id": "deliver_to_iyatte", "trigger": "obj_seal4_choose:deliver", "consequence": "Cross-world to tunya. Find Iyatte. Reveal that you have the record. Iyatte's hand is forced. She brings her son home. Tunyan-Sahm alliance hardens. Medici-Sanguire tension defuses. Iyatte owes you a personal debt.", "reputation_change": { "warlord_iyatte_sanguire": 0.9, "sandrun_sanguire": 0.5 }, "creates_combat_style_dtu": "sandrun_honor_recipient" },
+        { "id": "return_to_asbir", "trigger": "obj_seal4_choose:return", "consequence": "Return to Asbir. Confess. Asbir is grateful. The wall is resealed. Asbir grants you the freedom of the archive for life. Isa is disappointed but understands.", "reputation_change": { "lord_curator_asbir_thelane": 0.8, "concordant_curators": 0.5 }, "creates_combat_style_dtu": "concordant_scholar_initiate" },
+        { "id": "sell_to_medici", "trigger": "obj_seal4_choose:sell", "consequence": "The Medici cartel takes the record. They weaponise it. Sandrun-Medici war ignites. Iyatte's son is hunted. You receive 30,000 sparks. Your reputation in the hub takes a permanent hit; the Curators close their doors to you forever.", "reputation_change": { "lord_curator_asbir_thelane": -1.0, "warlord_iyatte_sanguire": -0.8, "sandrun_sanguire": -0.6 }, "items": ["medici_payoff_30k"], "creates_combat_style_dtu": "medici_cartel_associate" }
+      ]
+    },
+    "breadcrumbs": [
+      { "id": "bc_seal4_end", "content": "The record is no longer secret. Whatever you chose, the two kingdoms will remember it for a generation.", "unlocks_after": "obj_seal4_choose", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["sealed_03_cavity"],
+    "tags": ["hub", "sealed_record", "epic", "cross_world", "moral_branch"]
+  }
+]

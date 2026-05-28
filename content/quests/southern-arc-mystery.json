@@ -1,0 +1,112 @@
+[
+  {
+    "id": "southern_arc_01_notice",
+    "title": "Southern Arc — Captain's Quiet",
+    "description": "Captain Ren Solare patrols the southern arc alone every morning. The Watch has rotations; she doesn't take them. The pattern is too consistent to be incidental. Find her on her morning route and ask the right question.",
+    "giver_npc_id": "captain_ren_solare",
+    "difficulty": "beginner",
+    "domain": "hub_main_arc",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_arc1_find_ren", "type": "reach_location", "target": "hub_southern_arc_road", "required_count": 1, "description": "Walk the southern arc road between 5–8 phase-hours." },
+      { "id": "obj_arc1_talk_ren", "type": "talk_to", "target": "captain_ren_solare", "required_count": 1, "description": "Ask Captain Ren about her morning rounds." }
+    ],
+    "rewards": { "xp": 40, "gold": 0 },
+    "breadcrumbs": [
+      { "id": "bc_arc1_field_thinning", "content": "The Refusal Field's southern arc has been weakening for six months. Ren knows. She has told no one.", "unlocks_after": "obj_arc1_talk_ren", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["southern_arc_02_witness"],
+    "prerequisites": [],
+    "tags": ["hub", "southern_arc", "investigation"],
+    "tutorial_phase": null
+  },
+  {
+    "id": "southern_arc_02_witness",
+    "title": "Southern Arc — Witness",
+    "description": "Ren wants you to see it for yourself. Reach the field-line crack she's been watching and observe a full pre-dawn cycle. Bring back a description of what you saw.",
+    "giver_npc_id": "captain_ren_solare",
+    "difficulty": "beginner",
+    "domain": "hub_main_arc",
+    "estimated_time": "15m",
+    "objectives": [
+      { "id": "obj_arc2_observe_dawn", "type": "reach_location", "target": "hub_southern_arc_field_line", "required_count": 1, "description": "Stand at the field-line between 3–6 phase-hours (pre-dawn)." },
+      { "id": "obj_arc2_observe_pulse", "type": "observe", "target": "field_line_pulse", "required_count": 3, "description": "Watch the field pulse three times. The interval is shortening." },
+      { "id": "obj_arc2_report_back", "type": "talk_to", "target": "captain_ren_solare", "required_count": 1, "description": "Bring the observation back to Ren." }
+    ],
+    "rewards": { "xp": 80, "gold": 0, "skill_xp": { "instinct": 30, "patience": 20 } },
+    "breadcrumbs": [
+      { "id": "bc_arc2_pulse_interval", "content": "The field pulses at 47-second intervals at dawn. A year ago it was 71. The dome is tiring.", "unlocks_after": "obj_arc2_observe_pulse", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["southern_arc_03_oracle"],
+    "prerequisites": ["southern_arc_01_notice"],
+    "tags": ["hub", "southern_arc", "observation"]
+  },
+  {
+    "id": "southern_arc_03_oracle",
+    "title": "Southern Arc — Bring it to the Oracle",
+    "description": "Ren can't act alone. The Oracle Nesha has to confirm what you saw and the Assembly Speaker has to convene. Carry the observation to Nesha first.",
+    "giver_npc_id": "captain_ren_solare",
+    "difficulty": "intermediate",
+    "domain": "hub_main_arc",
+    "estimated_time": "15m",
+    "objectives": [
+      { "id": "obj_arc3_find_nesha", "type": "reach_location", "target": "hub_refusal_keep_main_hall", "required_count": 1, "description": "Visit the Refusal Keep during Nesha's audience hours (Freeus or Penanus)." },
+      { "id": "obj_arc3_talk_nesha", "type": "talk_to", "target": "oracle_nesha_keep", "required_count": 1, "description": "Deliver Ren's observation to Nesha." },
+      { "id": "obj_arc3_glyph_confirm", "type": "interact", "target": "hub_glyph_altar", "required_count": 1, "description": "Compose a strength-2 confirmation glyph at the altar for Nesha to read." }
+    ],
+    "rewards": { "xp": 120, "skill_xp": { "glyph_composition": 40 }, "items": ["confirmation_glyph_token"] },
+    "breadcrumbs": [
+      { "id": "bc_arc3_nesha_knows", "content": "Nesha has known for months. She has been waiting for someone she trusts to confirm. You are the someone.", "unlocks_after": "obj_arc3_talk_nesha", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["southern_arc_04_assembly"],
+    "prerequisites": ["southern_arc_02_witness"],
+    "tags": ["hub", "southern_arc", "oracle", "glyph"]
+  },
+  {
+    "id": "southern_arc_04_assembly",
+    "title": "Southern Arc — The Speaker's Choice",
+    "description": "Elder Mira Lattice has held the secret. She has not voted on it. With Nesha's confirmation glyph in hand, you can force the Assembly's hand. But forcing them is its own choice.",
+    "giver_npc_id": "oracle_nesha_keep",
+    "difficulty": "intermediate",
+    "domain": "hub_main_arc",
+    "estimated_time": "20m",
+    "objectives": [
+      { "id": "obj_arc4_find_mira", "type": "reach_location", "target": "hub_assembly_audience_hall", "required_count": 1, "description": "Visit Elder Mira during her petitioner audience (Quartus)." },
+      { "id": "obj_arc4_deliver_glyph", "type": "deliver", "target": "confirmation_glyph_token", "required_count": 1, "description": "Hand over the confirmation glyph." }
+    ],
+    "rewards": { "xp": 160, "gold": 0 },
+    "breadcrumbs": [
+      { "id": "bc_arc4_mira_choice", "content": "Mira can convene an emergency session, or she can suppress the glyph. Either way, you know now. Your choice in the next quest decides the city.", "unlocks_after": "obj_arc4_deliver_glyph", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["southern_arc_05_choice"],
+    "prerequisites": ["southern_arc_03_oracle"],
+    "tags": ["hub", "southern_arc", "assembly"]
+  },
+  {
+    "id": "southern_arc_05_choice",
+    "title": "Southern Arc — Resolution",
+    "description": "Three paths. Support the convene: Mira opens emergency session, the city panics but acts. Expose privately: the Watch starts repair on its own terms. Suppress: the dome holds for now, you and Ren keep the secret, the next failure is worse.",
+    "giver_npc_id": "elder_mira_lattice",
+    "difficulty": "advanced",
+    "domain": "hub_main_arc",
+    "estimated_time": "30m",
+    "objectives": [
+      { "id": "obj_arc5_choose", "type": "any_of", "target": "southern_arc_choice", "required_count": 1, "description": "Pick a path: support, expose, suppress." }
+    ],
+    "rewards": { "xp": 300, "skill_xp": { "concordia_alignment": 50 }, "permanent_modifiers": { "southern_arc_resolution": "branch_chosen" } },
+    "moral_branch": {
+      "description": "How does the southern arc end?",
+      "options": [
+        { "id": "support_convene", "trigger": "obj_arc5_choose:support", "consequence": "Mira convenes emergency session. The Assembly votes 4-3 to repair. City under temporary martial protocol. Ren promoted.", "reputation_change": { "concordant_assembly": 0.3, "refusal_keep": 0.2, "concordant_watch": 0.4 } },
+        { "id": "expose_quiet", "trigger": "obj_arc5_choose:expose", "consequence": "The Watch begins covert repair. The Field strengthens. The Assembly never votes. Nesha's standing grows quietly.", "reputation_change": { "concordant_watch": 0.5, "refusal_keep": 0.4, "concordant_assembly": -0.2 } },
+        { "id": "suppress_secret", "trigger": "obj_arc5_choose:suppress", "consequence": "Nothing changes publicly. The next failure will be worse. Ren is grateful. The clock is ticking.", "reputation_change": { "captain_ren_solare": 0.6, "refusal_keep": -0.3, "elder_mira_lattice": 0.2 } }
+      ]
+    },
+    "breadcrumbs": [
+      { "id": "bc_arc5_dome_count", "content": "Whichever you chose, the Field is now counted in days, not months. Sleep well.", "unlocks_after": "obj_arc5_choose", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["southern_arc_04_assembly"],
+    "tags": ["hub", "southern_arc", "resolution", "moral_branch"]
+  }
+]

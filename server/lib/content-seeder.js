@@ -515,6 +515,12 @@ export async function seedContent({ db = null } = {}) {
     "quests/kael-torchlight.json",
     "quests/first-day-arc.json",
     "quests/the-handshake-revelation.json",
+    // Phase E6 — Phase D substrate-connecting quest chains.
+    "quests/southern-arc-mystery.json",
+    "quests/impossible-print.json",
+    "quests/brackish-trust.json",
+    "quests/nesha-old-seam.json",
+    "quests/sealed-record.json",
   ]) {
     const side = readJSON(sideFile);
     if (Array.isArray(side)) results.quests += seedQuestFile(side);

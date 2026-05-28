@@ -1,0 +1,62 @@
+[
+  {
+    "id": "nesha_seam_01_pattern",
+    "title": "Old Seam — A Following",
+    "description": "Old Seam, the wandering preacher, walks the dome perimeter at the same hours as Oracle Nesha. Not behind her — parallel, just out of speaking range. Twenty years.",
+    "giver_npc_id": "preacher_old_seam",
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "8m",
+    "objectives": [
+      { "id": "obj_seam1_observe_walk", "type": "observe", "target": "old_seam_dome_walk", "required_count": 1, "description": "Walk the dome perimeter during Quartus and observe Old Seam following Nesha at a distance." }
+    ],
+    "rewards": { "xp": 40 },
+    "breadcrumbs": [
+      { "id": "bc_seam1_master_student", "content": "Old Seam taught Nesha. Nesha was Old Seam's apprentice. They have not spoken in twenty years.", "unlocks_after": "obj_seam1_observe_walk", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["nesha_seam_02_history"],
+    "prerequisites": [],
+    "tags": ["hub", "nesha_seam", "observation"]
+  },
+  {
+    "id": "nesha_seam_02_history",
+    "title": "Old Seam — Master and Student",
+    "description": "Talk to both. Each will tell a partial story. The shape of the falling-out is the same; the cause is told differently.",
+    "giver_npc_id": "preacher_old_seam",
+    "difficulty": "beginner",
+    "domain": "hub_side_arc",
+    "estimated_time": "12m",
+    "objectives": [
+      { "id": "obj_seam2_talk_old_seam", "type": "talk_to", "target": "preacher_old_seam", "required_count": 1, "description": "Ask Old Seam about Nesha." },
+      { "id": "obj_seam2_talk_nesha", "type": "talk_to", "target": "oracle_nesha_keep", "required_count": 1, "description": "Ask Nesha about Old Seam." }
+    ],
+    "rewards": { "xp": 80, "skill_xp": { "instinct": 30 } },
+    "breadcrumbs": [
+      { "id": "bc_seam2_cause", "content": "Old Seam says Nesha 'saw too far too fast.' Nesha says Old Seam 'wouldn't read what was in front of her.' Both are right.", "unlocks_after": "obj_seam2_talk_nesha", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": ["nesha_seam_03_mediate"],
+    "prerequisites": ["nesha_seam_01_pattern"],
+    "tags": ["hub", "nesha_seam", "history"]
+  },
+  {
+    "id": "nesha_seam_03_mediate",
+    "title": "Old Seam — Bring her in",
+    "description": "Old Seam takes a small supper at the Seven Spokes every Penanus. Persuade her to come, then to walk to the Refusal Keep, then to speak to Nesha.",
+    "giver_npc_id": null,
+    "difficulty": "intermediate",
+    "domain": "hub_side_arc",
+    "estimated_time": "20m",
+    "objectives": [
+      { "id": "obj_seam3_persuade_seam", "type": "talk_to", "target": "preacher_old_seam", "required_count": 1, "description": "Talk Old Seam into walking with you to the Keep." },
+      { "id": "obj_seam3_deliver", "type": "reach_location", "target": "hub_refusal_keep_main_hall", "required_count": 1, "description": "Arrive at the Keep with Old Seam following." },
+      { "id": "obj_seam3_arrange_meeting", "type": "interact", "target": "nesha_oldseam_meeting", "required_count": 1, "description": "Hand Old Seam off to Nesha." }
+    ],
+    "rewards": { "xp": 200, "buffs": [{ "id": "field_attendance", "label": "Field Attendance", "duration_seconds": 86400, "effects": { "refusal_field_strength": 0.15, "concordia_alignment_passive": 0.05 } }], "skill_xp": { "concordia_alignment": 40 } },
+    "breadcrumbs": [
+      { "id": "bc_seam3_reconciled", "content": "Old Seam and Nesha walk the dome together now. The field strengthens by a measurable margin. Some quiet things are also healing.", "unlocks_after": "obj_seam3_arrange_meeting", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["nesha_seam_02_history"],
+    "tags": ["hub", "nesha_seam", "reconciliation"]
+  }
+]
