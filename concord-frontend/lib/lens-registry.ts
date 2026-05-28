@@ -2700,6 +2700,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['news', 'announcements', 'roadmap', 'patch', 'changelog'],
   },
   {
+    id: 'detective',
+    name: 'Detective board',
+    icon: Search,
+    description: 'Open crimes, evidence trails, three-fact lock-in to solve. Obra Dinn style.',
+    category: 'world',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/detective',
+    order: 25,
+    keywords: ['detective', 'crime', 'deduction', 'mystery', 'evidence'],
+  },
+  {
     id: 'narrative-walk',
     name: 'Narrative trail',
     icon: BookOpen,

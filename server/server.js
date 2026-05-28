@@ -6005,6 +6005,8 @@ function authMiddleware(req, res, next) {
     "/api/mentors",
     // Phase CA3 — climbing top routes (public read).
     "/api/climbing/world",
+    // Phase CA5 — detective open crimes + evidence (public read).
+    "/api/detective/open", "/api/detective/crime",
     // Phase BE1 — photos public feed.
     "/api/photos/world",
     // Ambient chat — public read (district feed); post requires auth.
@@ -48491,6 +48493,29 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CA5 — detective deduction board.
+app.get("/api/detective/open/:worldId", asyncHandler(async (req, res) => {
+  const { listOpenCrimes } = await import("./lib/detective.js");
+  res.json({ ok: true, crimes: listOpenCrimes(db, req.params.worldId, Number(req.query.limit) || 50) });
+}));
+
+app.get("/api/detective/crime/:crimeId/evidence", asyncHandler(async (req, res) => {
+  const { listEvidenceForCrime } = await import("./lib/detective.js");
+  res.json({ ok: true, evidence: listEvidenceForCrime(db, req.params.crimeId) });
+}));
+
+app.post("/api/detective/crime/:crimeId/deduce", requireAuth(), asyncHandler(async (req, res) => {
+  const { lockInDeduction } = await import("./lib/detective.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(lockInDeduction(db, userId, req.params.crimeId, req.body || {}));
+}));
+
+app.get("/api/detective/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDeductionsByUser } = await import("./lib/detective.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, deductions: getDeductionsByUser(db, userId) });
 }));
 
 // Phase CA3 — climbing routes ledger.
