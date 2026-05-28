@@ -318,9 +318,38 @@ export function discoverScheme(db, userId, schemeId, evidenceKind = "observed") 
     if (sch.plotter_id) {
       try { bumpStress(db, sch.plotter_id, "scheme_exposed"); } catch { /* noop */ }
     }
+    // T2.1 — weaponise_at consumption. Exposing a scheme exposes its plotter:
+    // fire any authored "Expose X; ..." trigger naming that NPC. Once-only.
+    try {
+      const worldRow = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+      if (worldRow?.world_id) {
+        // Lazy require to avoid a load-time cycle (npc-schemes is imported widely).
+        // eslint-disable-next-line global-require
+        const wt = requireWeaponise();
+        wt?.checkExposeTriggers?.(db, {
+          userId, worldId: worldRow.world_id, exposedNpcId: sch.plotter_id, io: globalThis.__CONCORD_IO__ || null,
+        });
+      }
+    } catch { /* weaponise expose consumption best-effort */ }
   }
   return { ok: true, evidenceMarked: r.changes, exposed, evidenceKind };
 }
+
+// Lazy, cached loader for the weaponise-triggers module (ESM dynamic import is
+// async; npc-schemes' callers are sync). We resolve it once on first use.
+let _weaponiseMod = null;
+let _weaponiseLoading = false;
+function requireWeaponise() {
+  if (_weaponiseMod) return _weaponiseMod;
+  if (!_weaponiseLoading) {
+    _weaponiseLoading = true;
+    import("./embodied/weaponise-triggers.js").then((m) => { _weaponiseMod = m; }).catch(() => { /* optional */ });
+  }
+  return _weaponiseMod; // null on the very first call; populated thereafter
+}
+// Pre-warm at module load so the expose hook is ready before the first scheme
+// is discovered (the import resolves on the next microtask).
+requireWeaponise();
 
 /** List active schemes a user is suspected of being targeted by. */
 export function listSchemesAgainstUser(db, userId) {

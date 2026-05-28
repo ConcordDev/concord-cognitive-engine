@@ -1129,6 +1129,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-fatal */ }
 
+      // T2.1 — weaponise_at consumption. If befriending this NPC (its
+      // authoritative opinion of the player crossed the befriend threshold)
+      // satisfies an authored "Befriend X; the secret surfaces" trigger, fire
+      // it: mint a citable revelation DTU + emit weaponise:fired. Once-only.
+      let weaponiseFired = [];
+      try {
+        const { checkBefriendTriggers, BEFRIEND_OPINION_THRESHOLD } =
+          await import("../lib/embodied/weaponise-triggers.js");
+        const op = await import("../lib/npc-opinions.js");
+        const opRow = op.getOpinion?.(db, npcId, "player", playerId);
+        const score = Number(opRow?.score ?? 0);
+        if (score >= BEFRIEND_OPINION_THRESHOLD) {
+          const r = checkBefriendTriggers(db, {
+            userId: playerId, worldId, befriendedNpcId: npcId,
+            opinionScore: score, io: req.app?.locals?.io,
+          });
+          weaponiseFired = r.fired || [];
+        }
+      } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
+
       // 10. Return structured response
       res.json({
         ok: true, npcId, npcName,
@@ -1138,6 +1158,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        weaponiseFired: weaponiseFired.length ? weaponiseFired : undefined,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

@@ -564,6 +564,18 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "asymmetry_seed_skipped", { err: err?.message });
     }
+
+    // T2.1 — weaponise_at consumption. Parse each authored NPC's
+    // narrative_context.weaponise_at into a structured, once-firing trigger so
+    // the authored payoff ("Befriend Kit; the pact surfaces") actually fires
+    // when the player satisfies it. Idempotent on signature.
+    try {
+      const { seedAllWeaponiseTriggers } = await import("./embodied/weaponise-triggers.js");
+      const authored = [..._authoredNPCs.values()];
+      results.weaponiseTriggersSeeded = seedAllWeaponiseTriggers(db, authored);
+    } catch (err) {
+      logger.warn("content_seeder", "weaponise_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain
