@@ -1,0 +1,34 @@
+{
+  "lens": "message",
+  "kind": "message_demo",
+  "items": [
+    {
+      "id": "demo_msg_kael_welcome",
+      "title": "Welcome — from Kael Torchlight",
+      "summary": "Kael's standing message to any new walker: 'The vault is open. The drinks are not free, but the conversation is. Bring an idea worth carrying.'",
+      "from": "kael_torchlight",
+      "tags": ["welcome", "demo"]
+    },
+    {
+      "id": "demo_msg_concordia_morning_brief",
+      "title": "Morning Brief — Concordia",
+      "summary": "Today's dome temperature, refusal-field strength, southern-arc status, plaza activity. A standing daily brief from the Refusal Keep.",
+      "from": "oracle_nesha_keep",
+      "tags": ["brief", "daily", "demo"]
+    },
+    {
+      "id": "demo_msg_ren_southern_arc_invitation",
+      "title": "Captain Ren — A Quiet Conversation",
+      "summary": "Captain Ren Solare invites you to walk the southern arc with her at dawn. Standing offer; she's there every Stratus phase.",
+      "from": "captain_ren_solare",
+      "tags": ["invitation", "demo"]
+    },
+    {
+      "id": "demo_msg_velka_market_invitation",
+      "title": "Velka — Bazaar Welcome",
+      "summary": "Velka Ironhand's standing welcome to the Concordant Bazaar. 'Come look at the stalls. Buy nothing. Watch what sells. Then come back.'",
+      "from": "merchant_velka_ironhand",
+      "tags": ["welcome", "demo"]
+    }
+  ]
+}

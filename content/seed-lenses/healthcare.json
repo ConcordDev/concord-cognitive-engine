@@ -1,0 +1,24 @@
+{
+  "lens": "healthcare",
+  "kind": "healthcare_demo",
+  "items": [
+    {
+      "id": "demo_health_patient_001",
+      "title": "Patient: Aren Valis (age 32, fictional)",
+      "summary": "Demo patient record. Refugee from sovereign-ruins, treated for exposure + minor lattice contamination. Discharged to Pia Thalis infirmary 18 days ago.",
+      "tags": ["demo", "is_demo", "fictional"]
+    },
+    {
+      "id": "demo_health_patient_002",
+      "title": "Patient: Mira Thorne (age 71, fictional)",
+      "summary": "Demo patient record. Verge healer, treats herself for chronic glyph-burn from forty years of refusal practice. Stable.",
+      "tags": ["demo", "is_demo", "fictional"]
+    },
+    {
+      "id": "demo_health_patient_003",
+      "title": "Patient: Brackish (age 11, fictional)",
+      "summary": "Demo patient record. Plaza urchin. Routine check-in. Healthy except for chronic sleep deficit. Refuses bed offers.",
+      "tags": ["demo", "is_demo", "fictional"]
+    }
+  ]
+}

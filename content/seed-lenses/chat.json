@@ -1,0 +1,36 @@
+{
+  "lens": "chat",
+  "kind": "chat_demo",
+  "items": [
+    {
+      "id": "demo_chat_southern_arc_brief",
+      "title": "Southern Arc — Captain's Brief",
+      "summary": "Open conversation thread between Captain Ren Solare and any walker who has met her. Five exchanges, public-visible. Continues from her morning audience.",
+      "tags": ["dialogue", "concordia", "demo"]
+    },
+    {
+      "id": "demo_chat_brackish_intel_log",
+      "title": "Brackish's Plaza Log",
+      "summary": "Running record of what the urchin sees in the great plaza. Updates daily. Currently three days of recent observations.",
+      "tags": ["intelligence", "demo"]
+    },
+    {
+      "id": "demo_chat_pia_lyra_chain",
+      "title": "The Smuggling Chain",
+      "summary": "Pia Thalis and Lyra Thorne's monthly satchel coordination. Visible only to participants in the chain (which now includes you).",
+      "tags": ["chain", "cross_world", "demo"]
+    },
+    {
+      "id": "demo_chat_ono_nesha_letters",
+      "title": "Ono Kell ↔ Oracle Nesha",
+      "summary": "Half-finished cross-world correspondence about drift signatures. Eight letters carried so far, by various hands.",
+      "tags": ["letters", "cross_world", "demo"]
+    },
+    {
+      "id": "demo_chat_kael_torchlight_invitation",
+      "title": "Kael Torchlight's Welcome",
+      "summary": "Kael's standing invitation to any walker who has completed the cook-eat-fight-commune cycle. Drinks in his vault at any hour.",
+      "tags": ["onboarding", "demo"]
+    }
+  ]
+}

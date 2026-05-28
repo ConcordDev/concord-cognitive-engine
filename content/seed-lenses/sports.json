@@ -1,0 +1,20 @@
+{
+  "lens": "sports",
+  "kind": "sports_demo",
+  "items": [
+    {
+      "id": "demo_sport_concordant_league_open",
+      "title": "Concordant League — Open Division",
+      "summary": "Four-team round-robin: Spoke Watch, Plaza Runners, Verge Trackers, Bazaar Couriers. Currently mid-season, week 3 of 6.",
+      "category": "league",
+      "tags": ["league", "open_division", "demo"]
+    },
+    {
+      "id": "demo_sport_dust_bowl_frontier",
+      "title": "Dust Bowl — Frontier Division",
+      "summary": "Six-team frontier league: Long Riders, Caravan Guards, Western Watch, Far-Marker, Pell's Scouts, Smithy Wreckers. End-of-season tournament next quarter.",
+      "category": "league",
+      "tags": ["league", "frontier", "demo"]
+    }
+  ]
+}
