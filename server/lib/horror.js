@@ -9,8 +9,9 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 
-const DEFAULT_DURATION_S = 30 * 60;
-const EVIDENCE_TO_WIN = 3;
+// Phase E1 — balance dials env-overridable. See docs/BALANCE_DIALS.md.
+const DEFAULT_DURATION_S = Number(process.env.CONCORD_HORROR_DURATION_S) || (30 * 60);
+const EVIDENCE_TO_WIN = Number(process.env.CONCORD_HORROR_EVIDENCE_TO_WIN) || 3;
 
 export function startSession(db, ghostUserId, opts = {}) {
   if (!db || !ghostUserId) return { ok: false, error: "missing_inputs" };

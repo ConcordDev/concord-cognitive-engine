@@ -8,7 +8,8 @@
 // output) and score by cycles + program length.
 
 const VALID_OPS = new Set(["MOV", "ADD", "JMP", "JEZ", "OUT"]);
-const MAX_CYCLES = 10_000;
+// Phase E1 — env-overridable. See docs/BALANCE_DIALS.md.
+const MAX_CYCLES = Number(process.env.CONCORD_CODE_PUZZLE_MAX_CYCLES) || 10_000;
 
 import crypto from "node:crypto";
 import logger from "../logger.js";

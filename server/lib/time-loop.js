@@ -9,7 +9,8 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 
-const DEFAULT_LOOP_DURATION_S = 22 * 60;
+// Phase E1 — balance dial env-overridable. See docs/BALANCE_DIALS.md.
+const DEFAULT_LOOP_DURATION_S = Number(process.env.CONCORD_TIME_LOOP_DURATION_S) || (22 * 60);
 
 export function startLoop(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };

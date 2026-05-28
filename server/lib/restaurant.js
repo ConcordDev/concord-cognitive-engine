@@ -10,11 +10,13 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 
-const DEFAULT_ORDER_TTL_S = 5 * 60;
-const BASE_PRICE_CC = 15;
-const TIP_FRACTION_FAST = 0.30;   // served within 30s of ordering
-const TIP_FRACTION_OK = 0.10;     // served within ttl
-const TIP_FRACTION_SLOW = 0;
+// Phase E1 — balance dials are env-overridable. Defaults are
+// playtest-tunable; the canonical doc is `docs/BALANCE_DIALS.md`.
+const DEFAULT_ORDER_TTL_S = Number(process.env.CONCORD_RESTAURANT_ORDER_TTL_S) || (5 * 60);
+const BASE_PRICE_CC = Number(process.env.CONCORD_RESTAURANT_BASE_PRICE_CC) || 15;
+const TIP_FRACTION_FAST = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_FAST) || 0.30; // within 30s
+const TIP_FRACTION_OK = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_OK) || 0.10;     // within ttl
+const TIP_FRACTION_SLOW = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_SLOW) || 0;
 
 const DISH_CATALOG = Object.freeze([
   "stew", "roast", "soup", "bread", "salad", "pastry", "ale", "tea",
