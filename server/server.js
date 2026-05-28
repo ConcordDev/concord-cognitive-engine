@@ -8368,6 +8368,15 @@ async function tryInitWebSockets(server) {
           targetKilled: result.targetKilled,
           targetPosition: _hitTargetPos,
           attackerPosition: _hitAttackerPos,
+          // BUG B fix — the socket combat path never set element/skill, so
+          // CombatVFXBridge.normalizeElement fell back to 'physical' and the
+          // element burst + per-skill VFX never fired here. Carry the cast's
+          // element / skill / weapon / tier so the client renders the right VFX.
+          element: data.element || "physical",
+          skillId: data.skillId || data.skill || null,
+          weapon: data.weapon || "fist",
+          tier: Math.max(1, Math.min(5, Number(data.tier) || 2)),
+          style: data.style || null,
         });
 
         // Companion assist XP: deployed companions of the attacker get
