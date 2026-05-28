@@ -1459,6 +1459,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // Phase DA2 — single-building lookup for station interaction router.
+  router.get("/:worldId/buildings/:buildingId", (req, res) => {
+    try {
+      const { worldId, buildingId } = req.params;
+      const building = db.prepare(
+        'SELECT * FROM world_buildings WHERE world_id = ? AND id = ?'
+      ).get(worldId, buildingId);
+      if (!building) return res.status(404).json({ ok: false, error: "no_building" });
+      res.json({ ok: true, building });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/buildings — player places a building
   // Requires matching resources in player_inventory based on material + floor count
   router.post("/:worldId/buildings", requireAuth, (req, res) => {

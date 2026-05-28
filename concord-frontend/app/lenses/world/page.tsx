@@ -161,6 +161,13 @@ const NPCActionMenu = dynamic(
     })),
   { ssr: false }
 );
+const StationInteractionRouter = dynamic(
+  () =>
+    import('@/components/world/StationInteractionRouter').then((m) => ({
+      default: m.StationInteractionRouter,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -3923,6 +3930,19 @@ export default function WorldLensPage() {
             onBuildingClick={(id) => {
               const b = activeDistrict.buildings.find((b) => b.id === id);
               if (b) setSelectedBuilding(b);
+              // Phase DA2 — also dispatch a station-interaction event
+              // so the StationInteractionRouter can open the matching
+              // workbench overlay for the building's type.
+              try {
+                window.dispatchEvent(new CustomEvent('concordia:building-interact', {
+                  detail: {
+                    buildingId: id,
+                    worldId: activeDistrict.id,
+                    playerX: playerAvatar.position.x,
+                    playerZ: playerAvatar.position.y,
+                  },
+                }));
+              } catch { /* dispatch best-effort */ }
             }}
             onTerrainClick={() => {}}
             onWeatherModifiers={(mods) => setWeatherModifiers(mods)}
@@ -4765,6 +4785,9 @@ export default function WorldLensPage() {
 
           {/* Phase DA1 — NPC contextual action menu */}
           <NPCActionMenu />
+
+          {/* Phase DA2 — station / workbench interaction router */}
+          <StationInteractionRouter />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
