@@ -6022,6 +6022,14 @@ function authMiddleware(req, res, next) {
     "/api/announcements",
     // Phase BC2 — mentor registry (public read).
     "/api/mentors",
+    // Phase CF6 — creature lineage/bond (public read).
+    "/api/creatures",
+    // Phase CF12 — vehicle garage (public read).
+    "/api/garage",
+    // Phase CF14 — bloodline tree (public read).
+    "/api/bloodline",
+    // Phase CF1 — sports league teams (public read).
+    "/api/sports/league",
     // Phase CA3 — climbing top routes (public read).
     "/api/climbing/world",
     // Phase CA5 — detective open crimes + evidence (public read).
@@ -48512,6 +48520,164 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase CF1 — sports leagues (surface sports-league-engine.js).
+app.post("/api/sports/league", requireAuth(), asyncHandler(async (req, res) => {
+  const { openLeague } = await import("./lib/sports-league-engine.js");
+  res.json(openLeague(db, req.body || {}));
+}));
+
+app.post("/api/sports/league/:leagueId/team", requireAuth(), asyncHandler(async (req, res) => {
+  const { addTeam } = await import("./lib/sports-league-engine.js");
+  res.json(addTeam(db, req.params.leagueId, req.body?.name, req.body?.powerScore || 50));
+}));
+
+app.post("/api/sports/team/:teamId/roster", requireAuth(), asyncHandler(async (req, res) => {
+  const { addRosterMember } = await import("./lib/sports-league-engine.js");
+  res.json(addRosterMember(db, req.params.teamId, req.body?.memberKind, req.body?.memberId, req.body?.role));
+}));
+
+app.post("/api/sports/tryout", requireAuth(), asyncHandler(async (req, res) => {
+  const { requestTryout } = await import("./lib/sports-league-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(requestTryout(db, userId, req.body?.leagueId, req.body || {}));
+}));
+
+app.post("/api/sports/match/schedule", requireAuth(), asyncHandler(async (req, res) => {
+  const { scheduleMatch } = await import("./lib/sports-league-engine.js");
+  res.json(scheduleMatch(db, req.body?.leagueId, req.body?.homeTeamId, req.body?.awayTeamId, req.body?.scheduledAt));
+}));
+
+app.post("/api/sports/match/:matchId/play", requireAuth(), asyncHandler(async (req, res) => {
+  const { playMatch } = await import("./lib/sports-league-engine.js");
+  res.json(playMatch(db, req.params.matchId, req.body || {}));
+}));
+
+app.get("/api/sports/league/:leagueId/teams", asyncHandler(async (req, res) => {
+  const { listTeamsInLeague } = await import("./lib/sports-league-engine.js");
+  res.json({ ok: true, teams: listTeamsInLeague(db, req.params.leagueId) });
+}));
+
+// Phase CF2 — romance/dating sim (surface romance-engine.js).
+app.get("/api/courtship/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const { listMyCourtships } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, courtships: listMyCourtships(db, userId, req.query.status) });
+}));
+
+app.post("/api/courtship/interact", requireAuth(), asyncHandler(async (req, res) => {
+  const { courtInteraction } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(courtInteraction(db, userId, req.body?.partnerKind, req.body?.partnerId, req.body?.sentiment || 1));
+}));
+
+app.get("/api/courtship/:partnerKind/:partnerId", requireAuth(), asyncHandler(async (req, res) => {
+  const { getCourtship } = await import("./lib/romance-engine.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, courtship: getCourtship(db, userId, req.params.partnerKind, req.params.partnerId) });
+}));
+
+// Phase CF3 — fishing (surface lib/fishing + minigame-resolvers#resolveFishing).
+app.post("/api/fishing/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveFishing } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveFishing(req.body || {}));
+}));
+
+// Phase CF4 — karaoke (surface resolveKaraoke).
+app.post("/api/karaoke/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveKaraoke } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveKaraoke(req.body || {}));
+}));
+
+// Phase CF5 — mahjong (surface resolveMahjongHand).
+app.post("/api/mahjong/resolve", requireAuth(), asyncHandler(async (req, res) => {
+  const { resolveMahjongHand } = await import("./lib/minigame-resolvers.js");
+  res.json(resolveMahjongHand(req.body || {}));
+}));
+
+// Phase CF6 — creature crossbreeding (surface creature-crossbreeding.js).
+app.post("/api/creatures/encounter", requireAuth(), asyncHandler(async (req, res) => {
+  const { recordEncounter } = await import("./lib/creature-crossbreeding.js");
+  res.json(recordEncounter(db, req.body || {}));
+}));
+
+app.post("/api/creatures/breed", requireAuth(), asyncHandler(async (req, res) => {
+  const { maybeCrossbreed } = await import("./lib/creature-crossbreeding.js");
+  res.json(maybeCrossbreed(db, req.body || {}));
+}));
+
+app.get("/api/creatures/:creatureId/lineage", asyncHandler(async (req, res) => {
+  const { getLineage } = await import("./lib/creature-crossbreeding.js");
+  res.json({ ok: true, lineage: getLineage(db, req.params.creatureId) });
+}));
+
+app.get("/api/creatures/bond/:a/:b", asyncHandler(async (req, res) => {
+  const { getBond } = await import("./lib/creature-crossbreeding.js");
+  res.json({ ok: true, bond: getBond(db, req.params.a, req.params.b) });
+}));
+
+// Phase CF11 — glyph spell composer (surface glyph-spells.js).
+app.post("/api/glyph-spells/compose", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    if (m.composeSpell) {
+      res.json(m.composeSpell(req.body?.chain || []));
+    } else { res.status(503).json({ ok: false, error: "compose_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+app.post("/api/glyph-spells/mint", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/glyph-spells.js");
+    const userId = req.user?.id || req.user?.userId;
+    if (m.mintSpell) res.json(m.mintSpell(db, userId, req.body || {}));
+    else res.status(503).json({ ok: false, error: "mint_unavailable" });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF12 — vehicle garage (surface world-vehicles.js).
+app.get("/api/garage/world/:worldId", asyncHandler(async (req, res) => {
+  const { listVehiclesInWorld } = await import("./lib/world-vehicles.js");
+  res.json({ ok: true, vehicles: listVehiclesInWorld(db, req.params.worldId, { kind: req.query.kind }) });
+}));
+
+app.get("/api/garage/vehicle/:vehicleId", asyncHandler(async (req, res) => {
+  const { getVehicle } = await import("./lib/world-vehicles.js");
+  const v = getVehicle(db, req.params.vehicleId);
+  if (!v) return res.status(404).json({ ok: false, error: "no_vehicle" });
+  res.json({ ok: true, vehicle: v });
+}));
+
+// Phase CF13 — tracking footprints (surface tracking_skill_xp).
+app.get("/api/tracking/skill", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  try {
+    const r = db.prepare(`SELECT xp, level FROM tracking_skill_xp WHERE user_id = ?`).get(userId);
+    res.json({ ok: true, xp: r?.xp || 0, level: r?.level || 0 });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF14 — bloodline tree (surface mig 173 ancestry).
+app.get("/api/bloodline/npc/:npcId", asyncHandler(async (req, res) => {
+  try {
+    const ancestry = db.prepare(`
+      SELECT * FROM npc_ancestry WHERE npc_id = ?
+    `).get(req.params.npcId);
+    res.json({ ok: true, ancestry: ancestry || null });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Phase CF15 — NPC asymmetry inspector (surface composeAsymmetryContext).
+app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const m = await import("./lib/npc-asymmetry.js");
+    const userId = req.user?.id || req.user?.userId;
+    if (m.composeAsymmetryContext) {
+      const ctx = m.composeAsymmetryContext(db, req.params.npcId, userId);
+      res.json({ ok: true, asymmetry: ctx });
+    } else { res.status(503).json({ ok: false, error: "asymmetry_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
 // Phase CC4 — factory automation (claim-bounded).
