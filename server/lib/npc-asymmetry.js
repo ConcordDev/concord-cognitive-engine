@@ -29,6 +29,7 @@ import path from "node:path";
 import { readFile } from "node:fs/promises";
 import logger from "../logger.js";
 import { bumpStress as _bumpStress } from "./npc-stress.js";
+import { recordOpinionEvent } from "./npc-opinions.js";
 import { LruMap, LruSet } from "./lru-map.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname || ".", "..", "..");
@@ -97,6 +98,167 @@ const DEFAULT_TEMPLATES = {
     { phase: "default",     template: "My faction is between phases. I keep my eyes open." },
   ],
 };
+
+// ── T1.3 — authored interiority → scheme-engine substrate ────────────────────
+//
+// The scheme cycle (server/emergent/npc-scheme-cycle.js) only proposes plots
+// for NPCs whose npc_stress.stress >= 60 AND who hold a character_opinions row
+// with score <= -50 toward a target. Those rows accrue from *gameplay*, never
+// from authored content — so on a fresh boot the CK3 scheme layer is dormant
+// and the marquee "overhear a scheme resolve nearby" moment never fires for a
+// cold-booted stranger. This pass derives the two numbers the gate reads from
+// the interiority authors already wrote (narrative_context + relationships),
+// so authored rivalries (Zero↔fork, warlord↔nemesis) become live schemes at
+// boot instead of inert flavor.
+//
+// Determinism: pure function of the authored npc object — same boot → same
+// numbers. The secret TEXT never leaves this module (it only contributes a
+// stress weight); the narrative-bridge secret-omission invariant is untouched.
+
+// Stress contribution per present narrative_context field (delta over the 30
+// baseline). A secret with an active weaponise_at trigger is the strongest
+// signal — those NPCs ("ability to lead is contingent on the secret holding")
+// are exactly the ones who should be scheming.
+const NARRATIVE_STRESS_CONTRIB = {
+  secret:       12,
+  weaponise_at: 24,
+  fear:         14,
+  current_goal:  8,
+};
+const SEEDED_STRESS_CAP = 95;
+const SEEDED_COPING_DAYS = 30;          // outlast the cold-start demo window
+const SECONDS_PER_DAY = 86400;
+
+// Archetypes whose authored temperament implies a scheming disposition. A
+// coping_trait of paranoid|cruel is itself a scheme-gate wildcard, and drives
+// pickSchemeKind (cruel→assassinate, paranoid→blackmail).
+const CRUEL_ARCHETYPES = new Set([
+  "warlord", "raider", "enforcer", "assassin", "killer", "tyrant",
+  "executioner", "reaver", "butcher", "inquisitor",
+]);
+const PARANOID_ARCHETYPES = new Set([
+  "spy", "curator", "schemer", "broker", "smuggler", "informant",
+  "fugitive", "fixer", "handler", "spymaster", "conspirator",
+]);
+
+// Relationship-type → opinion score. Hostile types land <= -50 so they become
+// scheme-eligible targets; wary types are negative-but-not-murderous; allied
+// types seed positive edges (accomplice recruitment reads opinion >= +30).
+const REL_TYPE_OPINION = {
+  ideological_nemesis:       -62,
+  blood_target:              -70,
+  deliberate_threat:         -60,
+  old_adversary:             -58,
+  former_creator_now_threat: -60,
+  former_client_now_threat:  -56,
+  estranged_fork:            -52,
+  wary_respect:              -34,
+  wary_truce:                -30,
+  wary_recognition:          -30,
+  wary_curiosity:            -24,
+  respectful_distance:       -20,
+  doubting_lieutenant:       -40,
+  former_mentor_now_warden:  -38,
+  reluctant_apprentice:      -28,
+  watched_curiosity:         -14,
+  fascinated_observer:        10,
+  polite_recognition:         12,
+  professional_respect:       30,
+  philosophical_kinship:      45,
+  moral_compass:              50,
+  natural_ally:               55,
+  potential_ally:             38,
+  transactional_ally:         34,
+  transactional_back_channel: 18,
+  trusted_organizer:          50,
+  trusted_fixer:              48,
+  chosen_heir:                60,
+};
+
+// Keyword fallback for relationship types not in the table above, so new
+// authored types classify sensibly without a code edit.
+function opinionForRelType(type) {
+  if (type == null) return 0;
+  const t = String(type).toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(REL_TYPE_OPINION, t)) return REL_TYPE_OPINION[t];
+  if (/(nemesis|adversary|enemy|threat|blood_target|vengeance|feud|hatred|betray|rival)/.test(t)) return -60;
+  if (/(wary|doubting|warden|reluctant|distrust|tension|estranged|suspicion)/.test(t)) return -38;
+  if (/(ally|trusted|kinship|heir|friend|mentor|respect|compass|kin)/.test(t)) return 45;
+  return 0;
+}
+
+function copingTraitFor(npc) {
+  const arch = String(npc.archetype || "").toLowerCase();
+  if (CRUEL_ARCHETYPES.has(arch)) return "cruel";
+  if (PARANOID_ARCHETYPES.has(arch)) return "paranoid";
+  // A secret with an explicit weaponisation trigger = a secret-bearer under
+  // chronic threat → paranoid.
+  const nc = npc.narrative_context;
+  if (nc && typeof nc === "object" && nc.weaponise_at) return "paranoid";
+  return null;
+}
+
+/**
+ * Derive npc_stress + character_opinions edges from one authored NPC's
+ * narrative_context + relationships. Idempotent in practice because its only
+ * caller (seedNPCAsymmetry) early-returns once the NPC has been seeded. Never
+ * lowers gameplay-accrued stress and never overwrites a gameplay coping trait.
+ */
+export function deriveSchemeSubstrateFromNarrative(db, npc) {
+  if (!db || !npc?.id) return { ok: false, reason: "no_npc" };
+  const nc = (npc.narrative_context && typeof npc.narrative_context === "object" && !Array.isArray(npc.narrative_context))
+    ? npc.narrative_context : {};
+
+  let stressDelta = 0;
+  for (const [field, contrib] of Object.entries(NARRATIVE_STRESS_CONTRIB)) {
+    if (nc[field]) stressDelta += contrib;
+  }
+  const seededStress = Math.min(SEEDED_STRESS_CAP, 30 + stressDelta);
+  const coping = copingTraitFor(npc);
+  const now = Math.floor(Date.now() / 1000);
+  const copingUntil = coping ? now + SEEDED_COPING_DAYS * SECONDS_PER_DAY : null;
+
+  let stressSet = 0, opinionEdges = 0;
+
+  // Stress + coping: raise stress (never lower), keep any existing gameplay
+  // coping trait, otherwise apply the derived one.
+  if (stressDelta > 0 || coping) {
+    try {
+      db.prepare(`
+        INSERT INTO npc_stress (npc_id, stress, coping_trait, coping_until, last_decay_at, updated_at)
+        VALUES (?, ?, ?, ?, unixepoch(), unixepoch())
+        ON CONFLICT(npc_id) DO UPDATE SET
+          stress       = MAX(npc_stress.stress, excluded.stress),
+          coping_trait = COALESCE(npc_stress.coping_trait, excluded.coping_trait),
+          coping_until = COALESCE(npc_stress.coping_until, excluded.coping_until),
+          updated_at   = unixepoch()
+      `).run(npc.id, seededStress, coping, copingUntil);
+      stressSet = seededStress;
+    } catch { /* npc_stress table optional on minimal builds */ }
+  }
+
+  // Opinion edges from authored relationships → the hate-edges schemes fire
+  // along. recordOpinionEvent applies a delta; at seed time the row is absent
+  // (score 0) so the delta lands as the absolute score.
+  const rels = Array.isArray(npc.relationships) ? npc.relationships : [];
+  for (const rel of rels) {
+    const targetId = rel?.npc_id;
+    if (!targetId || targetId === npc.id) continue;
+    const score = opinionForRelType(rel.type);
+    if (score === 0) continue;
+    try {
+      recordOpinionEvent(
+        db,
+        { npcId: npc.id, targetKind: "npc", targetId },
+        score,
+        rel.notes ? String(rel.notes).slice(0, 160) : `authored:${rel.type || "relationship"}`,
+      );
+      opinionEdges++;
+    } catch { /* character_opinions table optional */ }
+  }
+
+  return { ok: true, stress: stressSet, coping, opinionEdges };
+}
 
 // ── Deterministic selection ──────────────────────────────────────────────────
 
@@ -181,7 +343,18 @@ export async function seedNPCAsymmetry(db, npc) {
     });
   }
 
-  return { ok: true };
+  // T1.3 — translate the NPC's authored interiority (narrative_context +
+  // relationships) into the npc_stress + character_opinions rows the scheme
+  // engine gates on, so authored rivalries become live schemes at cold boot.
+  // Best-effort: a failure here must never block the rest of asymmetry seeding.
+  let schemeSubstrate = null;
+  try {
+    schemeSubstrate = deriveSchemeSubstrateFromNarrative(db, npc);
+  } catch (err) {
+    logger.debug?.("npc_asymmetry", "scheme_substrate_failed", { npcId: npc.id, err: err?.message });
+  }
+
+  return { ok: true, schemeSubstrate };
 }
 
 function deterministicTargetNpcId(npc, suffix) {
