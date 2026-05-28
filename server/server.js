@@ -48505,6 +48505,38 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC8 — extraction shooter.
+app.post("/api/extraction/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startRun } = await import("./lib/extraction.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(startRun(db, userId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/loot", requireAuth(), asyncHandler(async (req, res) => {
+  const { pickupLoot } = await import("./lib/extraction.js");
+  res.json(pickupLoot(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/extract", requireAuth(), asyncHandler(async (req, res) => {
+  const { extract } = await import("./lib/extraction.js");
+  res.json(extract(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/:runId/die", requireAuth(), asyncHandler(async (req, res) => {
+  const { dieDuringRun } = await import("./lib/extraction.js");
+  res.json(dieDuringRun(db, req.params.runId, req.body || {}));
+}));
+
+app.post("/api/extraction/zone", requireAuth(), asyncHandler(async (req, res) => {
+  const { declareExtractionZone } = await import("./lib/extraction.js");
+  res.json(declareExtractionZone(db, req.body || {}));
+}));
+
+app.get("/api/extraction/zones/:worldId", asyncHandler(async (req, res) => {
+  const { listActiveZones } = await import("./lib/extraction.js");
+  res.json({ ok: true, zones: listActiveZones(db, req.params.worldId) });
+}));
+
 // Phase CC6 — asymmetric horror.
 app.post("/api/horror/session/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startSession } = await import("./lib/horror.js");
