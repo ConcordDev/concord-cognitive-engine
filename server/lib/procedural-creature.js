@@ -98,13 +98,84 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const CONTENT_ROOT = join(__dir, "../../content");
 const _baselineCache = new LruMap(); // worldId -> creatures[]
 
+function _titleCaseId(id) {
+  return String(id || "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+/** Normalize a bestiary `fauna` entry ({id, kind, origin, uses, habitat, ...})
+ * into the baseline contract matchBaseline/listBaselines expect ({name,
+ * description}). Authored worlds keep their flagship fauna in bestiary.json;
+ * the generator only knew how to read creatures.json, so e.g. tunya — the
+ * flagship — silently grounded zero creatures despite a full bestiary. */
+function _normalizeBestiaryEntry(e) {
+  if (!e || typeof e !== "object") return null;
+  const name = e.name || _titleCaseId(e.id);
+  if (!name) return null;
+  let description = e.description || e.notes || "";
+  if (!description) {
+    const bits = [];
+    if (e.kind) bits.push(String(e.kind).replace(/_/g, " "));
+    if (e.origin) bits.push(`(${String(e.origin).replace(/_/g, " ")})`);
+    const head = bits.join(" ").trim();
+    const parts = [];
+    if (head) parts.push(`A ${head}.`);
+    if (Array.isArray(e.uses) && e.uses.length) parts.push(`Used for ${e.uses.join(", ")}.`);
+    if (Array.isArray(e.habitat) && e.habitat.length) parts.push(`Habitat: ${e.habitat.join(", ")}.`);
+    description = parts.join(" ").trim();
+  }
+  return {
+    id: e.id || name.toLowerCase().replace(/\s+/g, "_"),
+    name,
+    description,
+    topology_hint: e.topology_hint || e.topology || null,
+    size_band: e.size_band || e.size || null,
+    starting_behavior: e.starting_behavior || e.behavior || null,
+    habitat: e.habitat,
+    _source: "bestiary",
+  };
+}
+
+function _readJsonArray(p, listKeys = []) {
+  try {
+    const parsed = JSON.parse(readFileSync(p, "utf8"));
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === "object") {
+      for (const k of listKeys) if (Array.isArray(parsed[k])) return parsed[k];
+      // last resort: first array-valued property
+      const arr = Object.values(parsed).find((v) => Array.isArray(v));
+      if (arr) return arr;
+    }
+  } catch { /* file absent or malformed */ }
+  return [];
+}
+
 function loadBaselineCreatures(worldId) {
   if (_baselineCache.has(worldId)) return _baselineCache.get(worldId);
-  let creatures = [];
-  try {
-    const p = join(CONTENT_ROOT, "world", worldId, "creatures.json");
-    creatures = JSON.parse(readFileSync(p, "utf8"));
-  } catch { /* world has no baselines yet */ }
+  const byKey = new Map(); // name-lc -> baseline (creatures.json wins over bestiary)
+
+  // bestiary.json first (lower priority), normalized into the contract.
+  const bestiary = _readJsonArray(
+    join(CONTENT_ROOT, "world", worldId, "bestiary.json"),
+    ["fauna", "bestiary", "creatures", "species"],
+  );
+  for (const raw of bestiary) {
+    const c = _normalizeBestiaryEntry(raw);
+    if (c?.name) byKey.set(c.name.toLowerCase(), c);
+  }
+
+  // creatures.json second — the canonical baseline shape overrides bestiary.
+  const canonical = _readJsonArray(
+    join(CONTENT_ROOT, "world", worldId, "creatures.json"),
+    ["creatures", "fauna", "species"],
+  );
+  for (const c of canonical) {
+    if (c?.name) byKey.set(c.name.toLowerCase(), c);
+  }
+
+  const creatures = [...byKey.values()];
   _baselineCache.set(worldId, creatures);
   return creatures;
 }

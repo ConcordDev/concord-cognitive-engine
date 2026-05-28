@@ -1,0 +1,60 @@
+[
+  {
+    "id": "dust_courser",
+    "name": "Dust Courser",
+    "world_id": "concord-link-frontier",
+    "description": "A lean prairie quadruped built for the long run, kicking up dust trails across the frontier flats. Pack hunters that test a traveler's nerve before committing.",
+    "topology_hint": "quadruped",
+    "size_band": "medium",
+    "starting_behavior": "Fast pack hunter, circles prey before striking, breaks off if outnumbered",
+    "emergent_ability_seeds": [
+      {
+        "name": "dust_veil_sprint",
+        "verb": "dust_veil_sprint",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "speed", "delta": 0.7, "durationMs": 3500 } }
+        ],
+        "trigger": "below_30_health"
+      }
+    ]
+  },
+  {
+    "id": "rail_vulture",
+    "name": "Rail Vulture",
+    "world_id": "concord-link-frontier",
+    "description": "A broad-winged carrion bird that roosts on the old rail gantries, patient and pitiless, drawn to fresh kills and standing fights alike.",
+    "topology_hint": "winged_biped",
+    "size_band": "medium",
+    "starting_behavior": "Circles overhead, dives only on the wounded",
+    "emergent_ability_seeds": [
+      {
+        "name": "carrion_dive",
+        "verb": "carrion_dive",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": 0.6, "durationMs": 2500 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  },
+  {
+    "id": "thunder_brahmin",
+    "name": "Thunder Brahmin",
+    "world_id": "concord-link-frontier",
+    "description": "A heavy horned draft beast of the frontier herds, placid until provoked, then a charging wall of muscle that scatters anything in the corral.",
+    "topology_hint": "quadruped",
+    "size_band": "large",
+    "starting_behavior": "Grazes peacefully, charges when its herd is threatened",
+    "emergent_ability_seeds": [
+      {
+        "name": "stampede_charge",
+        "verb": "stampede_charge",
+        "effects": [
+          { "kind": "buff", "params": { "stat": "damage", "delta": 0.8, "durationMs": 3000 } },
+          { "kind": "buff", "params": { "stat": "speed", "delta": 0.4, "durationMs": 3000 } }
+        ],
+        "trigger": "took_critical_hit"
+      }
+    ]
+  }
+]
