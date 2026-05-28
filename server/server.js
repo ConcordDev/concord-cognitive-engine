@@ -661,6 +661,16 @@ registerHeartbeat("npc-scheme-cycle", {
   handler: runNpcSchemeCycle,
 });
 
+// T2.3 — scheme barge-in. Players near a plotting NPC overhear the plot (one
+// discovered evidence row + scheme:overheard event), feeding the discover/
+// expose pipeline. Runs ~every 2 min; scope 'world' (reads live presence).
+import { runSchemeOverhearCycle } from "./emergent/scheme-overhear-cycle.js";
+registerHeartbeat("scheme-overhear-cycle", {
+  frequency: 8,
+  scope: "world",
+  handler: runSchemeOverhearCycle,
+});
+
 // Phase T — NPC equal-agency cross-world. Three heartbeats:
 //   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
 //                                             ambition-driven goal-seeks

@@ -121,6 +121,31 @@ export default function registerSchemesMacros(register) {
     return discoverScheme(db, userId, input.schemeId, input.evidenceKind);
   });
 
+  /**
+   * schemes.overheard — T2.3 schemes the player has overheard (barge-in). Each
+   * carries the snippet + current discovery progress so the UI can offer an
+   * "investigate / expose" action that calls discover_evidence.
+   */
+  register("schemes", "overheard", async (ctx) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    let rows = [];
+    try {
+      rows = db.prepare(`
+        SELECT e.scheme_id, e.detail AS snippet, e.discovered_at,
+               s.plotter_id, s.kind, s.phase, s.discovery_pct, s.evidence_count
+        FROM npc_scheme_evidence e
+        JOIN npc_schemes s ON s.id = e.scheme_id
+        WHERE e.evidence_kind = 'overheard' AND e.discovered_by_user = ?
+          AND s.phase NOT IN ('complete','abandoned')
+        ORDER BY e.discovered_at DESC LIMIT 30
+      `).all(userId);
+    } catch { rows = []; }
+    return { ok: true, overheard: rows };
+  });
+
   // ─── new Phase 1 macros ──────────────────────────────────────────
 
   /**
