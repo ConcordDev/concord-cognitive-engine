@@ -48830,6 +48830,18 @@ app.get("/api/code-puzzle/:puzzleId/leaderboard", asyncHandler(async (req, res) 
   res.json({ ok: true, leaderboard: leaderboardForPuzzle(db, req.params.puzzleId) });
 }));
 
+app.get("/api/code-puzzle/puzzles", asyncHandler(async (req, res) => {
+  const { listPuzzles } = await import("./lib/programming-puzzle.js");
+  res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+app.get("/api/code-puzzle/:puzzleId", asyncHandler(async (req, res) => {
+  const { getPuzzle } = await import("./lib/programming-puzzle.js");
+  const p = getPuzzle(db, req.params.puzzleId);
+  if (!p) return res.status(404).json({ ok: false, error: "no_puzzle" });
+  res.json({ ok: true, puzzle: p });
+}));
+
 // Phase CC7 — theme park tycoon.
 app.post("/api/theme-park/attraction", requireAuth(), asyncHandler(async (req, res) => {
   const { openAttraction } = await import("./lib/theme-park.js");

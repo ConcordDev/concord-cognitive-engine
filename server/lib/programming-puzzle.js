@@ -181,4 +181,27 @@ export function leaderboardForPuzzle(db, puzzleId, limit = 10) {
   } catch { return []; }
 }
 
+export function listPuzzles(db, opts = {}) {
+  if (!db) return [];
+  try {
+    return db.prepare(`
+      SELECT id, name, description, optimal_cycles, optimal_size, created_at
+      FROM programming_puzzles
+      ORDER BY created_at DESC LIMIT ?
+    `).all(Math.max(1, Math.min(200, opts.limit || 50)));
+  } catch { return []; }
+}
+
+export function getPuzzle(db, puzzleId) {
+  if (!db || !puzzleId) return null;
+  try {
+    const p = db.prepare(`
+      SELECT id, name, description, test_cases_json, optimal_cycles, optimal_size, created_at
+      FROM programming_puzzles WHERE id = ?
+    `).get(puzzleId);
+    if (!p) return null;
+    return { ...p, test_cases: JSON.parse(p.test_cases_json) };
+  } catch { return null; }
+}
+
 export { VALID_OPS, MAX_CYCLES };
