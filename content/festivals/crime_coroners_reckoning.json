@@ -1,0 +1,13 @@
+{
+  "id": "crime_coroners_reckoning",
+  "name": "Coroner's Reckoning",
+  "world_id": "crime",
+  "season_idx": 5,
+  "day_in_season_start": 35,
+  "day_in_season_end": 35,
+  "repeats_yearly": true,
+  "decoration_tag": "white_robes",
+  "synopsis": "Ada Pell publishes the city's annual cause-of-death summary at the courthouse steps. Citizens come to read names.",
+  "achievements": [],
+  "quest_seeds": []
+}

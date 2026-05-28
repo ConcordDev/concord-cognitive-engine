@@ -1,0 +1,13 @@
+{
+  "id": "lattice_cohort_drill_day",
+  "name": "Cohort Drill Day",
+  "world_id": "lattice-crucible",
+  "season_idx": 2,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "ash_grey_pennants",
+  "synopsis": "Voss Dren leads the cohort through the full drill set in public. Citizens watch from the wall.",
+  "achievements": [],
+  "quest_seeds": []
+}

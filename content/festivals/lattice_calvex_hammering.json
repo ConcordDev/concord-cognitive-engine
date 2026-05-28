@@ -1,0 +1,13 @@
+{
+  "id": "lattice_calvex_hammering",
+  "name": "Calvex Forge Hammering",
+  "world_id": "lattice-crucible",
+  "season_idx": 1,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "iron_sparks",
+  "synopsis": "Public smithing day. Rina Calvex shows the Crucible's strange alloys to anyone who asks.",
+  "achievements": [],
+  "quest_seeds": []
+}

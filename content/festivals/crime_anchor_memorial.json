@@ -1,0 +1,13 @@
+{
+  "id": "crime_anchor_memorial",
+  "name": "Anchor Memorial",
+  "world_id": "crime",
+  "season_idx": 3,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "candles_at_the_wharf",
+  "synopsis": "Names of every sailor lost are read at the wharf. A candle per name. Ada Pell never misses.",
+  "achievements": [],
+  "quest_seeds": []
+}

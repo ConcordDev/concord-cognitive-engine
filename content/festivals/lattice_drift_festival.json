@@ -1,0 +1,13 @@
+{
+  "id": "lattice_drift_festival",
+  "name": "Drift Festival",
+  "world_id": "lattice-crucible",
+  "season_idx": 0,
+  "day_in_season_start": 7,
+  "day_in_season_end": 7,
+  "repeats_yearly": true,
+  "decoration_tag": "shimmering_ribbons",
+  "synopsis": "The Crucible celebrates a year without a major drift cascade. Ribbons that catch the air-currents above the circle.",
+  "achievements": [],
+  "quest_seeds": []
+}

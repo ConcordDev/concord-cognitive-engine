@@ -1,0 +1,13 @@
+{
+  "id": "ruins_sun_bleach_festival",
+  "name": "Sun-Bleach Festival",
+  "world_id": "sovereign-ruins",
+  "season_idx": 3,
+  "day_in_season_start": 35,
+  "day_in_season_end": 35,
+  "repeats_yearly": true,
+  "decoration_tag": "white_canvas",
+  "synopsis": "Caravans bleach their canvases on the high road. Pol Rim throws a small market. Children climb.",
+  "achievements": [],
+  "quest_seeds": []
+}

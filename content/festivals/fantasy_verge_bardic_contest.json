@@ -1,0 +1,13 @@
+{
+  "id": "fantasy_verge_bardic_contest",
+  "name": "Verge Bardic Contest",
+  "world_id": "fantasy",
+  "season_idx": 4,
+  "day_in_season_start": 12,
+  "day_in_season_end": 12,
+  "repeats_yearly": true,
+  "decoration_tag": "tavern_ribbons",
+  "synopsis": "Bards from across the Verge compete at the tavern. Three rounds: history, satire, lament.",
+  "achievements": [],
+  "quest_seeds": []
+}

@@ -1,0 +1,13 @@
+{
+  "id": "cyber_lattice_patrol_parade",
+  "name": "Lattice Patrol Parade",
+  "world_id": "cyber",
+  "season_idx": 0,
+  "day_in_season_start": 28,
+  "day_in_season_end": 28,
+  "repeats_yearly": true,
+  "decoration_tag": "blue_armor",
+  "synopsis": "The Patrol parades down the Avenue. Polished armour. The Quarter watches from rooftops, drinking.",
+  "achievements": [],
+  "quest_seeds": []
+}

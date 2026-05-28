@@ -1,0 +1,13 @@
+{
+  "id": "frontier_long_rider_race",
+  "name": "Long Rider Race",
+  "world_id": "concord-link-frontier",
+  "season_idx": 3,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "dust_streamers",
+  "synopsis": "Race from the eastern mile-marker to the western. Silas Quinn wins three years running. Sometimes.",
+  "achievements": [],
+  "quest_seeds": []
+}

@@ -1,0 +1,34 @@
+{
+  "bard_finn_oakheart:idle": {
+    "greeting": "Finn tunes the lute, eyes closed. \"Walker. The tavern is loud tonight, but I've got an hour. Sit.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Three things I sing: history, satire, lament. Want a song or a story?\"",
+        "playerOptions": [
+          { "text": "I heard a hub bard sings the same song different.", "leadsTo": "node_jora" },
+          { "text": "Sing me one for cheap.", "leadsTo": "node_song" }
+        ]
+      },
+      { "id": "node_jora", "npcText": "\"Jora Kell. We met once. The Concordia ballad — we sing different verses. The lattice carries them between us.\"",
+        "playerOptions": [ { "text": "Could I carry one for you?", "leadsTo": "node_close" } ] },
+      { "id": "node_song", "npcText": "\"For you? Free. The Lattice Lullaby, slow tempo.\"",
+        "playerOptions": [ { "text": "Thank you.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He nods, plays a chord, looks away. The conversation is over.", "playerOptions": [] }
+    ]
+  },
+  "hunter_old_brann:idle": {
+    "greeting": "Brann does not look up from the print he's examining. \"Quiet. Make it three sentences or fewer.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "Counting.",
+        "playerOptions": [
+          { "text": "Kiren Owl tracks the same print in the hub.", "leadsTo": "node_kiren" },
+          { "text": "Take me hunting.", "leadsTo": "node_hunt" }
+        ]
+      },
+      { "id": "node_kiren", "npcText": "\"Yes. Bring me his sketch. I'll match it against mine. Twenty years of these.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_hunt", "npcText": "\"Dawn. Bring quiet boots.\"",
+        "playerOptions": [ { "text": "I'll be there.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He goes back to the print.", "playerOptions": [] }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "id": "lattice_sage_audience",
+  "name": "Sage's Audience",
+  "world_id": "lattice-crucible",
+  "season_idx": 3,
+  "day_in_season_start": 0,
+  "day_in_season_end": 0,
+  "repeats_yearly": true,
+  "decoration_tag": "white_robes_silver_thread",
+  "synopsis": "Once a year Ono Kell takes audience from anyone who walks to her hut. The line is long and quiet.",
+  "achievements": [],
+  "quest_seeds": []
+}

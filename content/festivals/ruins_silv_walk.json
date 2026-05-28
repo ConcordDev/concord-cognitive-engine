@@ -1,0 +1,13 @@
+{
+  "id": "ruins_silv_walk",
+  "name": "Silv's Walk",
+  "world_id": "sovereign-ruins",
+  "season_idx": 4,
+  "day_in_season_start": 28,
+  "day_in_season_end": 28,
+  "repeats_yearly": true,
+  "decoration_tag": "seven_brass_clasps",
+  "synopsis": "Silv Marn walks the refused circle one full loop. Citizens may walk behind her if they refuse to speak.",
+  "achievements": [],
+  "quest_seeds": []
+}

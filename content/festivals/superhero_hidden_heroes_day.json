@@ -1,0 +1,13 @@
+{
+  "id": "superhero_hidden_heroes_day",
+  "name": "Hidden Heroes Day",
+  "world_id": "superhero",
+  "season_idx": 5,
+  "day_in_season_start": 28,
+  "day_in_season_end": 28,
+  "repeats_yearly": true,
+  "decoration_tag": "small_red_pins",
+  "synopsis": "Honors un-masked everyday rescues. Reporter Mira Vance runs the column. Robin Orange wears the pin all year.",
+  "achievements": [],
+  "quest_seeds": []
+}

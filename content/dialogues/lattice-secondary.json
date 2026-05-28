@@ -1,0 +1,32 @@
+{
+  "smith_rina_calvex:idle": {
+    "greeting": "Rina taps the bench with a small hammer. \"Walker. Tea's on the second shelf. Help yourself.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"What did the lattice send today?\"",
+        "playerOptions": [
+          { "text": "I have an alloy commission from the hub.", "leadsTo": "node_hub" },
+          { "text": "I'd like to learn one of your alloys.", "leadsTo": "node_learn" }
+        ]
+      },
+      { "id": "node_hub", "npcText": "\"Hub-side? Lyra Brassgate by chance? Show me the spec.\"",
+        "playerOptions": [ { "text": "Here.", "leadsTo": "node_close" } ] },
+      { "id": "node_learn", "npcText": "\"Bring me an apprenticeship token from the hub Foundry and we'll begin.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "The hammer taps again.", "playerOptions": [] }
+    ]
+  },
+  "healer_sevn_orn:idle": {
+    "greeting": "Sevn rinses her hands in a copper bowl. \"Walker. Patients or talk?\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Either's fine.\"",
+        "playerOptions": [
+          { "text": "Arn Tev sends cuttings from the ruins.", "leadsTo": "node_arn" },
+          { "text": "Just observing.", "leadsTo": "node_close" }
+        ]
+      },
+      { "id": "node_arn", "npcText": "\"Bring them around back, under the tarp. Don't be seen. I'll see they get to the right people.\"",
+        "playerOptions": [ { "text": "Understood.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "She nods, busy.", "playerOptions": [] }
+    ]
+  }
+}

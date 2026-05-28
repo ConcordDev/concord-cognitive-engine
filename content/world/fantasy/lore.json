@@ -10,9 +10,14 @@
       "era": "Year -2 of The Sundering",
       "description": "A curse spread through the elder roots of the great forest, beginning at a single grove and traveling underground through the mycelial network. The Wildwood Circle's senior guardian, Thorne Blackroot, fought to contain it. He failed — but the curse did not destroy him; it merged with him. He emerged with green-and-black tattoos that pulse with both life and death. The Circle is split on what to do.",
       "significance": "major",
-      "factions_involved": ["wildwood_circle"],
+      "factions_involved": [
+        "wildwood_circle"
+      ],
       "world_id": "fantasy",
-      "known_by": ["wildwood_circle", "house_voss"],
+      "known_by": [
+        "wildwood_circle",
+        "house_voss"
+      ],
       "hidden_truth": "The curse originated within the Circle. Thorne knows who released it — a former apprentice he loved — but has told no one."
     },
     {
@@ -22,9 +27,13 @@
       "era": "Year -60",
       "description": "Lady Seraphine Voss formally inherited House Voss after her mother's apparent death from fever. Within a year she had compromised heirs in two of the four other Great Houses. Within five, the Voss masquerade balls had become the most prestigious — and most dangerous — events in the noble calendar.",
       "significance": "major",
-      "factions_involved": ["house_voss"],
+      "factions_involved": [
+        "house_voss"
+      ],
       "world_id": "fantasy",
-      "known_by": ["house_voss"],
+      "known_by": [
+        "house_voss"
+      ],
       "hidden_truth": "Seraphine's mother did not die of fever. Seraphine fed on her with her mother's complicity to claim the bloodline early. The arrangement was generations in the planning."
     },
     {
@@ -34,9 +43,13 @@
       "era": "Year -58",
       "description": "Seven guests vanished from a Voss masquerade ball. Each was a rival of House Voss in some small way — a witness to a contract dispute, a creditor of a Voss-friendly merchant, a young noble's lover. Investigations were opened by all four other Great Houses. None reached a verdict. The pattern repeated, on smaller scale, every year for the next sixty.",
       "significance": "moderate",
-      "factions_involved": ["house_voss"],
+      "factions_involved": [
+        "house_voss"
+      ],
       "world_id": "fantasy",
-      "known_by": ["house_voss"],
+      "known_by": [
+        "house_voss"
+      ],
       "hidden_truth": "The disappeared are kept alive in the Voss estate's lower vaults as a renewable food source for the bloodline. Seraphine has not killed any of the original seven. They are simply never returned."
     },
     {
@@ -46,9 +59,15 @@
       "era": "Year -1",
       "description": "Lady Seraphine Voss approached Thorne Blackroot three times: at the Voss spring ball, in his own forest under safe-passage, and through an emissary at a neutral monastery. Each time she offered alliance — her information network in exchange for his protection of her interests in the wild. Each time he refused. After the third refusal, both parties signed an unwritten rule: they will not move against each other directly. The rule has held since.",
       "significance": "major",
-      "factions_involved": ["wildwood_circle", "house_voss"],
+      "factions_involved": [
+        "wildwood_circle",
+        "house_voss"
+      ],
       "world_id": "fantasy",
-      "known_by": ["wildwood_circle", "house_voss"]
+      "known_by": [
+        "wildwood_circle",
+        "house_voss"
+      ]
     },
     {
       "id": "lore_quiet_grove",
@@ -57,9 +76,92 @@
       "era": "Year 0",
       "description": "The grove that was meant to be the Wildwood Circle's last sanctuary went silent over a single night — no birdsong, no insects, no animals. The trees are still alive. The land is not. The Circle's elders refuse to enter it. Thorne walks through it once a week and emerges each time more silent than the last.",
       "significance": "major",
-      "factions_involved": ["wildwood_circle"],
+      "factions_involved": [
+        "wildwood_circle"
+      ],
       "world_id": "fantasy",
-      "known_by": ["wildwood_circle"]
+      "known_by": [
+        "wildwood_circle"
+      ]
+    },
+    {
+      "id": "fantasy_thornwood_siege_year_03",
+      "title": "The Thornwood Siege",
+      "type": "war",
+      "era": "Year 03 of the Thorns",
+      "description": "Sandrun-Medici war pressure pushes refugee columns through the Verge. Thornwood holds the high road for nineteen days against a host that should have broken it. Lady Seraphine's father falls on the wall; she takes the keep at twenty-one.",
+      "significance": "major",
+      "factions_involved": [
+        "thornwood_keep",
+        "moonleaf_vigil"
+      ],
+      "known_by": [
+        "thornwood_keep",
+        "moonleaf_vigil"
+      ],
+      "world_id": "fantasy"
+    },
+    {
+      "id": "fantasy_lyra_master_disappearance",
+      "title": "The Apothecary's Master",
+      "type": "mystery",
+      "era": "Year -12 of the Thorns",
+      "description": "Lyra Thorne's teacher walked into the Moonleaf Vigil and never came out. The Vigil says she retired. The bog says otherwise.",
+      "significance": "minor",
+      "factions_involved": [
+        "moonleaf_vigil"
+      ],
+      "known_by": [
+        "moonleaf_vigil",
+        "thornwood_keep"
+      ],
+      "world_id": "fantasy"
+    },
+    {
+      "id": "fantasy_bog_drift_event",
+      "title": "The Year the Bog Grew",
+      "type": "catastrophe",
+      "era": "Year 02 of the Thorns",
+      "description": "The bog expanded forty paces in a single season. Nymeria emerged unchanged; the village of Greenmire never again appeared on any map.",
+      "significance": "major",
+      "factions_involved": [
+        "wildwood_circle"
+      ],
+      "known_by": [
+        "wildwood_circle",
+        "moonleaf_vigil"
+      ],
+      "world_id": "fantasy"
+    },
+    {
+      "id": "fantasy_corin_oath",
+      "title": "Ser Corin's Oath",
+      "type": "personal",
+      "era": "Year 01 of the Thorns",
+      "description": "Ser Corin Hale was knighted at twenty for saving Seraphine's youngest cousin from a Verge ambush. He has not asked for a favour in fifteen years.",
+      "significance": "minor",
+      "factions_involved": [
+        "thornwood_keep"
+      ],
+      "known_by": [
+        "thornwood_keep"
+      ],
+      "world_id": "fantasy"
+    },
+    {
+      "id": "fantasy_first_crossing",
+      "title": "The First Crossing",
+      "type": "founding",
+      "era": "Pre-Year 0",
+      "description": "Three centuries before the Thorns, hedge witches crossed the bog into the lattice. Returned with songs nobody now sings. Nymeria says she remembers one of them.",
+      "significance": "major",
+      "factions_involved": [
+        "wildwood_circle"
+      ],
+      "known_by": [
+        "wildwood_circle"
+      ],
+      "world_id": "fantasy"
     }
   ]
 }

@@ -1,0 +1,13 @@
+{
+  "id": "fantasy_hunters_vigil",
+  "name": "Hunters' Vigil",
+  "world_id": "fantasy",
+  "season_idx": 3,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "antler_torches",
+  "synopsis": "Old Brann leads the Moonleaf hunters on the longest dawn-watch. Antler torches mark the path.",
+  "achievements": [],
+  "quest_seeds": []
+}

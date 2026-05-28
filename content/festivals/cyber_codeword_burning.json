@@ -1,0 +1,13 @@
+{
+  "id": "cyber_codeword_burning",
+  "name": "Codeword Burning",
+  "world_id": "cyber",
+  "season_idx": 5,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "ash_in_buckets",
+  "synopsis": "Once a year, expired identities are publicly burned in front of Silver Vey's office. The smoke smells like solder.",
+  "achievements": [],
+  "quest_seeds": []
+}

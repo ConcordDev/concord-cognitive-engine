@@ -1,0 +1,13 @@
+{
+  "id": "lattice_verge_crossing",
+  "name": "Verge Crossing",
+  "world_id": "lattice-crucible",
+  "season_idx": 4,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "lattice_lanterns",
+  "synopsis": "Calvex Forge fires the public kiln. Citizens cross the verge in pairs and return with a lattice-stone.",
+  "achievements": [],
+  "quest_seeds": []
+}

@@ -1,0 +1,13 @@
+{
+  "id": "superhero_skyline_marathon",
+  "name": "Skyline Marathon",
+  "world_id": "superhero",
+  "season_idx": 2,
+  "day_in_season_start": 14,
+  "day_in_season_end": 14,
+  "repeats_yearly": true,
+  "decoration_tag": "race_numbers",
+  "synopsis": "Civilian race from one skyline tower to another. Officer Carver runs every year.",
+  "achievements": [],
+  "quest_seeds": []
+}

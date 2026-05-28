@@ -1,0 +1,34 @@
+{
+  "doctor_ren_chase:idle": {
+    "greeting": "Ren wipes blood off his augmented fingers. \"Walker. The clinic's open if you bleed. Talk if you don't.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"What's the count?\"",
+        "playerOptions": [
+          { "text": "I have a satchel from Pia Thalis.", "leadsTo": "node_pia" },
+          { "text": "Just a wound.", "leadsTo": "node_wound" }
+        ]
+      },
+      { "id": "node_pia", "npcText": "\"Set it on the third shelf, behind the gauze. Walk out. Don't say the name again here.\"",
+        "playerOptions": [ { "text": "Done.", "leadsTo": "node_close" } ] },
+      { "id": "node_wound", "npcText": "\"Sit. Sleeve up.\"",
+        "playerOptions": [ { "text": "Thanks.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "He's already on the next patient.", "playerOptions": [] }
+    ]
+  },
+  "child_pixel:idle": {
+    "greeting": "Pixel pulls the mirrored visor up halfway. \"Walker. Squirrel says you smell like trouble.\"",
+    "nodes": [
+      { "id": "node_1", "npcText": "\"Squirrel's never wrong about that.\"",
+        "playerOptions": [
+          { "text": "You have a map. Kira Zane's.", "leadsTo": "node_map" },
+          { "text": "Tell me about Squirrel.", "leadsTo": "node_squirrel" }
+        ]
+      },
+      { "id": "node_map", "npcText": "She freezes. \"Don't tell anyone. Not even Kira. I didn't know what it was. It's yours if you tell me why she gave it to me.\"",
+        "playerOptions": [ { "text": "Deal.", "leadsTo": "node_close" } ] },
+      { "id": "node_squirrel", "npcText": "\"Pet program. Won't hurt you. Mostly.\"",
+        "playerOptions": [ { "text": "Cute.", "leadsTo": "node_close" } ] },
+      { "id": "node_close", "npcText": "Visor down. She vanishes into the crowd.", "playerOptions": [] }
+    ]
+  }
+}

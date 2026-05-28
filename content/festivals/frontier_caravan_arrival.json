@@ -1,0 +1,13 @@
+{
+  "id": "frontier_caravan_arrival",
+  "name": "Trader's Caravan",
+  "world_id": "concord-link-frontier",
+  "season_idx": 4,
+  "day_in_season_start": 21,
+  "day_in_season_end": 21,
+  "repeats_yearly": true,
+  "decoration_tag": "trade_ribbons",
+  "synopsis": "Hub-bound caravans arrive together once per quarter. The frontier eats well for a week.",
+  "achievements": [],
+  "quest_seeds": []
+}
