@@ -48609,6 +48609,35 @@ app.post("/api/fishing/resolve", requireAuth(), asyncHandler(async (req, res) =>
   res.json(resolveFishing(req.body || {}));
 }));
 
+// Phase DC3 — fishing hub: catalog, recent catches, cast.
+app.get("/api/fishing/catalog", asyncHandler(async (req, res) => {
+  const { listFishForWorld } = await import("./lib/fishing.js");
+  const worldId = req.query.worldId ? String(req.query.worldId) : "concordia-hub";
+  const biome = req.query.biome ? String(req.query.biome) : null;
+  res.json({ ok: true, fish: listFishForWorld(worldId, biome) });
+}));
+
+app.get("/api/fishing/catches/mine", requireAuth(), asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.userId;
+  try {
+    const rows = db.prepare(`
+      SELECT id, world_id, item_id, item_name, acquired_at, meta_json
+      FROM player_inventory
+      WHERE user_id = ? AND item_type = 'raw_fish'
+      ORDER BY acquired_at DESC LIMIT 50
+    `).all(userId);
+    res.json({ ok: true, catches: rows });
+  } catch (e) {
+    res.json({ ok: true, catches: [], error: e?.message });
+  }
+}));
+
+app.post("/api/fishing/cast", requireAuth(), asyncHandler(async (req, res) => {
+  const { castLine } = await import("./lib/fishing.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(castLine({ userId, ...(req.body || {}) }));
+}));
+
 // Phase CF4 — karaoke (surface resolveKaraoke).
 app.post("/api/karaoke/resolve", requireAuth(), asyncHandler(async (req, res) => {
   const { resolveKaraoke } = await import("./lib/minigame-resolvers.js");
