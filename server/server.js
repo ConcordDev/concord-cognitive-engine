@@ -48945,28 +48945,42 @@ app.get("/api/time-loop/active/:worldId", requireAuth(), asyncHandler(async (req
   res.json({ ok: true, session: getActiveLoop(db, userId, req.params.worldId) });
 }));
 
-// Phase CC1 — turn-based grid combat (Tactical/CRPG mode).
-app.post("/api/turn-combat/start", requireAuth(), asyncHandler(async (req, res) => {
-  const { startCombat } = await import("./lib/turn-combat.js");
+// Phase CC1 — fluid party combat (real-time-with-pause; Tactical/CRPG).
+// All combat in Concordia is fluid. Party combat layers an RTwP command
+// queue on top — pause via setTimeScale(0), queue per-character
+// abilities, they fire when each combatant's cooldown elapses.
+app.post("/api/party-combat/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startCombat } = await import("./lib/party-combat.js");
   res.json(startCombat(db, req.body || {}));
 }));
 
-app.post("/api/turn-combat/:combatId/action", requireAuth(), asyncHandler(async (req, res) => {
-  const { executeAction } = await import("./lib/turn-combat.js");
+app.post("/api/party-combat/:sessionId/queue", requireAuth(), asyncHandler(async (req, res) => {
+  const { queueAction } = await import("./lib/party-combat.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(executeAction(db, req.params.combatId, req.body?.actorId || userId, req.body?.action || {}));
+  res.json(queueAction(db, req.params.sessionId, req.body?.actorId || userId, req.body?.action || {}));
 }));
 
-app.get("/api/turn-combat/:combatId/state", asyncHandler(async (req, res) => {
-  const { getCombatState } = await import("./lib/turn-combat.js");
-  const s = getCombatState(db, req.params.combatId);
-  if (!s) return res.status(404).json({ ok: false, error: "no_combat" });
-  res.json({ ok: true, combat: s });
+app.post("/api/party-combat/:sessionId/time-scale", requireAuth(), asyncHandler(async (req, res) => {
+  const { setTimeScale } = await import("./lib/party-combat.js");
+  res.json(setTimeScale(db, req.params.sessionId, Number(req.body?.scale ?? 1)));
 }));
 
-app.get("/api/turn-combat/:combatId/log", asyncHandler(async (req, res) => {
-  const { listCombatLog } = await import("./lib/turn-combat.js");
-  res.json({ ok: true, log: listCombatLog(db, req.params.combatId, Number(req.query.limit) || 50) });
+app.post("/api/party-combat/:sessionId/tick", asyncHandler(async (req, res) => {
+  // Public — heartbeat or client can drive resolution.
+  const { resolveTick } = await import("./lib/party-combat.js");
+  res.json(resolveTick(db, req.params.sessionId, req.body?.nowMs));
+}));
+
+app.get("/api/party-combat/:sessionId/state", asyncHandler(async (req, res) => {
+  const { getCombatState } = await import("./lib/party-combat.js");
+  const s = getCombatState(db, req.params.sessionId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_session" });
+  res.json({ ok: true, session: s });
+}));
+
+app.get("/api/party-combat/:sessionId/log", asyncHandler(async (req, res) => {
+  const { listActionLog } = await import("./lib/party-combat.js");
+  res.json({ ok: true, log: listActionLog(db, req.params.sessionId, Number(req.query.limit) || 100) });
 }));
 
 // Phase CB6 — hidden object via photo gallery.

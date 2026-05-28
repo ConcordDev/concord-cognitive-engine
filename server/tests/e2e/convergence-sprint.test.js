@@ -15,6 +15,7 @@ import { up as upRestaurant } from "../../migrations/248_restaurant.js";
 import { up as upTrivia }     from "../../migrations/249_trivia.js";
 import { up as upHO }         from "../../migrations/250_hidden_object.js";
 import { up as upTurn }       from "../../migrations/251_turn_combat.js";
+import { up as upParty }      from "../../migrations/259_fluid_party_combat.js";
 import { up as upHack }       from "../../migrations/252_hacking_puzzles.js";
 import { up as upProg }       from "../../migrations/253_programming_puzzles.js";
 import { up as upFactory }    from "../../migrations/254_claim_entities.js";
@@ -33,7 +34,7 @@ import { plantSeed, harvestCrop }               from "../../lib/farming.js";
 import { openRestaurant, placeOrder, serveOrder } from "../../lib/restaurant.js";
 import { authorQuestion, startSession, submitAnswer, tallySession } from "../../lib/trivia.js";
 import { createScene, playScene, submitFind }   from "../../lib/hidden-object.js";
-import { startCombat, executeAction }           from "../../lib/turn-combat.js";
+import { startCombat as startParty, queueAction, resolveTick, setTimeScale } from "../../lib/party-combat.js";
 import { authorPuzzle as authorHack, attemptCommand } from "../../lib/hacking.js";
 import { authorPuzzle as authorCp, submitSolution }    from "../../lib/programming-puzzle.js";
 import { placeEntity, depositToEntity, tickClaimFactory, connectEntities, getInventory } from "../../lib/factory.js";
@@ -52,7 +53,7 @@ function bootDb() {
     CREATE TABLE arrest_records (id TEXT PRIMARY KEY, world_id TEXT, crime_id TEXT, arresting_detective_id TEXT, suspect_id TEXT, suspect_type TEXT, charges TEXT, evidence_summary TEXT, verdict TEXT, sentence_type TEXT, sentence_data TEXT, processed_at INTEGER);
   `);
   upClimb(db); upRoguelite(db); upHorde(db); upFarm(db); upRestaurant(db);
-  upTrivia(db); upHO(db); upTurn(db); upHack(db); upProg(db);
+  upTrivia(db); upHO(db); upTurn(db); upParty(db); upHack(db); upProg(db);
   upFactory(db); upLoops(db); upHorror(db); upPark(db); upExtr(db);
   return db;
 }
@@ -119,14 +120,20 @@ describe("Phase CA-CF — Convergence Sprint end-to-end", () => {
     const found = submitFind(db, hop.runId, { x: 5, y: 5 });
     assert.equal(found.complete, true);
 
-    // ── CC1 turn-based combat ─────────────────────────────────────────
-    const tc = startCombat(db, { worldId: "tunya", participants: [
-      { entityId: "alice", team: "blue", hp: 100, x: 0, y: 0 },
-      { entityId: "bob",   team: "red",  hp: 100, x: 1, y: 0 },
+    // ── CC1 fluid party combat (real-time-with-pause) ────────────────
+    const pc = startParty(db, { worldId: "tunya", participants: [
+      { entityId: "alice", team: "blue", hp: 100, x: 0, z: 0 },
+      { entityId: "bob",   team: "red",  hp: 100, x: 1, z: 0 },
     ] });
-    executeAction(db, tc.combatId, "alice", { kind: "attack", targetId: "bob", damage: 100, range: 2 });
-    const tcState = db.prepare(`SELECT winner_team FROM turn_combats WHERE id = ?`).get(tc.combatId);
-    assert.equal(tcState.winner_team, "blue");
+    // Pause, queue, resume, tick — RTwP shape.
+    setTimeScale(db, pc.sessionId, 0);
+    queueAction(db, pc.sessionId, "alice", {
+      kind: "attack",
+      payload: { kind: "attack", targetId: "bob", damage: 100, range: 2 },
+    });
+    setTimeScale(db, pc.sessionId, 1.0);
+    const pcTick = resolveTick(db, pc.sessionId, Date.now());
+    assert.equal(pcTick.winnerTeam, "blue");
 
     // ── CC2 hacking ───────────────────────────────────────────────────
     const hp = authorHack(db, { name: "x", terminalTree: {}, solutionPath: ["ls"] });
