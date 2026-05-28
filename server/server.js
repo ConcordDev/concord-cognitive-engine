@@ -49173,6 +49173,29 @@ app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) =>
   res.json({ ok: true, run: getActiveRun(db, userId) });
 }));
 
+// Phase DB3 — Roguelite unlock catalog (public read of the JSON content file).
+app.get("/api/roguelite/catalog", asyncHandler(async (req, res) => {
+  try {
+    const fs = await import("node:fs");
+    const pathMod = await import("node:path");
+    // Try repo-root content path; fallback to one-up if cwd is server/.
+    const cwd = process.cwd();
+    const candidates = [
+      pathMod.resolve(cwd, "content", "roguelite-unlocks.json"),
+      pathMod.resolve(cwd, "..", "content", "roguelite-unlocks.json"),
+    ];
+    for (const file of candidates) {
+      try {
+        const data = JSON.parse(fs.readFileSync(file, "utf8"));
+        return res.json({ ok: true, unlocks: data });
+      } catch { /* try next */ }
+    }
+    res.json({ ok: true, unlocks: [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e?.message, unlocks: [] });
+  }
+}));
+
 app.get("/api/roguelite/recent", requireAuth(), asyncHandler(async (req, res) => {
   const { listRecentRuns } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;

@@ -203,6 +203,20 @@ const BrawlActiveHUD = dynamic(
     })),
   { ssr: false }
 );
+const RogueliteRunHUD = dynamic(
+  () =>
+    import('@/components/world/RogueliteRunHUD').then((m) => ({
+      default: m.RogueliteRunHUD,
+    })),
+  { ssr: false }
+);
+const RogueliteUnlockShop = dynamic(
+  () =>
+    import('@/components/world/RogueliteRunHUD').then((m) => ({
+      default: m.RogueliteUnlockShop,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4840,6 +4854,10 @@ export default function WorldLensPage() {
           {/* Phase DB2 — Brawl invite toast + active brawl HUD */}
           <BrawlInviteToast />
           <BrawlActiveHUD />
+
+          {/* Phase DB3 — Roguelite run HUD + unlock shop */}
+          <RogueliteRunHUD />
+          <RogueliteUnlockShop />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
