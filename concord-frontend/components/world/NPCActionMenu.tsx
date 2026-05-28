@@ -57,6 +57,8 @@ export function NPCActionMenu() {
       setMenu(base);
       sfx('ui_npc_menu_open');
       juice('menu-open');
+      // Phase E8 — tutorial action for the NPC-menu-opened step.
+      window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'npc-menu-opened' } }));
       enrich(detail).then(extras => setMenu(prev => prev && prev.npcId === detail.npcId ? { ...prev, ...extras } : prev));
     }
     window.addEventListener('concordia:npc-context-menu', onContextMenu);

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "first_cycle_phase_d",
+    "title": "The First Cycle — Concordia Compass",
+    "description": "You've cooked, eaten, fought, and communed. The hub is ready to show you four more loops. Concordia herself walks you through: the command palette, NPC contextual actions, building workbenches, and the run-mode hotbar.",
+    "giver_npc_id": "concordia_first_breath",
+    "difficulty": "beginner",
+    "domain": "first_cycle",
+    "estimated_time": "10m",
+    "objectives": [
+      { "id": "obj_phd_palette", "type": "interact", "target": "command_palette", "required_count": 1, "description": "Press Ctrl+K (Cmd+K on Mac) to open the command palette." },
+      { "id": "obj_phd_npc_menu", "type": "interact", "target": "npc_context_menu", "required_count": 1, "description": "Click on any NPC to open the seven-action context menu." },
+      { "id": "obj_phd_workbench", "type": "interact", "target": "any_workbench_building", "required_count": 1, "description": "Walk within 4 metres of a workbench-type building. The overlay opens automatically." },
+      { "id": "obj_phd_mode", "type": "interact", "target": "game_mode_hotbar", "required_count": 1, "description": "Launch a run-mode from the bottom hotbar (roguelite, horde, extraction, time loop, horror, or brawl)." }
+    ],
+    "rewards": {
+      "xp": 100,
+      "skill_xp": { "concordia_alignment": 30 },
+      "buffs": [
+        { "id": "concordia_compass", "label": "Concordia Compass", "duration_seconds": 0, "effects": { "first_cycle_complete": true } }
+      ],
+      "items": ["concordia_compass_title"]
+    },
+    "breadcrumbs": [
+      { "id": "bc_phd_palette", "content": "Ctrl+K is your second-most-used keybinding (after WASD). It searches 240 lenses, every named action in the world, and every NPC by name. Use it.", "unlocks_after": "obj_phd_palette", "release_mode": "on_completion" },
+      { "id": "bc_phd_npc_menu", "content": "Every NPC offers more than dialogue. Mentorship, courtship, combat invites, trade, hire, trait inspection. The menu is contextual to what the NPC offers, so a vendor shows Trade and a mentor shows Request Mentorship.", "unlocks_after": "obj_phd_npc_menu", "release_mode": "on_completion" },
+      { "id": "bc_phd_workbench", "content": "Eleven building types open workbenches by proximity: farm_plot, restaurant, trivia_kiosk, karaoke_booth, mahjong_table, hacking_terminal, programming_console, factory_workbench, attraction_booth, creature_pen, glyph_altar, mystery_board. Walk within 4m. The overlay opens.", "unlocks_after": "obj_phd_workbench", "release_mode": "on_completion" },
+      { "id": "bc_phd_mode", "content": "Six modes from the hotbar: roguelite (Hades-pattern), horde wave (bullet-heaven), extraction run (Tarkov-pattern), time loop (Outer Wilds-pattern), asymmetric horror (Phasmophobia-pattern), brawl matchmaker (Sifu fist-only 1v1). Try each in any order.", "unlocks_after": "obj_phd_mode", "release_mode": "on_completion" }
+    ],
+    "follow_up_quest_ids": [],
+    "prerequisites": ["first_cycle_commune"],
+    "tags": ["first_cycle", "phase_d", "tutorial"],
+    "tutorial_phase": "phase_d"
+  }
+]

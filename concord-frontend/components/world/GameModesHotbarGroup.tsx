@@ -143,6 +143,8 @@ export function GameModesHotbarGroup({ worldId }: Props) {
     try {
       const result = await confirm.start(worldId);
       if (result?.ok) {
+        // Phase E8 — tutorial action for the mode-started step.
+        window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'mode-started' } }));
         setFlash(`Started: ${confirm.label}`);
       } else {
         setFlash(result?.error ? `Failed: ${result.error}` : 'Failed to start');

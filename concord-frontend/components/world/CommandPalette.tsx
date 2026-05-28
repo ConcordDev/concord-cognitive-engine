@@ -103,6 +103,8 @@ export function CommandPalette() {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
+        // Phase E8 — tutorial action for the palette-open step.
+        window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'palette-open' } }));
         setOpen((v) => !v);
       } else if (e.key === 'Escape' && open) {
         setOpen(false);

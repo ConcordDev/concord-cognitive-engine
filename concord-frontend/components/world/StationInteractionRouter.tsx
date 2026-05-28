@@ -106,6 +106,8 @@ export function StationInteractionRouter() {
         return;
       }
       setActive({ building, worldId: detail.worldId });
+      // Phase E8 — tutorial action for the workbench-interact step.
+      window.dispatchEvent(new CustomEvent('concordia:tutorial-action', { detail: { action: 'workbench-interact' } }));
     } catch {
       setError('network error');
       setTimeout(() => setError(null), 2500);

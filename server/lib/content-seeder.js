@@ -521,6 +521,8 @@ export async function seedContent({ db = null } = {}) {
     "quests/brackish-trust.json",
     "quests/nesha-old-seam.json",
     "quests/sealed-record.json",
+    // Phase E8 — Phase D onboarding extension chained from first_cycle_commune.
+    "quests/first_cycle_phase_d.json",
   ]) {
     const side = readJSON(sideFile);
     if (Array.isArray(side)) results.quests += seedQuestFile(side);
