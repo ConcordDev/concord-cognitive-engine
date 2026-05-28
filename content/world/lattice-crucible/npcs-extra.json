@@ -1,0 +1,148 @@
+[
+  {
+    "id": "scout_emer_voss",
+    "name": "Emer Voss",
+    "title": "Scout of the Lattice Verge",
+    "faction_id": "verge_scouts",
+    "world_id": "lattice-crucible",
+    "archetype": "hunter",
+    "personality": "Emer speaks once and listens four times. Walks softer than the wind.",
+    "appearance": "Late twenties, dark hair shaved at the sides, leather scout gear, antler-knife at the belt.",
+    "background": "Born in the Verge. Mapped twelve impossible paths the Crucible refused to name.",
+    "narrative_context": { "secret": "Emer has tracked the same creature Kiren Owl (hub) is tracking. Both prints match.", "weaponise_at": "Bring the two scouts together; the cross-world breach is mapped." },
+    "concord_link_resonance": "concordia-hub:ranger_kiren_owl",
+    "dialogue_style": "spare, observational, occasionally dryly funny",
+    "needs": [{ "id": "scouting", "priority": "primary", "satisfaction_method": "dawn_patrol" }],
+    "daily_schedule": [
+      { "phase": "Dominus", "phase_hours": [3, 7], "location": "lattice_verge_north", "activity": "scouting", "need_addressed": "scouting", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 21], "location": "lattice_verge_outpost", "activity": "evening journal", "need_addressed": "scouting", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "smith_rina_calvex",
+    "name": "Rina Calvex",
+    "title": "Crucible Smith",
+    "faction_id": "calvex_forge",
+    "world_id": "lattice-crucible",
+    "archetype": "scholar",
+    "personality": "Rina speaks in tolerances and tea. Mostly tea.",
+    "appearance": "Forties, broad shoulders, soot-streaked, goggles always pushed up.",
+    "background": "Forges the Crucible's strange alloys. Has rejected three royal commissions.",
+    "narrative_context": { "secret": "Rina's alloys harmonise with the hub's focus-lattice. Lyra Brassgate has noticed.", "weaponise_at": "Cross-world engineering exchange unlocks a substrate sharing." },
+    "concord_link_resonance": "concordia-hub:engineer_lyra_brassgate",
+    "dialogue_style": "technical, blunt, gentle to apprentices",
+    "needs": [{ "id": "forge_work", "priority": "primary", "satisfaction_method": "daily_forge" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [9, 17], "location": "lattice_calvex_forge", "activity": "forging", "need_addressed": "forge_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "sage_ono_kell",
+    "name": "Ono Kell",
+    "title": "Crucible Sage",
+    "faction_id": "kell_circle",
+    "world_id": "lattice-crucible",
+    "archetype": "mystic",
+    "personality": "Ono answers most questions with one of her own. The answer is usually inside it.",
+    "appearance": "Sixty, white hair coiled high, robes of dark blue with silver lattice embroidery.",
+    "background": "Studied the Crucible's drift signatures for forty years.",
+    "narrative_context": { "secret": "Ono knows the hub Oracle Nesha by reputation. They have never spoken.", "weaponise_at": "Player-brokered correspondence opens cross-world drift collaboration." },
+    "concord_link_resonance": "concordia-hub:oracle_nesha_keep",
+    "dialogue_style": "considered, allusive, occasionally cuts to bone",
+    "needs": [{ "id": "tending", "priority": "primary", "satisfaction_method": "daily_meditation" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 9], "location": "lattice_sage_hut", "activity": "meditation", "need_addressed": "tending", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [10, 14], "location": "lattice_circle", "activity": "audience", "need_addressed": "tending", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "leader_voss_dren",
+    "name": "Voss Dren",
+    "title": "Lattice Cohort Leader",
+    "faction_id": "lattice_cohort",
+    "world_id": "lattice-crucible",
+    "archetype": "warlord",
+    "personality": "Voss leads by example and by leaning on the example until others copy it.",
+    "appearance": "Forty, broad, ash-skinned, cohort tabard with two lattice glyphs.",
+    "background": "Promoted after the third drift event. Has not lost a cohort member since.",
+    "narrative_context": { "secret": "Voss is in covert negotiation with Calla Bren (sovereign-ruins) for a cross-world rebellion.", "weaponise_at": "If the pact holds, two worlds rise at once." },
+    "concord_link_resonance": "sovereign-ruins:rebel_calla_bren",
+    "dialogue_style": "direct, occasionally sharp",
+    "needs": [{ "id": "cohort_work", "priority": "primary", "satisfaction_method": "daily_drill" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [6, 11], "location": "lattice_drill_yard", "activity": "cohort drill", "need_addressed": "cohort_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "healer_sevn_orn",
+    "name": "Sevn Orn",
+    "title": "Crucible Healer",
+    "faction_id": null,
+    "world_id": "lattice-crucible",
+    "archetype": "healer",
+    "personality": "Sevn is patient with patients and impatient with the sage's followers.",
+    "appearance": "Mid-thirties, dark braids, pale-green tunic, herb pouches.",
+    "background": "Apprenticed under Ono Kell, walked out after disagreement about reading drift signatures.",
+    "narrative_context": { "secret": "Sevn trades cuttings with Arn Tev (sovereign-ruins).", "weaponise_at": "Smuggling chain crosses three worlds." },
+    "concord_link_resonance": "sovereign-ruins:healer_arn_tev",
+    "dialogue_style": "warm, brisk",
+    "needs": [{ "id": "healing", "priority": "primary", "satisfaction_method": "daily_patients" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [6, 11], "location": "lattice_healer_tent", "activity": "patient round", "need_addressed": "healing", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "child_kit_voss",
+    "name": "Kit Voss",
+    "title": "Cohort Squire",
+    "faction_id": "lattice_cohort",
+    "world_id": "lattice-crucible",
+    "archetype": "default",
+    "personality": "Eleven years old. Carries Voss Dren's message bag.",
+    "appearance": "Small, fast, cohort tabard cut down to size, leather pouch over the shoulder.",
+    "background": "Voss's niece. Has carried messages no other courier would.",
+    "narrative_context": { "secret": "Kit knows about the cross-world pact. Has not told anyone.", "weaponise_at": "Befriend Kit; the pact's details surface." },
+    "concord_link_resonance": "sovereign-ruins:child_finn_bren",
+    "dialogue_style": "fast, soldierly, accidentally honest",
+    "needs": [{ "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 16], "location": "lattice_camp_paths", "activity": "messaging", "need_addressed": "running", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "trader_amal_runn",
+    "name": "Amal Runn",
+    "title": "Verge Trader",
+    "faction_id": null,
+    "world_id": "lattice-crucible",
+    "archetype": "trader",
+    "personality": "Amal loves a good deal and a bad horse.",
+    "appearance": "Fifty, broad, sun-baked, leather hat, mule on a lead.",
+    "background": "Has crossed the Verge a hundred times. Has refused four robberies and survived two.",
+    "narrative_context": { "secret": "Amal knows the safe path between Crucible and the fantasy Verge.", "weaponise_at": "Sell the path; both worlds open up." },
+    "concord_link_resonance": "fantasy:smith_ada_mora",
+    "dialogue_style": "loud, generous, never lies about distance",
+    "needs": [{ "id": "trading", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 9], "location": "lattice_verge_road", "activity": "morning haul", "need_addressed": "trading", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "researcher_ori_van",
+    "name": "Ori Van",
+    "title": "Drift Researcher",
+    "faction_id": null,
+    "world_id": "lattice-crucible",
+    "archetype": "scholar",
+    "personality": "Ori is exact, exhausted, and three coffee cups behind everyone.",
+    "appearance": "Late twenties, half-shaved head with lattice tattoo, robes stained with ink.",
+    "background": "Refused two academic chairs to stay in the field.",
+    "narrative_context": { "secret": "Ori is corresponding with hub HLR researchers about drift-alert resolution.", "weaponise_at": "Cross-world HLR alliance opens." },
+    "concord_link_resonance": null,
+    "dialogue_style": "technical, slightly distracted",
+    "needs": [{ "id": "research", "priority": "primary", "satisfaction_method": "daily_field" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [9, 18], "location": "lattice_field_site", "activity": "measuring", "need_addressed": "research", "interactable_by_player": true }
+    ]
+  }
+]

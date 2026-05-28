@@ -483,6 +483,10 @@ export async function seedContent({ db = null } = {}) {
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
     const subNpcs = readJSON(`${sub.path}/npcs.json`);
     if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs, { db, defaultWorldId: sub.id });
+    // Phase E2 — npcs-extra.json is an opt-in append slot for density bumps,
+    // so we don't have to splice into the rich primary file.
+    const subNpcsExtra = readJSON(`${sub.path}/npcs-extra.json`);
+    if (Array.isArray(subNpcsExtra)) results.npcs += seedNPCs(subNpcsExtra, { db, defaultWorldId: sub.id });
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
   }

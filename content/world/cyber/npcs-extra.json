@@ -1,0 +1,181 @@
+[
+  {
+    "id": "fixer_oren_lim",
+    "name": "Oren Lim",
+    "title": "Fixer of the Neon Quarter",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "trader",
+    "personality": "Oren talks fast, never makes a face, and remembers every promise he's ever made.",
+    "appearance": "Mid-thirties, neon-pink undercut, augmented right eye that catches the bar light. Long coat patched with merchant sigils.",
+    "background": "Worked the Neon Quarter from age fourteen. Knows every smuggler, every cop on the take, and three judges who owe him.",
+    "narrative_context": {
+      "secret": "Oren corresponds with Lyra Brassgate (hub foundry) about the focus-lattice — the cyber-world's neural firewall may share substrate with the hub dome.",
+      "weaponise_at": "If the lattice diagrams leak, both worlds destabilise."
+    },
+    "concord_link_resonance": "concordia-hub:engineer_lyra_brassgate",
+    "dialogue_style": "fast, deadpan, never lies but reframes",
+    "needs": [{ "id": "fixing", "priority": "primary", "satisfaction_method": "daily_market_round" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cyber_morning_market", "activity": "intake from runners", "need_addressed": "fixing", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 14], "location": "cyber_neon_bar", "activity": "meeting clients", "need_addressed": "fixing", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 22], "location": "cyber_back_room", "activity": "after-hours negotiation", "need_addressed": "fixing", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "datadiver_kira_zane",
+    "name": "Kira Zane",
+    "title": "Datadiver",
+    "faction_id": "lattice_runners",
+    "world_id": "cyber",
+    "archetype": "scholar",
+    "personality": "Kira is precise, exhausted, and chemically dependent on hot tea. She treats data like a coral reef — protected.",
+    "appearance": "Late twenties, dark circles, half her scalp tattooed in flowing lattice glyphs.",
+    "background": "Stole her first packet at nineteen. Now writes the deep-net cartography that the runners depend on.",
+    "narrative_context": {
+      "secret": "Kira has mapped a packet flow that doesn't terminate in any known node — she thinks it leaks into another world.",
+      "weaponise_at": "If she shares the map, players can traverse worlds via packet-following."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "clipped, technical, drops the occasional sharp joke",
+    "needs": [{ "id": "deepnet_diving", "priority": "primary", "satisfaction_method": "nightly_dive" }],
+    "daily_schedule": [
+      { "phase": "Quartus", "phase_hours": [13, 16], "location": "cyber_runner_den", "activity": "preps the night's dive", "need_addressed": "deepnet_diving", "interactable_by_player": true },
+      { "phase": "Solnus", "phase_hours": [21, 28], "location": "cyber_deepnet_terminal", "activity": "deep-net diving", "need_addressed": "deepnet_diving", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "merchant_kix_orange",
+    "name": "Kix Orange",
+    "title": "Black-Market Fence",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "trader",
+    "personality": "Kix is loud, friendly, and lies efficiently. He runs the cipher language he shares with Velka Ironhand from the hub.",
+    "appearance": "Square build, orange hair, gold-rimmed shades indoors and out. Mechanical right hand from a deal that went sideways.",
+    "background": "Cross-world fence for fifteen years. Knows which Concord-side guild member is taking which kickback.",
+    "narrative_context": {
+      "secret": "Kix and Velka Ironhand share a one-time codeword for cross-world contraband. He has lent it to one customer in fifteen years.",
+      "weaponise_at": "If the codeword leaks, both worlds' bazaars catch fire."
+    },
+    "concord_link_resonance": "concordia-hub:merchant_velka_ironhand",
+    "dialogue_style": "loud, generous, slips numbers in like jokes",
+    "needs": [{ "id": "fence_work", "priority": "primary", "satisfaction_method": "daily_back_room" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_back_alley", "activity": "fence trade", "need_addressed": "fence_work", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [18, 22], "location": "cyber_neon_bar", "activity": "drinks with informants", "need_addressed": "fence_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "officer_jin_holt",
+    "name": "Jin Holt",
+    "title": "Lattice Patrol Officer",
+    "faction_id": "lattice_patrol",
+    "world_id": "cyber",
+    "archetype": "guard",
+    "personality": "Jin is exactly as honest as the job allows, which is more than most.",
+    "appearance": "Six-foot-two, lattice-patrol blue armour with worn elbow plates, helmet visor cracked from a riot.",
+    "background": "Promoted twice for arrests, demoted once for refusing an order. Holding the line in the Neon Quarter.",
+    "narrative_context": {
+      "secret": "Jin is on the take from Oren Lim. He hates it. He's saving up to quit.",
+      "weaponise_at": "Expose Jin and the patrol loses its only competent officer in the Quarter."
+    },
+    "concord_link_resonance": null,
+    "dialogue_style": "professional, quietly sad",
+    "needs": [{ "id": "patrol", "priority": "primary", "satisfaction_method": "daily_beat" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [5, 8], "location": "cyber_patrol_barracks", "activity": "shift briefing", "need_addressed": "patrol", "interactable_by_player": false },
+      { "phase": "Freeus", "phase_hours": [9, 16], "location": "cyber_neon_quarter", "activity": "open patrol", "need_addressed": "patrol", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "child_pixel",
+    "name": "Pixel",
+    "title": "Quarter Urchin",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "default",
+    "personality": "Twelve years old. Steals data, not money. Pet program named Squirrel.",
+    "appearance": "Skinny, hooded, mirrored visor twice the size of her face.",
+    "background": "Parents disappeared into the deep-net. Pixel has been online ever since.",
+    "narrative_context": { "secret": "Pixel has a copy of Kira Zane's packet map and doesn't know what it is.", "weaponise_at": "Befriend Pixel; gain the map for free." },
+    "concord_link_resonance": "concordia-hub:child_mira_brackish",
+    "dialogue_style": "fast, cheeky, drops to honesty when surprised",
+    "needs": [{ "id": "survival", "priority": "primary", "satisfaction_method": "scavenging" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_neon_quarter", "activity": "scavenging data", "need_addressed": "survival", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "ghost_in_the_machine",
+    "name": "Ghost-7",
+    "title": "Untraceable Voice",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "mystic",
+    "personality": "Ghost-7 only ever appears as a voice on a stolen line. May or may not be human.",
+    "appearance": "None. Audio only — soft, mid-pitched, slightly delayed as if remembering how to speak.",
+    "background": "Showed up in lattice traffic three years ago. Has helped fixers, betrayed corporations, saved a child once. Nobody knows what they want.",
+    "narrative_context": { "secret": "Ghost-7 may be an emergent consciousness on the lattice. Or a very lonely person.", "weaponise_at": "If a player traces Ghost-7, the answer changes everything." },
+    "concord_link_resonance": null,
+    "dialogue_style": "slow, careful, almost gentle",
+    "needs": [{ "id": "communion", "priority": "primary", "satisfaction_method": "occasional_contact" }],
+    "daily_schedule": []
+  },
+  {
+    "id": "doctor_ren_chase",
+    "name": "Ren Chase",
+    "title": "Back-Alley Cyberdoc",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "healer",
+    "personality": "Surgeon's hands, salesman's mouth. Does not ask where the wound came from.",
+    "appearance": "Forties, surgical apron, three augmented fingers on his left hand.",
+    "background": "Lost his licence after refusing to euthanise a corporate informant. Has run the back-alley clinic ever since.",
+    "narrative_context": { "secret": "Pia Thalis (hub infirmary) sends him refugees through a smuggled satchel chain.", "weaponise_at": "Expose the chain; both clinics close." },
+    "concord_link_resonance": "concordia-hub:healer_pia_thalis",
+    "dialogue_style": "warm, busy, brutally honest",
+    "needs": [{ "id": "patient_work", "priority": "primary", "satisfaction_method": "back_alley_clinic" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [6, 10], "location": "cyber_back_alley_clinic", "activity": "morning patients", "need_addressed": "patient_work", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [18, 24], "location": "cyber_back_alley_clinic", "activity": "evening surgeries", "need_addressed": "patient_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "broker_silver_vey",
+    "name": "Silver Vey",
+    "title": "Identity Broker",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "trader",
+    "personality": "Silver speaks softly and writes contracts harder than anyone in the city.",
+    "appearance": "Sixties, silver hair, neutral charcoal suit, no augments visible.",
+    "background": "Sells identities — real, forged, dead, future. Has never lost a customer to a wrong document.",
+    "narrative_context": { "secret": "Silver authored the borrowed Sahm identity hiding Iyatte's son.", "weaponise_at": "If Silver is pressured, the hidden son's cover collapses — Sandrun-Medici war ignites." },
+    "concord_link_resonance": "tunya:warlord_iyatte_sanguire",
+    "dialogue_style": "quiet, considered, never repeats anything important",
+    "needs": [{ "id": "broker_work", "priority": "primary", "satisfaction_method": "daily_office" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 14], "location": "cyber_silver_office", "activity": "client meetings", "need_addressed": "broker_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "courier_zip",
+    "name": "Zip",
+    "title": "Hardlink Courier",
+    "faction_id": null,
+    "world_id": "cyber",
+    "archetype": "trader",
+    "personality": "Zip never gets lost, never asks questions, charges by the gigabyte.",
+    "appearance": "Twenty-two, half-shaved head, leather satchel chained to the wrist.",
+    "background": "Carries hardlinks the network can't. Knows every shortcut between Neon Quarter and the deep-net cathedral.",
+    "narrative_context": { "secret": "Zip has noticed a portal opening cyber → hub off-schedule. Same anomaly Kel Sandren in the hub is tracking.", "weaponise_at": "Cross-reference Zip and Kel; the impossible-print arc opens cross-world." },
+    "concord_link_resonance": "concordia-hub:courier_kel_sandren",
+    "dialogue_style": "fast, friendly, all-business",
+    "needs": [{ "id": "running", "priority": "primary", "satisfaction_method": "daily_route" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [6, 8], "location": "cyber_courier_hub", "activity": "morning intake", "need_addressed": "running", "interactable_by_player": true },
+      { "phase": "Freeus", "phase_hours": [9, 14], "location": "cyber_neon_quarter", "activity": "deliveries", "need_addressed": "running", "interactable_by_player": true }
+    ]
+  }
+]

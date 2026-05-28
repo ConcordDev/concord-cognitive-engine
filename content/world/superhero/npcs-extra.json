@@ -1,0 +1,147 @@
+[
+  {
+    "id": "champion_kor_blackstar",
+    "name": "Kor Blackstar",
+    "title": "Champion of the Skyline",
+    "faction_id": "skyline_champions",
+    "world_id": "superhero",
+    "archetype": "warrior",
+    "personality": "Kor smiles for the cameras, drinks alone, never raises his voice off-mic.",
+    "appearance": "Late twenties, broad-shouldered, mask half-off in private life, blue-and-silver suit.",
+    "background": "Trained under the same Sifu as Taro Sandren (hub), in a different world. The Sifu is dead in one world and alive in the other.",
+    "narrative_context": { "secret": "Kor doesn't know his Sifu is alive in the hub. Taro does.", "weaponise_at": "Bring Kor to Taro; the Sifu's secret resurfaces, with consequences." },
+    "concord_link_resonance": "concordia-hub:warrior_taro_sandren",
+    "dialogue_style": "warm in public, terse in private",
+    "needs": [{ "id": "saving", "priority": "primary", "satisfaction_method": "nightly_patrol" }],
+    "daily_schedule": [
+      { "phase": "Penanus", "phase_hours": [18, 24], "location": "superhero_skyline", "activity": "patrol", "need_addressed": "saving", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "reporter_mira_vance",
+    "name": "Mira Vance",
+    "title": "Investigative Reporter",
+    "faction_id": null,
+    "world_id": "superhero",
+    "archetype": "scholar",
+    "personality": "Mira chases stories like a hunting dog. Doesn't stop until she has the bone.",
+    "appearance": "Thirties, dark hair pinned back, press card in lanyard, coffee always.",
+    "background": "Exposed two crooked mayors. Lost her press credentials twice. Both times got them back.",
+    "narrative_context": { "secret": "Mira is building a profile on Kor's secret identity. She has not published.", "weaponise_at": "If she publishes, Kor's world collapses. If a player buys her silence, the price is steep." },
+    "concord_link_resonance": null,
+    "dialogue_style": "fast, probing, never accepts a no",
+    "needs": [{ "id": "story_work", "priority": "primary", "satisfaction_method": "daily_pursuit" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 18], "location": "superhero_news_office", "activity": "writing + chasing", "need_addressed": "story_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "villain_iron_hex",
+    "name": "Iron Hex",
+    "title": "Mechanical Anarchist",
+    "faction_id": "iron_hex_cell",
+    "world_id": "superhero",
+    "archetype": "warlord",
+    "personality": "Iron Hex believes in the cause, plural noun unstated. Always polite to civilians.",
+    "appearance": "Power armour with brass filigree. Voice modulated. Identity unknown.",
+    "background": "Has bombed three buildings, evacuated four. Counts the seconds publicly before each.",
+    "narrative_context": { "secret": "Iron Hex is the apprentice Champion Kor failed to save. Kor knows.", "weaponise_at": "Bring them together; either redemption or destruction." },
+    "concord_link_resonance": null,
+    "dialogue_style": "modulated, formal, occasionally tender",
+    "needs": [{ "id": "ideology_work", "priority": "primary", "satisfaction_method": "nightly_action" }],
+    "daily_schedule": [
+      { "phase": "Solnus", "phase_hours": [22, 28], "location": "superhero_warehouse", "activity": "planning operations", "need_addressed": "ideology_work", "interactable_by_player": false }
+    ]
+  },
+  {
+    "id": "scientist_dr_ana_pell",
+    "name": "Dr. Ana Pell",
+    "title": "Genetic Researcher",
+    "faction_id": null,
+    "world_id": "superhero",
+    "archetype": "scholar",
+    "personality": "Ana cares about results. Ethics are negotiable.",
+    "appearance": "Forties, lab coat, hair always pulled back, two coffee cups visible at any time.",
+    "background": "Discovered the gene that gives Kor his powers. Has not published.",
+    "narrative_context": { "secret": "Ana is six months from a generalisable treatment. The treatment has side effects.", "weaponise_at": "Steal the treatment; create more Champions or more Iron Hexes." },
+    "concord_link_resonance": null,
+    "dialogue_style": "technical, dry, occasionally sharp",
+    "needs": [{ "id": "lab_work", "priority": "primary", "satisfaction_method": "daily_research" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [9, 20], "location": "superhero_lab", "activity": "research", "need_addressed": "lab_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "mother_helen_blackstar",
+    "name": "Helen Blackstar",
+    "title": "Kor's Mother",
+    "faction_id": null,
+    "world_id": "superhero",
+    "archetype": "default",
+    "personality": "Helen is sharp, loving, and pretending she doesn't know her son is a hero.",
+    "appearance": "Sixties, salt-and-pepper hair, kindly eyes, small kitchen apron always.",
+    "background": "Widowed seven years. Raised Kor alone after her husband died saving a stranger.",
+    "narrative_context": { "secret": "Helen knows Kor is Champion. She has known for years. Has not told him she knows.", "weaponise_at": "Bring this up at dinner; the tableau shatters." },
+    "concord_link_resonance": null,
+    "dialogue_style": "warm, motherly, sharp under stress",
+    "needs": [{ "id": "family", "priority": "primary", "satisfaction_method": "daily_kitchen" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [6, 9], "location": "superhero_blackstar_kitchen", "activity": "breakfast", "need_addressed": "family", "interactable_by_player": true },
+      { "phase": "Penanus", "phase_hours": [17, 21], "location": "superhero_blackstar_kitchen", "activity": "supper", "need_addressed": "family", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "officer_dale_carver",
+    "name": "Officer Dale Carver",
+    "title": "Police Captain",
+    "faction_id": "skyline_police",
+    "world_id": "superhero",
+    "archetype": "guard",
+    "personality": "Dale tolerates Champion. Doesn't trust them.",
+    "appearance": "Fifties, square-jawed, grey at the temples, dark blue police dress.",
+    "background": "Came up through the academy when superheroes were illegal. Adjusted.",
+    "narrative_context": { "secret": "Dale is in covert contact with Iron Hex. He's negotiating a truce.", "weaponise_at": "Expose the truce; the city erupts." },
+    "concord_link_resonance": "crime:detective_iniko_voss",
+    "dialogue_style": "professional, slightly suspicious",
+    "needs": [{ "id": "police_work", "priority": "primary", "satisfaction_method": "daily_precinct" }],
+    "daily_schedule": [
+      { "phase": "Stratus", "phase_hours": [7, 15], "location": "superhero_precinct", "activity": "shift command", "need_addressed": "police_work", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "child_robin_orange",
+    "name": "Robin Orange",
+    "title": "Skyline Fan",
+    "faction_id": null,
+    "world_id": "superhero",
+    "archetype": "default",
+    "personality": "Nine years old. Has memorised every Champion fight. Wants to fly.",
+    "appearance": "Small, freckled, red baseball cap, Champion T-shirt three sizes too big.",
+    "background": "Lives in the tower Champion saved from Iron Hex's first bomb. Believes Champion lives in their building.",
+    "narrative_context": { "secret": "Champion does live in their building. Helen Blackstar runs the apartment.", "weaponise_at": "If Robin figures it out, the news goes everywhere within a day." },
+    "concord_link_resonance": "concordia-hub:child_mira_brackish",
+    "dialogue_style": "fast, enthusiastic, accidentally honest",
+    "needs": [{ "id": "fandom", "priority": "primary", "satisfaction_method": "daily_skyline_watch" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [9, 15], "location": "superhero_skyline_rooftop", "activity": "watching the sky", "need_addressed": "fandom", "interactable_by_player": true }
+    ]
+  },
+  {
+    "id": "mentor_old_silas",
+    "name": "Silas Crane",
+    "title": "Retired Hero",
+    "faction_id": null,
+    "world_id": "superhero",
+    "archetype": "mystic",
+    "personality": "Silas was the city's first masked hero. Now he tends roses.",
+    "appearance": "Seventy-two, white hair, garden gloves, old scars on the knuckles.",
+    "background": "Hung up the mask twenty years ago. Trained Kor. Trained Iron Hex's apprentice too.",
+    "narrative_context": { "secret": "Silas knows Iron Hex's true identity. He hopes Kor will figure it out without help.", "weaponise_at": "If Silas tells, the redemption arc collapses. If he stays silent, the city pays." },
+    "concord_link_resonance": "fantasy:priest_father_galen",
+    "dialogue_style": "warm, patient, occasionally cuts to bone",
+    "needs": [{ "id": "tending", "priority": "primary", "satisfaction_method": "daily_garden" }],
+    "daily_schedule": [
+      { "phase": "Freeus", "phase_hours": [10, 16], "location": "superhero_silas_garden", "activity": "roses", "need_addressed": "tending", "interactable_by_player": true }
+    ]
+  }
+]
