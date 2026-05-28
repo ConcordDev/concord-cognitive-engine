@@ -48505,6 +48505,30 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CC1 — turn-based grid combat (Tactical/CRPG mode).
+app.post("/api/turn-combat/start", requireAuth(), asyncHandler(async (req, res) => {
+  const { startCombat } = await import("./lib/turn-combat.js");
+  res.json(startCombat(db, req.body || {}));
+}));
+
+app.post("/api/turn-combat/:combatId/action", requireAuth(), asyncHandler(async (req, res) => {
+  const { executeAction } = await import("./lib/turn-combat.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(executeAction(db, req.params.combatId, req.body?.actorId || userId, req.body?.action || {}));
+}));
+
+app.get("/api/turn-combat/:combatId/state", asyncHandler(async (req, res) => {
+  const { getCombatState } = await import("./lib/turn-combat.js");
+  const s = getCombatState(db, req.params.combatId);
+  if (!s) return res.status(404).json({ ok: false, error: "no_combat" });
+  res.json({ ok: true, combat: s });
+}));
+
+app.get("/api/turn-combat/:combatId/log", asyncHandler(async (req, res) => {
+  const { listCombatLog } = await import("./lib/turn-combat.js");
+  res.json({ ok: true, log: listCombatLog(db, req.params.combatId, Number(req.query.limit) || 50) });
+}));
+
 // Phase CB6 — hidden object via photo gallery.
 app.post("/api/hidden-object/scene", requireAuth(), asyncHandler(async (req, res) => {
   const { createScene } = await import("./lib/hidden-object.js");
