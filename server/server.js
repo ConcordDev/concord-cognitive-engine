@@ -48495,6 +48495,13 @@ app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   res.json({ ok: true, festivals: listFestivals(db) });
 }));
 
+// Phase CA6 — soulslike corpse list (active TTL corpses for the caller).
+app.get("/api/players/me/corpses", requireAuth(), asyncHandler(async (req, res) => {
+  const { activeCorpsesFor } = await import("./lib/player-corpse.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, corpses: activeCorpsesFor(db, { userId }) });
+}));
+
 // Phase CA5 — detective deduction board.
 app.get("/api/detective/open/:worldId", asyncHandler(async (req, res) => {
   const { listOpenCrimes } = await import("./lib/detective.js");

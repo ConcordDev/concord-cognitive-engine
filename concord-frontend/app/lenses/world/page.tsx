@@ -147,6 +147,13 @@ const SubmarineHUD = dynamic(
     })),
   { ssr: false }
 );
+const PlayerCorpseMarker = dynamic(
+  () =>
+    import('@/components/world/CorpseMarker').then((m) => ({
+      default: m.CorpseMarker,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4741,6 +4748,13 @@ export default function WorldLensPage() {
 
           {/* Phase CA2 — Submarine HUD (polls dive-state when swimming) */}
           <SubmarineHUD />
+
+          {/* Phase CA6 — Soulslike player corpse marker */}
+          <PlayerCorpseMarker
+            worldId={activeDistrict.id}
+            playerX={playerAvatar.position.x}
+            playerZ={playerAvatar.position.y}
+          />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
