@@ -18,6 +18,7 @@ import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
 
 /**
  * Client-side providers wrapper.
@@ -113,6 +114,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         useReducedMotion guard.
       */}
       <MotionConfig reducedMotion="user">
+      {/* G3.1 — applies colorblind / text-scale / high-contrast / reduced-motion
+          from the (now-bridged) a11y store to the DOM + the 3D world. */}
+      <AccessibilityDOMApplier />
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
           <PermissionProvider scopes={userScopes}>

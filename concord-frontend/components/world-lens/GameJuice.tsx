@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSoundscape } from './SoundscapeEngine';
+import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -108,6 +109,9 @@ export default function GameJuice({ children, enabled = true, intensity: initial
   const [overlays, setOverlays] = useState<JuiceOverlay[]>([]);
   const overlayCounter = useRef(0);
   const soundscape = useSoundscape();
+  // G3.1 — respect reduced-motion: suppress the motion-sickness triggers
+  // (screen shake, knockback impulse) while keeping audio + damage numbers.
+  const { effectiveReducedMotion } = useAccessibilitySettings();
 
   const removeOverlay = useCallback((id: string) => {
     setOverlays((prev) => prev.filter((o) => o.id !== id));
@@ -170,7 +174,8 @@ export default function GameJuice({ children, enabled = true, intensity: initial
         // Knockback only on heavy / crit / kill, only when both endpoints
         // known (so we can derive a direction that points away from the
         // attacker). Ignored for normal light hits.
-        if ((isHeavy || trigger === 'combat-crit' || trigger === 'combat-kill') &&
+        if (!effectiveReducedMotion &&
+            (isHeavy || trigger === 'combat-crit' || trigger === 'combat-kill') &&
             opts?.targetId && opts?.position && opts?.sourcePosition) {
           const dx = opts.position.x - opts.sourcePosition.x;
           const dz = opts.position.z - opts.sourcePosition.z;
@@ -190,11 +195,13 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       const scaledDuration = feedback.duration * intensityValue;
       const id = `juice-${overlayCounter.current++}`;
 
-      // Determine overlay type from feedback
+      // Determine overlay type from feedback. G3.1 — reduced-motion downgrades
+      // the screen-shake overlay to a non-moving glow (keeps the feedback, drops
+      // the motion).
       let overlayType: JuiceOverlay['type'] = 'glow';
       if (feedback.visual === 'pulse-green') overlayType = 'pulse-green';
       else if (feedback.visual === 'pulse-red') overlayType = 'pulse-red';
-      else if (feedback.visual === 'shake' || trigger === 'disaster') overlayType = 'shake';
+      else if ((feedback.visual === 'shake' || trigger === 'disaster') && !effectiveReducedMotion) overlayType = 'shake';
       else if (feedback.visual === 'float-number') overlayType = 'float-number';
       else if (feedback.visual === 'cinematic') overlayType = 'cinematic';
 
@@ -215,7 +222,7 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       // Auto-remove after duration
       setTimeout(() => removeOverlay(id), scaledDuration);
     },
-    [enabled, intensityValue, removeOverlay, soundscape],
+    [enabled, intensityValue, removeOverlay, soundscape, effectiveReducedMotion],
   );
 
   const setIntensity = useCallback((value: number) => {
