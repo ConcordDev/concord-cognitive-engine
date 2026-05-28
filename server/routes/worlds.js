@@ -2072,8 +2072,31 @@ export default function createWorldsRouter({ requireAuth, db }) {
           damageResult.comboCount = strike.combo;
           damageResult.finisherUnlocked = strike.finisher_unlocked;
         }
-        // Trigger rocked state on NPC if magnitude crosses their threshold.
-        polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        // T1.4a — stagger from real IMPACT MOMENTUM (bone-mass × angular-
+        // velocity × lever) vs the NPC's poise budget, not raw damage vs a
+        // fixed threshold. Deterministic; graded flinch/rocked/knockdown.
+        try {
+          const { momentumFor } = await import("../lib/combat-impact.js");
+          const { getSkillFrameData } = await import("../lib/combat-frame-data.js");
+          const weaponKind = skillData?.kind || skillData?.weapon_kind || skillData?.skill_kind || "fist";
+          const tier = Math.max(1, Math.min(5, Math.ceil((skillRow?.level || 1) / 20)));
+          const frame = getSkillFrameData({ kind: weaponKind, level: skillRow?.level || 1 });
+          const momentum = momentumFor({
+            kind: weaponKind, tier, frame,
+            actorMassKg: damageResult.attackerMassKg || undefined,
+          });
+          const stagger = polish.triggerStaggerFromImpact(db, {
+            actorKind: "npc", actorId: npcId, momentum,
+            massKg: damageResult.targetMassKg || undefined,
+          });
+          if (stagger?.severity && stagger.severity !== "none") {
+            damageResult.staggerSeverity = stagger.severity;
+            damageResult.impactMomentum = Math.round(momentum * 10) / 10;
+          }
+        } catch {
+          // Momentum model optional — fall back to magnitude-based rocked.
+          polish.triggerRocked(db, { actorKind: "npc", actorId: npcId, magnitude: damageResult.finalDamage });
+        }
         // Bring the NPC's awareness into combat (idempotent on repeat).
         polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "alert" });
         polish.transitionAwareness(db, { actorKind: "npc", actorId: npcId, to: "combat", target: userId });
