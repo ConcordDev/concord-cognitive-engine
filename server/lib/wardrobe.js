@@ -73,18 +73,54 @@ export function deleteOutfit(db, outfitId, userId) {
 }
 
 /**
- * Equip an outfit — writes its slot map to the user's appearance JSON.
- * Returns the new appearance for the caller to broadcast.
+ * Equip an outfit. Two modes (Phase BA4):
+ *   - 'cosmetic' (default): overlay only — writes to
+ *     users.cosmetic_wardrobe_overlay_json, leaves underlying stat gear
+ *     in appearance_json untouched. The renderer composes overlay on
+ *     top of base.
+ *   - 'replace': back-compat — writes directly to appearance_json,
+ *     replacing the look entirely.
+ *
+ * Returns the new slots for the caller to broadcast.
  */
-export function equipOutfit(db, outfitId, userId) {
+export function equipOutfit(db, outfitId, userId, mode = "cosmetic") {
   const outfit = getOutfit(db, outfitId, userId);
   if (!outfit) return { ok: false, error: "not_found" };
+  const payload = JSON.stringify({
+    slots: outfit.slots, outfitId, equippedAt: Math.floor(Date.now() / 1000), mode,
+  });
   try {
-    db.prepare(`
-      UPDATE users SET appearance_json = ?
-      WHERE id = ?
-    `).run(JSON.stringify({ slots: outfit.slots, outfitId, equippedAt: Math.floor(Date.now() / 1000) }), userId);
-    return { ok: true, slots: outfit.slots, outfitId };
+    if (mode === "replace") {
+      db.prepare(`UPDATE users SET appearance_json = ? WHERE id = ?`).run(payload, userId);
+    } else {
+      // cosmetic mode is default — never touches appearance_json.
+      db.prepare(`UPDATE users SET cosmetic_wardrobe_overlay_json = ? WHERE id = ?`).run(payload, userId);
+    }
+    return { ok: true, slots: outfit.slots, outfitId, mode };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * Read the cosmetic overlay back. Returns null when nothing equipped.
+ * Used by the avatar renderer composition pipeline.
+ */
+export function getCosmeticOverlay(db, userId) {
+  if (!db || !userId) return null;
+  try {
+    const r = db.prepare(`SELECT cosmetic_wardrobe_overlay_json FROM users WHERE id = ?`).get(userId);
+    if (!r?.cosmetic_wardrobe_overlay_json) return null;
+    return JSON.parse(r.cosmetic_wardrobe_overlay_json);
+  } catch { return null; }
+}
+
+/** Clear the cosmetic overlay (back to stat-gear look). */
+export function clearCosmeticOverlay(db, userId) {
+  if (!db || !userId) return { ok: false, error: "missing_inputs" };
+  try {
+    db.prepare(`UPDATE users SET cosmetic_wardrobe_overlay_json = NULL WHERE id = ?`).run(userId);
+    return { ok: true };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
