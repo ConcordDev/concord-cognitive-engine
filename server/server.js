@@ -49072,6 +49072,27 @@ app.get("/api/restaurant/:id/pending", asyncHandler(async (req, res) => {
   });
 }));
 
+// Phase DB6 — building-scoped restaurant. Auto-opens a restaurant for
+// the building if the building owner hits this endpoint and none exists.
+app.get("/api/restaurant/building/:buildingId", requireAuth(), asyncHandler(async (req, res) => {
+  const { openRestaurant, listPendingOrders, getRestaurantSummary } = await import("./lib/restaurant.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, world_id, owner_id, owner_type, name FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  let restaurant = db.prepare(`SELECT id FROM restaurants WHERE building_id = ? AND closed_at IS NULL`).get(b.id);
+  if (!restaurant && b.owner_type === "player" && b.owner_id === userId) {
+    const opened = openRestaurant(db, userId, { worldId: b.world_id, buildingId: b.id, name: b.name || "Diner" });
+    if (opened?.ok) restaurant = { id: opened.restaurantId };
+  }
+  if (!restaurant) return res.json({ ok: true, restaurant: null });
+  res.json({
+    ok: true,
+    restaurant: { id: restaurant.id },
+    summary: getRestaurantSummary(db, restaurant.id),
+    pending: listPendingOrders(db, restaurant.id),
+  });
+}));
+
 // Phase CB3 — farm plots.
 app.post("/api/farming/plant", requireAuth(), asyncHandler(async (req, res) => {
   const { plantSeed } = await import("./lib/farming.js");
@@ -49107,6 +49128,51 @@ app.get("/api/farming/claim/:claimId", asyncHandler(async (req, res) => {
 app.get("/api/farming/catalog", asyncHandler(async (req, res) => {
   const { listCrops } = await import("./lib/farming.js");
   res.json({ ok: true, crops: listCrops() });
+}));
+
+// Phase DB5 — building-scoped farming. Treats the farm_plot building.id
+// as the claim_id; owner is checked against world_buildings.owner_id so
+// players don't need a separate land_claim record for a single farm.
+app.get("/api/farming/building/:buildingId", asyncHandler(async (req, res) => {
+  const { listCropsOnClaim, listCrops } = await import("./lib/farming.js");
+  const b = db.prepare(`SELECT id, owner_id, owner_type, building_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  res.json({
+    ok: true,
+    building: b,
+    crops: listCropsOnClaim(db, b.id),
+    catalog: listCrops(),
+  });
+}));
+
+app.post("/api/farming/building/:buildingId/plant", requireAuth(), asyncHandler(async (req, res) => {
+  const { plantSeed } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, owner_id, owner_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  if (b.owner_type === "player" && b.owner_id !== userId) {
+    return res.status(403).json({ ok: false, error: "not_owner" });
+  }
+  res.json(plantSeed(db, userId, {
+    ...(req.body || {}),
+    claimId: b.id,
+    isOwner: () => true,
+  }));
+}));
+
+app.post("/api/farming/building/:buildingId/harvest", requireAuth(), asyncHandler(async (req, res) => {
+  const { harvestCrop } = await import("./lib/farming.js");
+  const userId = req.user?.id || req.user?.userId;
+  const b = db.prepare(`SELECT id, owner_id, owner_type FROM world_buildings WHERE id = ?`).get(req.params.buildingId);
+  if (!b) return res.status(404).json({ ok: false, error: "no_building" });
+  if (b.owner_type === "player" && b.owner_id !== userId) {
+    return res.status(403).json({ ok: false, error: "not_owner" });
+  }
+  res.json(harvestCrop(db, userId, {
+    ...(req.body || {}),
+    claimId: b.id,
+    isOwner: () => true,
+  }));
 }));
 
 // Phase CB2 — bullet heaven horde mode.
