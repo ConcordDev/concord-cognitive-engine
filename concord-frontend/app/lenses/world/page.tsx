@@ -168,6 +168,20 @@ const StationInteractionRouter = dynamic(
     })),
   { ssr: false }
 );
+const CommandPalette = dynamic(
+  () =>
+    import('@/components/world/CommandPalette').then((m) => ({
+      default: m.CommandPalette,
+    })),
+  { ssr: false }
+);
+const GameModesHotbarGroup = dynamic(
+  () =>
+    import('@/components/world/GameModesHotbarGroup').then((m) => ({
+      default: m.GameModesHotbarGroup,
+    })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -4788,6 +4802,14 @@ export default function WorldLensPage() {
 
           {/* Phase DA2 — station / workbench interaction router */}
           <StationInteractionRouter />
+
+          {/* Phase DA3 — Global command palette (Ctrl+K) */}
+          <CommandPalette />
+
+          {/* Phase DA4 — Run-mode hotbar group (top-right floating cluster) */}
+          <div className="pointer-events-auto fixed right-4 top-32 z-20">
+            <GameModesHotbarGroup worldId={activeDistrict.id} />
+          </div>
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
