@@ -800,6 +800,19 @@ registerHeartbeat("festival-trigger-cycle", {
   }),
 });
 
+// Phase BB3: operator announcements broadcast. Every 60 ticks (~15
+// min) pulls new rows from announcements (where last_broadcast_at IS
+// NULL) and emits concord:announcement. Scope global. Kill-switch:
+// CONCORD_ANNOUNCEMENTS_ENABLED=0.
+import { runAnnouncementBroadcaster } from "./emergent/announcement-broadcaster.js";
+registerHeartbeat("announcement-broadcaster", {
+  frequency: 60,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => runAnnouncementBroadcaster({
+    db: ctxDb || db, io: REALTIME?.io,
+  }),
+});
+
 // Phase 7: Procedural NPC spawner. Every 360 ticks (~90min) tops up
 // faction populations to a configurable target (default 8 per faction
 // per active world). Generated NPCs plug into Phase 2/4a/4b/5b without
@@ -5974,6 +5987,8 @@ function authMiddleware(req, res, next) {
     "/api/avatars",
     // Phase BB1 — festival catalog + active list (public read).
     "/api/festivals",
+    // Phase BB3 — announcements (public read; POST is admin-gated).
+    "/api/announcements",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -48458,6 +48473,23 @@ app.get("/api/festivals/active", asyncHandler(async (req, res) => {
 app.get("/api/festivals/catalog", asyncHandler(async (req, res) => {
   const { listFestivals } = await import("./lib/festivals.js");
   res.json({ ok: true, festivals: listFestivals(db) });
+}));
+
+// Phase BB3 — operator announcements. Admin only on POST; public read.
+app.post("/api/announcements", requireAuth(), asyncHandler(async (req, res) => {
+  const { publishAnnouncement } = await import("./lib/announcements.js");
+  const userId = req.user?.id || req.user?.userId;
+  const role = req.user?.role || "";
+  if (role !== "admin") return res.status(403).json({ ok: false, error: "admin_only" });
+  res.json(publishAnnouncement(db, { ...(req.body || {}), authorUserId: userId }));
+}));
+
+app.get("/api/announcements", asyncHandler(async (req, res) => {
+  const { listRecentAnnouncements } = await import("./lib/announcements.js");
+  res.json({ ok: true, announcements: listRecentAnnouncements(db, {
+    kind: req.query.kind,
+    limit: Number(req.query.limit) || 50,
+  }) });
 }));
 
 app.get("/api/avatars/:userId/drift", asyncHandler(async (req, res) => {
