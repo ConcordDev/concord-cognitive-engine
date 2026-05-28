@@ -1007,3 +1007,164 @@ F3.4/F3.5 are the same work as T3.1/T1.4b — do them once, under F3.
 `computeDamage` are touched together; (b) talent-point earning needs the live level-up gain site located;
 (c) run-draft on a live DB needs a migration + backfill (horde already persists picks). Each ticket carries
 a node-test before it's called done; frontend tickets type-check against the known 31-error baseline.
+
+---
+
+# Phase G — Full-dimension audit & grand strategy
+
+**Purpose.** We measured genres + feel and found Concordia far closer to AAA than assumed. Phase G audits
+*every remaining dimension of a game*, so the backlog reflects the WHOLE game. **The dominant finding:
+Concordia is consistently MORE complete than its own docs (CLAUDE.md understates what's shipped), and the
+real gaps are "built-but-unwired / documented-but-unenforced / untuned," not "missing systems."** That
+reframes the grand strategy: the path to AAA is mostly *connection + commitment + tuning*, not construction.
+
+## G-scorecard (grep-verified coverage by dimension)
+
+| Dimension | Coverage | One-line read |
+|---|---:|---|
+| Emergence / simulation | ~95% | Ahead of the field (faction wars, schemes, 84 cycles) |
+| Creator economy | ~90% | Ahead of all UGC + real Stripe fiat rail |
+| Juice / feedback | ~88% | Past indie bar |
+| Stability / error-isolation | ~85% | Best-in-class (heartbeat isolation, memory watchdog, WAL, shards, backup) |
+| Rendering | ~85% | Real GI/PCSS/SSGI/post pipeline, LOD+instancing wired |
+| Audio | ~82% | AAA *structure*, fidelity-capped (procedural synth, no recorded assets) |
+| Animation (as a system) | ~80% | Novel fully-wired procedural stack; reads slightly uncanny vs mocap |
+| Performance | ~80% | Instancing/LOD/culling/adaptive-quality all wired |
+| UX / onboarding / FTUE | ~75% | Excellent progressive onboarding; full settings split/unmounted from world |
+| Art direction | ~70% | Direction coherent; **asset execution weak** (primitive crowd bodies, one building gen) |
+| Narrative / writing quality | ~70% | Authored lore/dialogue AAA-tier but thin in volume; runtime 3B-LLM dialogue + no VA drag it |
+| Movement feel | ~66% | Substrate solid; "forgiveness layer" missing |
+| Combat feel | ~63% | Offense ~90% (elite) / defense ~25% (built-but-unwired) |
+| Netcode | ~50% | Server-auth solid; **no client-side combat prediction** (caps feel) |
+| Accessibility | ~40% | Comprehensive UI shell **wired to nothing** (two disconnected stores) |
+| Horror-tension feel | ~28% | Below the Lethal-Company bar; primitives exist unwired |
+| Progression / build · Balance · Retention · Polish/finish · Social | _pending_ | (final agent running) |
+
+## G1 — Art / animation / rendering (~85/80/70%)
+
+Render pipeline is strong and **wired** (`ConcordiaScene.tsx:441-893`: tone-map/bloom/PCSS/reflection-probes/
+SSGI/volumetric-clouds/auto-exposure/motion-blur/LUT); animation is a novel fully-wired procedural stack
+(`gait-synthesis.ts`, `fabrik-ik.ts`, `combat-biomechanics.ts`, `ragdoll.ts`, `facial-blend-shapes.ts`,
+`lip-sync.ts`, `secondary-physics.ts`); LOD+instancing are *consumed*; UI is a real shared design system.
+**CLAUDE.md stale:** ~60 hero GLBs DO ship (`public/meshes/heroes/`). Biggest liability: default/crowd
+avatars are box/cylinder primitives + procedural textures + one reskinned building generator — the
+"half-committed realism" prototype tell.
+- **G1.1 ⭐ Commit a hard cel-shade + ink-outline art direction** uniformly to the primitive crowd (shader/
+  material work, ~no asset budget) — turns the #1 liability into a deliberate Sable/BOTW style. *Single biggest visual win.*
+- **G1.2** CC0 GLB crowd bodies into archetype slots (loader wired) + CC0 PBR pack into `public/textures/`
+  (`pbr-loader.ts` tier-2 auto-picks up) + 2–3 bespoke landmark meshes/world.
+- **G1.3** (minor) TAA, true sun disk/skybox.
+
+## G2 — Performance / netcode / stability (~80/50/85%)
+
+Perf + stability are AAA-shaped and wired; **netcode is the weak dimension** and carries the combat-feel cap.
+Two real bugs surfaced:
+- **G2.1 ⭐ Client-side combat prediction** — combat input→feedback is a full socket round-trip (no local
+  swing/hitstop), breaking the ≤16ms feel bar. Fix: predicted swing/hitstop/VFX locally on input in
+  `CombatInputController.tsx:288`, reconcile on authoritative `combat:hit`. Client-only; server already
+  authoritative on damage. **Highest feel-per-hour in the plan.**
+- **G2.2 BUG — `CONCORD_MAX_SHADOWS` unenforced** — documented cap (50000) never read; `STATE.shadowDtus`
+  grows unbounded → OOM/scale risk. Fix: LRU-trim on `.set` (mirror `memory-pressure.js:241-261`). Tiny.
+- **G2.3 BUG — `MAX_OLD_SPACE_SIZE` default mismatch** (`memory-pressure.js:17` 3584 vs 32768 deploy) →
+  premature shedding or dead watchdog. One-line + stale comment.
+- **G2.4** (polish) presence broadcast 10Hz→20Hz; cache per-building bounding spheres; occlusion cull.
+
+## G3 — Narrative / UX / accessibility (~70/75/40%)
+
+Authored writing is **genuinely AAA-tier** (Eight Refusals codex, hub lore, 22 authored dialogue files in
+`content/dialogues/`, mystery quest arcs) — but thin in *volume*: most of the 16 hub NPCs have no authored
+`dialogue` tree, so the majority of clicked conversations fall to **runtime Qwen-3B LLM** (`oracle-brain.js#
+writeDialogueTree`) — voice drift + thin fallback prose; secret-omission is correctly enforced (safe ≠ good).
+Onboarding is excellent progressive disclosure (`onboarding.json` cook→eat→fight→commune, `OnboardingTutorial`,
+`FirstWinWizard`). **Accessibility is the worst-wired dimension found all session:**
+- **G3.1 ⭐ BUG — accessibility options apply to NOTHING.** Two disconnected stores: the settings page fires
+  `concord:a11y-changed` → `event-router.ts:144` only shows a *toast*; real consumers read a Zustand store the
+  page never writes. Colorblind / text-scale / high-contrast have **zero DOM application**; reduced-motion
+  never reaches the 3D world. Fix: bridge the stores (~1 file) + apply 3 visual settings to DOM (~30 lines in
+  `Providers`) + gate GameJuice/weather/particles on `effectiveReducedMotion`. *Correctness bug masquerading
+  as a feature.*
+- **G3.2** Settings/AccessibilityPanel (7 tabs, real depth) **not mounted in the world lens** (a different
+  `HUDSettingsPanel` is) — violates the "world lens is canonical" invariant. Mount the full panel.
+- **G3.3** Author dialogue trees for the remaining hub NPCs (data, not code — reuse the `content/dialogues/`
+  pattern) + demote LLM to a labeled "improvised" fallback. Lifts narrative volume + consistency.
+- **G3.4** Subtitle renderer (consume `subtitleFontSize` + existing `speaker` field, TLOU2-style labels);
+  gamepad remap + write keybinds through to `CombatInputController`. No authored VA (accept browser TTS or
+  out-of-scope).
+
+## G4 — Progression / balance / retention / polish / social (~65/30/55/60/50%)
+
+The dimension that quantifies the thesis. Findings:
+- **Progression ~65%** — skill XP is real (`player_skill_levels`, `skill-progression.js`) but the curve is
+  *logarithmic* (`1 + log10(1+exp/10)`) — it flattens with investment, the opposite of power-fantasy pacing;
+  talent allocation is missing (tree is display-only); itemization (affixes/sets) absent.
+- **Balance ~30%** — ~25 first-draft dials; mahjong yaku outliers logged-not-shipped; **restaurant sim is
+  degenerate** (`expiredRatio:0` in all 27 cells → the time-pressure axis is untested) + its recommendation
+  unadopted. Infrastructure exists; findings aren't shipped.
+- **Retention ~55%** — D1/D7 loops strong (daily/weekly quests wired to `DailyRituals`, seasons, festivals,
+  world-boss lockouts) but **no D30 endgame loop** (no paragon/prestige/NG+/escalating ladder). The royalty
+  economy is the de-facto long-term hook but isn't framed as endgame.
+- **Polish/finish ~60%** — AAA-shape QA discipline (870+ server test files, never-throw heartbeats, lint-zero
+  CI) but a real built-but-unwired backlog: **`attemptParry` + `attemptDodge` have ZERO non-test callers**
+  (dodge/block socket handlers only echo `:ack`); **`awardOrgXp` has ZERO non-test callers — guild leveling
+  literally cannot gain a point**; `weapon-trail.ts` consumed by nothing.
+- **Social ~50%** — parties/guilds(roles/alliances/treasury)/LFG-with-roles/chat/voice/auctions all real and
+  wired; guild *progression* dead (above); no auto-matchmaking (which research says is actually better for
+  social bonds).
+
+## ⭐ The grand strategy — quantified thesis + four-sprint campaign
+
+**Quantified across every dimension: ~80% of the distance to AAA is "disconnected or untuned," not
+"missing."** Of the verified gap: **~55% disconnected** (wiring — both ends built, the connection never
+made), **~25% untuned** (values not pinned), **~20% genuinely missing** (needs design+build). Overall
+"finish %" vs the AAA bar ≈ **58%**, but the *system bank* behind it is far deeper than 58% — the deficit is
+overwhelmingly the last connection, not absent capability. The proof is a guild-leveling system with a
+migrated table, a tuned quadratic curve, and level-up logic that **cannot earn a single XP** because nothing
+calls the hook.
+
+This reframes everything into **four sprints, ordered by perceived-quality-per-hour:**
+
+### Sprint 1 — CONNECTION (the ~55%; days, not months; highest ROI in the whole plan)
+Wire the built-but-unwired. Each is a handful of lines connecting two existing ends:
+- **Combat-polish reactions** — `server.js:8548/8588` dodge/block handlers call `attemptDodge`/`attemptParry`
+  (+ riposte/i-frame/perfect-dodge slow-mo) instead of bare `:ack`. *Lights up the entire defensive feel loop
+  (combat feel 25%→~80%).* (= F1.1 / F3 / G2.1 converge here.)
+- **Client-side combat prediction** (G2.1) — predicted swing/hitstop/VFX locally in `CombatInputController`,
+  reconcile on `combat:hit`. Closes the ≤16ms feel gap.
+- **Accessibility store bridge** (G3.1) — `event-router.ts:144` writes the store + apply 3 visual settings to
+  DOM + gate world juice on reduced-motion. Turns a whole dead panel live.
+- **Guild XP** (G4) — call `awardOrgXp` from treasury/recruit/boss-kill. Revives the guild progression layer.
+- **Weapon trails** (G1/feel) — mount `weapon-trail.ts`. **Camera-punch** — add the listener in
+  `ConcordiaScene` (event already dispatched). **SFX pitch variation** (feel ~1h).
+- **2 real bugs** — `CONCORD_MAX_SHADOWS` LRU-trim (G2.2, scale/OOM), heap-default fix (G2.3).
+
+### Sprint 2 — COMMITMENT (the single biggest *visible* win; ~shader work, no asset budget)
+- **G1.1 hard cel-shade + ink-outline art direction**, applied uniformly incl. the primitive crowd — converts
+  the #1 prototype tell into a deliberate Sable/BOTW style. Plus the cheap asset drops (CC0 GLB crowd bodies,
+  one PBR pack, 2–3 landmark meshes/world).
+
+### Sprint 3 — TUNING (the ~25%; pin the numbers)
+- Adopt the logged balance recommendations (restaurant tip cell, mahjong yaku re-weight); **fix the degenerate
+  restaurant sim** (TTL/pressure path is dead) then re-run; playtest-pin the ~25 first-draft dials (T3.4).
+- Re-shape the XP curve from logarithmic toward a power-fantasy ramp.
+
+### Sprint 4 — CONSTRUCTION (the genuine ~20% missing; real design+build)
+- **Player talent allocation** (F2.3) · **itemization: affixes + sets** (F2.1/F2.2) · **a D30 endgame loop**
+  (escalating ladder above world bosses; frame royalties as endgame) · **gifts/heart-events/spouse** (F6) ·
+  **run-mode in-run build variety** (F4) · **horror-tension wiring** (route ghost through HRTF + tension stem
+  + terror-radius heartbeat — mostly Sprint-1-style wiring of existing primitives) · authored dialogue trees
+  for the remaining NPCs (G3.3, data not code).
+
+### Reconciliation with Phase F
+Phase F's tickets slot into these sprints: F1/F3 combat → Sprint 1; F2 itemization/talents → Sprint 4; F4
+run-depth → Sprint 4; F6 relationships → Sprint 4; F7.1 marketplace polish → Sprint 3/4. Phase G *adds*: the
+connection-sprint wiring set, the art-direction commitment, accessibility wiring, the two scale bugs, client
+prediction, the XP-curve reshape, and the D30 endgame as a named design gap. **Execution order is the four
+sprints above** — Connection first (it's where 55% of the gap dies cheapest and is the biggest felt jump).
+
+### The honest headline
+Concordia is **~58% "finished" against AAA but holds a far deeper system bank than that implies** — measured
+across ~20 dimensions it leads on emergence/economy, is competitive on rendering/animation/juice/audio/
+stability, and its real deficits are concentrated in *connection + commitment + tuning*. The grand strategy
+is therefore not "build the missing 40% of a game" — it's **"connect and commit what's already built, tune
+the numbers, then construct a focused ~20%"** (talents, itemization, endgame, relationships). That is a
+months-scale finishing campaign for one developer, not a multi-year build.
