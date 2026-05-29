@@ -163,6 +163,42 @@ export function LevelUpJuiceBridge() {
       },
     );
 
+    // E3 — skill evolution "Arise"-style named beat. The dramatic per-10-level
+    // moment: big milestone juice + the composed title/subtitle.
+    const offEvolved = subscribe<{ skillName: string; level: number; title: string; subtitle?: string; tier?: number }>(
+      'skill:evolved',
+      (msg) => {
+        addToast({
+          type: 'success',
+          message: msg.subtitle ? `${msg.title} — ${msg.subtitle}` : msg.title,
+          duration: 9000,
+        });
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'milestone', opts: { value: msg.title, tier: msg.tier } },
+          }));
+        } catch { /* ok */ }
+      },
+    );
+
+    // E3 — faction rank ladder climb (E→S), decoupled from level. Fired by the
+    // rep-cache refresh on an upward tier crossing.
+    const offRankUp = subscribe<{ factionId: string; tier: string; rank: string; fromRank: string }>(
+      'reputation:rank-up',
+      (msg) => {
+        addToast({
+          type: 'success',
+          message: `Rank up with ${msg.factionId}: ${msg.fromRank} → ${msg.rank} (${msg.tier})`,
+          duration: 8000,
+        });
+        try {
+          window.dispatchEvent(new CustomEvent('concordia:game-juice', {
+            detail: { trigger: 'fanfare', opts: { value: msg.rank } },
+          }));
+        } catch { /* ok */ }
+      },
+    );
+
     return () => {
       offLevelUp();
       offQualityApproved();
@@ -174,6 +210,8 @@ export function LevelUpJuiceBridge() {
       offLineageQuest();
       offBadge();
       offEvoAsset();
+      offEvolved();
+      offRankUp();
     };
   }, []);
 

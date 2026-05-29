@@ -295,11 +295,14 @@ export type SocketEvent =
   | 'marketplace:purchase'
   | 'marketplace:sale'
   | 'skill:xp-awarded'
+  | 'skill:evolved'
+  | 'skill:evolution-available'
   | 'coop:raid:progress'
   | 'coop:raid:completed'
   | 'coop:build:edit'
   | 'coop:stash:withdraw'
   | 'reputation:badge-earned'
+  | 'reputation:rank-up'
   // Refusal Field — Sovereign / quest beats / Mass Raid declare gates per world
   | 'world:refusal-field'
   // EvoAsset evolution scheduler — promoted version notification
