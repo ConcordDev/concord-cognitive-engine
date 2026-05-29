@@ -95,7 +95,7 @@ describe("world-migration-cycle (NPC re-anchor)", () => {
   });
 
   it("is a no-op when radial worlds are off", async () => {
-    delete process.env.CONCORD_RADIAL_WORLDS;
+    process.env.CONCORD_RADIAL_WORLDS = "0";
     const db = setupCycleDb();
     const r = await runWorldMigrationCycle({ db });
     assert.equal(r.reason, "radial_worlds_off");

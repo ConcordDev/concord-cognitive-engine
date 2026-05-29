@@ -27,13 +27,13 @@ function envNum(name, dflt, { min = 0, max = Infinity } = {}) {
 
 /**
  * Whether worlds use the large radial map (expanded spawn bounds out to the
- * frontier). Opt-in so the renderer/terrain extent can be expanded in lockstep;
- * with it off, spawners keep the legacy ±400 footprint and everything stays
- * band 0–1 near the hub (i.e. legacy behaviour).
+ * frontier). ON by default — the renderer/terrain extent tracks the same
+ * worldRadiusM. Set CONCORD_RADIAL_WORLDS=0 to fall back to the legacy ±400
+ * footprint where everything stays band 0–1 near the hub.
  */
 export function radialWorldsEnabled() {
-  const v = String(process.env.CONCORD_RADIAL_WORLDS || "").toLowerCase();
-  return v === "1" || v === "true" || v === "on" || v === "yes";
+  const v = String(process.env.CONCORD_RADIAL_WORLDS ?? "").toLowerCase();
+  return !(v === "0" || v === "false" || v === "off" || v === "no");
 }
 
 export const GRADIENT_DEFAULTS = Object.freeze({

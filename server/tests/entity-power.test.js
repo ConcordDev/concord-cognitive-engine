@@ -32,7 +32,7 @@ function setup() {
 }
 
 const ON = () => { process.env.CONCORD_ABSOLUTE_POWER = "1"; };
-const OFF = () => { delete process.env.CONCORD_ABSOLUTE_POWER; };
+const OFF = () => { process.env.CONCORD_ABSOLUTE_POWER = "0"; };
 
 describe("getEntityCombatLevel", () => {
   let db;

@@ -24,10 +24,14 @@ function envNum(name, dflt, { min = 0, max = Infinity } = {}) {
 }
 
 // ── Kill-switch + dials ─────────────────────────────────────────────────────
-/** Absolute-power model is opt-in. Off → every helper returns legacy values. */
+/**
+ * Absolute-power model is ON by default — the living world is the default
+ * experience. Set CONCORD_ABSOLUTE_POWER=0 (or false/off/no) to fall back to the
+ * legacy flat-100-HP / criminal-rep damage model.
+ */
 export function absolutePowerEnabled() {
-  const v = String(process.env.CONCORD_ABSOLUTE_POWER || "").toLowerCase();
-  return v === "1" || v === "true" || v === "on" || v === "yes";
+  const v = String(process.env.CONCORD_ABSOLUTE_POWER ?? "").toLowerCase();
+  return !(v === "0" || v === "false" || v === "off" || v === "no");
 }
 
 export const POWER_DIALS = Object.freeze({

@@ -77,7 +77,7 @@ describe("WS2 gradient spawning (radial)", () => {
   });
 
   it("legacy mode (flag off) keeps creatures near the hub at low level", () => {
-    delete process.env.CONCORD_RADIAL_WORLDS;
+    process.env.CONCORD_RADIAL_WORLDS = "0";
     const db = setup();
     const r = runFaunaSpawner({ state: {}, db });
     assert.ok(r.ok);
