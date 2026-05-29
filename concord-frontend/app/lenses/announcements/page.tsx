@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Megaphone, Sparkles, Bell, Wrench, CalendarDays, Map, RefreshCcw } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -22,7 +23,7 @@ interface Announcement {
   expires_at: number | null;
 }
 
-const KIND_META: Record<Announcement['kind'], { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; color: string }> = {
+const KIND_META: Record<Announcement['kind'], { label: string; icon: LucideIcon; color: string }> = {
   feature_drop:   { label: 'Feature drop',   icon: Sparkles,    color: 'text-emerald-300' },
   balance_change: { label: 'Balance change', icon: Wrench,      color: 'text-amber-300' },
   event:          { label: 'Event',          icon: CalendarDays, color: 'text-sky-300' },

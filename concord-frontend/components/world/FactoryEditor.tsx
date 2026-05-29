@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Box, ArrowRight, Cog, Trash2, Loader2 } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 
@@ -26,7 +27,7 @@ interface Entity {
 
 interface Claim { id: string; world_id: string; name?: string; }
 
-const ICON: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const ICON: Record<string, LucideIcon> = {
   chest: Box, belt: ArrowRight, crafter: Cog,
 };
 

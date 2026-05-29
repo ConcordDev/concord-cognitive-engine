@@ -1119,7 +1119,6 @@ function CityStreamingSection() {
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
   // Creator controls
-  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu
   const [myStream, setMyStream] = useState<CityStream | null>(null);
   const [streamTitle, setStreamTitle] = useState('');
   const [streamCityId, setStreamCityId] = useState('concordia-central');
@@ -1614,6 +1613,7 @@ export default function WorldLensPage() {
   // emote wheel, etc. Escape exits both.
   const exploreShellRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu (used by HUDOverlay onMenuOpen)
   const [isPointerLocked, setIsPointerLocked] = useState(false);
 
   useEffect(() => {

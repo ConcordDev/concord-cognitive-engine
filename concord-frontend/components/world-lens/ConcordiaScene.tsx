@@ -280,7 +280,7 @@ export default function ConcordiaScene({
   const lowFpsCountRef = useRef(0); // consecutive low-FPS frames for auto-downgrade
   const [showFps, setShowFps] = useState(false);
   const [showQualitySelector, setShowQualitySelector] = useState(false);
-  const [performance, setPerformance] = useState<PerformanceBudget>({
+  const [perfBudget, setPerfBudget] = useState<PerformanceBudget>({
     drawCalls: 0,
     maxDrawCalls: QUALITY_SETTINGS[initialQuality].maxDrawCalls,
     triangles: 0,
@@ -1246,7 +1246,7 @@ export default function ConcordiaScene({
           lowFpsCountRef.current = 0;
         }
 
-        setPerformance({
+        setPerfBudget({
           drawCalls: info.render.calls,
           maxDrawCalls: settings.maxDrawCalls,
           triangles: info.render.triangles,
@@ -1703,13 +1703,13 @@ export default function ConcordiaScene({
           >
             <div className="flex items-center gap-1.5 text-green-400 text-xs font-bold">
               <Activity className="w-3 h-3" />
-              {performance.fps} FPS
-              <span className="text-white/30 font-normal ml-1">{performance.frameTime}ms</span>
+              {perfBudget.fps} FPS
+              <span className="text-white/30 font-normal ml-1">{perfBudget.frameTime}ms</span>
             </div>
             <div className="space-y-0.5 pt-1 border-t border-white/5">
-              {budgetBar('Draw calls', performance.drawCalls, performance.maxDrawCalls)}
-              {budgetBar('Triangles', performance.triangles, performance.maxTriangles)}
-              {budgetBar('Tex Memory', performance.textureMemory, performance.maxTextureMemory)}
+              {budgetBar('Draw calls', perfBudget.drawCalls, perfBudget.maxDrawCalls)}
+              {budgetBar('Triangles', perfBudget.triangles, perfBudget.maxTriangles)}
+              {budgetBar('Tex Memory', perfBudget.textureMemory, perfBudget.maxTextureMemory)}
             </div>
           </div>
         )}

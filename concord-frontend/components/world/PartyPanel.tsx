@@ -11,6 +11,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Users2, X, Crown, UserMinus, LogOut, ShieldOff, Send, AlertCircle, Check } from 'lucide-react';
 
 interface PartyMember { userId: string; role: 'leader' | 'member'; joinedAt: number; }
@@ -225,10 +226,10 @@ export function PartyPanel() {
                       Disband
                     </button>
                   )}
-                  <a href="/lenses/lfg" className="ml-auto flex items-center gap-1 rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/30">
+                  <Link href="/lenses/lfg" className="ml-auto flex items-center gap-1 rounded bg-cyan-500/20 px-2 py-0.5 text-[10px] text-cyan-200 hover:bg-cyan-500/30">
                     <Send className="h-3 w-3" />
                     LFG
-                  </a>
+                  </Link>
                 </div>
               </>
             ) : (
@@ -252,9 +253,9 @@ export function PartyPanel() {
                 <button onClick={handleCreate} disabled={busy === 'create'} className="w-full rounded-md border border-emerald-500/40 bg-emerald-500/20 px-2 py-1 text-[11px] text-emerald-100 hover:bg-emerald-500/30 disabled:opacity-40">
                   Create party
                 </button>
-                <a href="/lenses/lfg" className="mt-2 block w-full rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-[11px] text-cyan-200 hover:bg-cyan-500/20">
+                <Link href="/lenses/lfg" className="mt-2 block w-full rounded-md border border-cyan-500/40 bg-cyan-500/10 px-2 py-1 text-center text-[11px] text-cyan-200 hover:bg-cyan-500/20">
                   Browse LFG board
-                </a>
+                </Link>
               </div>
             )}
           </div>
