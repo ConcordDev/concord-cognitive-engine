@@ -48846,6 +48846,23 @@ app.get("/api/courtship/marriages/mine", requireAuth(), asyncHandler(async (req,
   });
 }));
 
+// H3 — spouse behavior: the NPC ids wed to the player + each one's seen
+// heart-events. The world client's spouse-follow overlay reads this to make a
+// wed NPC follow/help, and the dialogue path shifts a spouse to the "devoted"
+// register (see routes/world-narrative.js).
+app.get("/api/courtship/spouses-following", requireAuth(), asyncHandler(async (req, res) => {
+  const { spousesFollowingPlayer, seenHeartEvents } = await import("./lib/heart-events.js");
+  const userId = req.user?.id || req.user?.userId;
+  const npcIds = spousesFollowingPlayer(db, userId);
+  res.json({
+    ok: true,
+    spouses: npcIds.map((npcId) => ({
+      npcId,
+      heartEventsSeen: seenHeartEvents(db, userId, "npc", npcId).map((h) => h.milestoneId),
+    })),
+  });
+}));
+
 // Phase CF3 — fishing (surface lib/fishing + minigame-resolvers#resolveFishing).
 app.post("/api/fishing/resolve", requireAuth(), asyncHandler(async (req, res) => {
   const { resolveFishing } = await import("./lib/minigame-resolvers.js");

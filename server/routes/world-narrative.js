@@ -182,6 +182,17 @@ export default function createWorldNarrativeRoutes({ requireAuth, requireAdmin, 
       } catch { /* fall through with no phase if metrics unavailable */ }
     }
 
+    // H3 — a wed NPC speaks in the warmest register. Spouse status overrides
+    // an unset phase so married partners' lines shift (devoted), independent of
+    // the goddess ecosystem path above.
+    if (!phase && req.user?.id) {
+      try {
+        const { spouseDialoguePhase } = await import("../lib/heart-events.js");
+        const sp = spouseDialoguePhase(db, req.user.id, npcId, 0);
+        if (sp === "devoted") phase = "devoted";
+      } catch { /* spouse phase optional */ }
+    }
+
     let result;
     if (isAuthored) {
       result = await generateAuthoredDialogue(npcId, questId, playerRelationship, db, phase);
