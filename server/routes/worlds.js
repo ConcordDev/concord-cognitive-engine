@@ -2157,13 +2157,33 @@ export default function createWorldsRouter({ requireAuth, db }) {
             kind: weaponKind, tier, frame,
             actorMassKg: damageResult.attackerMassKg || undefined,
           });
+          // F3.1/F3.2 — capture the target's pre-hit stagger (for the deathblow
+          // execution) + whether it has hyperarmor (mid-heavy-commit). A heavy
+          // strike grants the attacker hyperarmor for their active frames.
+          const exec = await import("../lib/combat/executions.js");
+          const preHitSeverity = exec.currentStaggerSeverity(db, { actorKind: "npc", actorId: npcId });
+          const targetHyperarmor = exec.hasHyperarmor(db, { actorKind: "npc", actorId: npcId });
+          const isHeavy = !!(skillData?.heavy || /heavy|hammer|axe|greatsword|maul/i.test(weaponKind));
+          if (isHeavy) exec.grantHyperarmor(db, { actorKind: "player", actorId: userId });
+
           const stagger = polish.triggerStaggerFromImpact(db, {
             actorKind: "npc", actorId: npcId, momentum,
             massKg: damageResult.targetMassKg || undefined,
+            hyperarmor: targetHyperarmor,
           });
           if (stagger?.severity && stagger.severity !== "none") {
             damageResult.staggerSeverity = stagger.severity;
             damageResult.impactMomentum = Math.round(momentum * 10) / 10;
+          }
+          // F3.2 — execution: a hit on an already-broken target deathblows for a
+          // burst. Applied like the mass multiplier (post-cap legitimate skill
+          // burst). Backstab (offAxis) resolves the same way when facing data
+          // is available; deathblow is the fully-server-knowable case.
+          const ex = exec.resolveExecution({ offAxis: 0, targetSeverity: preHitSeverity });
+          if (ex.multiplier > 1 && Number.isFinite(damageResult.finalDamage)) {
+            damageResult.finalDamage = Math.round(damageResult.finalDamage * ex.multiplier * 10) / 10;
+            damageResult.execution = ex.kind;
+            damageResult.executionMultiplier = ex.multiplier;
           }
         } catch {
           // Momentum model optional — fall back to magnitude-based rocked.
