@@ -41,7 +41,7 @@ export const EVENT_SHAPES = Object.freeze({
   // Telegraph fires immediately before applyAttack resolves so clients
   // can render anticipation pose / weapon glow / stance shift before
   // the damage lands. anticipationMs mirrors the biomechanics ladder.
-  "combat:telegraph": { required: ["attackerId", "anticipationMs", "severity"], optional: ["targetId", "style", "tier"] },
+  "combat:telegraph": { required: ["attackerId", "anticipationMs", "severity"], optional: ["targetId", "style", "tier", "perilKind", "counter"] },
   // Combo evolution surfaces a procedurally-derived combo with an
   // LLM-selected name; client raises a slow-mo + audio sting + hotbar
   // icon. `evolved` is the array from flow-engine.evolveFighterCombos.

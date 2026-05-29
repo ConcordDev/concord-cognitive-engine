@@ -8334,6 +8334,9 @@ async function tryInitWebSockets(server) {
           const _anticipationMs = _heavy
             ? Math.round(_antLadder[_tier - 1] * 1.45)
             : _antLadder[_tier - 1];
+          // A1 — typed peril: a committed attack broadcasts a thrust/sweep/grab
+          // tell + the counter that negates it, so the defender reads intent.
+          const _peril = telegraphPerilFor({ style: data.style, weapon: data.weapon, kind: data.weapon, heavy: _heavy });
           realtimeEmit("combat:telegraph", {
             attackerId: userId,
             targetId:   data.targetId,
@@ -8341,6 +8344,8 @@ async function tryInitWebSockets(server) {
             anticipationMs: _anticipationMs,
             style:      data.style || null,
             tier:       _tier,
+            perilKind:  _peril.perilKind,
+            counter:    _peril.counter,
           });
         } catch { /* telegraph is best-effort presentation */ }
 
@@ -30737,6 +30742,8 @@ import { attemptDodge as _attemptDodge, attemptParry as _attemptParry } from "./
 // T3.1 — resolve a combat payload to a SKILL_CATALOG key for the client's
 // per-skill descriptor (shipped on combat:hit).
 import { skillKeyForSkill } from "./lib/skills/skill-key.js";
+// A1 — typed attack telegraphs (thrust/sweep/grab peril + counter).
+import { perilFor as telegraphPerilFor } from "./lib/combat/telegraph-peril.js";
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
