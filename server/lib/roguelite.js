@@ -12,6 +12,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { resolveRunDifficulty, recordRunClear } from "./run-difficulty.js";
 
 const DEATH_PENALTY_MULT = 0.5;       // half the banked currency on death
 const EXTRACT_BONUS_MULT = 1.25;
@@ -59,6 +60,11 @@ export function startRun(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
   const { worldId, regionId } = opts;
   if (!worldId || !regionId) return { ok: false, error: "missing_world_or_region" };
+  // C2 — resolve the run's difficulty tier (gated by a prior clear). Default
+  // finder; a locked tier is rejected before the run opens.
+  const tier = opts.tier || "finder";
+  const diff = resolveRunDifficulty(db, userId, "roguelite", tier);
+  if (!diff.ok) return { ok: false, error: diff.reason, tier, needsClearOf: diff.needsClearOf };
 
   try {
     // Idempotency: if user has an active run for this region, return it.
@@ -83,9 +89,14 @@ export function startRun(db, userId, opts = {}) {
       INSERT INTO roguelite_runs (id, user_id, world_id, region_id)
       VALUES (?, ?, ?, ?)
     `).run(id, userId, worldId, regionId);
-    logger.info?.("roguelite", "run_started", { runId: id, userId, regionId });
-    // C1 — surface the meta-unlock modifiers the run starts with.
-    return { ok: true, runId: id, alreadyActive: false, modifiers: runMetaModifiers(db, userId) };
+    logger.info?.("roguelite", "run_started", { runId: id, userId, regionId, tier });
+    // C1 + C2 — surface the meta-unlock modifiers + the difficulty modifier the
+    // run starts with.
+    return {
+      ok: true, runId: id, alreadyActive: false,
+      modifiers: runMetaModifiers(db, userId),
+      tier, difficulty: diff.modifier,
+    };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -114,8 +125,15 @@ export function endRun(db, runId, opts = {}) {
     if (earned > 0) {
       _grantCurrency(db, run.user_id, earned);
     }
-    logger.info?.("roguelite", "run_ended", { runId, reason, earned, depthReached });
-    return { ok: true, earned, reason };
+    // C2 — a successful extraction records a clear at the run's tier, unlocking
+    // the next tier for this mode.
+    let tierCleared = null;
+    if (reason === "extract" && opts.tier) {
+      const r = recordRunClear(db, run.user_id, "roguelite", opts.tier);
+      if (r.ok) tierCleared = opts.tier;
+    }
+    logger.info?.("roguelite", "run_ended", { runId, reason, earned, depthReached, tierCleared });
+    return { ok: true, earned, reason, tierCleared };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
