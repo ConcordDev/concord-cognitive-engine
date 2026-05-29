@@ -49394,6 +49394,17 @@ app.get("/api/code-puzzle/:puzzleId/leaderboard", asyncHandler(async (req, res) 
   res.json({ ok: true, leaderboard: leaderboardForPuzzle(db, req.params.puzzleId) });
 }));
 
+// D7 — Zachtronics percentile histograms: cycles + size distribution across all
+// solvers + this player's percentile on each axis, so the editor can show where
+// a solution lands ("better than 78% on cycles") rather than just pass/fail.
+app.get("/api/code-puzzle/:puzzleId/stats", requireAuth(), asyncHandler(async (req, res) => {
+  const { solutionHistogram } = await import("./lib/programming-puzzle.js");
+  const userId = req.user?.id || req.user?.userId;
+  const stats = solutionHistogram(db, req.params.puzzleId, { userId });
+  if (!stats) return res.status(404).json({ ok: false, error: "no_puzzle" });
+  res.json({ ok: true, stats });
+}));
+
 app.get("/api/code-puzzle/puzzles", asyncHandler(async (req, res) => {
   const { listPuzzles } = await import("./lib/programming-puzzle.js");
   res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });

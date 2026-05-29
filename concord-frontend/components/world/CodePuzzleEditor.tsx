@@ -25,7 +25,7 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
   const [puzzle, setPuzzle] = useState<PuzzleFull | null>(null);
   const [program, setProgram] = useState<Instr[]>([]);
   const [result, setResult] = useState<{ passed: boolean; cases: CaseResult[]; cycles: number; size: number } | null>(null);
-  const [submitted, setSubmitted] = useState<{ cycles: number; size: number } | null>(null);
+  const [submitted, setSubmitted] = useState<{ cycles: number; size: number; cyclesPct?: number | null; sizePct?: number | null } | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
@@ -79,7 +79,12 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
       const j = await r.json();
       if (j?.ok) {
         milestoneJuice('ui_code_submit_pass');
-        setSubmitted({ cycles: j.cycles, size: j.size });
+        // D7 — Zachtronics percentile feedback from the server's solution histogram.
+        setSubmitted({
+          cycles: j.cycles, size: j.size,
+          cyclesPct: j.stats?.cycles?.percentile ?? null,
+          sizePct: j.stats?.size?.percentile ?? null,
+        });
       }
     } finally { setPending(false); }
   }, [puzzle, program]);
@@ -174,6 +179,13 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
             {submitted && (
               <div className="rounded bg-amber-900/30 p-2 text-[11px] text-amber-100">
                 ⭐ submitted · {submitted.cycles}c / {submitted.size}o
+                {(submitted.cyclesPct != null || submitted.sizePct != null) && (
+                  <div className="mt-0.5 text-[10px] text-amber-200/80">
+                    {submitted.cyclesPct != null && <>faster than {submitted.cyclesPct}% of solvers</>}
+                    {submitted.cyclesPct != null && submitted.sizePct != null && <> · </>}
+                    {submitted.sizePct != null && <>smaller than {submitted.sizePct}%</>}
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -165,7 +165,11 @@ export function submitSolution(db, userId, puzzleId, program) {
           submitted_at = unixepoch()
       `).run(userId, puzzleId, JSON.stringify(program), r.cycles, r.size);
     }
-    return { ok: true, accepted: true, cycles: r.cycles, size: r.size, improved: better };
+    // D7 — return the percentile feedback so the editor can show where this
+    // solution lands (cycles + size) the moment it's accepted.
+    let stats = null;
+    try { stats = solutionHistogram(db, puzzleId, { userId }); } catch { /* stats best-effort */ }
+    return { ok: true, accepted: true, cycles: r.cycles, size: r.size, improved: better, stats };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -202,6 +206,83 @@ export function getPuzzle(db, puzzleId) {
     `).get(puzzleId);
     if (!p) return null;
     return { ...p, test_cases: JSON.parse(p.test_cases_json) };
+  } catch { return null; }
+}
+
+// ── D7 (depth plan) — Zachtronics percentile feedback ──────────────────────
+// Finding a solution that *works* is the easy part; the Zachtronics depth is
+// optimisation against the population on orthogonal axes (cycles vs size, which
+// usually trade off). Surfacing where a solution lands on the distribution —
+// "you're better than 78% of solvers on cycles" — turns "it works" into an
+// endgame and makes every solution feel placed, not just pass/fail. Histograms,
+// not leaderboards: a #1-or-nothing ranking demotivates; a percentile rewards
+// improvement at every skill level.
+
+/** % of entries strictly worse (greater) than `value` — lower cycles/size is
+ *  better, so this reads as "the fraction of solvers you beat". Pure. */
+export function percentileBeating(sortedAsc, value) {
+  if (!Array.isArray(sortedAsc) || sortedAsc.length === 0 || !Number.isFinite(value)) return null;
+  let worse = 0;
+  for (const v of sortedAsc) if (v > value) worse++;
+  return Math.round((worse / sortedAsc.length) * 100);
+}
+
+/** Bucket `values` into `bins` equal-width bins. Pure. */
+export function histogramBins(values, bins = 8) {
+  const vals = (values || []).filter(Number.isFinite);
+  if (vals.length === 0) return [];
+  const min = Math.min(...vals), max = Math.max(...vals);
+  if (max === min) return [{ lo: min, hi: max, count: vals.length }];
+  const n = Math.max(1, Math.floor(bins));
+  const width = (max - min) / n;
+  const out = Array.from({ length: n }, (_, i) => ({
+    lo: Math.round((min + i * width) * 100) / 100,
+    hi: Math.round((min + (i + 1) * width) * 100) / 100,
+    count: 0,
+  }));
+  for (const v of vals) {
+    let idx = Math.floor((v - min) / width);
+    if (idx >= n) idx = n - 1;
+    if (idx < 0) idx = 0;
+    out[idx].count++;
+  }
+  return out;
+}
+
+/**
+ * Distribution of all submitted solutions for a puzzle on both axes + the
+ * player's percentile on each, plus the authored optimum for reference.
+ */
+export function solutionHistogram(db, puzzleId, { userId = null, bins = 8 } = {}) {
+  if (!db || !puzzleId) return null;
+  try {
+    const rows = db.prepare(
+      `SELECT user_id, cycles, size FROM programming_solutions WHERE puzzle_id = ?`
+    ).all(puzzleId);
+    const cycles = rows.map((r) => r.cycles).filter(Number.isFinite);
+    const sizes = rows.map((r) => r.size).filter(Number.isFinite);
+    const puzzle = db.prepare(
+      `SELECT optimal_cycles, optimal_size FROM programming_puzzles WHERE id = ?`
+    ).get(puzzleId) || {};
+    const mine = userId ? rows.find((r) => r.user_id === userId) : null;
+    const cyclesSorted = [...cycles].sort((a, b) => a - b);
+    const sizesSorted = [...sizes].sort((a, b) => a - b);
+    return {
+      solutionCount: rows.length,
+      optimal: { cycles: puzzle.optimal_cycles ?? null, size: puzzle.optimal_size ?? null },
+      cycles: {
+        histogram: histogramBins(cycles, bins),
+        best: cyclesSorted[0] ?? null,
+        mine: mine?.cycles ?? null,
+        percentile: mine ? percentileBeating(cyclesSorted, mine.cycles) : null,
+      },
+      size: {
+        histogram: histogramBins(sizes, bins),
+        best: sizesSorted[0] ?? null,
+        mine: mine?.size ?? null,
+        percentile: mine ? percentileBeating(sizesSorted, mine.size) : null,
+      },
+    };
   } catch { return null; }
 }
 

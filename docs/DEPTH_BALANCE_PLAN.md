@@ -168,7 +168,13 @@ multiplier keyed to tier. **Add a terror-radius/dread escalation read** to extra
 (DbD anticipation > jump-scare; horror already has `horror-dread.js` terror/chase radii — reuse).
 **Borrowed signal:** Hades (loss still pays out) + Tarkov (the extract itself is the risk gradient).
 
-### D7 — Zachtronics percentile histograms for puzzles — S/M
+### D7 — Zachtronics percentile histograms for puzzles — DONE
+**Done:** `programming-puzzle.js` gained pure `percentileBeating` + `histogramBins` + DB-backed
+`solutionHistogram(db, puzzleId, {userId})` (cycles + size distribution, the player's percentile on
+each — "faster than N% of solvers" — plus the authored optimum). `submitSolution` now returns `stats`;
+new `GET /api/code-puzzle/:puzzleId/stats`; `CodePuzzleEditor` shows the percentile on submit. Turns
+pass/fail into an optimisation endgame (histograms, not leaderboards). Tests 8/8.
+**(original)** — S/M
 **Finding:** `programming-puzzle.js` (MAX_CYCLES=10k) and hacking puzzles track pass/fail only.
 **Target:** after a passing solution, score on **orthogonal axes** (cycles / instruction-count /
 something area-like) and show the player a **percentile histogram** vs the population of submitted
