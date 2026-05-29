@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useSoundscape } from './SoundscapeEngine';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
+import { requestHitPause } from '@/lib/concordia/hit-pause';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -159,18 +160,15 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       const isCombatLandedHit =
         trigger === 'combat-hit' || trigger === 'combat-crit' || trigger === 'combat-kill';
       if (isCombatLandedHit) {
-        const targetMs = trigger === 'combat-kill' ? 200 : (isHeavy || trigger === 'combat-crit' ? 80 : 0);
+        // T2.1 — even a light landed hit gets a short freeze so it isn't
+        // weightless (was 0). Heavy/crit/kill keep their bigger windows.
+        const targetMs = trigger === 'combat-kill' ? 200 : (isHeavy || trigger === 'combat-crit' ? 80 : 35);
         const attackerMs = trigger === 'combat-kill' ? 60 : (isHeavy || trigger === 'combat-crit' ? 50 : 0);
-        if (targetMs > 0 && opts?.targetId) {
-          window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-            detail: { entityId: opts.targetId, durationMs: targetMs },
-          }));
-        }
-        if (attackerMs > 0 && opts?.attackerId) {
-          window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-            detail: { entityId: opts.attackerId, durationMs: attackerMs },
-          }));
-        }
+        // T2.7 — route through the single deduped hit-pause authority so this
+        // (legacy/PvP) path and the server-authoritative impact path can't
+        // double-freeze the same strike.
+        if (opts?.targetId) requestHitPause(opts.targetId, targetMs);
+        if (opts?.attackerId) requestHitPause(opts.attackerId, attackerMs);
         // Knockback only on heavy / crit / kill, only when both endpoints
         // known (so we can derive a direction that points away from the
         // attacker). Ignored for normal light hits.

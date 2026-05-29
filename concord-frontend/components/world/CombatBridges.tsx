@@ -31,6 +31,7 @@
 
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
+import { requestHitPause } from '@/lib/concordia/hit-pause';
 import CombatVFXBridge from '@/components/world/CombatVFXBridge';
 import { ImpactMomentumBridge } from '@/components/world/ImpactMomentumBridge';
 // Phase 8 add-ons: the ImpactFeedback layer exposes three global emit
@@ -700,16 +701,10 @@ export function CombatImpactFeelBridge() {
       const feel = ev.feel;
 
       // 1) Hitstop — freeze the target's (and briefly the attacker's) mixer.
-      if ((feel.targetPauseMs ?? 0) > 0) {
-        window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-          detail: { entityId: ev.targetId, durationMs: feel.targetPauseMs },
-        }));
-      }
-      if ((feel.attackerPauseMs ?? 0) > 0 && ev.attackerId) {
-        window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
-          detail: { entityId: ev.attackerId, durationMs: feel.attackerPauseMs },
-        }));
-      }
+      // T2.7 — through the single deduped authority so this server-authoritative
+      // path and GameJuice's legacy path can't double-freeze the same strike.
+      if ((feel.targetPauseMs ?? 0) > 0) requestHitPause(ev.targetId, feel.targetPauseMs ?? 0);
+      if ((feel.attackerPauseMs ?? 0) > 0 && ev.attackerId) requestHitPause(ev.attackerId, feel.attackerPauseMs ?? 0);
 
       // 2) Knockback — kinematic impulse away from the attacker. Only when we
       // know both endpoints so the direction is real (matches GameJuice).
