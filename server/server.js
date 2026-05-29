@@ -37487,6 +37487,13 @@ app.get("/api/admin/governance-rejections", requireOwner, asyncHandler(async (re
   res.json({ ok: true, rejections, count: rejections.length });
 }));
 
+// WS7 — living-world gradient-health telemetry. Is the hub staying low-level
+// (grindable) and are veterans migrating outward toward the frontier?
+app.get("/api/admin/world-gradient-health", requireOwner, asyncHandler(async (_req, res) => {
+  const { allWorldsGradientHealth } = await import("./lib/world-gradient-health.js");
+  res.json(allWorldsGradientHealth(db));
+}));
+
 // Admin integrity check endpoint
 app.get("/api/admin/integrity", requireOwner, asyncHandler(async (req, res) => {
   const runFresh = req.query.run === "true";

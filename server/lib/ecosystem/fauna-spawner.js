@@ -22,6 +22,26 @@ import {
 } from "../world-gradient.js";
 
 /**
+ * WS2: deterministic per-species cluster center that sits in a specific danger
+ * band, so EVERY band — including the hub — reliably gets fauna (a new player
+ * always has weak creatures to grind near the hub, instead of relying on a
+ * uniform scatter that can leave the hub empty). Each species hashes to a band;
+ * its cluster anchors at a hashed radius/angle within that band.
+ */
+function radialClusterCenter(cfg, anchor, worldId, biome, speciesId) {
+  const h = crypto.createHash("sha1").update(`${worldId}::${biome}::${speciesId}`).digest();
+  const band = h[0] % cfg.bandCount;
+  const span = Math.max(1, cfg.worldRadiusM - cfg.hubRadiusM);
+  const innerR = cfg.hubRadiusM + (band / cfg.bandCount) * span;
+  const outerR = cfg.hubRadiusM + ((band + 1) / cfg.bandCount) * span;
+  // Keep the center comfortably inside the band so its spread doesn't all spill
+  // into neighbours.
+  const r = innerR + (h[1] / 255) * Math.max(1, outerR - innerR) * 0.6 + (outerR - innerR) * 0.2;
+  const ang = (h.readUInt32BE(2) / 0xffffffff) * Math.PI * 2;
+  return { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+}
+
+/**
  * WS2: deterministic band-appropriate level for a creature spawned at (x,z).
  * Near the hub → low level (dense weak flocks); toward the frontier → high
  * level. Seeded by id so it's stable. Reads the world's radial gradient; with
@@ -294,10 +314,13 @@ export function runFaunaSpawner({ state, db }) {
         // WS2: radial bounds (frontier-wide when enabled) + the species'
         // deterministic cluster center, computed up-front so density can taper
         // by danger band — dense flocks near the hub, sparse toward the frontier.
-        const bounds = radialWorldsEnabled()
-          ? worldBoundsFor(gradCfg, hubAnchor)
-          : biomeBoundsForWorld(worldId);
-        const center = clusterCenterFor(worldId, biome, sp.id, bounds);
+        const radial = radialWorldsEnabled();
+        const bounds = radial ? worldBoundsFor(gradCfg, hubAnchor) : biomeBoundsForWorld(worldId);
+        // Radial: anchor the species cluster in a deterministic band so every
+        // band (incl. the hub) gets fauna. Legacy: original uniform scatter.
+        const center = radial
+          ? radialClusterCenter(gradCfg, hubAnchor, worldId, biome, sp.id)
+          : clusterCenterFor(worldId, biome, sp.id, bounds);
         const clusterBand = dangerBandAt(gradCfg, hubAnchor, center.x, center.z);
         const density = spawnDensityFor(gradCfg, clusterBand);
 
