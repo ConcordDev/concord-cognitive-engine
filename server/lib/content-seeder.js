@@ -644,6 +644,28 @@ export async function seedContent({ db = null } = {}) {
     }
   } catch { /* no sub-worlds dir — fine */ }
 
+  // H1 — per-world authored quest chains. Some worlds (e.g. tunya) keep their
+  // quest chains under content/world/<world>/quests/ alongside their npcs/
+  // factions/lore rather than under content/quests/sub-worlds/. Walk those too
+  // so authored-but-unloaded chains (tunya's 4 were stranded here) reach the
+  // engine. seedQuestFile is idempotent on authoredId, so a chain that somehow
+  // appears in both trees is seeded once.
+  try {
+    const worldRoot = join(CONTENT_ROOT, "world");
+    for (const worldName of readdirSync(worldRoot)) {
+      if (worldName.startsWith("_")) continue; // _shared, _meta
+      const questsDir = join(worldRoot, worldName, "quests");
+      let isDir = false;
+      try { isDir = statSync(questsDir).isDirectory(); } catch { /* no quests dir */ }
+      if (!isDir) continue;
+      for (const fname of readdirSync(questsDir)) {
+        if (!fname.endsWith(".json")) continue;
+        const chain = readJSON(`world/${worldName}/quests/${fname}`);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+      }
+    }
+  } catch { /* no world quests — fine */ }
+
   // Authored dialogue trees — keyed by `npcId:questId:phase`. The narrative
   // bridge looks these up and short-circuits the LLM dialogue path when a
   // hand-authored tree exists for the requested context.
