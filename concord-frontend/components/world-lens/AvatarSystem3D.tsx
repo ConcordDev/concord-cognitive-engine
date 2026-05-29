@@ -47,6 +47,7 @@ import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
+import { applyCelShade } from '@/lib/world-lens/cel-shade';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -283,6 +284,10 @@ export default function AvatarSystem3D({
 }: AvatarSystem3DProps) {
   const avatarGroupRef = useRef<unknown>(null);
   const playerMeshRef = useRef<unknown>(null);
+  // I2 — player weapon-trail ribbon (lazily created in the frame loop) +
+  // reusable tip vector to avoid per-frame allocation.
+  const weaponTrailRef = useRef<import('@/lib/world-lens/weapon-trail').WeaponTrailAPI | null>(null);
+  const weaponTipVecRef = useRef<unknown>(null);
   // Phase A1 sidecars for enhanced-avatar-builder. Re-using the
   // existing facialControllersRef declared further down (line ~324).
   // These two are new — per-frame eye tickers and enhanced-disposers.
@@ -721,6 +726,15 @@ export default function AvatarSystem3D({
       group.userData.skeleton = skeleton;
       group.userData.boneMap = boneMap;
 
+      // I1 — cel-shade + ink-outline the crowd primitive so it reads as
+      // illustrated, matching the buildings' toon gradient. Opt-out via
+      // window.__CONCORD_CEL_SHADE__ = false.
+      try {
+        if ((window as unknown as { __CONCORD_CEL_SHADE__?: boolean }).__CONCORD_CEL_SHADE__ !== false) {
+          applyCelShade(group, THREE);
+        }
+      } catch { /* cel-shade best-effort — never block mesh creation */ }
+
       return group;
     },
     []
@@ -1103,6 +1117,10 @@ export default function AvatarSystem3D({
     async function init() {
       const THREE = await import('three');
       if (disposed) return;
+      // I2 — preload the weapon-trail factory so the (sync) frame loop can
+      // create the ribbon without an await.
+      const { createWeaponTrail: _createWeaponTrail } = await import('@/lib/world-lens/weapon-trail');
+      if (disposed) return;
 
       const avatarGroup = new THREE.Group();
       avatarGroup.name = 'avatar_system';
@@ -1319,6 +1337,12 @@ export default function AvatarSystem3D({
           | { entityId?: string; animation?: string; tier?: number; body?: 'slim' | 'average' | 'stocky' | 'tall' }
           | undefined;
         if (!detail?.entityId || !detail?.animation) return;
+        // I2 — light up the player's weapon trail on an attack swing. The trail
+        // auto-fades after the swing (fadeOutSec), so we only flip it active.
+        if (detail.entityId === playerAvatar.id && weaponTrailRef.current &&
+            (detail.animation.startsWith('attack') || detail.animation === 'kick')) {
+          weaponTrailRef.current.setActive(true);
+        }
         const mixer = mixersRef.current.get(detail.entityId) as MixerType | undefined;
         if (!mixer) return;
         try {
@@ -1888,6 +1912,34 @@ export default function AvatarSystem3D({
         // copy from rigid-body transforms each frame.
         ragdollTickRef.current?.();
 
+        // I2 — weapon trail: sample the player's right-hand (weapon-tip) bone
+        // each frame and tick the ribbon. Created lazily once the player mesh
+        // exists; attached to the scene (player mesh's parent).
+        try {
+          const pMesh = playerMeshRef.current as
+            | { parent?: unknown; userData?: { boneMap?: Map<string, unknown> } }
+            | null;
+          const sceneRoot = pMesh?.parent;
+          if (pMesh && sceneRoot) {
+            if (!weaponTrailRef.current) {
+              weaponTrailRef.current = _createWeaponTrail(
+                THREE as typeof import('three'),
+                sceneRoot as import('three').Object3D,
+              );
+              weaponTipVecRef.current = new THREE.Vector3();
+            }
+            const trail = weaponTrailRef.current;
+            const tipBone = pMesh.userData?.boneMap?.get('rightHand') as
+              | { getWorldPosition: (v: unknown) => { x: number; y: number; z: number } }
+              | undefined;
+            if (trail && tipBone && weaponTipVecRef.current) {
+              const wp = tipBone.getWorldPosition(weaponTipVecRef.current);
+              trail.sample({ x: wp.x, y: wp.y, z: wp.z }, now / 1000);
+            }
+            trail?.tick(now / 1000);
+          }
+        } catch { /* trail best-effort — never throw out of the frame loop */ }
+
         // Phase A1: per-frame eye tick for enhanced avatars (wetness
         // sheen + iris animation). Bounded by tickerCount ≤ N players +
         // hero NPCs (small).
@@ -2405,6 +2457,8 @@ export default function AvatarSystem3D({
         fadingMeshes.clear();
         for (const arr of knockbackTimers.values()) for (const t of arr) clearTimeout(t);
         knockbackTimers.clear();
+        try { weaponTrailRef.current?.dispose(); } catch { /* ok */ }
+        weaponTrailRef.current = null;
         physicsWorld.removeCharacter('player');
       };
     }
