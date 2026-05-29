@@ -267,3 +267,8 @@ shifting courtship affinity and estranging the marriage when it sours.
 | `CONCORD_RESTAURANT_COMBO_WINDOW_S` | 12 | Max gap between serves to keep the combo alive. |
 | `CONCORD_RESTAURANT_COMBO_BONUS` | 0.08 | Tip multiplier added per combo step. |
 | `CONCORD_RESTAURANT_COMBO_MAX` | 5 | Combo cap. |
+
+### D4#5 — procedural NPC quest-gating secrets (`emergent/procedural-npc-spawner.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_PROCGEN_SECRET_FRACTION` | 0.33 | Fraction of procedural NPCs whose generated secret is promoted into the discoverable `secrets` table (deterministic per NPC id). |

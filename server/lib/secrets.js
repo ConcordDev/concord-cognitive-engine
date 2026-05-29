@@ -90,6 +90,36 @@ export async function seedFromAuthored(db) {
 }
 
 /**
+ * D4 #5 — seed ONE structured secret from a single NPC's
+ * narrative_context.secret. Used for procedural NPCs at spawn so a fraction of
+ * the generated population carries discoverable, quest-gating leverage (not just
+ * the authored cast). Deterministic id (idempotent on replay); returns
+ * { ok, action, secretId } or { ok:false, reason }. `discoveryDifficulty`
+ * defaults higher for procedural secrets so they read as harder-won.
+ */
+export function seedSecretForNpc(db, npc, { discoveryDifficulty = 6 } = {}) {
+  if (!db || !npc?.id) return { ok: false, reason: "missing_inputs" };
+  const txt = npc?.narrative_context?.secret;
+  if (!txt || typeof txt !== "string" || txt.length < 5) return { ok: false, reason: "no_secret" };
+  const subj = inferSubject(txt);
+  // A self-referencing procedural secret (subject == holder) is fine and common
+  // ("X secretly chafes against orders") — it still gates dialogue/quests.
+  const kind = inferKindFromText(txt);
+  const id = makeSecretId(npc.id, subj.subject_id);
+  try {
+    const r = db.prepare(`
+      INSERT INTO secrets (id, holder_npc_id, subject_kind, subject_id, kind, body, discovery_difficulty)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO NOTHING
+    `).run(id, npc.id, subj.subject_kind, subj.subject_id, kind, txt,
+           Math.max(1, Math.min(10, Math.floor(discoveryDifficulty))));
+    return { ok: true, action: r.changes > 0 ? "seeded" : "exists", secretId: id };
+  } catch (err) {
+    return { ok: false, reason: "schema_unavailable", error: err?.message };
+  }
+}
+
+/**
  * Mark a secret as discovered by `userId` via `via`. Idempotent on
  * (user_id, secret_id). Returns { ok, secret? }.
  */

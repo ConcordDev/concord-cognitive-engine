@@ -15,12 +15,23 @@
 //
 // Kill-switch: CONCORD_PROCGEN_NPCS=0.
 
+import crypto from "node:crypto";
 import logger from "../logger.js";
 import { generateNpc, persistGeneratedNpc, FACTION_PROFILES } from "../lib/npc-generator.js";
 import { seedNPCAsymmetry } from "../lib/npc-asymmetry.js";
+import { seedSecretForNpc } from "../lib/secrets.js";
 
 const FACTION_TARGET = Number(process.env.CONCORD_FACTION_TARGET_POPULATION || 8);
 const MAX_PER_PASS = Number(process.env.CONCORD_PROCGEN_NPCS_PER_PASS || 12);
+// D4 #5 — fraction of procedural NPCs whose generated secret becomes a real,
+// discoverable, quest-gating secret in the `secrets` table (not just flavour).
+const SECRET_SEED_FRACTION = Math.max(0, Math.min(1, Number(process.env.CONCORD_PROCGEN_SECRET_FRACTION) || 0.33));
+
+/** Deterministic 0..1 from an NPC id (so the same NPC always gets/doesn't get a secret). */
+function _idFraction(id) {
+  const b = crypto.createHash("sha1").update(String(id)).digest();
+  return b[0] / 255;
+}
 
 export async function runProceduralNpcSpawner({ db } = {}) {
   if (process.env.CONCORD_PROCGEN_NPCS === "0") return { ok: false, reason: "disabled" };
@@ -89,6 +100,13 @@ export async function runProceduralNpcSpawner({ db } = {}) {
             // reads, so the bulk of the population can now scheme. Idempotent.
             try { await seedNPCAsymmetry(db, npc); }
             catch (e) { logger.debug?.("procgen-npc-spawner", "asymmetry_seed_failed", { id: npc.id, error: e?.message }); }
+            // D4 #5 — a deterministic fraction of procedural NPCs get their
+            // generated secret promoted into the discoverable `secrets` table,
+            // so they can seed procedural content (surveillance → hook → quest
+            // gate) instead of just flavouring dialogue. Idempotent + guarded.
+            try {
+              if (_idFraction(npc.id) < SECRET_SEED_FRACTION) seedSecretForNpc(db, npc);
+            } catch (e) { logger.debug?.("procgen-npc-spawner", "secret_seed_failed", { id: npc.id, error: e?.message }); }
           }
         } catch (err) {
           try { logger.debug?.("procgen-npc-spawner", "persist_failed", { id: npc.id, error: err?.message }); }
