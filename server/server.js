@@ -49498,6 +49498,14 @@ app.get("/api/extraction/active", requireAuth(), asyncHandler(async (req, res) =
   res.json({ ok: true, run: getActiveRun(db, userId) });
 }));
 
+// D6 — final-stretch dread read (DbD-style anticipation). Optional
+// ?pursuerDistance lets the client fold in proximity to a hunter.
+app.get("/api/extraction/:runId/danger", requireAuth(), asyncHandler(async (req, res) => {
+  const { extractionDanger } = await import("./lib/extraction.js");
+  const pd = req.query.pursuerDistance != null ? Number(req.query.pursuerDistance) : undefined;
+  res.json(extractionDanger(db, req.params.runId, { pursuerDistance: pd }));
+}));
+
 // Phase CC6 — asymmetric horror.
 app.post("/api/horror/session/start", requireAuth(), asyncHandler(async (req, res) => {
   const { startSession } = await import("./lib/horror.js");

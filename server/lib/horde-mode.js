@@ -12,6 +12,13 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { grantRunMeta } from "./run-difficulty.js";
+
+// D6 — horde is a survival mode: it ALWAYS ends in a "loss" (death/timeout),
+// so the payout is the wave/kill yield itself. The wave reached IS the risk
+// gradient (deeper waves spawn faster, mig 246), so reward scales with it.
+const HORDE_META_PER_WAVE = Number(process.env.CONCORD_HORDE_META_PER_WAVE) || 8;
+const HORDE_META_PER_KILL = Number(process.env.CONCORD_HORDE_META_PER_KILL) || 0.25;
 
 export const UPGRADE_CATALOG = Object.freeze([
   { id: "blade_storm",     name: "Blade Storm",     effect: "all damage +25%" },
@@ -139,14 +146,19 @@ export function endHorde(db, runId, opts = {}) {
     return { ok: false, error: "invalid_reason" };
   }
   try {
-    const r = db.prepare(`SELECT ended_at FROM horde_runs WHERE id = ?`).get(runId);
+    const r = db.prepare(`SELECT user_id, ended_at, wave_reached, kills FROM horde_runs WHERE id = ?`).get(runId);
     if (!r) return { ok: false, error: "no_run" };
     if (r.ended_at) return { ok: false, error: "already_ended" };
     db.prepare(`
       UPDATE horde_runs SET ended_at = unixepoch(), end_reason = ?
       WHERE id = ?
     `).run(reason, runId);
-    return { ok: true, reason };
+    // D6 — payout on EVERY end (death included): the run is the reward. Banks
+    // into the shared run-meta gem bank so a wipe still advances meta-progress.
+    const earned = Math.floor((r.wave_reached || 0) * HORDE_META_PER_WAVE + (r.kills || 0) * HORDE_META_PER_KILL);
+    const grant = earned > 0 ? grantRunMeta(db, r.user_id, earned) : { granted: 0 };
+    logger.info?.("horde", "run_ended", { runId, reason, earned: grant.granted || 0, wave: r.wave_reached });
+    return { ok: true, reason, earned: grant.granted || 0, waveReached: r.wave_reached || 0 };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

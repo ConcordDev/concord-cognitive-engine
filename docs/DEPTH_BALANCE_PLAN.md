@@ -54,6 +54,17 @@ thought absent is real (mig 261). Trust the code.
   `GET /api/npc/:npcId/hooks` endpoint surfaced in `NPCTraitInspector.tsx` ("you hold a … hook" /
   "they hold a … hook over you"), and a `hook-decay-sweep` heartbeat (freq 240, global). Contract
   test `tests/hooks.test.js` 22/22; 0 regressions across the 108 scheme/secrets/legacy tests.
+- **D6 — run-mode payout-on-loss + risk-scaled spikes: SHIPPED.** Audit finding: roguelite
+  already paid a half-currency on death, but **horde/extraction paid nothing on a loss** and no
+  mode tied payout to the difficulty gradient. Added shared `run-difficulty.js#grantRunMeta`
+  (banks into the single `roguelite_meta_currency` Hades gem bank — per the CLAUDE.md invariant)
+  + `lootMultFor`. Roguelite payout now × tier loot-mult **floored at 1.0** (default/finder never
+  reduced — finder's seeded 0.5 mult would have halved the default path; heroic/mythic amplify).
+  Horde `endHorde` now pays wave×8 + kills×0.25 on **every** end (death included — the run IS the
+  reward, wave reached is the risk gradient). Extraction `extract` pays flat 10 + 6/item; death
+  pays a 1/item consolation so a wipe still advances meta. New `extractionDanger` (final-stretch
+  DbD dread, reuses `horror-dread` radii) surfaced at `GET /api/extraction/:runId/danger`.
+  Contract test `tests/run-mode-payout.test.js` 12/12; roguelite/horde/extraction regressions green.
 
 ---
 

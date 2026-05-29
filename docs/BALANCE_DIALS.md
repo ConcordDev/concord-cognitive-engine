@@ -232,3 +232,18 @@ Non-env constants (edit in source if tuning): `SUCCESS_BONUS_WEAK 10`,
 `SUCCESS_BONUS_STRONG 20` (scheme success_pct bump when plotter holds a hook),
 `COERCE_OPINION_DELTA −12` (resentment when leverage is spent). `hook-decay-sweep`
 heartbeat (freq 240, scope global) GCs expired rows.
+
+### D6 — run-mode payout-on-loss (`roguelite.js`/`horde-mode.js`/`extraction.js`/`run-difficulty.js`)
+Every run mode now banks persistent meta-progress into the shared
+`roguelite_meta_currency` gem bank on a LOSS, scaled by the risk gradient.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_HORDE_META_PER_WAVE` | 8 | Horde meta per wave reached (paid on death too). |
+| `CONCORD_HORDE_META_PER_KILL` | 0.25 | Horde meta per kill. |
+| `CONCORD_EXTRACT_META_PER_ITEM` | 6 | Extraction meta per banked item on a successful extract. |
+| `CONCORD_EXTRACT_META_FLAT` | 10 | Flat extract bonus. |
+| `CONCORD_EXTRACT_DEATH_CONSOLATION` | 1 | Per-item consolation on death (a wipe still advances meta). |
+
+Roguelite payout = base × `max(1.0, tier loot_mult)` (finder/default never reduced;
+heroic 1.5× / mythic 2.5× amplify). `extractionDanger` reuses the horror-dread
+`CONCORD_HORROR_TERROR_RADIUS_M` for the final-stretch read.
