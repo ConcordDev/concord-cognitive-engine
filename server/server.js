@@ -48541,6 +48541,19 @@ app.get("/api/auctions/active", asyncHandler(async (req, res) => {
   res.json({ ok: true, auctions: listActiveAuctions(db, { limit: Number(req.query.limit) || 50 }) });
 }));
 
+// D1 / F7.1 — marketplace depth: per-item price-history time series + the
+// order-book depth (ask/bid levels + spread). Declared before /:auctionId so
+// "item" isn't captured as an auction id.
+app.get("/api/auctions/item/:itemId/price-history", asyncHandler(async (req, res) => {
+  const { getPriceHistory } = await import("./lib/auctions.js");
+  res.json({ ok: true, ...getPriceHistory(db, req.params.itemId, { limit: Number(req.query.limit) || 100 }) });
+}));
+
+app.get("/api/auctions/item/:itemId/depth", asyncHandler(async (req, res) => {
+  const { getMarketDepth } = await import("./lib/auctions.js");
+  res.json({ ok: true, ...getMarketDepth(db, req.params.itemId) });
+}));
+
 app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
   const { getAuction } = await import("./lib/auctions.js");
   const a = getAuction(db, req.params.auctionId);
