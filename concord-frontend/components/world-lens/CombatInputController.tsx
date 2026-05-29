@@ -50,6 +50,8 @@ import {
   resolveBinding,
 } from '@/lib/concordia/keybindings';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
+import { loadGamepadCombatMap, resolveGamepadButton, type GamepadCombatMap } from '@/lib/concordia/gamepad-combat-map';
 
 // Lock-on read helper. Returns the active locked-target id if the player
 // has soft- or hard-locked an enemy via LockOnController. Falls back to
@@ -380,6 +382,28 @@ export default function CombatInputController({
     }
     onAction?.(evt);
   }, [context, modifierHeld, worldSocket, onAction, resolveHand]);
+
+  // F2 — gamepad write-through. The keyboard path is the canonical one; a
+  // connected Standard Gamepad dispatches the SAME combat actions through the
+  // same dispatchAction, resolved via the (remappable) gamepad→action map.
+  const dispatchRef = useRef(dispatchAction);
+  dispatchRef.current = dispatchAction;
+  const gamepadMapRef = useRef<GamepadCombatMap>(loadGamepadCombatMap());
+  useEffect(() => {
+    function refresh() { gamepadMapRef.current = loadGamepadCombatMap(); }
+    window.addEventListener('concordia:gamepad-map-changed', refresh);
+    return () => window.removeEventListener('concordia:gamepad-map-changed', refresh);
+  }, []);
+  const combatActiveRef = useRef(false);
+  combatActiveRef.current = COMBAT_MODES.has(inputMode);
+  useGamepad({
+    onButtonDown: (button: GamepadButton) => {
+      if (!combatActiveRef.current) return;
+      const binding = resolveGamepadButton(gamepadMapRef.current, button);
+      if (!binding) return;
+      dispatchRef.current(ACTION_TO_KEY[binding.action], binding.variant);
+    },
+  });
 
   // Keydown: stamp the time, schedule the hold-fire timer.
   useEffect(() => {

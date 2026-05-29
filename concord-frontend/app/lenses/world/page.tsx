@@ -49,6 +49,9 @@ import { PartyPanel } from '@/components/world/PartyPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
 import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
+import SubtitleDisplay from '@/components/accessibility/SubtitleDisplay';
+import ScreenReaderAnnouncer from '@/components/accessibility/ScreenReaderAnnouncer';
+import WorldAccessibilityMenu from '@/components/accessibility/WorldAccessibilityMenu';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -1100,6 +1103,7 @@ function CityStreamingSection() {
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
   // Creator controls
+  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu
   const [myStream, setMyStream] = useState<CityStream | null>(null);
   const [streamTitle, setStreamTitle] = useState('');
   const [streamCityId, setStreamCityId] = useState('concordia-central');
@@ -3406,6 +3410,23 @@ export default function WorldLensPage() {
     };
     worldSocket.on('horror:tension', handleHorrorTension);
 
+    // F3 — mirror screen-reader-relevant socket events to window events so the
+    // ScreenReaderAnnouncer (and any a11y consumer) can voice them. Naming:
+    // 'world:crisis' → 'concordia:world-crisis'.
+    const SR_BRIDGE_EVENTS = [
+      'world:event:scheduled', 'world:plague-declared', 'world:crisis', 'world:crisis-resolved',
+      'faction-war:declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
+    ];
+    const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
+      const winName = `concordia:${kind.replace(/:/g, '-')}`;
+      const h = (...a: unknown[]) => {
+        const d = a[0] as Record<string, unknown> | undefined;
+        window.dispatchEvent(new CustomEvent(winName, { detail: d || {} }));
+      };
+      worldSocket.on(kind, h);
+      return [kind, h];
+    });
+
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
       worldSocket.off('city:positions', handleCityPositions);
@@ -3424,6 +3445,7 @@ export default function WorldLensPage() {
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
       worldSocket.off('horror:tension', handleHorrorTension);
+      for (const [kind, h] of srBridges) worldSocket.off(kind, h);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);
@@ -4550,8 +4572,13 @@ export default function WorldLensPage() {
             unreadCount={0}
             tools={[]}
             onToolSelect={() => {}}
-            onMenuOpen={() => {}}
+            onMenuOpen={() => setA11yMenuOpen(true)}
           />
+
+          {/* F1/F3/F4 — accessibility surfaces (subtitles, SR announcer, settings menu) */}
+          <SubtitleDisplay />
+          <ScreenReaderAnnouncer />
+          <WorldAccessibilityMenu open={a11yMenuOpen} onClose={() => setA11yMenuOpen(false)} />
 
           {/* ── Concordia mode overlays ── */}
           {inputMode === 'combat' && (
