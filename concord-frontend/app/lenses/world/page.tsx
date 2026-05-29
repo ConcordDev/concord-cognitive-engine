@@ -366,6 +366,10 @@ const NPCSchemeOverhearTip = dynamic(
   () => import('@/components/world/NPCSchemeOverhearTip').then((m) => ({ default: m.NPCSchemeOverhearTip })),
   { ssr: false }
 );
+const SchemeOverhearBargeIn = dynamic(
+  () => import('@/components/world/SchemeOverhearBargeIn').then((m) => ({ default: m.SchemeOverhearBargeIn })),
+  { ssr: false }
+);
 const ConcordiaHUD = {
   Provider: dynamic(() => import('@/components/world/concordia-hud/HUDContextProvider').then((m) => ({ default: m.HUDContextProvider })), { ssr: false }),
   Ambient: dynamic(() => import('@/components/world/concordia-hud/AmbientLayer').then((m) => ({ default: m.AmbientLayer })), { ssr: false }),
@@ -5101,6 +5105,7 @@ export default function WorldLensPage() {
           <StrategicWarBanner />
           <ForwardPredictionsPanel />
           <NPCSchemeOverhearTip />
+          <SchemeOverhearBargeIn />
 
           {/* Emote wheel — G key in exploration/social mode */}
           {showEmoteWheel && (
