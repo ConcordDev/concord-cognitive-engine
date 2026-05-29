@@ -273,6 +273,27 @@ shifting courtship affinity and estranging the marriage when it sours.
 |---|---|---|
 | `CONCORD_PROCGEN_SECRET_FRACTION` | 0.33 | Fraction of procedural NPCs whose generated secret is promoted into the discoverable `secrets` table (deterministic per NPC id). |
 
+### Living Society P0 — resource-grounded craft-resolve (`server/lib/craft-resolve.js`)
+The single deterministic resolve all crafting flows through `executeCraft`
+call. Output quality derives from input resource PROPERTIES + skill + station +
+risk, not a hardcoded scalar. An explicit `opts.qualityMultiplier` (legacy
+minigame score) still wins; otherwise the resolved multiplier is used.
+
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_CRAFT_RESOLVE` | `1` (on) | Set to `0` to disable the resource-grounded layer (legacy neutral 1.0× fallback). |
+| `CONCORD_CRAFT_SKILL_WEIGHT` | 20 | Max +potency contributed by crafting skill 100. |
+| `CONCORD_CRAFT_STATION_WEIGHT` | 15 | Max +potency contributed by station quality 100. |
+| `CONCORD_CRAFT_INPUT_WEIGHT` | 0.7 | Share of output potency derived from input potency. |
+| `CONCORD_CRAFT_CONFLICT_PENALTY` | 18 | Stability lost per EXTRA affinity (BotW-cancel twist → backfire chance). |
+| `CONCORD_CRAFT_POWER_BONUS` | 0.25 | Magical-fuel (soul-gem/mana/aether/essence) potency multiplier. |
+
+Failure is SOFT: a conflicting-affinity backfire or a potency-floor fizzle
+consumes the mats, yields a weak (0.5×) item, and applies a short
+`craft_backfire`/`craft_fizzle` debuff to `user_active_effects` — never a throw.
+Resource baselines live in `server/lib/resources.js` (catalog) + the
+`resource_properties` table (mig 278, seeded at boot by the content-seeder).
+
 ### E0 — server-tunable client cadence dials (`server/lib/client-config.js`, `GET /api/config/client`)
 The ~24 frontend POLL_MS / FRAME_THROTTLE_MS constants are now env-overridable and
 fetched by `useClientConfig()` (merged over baked defaults). Tuning a poll is a

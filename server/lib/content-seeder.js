@@ -802,6 +802,17 @@ export async function seedContent({ db = null } = {}) {
       logger.warn("content_seeder", "glyph_seed_failed", { err: err?.message });
     }
 
+    // Living Society P0 — seed the canonical resource_properties baseline so
+    // DB-backed property lookups + the craft-resolve quality gradient have a
+    // floor on a fresh install (idempotent upsert; guarded when mig 278 absent).
+    try {
+      const { seedResourceProperties } = await import("./resources.js");
+      const r = seedResourceProperties(db);
+      results.resourceProperties = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "resource_props_seed_failed", { err: err?.message });
+    }
+
     try {
       const hpJson = readJSON("hacking-puzzles.json");
       if (Array.isArray(hpJson) && hpJson.length > 0) {

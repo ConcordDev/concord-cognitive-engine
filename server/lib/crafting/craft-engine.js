@@ -13,6 +13,33 @@ import {
   computeSkillEffectiveness,
 } from '../skills/skill-engine.js';
 import { validateDesign, estimateStats } from './recipe-validator.js';
+import { resolveCraft } from '../craft-resolve.js';
+
+// ── Living Society P0 — resource-grounded quality ────────────────────────────────
+//
+// Build the resolveCraft input list from a recipe's resource_requirements.
+// Each input carries the item id + needed quantity + (when present) the
+// per-slot properties_json override on the oldest inventory slot the craft
+// will actually consume — so an infused/crossbred mat (Phase 0.5 drop hook)
+// resolves hotter than its kind baseline. Guarded: the properties_json column
+// is migration-278 and may be absent on a minimal build.
+function _craftInputsFromRecipe(db, userId, resourceRequirements) {
+  const inputs = [];
+  for (const req of resourceRequirements || []) {
+    if (!req?.resource_id) continue;
+    let overrideJson = null;
+    try {
+      const slot = db.prepare(`
+        SELECT properties_json FROM player_inventory
+        WHERE user_id = ? AND item_id = ? AND properties_json IS NOT NULL
+        ORDER BY acquired_at ASC LIMIT 1
+      `).get(userId, req.resource_id);
+      overrideJson = slot?.properties_json || null;
+    } catch { /* properties_json column absent — kind baseline */ }
+    inputs.push({ itemId: req.resource_id, qty: Math.max(1, Number(req.quantity) || 1), overrideJson });
+  }
+  return inputs;
+}
 
 // ── executeCraft ──────────────────────────────────────────────────────────────
 
@@ -97,9 +124,36 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     return { ok: false, error: 'Insufficient resources', missing_resources: missingResources };
   }
 
+  // 6.5. Living Society P0 — derive output quality from the input resource
+  // PROPERTIES (+ skill + station + risk) via the single craft-resolve layer.
+  // An explicit opts.qualityMultiplier (e.g. a legacy minigame score) still
+  // wins for back-compat; otherwise the resolved multiplier is used and a
+  // conflicting-affinity backfire / potency-floor fizzle is honoured (soft —
+  // mats consumed, a minor debuff, never a throw). Kill-switch CONCORD_CRAFT_RESOLVE=0.
+  const explicitQM = typeof opts.qualityMultiplier === 'number'
+    ? Math.max(0.5, Math.min(2.0, opts.qualityMultiplier))
+    : null;
+  let resolved = null;
+  if (explicitQM == null && process.env.CONCORD_CRAFT_RESOLVE !== '0') {
+    try {
+      const craftSkill = _bestSkillLevel(playerSkills, 'crafting');
+      const minPotency = Number(recipeData.spec?.minPotency)
+        || Number(recipeData.minPotency) || 0;
+      resolved = resolveCraft({
+        inputs: _craftInputsFromRecipe(db, userId, resourceRequirements),
+        recipe: { minPotency, name: recipeDtu.name },
+        playerSkill: craftSkill,
+        stationQuality: Number(opts.stationQuality) || 0,
+        risk: Number(opts.risk) || 0,
+        db,
+      });
+    } catch { resolved = null; }
+  }
+
   // 7. All checks passed — wrap in a transaction
   let resultDtu = null;
   let itemAdded = false;
+  let debuffApplied = null;
 
   db.transaction(() => {
     // 8. Deduct resources from player_inventory (slot-by-slot, oldest first)
@@ -126,10 +180,11 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     // 9. Create output DTU
     const playerCraftingLevel = _bestSkillLevel(playerSkills, 'crafting');
     const spec = recipeData.spec || {};
-    // Quality multiplier from the crafting minigame (0.5–1.5 typical range).
-    // Applied to all numeric stat fields so a perfect minigame run produces
-    // measurably better gear than a mashed one.
-    const qualityMultiplier = Math.max(0.5, Math.min(2.0, opts.qualityMultiplier ?? 1.0));
+    // Quality multiplier: an explicit opts value (legacy minigame score) wins;
+    // otherwise the resource-grounded craft-resolve result (Living Society P0).
+    // Applied to all numeric stat fields so stronger mats / skill / station
+    // produce measurably better gear.
+    const qualityMultiplier = explicitQM ?? (resolved ? resolved.qualityMultiplier : 1.0);
     const baseStats = estimateStats(spec, playerSkills, worldRules);
     const scaledStats = {};
     for (const [k, v] of Object.entries(baseStats || {})) {
@@ -143,6 +198,17 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
       enchantments: spec.enchantments || [],
       properties: spec.properties || {},
     };
+    // Stamp the resolved resource provenance so downstream systems (UI, combat
+    // affinity coupling, marketplace) can read what the craft actually became.
+    if (resolved) {
+      outputData.resource_affinity = resolved.outputAffinity;
+      outputData.resource_potency = resolved.outputPotency;
+      outputData.resource_stability = resolved.outputStability;
+      if (resolved.failed) {
+        outputData.craft_failed = true;
+        outputData.craft_fail_reason = resolved.reason;
+      }
+    }
 
     const dtuId = crypto.randomUUID();
     const outputType = recipeData.output_type || spec.output_type || 'item';
@@ -166,6 +232,25 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
       `).run(invId, userId, subtype, dtuId, dtuName);
       itemAdded = true;
     }
+
+    // Soft-failure debuff (backfire / potency-floor fizzle). Mats are already
+    // consumed above; the craft yields a weak item plus a short debuff —
+    // never a hard lock. Guarded: user_active_effects may be absent on a
+    // minimal build.
+    if (resolved?.failed && resolved.debuff?.effect_id) {
+      try {
+        const d = resolved.debuff;
+        const durS = Math.max(1, Math.floor((d.durationMs ?? 60000) / 1000));
+        const expiresAt = Math.floor(Date.now() / 1000) + durS;
+        db.prepare(`
+          INSERT INTO user_active_effects
+            (id, user_id, effect_id, kind, magnitude, source_dtu_id, expires_at)
+          VALUES (?, ?, ?, 'debuff', ?, ?, ?)
+        `).run(`eff_${crypto.randomUUID()}`, userId, String(d.effect_id),
+          Number(d.magnitude) || 0.05, dtuId, expiresAt);
+        debuffApplied = { effect_id: d.effect_id, magnitude: d.magnitude, expires_in_s: durS };
+      } catch { /* user_active_effects absent — debuff is best-effort */ }
+    }
   })();
 
   // 10. Gain XP on crafting skill
@@ -184,7 +269,21 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     gainSkillXP(db, userId, primarySkillMap[subtype], worldType, 25);
   }
 
-  return { ok: true, dtu: resultDtu, itemAdded };
+  const out = { ok: true, dtu: resultDtu, itemAdded };
+  if (resolved) {
+    out.qualityMultiplier = explicitQM ?? resolved.qualityMultiplier;
+    out.resolved = {
+      outputPotency: resolved.outputPotency,
+      outputAffinity: resolved.outputAffinity,
+      outputStability: resolved.outputStability,
+      backfireChance: resolved.backfireChance,
+      failed: !!resolved.failed,
+      reason: resolved.reason,
+    };
+    if (resolved.failed) out.failed = true;
+    if (debuffApplied) out.debuff = debuffApplied;
+  }
+  return out;
 }
 
 // ── createSkillDTU ────────────────────────────────────────────────────────────
