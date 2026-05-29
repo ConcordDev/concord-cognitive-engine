@@ -8699,6 +8699,14 @@ async function tryInitWebSockets(server) {
       _lastBlockAt = now;
       const active = !!data?.active;
 
+      // D2 (depth plan) — a held block now engages a server-tracked block
+      // window so applyHitToState halves incoming damage + prevents stagger.
+      // Previously combat:block only emitted cosmetic acks and never wrote
+      // blockUntil, so a raised guard did nothing to the authoritative
+      // NPC→player damage path. Re-armed on each engage; the ~800ms tail
+      // covers the gap between client block re-sends while the guard is held.
+      if (active) { try { _setBlock(userId, 800); } catch { /* in-memory state optional */ } }
+
       // Sprint 1 — a block engaged inside the parry window of a real incoming
       // attack scores a parry; a perfect parry opens a riposte window + brief
       // i-frames + a slow-mo cue. Built-but-unwired until now (attemptParry had

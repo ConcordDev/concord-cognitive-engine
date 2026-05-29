@@ -74,23 +74,28 @@ already-solved problems.
 Each item: **finding (file:line) → depth target → borrowed-game signal → effort**. Effort is
 S (<½ day) / M (1–2 days) / L (multi-day).
 
-### D1 — Connect the combat animation chain (★ highest combat ROI) — M
-**Finding:** The deep pieces exist and are mounted but the chain is broken at both ends.
-`CombatMotorBridge.tsx:54` calls `buildCombatExecution(action, style, [])` with an **empty
-biomechanics-poses array** ("uses sensible defaults"), so the 556-LOC `combat-biomechanics.ts`
-generators (`generatePunchPoses`/`generateKickPoses`, 7-phase, Dempster/Winter joint tables) never
-feed the motor. And the bridge's per-frame `concordia:combat-pose-targets` event has **zero
-consumers** — nothing applies the pose targets to avatar bones (`AvatarSystem3D`).
-**Target:** (a) feed real biomech poses into `buildCombatExecution` (call `buildBiomechClipMap`/the
-generators per action+tier+style); (b) add a consumer in `AvatarSystem3D` that applies
-`concordia:combat-pose-targets` to the bone driver / pose-broker; (c) verify `ReflexBridge`'s
-`ReflexLayer` wince output actually reaches the same bone overlay and isn't gated out by the
-hit-pause mixer-freeze. Result: the procedural biomechanics + PD motors + reflex wince that the pitch
-claims become *visible and felt*, not emitted into the void.
-**Borrowed signal:** Skyrim/Sekiro — graded hurt-reactions + directional wince are what sell weight;
-the receiving end is where "that hurt" lives.
-**Verify-first:** confirm no other consumer subscribes to pose-targets under a different string before
-building the consumer.
+### D1 — Combat feel: SHIPPED (already wired) → retire redundant dead scaffolds — DONE
+**Audit reversal (the value of trusting code over docs):** the combat *feel* chain is **already
+fully wired** and was mis-described as broken. `ImpactMomentumBridge.tsx` (mounted via
+`CombatBridges`/`CombatPolishLayer`) subscribes `combat:hit`, runs the live momentum model
+(`impact-resolver.ts` → `computeImpactMomentum` — the supposedly-"dead" function is live, pinned by
+`tests/impact-momentum-live.test.ts`), and dispatches **momentum-graded** `concordia:hit-pause` +
+`concordia:knockback` + `concordia:hit-reaction` for **any target including the local player**, which
+`AvatarSystem3D`'s `handleHitReaction` (`:1184`) renders as severity-scaled flinch/stagger/crit clips
++ directional knockback. The 556-LOC biomechanics also drives attack animation via the
+`concordia:combat-anim` → `buildBiomechClipMap` clip path (`AvatarSystem3D:1357-1382`). So graded
+hurt-reactions — the #1 web-research lever — already ship.
+**What was actually wrong:** two **redundant superseded scaffolds** ran dead per-frame rAF loops
+producing zero output — `CombatMotorBridge` emitted `concordia:combat-pose-targets` (0 consumers,
+verified) and `ReflexBridge` computed a `ReflexLayer` it never emitted *and* subscribed the wrong
+`combat:stagger` (terrain/building) event so its stagger branch could never trip.
+**Done:** retired both bridge components (unmounted from `world/page.tsx`, files deleted); kept the
+live momentum *function* + libs (`combat-motor-driver.ts`/`reflex-layer.ts`/`impact-resolver.ts`,
+still used by `ragdoll-imbalance.ts` + the momentum test). Net: removed two dead rAF loops + a latent
+wrong-event bug; `ImpactMomentumBridge` is now the unambiguous single source of truth for momentum
+feel. No feel regression (the graded reaction already shipped through it). Momentum test still 8/8.
+**Borrowed signal:** Skyrim/Sekiro graded hurt-reactions — *already satisfied*; the real remaining
+combat-depth gap is the *mechanic* in D2, not feel.
 
 ### D2 — Enforce frame-data parry/dodge windows server-side — M
 **Finding:** `combat-frame-data.js` derives `parry_window_ms`/`dodge_window_ms`/`active_ms` per skill,

@@ -2613,6 +2613,36 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // WS1 anti-cheat / anti-misconfig: cap NPC outgoing damage (mirrors the
       // player-side _validateDamageCap). No-op when the flag is off.
       damageResult.finalDamage = capNpcDamage(damageResult.finalDamage, attackerStats);
+
+      // D2 (depth plan) — honor the player's server-tracked defensive state so
+      // a well-timed dodge (i-frames) or a held block actually matters against
+      // an NPC attack. Before this, the NPC→player path applied damage with no
+      // defensive check, so dodge/parry/block were cosmetic here while the
+      // socket handlers dutifully recorded i-frames/block windows that nothing
+      // ever consulted. combat-state.js is a single shared module instance
+      // (ESM path-cached), so the dodge i-frames granted on the socket path are
+      // visible here. applyHitToState early-returns on i-frames before poise
+      // depletion, so a whiffed hit costs the player no poise.
+      try {
+        const { applyHitToState } = await import("../lib/combat-state.js");
+        const defMod = applyHitToState(userId, {
+          damage: damageResult.finalDamage,
+          isCrit: !!damageResult.isCrit,
+        });
+        if (defMod.iframed) {
+          try {
+            req.app.locals.io?.to(`world:${worldId}`).emit("combat:npc-attack-evaded", {
+              worldId, npcId, userId, reason: "iframe", t: Date.now(),
+            });
+          } catch { /* evade emit best-effort */ }
+          return res.json({ ok: true, evaded: true, reason: "iframe", finalDamage: 0, eventId: null });
+        }
+        if (defMod.damageMul !== 1 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * defMod.damageMul);
+          if (defMod.blocked) damageResult.blocked = true;
+        }
+      } catch { /* combat-state optional — fall through to undefended damage */ }
+
       const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });
