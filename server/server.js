@@ -845,6 +845,16 @@ registerHeartbeat("ambient-chat-sweep", {
   handler: ({ db: ctxDb } = {}) => sweepExpiredAmbientChat(ctxDb || db),
 });
 
+// D5: CK3 hook decay sweep. Active-query filters already exclude expired hooks
+// at read time, so this is GC only — it marks expired leverage spent so the
+// npc_hooks table self-cleans. Scope global (single table, no per-world split).
+import { decaySweep as sweepExpiredHooks } from "./lib/hooks.js";
+registerHeartbeat("hook-decay-sweep", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => sweepExpiredHooks(ctxDb || db),
+});
+
 // Phase BB1: festival trigger heartbeat. Every 4 ticks (~1 min) checks
 // the calendar against the festivals table and opens any matching
 // window. Idempotent on (festival_id, world_id, year_idx). Kill-switch:
@@ -46877,6 +46887,16 @@ app.get("/api/activity", (req, res) => {
 });
 
 // ---- Wave 5: Frontend Config Endpoints ----
+// E0 — server-rendered, env-tunable client cadence dials (poll/throttle ms).
+// Public read; the client merges over its baked defaults, so a failed fetch is
+// harmless. Tuning a poll no longer needs a frontend rebuild.
+app.get("/api/config/client", async (req, res) => {
+  try {
+    const { getClientConfig } = await import("./lib/client-config.js");
+    res.json({ ok: true, config: getClientConfig() });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+});
+
 app.get("/api/config/themes", (req, res) => {
   res.json({ ok: true, themes: getAllThemes() });
 });
@@ -49296,6 +49316,16 @@ app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// D5 — CK3 hooks inspector: leverage held between this NPC and the player.
+app.get("/api/npc/:npcId/hooks", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { getHookSummaryForTrait } = await import("./lib/hooks.js");
+    const userId = req.user?.id || req.user?.userId;
+    const summary = getHookSummaryForTrait(db, req.params.npcId, userId);
+    res.json({ ok: true, hooks: summary });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase CC4 — factory automation (claim-bounded).
 app.post("/api/factory/place", requireAuth(), asyncHandler(async (req, res) => {
   const { placeEntity } = await import("./lib/factory.js");
@@ -49363,6 +49393,13 @@ app.post("/api/hacking/:puzzleId/command", requireAuth(), asyncHandler(async (re
 app.get("/api/hacking/puzzles", asyncHandler(async (req, res) => {
   const { listPuzzles } = await import("./lib/hacking.js");
   res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
+}));
+
+// T1.5 — current trail hint for the player's attempt (initial nudge / after reset).
+app.get("/api/hacking/:puzzleId/hint", requireAuth(), asyncHandler(async (req, res) => {
+  const { getHint } = await import("./lib/hacking.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(getHint(db, req.params.puzzleId, userId));
 }));
 
 app.get("/api/hacking/:puzzleId", asyncHandler(async (req, res) => {
@@ -49476,6 +49513,14 @@ app.get("/api/extraction/active", requireAuth(), asyncHandler(async (req, res) =
   const { getActiveRun } = await import("./lib/extraction.js");
   const userId = req.user?.id || req.user?.userId;
   res.json({ ok: true, run: getActiveRun(db, userId) });
+}));
+
+// D6 — final-stretch dread read (DbD-style anticipation). Optional
+// ?pursuerDistance lets the client fold in proximity to a hunter.
+app.get("/api/extraction/:runId/danger", requireAuth(), asyncHandler(async (req, res) => {
+  const { extractionDanger } = await import("./lib/extraction.js");
+  const pd = req.query.pursuerDistance != null ? Number(req.query.pursuerDistance) : undefined;
+  res.json(extractionDanger(db, req.params.runId, { pursuerDistance: pd }));
 }));
 
 // Phase CC6 — asymmetric horror.

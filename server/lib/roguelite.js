@@ -12,7 +12,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
-import { resolveRunDifficulty, recordRunClear } from "./run-difficulty.js";
+import { resolveRunDifficulty, recordRunClear, lootMultFor } from "./run-difficulty.js";
 
 const DEATH_PENALTY_MULT = 0.5;       // half the banked currency on death
 const EXTRACT_BONUS_MULT = 1.25;
@@ -114,7 +114,12 @@ export function endRun(db, runId, opts = {}) {
     if (!run) return { ok: false, error: "no_run" };
     if (run.ended_at) return { ok: false, error: "already_ended" };
 
-    const earned = _earnedCurrency(depthReached, reason);
+    // D6 — tie the payout to the run's difficulty tier so audacity yields
+    // outsized spikes. Floored at 1.0 so the default/easy (finder, loot_mult
+    // 0.5) path is NEVER reduced — only heroic/mythic amplify the banked
+    // currency. Keeps the pre-D6 default payout intact while rewarding risk.
+    const lootMult = Math.max(1.0, lootMultFor(resolveRunDifficulty(db, run.user_id, "roguelite", opts.tier || "finder").modifier));
+    const earned = Math.floor(_earnedCurrency(depthReached, reason) * lootMult);
     db.prepare(`
       UPDATE roguelite_runs
       SET ended_at = unixepoch(), end_reason = ?,

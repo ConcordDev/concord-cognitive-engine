@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { AlertTriangle, Brain, X, Loader2 } from 'lucide-react';
 
 interface Alert {
@@ -19,9 +20,9 @@ interface Alert {
   resolved_at?: number;
 }
 
-const POLL_MS = 15_000;
-
 export function DriftAlertToast() {
+  // E0 — server-tunable backstop cadence (was a hardcoded 15_000).
+  const POLL_MS = useClientConfig().poll.driftAlertMs;
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const [activeAlert, setActiveAlert] = useState<Alert | null>(null);
   const [pending, setPending] = useState(false);

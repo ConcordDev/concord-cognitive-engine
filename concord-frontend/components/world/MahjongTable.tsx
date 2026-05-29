@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Sparkles, Hand, Loader2, Trophy, AlertTriangle } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
@@ -45,9 +46,8 @@ const STYLE_NAMES: Record<string, string> = {
   yakuhunt: 'Yaku-Hunter',
 };
 
-const POLL_MS = 800;
-
 export function MahjongTable({ building, onClose, worldId }: OverlayProps) {
+  const POLL_MS = useClientConfig().poll.mahjongMs; // E0 — server-tunable
   const [session, setSession] = useState<SessionState | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

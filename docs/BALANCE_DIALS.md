@@ -216,3 +216,68 @@ The living-world system ships ON by default; each flag is a kill-switch.
 `GET /api/admin/world-gradient-health` (owner-only) reports per-world band level
 distributions + `{ hubLowLevel, veteransOutward }` health flags — the signal that
 the hub stays grindable and veterans are draining to the frontier.
+
+### D5 — CK3 hooks (`server/lib/hooks.js`)
+Information-as-spendable-leverage. A hook is held by one party OVER another,
+derived from a discovered secret; weak = single-use coercion, strong = passive
+hostile-scheme block + scheme-success bonus. Both decay.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_HOOK_TTL_S` | 36288000 (≈ in-world decade, 420×24×3600) | Hook lifetime before decay. |
+| `CONCORD_HOOK_STRONG_DIFFICULTY` | 7 | Secret discovery_difficulty ≥ this → strong hook outright. |
+| `CONCORD_HOOK_WEAK_USES` | 1 | Coercions a weak hook grants. |
+| `CONCORD_HOOK_STRONG_USES` | 3 | Coercions a strong hook grants (plus passive block). |
+
+Non-env constants (edit in source if tuning): `SUCCESS_BONUS_WEAK 10`,
+`SUCCESS_BONUS_STRONG 20` (scheme success_pct bump when plotter holds a hook),
+`COERCE_OPINION_DELTA −12` (resentment when leverage is spent). `hook-decay-sweep`
+heartbeat (freq 240, scope global) GCs expired rows.
+
+### D6 — run-mode payout-on-loss (`roguelite.js`/`horde-mode.js`/`extraction.js`/`run-difficulty.js`)
+Every run mode now banks persistent meta-progress into the shared
+`roguelite_meta_currency` gem bank on a LOSS, scaled by the risk gradient.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_HORDE_META_PER_WAVE` | 8 | Horde meta per wave reached (paid on death too). |
+| `CONCORD_HORDE_META_PER_KILL` | 0.25 | Horde meta per kill. |
+| `CONCORD_EXTRACT_META_PER_ITEM` | 6 | Extraction meta per banked item on a successful extract. |
+| `CONCORD_EXTRACT_META_FLAT` | 10 | Flat extract bonus. |
+| `CONCORD_EXTRACT_DEATH_CONSOLATION` | 1 | Per-item consolation on death (a wipe still advances meta). |
+
+Roguelite payout = base × `max(1.0, tier loot_mult)` (finder/default never reduced;
+heroic 1.5× / mythic 2.5× amplify). `extractionDanger` reuses the horror-dread
+`CONCORD_HORROR_TERROR_RADIUS_M` for the final-stretch read.
+
+### E4 — spouse reactivity (`server/lib/spouse-reactivity.js`)
+A married NPC reacts to the player's wider-world actions (factions/kills/schemes),
+shifting courtship affinity and estranging the marriage when it sours.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_SPOUSE_FACTION_ALIGN` | 0.06 | Joined the spouse's faction. |
+| `CONCORD_SPOUSE_FACTION_RIVAL` | -0.08 | Joined a faction at war/tension with the spouse's. |
+| `CONCORD_SPOUSE_BETRAY_OWN` | -0.14 | Betrayed the spouse's own faction (harshest). |
+| `CONCORD_SPOUSE_KILL_LIKED` | -0.10 | Killed an NPC the spouse liked (opinion ≥ 20). |
+| `CONCORD_SPOUSE_KILL_KIN` | -0.22 | Killed the spouse's kin. |
+| `CONCORD_SPOUSE_SCHEME` | -0.05 | Player scheme exposed (cruel/paranoid spouse instead +0.04). |
+| `CONCORD_SPOUSE_ESTRANGE_THRESHOLD` | -0.3 | Affinity below this estranges a marriage. |
+
+### E5 — restaurant batching combo (`server/lib/restaurant.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_RESTAURANT_COMBO_WINDOW_S` | 12 | Max gap between serves to keep the combo alive. |
+| `CONCORD_RESTAURANT_COMBO_BONUS` | 0.08 | Tip multiplier added per combo step. |
+| `CONCORD_RESTAURANT_COMBO_MAX` | 5 | Combo cap. |
+
+### D4#5 — procedural NPC quest-gating secrets (`emergent/procedural-npc-spawner.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_PROCGEN_SECRET_FRACTION` | 0.33 | Fraction of procedural NPCs whose generated secret is promoted into the discoverable `secrets` table (deterministic per NPC id). |
+
+### E0 — server-tunable client cadence dials (`server/lib/client-config.js`, `GET /api/config/client`)
+The ~24 frontend POLL_MS / FRAME_THROTTLE_MS constants are now env-overridable and
+fetched by `useClientConfig()` (merged over baked defaults). Tuning a poll is a
+server env change + refresh — no rebuild. Keys: `CONCORD_POLL_{HORDE,MAHJONG,
+SUBMARINE,EXTRACTION,TIMELOOP,CLIMBING,HORROR,RESTAURANT,THEMEPARK,DRIFT,COURTSHIP,
+FOOTPRINT,FORWARD_PRED,WORLD_HEALTH,PARTY_TICK,PARTY_DISCOVERY}_MS` +
+`CONCORD_THROTTLE_{COURTSHIP,FOOTPRINT}_FRAME_MS`. DriftAlertToast + RestaurantDashboard
+migrated as the reference; remaining components follow the same one-line pattern.

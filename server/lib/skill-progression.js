@@ -2,7 +2,7 @@
 // Open-ended, anti-grinding skill progression for DTU skills.
 
 import crypto from "crypto";
-import { tryUnlockEvolution } from "./skill-evolution.js";
+import { tryUnlockEvolution, composeEvolutionBeat } from "./skill-evolution.js";
 
 export const EXPERIENCE_RATES = {
   practice:              1,
@@ -119,12 +119,35 @@ export async function awardExperience(skill, eventType, context, db) {
   // the modal via the `skill:evolution-available` socket event; NPCs auto-
   // commit on the next npc-skill-evolve-cycle tick.
   let evolutionUnlock = null;
+  let evolutionBeat = null;
   try {
     if (process.env.CONCORD_SKILL_EVOLUTION !== "0") {
       const entityKind = context.userId ? "player" : "npc";
       const entityId = context.userId || context.npcId;
       if (entityId) {
         evolutionUnlock = tryUnlockEvolution(db, entityKind, entityId, skill.id, previousLevel, newLevel);
+        // E3 — a PLAYER evolution unlock was the missing wire: the EvolutionModal
+        // listens for `skill:evolution-available` but nothing emitted it. Fire it
+        // here (so the commit modal triggers) plus a dramatic `skill:evolved`
+        // named beat (achievement-bridge already whitelists it).
+        if (evolutionUnlock?.unlocked && entityKind === "player") {
+          const skillName = skill.current_name || skill.title || skill.name || "Your skill";
+          evolutionBeat = composeEvolutionBeat(skillName, evolutionUnlock.level);
+          const emit = typeof globalThis._concordRealtimeEmit === "function" ? globalThis._concordRealtimeEmit : null;
+          if (emit) {
+            try {
+              emit("skill:evolution-available", {
+                userId: entityId, skillId: skill.id, skillName,
+                level: evolutionUnlock.level, unlockId: evolutionUnlock.unlockId,
+              });
+              emit("skill:evolved", {
+                userId: entityId, skillId: skill.id, skillName,
+                level: evolutionUnlock.level,
+                title: evolutionBeat.title, subtitle: evolutionBeat.subtitle, tier: evolutionBeat.tier,
+              });
+            } catch { /* emit best-effort */ }
+          }
+        }
       }
     }
   } catch { /* unlock is best-effort — must never break XP grant */ }
@@ -153,6 +176,7 @@ export async function awardExperience(skill, eventType, context, db) {
     evolutionUnlocked: !!evolutionUnlock?.unlocked,
     evolutionLevel: evolutionUnlock?.level || null,
     evolutionUnlockId: evolutionUnlock?.unlockId || null,
+    evolutionBeat,
   };
 }
 

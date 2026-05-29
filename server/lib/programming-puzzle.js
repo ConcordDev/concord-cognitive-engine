@@ -76,6 +76,34 @@ export function runSolution(db, puzzleId, program) {
   }
 }
 
+// The editor UI ships each instruction as { op, a, b } (two positional operand
+// fields), but the VM speaks { dst, src, to }. Without this adapter every
+// operand resolves to undefined and EVERY program is a silent no-op — no code
+// puzzle is solvable through the UI (POLISH_AUDIT T0.1). Map a/b → canonical
+// per-op; keep any explicit dst/src/to (authored reference solutions use those),
+// so this is fully backward-compatible.
+export function _normalizeInstr(instr) {
+  if (!instr || typeof instr !== "object") return instr;
+  if (instr.dst != null || instr.src != null || instr.to != null) return instr; // already canonical
+  if (instr.a == null && instr.b == null) return instr;
+  const { op, a, b } = instr;
+  switch (op) {
+    case "MOV":
+    case "ADD":
+    case "SUB":
+      return { ...instr, dst: a, src: b };
+    case "JEZ":
+    case "JNZ":
+      return { ...instr, src: a, to: b };
+    case "JMP":
+      return { ...instr, to: a };
+    case "OUT":
+      return { ...instr, src: a };
+    default:
+      return instr;
+  }
+}
+
 function _runVm(program, input) {
   const reg = [0, 0, 0, 0];
   const tape = [];
@@ -84,7 +112,7 @@ function _runVm(program, input) {
   const inputCursor = { i: 0 };
 
   while (ip < program.length && cycles < MAX_CYCLES) {
-    const instr = program[ip];
+    const instr = _normalizeInstr(program[ip]);
     cycles++;
     switch (instr.op) {
       case "MOV": {

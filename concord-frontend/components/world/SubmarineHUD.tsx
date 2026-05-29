@@ -16,6 +16,7 @@
 import { useCallback, useState } from 'react';
 import { Anchor, AlertTriangle, Activity } from 'lucide-react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 interface DiveState {
   isSwimming: boolean;
@@ -26,9 +27,8 @@ interface DiveState {
   sonarContacts: Array<{ id: string; speciesId: string; distance: number; depth: number }>;
 }
 
-const POLL_MS = 1000;
-
 export function SubmarineHUD() {
+  const POLL_MS = useClientConfig().poll.submarineMs; // E0 — server-tunable
   const [state, setState] = useState<DiveState | null>(null);
 
   const refresh = useCallback(async () => {

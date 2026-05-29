@@ -145,6 +145,33 @@ export function tryUnlockEvolution(db, entityKind, entityId, recipeId, previousL
   };
 }
 
+// E3 — the dramatic named beat for an evolution unlock. Solo-Leveling "Arise"
+// register: a deterministic title keyed by (skill, milestone level) so the same
+// skill crossing the same boundary always reads the same. No RNG.
+const EVOLUTION_VERBS = ["Awakened", "Ascended", "Transcended", "Unbound", "Reforged", "Crowned", "Apotheosised"];
+const EVOLUTION_EPITHETS = [
+  "the technique remembers every hand that shaped it",
+  "muscle and intent fuse into something new",
+  "the form sheds its old limits",
+  "a decade of practice crystallises in an instant",
+  "the move answers to no master but its wielder now",
+];
+export function composeEvolutionBeat(skillName, levelBoundary) {
+  const name = String(skillName || "Your skill").trim() || "Your skill";
+  const tier = Math.max(1, Math.floor((Number(levelBoundary) || 10) / 10));
+  // Deterministic index from the (name, tier) pair.
+  let h = 0;
+  const key = `${name}::${tier}`;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  const verb = EVOLUTION_VERBS[Math.min(EVOLUTION_VERBS.length - 1, tier - 1)] || EVOLUTION_VERBS[h % EVOLUTION_VERBS.length];
+  const epithet = EVOLUTION_EPITHETS[h % EVOLUTION_EPITHETS.length];
+  return {
+    title: `${verb}: ${name}`,
+    subtitle: `Mastery ${levelBoundary} — ${epithet}.`,
+    tier,
+  };
+}
+
 /** List pending (uncompleted) unlocks for an entity. */
 export function listPendingUnlocks(db, entityKind, entityId) {
   return db.prepare(`

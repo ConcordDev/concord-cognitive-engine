@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Hourglass, RotateCcw } from 'lucide-react';
 
 interface ActiveLoop {
@@ -17,9 +18,8 @@ interface ActiveLoop {
   started_at: number;
 }
 
-const POLL_MS = 2000;
-
 export function TimeLoopHUD() {
+  const POLL_MS = useClientConfig().poll.timeLoopMs; // E0 — server-tunable
   const [loop, setLoop] = useState<ActiveLoop | null>(null);
   const [worldId, setWorldId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));

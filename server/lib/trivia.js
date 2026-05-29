@@ -115,10 +115,78 @@ export function listQuestions(db, opts = {}) {
     const limit = Math.max(1, Math.min(200, opts.limit || 50));
     const filter = opts.difficulty ? `WHERE difficulty = ?` : ``;
     const args = opts.difficulty ? [opts.difficulty, limit] : [limit];
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT id, dtu_id, question_text, difficulty, created_by, created_at
       FROM trivia_questions ${filter}
       ORDER BY created_at DESC LIMIT ?
     `).all(...args);
+    // T1.2 — attach answer CHOICES so the kiosk is a playable multiple-choice
+    // quiz instead of asking the player to type a raw DTU id (which no human
+    // could know). Correctness is still cited_dtu_id === answer_dtu_id.
+    if (opts.withChoices !== false) {
+      for (const q of rows) q.choices = getAnswerChoices(db, q.id, { count: opts.choiceCount || 4 });
+    }
+    return rows;
   } catch { return []; }
+}
+
+/**
+ * T1.2 — build a multiple-choice set for a question: the correct answer DTU
+ * plus distractor DTUs (preferring other trivia answers so every option reads
+ * like a plausible answer), each { dtuId, title }. Deterministically ordered by
+ * the question id so the layout is stable across reloads. Returns [] if the
+ * answer DTU can't be resolved.
+ */
+export function getAnswerChoices(db, questionId, { count = 4 } = {}) {
+  if (!db || !questionId) return [];
+  let q;
+  try { q = db.prepare(`SELECT answer_dtu_id FROM trivia_questions WHERE id = ?`).get(questionId); }
+  catch { return []; }
+  if (!q?.answer_dtu_id) return [];
+
+  const titleOf = (id) => {
+    try { return db.prepare(`SELECT title FROM dtus WHERE id = ?`).get(id)?.title || null; } catch { return null; }
+  };
+  const answerTitle = titleOf(q.answer_dtu_id) || `Answer ${String(q.answer_dtu_id).slice(0, 8)}`;
+  const choices = [{ dtuId: q.answer_dtu_id, title: answerTitle }];
+
+  // Distractors: other trivia answer DTUs with titles, then any titled DTU.
+  let distractors = [];
+  try {
+    distractors = db.prepare(`
+      SELECT DISTINCT d.id AS dtuId, d.title AS title
+      FROM trivia_questions tq JOIN dtus d ON d.id = tq.answer_dtu_id
+      WHERE tq.answer_dtu_id != ? AND d.title IS NOT NULL AND d.title != ''
+      LIMIT 40
+    `).all(q.answer_dtu_id);
+  } catch { distractors = []; }
+  if (distractors.length < count - 1) {
+    try {
+      const more = db.prepare(`
+        SELECT id AS dtuId, title FROM dtus
+        WHERE id != ? AND title IS NOT NULL AND title != ''
+        LIMIT 40
+      `).all(q.answer_dtu_id);
+      const seen = new Set(distractors.map((d) => d.dtuId));
+      for (const m of more) if (!seen.has(m.dtuId)) { distractors.push(m); seen.add(m.dtuId); }
+    } catch { /* dtus optional */ }
+  }
+
+  // Deterministic pick + shuffle keyed by the question id.
+  const seed = crypto.createHash("sha1").update(questionId).digest();
+  distractors.sort((a, b) => String(a.dtuId).localeCompare(String(b.dtuId)));
+  let cursor = seed[0];
+  while (choices.length < count && distractors.length > 0) {
+    const idx = cursor % distractors.length;
+    const d = distractors.splice(idx, 1)[0];
+    choices.push({ dtuId: d.dtuId, title: d.title });
+    cursor = (cursor * 31 + 7) & 0xff;
+  }
+
+  // Deterministic order so the answer isn't always first.
+  for (let i = choices.length - 1; i > 0; i--) {
+    const j = seed[(i + 3) % seed.length] % (i + 1);
+    [choices[i], choices[j]] = [choices[j], choices[i]];
+  }
+  return choices;
 }

@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Mountain, TrendingUp } from 'lucide-react';
 import { milestoneJuice } from '@/lib/concordia/juice';
 
@@ -46,10 +47,10 @@ interface Props {
   playerY: number;        // current avatar Y position (altitude)
 }
 
-const POLL_MS = 30_000;
 const STATE_POLL_MS = 2_000;
 
 export function ClimbingTracker({ worldId, playerY }: Props) {
+  const POLL_MS = useClientConfig().poll.climbingMs; // E0 — server-tunable
   const [active, setActive] = useState(false);
   const [staminaPct, setStaminaPct] = useState(100);
   const [recentTop, setRecentTop] = useState<TopRoute | null>(null);

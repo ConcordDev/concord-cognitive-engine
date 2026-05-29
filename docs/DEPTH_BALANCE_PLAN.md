@@ -35,6 +35,74 @@ C-series (content authoring: tunya lore, festivals/fauna per world, per-world qu
 
 ---
 
+## Execution status (continuation session, branch `claude/audit-findings-remaining-BkcKy`)
+
+Verified against code first (docs treated as stale, per the meta-finding). Two stale
+plan claims caught and corrected up front: **D8's "AI-playlist not wired to the LLM" is
+WRONG** — `music.ai-playlist` (`server/domains/music.js:1195`) already calls `ctx.llm.chat`
+with a deterministic keyword fallback; and the `weaponise_triggers` table the prior agent
+thought absent is real (mig 261). Trust the code.
+
+- **D5 — CK3 hooks: SHIPPED.** New migration `277_npc_hooks.js` + `server/lib/hooks.js`
+  (grant/upgrade, secret→hook generation with corroboration-promotes-to-strong, weak=single-use
+  coercion / strong=passive hostile-scheme block + success bonus, spend, coerce, **inheritance**
+  — hooks over a dead NPC re-point to the heir and held hooks pass on, decay sweep, trait summary).
+  Wired into: `proposeScheme`/`proposePlayerScheme` (strong-hook block returns `reason:'hooked'` +
+  success-pct bonus), `interveneInScheme` (new `blackmail` branch spends a held hook to force a
+  scheme to `abandoned`), `onNpcDeath` (hook inheritance), the two secret-discovery macros
+  (`secrets.discover`/`surveillance_roll` now yield a hook + new `secrets.hooks_held`), a new
+  `GET /api/npc/:npcId/hooks` endpoint surfaced in `NPCTraitInspector.tsx` ("you hold a … hook" /
+  "they hold a … hook over you"), and a `hook-decay-sweep` heartbeat (freq 240, global). Contract
+  test `tests/hooks.test.js` 22/22; 0 regressions across the 108 scheme/secrets/legacy tests.
+- **D6 — run-mode payout-on-loss + risk-scaled spikes: SHIPPED.** Audit finding: roguelite
+  already paid a half-currency on death, but **horde/extraction paid nothing on a loss** and no
+  mode tied payout to the difficulty gradient. Added shared `run-difficulty.js#grantRunMeta`
+  (banks into the single `roguelite_meta_currency` Hades gem bank — per the CLAUDE.md invariant)
+  + `lootMultFor`. Roguelite payout now × tier loot-mult **floored at 1.0** (default/finder never
+  reduced — finder's seeded 0.5 mult would have halved the default path; heroic/mythic amplify).
+  Horde `endHorde` now pays wave×8 + kills×0.25 on **every** end (death included — the run IS the
+  reward, wave reached is the risk gradient). Extraction `extract` pays flat 10 + 6/item; death
+  pays a 1/item consolation so a wipe still advances meta. New `extractionDanger` (final-stretch
+  DbD dread, reuses `horror-dread` radii) surfaced at `GET /api/extraction/:runId/danger`.
+  Contract test `tests/run-mode-payout.test.js` 12/12; roguelite/horde/extraction regressions green.
+- **E3 — skill-evolution drama + faction E→S rank ladder: SHIPPED.** Fixed the missing
+  `skill:evolution-available` emit (the EvolutionModal listened but nothing fired it) + a
+  deterministic "Arise" `skill:evolved` beat; faction `rankLetterFor`/`tierToRank` (E→S, level-
+  independent) + `reputation:rank-up` on upward crossing; juice-bridge listeners. 8/8.
+- **E4 — spouse reactivity: SHIPPED.** `lib/spouse-reactivity.js` — a married NPC reacts to the
+  player's factions/kills/schemes/death (deterministic off the spouse's faction+opinions), shifts
+  affinity, estranges past threshold; wired into the NPC-kill path + `romance.spouse_react` macro.
+  9/9. (Gift preferences — the Stardew half — were already shipped.)
+- **D4 #3 — procedural NPC gear: SHIPPED.** Verified the spawner never called `seedStarterGear`;
+  wired it into `persistGeneratedNpc` (level-scaled) so procedural NPCs are visually distinct AND
+  drop loot on death via the existing kill-path generator. 3/3. (Reused the existing gear economy,
+  not a parallel system.)
+- **E5 — restaurant Diner-Dash combo: SHIPPED.** Batching combo (quick consecutive serves build a
+  tip multiplier, caps at 5, breaks on a late/0-tip serve or lapsed window) + dashboard combo flash;
+  visible patience countdown already existed. 4/4.
+
+### Polish-audit items folded in (docs/POLISH_AUDIT.md from main — verified against code first)
+- **T0.1 (🔴) code puzzles unsolvable: FIXED.** Editor `{op,a,b}` vs VM `{dst,src,to}` mismatch made
+  every program a no-op; added a backward-compatible `_normalizeInstr` adapter. 8/8.
+- **T0.2 (🔴) station/HUD audio silent: FIXED.** 38 underscored juice sfx ids never matched the
+  hyphenated SFX_MAP; added `SFX_ALIASES` + `resolveSfxId` routed through trigger/spatial SFX.
+- **T1.1 NPC dialogue LLM-or-nothing: FIXED.** `composeDeterministicDialogue` — grounded, mood-keyed
+  fallback from the same context, no secret leak; wired as the route default. 7/7.
+- **T1.2 trivia unwinnable: FIXED.** `getAnswerChoices` (answer + distractor DTUs) → kiosk is now a
+  multiple-choice picker; correctness path unchanged. 6/6.
+- **T1.5 hacking cosmetic tree: FIXED.** `hintForStep`/`getHint`/`nextHint` turn it into a guided
+  trail (the lead, never the literal command); terminal shows "» lead: …". 8/8.
+- **T3.2 scheme overhear had no client listener: FIXED.** `SchemeOverhearBargeIn` surfaces
+  `scheme:overheard` with Expose / Blackmail (D5 hook) / Ignore. tsc clean.
+- **Verified STALE (no work needed — audit/docs wrong, code already does it):** D8 `music.ai-playlist`
+  is already LLM-wired with a deterministic fallback (`domains/music.js:1195`); **T3.1** faction-
+  strategy already emits `faction:{war-declared,alliance-formed,truce-sought}` and `StrategicWarBanner`
+  + `EmergentEventFeed` consume them (mounted in the world lens); **C-series** every world already has
+  10–33 lore items (seeder reads `lore.json.history`) — tunya has 33, not "5". The meta-finding holds:
+  the docs are stale in both directions; trust the code.
+
+---
+
 ## 0. Thesis
 
 Breadth is done. The platform has the *mechanics* of CK3 + Skyrim + Hades + Tarkov + Diner Dash +
@@ -331,3 +399,55 @@ involved — no RNG in resolution paths).
   NPC depth-floor regression fix, T-series game-plan completion — reconciled into the scorecard above.
 </content>
 </invoke>
+
+---
+
+## 8. Remaining after the 2026-05-29 continuation (for the next session)
+
+All high- and medium-value D/E items + the verified-real polish-audit fixes are
+**shipped, tested, and pushed** on `claude/audit-findings-remaining-BkcKy` (see the
+execution-status section above and the CLAUDE.md "Recent shipped work" row).
+
+**Genuinely still open (lower value, each non-blocking):**
+- **D8 (music):** `ai-playlist` is wired (stale claim corrected) and the **collaborative-
+  playlist edit path is now wired** (cross-user add/detail/list, `tests/music-collab-
+  playlist.test.js`). Only **free-API ingestion** (Jamendo/Audius/iTunes) remains unwired —
+  needs network egress; wire it end-to-end or mark roadmap (no "shipped" over a stub).
+- **E0 (essentially DONE):** infra shipped (`/api/config/client` + `useClientConfig`); **20
+  Concordia world-lens components migrated** — every world-lens poll / frame-throttle cadence is
+  now server-tunable without a rebuild. Only **non-world surfaces remain** on hardcoded intervals
+  (`components/crisis-ops/AlertsPanel.tsx`, `components/docs/usePagePresence.ts`) plus a couple of
+  niche intervals (NemesisGlyphLayer's 8s discovery poll) — out of the Concordia HUD scope; migrate
+  with the same one-line pattern + a new config key if desired.
+
+> **Verifying frontend changes in this memory-constrained container:** the full-project
+> `tsc --noEmit` OOMs (it globs all ~hundreds of components). Since everything prior already
+> passed tsc, scope tsc to just the changed files: write a `concord-frontend/tsconfig.scoped.json`
+> that `{ "extends": "./tsconfig.json", "include": [<changed files> + "next-env.d.ts" + "hooks/useClientConfig.ts"] }`
+> (the `extends` keeps `@/` path aliases working), then
+> `NODE_OPTIONS=--max-old-space-size=1536 npx tsc -p tsconfig.scoped.json --noEmit --skipLibCheck`.
+> This checks only the changed files + their import graph — fits in memory, EXIT 0 = clean.
+> Delete the scoped config after (it's an ad-hoc artifact). Every frontend change this
+> session was verified this way.
+- **POLISH_AUDIT Tier-2 combat feel — T2.7 + T2.1 + T2.8 SHIPPED.**
+  - **T2.7 (done):** `lib/concordia/hit-pause.ts#requestHitPause` is the single deduped authority
+    — GameJuice (legacy/PvP) and CombatBridges (impact-feel) both route through it, so one strike =
+    one freeze (120ms window, first-wins). `tests/hit-pause.test.ts` 5/5.
+  - **T2.1 (done):** light landed hits get a 35ms freeze (was 0 — weightless).
+  - **T2.8 (done):** camera FOV punch on crit/kill, gated to the LOCAL player only. The gating I'd
+    deferred is solved — `CombatImpactFeelBridge` (server-authoritative `combat:impact`, already has
+    severity/isKill/ids) now takes `userId` (the `CombatPolishLayer` thread); pure unit-tested
+    `lib/concordia/combat-camera.ts#computeImpactCameraPunch` punches ONLY when the local player is
+    attacker/target, severity-scaled (rocked<knockdown<kill), suppressed under reduced-motion /
+    flinch, within the consumer's clamps. Reuses the in-scene `concordia:camera-punch` consumer
+    (ConcordiaScene) — so the meaningful combat shake is the real FOV kick, not the empty 2D HUD div.
+    `tests/combat-camera.test.ts` 8/8. **T2.11** is effectively addressed for combat (the impactful
+    shake now routes to the real in-scene camera); the legacy GameJuice 2D-div shake remains for
+    non-combat juice triggers and is harmless. Per-severity feel values are playtest-tunable.
+- **POLISH_AUDIT T3.3 (scarcity → player price):** wiring NPC↔NPC scarcity into a player
+  buy price touches the constitutional marketplace-fee constants — needs governance care.
+
+**Verified STALE (do NOT re-solve — the code already does it):** D8 ai-playlist,
+T3.1 faction-strategy surfaced (StrategicWarBanner + EmergentEventFeed), C-series content
+(10–33 lore items per world). The meta-finding stands: the docs are stale in BOTH
+directions — verify against code before building.

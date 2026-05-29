@@ -186,6 +186,55 @@ const LAYER_MAP: Record<string, LayerStep[]> = {
   ],
 };
 
+// POLISH_AUDIT T0.2 — the Phase Z7 station/HUD juice layer (lib/concordia/juice.ts)
+// dispatches UNDERSCORED sfx ids (ui_menu_open, ui_success, ui_code_test_pass, …)
+// but every SFX_MAP/LAYER_MAP key is HYPHENATED, and triggerSFX did a raw lookup —
+// so opening any station overlay, planting, crafting, minting, hacking, karaoke,
+// mahjong, trivia, brawl, etc. produced ZERO sound. This alias table + the
+// resolveSfxId heuristic map each dispatched id onto an existing synthesized
+// voice. Highest-ROI fix in the repo.
+const SFX_ALIASES: Record<string, string> = {
+  // generic juice defaults
+  ui_menu_open: 'snap-click', ui_success: 'gather-success', ui_failure: 'gather-miss',
+  ui_milestone: 'fanfare-short', ui_discovery: 'notification-glow',
+  // menus / open-close
+  ui_npc_menu_open: 'snap-click', ui_workbench_open: 'snap-click', ui_workbench_close: 'snap-click',
+  // farming / restaurant
+  ui_seed_plant: 'gather-tick', ui_crop_harvest: 'gather-success', ui_dish_serve: 'gather-success',
+  // trivia
+  ui_trivia_correct: 'gather-success', ui_trivia_wrong: 'gather-miss',
+  // hacking / terminal
+  ui_hack_step: 'snap-click', ui_hack_complete: 'victory-sting', ui_hack_reset: 'low-thud', ui_terminal_error: 'gather-miss',
+  // code puzzles
+  ui_code_test_pass: 'gather-success', ui_code_test_fail: 'gather-miss', ui_code_submit_pass: 'fanfare-short',
+  // karaoke
+  ui_karaoke_top_grade: 'victory-sting', ui_karaoke_finish: 'gather-success', ui_karaoke_finish_low: 'gather-miss',
+  // mahjong
+  ui_mahjong_tsumo: 'fanfare-short', ui_mahjong_discard: 'snap-click', ui_mahjong_no_win: 'gather-miss', ui_mahjong_lost: 'low-thud',
+  // glyph / creature crafting
+  ui_glyph_mint: 'ascending-chime', ui_glyph_mint_failed: 'gather-miss', ui_hybrid_minted: 'ascending-chime', ui_breed_failed: 'gather-miss',
+  // climbing
+  ui_climb_summit: 'victory-sting',
+  // brawl / social / spectate
+  ui_brawl_invite: 'notification-glow', ui_brawl_accept: 'gather-success',
+  ui_brawl_queue_join: 'snap-click', ui_brawl_queue_leave: 'snap-click',
+  ui_lfg_posted: 'notification-glow', ui_spectate_join: 'snap-click',
+};
+
+function resolveSfxId(sfxId: string): string {
+  if (!sfxId) return sfxId;
+  if (SFX_MAP[sfxId] || LAYER_MAP[sfxId]) return sfxId;     // already a known voice
+  if (SFX_ALIASES[sfxId]) return SFX_ALIASES[sfxId];        // explicit alias
+  // Heuristic fallback for any future ui_* id so it never goes silent.
+  if (/(_fail|_failed|_wrong|_lost|_error|_no_win|_leave)$/.test(sfxId)) return 'gather-miss';
+  if (/(_top_grade|_tsumo|_summit|_complete)$/.test(sfxId)) return 'victory-sting';
+  if (/(_pass|_correct|_accept|_finish|_minted|_mint|_harvest|_serve|_win)$/.test(sfxId)) return 'gather-success';
+  if (/(_open|_close|_step|_discard|_plant|_join|_posted|_menu)$/.test(sfxId)) return 'snap-click';
+  // Last resort: try the hyphenated form of an underscored id.
+  const hy = sfxId.replace(/^ui_/, 'ui-').replace(/_/g, '-');
+  return (SFX_MAP[hy] || LAYER_MAP[hy]) ? hy : sfxId;
+}
+
 const DISTRICT_ALIAS: Record<string, DistrictName> = {
   forge: 'forge', 'the-forge': 'forge', industrial: 'industrial',
   academy: 'academy', 'the-academy': 'academy',
@@ -804,7 +853,8 @@ export default function SoundscapeEngine({
     if (pendingSfxRef.current.length > 32) pendingSfxRef.current.shift();
   }, []);
 
-  const triggerSFX = useCallback((sfxId: string) => {
+  const triggerSFX = useCallback((rawSfxId: string) => {
+    const sfxId = resolveSfxId(rawSfxId);
     // Layered SFX → schedule each atom with its delay
     const layers = LAYER_MAP[sfxId];
     if (layers) {
@@ -834,7 +884,8 @@ export default function SoundscapeEngine({
     playToneSequence(ctx, def, masterGainRef.current, pitchJitter());
   }, [initAudio, enqueueSfx]);
 
-  const playSpatialSFX = useCallback((sfxId: string, worldPos: { x: number; y: number; z: number }) => {
+  const playSpatialSFX = useCallback((rawSfxId: string, worldPos: { x: number; y: number; z: number }) => {
+    const sfxId = resolveSfxId(rawSfxId);
     const layers = LAYER_MAP[sfxId];
     if (layers) {
       const ctx = initAudio();

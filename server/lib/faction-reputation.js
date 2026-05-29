@@ -27,6 +27,13 @@ const TIER_NUMERIC = {
   hated: 0, hostile: 1, neutral: 2, friendly: 3, honored: 4, exalted: 5,
 };
 
+// E3 — an explicit E→S rank ladder over faction standing, decoupled from player
+// level (it reads reputation score, never combat level). Surfaced in the rep UI
+// as a single legible grade alongside the tier name.
+const RANK_LETTERS = {
+  hated: "E", hostile: "D", neutral: "C", friendly: "B", honored: "A", exalted: "S",
+};
+
 export function scoreToTier(score) {
   const n = Math.max(-100, Math.min(100, Number(score) || 0));
   for (const t of TIER_THRESHOLDS) {
@@ -37,6 +44,15 @@ export function scoreToTier(score) {
 
 export function tierToNumeric(tier) {
   return TIER_NUMERIC[tier] ?? 2;
+}
+
+/** E3 — letter rank (E→S) for a reputation score. Pure, level-independent. */
+export function rankLetterFor(score) {
+  return RANK_LETTERS[scoreToTier(score)] || "C";
+}
+
+export function tierToRank(tier) {
+  return RANK_LETTERS[tier] || "C";
 }
 
 /**
@@ -61,10 +77,10 @@ export function computeFactionReputation(db, userId, factionId, worldId) {
     `).get(userId, factionId, worldId || null, worldId || null);
     const score = Number(row?.avgScore) || 0;
     const opinionCount = Number(row?.n) || 0;
-    return { score, tier: scoreToTier(score), opinionCount };
+    return { score, tier: scoreToTier(score), rank: rankLetterFor(score), opinionCount };
   } catch (err) {
     logger.debug?.("faction-reputation", "compute_failed", { error: err?.message });
-    return { score: 0, tier: "neutral", opinionCount: 0 };
+    return { score: 0, tier: "neutral", rank: "C", opinionCount: 0 };
   }
 }
 
@@ -80,7 +96,7 @@ export function getFactionReputation(db, userId, factionId, worldId) {
       FROM player_faction_reputation_cache
       WHERE user_id = ? AND faction_id = ? AND world_id = ?
     `).get(userId, factionId, worldId || "concordia-hub");
-    if (row) return row;
+    if (row) return { ...row, rank: rankLetterFor(row.score) };
   } catch { /* cache table may not exist */ }
   return computeFactionReputation(db, userId, factionId, worldId);
 }
@@ -121,8 +137,16 @@ export function refreshFactionReputationCache(db, opts = {}) {
         AND n.faction != ''
       LIMIT ?
     `).all(limit);
+    const emit = typeof globalThis._concordRealtimeEmit === "function" ? globalThis._concordRealtimeEmit : null;
     for (const t of tuples) {
       const r = computeFactionReputation(db, t.userId, t.factionId, t.worldId);
+      let priorTier = null;
+      try {
+        priorTier = db.prepare(`
+          SELECT tier FROM player_faction_reputation_cache
+          WHERE user_id = ? AND world_id = ? AND faction_id = ?
+        `).get(t.userId, t.worldId, t.factionId)?.tier ?? null;
+      } catch { /* ignore */ }
       try {
         db.prepare(`
           INSERT INTO player_faction_reputation_cache
@@ -135,6 +159,18 @@ export function refreshFactionReputationCache(db, opts = {}) {
             updated_at = excluded.updated_at
         `).run(t.userId, t.worldId, t.factionId, r.score, r.tier, r.opinionCount);
         refreshed++;
+        // E3 — fire a rank-up beat when the letter grade climbs (decoupled from
+        // level). Only on an upward rank crossing; surfaced by LevelUpJuiceBridge.
+        if (emit && priorTier && priorTier !== r.tier && tierToNumeric(r.tier) > tierToNumeric(priorTier)) {
+          try {
+            emit("reputation:rank-up", {
+              userId: t.userId, factionId: t.factionId, worldId: t.worldId,
+              tier: r.tier, rank: tierToRank(r.tier),
+              fromTier: priorTier, fromRank: tierToRank(priorTier),
+              score: r.score,
+            });
+          } catch { /* emit best-effort */ }
+        }
       } catch { /* per-row error tolerated */ }
     }
   } catch (err) {

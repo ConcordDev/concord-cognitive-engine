@@ -72,11 +72,17 @@ export function HackingTerminal({ building, onClose, worldId }: OverlayProps) {
       const j = await fetch(`/api/hacking/${id}`, { credentials: 'include' }).then(r => r.json());
       if (j?.ok && j.puzzle) {
         setPuzzle(j.puzzle);
-        setHistory([
+        const lines = [
           `Connected to ${j.puzzle.name}`,
           `difficulty ${j.puzzle.difficulty}/5 · bounty ${j.puzzle.reward_cc} cc`,
           ``,
-        ]);
+        ];
+        // T1.5 — initial trail nudge so exploration is guided, not memorized.
+        try {
+          const h = await fetch(`/api/hacking/${id}/hint`, { credentials: 'include' }).then((r) => r.json());
+          if (h?.ok && h.hint) lines.push(`» lead: ${h.hint}`, ``);
+        } catch { /* hint optional */ }
+        setHistory(lines);
         setCwd([]);
       }
     } catch { /* swallow */ }
@@ -135,10 +141,10 @@ export function HackingTerminal({ building, onClose, worldId }: OverlayProps) {
           setHistory((h) => [...h, ``, `✓ puzzle complete · +${j.rewardCc} cc`]);
         } else if (j.progressReset) {
           failureJuice('ui_hack_reset');
-          setHistory((h) => [...h, `× wrong step — progress reset`]);
+          setHistory((h) => [...h, `× wrong step — progress reset`, ...(j.nextHint ? [`» lead: ${j.nextHint}`] : [])]);
         } else if (j.matched) {
           successJuice('ui_hack_step');
-          setHistory((h) => [...h, `✓ step ${j.step}/${j.totalSteps}`]);
+          setHistory((h) => [...h, `✓ step ${j.step}/${j.totalSteps}`, ...(j.nextHint ? [`» lead: ${j.nextHint}`] : [])]);
         }
       } else if (j?.error) {
         sfx('ui_terminal_error');

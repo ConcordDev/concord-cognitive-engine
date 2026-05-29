@@ -6,6 +6,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { spendSparks, getBalances } from "../lib/currency.js";
+import { priceModulator } from "../lib/npc-economy.js";
 
 // Hard-coded NPC shops. In the future these can be seeded per-world.
 const NPC_SHOPS = {
@@ -84,7 +85,15 @@ export default function createNPCShopRouter({ requireAuth, db }) {
       if (!item) return res.status(404).json({ ok: false, error: "item_not_in_shop" });
       if (quantity > item.quantity) return res.status(400).json({ ok: false, error: "insufficient_stock" });
 
-      const totalCost = item.price * quantity;
+      // T3.3 — the price the PLAYER pays now moves with regional scarcity (was
+      // NPC↔NPC only). priceModulator reads the regional_scarcity cache keyed by
+      // resource kind (the shop item id IS the resource), bounded [0.75, 1.5],
+      // and returns 1.0 (flat — current behaviour) when nothing is cached. This
+      // is Sparks, not CC, so no constitutional marketplace-fee is touched.
+      let scarcityMult = 1.0;
+      try { scarcityMult = priceModulator(db, shop.worldId, item.resourceKind || item.id); } catch { scarcityMult = 1.0; }
+      const unitPrice = Math.max(1, Math.round(item.price * scarcityMult));
+      const totalCost = unitPrice * quantity;
 
       // Spend Sparks (throws if insufficient)
       const newBalance = spendSparks(db, userId, totalCost, `npc_purchase:${itemId}:${quantity}`, shop.worldId);
@@ -100,7 +109,7 @@ export default function createNPCShopRouter({ requireAuth, db }) {
         `).run(crypto.randomUUID(), userId, item.itemType, itemId, item.name, quantity);
       }
 
-      res.json({ ok: true, purchased: { itemId, name: item.name, quantity, totalCost }, newSparksBalance: newBalance });
+      res.json({ ok: true, purchased: { itemId, name: item.name, quantity, unitPrice, basePrice: item.price, scarcityMult: Math.round(scarcityMult * 100) / 100, totalCost }, newSparksBalance: newBalance });
     } catch (err) {
       if (err.message === "insufficient_sparks") {
         return res.status(402).json({ ok: false, error: "insufficient_sparks" });

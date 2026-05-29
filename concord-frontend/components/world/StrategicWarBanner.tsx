@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Swords } from 'lucide-react';
 
 interface WarRow {
@@ -18,9 +19,8 @@ interface WarRow {
   last_move_id: string;
 }
 
-const POLL_MS = 30_000;
-
 export function StrategicWarBanner() {
+  const POLL_MS = useClientConfig().poll.factionMovesMs; // E0 — server-tunable
   const [worldId, setWorldId] = useState<string | null>(null);
   const [wars, setWars] = useState<WarRow[]>([]);
   const [collapsed, setCollapsed] = useState(false);

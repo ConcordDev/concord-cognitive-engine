@@ -22,6 +22,7 @@ import logger from "../logger.js";
 import { recordOpinionEvent, getOpinion } from "./npc-opinions.js";
 import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
+import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -45,6 +46,15 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
 
   // Don't propose against yourself.
   if (targetKind === "npc" && targetId === plotterNpcId) return { ok: false, reason: "self_target" };
+
+  // D5 — CK3 strong-hook block: if the intended target holds a strong hook over
+  // the plotter, the plotter cannot move against them (their leverage stays the
+  // plotter's hand). Guarded — no-op on a build without the npc_hooks table.
+  try {
+    if (blocksHostileAction(db, { plotterKind: "npc", plotterId: plotterNpcId, targetKind, targetId })) {
+      return { ok: false, reason: "hooked" };
+    }
+  } catch { /* hooks optional */ }
 
   const stress = getStress(db, plotterNpcId);
   const op = getOpinion(db, plotterNpcId, targetKind, targetId);
@@ -76,8 +86,14 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
   // paranoid; seduce on liked-target-but-rejected; default assassinate.
   const pickedKind = kind || pickSchemeKind(stress?.coping_trait, opinionScore);
   const id = `sch_${crypto.randomUUID().slice(0, 16)}`;
-  const successBase = pickedKind === "seduce" ? 40 : pickedKind === "blackmail" ? 50 : 30;
+  let successBase = pickedKind === "seduce" ? 40 : pickedKind === "blackmail" ? 50 : 30;
   const discoveryBase = pickedKind === "fabricate_secret" ? 25 : 10;
+
+  // D5 — a hook the plotter already holds over the target makes the plot land
+  // more reliably (leverage = compliance). Capped at 95 so nothing is certain.
+  try {
+    successBase = Math.min(95, successBase + successBonusFor(db, { plotterKind: "npc", plotterId: plotterNpcId, targetKind, targetId }));
+  } catch { /* hooks optional */ }
 
   db.prepare(`
     INSERT INTO npc_schemes (id, plotter_kind, plotter_id, target_kind, target_id, kind, phase, success_pct, discovery_pct, next_tick_at)
@@ -90,11 +106,21 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
 /** Player-driven scheme path. Plotter is the user_id. */
 export function proposePlayerScheme(db, userId, { targetKind, targetId, kind }) {
   if (!db || !userId || !targetKind || !targetId || !kind) return { ok: false, reason: "missing_inputs" };
+  // D5 — a target holding a strong hook over the player blocks the player's plot.
+  try {
+    if (blocksHostileAction(db, { plotterKind: "player", plotterId: userId, targetKind, targetId })) {
+      return { ok: false, reason: "hooked" };
+    }
+  } catch { /* hooks optional */ }
   const id = `sch_player_${crypto.randomUUID().slice(0, 12)}`;
+  let successBase = 25;
+  try {
+    successBase = Math.min(95, successBase + successBonusFor(db, { plotterKind: "player", plotterId: userId, targetKind, targetId }));
+  } catch { /* hooks optional */ }
   db.prepare(`
     INSERT INTO npc_schemes (id, plotter_kind, plotter_id, target_kind, target_id, kind, phase, success_pct, discovery_pct, next_tick_at)
-    VALUES (?, 'player', ?, ?, ?, ?, 'planning', 25, 15, ?)
-  `).run(id, userId, targetKind, targetId, kind, nextTickAt());
+    VALUES (?, 'player', ?, ?, ?, ?, 'planning', ?, 15, ?)
+  `).run(id, userId, targetKind, targetId, kind, successBase, nextTickAt());
   return { ok: true, schemeId: id, kind };
 }
 
@@ -416,8 +442,29 @@ export function interveneInScheme(db, userId, schemeId, action = "ignore") {
     return { ok: true, action: "abet", scheme: { id: schemeId, success_pct: newSuccess, accomplice_added: added } };
   }
 
+  if (action === "blackmail") {
+    // D5 — spend a hook the player holds over the plotter to force the plot to
+    // collapse. The plotter complies but resents the leverage (coerce records
+    // the opinion hit). Only an NPC plotter can be blackmailed this way.
+    if (sch.plotter_kind !== "npc") return { ok: false, reason: "plotter_not_npc" };
+    let coerced;
+    try {
+      coerced = coerceHook(db, { holderKind: "player", holderId: userId, targetKind: "npc", targetId: sch.plotter_id, reason: "blackmailed into abandoning a scheme" });
+    } catch { coerced = { ok: false, reason: "hooks_unavailable" }; }
+    if (!coerced?.ok) return { ok: false, reason: coerced?.reason || "no_hook" };
+    db.prepare(`UPDATE npc_schemes SET phase = 'abandoned', resolved_at = unixepoch() WHERE id = ?`).run(schemeId);
+    try { bumpStress(db, sch.plotter_id, "blackmailed"); } catch { /* noop */ }
+    return { ok: true, action: "blackmail", abandoned: true, hookSpent: coerced.hookId, remaining: coerced.usesLeft, scheme: { id: schemeId, phase: "abandoned" } };
+  }
+
   // ignore — mark dismissed so the eavesdrop bubble closes; no state change.
   return { ok: true, action: "ignore", scheme: { id: schemeId, phase: sch.phase } };
+}
+
+/** D5 — hooks a player currently holds (for the scheme/intervene UI). */
+export function listHooksForUser(db, userId) {
+  if (!db || !userId) return [];
+  try { return getHooksHeldBy(db, "player", userId); } catch { return []; }
 }
 
 /** List active schemes a user is suspected of being targeted by. */

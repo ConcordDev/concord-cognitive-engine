@@ -44,4 +44,40 @@ export function recordRunClear(db, userId, runKind, tier) {
   return recordClear(db, userId, runEncounterId(runKind), tier);
 }
 
+/**
+ * D6 — the loot/reward multiplier of a resolved difficulty modifier (1.0 at
+ * finder / on a minimal build). Audacity at a higher tier yields outsized
+ * payouts because this scales the meta-currency grant.
+ */
+export function lootMultFor(modifier) {
+  if (!modifier) return 1.0;
+  const m = Number(modifier.loot_mult ?? modifier.lootMult ?? 1.0);
+  return Number.isFinite(m) && m > 0 ? m : 1.0;
+}
+
+/**
+ * D6 — shared run-meta-currency bank. `roguelite_meta_currency` is the single
+ * Hades-pattern gem bank (per the CLAUDE.md invariant); all run modes
+ * (roguelite/horde/extraction) bank persistent meta-progress here so that a
+ * LOSS still advances the player. Guarded: a build without the table no-ops.
+ * Never touches the CC wallet (run currency is separate by design).
+ */
+export function grantRunMeta(db, userId, amount) {
+  const amt = Math.floor(Number(amount) || 0);
+  if (!db || !userId || amt <= 0) return { ok: false, reason: "noop", granted: 0 };
+  try {
+    db.prepare(`
+      INSERT INTO roguelite_meta_currency (user_id, balance, lifetime)
+      VALUES (?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET
+        balance = balance + excluded.balance,
+        lifetime = lifetime + excluded.balance,
+        updated_at = unixepoch()
+    `).run(userId, amt, amt);
+    return { ok: true, granted: amt };
+  } catch (e) {
+    return { ok: false, reason: "schema_unavailable", granted: 0 };
+  }
+}
+
 export { TIER_ORDER };

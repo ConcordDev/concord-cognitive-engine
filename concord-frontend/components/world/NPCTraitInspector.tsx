@@ -7,7 +7,7 @@
 // current_preoccupation / asymmetric_desire toward THIS player.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Eye, X, Skull, Flame, Heart, Loader2 } from 'lucide-react';
+import { Eye, X, Skull, Flame, Heart, Loader2, KeyRound, Lock } from 'lucide-react';
 
 interface Asymmetry {
   grudge?: { kind?: string; intensity?: number; rationale?: string; } | null;
@@ -15,18 +15,29 @@ interface Asymmetry {
   desire?: { kind?: string; intensity?: number; rationale?: string; } | null;
 }
 
+interface HookSummary {
+  playerHolds?: { strength?: string; usesLeft?: number } | null;
+  npcHolds?: { strength?: string } | null;
+}
+
 export function NPCTraitInspector() {
   const [npcId, setNpcId] = useState<string | null>(null);
   const [asym, setAsym] = useState<Asymmetry | null>(null);
+  const [hooks, setHooks] = useState<HookSummary | null>(null);
   const [pending, setPending] = useState(false);
 
   const load = useCallback(async (id: string) => {
     setNpcId(id);
     setAsym(null);
+    setHooks(null);
     setPending(true);
     try {
-      const j = await fetch(`/api/npc/${id}/asymmetry`, { credentials: 'include' }).then(r => r.json());
-      if (j?.ok) setAsym(j.asymmetry || {});
+      const [a, h] = await Promise.all([
+        fetch(`/api/npc/${id}/asymmetry`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+        fetch(`/api/npc/${id}/hooks`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      ]);
+      if (a?.ok) setAsym(a.asymmetry || {});
+      if (h?.ok) setHooks(h.hooks || {});
     } finally { setPending(false); }
   }, []);
 
@@ -43,7 +54,7 @@ export function NPCTraitInspector() {
     };
   }, [load]);
 
-  const close = () => { setNpcId(null); setAsym(null); };
+  const close = () => { setNpcId(null); setAsym(null); setHooks(null); };
 
   if (!npcId) return null;
 
@@ -73,6 +84,36 @@ export function NPCTraitInspector() {
             <TraitRow icon={<Heart size={14} />} label="Asymmetric desire (toward you)" color="pink" t={asym.desire} />
             {!asym.grudge && !asym.preoccupation && !asym.desire && (
               <p className="text-center text-xs text-zinc-500">This NPC has neutral feelings toward you.</p>
+            )}
+
+            {(hooks?.playerHolds || hooks?.npcHolds) && (
+              <div className="mt-3 space-y-2 border-t border-zinc-700 pt-3">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-500">Leverage</p>
+                {hooks?.playerHolds && (
+                  <div className="rounded border border-emerald-500/40 bg-emerald-950/30 p-2 text-emerald-200">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-70">
+                      <KeyRound size={12} /> You hold a {hooks.playerHolds.strength} hook
+                    </div>
+                    <div className="mt-0.5 text-[11px] opacity-80">
+                      {hooks.playerHolds.strength === 'strong'
+                        ? 'They cannot scheme against you, and your plots against them land harder.'
+                        : `Spendable leverage (${hooks.playerHolds.usesLeft ?? 1} use left) — blackmail them to abandon a scheme.`}
+                    </div>
+                  </div>
+                )}
+                {hooks?.npcHolds && (
+                  <div className="rounded border border-orange-500/40 bg-orange-950/30 p-2 text-orange-200">
+                    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider opacity-70">
+                      <Lock size={12} /> They hold a {hooks.npcHolds.strength} hook over you
+                    </div>
+                    <div className="mt-0.5 text-[11px] opacity-80">
+                      {hooks.npcHolds.strength === 'strong'
+                        ? 'You cannot move against them while this holds.'
+                        : 'They can call in one favour.'}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

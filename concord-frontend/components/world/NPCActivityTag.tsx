@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 // Theme 4 (game-feel pass): floating activity icon above each NPC head.
 //
@@ -19,7 +20,6 @@ import { useEffect, useRef, useState } from 'react';
 //   - The activity is "default" / generic (no signal worth surfacing)
 
 const VISIBLE_RADIUS_M = 12;
-const FRAME_THROTTLE_MS = 80; // ~12 Hz, matches BazaarLayer
 
 // Map activity_kind → emoji + short label. Unknown activities get nothing —
 // we'd rather show no icon than a generic dot that adds noise.
@@ -53,6 +53,7 @@ type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
 
 export function NPCActivityTag({ npcs, playerPosition, enabled = true }: NPCActivityTagProps) {
+  const FRAME_THROTTLE_MS = useClientConfig().throttle.npcActivityFrameMs; // E0 — server-tunable
   const projectorRef = useRef<Projector | null>(null);
   const [screenPositions, setScreenPositions] = useState<Map<string, Projection>>(new Map());
 

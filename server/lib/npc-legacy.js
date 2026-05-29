@@ -22,6 +22,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { inheritHooks } from "./hooks.js";
 
 // ── Last-words composer ─────────────────────────────────────────────────────
 
@@ -323,6 +324,12 @@ export function onNpcDeath(db, npc, opts = {}) {
     inherited.desire        = inheritDesires(db, npc, primary);
     inherited.recipe        = inheritRecipes(db, npc, primary);
     inherited.wealth        = inheritWealth(db, npc, heirs);
+    // D5 — hooks held over the deceased re-point to the heir; hooks the
+    // deceased held pass to the heir. Synchronous + guarded (table-optional).
+    try {
+      const hres = inheritHooks(db, npc.id, primary.id);
+      inherited.hooks = (hres?.transferredOver || 0) + (hres?.transferredHeld || 0);
+    } catch { inherited.hooks = 0; }
   }
 
   return { ok: true, legacyId, heirs: heirs.map(h => h.id), inherited };

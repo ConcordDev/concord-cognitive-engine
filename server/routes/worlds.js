@@ -1060,6 +1060,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } catch { /* metrics table optional */ }
 
       const asymmetryLines = [];
+      let asymForFallback = null;
       try {
         const asym = await import("../lib/npc-asymmetry.js");
         const ctx = asym.composeAsymmetryContext?.(db, npcId, playerId, playerMetrics);
@@ -1068,8 +1069,30 @@ export default function createWorldsRouter({ requireAuth, db }) {
           if (ctx.current_preoccupation) asymmetryLines.push(`What preoccupies you right now: ${ctx.current_preoccupation}`);
           if (ctx.current_opinion) asymmetryLines.push(`Your standing toward this player: ${ctx.current_opinion}.`);
           if (ctx.desire_for_this_player) asymmetryLines.push(`Something you quietly want from this player (surface it only if the moment fits): ${ctx.desire_for_this_player}`);
+          // T1.1 — keep presence flags (no secrets) for the deterministic fallback.
+          asymForFallback = {
+            grudge: ctx.persistent_grudge ? "an old grievance" : null,
+            preoccupation: ctx.current_preoccupation ? "a private worry" : null,
+            desire: ctx.desire_for_this_player ? "a quiet want" : null,
+          };
         }
       } catch { /* asymmetry tables optional on minimal builds */ }
+
+      // T1.1 — compose a grounded deterministic greeting from the SAME context
+      // we feed the LLM, so when the LLM is down/slow/garbled the NPC still
+      // reads as a person instead of collapsing to a flat 1-liner.
+      let fallbackDialogue = null;
+      try {
+        const { composeDeterministicDialogue } = await import("../lib/npc-dialogue-fallback.js");
+        fallbackDialogue = composeDeterministicDialogue({
+          npcId, npcName, archetype: npc.archetype, faction: npc.faction,
+          mood: interactResult.mood, isHostileRep,
+          currentActivity: npc.current_task || state.current_activity || null,
+          reputationTier: reputation?.tier || null,
+          asymmetry: asymForFallback,
+          questCount: quests.length,
+        });
+      } catch { /* fallback composer optional */ }
 
       // D3 — player-state reactivity: NPCs notice WHO THE PLAYER HAS BECOME
       // (their standing across the four axes), not just their stored opinion of
@@ -1111,10 +1134,12 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // 7. Call LLM
       const raw = await handle.generate(promptLines);
 
-      // 8. Parse JSON from LLM response
-      let greeting = interactResult.greeting;
-      let mood = isHostileRep ? 'hostile' : (interactResult.mood === 'warm' ? 'friendly' : interactResult.mood);
-      let subtext = null;
+      // 8. Parse JSON from LLM response. T1.1: default to the grounded
+      // deterministic compose (not the flat npc-relations 1-liner) so an
+      // LLM-off / garbled box still gets a characterful reply.
+      let greeting = fallbackDialogue?.greeting || interactResult.greeting;
+      let mood = fallbackDialogue?.mood || (isHostileRep ? 'hostile' : (interactResult.mood === 'warm' ? 'friendly' : interactResult.mood));
+      let subtext = fallbackDialogue?.subtext || null;
       let parsedOptions = options;
 
       try {
@@ -2346,6 +2371,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
           );
         } catch { /* npc_opinions absent on minimal builds */ }
 
+        // E4 — spouse reactivity. An NPC spouse reacts to whom the player kills
+        // (kin/liked → wounded; enemy → relieved). Guarded; no-op if unmarried.
+        try {
+          const { reactToPlayerEvent } = await import("../lib/spouse-reactivity.js");
+          reactToPlayerEvent(db, userId, { kind: "npc_killed", targetNpcId: npcId, worldId: req.params.worldId });
+        } catch { /* spouse reactivity optional */ }
+
         // Concordia Phase 3+15 — broadcast lethal-hit + signature-kill
         // events so the client ragdoll-bridge spawns a ragdoll and the
         // cinematic director can frame the kill. Best-effort socket
@@ -2782,8 +2814,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId, id: schemeId } = req.params;
       const userId = req.user.id;
       const action = String(req.body?.action || "ignore");
-      if (!["expose", "abet", "ignore"].includes(action)) {
-        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore" });
+      if (!["expose", "abet", "ignore", "blackmail"].includes(action)) {
+        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore|blackmail" });
       }
 
       const { interveneInScheme } = await import("../lib/npc-schemes.js");

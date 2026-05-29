@@ -6,6 +6,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { ChefHat, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
@@ -28,14 +29,15 @@ interface Summary {
   orders_missed?: number;
 }
 
-const POLL_MS = 2000;
-
 export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps) {
+  // E0 — server-tunable backstop cadence (was a hardcoded 2000).
+  const POLL_MS = useClientConfig().poll.restaurantMs;
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [pending, setPending] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [combo, setCombo] = useState(0); // E5 — batching-combo flash
 
   const refresh = useCallback(async () => {
     try {
@@ -64,7 +66,14 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
         headers: { 'content-type': 'application/json' }, body: '{}',
       });
       const j = await r.json().catch(() => null);
-      if (j?.ok !== false) successJuice('ui_dish_serve');
+      if (j?.ok !== false) {
+        successJuice('ui_dish_serve');
+        // E5 — flash the batching combo on a rush.
+        if (typeof j?.combo === 'number' && j.combo >= 2) {
+          setCombo(j.combo);
+          setTimeout(() => setCombo(0), 1500);
+        }
+      }
       refresh();
     } finally { setPending(false); }
   }, [refresh]);
@@ -110,6 +119,12 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
             <div className="font-mono text-base text-red-300">{summary?.orders_missed ?? 0}</div>
           </div>
         </div>
+
+        {combo >= 2 && (
+          <div className="concordia-hud-fade mb-2 rounded-md border border-orange-400/60 bg-orange-900/40 px-3 py-1 text-center text-sm font-bold text-orange-100">
+            🔥 ×{combo} combo! bigger tips
+          </div>
+        )}
 
         <div className="space-y-1.5">
           {orders.length === 0 && (

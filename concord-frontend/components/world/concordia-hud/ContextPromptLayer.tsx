@@ -17,11 +17,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useHUDContext, type NearbyTarget } from './HUDContextProvider';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
 
-const FRAME_THROTTLE_MS = 80;
 const KEY_BINDINGS: Record<NearbyTarget['kind'], { key: string; verb: string }> = {
   marriage_candidate: { key: 'M', verb: 'Propose' },
   council_member:     { key: 'H', verb: 'Lobby' },
@@ -48,6 +48,7 @@ function pickHighest(targets: NearbyTarget[]): NearbyTarget | null {
 }
 
 export function ContextPromptLayer() {
+  const FRAME_THROTTLE_MS = useClientConfig().throttle.contextPromptFrameMs; // E0 — server-tunable
   const mode = useHUDContext((s) => s.inputMode);
   const nearby = useHUDContext((s) => s.nearbyTargets);
   const projectorRef = useRef<Projector | null>(null);

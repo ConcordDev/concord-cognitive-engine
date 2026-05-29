@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, AlertTriangle, Skull } from 'lucide-react';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import {
   type GradientConfig, type HubAnchor,
   dangerBandAt, bandLevelRange, bandName, distanceFromHub,
@@ -22,7 +23,6 @@ declare global {
   interface Window { __concordiaPlayerPos?: Pos; __concordiaPlayerLevel?: number }
 }
 
-const FRAME_THROTTLE_MS = 500;     // local band recompute cadence
 const CONFIG_REFRESH_MS = 60_000;  // slow backstop: re-fetch config if re-tuned
 
 function bandColor(band: number): string {
@@ -31,6 +31,7 @@ function bandColor(band: number): string {
 }
 
 export function DangerBandHUD() {
+  const FRAME_THROTTLE_MS = useClientConfig().throttle.dangerBandFrameMs; // E0 — server-tunable
   const [worldId, setWorldId] = useState<string | null>(null);
   const [grad, setGrad] = useState<{ config: GradientConfig; anchor: HubAnchor } | null>(null);
   const [view, setView] = useState<{ band: number; name: string; min: number; max: number; inHub: boolean } | null>(null);
