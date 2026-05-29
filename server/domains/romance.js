@@ -17,6 +17,7 @@ import {
   selectHeir,
   ROMANCE_CONSTANTS,
 } from "../lib/romance-engine.js";
+import { reactToPlayerEvent, getSpouses } from "../lib/spouse-reactivity.js";
 
 export default function registerRomanceMacros(register) {
   register("romance", "court", async (ctx, input = {}) => {
@@ -135,6 +136,32 @@ export default function registerRomanceMacros(register) {
     const heir = selectHeir(db, userId);
     if (!heir) return { ok: false, reason: "no_heir" };
     return { ok: true, heir };
+  });
+
+  // E4 — spouse reactivity. Trigger a spouse's reaction to a player event
+  // (faction_join / faction_betray / npc_killed / scheme_exposed / player_death)
+  // from quest scripting or a route. Returns the per-spouse affinity shifts.
+  register("romance", "spouse_react", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    const kind = String(input?.kind || "");
+    if (!kind) return { ok: false, reason: "missing_kind" };
+    return reactToPlayerEvent(db, userId, {
+      kind,
+      factionId: input?.factionId || null,
+      targetNpcId: input?.targetNpcId || null,
+      worldId: input?.worldId || null,
+    });
+  }, { note: "spouse reacts to a player faction/scheme/kill/death event" });
+
+  register("romance", "spouses", async (ctx) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    return { ok: true, spouses: getSpouses(db, userId) };
   });
 
   register("romance", "constants", async () => {

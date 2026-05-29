@@ -2346,6 +2346,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
           );
         } catch { /* npc_opinions absent on minimal builds */ }
 
+        // E4 — spouse reactivity. An NPC spouse reacts to whom the player kills
+        // (kin/liked → wounded; enemy → relieved). Guarded; no-op if unmarried.
+        try {
+          const { reactToPlayerEvent } = await import("../lib/spouse-reactivity.js");
+          reactToPlayerEvent(db, userId, { kind: "npc_killed", targetNpcId: npcId, worldId: req.params.worldId });
+        } catch { /* spouse reactivity optional */ }
+
         // Concordia Phase 3+15 — broadcast lethal-hit + signature-kill
         // events so the client ragdoll-bridge spawns a ragdoll and the
         // cinematic director can frame the kill. Best-effort socket

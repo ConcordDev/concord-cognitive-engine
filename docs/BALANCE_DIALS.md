@@ -247,3 +247,16 @@ Every run mode now banks persistent meta-progress into the shared
 Roguelite payout = base × `max(1.0, tier loot_mult)` (finder/default never reduced;
 heroic 1.5× / mythic 2.5× amplify). `extractionDanger` reuses the horror-dread
 `CONCORD_HORROR_TERROR_RADIUS_M` for the final-stretch read.
+
+### E4 — spouse reactivity (`server/lib/spouse-reactivity.js`)
+A married NPC reacts to the player's wider-world actions (factions/kills/schemes),
+shifting courtship affinity and estranging the marriage when it sours.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_SPOUSE_FACTION_ALIGN` | 0.06 | Joined the spouse's faction. |
+| `CONCORD_SPOUSE_FACTION_RIVAL` | -0.08 | Joined a faction at war/tension with the spouse's. |
+| `CONCORD_SPOUSE_BETRAY_OWN` | -0.14 | Betrayed the spouse's own faction (harshest). |
+| `CONCORD_SPOUSE_KILL_LIKED` | -0.10 | Killed an NPC the spouse liked (opinion ≥ 20). |
+| `CONCORD_SPOUSE_KILL_KIN` | -0.22 | Killed the spouse's kin. |
+| `CONCORD_SPOUSE_SCHEME` | -0.05 | Player scheme exposed (cruel/paranoid spouse instead +0.04). |
+| `CONCORD_SPOUSE_ESTRANGE_THRESHOLD` | -0.3 | Affinity below this estranges a marriage. |
