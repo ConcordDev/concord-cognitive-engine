@@ -190,7 +190,7 @@ function buildValidKeySet(): Set<string> {
 const DOUBLE_TAP_WINDOW_MS = 280;
 
 export default function CombatInputController({
-  inputMode, context, hasTarget: _hasTarget, playerId: _playerId, worldSocket, modifierHeld, loadout, onAction,
+  inputMode, context, hasTarget: _hasTarget, playerId, worldSocket, modifierHeld, loadout, onAction,
 }: Props) {
   // Track per-key press time to differentiate tap vs hold
   const downAtRef = useRef<Map<string, number>>(new Map());
@@ -269,6 +269,29 @@ export default function CombatInputController({
     //                                                 no kick action token —
     //                                                 distinguish via meta)
     //   modifier-boost                   → combat:modifier (held boost flag)
+    // G2.1 — client-side prediction. Combat input → feedback was a full socket
+    // round-trip (no local swing), breaking the ≤16ms feel bar. Play the local
+    // player's swing/kick/dodge animation IMMEDIATELY on input via the same
+    // concordia:combat-anim event AvatarSystem3D consumes, so the body moves on
+    // the same frame as the keypress. Damage stays server-authoritative (the
+    // authoritative combat:impact still drives the target reaction); the
+    // predicted motion is the attacker's own cosmetic swing, so there's nothing
+    // to reconcile — the server never contradicts it. Light attacks also get a
+    // tiny predicted attacker hit-pause for weight.
+    if (playerId && typeof window !== 'undefined') {
+      const predAnim = resolved.startsWith('attack') || resolved.includes('blast') || resolved.includes('ram') || resolved.includes('shot')
+        ? (variant === 'hold' || resolved.includes('heavy') ? 'attack-heavy' : 'attack-light')
+        : resolved === 'kick' || resolved === 'dismount-kick' ? 'kick'
+        : (resolved === 'dodge' || resolved === 'air-dash' || resolved === 'drift') ? 'dodge'
+        : (resolved === 'parry' || resolved === 'evasive' || resolved === 'air-dodge') ? 'block'
+        : null;
+      if (predAnim) {
+        window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+          detail: { entityId: playerId, animation: predAnim, predicted: true },
+        }));
+      }
+    }
+
     if (!worldSocket?.isConnected) {
       onAction?.(evt);
       return;
