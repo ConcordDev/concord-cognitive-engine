@@ -1,7 +1,178 @@
 [
-  { "id": "wheat",    "name": "Wheat",     "seasons": [0, 3], "growth_days": 6, "yield": 5 },
-  { "id": "herb",     "name": "Herb",      "seasons": [0, 2], "growth_days": 4, "yield": 3 },
-  { "id": "vine",     "name": "Vine fruit","seasons": [1, 3], "growth_days": 8, "yield": 6 },
-  { "id": "root",     "name": "Root crop", "seasons": [3, 4], "growth_days": 7, "yield": 5 },
-  { "id": "mushroom", "name": "Mushroom",  "seasons": [4, 5], "growth_days": 5, "yield": 4 }
+  {
+    "id": "wheat",
+    "name": "Wheat",
+    "seasons": [
+      0,
+      3
+    ],
+    "growth_days": 6,
+    "yield": 5
+  },
+  {
+    "id": "herb",
+    "name": "Herb",
+    "seasons": [
+      0,
+      2
+    ],
+    "growth_days": 4,
+    "yield": 3
+  },
+  {
+    "id": "vine",
+    "name": "Vine fruit",
+    "seasons": [
+      1,
+      3
+    ],
+    "growth_days": 8,
+    "yield": 6
+  },
+  {
+    "id": "root",
+    "name": "Root crop",
+    "seasons": [
+      3,
+      4
+    ],
+    "growth_days": 7,
+    "yield": 5
+  },
+  {
+    "id": "mushroom",
+    "name": "Mushroom",
+    "seasons": [
+      4,
+      5
+    ],
+    "growth_days": 5,
+    "yield": 4
+  },
+  {
+    "id": "barley",
+    "name": "Barley",
+    "seasons": [
+      3,
+      4
+    ],
+    "growth_days": 10,
+    "yield": 4
+  },
+  {
+    "id": "maize",
+    "name": "Maize",
+    "seasons": [
+      3,
+      5
+    ],
+    "growth_days": 7,
+    "yield": 5
+  },
+  {
+    "id": "squash",
+    "name": "Squash",
+    "seasons": [
+      0,
+      2
+    ],
+    "growth_days": 6,
+    "yield": 5
+  },
+  {
+    "id": "pepper",
+    "name": "Hot Pepper",
+    "seasons": [
+      3,
+      5
+    ],
+    "growth_days": 4,
+    "yield": 8
+  },
+  {
+    "id": "bean",
+    "name": "Field Bean",
+    "seasons": [
+      4
+    ],
+    "growth_days": 7,
+    "yield": 4
+  },
+  {
+    "id": "flax",
+    "name": "Flax",
+    "seasons": [
+      3
+    ],
+    "growth_days": 10,
+    "yield": 3
+  },
+  {
+    "id": "onion",
+    "name": "Onion",
+    "seasons": [
+      2,
+      3
+    ],
+    "growth_days": 5,
+    "yield": 8
+  },
+  {
+    "id": "melon",
+    "name": "Sun Melon",
+    "seasons": [
+      1,
+      2
+    ],
+    "growth_days": 4,
+    "yield": 5
+  },
+  {
+    "id": "tuber",
+    "name": "Frost Tuber",
+    "seasons": [
+      5
+    ],
+    "growth_days": 4,
+    "yield": 6
+  },
+  {
+    "id": "berry",
+    "name": "Bramble Berry",
+    "seasons": [
+      2,
+      4
+    ],
+    "growth_days": 6,
+    "yield": 4
+  },
+  {
+    "id": "rice",
+    "name": "Paddy Rice",
+    "seasons": [
+      2,
+      5
+    ],
+    "growth_days": 6,
+    "yield": 5
+  },
+  {
+    "id": "pumpkin",
+    "name": "Pumpkin",
+    "seasons": [
+      3,
+      4
+    ],
+    "growth_days": 8,
+    "yield": 7
+  },
+  {
+    "id": "cabbage",
+    "name": "Cabbage",
+    "seasons": [
+      0
+    ],
+    "growth_days": 8,
+    "yield": 6
+  }
 ]

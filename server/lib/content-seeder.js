@@ -534,6 +534,10 @@ export async function seedContent({ db = null } = {}) {
     }
     const subFactions = readJSON(`${sub.path}/factions.json`);
     if (Array.isArray(subFactions)) results.factions += seedFactions(subFactions);
+    // factions-extra.json is the opt-in append slot for faction density bumps,
+    // mirroring npcs-extra.json — so the rich primary factions.json isn't spliced.
+    const subFactionsExtra = readJSON(`${sub.path}/factions-extra.json`);
+    if (Array.isArray(subFactionsExtra)) results.factions += seedFactions(subFactionsExtra);
     const subNpcs = readJSON(`${sub.path}/npcs.json`);
     if (Array.isArray(subNpcs)) results.npcs += seedNPCs(subNpcs, { db, defaultWorldId: sub.id });
     // Phase E2 — npcs-extra.json is an opt-in append slot for density bumps,

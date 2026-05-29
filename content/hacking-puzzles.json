@@ -10,13 +10,23 @@
         "home": {
           "type": "dir",
           "contents": {
-            "readme.txt": { "type": "file", "text": "Welcome, operator. ls is your friend." },
-            "guest_node": { "type": "service" }
+            "readme.txt": {
+              "type": "file",
+              "text": "Welcome, operator. ls is your friend."
+            },
+            "guest_node": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["ls", "cd home", "ls", "connect guest_node"]
+    "solutionPath": [
+      "ls",
+      "cd home",
+      "ls",
+      "connect guest_node"
+    ]
   },
   {
     "id": "lattice-mailroom",
@@ -29,13 +39,22 @@
         "mail": {
           "type": "dir",
           "contents": {
-            "inbox.log": { "type": "file", "text": "ECHO REQUEST from courier-7" },
-            "courier-7": { "type": "service" }
+            "inbox.log": {
+              "type": "file",
+              "text": "ECHO REQUEST from courier-7"
+            },
+            "courier-7": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["cd mail", "cat inbox.log", "connect courier-7"]
+    "solutionPath": [
+      "cd mail",
+      "cat inbox.log",
+      "connect courier-7"
+    ]
   },
   {
     "id": "broken-relay",
@@ -48,15 +67,28 @@
         "relays": {
           "type": "dir",
           "contents": {
-            "r01": { "type": "service" },
-            "r02": { "type": "service" },
-            "r03": { "type": "service" }
+            "r01": {
+              "type": "service"
+            },
+            "r02": {
+              "type": "service"
+            },
+            "r03": {
+              "type": "service"
+            }
           }
         },
-        "manifest.txt": { "type": "file", "text": "Active relay: r02" }
+        "manifest.txt": {
+          "type": "file",
+          "text": "Active relay: r02"
+        }
       }
     },
-    "solutionPath": ["cat manifest.txt", "cd relays", "connect r02"]
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd relays",
+      "connect r02"
+    ]
   },
   {
     "id": "cipher-fragment",
@@ -69,13 +101,23 @@
         "vault": {
           "type": "dir",
           "contents": {
-            "fragment.enc": { "type": "file", "text": "Encrypted payload — decrypt before exec." },
-            "core": { "type": "service" }
+            "fragment.enc": {
+              "type": "file",
+              "text": "Encrypted payload — decrypt before exec."
+            },
+            "core": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["cd vault", "cat fragment.enc", "decrypt fragment.enc", "exec core"]
+    "solutionPath": [
+      "cd vault",
+      "cat fragment.enc",
+      "decrypt fragment.enc",
+      "exec core"
+    ]
   },
   {
     "id": "ghost-in-the-bazaar",
@@ -88,20 +130,36 @@
         "market": {
           "type": "dir",
           "contents": {
-            "stalls.log": { "type": "file", "text": "anomaly@stall_3 — non-merchant signature" },
-            "stall_1": { "type": "service" },
-            "stall_3": { "type": "service" }
+            "stalls.log": {
+              "type": "file",
+              "text": "anomaly@stall_3 — non-merchant signature"
+            },
+            "stall_1": {
+              "type": "service"
+            },
+            "stall_3": {
+              "type": "service"
+            }
           }
         },
         "shadow": {
           "type": "dir",
           "contents": {
-            "trace": { "type": "service" }
+            "trace": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["cd market", "cat stalls.log", "ssh stall_3", "cd ..", "cd shadow", "connect trace"]
+    "solutionPath": [
+      "cd market",
+      "cat stalls.log",
+      "ssh stall_3",
+      "cd ..",
+      "cd shadow",
+      "connect trace"
+    ]
   },
   {
     "id": "dome-sentinel",
@@ -114,15 +172,31 @@
         "dome": {
           "type": "dir",
           "contents": {
-            "watchers.list": { "type": "file", "text": "active: sentinel_a, sentinel_b" },
-            "sentinel_a": { "type": "service" },
-            "sentinel_b": { "type": "service" }
+            "watchers.list": {
+              "type": "file",
+              "text": "active: sentinel_a, sentinel_b"
+            },
+            "sentinel_a": {
+              "type": "service"
+            },
+            "sentinel_b": {
+              "type": "service"
+            }
           }
         },
-        "override.key": { "type": "file", "text": "override unlocks both sentinels" }
+        "override.key": {
+          "type": "file",
+          "text": "override unlocks both sentinels"
+        }
       }
     },
-    "solutionPath": ["cat override.key", "cd dome", "cat watchers.list", "decrypt sentinel_a", "decrypt sentinel_b"]
+    "solutionPath": [
+      "cat override.key",
+      "cd dome",
+      "cat watchers.list",
+      "decrypt sentinel_a",
+      "decrypt sentinel_b"
+    ]
   },
   {
     "id": "concordant-keep",
@@ -135,20 +209,39 @@
         "keep": {
           "type": "dir",
           "contents": {
-            "guard.log": { "type": "file", "text": "patrol rotation every 90s — exec gate within window" },
-            "gate": { "type": "service" },
+            "guard.log": {
+              "type": "file",
+              "text": "patrol rotation every 90s — exec gate within window"
+            },
+            "gate": {
+              "type": "service"
+            },
             "armory": {
               "type": "dir",
               "contents": {
-                "ledger.txt": { "type": "file", "text": "key cached at archive_root" }
+                "ledger.txt": {
+                  "type": "file",
+                  "text": "key cached at archive_root"
+                }
               }
             }
           }
         },
-        "archive_root": { "type": "service" }
+        "archive_root": {
+          "type": "service"
+        }
       }
     },
-    "solutionPath": ["cd keep", "cat guard.log", "cd armory", "cat ledger.txt", "cd ..", "cd ..", "connect archive_root", "ssh gate"]
+    "solutionPath": [
+      "cd keep",
+      "cat guard.log",
+      "cd armory",
+      "cat ledger.txt",
+      "cd ..",
+      "cd ..",
+      "connect archive_root",
+      "ssh gate"
+    ]
   },
   {
     "id": "lattice-cathedral",
@@ -161,15 +254,30 @@
         "cathedral": {
           "type": "dir",
           "contents": {
-            "litany.txt": { "type": "file", "text": "Three relics. Three altars. Decrypt in order: bell, chime, vow." },
-            "altar_bell": { "type": "service" },
-            "altar_chime": { "type": "service" },
-            "altar_vow": { "type": "service" }
+            "litany.txt": {
+              "type": "file",
+              "text": "Three relics. Three altars. Decrypt in order: bell, chime, vow."
+            },
+            "altar_bell": {
+              "type": "service"
+            },
+            "altar_chime": {
+              "type": "service"
+            },
+            "altar_vow": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["cd cathedral", "cat litany.txt", "decrypt altar_bell", "decrypt altar_chime", "decrypt altar_vow"]
+    "solutionPath": [
+      "cd cathedral",
+      "cat litany.txt",
+      "decrypt altar_bell",
+      "decrypt altar_chime",
+      "decrypt altar_vow"
+    ]
   },
   {
     "id": "sovereign-archive",
@@ -182,21 +290,40 @@
         "archive": {
           "type": "dir",
           "contents": {
-            "rooms.idx": { "type": "file", "text": "rooms: alpha, beta, gamma — gamma holds the seal." },
-            "alpha": { "type": "service" },
-            "beta": { "type": "service" },
+            "rooms.idx": {
+              "type": "file",
+              "text": "rooms: alpha, beta, gamma — gamma holds the seal."
+            },
+            "alpha": {
+              "type": "service"
+            },
+            "beta": {
+              "type": "service"
+            },
             "gamma": {
               "type": "dir",
               "contents": {
-                "seal.enc": { "type": "file", "text": "encrypted — exec only after decrypt" },
-                "vault_door": { "type": "service" }
+                "seal.enc": {
+                  "type": "file",
+                  "text": "encrypted — exec only after decrypt"
+                },
+                "vault_door": {
+                  "type": "service"
+                }
               }
             }
           }
         }
       }
     },
-    "solutionPath": ["cd archive", "cat rooms.idx", "cd gamma", "cat seal.enc", "decrypt seal.enc", "exec vault_door"]
+    "solutionPath": [
+      "cd archive",
+      "cat rooms.idx",
+      "cd gamma",
+      "cat seal.enc",
+      "decrypt seal.enc",
+      "exec vault_door"
+    ]
   },
   {
     "id": "concord-singularity",
@@ -209,15 +336,1117 @@
         "singularity": {
           "type": "dir",
           "contents": {
-            "manifest.txt": { "type": "file", "text": "Reach the core via shell, mirror, and trace in sequence." },
-            "shell": { "type": "service" },
-            "mirror": { "type": "service" },
-            "trace": { "type": "service" },
-            "core": { "type": "service" }
+            "manifest.txt": {
+              "type": "file",
+              "text": "Reach the core via shell, mirror, and trace in sequence."
+            },
+            "shell": {
+              "type": "service"
+            },
+            "mirror": {
+              "type": "service"
+            },
+            "trace": {
+              "type": "service"
+            },
+            "core": {
+              "type": "service"
+            }
           }
         }
       }
     },
-    "solutionPath": ["cd singularity", "cat manifest.txt", "ssh shell", "ssh mirror", "ssh trace", "exec core"]
+    "solutionPath": [
+      "cd singularity",
+      "cat manifest.txt",
+      "ssh shell",
+      "ssh mirror",
+      "ssh trace",
+      "exec core"
+    ]
+  },
+  {
+    "id": "frontier-checkpoint",
+    "name": "Frontier Checkpoint",
+    "difficulty": 1,
+    "rewardCc": 30,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "Concord-Link border node. The guest gate is wide open — just reach the relay."
+        },
+        "gate": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Relay sits behind the gate. Connect to it."
+            },
+            "relay": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd gate",
+      "cat note.txt",
+      "connect relay"
+    ]
+  },
+  {
+    "id": "tunya-well-pump",
+    "name": "Tunya Well Pump",
+    "difficulty": 1,
+    "rewardCc": 32,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "An old caravan well-pump still answers commands. Bring the water back."
+        },
+        "pump": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "The valve service controls the flow."
+            },
+            "valve": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd pump",
+      "cat note.txt",
+      "exec valve"
+    ]
+  },
+  {
+    "id": "bazaar-stall-lock",
+    "name": "Bazaar Stall Lock",
+    "difficulty": 1,
+    "rewardCc": 35,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A merchant's stall terminal. The drawer service is the prize."
+        },
+        "stall": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Open the drawer."
+            },
+            "drawer": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd stall",
+      "cat note.txt",
+      "connect drawer"
+    ]
+  },
+  {
+    "id": "fantasy-hedge-gate",
+    "name": "Hedge Gate",
+    "difficulty": 1,
+    "rewardCc": 38,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A rune-warded garden node. The hedge service yields to the right touch."
+        },
+        "garden": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "The hedge will part for a connect."
+            },
+            "hedge": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd garden",
+      "cat note.txt",
+      "connect hedge"
+    ]
+  },
+  {
+    "id": "cyber-fixer-den",
+    "name": "Fixer's Den",
+    "difficulty": 2,
+    "rewardCc": 85,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A fixer's backroom rig. Cracked door, then the safe."
+        },
+        "den": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Crack the door service, then reach the safe."
+            },
+            "door": {
+              "type": "service"
+            },
+            "safe": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd den",
+      "cat note.txt",
+      "decrypt door",
+      "exec safe"
+    ]
+  },
+  {
+    "id": "crime-numbers-room",
+    "name": "Numbers Room",
+    "difficulty": 2,
+    "rewardCc": 90,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The crew keeps its book on a quiet node. Two services stand between you and it."
+        },
+        "backroom": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Disable the lookout, then crack the ledger."
+            },
+            "lookout": {
+              "type": "service"
+            },
+            "ledger": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd backroom",
+      "cat note.txt",
+      "connect lookout",
+      "decrypt ledger"
+    ]
+  },
+  {
+    "id": "superhero-tip-line",
+    "name": "Tip Line",
+    "difficulty": 2,
+    "rewardCc": 92,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A precinct tip-line server. Authenticate, then pull the archive."
+        },
+        "precinct": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "ssh the desk, then connect the archive."
+            },
+            "desk": {
+              "type": "service"
+            },
+            "archive": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd precinct",
+      "cat note.txt",
+      "ssh desk",
+      "connect archive"
+    ]
+  },
+  {
+    "id": "lattice-drift-buoy",
+    "name": "Drift Buoy",
+    "difficulty": 2,
+    "rewardCc": 95,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A lattice drift-buoy adrift between districts. Sync it, then read the beacon."
+        },
+        "buoy": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Sync service first; then the beacon."
+            },
+            "sync": {
+              "type": "service"
+            },
+            "beacon": {
+              "type": "service"
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd buoy",
+      "cat note.txt",
+      "exec sync",
+      "connect beacon"
+    ]
+  },
+  {
+    "id": "cyber-corpo-floor",
+    "name": "Corpo Floor",
+    "difficulty": 3,
+    "rewardCc": 165,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A corporate sublevel. Two rooms, two locks, one core."
+        },
+        "lobby": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Spoof the badge reader."
+            },
+            "badge": {
+              "type": "service"
+            },
+            "server_room": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "The core sits past the firewall."
+                },
+                "firewall": {
+                  "type": "service"
+                },
+                "core": {
+                  "type": "service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd lobby",
+      "cat note.txt",
+      "decrypt badge",
+      "cd server_room",
+      "cat note.txt",
+      "exec firewall",
+      "connect core"
+    ]
+  },
+  {
+    "id": "sovereign-watchpost",
+    "name": "Sovereign Watchpost",
+    "difficulty": 3,
+    "rewardCc": 170,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A ruined watchpost still broadcasting. Climb the tower to silence it."
+        },
+        "yard": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Cut the alarm."
+            },
+            "alarm": {
+              "type": "service"
+            },
+            "tower": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Silence the broadcaster."
+                },
+                "broadcaster": {
+                  "type": "service"
+                },
+                "vault": {
+                  "type": "service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd yard",
+      "cat note.txt",
+      "connect alarm",
+      "cd tower",
+      "cat note.txt",
+      "exec broadcaster",
+      "decrypt vault"
+    ]
+  },
+  {
+    "id": "crime-dock-heist",
+    "name": "Dock Heist",
+    "difficulty": 3,
+    "rewardCc": 175,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A smuggler's dock node. Cameras, then crane, then the container."
+        },
+        "yard": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Loop the cameras."
+            },
+            "cameras": {
+              "type": "service"
+            },
+            "crane_cab": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Take the crane."
+                },
+                "crane": {
+                  "type": "service"
+                },
+                "container": {
+                  "type": "service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd yard",
+      "cat note.txt",
+      "connect cameras",
+      "cd crane_cab",
+      "cat note.txt",
+      "exec crane",
+      "connect container"
+    ]
+  },
+  {
+    "id": "fantasy-rune-vault",
+    "name": "Rune Vault",
+    "difficulty": 3,
+    "rewardCc": 180,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A glyph-sealed vault. Two wards, then the seal."
+        },
+        "antechamber": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Dispel the first ward."
+            },
+            "ward_one": {
+              "type": "service"
+            },
+            "inner_sanctum": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Dispel the second ward."
+                },
+                "ward_two": {
+                  "type": "service"
+                },
+                "seal": {
+                  "type": "service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd antechamber",
+      "cat note.txt",
+      "decrypt ward_one",
+      "cd inner_sanctum",
+      "cat note.txt",
+      "decrypt ward_two",
+      "exec seal"
+    ]
+  },
+  {
+    "id": "lattice-relay-farm",
+    "name": "Relay Farm",
+    "difficulty": 4,
+    "rewardCc": 290,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A lattice relay-farm. Three relays in series feed the conductor."
+        },
+        "row_a": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Bring relay A online."
+            },
+            "relay_a": {
+              "type": "service"
+            },
+            "row_b": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Bring relay B online."
+                },
+                "relay_b": {
+                  "type": "service"
+                },
+                "row_c": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Bring relay C online, then the conductor."
+                    },
+                    "relay_c": {
+                      "type": "service"
+                    },
+                    "conductor": {
+                      "type": "service"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd row_a",
+      "cat note.txt",
+      "connect relay_a",
+      "cd row_b",
+      "cat note.txt",
+      "connect relay_b",
+      "cd row_c",
+      "cat note.txt",
+      "connect relay_c",
+      "exec conductor"
+    ]
+  },
+  {
+    "id": "cyber-blacksite",
+    "name": "Blacksite",
+    "difficulty": 4,
+    "rewardCc": 300,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "An off-books research blacksite. Three layers of access control."
+        },
+        "checkpoint": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Forge credentials."
+            },
+            "creds": {
+              "type": "service"
+            },
+            "lab": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Bypass the airgap bridge."
+                },
+                "airgap": {
+                  "type": "service"
+                },
+                "cold_room": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Pull the sample logs, then the mainframe."
+                    },
+                    "logs": {
+                      "type": "service"
+                    },
+                    "mainframe": {
+                      "type": "service"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd checkpoint",
+      "cat note.txt",
+      "decrypt creds",
+      "cd lab",
+      "cat note.txt",
+      "exec airgap",
+      "cd cold_room",
+      "cat note.txt",
+      "ssh logs",
+      "connect mainframe"
+    ]
+  },
+  {
+    "id": "superhero-comms-spire",
+    "name": "Comms Spire",
+    "difficulty": 4,
+    "rewardCc": 310,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The city's emergency comms spire has been hijacked. Take it back, floor by floor."
+        },
+        "base": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Restore the uplink."
+            },
+            "uplink": {
+              "type": "service"
+            },
+            "midfloor": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Purge the hijack daemon."
+                },
+                "daemon": {
+                  "type": "service"
+                },
+                "antenna": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Re-key the transmitter, then the controller."
+                    },
+                    "transmitter": {
+                      "type": "service"
+                    },
+                    "controller": {
+                      "type": "service"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd base",
+      "cat note.txt",
+      "connect uplink",
+      "cd midfloor",
+      "cat note.txt",
+      "exec daemon",
+      "cd antenna",
+      "cat note.txt",
+      "decrypt transmitter",
+      "exec controller"
+    ]
+  },
+  {
+    "id": "sovereign-deep-archive",
+    "name": "Deep Archive",
+    "difficulty": 4,
+    "rewardCc": 320,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "A sealed sovereign archive, three chambers deep. The First Refusal is recorded here."
+        },
+        "stacks": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Decrypt the index."
+            },
+            "index": {
+              "type": "service"
+            },
+            "reading_room": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Authenticate at the lectern."
+                },
+                "lectern": {
+                  "type": "service"
+                },
+                "reliquary": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Open the reliquary, then the record."
+                    },
+                    "reliquary": {
+                      "type": "service"
+                    },
+                    "record": {
+                      "type": "service"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd stacks",
+      "cat note.txt",
+      "decrypt index",
+      "cd reading_room",
+      "cat note.txt",
+      "ssh lectern",
+      "cd reliquary",
+      "cat note.txt",
+      "connect reliquary",
+      "decrypt record"
+    ]
+  },
+  {
+    "id": "concord-deep-core",
+    "name": "Deep Core",
+    "difficulty": 5,
+    "rewardCc": 440,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The Concord deep-core. Four nested gates guard the singularity seed."
+        },
+        "rind": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Peel the outer rind."
+            },
+            "rind": {
+              "type": "service"
+            },
+            "mantle": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Stabilise the mantle."
+                },
+                "mantle": {
+                  "type": "service"
+                },
+                "shell": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Mirror the shell."
+                    },
+                    "shell": {
+                      "type": "service"
+                    },
+                    "kernel": {
+                      "type": "dir",
+                      "contents": {
+                        "note.txt": {
+                          "type": "file",
+                          "text": "Authenticate, then reach the seed."
+                        },
+                        "kernel": {
+                          "type": "service"
+                        },
+                        "seed": {
+                          "type": "service"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd rind",
+      "cat note.txt",
+      "decrypt rind",
+      "cd mantle",
+      "cat note.txt",
+      "exec mantle",
+      "cd shell",
+      "cat note.txt",
+      "connect shell",
+      "cd kernel",
+      "cat note.txt",
+      "ssh kernel",
+      "exec seed"
+    ]
+  },
+  {
+    "id": "lattice-meta-orchestrator",
+    "name": "Meta Orchestrator",
+    "difficulty": 5,
+    "rewardCc": 450,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The lattice meta-orchestrator. It reasons about intruders — move clean."
+        },
+        "ingress": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Slip the ingress gate."
+            },
+            "ingress": {
+              "type": "service"
+            },
+            "scheduler": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Pause the scheduler."
+                },
+                "scheduler": {
+                  "type": "service"
+                },
+                "reasoner": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Blind the reasoner."
+                    },
+                    "reasoner": {
+                      "type": "service"
+                    },
+                    "nexus": {
+                      "type": "dir",
+                      "contents": {
+                        "note.txt": {
+                          "type": "file",
+                          "text": "Authenticate, then seize the nexus."
+                        },
+                        "auth": {
+                          "type": "service"
+                        },
+                        "nexus": {
+                          "type": "service"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd ingress",
+      "cat note.txt",
+      "connect ingress",
+      "cd scheduler",
+      "cat note.txt",
+      "exec scheduler",
+      "cd reasoner",
+      "cat note.txt",
+      "decrypt reasoner",
+      "cd nexus",
+      "cat note.txt",
+      "ssh auth",
+      "connect nexus"
+    ]
+  },
+  {
+    "id": "dome-failsafe",
+    "name": "Dome Failsafe",
+    "difficulty": 5,
+    "rewardCc": 460,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The dome failsafe array. If you trip a single alarm the dome collapses — four clean gates."
+        },
+        "perimeter": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Mask your signature."
+            },
+            "masker": {
+              "type": "service"
+            },
+            "substation": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Reroute the grid."
+                },
+                "grid": {
+                  "type": "service"
+                },
+                "control": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Disarm the trip-wire."
+                    },
+                    "tripwire": {
+                      "type": "service"
+                    },
+                    "vault": {
+                      "type": "dir",
+                      "contents": {
+                        "note.txt": {
+                          "type": "file",
+                          "text": "Authenticate, then the failsafe."
+                        },
+                        "console": {
+                          "type": "service"
+                        },
+                        "failsafe": {
+                          "type": "service"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd perimeter",
+      "cat note.txt",
+      "decrypt masker",
+      "cd substation",
+      "cat note.txt",
+      "exec grid",
+      "cd control",
+      "cat note.txt",
+      "connect tripwire",
+      "cd vault",
+      "cat note.txt",
+      "ssh console",
+      "exec failsafe"
+    ]
+  },
+  {
+    "id": "sovereign-throne-mind",
+    "name": "Throne Mind",
+    "difficulty": 5,
+    "rewardCc": 480,
+    "terminalTree": {
+      "type": "dir",
+      "contents": {
+        "manifest.txt": {
+          "type": "file",
+          "text": "The mind beneath the sovereign throne. Four refusals stand between you and it."
+        },
+        "approach": {
+          "type": "dir",
+          "contents": {
+            "note.txt": {
+              "type": "file",
+              "text": "Pass the first refusal."
+            },
+            "refusal_one": {
+              "type": "service"
+            },
+            "gallery": {
+              "type": "dir",
+              "contents": {
+                "note.txt": {
+                  "type": "file",
+                  "text": "Pass the second refusal."
+                },
+                "refusal_two": {
+                  "type": "service"
+                },
+                "sanctum": {
+                  "type": "dir",
+                  "contents": {
+                    "note.txt": {
+                      "type": "file",
+                      "text": "Pass the third refusal."
+                    },
+                    "refusal_three": {
+                      "type": "service"
+                    },
+                    "throne": {
+                      "type": "dir",
+                      "contents": {
+                        "note.txt": {
+                          "type": "file",
+                          "text": "Authenticate, then commune with the mind."
+                        },
+                        "regalia": {
+                          "type": "service"
+                        },
+                        "mind": {
+                          "type": "service"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "solutionPath": [
+      "cat manifest.txt",
+      "cd approach",
+      "cat note.txt",
+      "decrypt refusal_one",
+      "cd gallery",
+      "cat note.txt",
+      "decrypt refusal_two",
+      "cd sanctum",
+      "cat note.txt",
+      "connect refusal_three",
+      "cd throne",
+      "cat note.txt",
+      "ssh regalia",
+      "exec mind"
+    ]
   }
 ]

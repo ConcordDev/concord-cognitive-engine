@@ -112,10 +112,14 @@ describe("Phase CB3 — farming", () => {
     assert.equal(r.harvested.quantity, 1);
   });
 
-  it("listCrops returns the 5-crop catalog", () => {
+  it("listCrops returns the crop catalog (census target ≥18, base crops present)", () => {
     const all = listCrops();
-    assert.equal(all.length, 5);
+    // Catalog expanded from the original 5 to the census target via the authoring
+    // pipeline (scripts/author/author-libs.mjs --type crop). The 5 base crops remain.
+    assert.ok(all.length >= 18, `expected ≥18 crops, got ${all.length}`);
     const ids = all.map(c => c.id);
-    assert.ok(ids.includes("wheat") && ids.includes("mushroom"));
+    for (const base of ["wheat", "herb", "vine", "root", "mushroom"]) {
+      assert.ok(ids.includes(base), `base crop ${base} missing`);
+    }
   });
 });

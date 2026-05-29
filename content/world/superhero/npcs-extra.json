@@ -764,7 +764,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "outskirts",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "gate",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "workshop",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 32
   },
   {
     "id": "gen_superhero_0001",
@@ -787,7 +844,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "commons",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "outskirts",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "shrine",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "shrine",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 18
   },
   {
     "id": "gen_superhero_0002",
@@ -810,7 +924,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "shrine",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "outskirts",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 14
   },
   {
     "id": "gen_superhero_0003",
@@ -833,7 +1004,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "gate",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "commons",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "tavern",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 34
   },
   {
     "id": "gen_superhero_0004",
@@ -856,7 +1084,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "patrolling"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "tavern",
+        "activity": "drilling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "outskirts",
+        "activity": "watching the gate"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "checking papers"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "outskirts",
+        "activity": "off-duty rounds"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "gate",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 14
   },
   {
     "id": "gen_superhero_0005",
@@ -879,7 +1164,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "commons",
+        "activity": "patrolling"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "drilling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "watching the gate"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "shrine",
+        "activity": "checking papers"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "shrine",
+        "activity": "off-duty rounds"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 10
   },
   {
     "id": "gen_superhero_0006",
@@ -902,7 +1244,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "outskirts",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "outskirts",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "gate",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 33
   },
   {
     "id": "gen_superhero_0007",
@@ -925,7 +1324,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "tavern",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "shrine",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 33
   },
   {
     "id": "gen_superhero_0008",
@@ -948,7 +1404,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "commons",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "gate",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "shrine",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 13
   },
   {
     "id": "gen_superhero_0009",
@@ -971,6 +1484,63 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "at the forge"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "shaping work"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "shrine",
+        "activity": "finishing pieces"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "home",
+        "activity": "selling wares"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "cleaning tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "workshop",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 27
   }
 ]

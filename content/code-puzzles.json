@@ -6,9 +6,30 @@
     "optimalCycles": 3,
     "optimalSize": 2,
     "testCases": [
-      { "input": [5], "expected": [5] },
-      { "input": [0], "expected": [0] },
-      { "input": [42], "expected": [42] }
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          5
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          42
+        ],
+        "expected": [
+          42
+        ]
+      }
     ]
   },
   {
@@ -18,9 +39,33 @@
     "optimalCycles": 5,
     "optimalSize": 3,
     "testCases": [
-      { "input": [2, 3], "expected": [5] },
-      { "input": [0, 0], "expected": [0] },
-      { "input": [10, 7], "expected": [17] }
+      {
+        "input": [
+          2,
+          3
+        ],
+        "expected": [
+          5
+        ]
+      },
+      {
+        "input": [
+          0,
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          10,
+          7
+        ],
+        "expected": [
+          17
+        ]
+      }
     ]
   },
   {
@@ -30,9 +75,30 @@
     "optimalCycles": 5,
     "optimalSize": 3,
     "testCases": [
-      { "input": [3], "expected": [6] },
-      { "input": [0], "expected": [0] },
-      { "input": [11], "expected": [22] }
+      {
+        "input": [
+          3
+        ],
+        "expected": [
+          6
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          11
+        ],
+        "expected": [
+          22
+        ]
+      }
     ]
   },
   {
@@ -42,9 +108,36 @@
     "optimalCycles": 8,
     "optimalSize": 5,
     "testCases": [
-      { "input": [1, 2, 3], "expected": [6] },
-      { "input": [5, 5, 5], "expected": [15] },
-      { "input": [0, 10, 4], "expected": [14] }
+      {
+        "input": [
+          1,
+          2,
+          3
+        ],
+        "expected": [
+          6
+        ]
+      },
+      {
+        "input": [
+          5,
+          5,
+          5
+        ],
+        "expected": [
+          15
+        ]
+      },
+      {
+        "input": [
+          0,
+          10,
+          4
+        ],
+        "expected": [
+          14
+        ]
+      }
     ]
   },
   {
@@ -54,9 +147,30 @@
     "optimalCycles": 7,
     "optimalSize": 5,
     "testCases": [
-      { "input": [0], "expected": [1] },
-      { "input": [5], "expected": [0] },
-      { "input": [42], "expected": [0] }
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          1
+        ]
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          42
+        ],
+        "expected": [
+          0
+        ]
+      }
     ]
   },
   {
@@ -66,8 +180,24 @@
     "optimalCycles": 5,
     "optimalSize": 3,
     "testCases": [
-      { "input": [4], "expected": [4, 4] },
-      { "input": [7], "expected": [7, 7] }
+      {
+        "input": [
+          4
+        ],
+        "expected": [
+          4,
+          4
+        ]
+      },
+      {
+        "input": [
+          7
+        ],
+        "expected": [
+          7,
+          7
+        ]
+      }
     ]
   },
   {
@@ -77,9 +207,34 @@
     "optimalCycles": 30,
     "optimalSize": 6,
     "testCases": [
-      { "input": [3], "expected": [0, 0, 0] },
-      { "input": [0], "expected": [] },
-      { "input": [5], "expected": [0, 0, 0, 0, 0] }
+      {
+        "input": [
+          3
+        ],
+        "expected": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": []
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
     ]
   },
   {
@@ -89,8 +244,435 @@
     "optimalCycles": 12,
     "optimalSize": 6,
     "testCases": [
-      { "input": [1, 2, 3], "expected": [1, 3, 6] },
-      { "input": [5, 0, 5], "expected": [5, 5, 10] }
+      {
+        "input": [
+          1,
+          2,
+          3
+        ],
+        "expected": [
+          1,
+          3,
+          6
+        ]
+      },
+      {
+        "input": [
+          5,
+          0,
+          5
+        ],
+        "expected": [
+          5,
+          5,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "id": "add-five",
+    "name": "Add Five",
+    "description": "Output input[0] + 5.",
+    "optimalCycles": 3,
+    "optimalSize": 3,
+    "testCases": [
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          5
+        ]
+      },
+      {
+        "input": [
+          3
+        ],
+        "expected": [
+          8
+        ]
+      },
+      {
+        "input": [
+          10
+        ],
+        "expected": [
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "id": "triple-it",
+    "name": "Triple It",
+    "description": "Output input[0] tripled (no MUL — add it up).",
+    "optimalCycles": 5,
+    "optimalSize": 5,
+    "testCases": [
+      {
+        "input": [
+          2
+        ],
+        "expected": [
+          6
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sum-four",
+    "name": "Sum Four",
+    "description": "Add input[0] + input[1] + input[2] + input[3].",
+    "optimalCycles": 5,
+    "optimalSize": 5,
+    "testCases": [
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "expected": [
+          10
+        ]
+      },
+      {
+        "input": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          5,
+          5,
+          5,
+          5
+        ],
+        "expected": [
+          20
+        ]
+      }
+    ]
+  },
+  {
+    "id": "echo-three",
+    "name": "Echo Thrice",
+    "description": "Output input[0] three times in sequence.",
+    "optimalCycles": 4,
+    "optimalSize": 4,
+    "testCases": [
+      {
+        "input": [
+          4
+        ],
+        "expected": [
+          4,
+          4,
+          4
+        ]
+      },
+      {
+        "input": [
+          9
+        ],
+        "expected": [
+          9,
+          9,
+          9
+        ]
+      }
+    ]
+  },
+  {
+    "id": "swap-pair",
+    "name": "Swap Pair",
+    "description": "Output input[1] then input[0].",
+    "optimalCycles": 4,
+    "optimalSize": 4,
+    "testCases": [
+      {
+        "input": [
+          1,
+          2
+        ],
+        "expected": [
+          2,
+          1
+        ]
+      },
+      {
+        "input": [
+          7,
+          3
+        ],
+        "expected": [
+          3,
+          7
+        ]
+      }
+    ]
+  },
+  {
+    "id": "minus-five",
+    "name": "Minus Five",
+    "description": "Output input[0] - 5 (ADD a negative immediate).",
+    "optimalCycles": 3,
+    "optimalSize": 3,
+    "testCases": [
+      {
+        "input": [
+          10
+        ],
+        "expected": [
+          5
+        ]
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          8
+        ],
+        "expected": [
+          3
+        ]
+      }
+    ]
+  },
+  {
+    "id": "countdown",
+    "name": "Countdown",
+    "description": "Output N, N-1, ..., 1 where N = input[0]. Use JEZ + JMP.",
+    "optimalCycles": 22,
+    "optimalSize": 5,
+    "testCases": [
+      {
+        "input": [
+          3
+        ],
+        "expected": [
+          3,
+          2,
+          1
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": []
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          5,
+          4,
+          3,
+          2,
+          1
+        ]
+      }
+    ]
+  },
+  {
+    "id": "repeat-value",
+    "name": "Repeat Value",
+    "description": "Output input[0] repeated input[1] times.",
+    "optimalCycles": 15,
+    "optimalSize": 6,
+    "testCases": [
+      {
+        "input": [
+          7,
+          3
+        ],
+        "expected": [
+          7,
+          7,
+          7
+        ]
+      },
+      {
+        "input": [
+          9,
+          0
+        ],
+        "expected": []
+      },
+      {
+        "input": [
+          4,
+          2
+        ],
+        "expected": [
+          4,
+          4
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sum-to-n",
+    "name": "Sum To N",
+    "description": "Output 1 + 2 + ... + N where N = input[0].",
+    "optimalCycles": 24,
+    "optimalSize": 7,
+    "testCases": [
+      {
+        "input": [
+          3
+        ],
+        "expected": [
+          6
+        ]
+      },
+      {
+        "input": [
+          0
+        ],
+        "expected": [
+          0
+        ]
+      },
+      {
+        "input": [
+          5
+        ],
+        "expected": [
+          15
+        ]
+      }
+    ]
+  },
+  {
+    "id": "double-pair",
+    "name": "Double Pair",
+    "description": "Output 2*input[0] then 2*input[1].",
+    "optimalCycles": 6,
+    "optimalSize": 6,
+    "testCases": [
+      {
+        "input": [
+          3,
+          4
+        ],
+        "expected": [
+          6,
+          8
+        ]
+      },
+      {
+        "input": [
+          0,
+          5
+        ],
+        "expected": [
+          0,
+          10
+        ]
+      }
+    ]
+  },
+  {
+    "id": "pair-sums",
+    "name": "Pair Sums",
+    "description": "Output (input[0]+input[1]) then (input[2]+input[3]).",
+    "optimalCycles": 6,
+    "optimalSize": 6,
+    "testCases": [
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "expected": [
+          3,
+          7
+        ]
+      },
+      {
+        "input": [
+          10,
+          5,
+          0,
+          5
+        ],
+        "expected": [
+          15,
+          5
+        ]
+      }
+    ]
+  },
+  {
+    "id": "running-sum-four",
+    "name": "Running Sum Four",
+    "description": "Output the running total after each of 4 inputs.",
+    "optimalCycles": 8,
+    "optimalSize": 8,
+    "testCases": [
+      {
+        "input": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "expected": [
+          1,
+          3,
+          6,
+          10
+        ]
+      },
+      {
+        "input": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "expected": [
+          2,
+          4,
+          6,
+          8
+        ]
+      }
     ]
   }
 ]

@@ -857,7 +857,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "outskirts",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "tavern",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 20
   },
   {
     "id": "gen_cyber_0001",
@@ -880,7 +937,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "patrolling"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "tavern",
+        "activity": "drilling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "watching the gate"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "checking papers"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "shrine",
+        "activity": "off-duty rounds"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "commons",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 10
   },
   {
     "id": "gen_cyber_0002",
@@ -903,7 +1017,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "market",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "commons",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 19
   },
   {
     "id": "gen_cyber_0003",
@@ -926,7 +1097,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "reading"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "outskirts",
+        "activity": "annotating records"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "debating"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "tutoring"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "gate",
+        "activity": "observing the sky"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 22
   },
   {
     "id": "gen_cyber_0004",
@@ -949,7 +1177,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "tavern",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "market",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "tavern",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 30
   },
   {
     "id": "gen_cyber_0005",
@@ -972,7 +1257,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "gate",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "tavern",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 26
   },
   {
     "id": "gen_cyber_0006",
@@ -995,7 +1337,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "commons",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "home",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "tavern",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "market",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 10
   },
   {
     "id": "gen_cyber_0007",
@@ -1018,7 +1417,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "shrine",
+        "activity": "reading"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "tavern",
+        "activity": "annotating records"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "debating"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "outskirts",
+        "activity": "tutoring"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "observing the sky"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "commons",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 32
   },
   {
     "id": "gen_cyber_0008",
@@ -1041,7 +1497,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "market",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 30
   },
   {
     "id": "gen_cyber_0009",
@@ -1064,7 +1577,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "market",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "commons",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "home",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "workshop",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 17
   },
   {
     "id": "gen_cyber_0010",
@@ -1087,6 +1657,63 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "shrine",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "market",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "tavern",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 21
   }
 ]

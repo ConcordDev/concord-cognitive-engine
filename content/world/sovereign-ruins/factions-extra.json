@@ -1,0 +1,69 @@
+[
+  {
+    "id": "gen_sovereign-ruins_faction_0000",
+    "name": "Concord Keepers",
+    "motto": "Refuse, and remain.",
+    "goal": "preserve the old charters against erasure",
+    "values": [
+      "craft",
+      "discipline",
+      "restraint"
+    ],
+    "fears": [
+      "the day their founding lie is spoken aloud",
+      "a rival learning where the cache is hidden"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "ruins_concordia_envoy"
+    ],
+    "allied_factions": [
+      "ruins_archivists"
+    ],
+    "npc_ids": [
+      "denier_priest_palen"
+    ],
+    "dialogue_style": "zealous_fervent",
+    "reputation_currency": "standing",
+    "world_id": "sovereign-ruins",
+    "visual": {
+      "primary_color": "#a8c94f",
+      "secondary_color": "#97ccc9",
+      "accent_color": "#2443ef"
+    },
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_faction_0001",
+    "name": "Covenant Seekers",
+    "motto": "Refuse, and remain.",
+    "goal": "broker peace between the rival houses on their own terms",
+    "values": [
+      "secrecy",
+      "mercy",
+      "sacrifice"
+    ],
+    "fears": [
+      "a single strike at the heart of their power"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "ruins_scavenger_crews"
+    ],
+    "allied_factions": [
+      "ruins_spell_spirits"
+    ],
+    "npc_ids": [
+      "archon_thanis"
+    ],
+    "dialogue_style": "warm_persuasive",
+    "reputation_currency": "standing",
+    "world_id": "sovereign-ruins",
+    "visual": {
+      "primary_color": "#264148",
+      "secondary_color": "#e186e6",
+      "accent_color": "#035467"
+    },
+    "generated": true
+  }
+]

@@ -4,6 +4,7 @@
 #   - macro-depth weighted score:    must be 1.000
 #   - UX polish weighted score:      must be ≥ 0.995
 #   - verifier WIRED count:          must be ≥ 234 of 235
+#   - content census:                must be AT TARGET (no world/lib gaps)
 #   - test suite:                    must be 0 failures
 #
 # The browser-driven audit (a11y + console errors via Playwright) runs
@@ -67,6 +68,13 @@ jobs:
 
       - name: Spec-vs-implementation audit
         run: node scripts/audit-spec-vs-impl.mjs
+
+      - name: Content census
+        run: |
+          # Authored content (per-world NPCs/factions + minigame libs) must stay
+          # AT TARGET — fails the build on any below-target surface so content
+          # can't silently regress.
+          node scripts/author/census.mjs --ci
 
       - name: Server test suite
         working-directory: server

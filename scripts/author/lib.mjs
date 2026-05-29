@@ -60,7 +60,9 @@ export function loadBible(world) {
     ? { npcs: asArray(readJSON(join(WORLD_DIR, "npcs.json")), "npcs"), factions: asArray(readJSON(join(WORLD_DIR, "factions.json")), "factions") }
     : { npcs: [], factions: [] };
   const npcs = [...asArray(readJSON(join(dir, "npcs.json")), "npcs"), ...asArray(readJSON(join(dir, "npcs-extra.json")), "npcs"), ...hubExtra.npcs];
-  const factions = [...asArray(readJSON(join(dir, "factions.json")), "factions"), ...hubExtra.factions];
+  // factions-extra.json is the opt-in density slot mirroring npcs-extra.json — the
+  // pipeline writes here so rich primary factions.json files aren't spliced.
+  const factions = [...asArray(readJSON(join(dir, "factions.json")), "factions"), ...asArray(readJSON(join(dir, "factions-extra.json")), "factions"), ...hubExtra.factions];
   const lore = asArray(readJSON(join(dir, "lore.json")), "lore");
   return { world, dir, npcs, factions, lore };
 }

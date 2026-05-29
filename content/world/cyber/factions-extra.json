@@ -1,0 +1,36 @@
+[
+  {
+    "id": "gen_cyber_faction_0000",
+    "name": "Syndicate Runners",
+    "motto": "Refuse, and remain.",
+    "goal": "trade in the secrets the grid was built to bury",
+    "values": [
+      "endurance",
+      "discipline",
+      "loyalty"
+    ],
+    "fears": [
+      "the day their founding lie is spoken aloud",
+      "being remembered as the villains of the tale"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "cyber_ai_rights_movement"
+    ],
+    "allied_factions": [
+      "cyber_arasacorp"
+    ],
+    "npc_ids": [
+      "doctor_ren_chase"
+    ],
+    "dialogue_style": "formal_measured",
+    "reputation_currency": "compute_credits",
+    "world_id": "cyber",
+    "visual": {
+      "primary_color": "#bd6bca",
+      "secondary_color": "#de2a5d",
+      "accent_color": "#76591a"
+    },
+    "generated": true
+  }
+]
