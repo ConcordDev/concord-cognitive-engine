@@ -41,6 +41,12 @@ These two are locked by economic + legal contract. They're hardcoded in source a
 |---|---|---|
 | `CONCORD_HORROR_DURATION_S` | `1800` (30 min) | Max session length. Lower → tense; higher → drags. |
 | `CONCORD_HORROR_EVIDENCE_TO_WIN` | `3` | Distinct sighting kinds investigators must collect to win. Lower → brisk; higher → grindy. |
+| `CONCORD_HORROR_DREAD` | `1` | E1 dread substrate kill-switch (`0` disables the terror-radius heartbeat). |
+| `CONCORD_HORROR_TERROR_RADIUS_M` | `28` | Distance (m) at which the ghost begins raising dread. |
+| `CONCORD_HORROR_CHASE_RADIUS_M` | `10` | Inner radius (m) that flips the chase state → terror music. |
+| `CONCORD_HORROR_DREAD_RISE` | `0.18` | Per-tick dread rise toward proximity dread. |
+| `CONCORD_HORROR_DREAD_DECAY` | `0.06` | Per-tick dread decay when safe. |
+| `CONCORD_HORROR_BLEED_OUT_S` | `45` | Seconds a downed investigator has before bleed-out (rally window). |
 
 ### Time Loop (Phase CC5)
 

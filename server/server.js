@@ -680,6 +680,15 @@ registerHeartbeat("world-zone-hazard-cycle", {
   handler: runWorldZoneHazardCycle,
 });
 
+// E1 — horror dread substrate. Proximity-driven terror + chase + bleed-out
+// sweep for active asymmetric-horror sessions; emits horror:tension.
+import { runHorrorDreadCycle } from "./emergent/horror-dread-cycle.js";
+registerHeartbeat("horror-dread-cycle", {
+  frequency: 2,
+  scope: "world",
+  handler: runHorrorDreadCycle,
+});
+
 // Phase T — NPC equal-agency cross-world. Three heartbeats:
 //   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
 //                                             ambition-driven goal-seeks
@@ -49354,9 +49363,38 @@ app.post("/api/horror/session/:id/sighting", requireAuth(), asyncHandler(async (
 }));
 
 app.post("/api/horror/session/:id/down", requireAuth(), asyncHandler(async (req, res) => {
-  const { downInvestigator } = await import("./lib/horror.js");
+  const { downInvestigator, getSession } = await import("./lib/horror.js");
+  const { woundInvestigator } = await import("./lib/horror-dread.js");
+  const ghostUserId = req.user?.id || req.user?.userId;
+  const targetUserId = req.body?.targetUserId;
+  // E1 — a ghost hit climbs the dread ladder (healthy → wounded → downed)
+  // rather than one-shotting; only a 'downed' result triggers the win-check.
+  const sess = getSession(db, req.params.id);
+  if (!sess) return res.json({ ok: false, error: "no_session" });
+  if (sess.ghost_user_id !== ghostUserId) return res.json({ ok: false, error: "not_ghost" });
+  const wound = woundInvestigator(db, req.params.id, targetUserId);
+  if (wound.ok && wound.downed) {
+    const r = downInvestigator(db, req.params.id, ghostUserId, targetUserId);
+    return res.json({ ...r, healthTier: "downed" });
+  }
+  res.json(wound.ok ? { ok: true, healthTier: wound.healthTier, downed: false } : wound);
+}));
+
+// E1 — rally (revive) a wounded/downed teammate before bleed-out (comeback).
+app.post("/api/horror/session/:id/rally", requireAuth(), asyncHandler(async (req, res) => {
+  const { rallyInvestigator } = await import("./lib/horror-dread.js");
+  const { getSession } = await import("./lib/horror.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(downInvestigator(db, req.params.id, userId, req.body?.targetUserId));
+  const targetUserId = req.body?.targetUserId || userId;
+  const sess = getSession(db, req.params.id);
+  if (!sess || sess.ended_at) return res.json({ ok: false, error: "no_active_session" });
+  res.json(rallyInvestigator(db, req.params.id, targetUserId));
+}));
+
+// E1 — dread/tension state for the role HUD.
+app.get("/api/horror/session/:id/dread", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDreadState } = await import("./lib/horror-dread.js");
+  res.json({ ok: true, dread: getDreadState(db, req.params.id) });
 }));
 
 app.post("/api/horror/session/:id/end", requireAuth(), asyncHandler(async (req, res) => {
