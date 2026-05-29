@@ -6,6 +6,7 @@
 // mode=constraint_check.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { AlertTriangle, Brain, X, Loader2 } from 'lucide-react';
 
 interface Alert {
@@ -48,11 +49,9 @@ export function DriftAlertToast() {
     } catch { /* swallow */ }
   }, [seenIds, worldId]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  // Push: refresh the instant the server emits a drift alert; slow backstop poll
+  // self-heals missed events / reconnect gaps.
+  useRealtimeRefresh(['world:drift-alert'], refresh, { backstopMs: POLL_MS });
 
   const resolve = useCallback(async () => {
     if (!activeAlert) return;

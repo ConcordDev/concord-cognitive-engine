@@ -6,6 +6,7 @@
 // refresh immediately.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Swords } from 'lucide-react';
 
 interface WarRow {
@@ -39,11 +40,12 @@ export function StrategicWarBanner() {
     } catch { /* swallow */ }
   }, [worldId]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  // Push: faction-war events refresh the banner immediately; slow backstop poll.
+  useRealtimeRefresh(
+    ['faction-war:tick', 'faction-war:clash', 'faction-war:kill', 'faction-war:end'],
+    refresh,
+    { backstopMs: POLL_MS },
+  );
 
   // Refresh immediately on a fresh war declaration.
   useEffect(() => {

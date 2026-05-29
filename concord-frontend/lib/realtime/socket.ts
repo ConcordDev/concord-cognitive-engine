@@ -330,6 +330,18 @@ export type SocketEvent =
   | 'faction-war:clash'
   // WS4(b) — stress-triggered awakening opportunity (living-world plan)
   | 'player:awakening-available'
+  // Realtime cleanup — events that exist server-side but were missing from the
+  // union, so HUDs can subscribe instead of polling (push + slow backstop).
+  | 'world:drift-alert'
+  | 'brawl-invited'
+  | 'climbing:route-completed'
+  | 'player:corpse-dropped'
+  // The System — diegetic push-driven status layer (players/NPCs/hostiles).
+  | 'system:level-up'
+  | 'system:skill-acquired'
+  | 'system:skill-evolved'
+  | 'system:danger-band'
+  | 'system:notice'
   // World scheduler
   | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler

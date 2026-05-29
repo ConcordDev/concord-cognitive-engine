@@ -11,6 +11,7 @@
 // Invite send happens via the NPC menu (DA1).
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Swords, X, Check } from 'lucide-react';
 import { sfx, juice } from '@/lib/concordia/juice';
 
@@ -169,11 +170,8 @@ export function BrawlActiveHUD() {
     };
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  // Push: a server brawl-invite refreshes pending invites instantly; slow backstop.
+  useRealtimeRefresh(['brawl-invited'], refresh, { backstopMs: POLL_MS });
 
   if (!active) return null;
 

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import {
   ChevronRight,
   Check,
@@ -139,11 +140,8 @@ export function QuestTracker({ worldId, onClaimReward, forceMode }: QuestTracker
       .catch(() => {});
   }, [worldId]);
 
-  useEffect(() => {
-    reload();
-    const interval = setInterval(reload, 15_000);
-    return () => clearInterval(interval);
-  }, [reload]);
+  // Push: quest lifecycle events reload the tracker instantly; slow backstop poll.
+  useRealtimeRefresh(['quest:new', 'quest:completed', 'quest:lineage-quest'], reload, { backstopMs: 30000 });
 
   const claimReward = async (quest: Quest) => {
     setClaiming(quest.id);
