@@ -27,6 +27,24 @@ export default function registerRomanceMacros(register) {
     return courtInteraction(db, userId, String(input?.partnerKind || "npc"), String(input?.partnerId || ""), input?.sentiment);
   });
 
+  // F1.2 — gift system. Consume an inventory item and shift courtship affinity
+  // by the NPC's reaction (loved/liked/neutral/disliked, derived from archetype
+  // or an authored gift_preferences override).
+  register("romance", "give_gift", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    if (!input?.npcId || !input?.itemId) return { ok: false, reason: "missing_inputs" };
+    const { giveGift } = await import("../lib/gifting.js");
+    return giveGift(db, {
+      userId,
+      npcId: String(input.npcId),
+      itemId: String(input.itemId),
+      worldId: input?.worldId ? String(input.worldId) : "concordia-hub",
+    });
+  });
+
   register("romance", "courtship", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
