@@ -46,6 +46,7 @@ import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/seconda
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
+import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -326,6 +327,8 @@ export default function AvatarSystem3D({
   // performance.now() < entry, the entity's mixer freezes (delta=0).
   const hitPauseUntilRef = useRef<Map<string, number>>(new Map());
   const keysRef = useRef<Set<string>>(new Set());
+  // B2 — smoothed planar input (accel/decel curve), so direction changes ease.
+  const planarMoveRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
   const [activeAnimation, setActiveAnimation] = useState<AnimationClip>(
@@ -1837,6 +1840,9 @@ export default function AvatarSystem3D({
         const k = e.key.toLowerCase();
         keysRef.current.delete(k);
         if (k === ' ' || k === 'spacebar') {
+          // B1 — variable jump height: releasing Space early cuts an ascending
+          // jump for a shorter hop (no-op while falling/grounded).
+          physicsWorld.releaseJump?.('player');
           // Release glide on key-up so the player can choose how long the
           // sail lasts. Grounded glide is a no-op anyway.
           physicsWorld.setGlide?.('player', false);
@@ -1952,6 +1958,15 @@ export default function AvatarSystem3D({
         if (keys.has('d')) moveX += 1;
 
         const isMoving = moveX !== 0 || moveZ !== 0;
+
+        // B2 — accel/decel curve: ease the planar input toward the raw WASD
+        // vector so starts/stops/turns ramp rather than snap (responsive, not
+        // floaty — fast rate). The smoothed vector drives the position delta.
+        const pm = planarMoveRef.current;
+        pm.x = accelToward(pm.x, moveX, delta);
+        pm.z = accelToward(pm.z, moveZ, delta);
+        moveX = Math.abs(pm.x) < 0.001 ? 0 : pm.x;
+        moveZ = Math.abs(pm.z) < 0.001 ? 0 : pm.z;
         const exhausted = isExhausted(physics);
 
         // Theme 6 (game-feel pass): airborne / swim state from physics-world.
