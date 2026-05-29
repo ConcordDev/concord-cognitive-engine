@@ -2782,8 +2782,8 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId, id: schemeId } = req.params;
       const userId = req.user.id;
       const action = String(req.body?.action || "ignore");
-      if (!["expose", "abet", "ignore"].includes(action)) {
-        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore" });
+      if (!["expose", "abet", "ignore", "blackmail"].includes(action)) {
+        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore|blackmail" });
       }
 
       const { interveneInScheme } = await import("../lib/npc-schemes.js");

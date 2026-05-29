@@ -216,3 +216,19 @@ The living-world system ships ON by default; each flag is a kill-switch.
 `GET /api/admin/world-gradient-health` (owner-only) reports per-world band level
 distributions + `{ hubLowLevel, veteransOutward }` health flags — the signal that
 the hub stays grindable and veterans are draining to the frontier.
+
+### D5 — CK3 hooks (`server/lib/hooks.js`)
+Information-as-spendable-leverage. A hook is held by one party OVER another,
+derived from a discovered secret; weak = single-use coercion, strong = passive
+hostile-scheme block + scheme-success bonus. Both decay.
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_HOOK_TTL_S` | 36288000 (≈ in-world decade, 420×24×3600) | Hook lifetime before decay. |
+| `CONCORD_HOOK_STRONG_DIFFICULTY` | 7 | Secret discovery_difficulty ≥ this → strong hook outright. |
+| `CONCORD_HOOK_WEAK_USES` | 1 | Coercions a weak hook grants. |
+| `CONCORD_HOOK_STRONG_USES` | 3 | Coercions a strong hook grants (plus passive block). |
+
+Non-env constants (edit in source if tuning): `SUCCESS_BONUS_WEAK 10`,
+`SUCCESS_BONUS_STRONG 20` (scheme success_pct bump when plotter holds a hook),
+`COERCE_OPINION_DELTA −12` (resentment when leverage is spent). `hook-decay-sweep`
+heartbeat (freq 240, scope global) GCs expired rows.

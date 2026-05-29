@@ -35,6 +35,28 @@ C-series (content authoring: tunya lore, festivals/fauna per world, per-world qu
 
 ---
 
+## Execution status (continuation session, branch `claude/audit-findings-remaining-BkcKy`)
+
+Verified against code first (docs treated as stale, per the meta-finding). Two stale
+plan claims caught and corrected up front: **D8's "AI-playlist not wired to the LLM" is
+WRONG** — `music.ai-playlist` (`server/domains/music.js:1195`) already calls `ctx.llm.chat`
+with a deterministic keyword fallback; and the `weaponise_triggers` table the prior agent
+thought absent is real (mig 261). Trust the code.
+
+- **D5 — CK3 hooks: SHIPPED.** New migration `277_npc_hooks.js` + `server/lib/hooks.js`
+  (grant/upgrade, secret→hook generation with corroboration-promotes-to-strong, weak=single-use
+  coercion / strong=passive hostile-scheme block + success bonus, spend, coerce, **inheritance**
+  — hooks over a dead NPC re-point to the heir and held hooks pass on, decay sweep, trait summary).
+  Wired into: `proposeScheme`/`proposePlayerScheme` (strong-hook block returns `reason:'hooked'` +
+  success-pct bonus), `interveneInScheme` (new `blackmail` branch spends a held hook to force a
+  scheme to `abandoned`), `onNpcDeath` (hook inheritance), the two secret-discovery macros
+  (`secrets.discover`/`surveillance_roll` now yield a hook + new `secrets.hooks_held`), a new
+  `GET /api/npc/:npcId/hooks` endpoint surfaced in `NPCTraitInspector.tsx` ("you hold a … hook" /
+  "they hold a … hook over you"), and a `hook-decay-sweep` heartbeat (freq 240, global). Contract
+  test `tests/hooks.test.js` 22/22; 0 regressions across the 108 scheme/secrets/legacy tests.
+
+---
+
 ## 0. Thesis
 
 Breadth is done. The platform has the *mechanics* of CK3 + Skyrim + Hades + Tarkov + Diner Dash +

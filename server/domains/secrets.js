@@ -13,6 +13,7 @@ import {
   rollSurveillance,
   listDiscoveredForUser,
 } from "../lib/secrets.js";
+import { generateHookFromSecretDiscovery, getHooksHeldBy } from "../lib/hooks.js";
 
 export default function registerSecretsMacros(register) {
   /**
@@ -43,7 +44,15 @@ export default function registerSecretsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId || !input.secretId) return { ok: false, reason: "missing_inputs" };
-    return discoverSecret(db, userId, input.secretId, input.via || "quest");
+    const r = discoverSecret(db, userId, input.secretId, input.via || "quest");
+    // D5 — first-time discovery yields a hook over the secret's subject.
+    if (r?.ok && r.action === "discovered") {
+      try {
+        const h = generateHookFromSecretDiscovery(db, { holderId: userId, secretId: input.secretId, worldId: input.worldId || null });
+        if (h?.ok) r.hook = { strength: h.strength, action: h.action };
+      } catch { /* hooks optional */ }
+    }
+    return r;
   });
 
   /**
@@ -79,6 +88,27 @@ export default function registerSecretsMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const userId = ctx?.actor?.userId;
     if (!userId || !input.targetNpcId) return { ok: false, reason: "missing_inputs" };
-    return rollSurveillance(db, userId, input.targetNpcId);
+    const r = rollSurveillance(db, userId, input.targetNpcId);
+    // D5 — surveillance that cracks a secret also yields a hook over its subject.
+    if (r?.ok && r.action === "discovered" && r.secretId) {
+      try {
+        const h = generateHookFromSecretDiscovery(db, { holderId: userId, secretId: r.secretId, worldId: input.worldId || null });
+        if (h?.ok) r.hook = { strength: h.strength, action: h.action };
+      } catch { /* hooks optional */ }
+    }
+    return r;
   });
+
+  /**
+   * secrets.hooks_held — list the leverage (CK3 hooks) the player currently
+   * holds. Surfaced in the SecretsCodex / scheme intervene UI.
+   * input: { userId? }
+   */
+  register("secrets", "hooks_held", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    return { ok: true, hooks: getHooksHeldBy(db, "player", userId) };
+  }, { note: "list hooks (leverage) the player holds" });
 }

@@ -845,6 +845,16 @@ registerHeartbeat("ambient-chat-sweep", {
   handler: ({ db: ctxDb } = {}) => sweepExpiredAmbientChat(ctxDb || db),
 });
 
+// D5: CK3 hook decay sweep. Active-query filters already exclude expired hooks
+// at read time, so this is GC only — it marks expired leverage spent so the
+// npc_hooks table self-cleans. Scope global (single table, no per-world split).
+import { decaySweep as sweepExpiredHooks } from "./lib/hooks.js";
+registerHeartbeat("hook-decay-sweep", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db: ctxDb } = {}) => sweepExpiredHooks(ctxDb || db),
+});
+
 // Phase BB1: festival trigger heartbeat. Every 4 ticks (~1 min) checks
 // the calendar against the festivals table and opens any matching
 // window. Idempotent on (festival_id, world_id, year_idx). Kill-switch:
@@ -49293,6 +49303,16 @@ app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res
       const ctx = m.composeAsymmetryContext(db, req.params.npcId, userId);
       res.json({ ok: true, asymmetry: ctx });
     } else { res.status(503).json({ ok: false, error: "asymmetry_unavailable" }); }
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// D5 — CK3 hooks inspector: leverage held between this NPC and the player.
+app.get("/api/npc/:npcId/hooks", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { getHookSummaryForTrait } = await import("./lib/hooks.js");
+    const userId = req.user?.id || req.user?.userId;
+    const summary = getHookSummaryForTrait(db, req.params.npcId, userId);
+    res.json({ ok: true, hooks: summary });
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
