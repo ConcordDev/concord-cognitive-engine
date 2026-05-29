@@ -16,8 +16,11 @@ export interface BufferedInput {
   variant?: string;
 }
 
-/** Default buffer window — ~6 frames at 60fps. */
-export const DEFAULT_BUFFER_MS = 110;
+/** Default buffer window — ~5–6 frames at 60fps. Tuned to 90ms (E2, depth
+ *  plan): 110ms sat at the top of the proven 50–110ms range (SF6 ≈5f), which
+ *  over-buffers and can fire a queued special a beat late; 90ms keeps the
+ *  forgiveness without the lag. */
+export const DEFAULT_BUFFER_MS = 90;
 /** Recovery fraction at/after which a committed action can be cancelled. */
 export const CANCEL_THRESHOLD = 0.5;
 

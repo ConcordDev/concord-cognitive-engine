@@ -117,6 +117,14 @@ bounded so a bad value can't break the game.
 Kill-switches added alongside (set to `0` to disable): `CONCORD_SCHEME_OVERHEAR`
 (scheme barge-in), `CONCORD_ZONE_HAZARD` (hazard-zone damage tick).
 
+**E2 combat-feel tune (depth/balance plan, 2026-05-29)** — applied directly in
+code (not env-overridable; they're game-feel constants):
+
+| Constant | Old | New | File | Rationale |
+|---|---|---|---|---|
+| `DEFAULT_BUFFER_MS` | 110 | **90** | `concord-frontend/lib/concordia/combat-input-buffer.ts` | 110 sat at the top of the proven 50–110ms input-buffer range and over-buffered queued specials; 90ms keeps forgiveness without lag (Phase E §1, SF6 ≈5f). |
+| `SEVERITY_FEEL.rocked.targetPauseMs` | 115 | **150** | `server/lib/combat/impact-feel.js` | Heavy-tier hitstop toward the SF2 ~167ms benchmark to sell weight. (The old "80ms heavy" was the replaced GameJuice heuristic.) Ordering invariant knockdown(205)>rocked(150)>flinch(55)>none(0) preserved. |
+
 Guarded by `server/tests/integration/balance-dials.test.js` — pins each
 default, its bounds, and that an out-of-range/garbage env value falls back to
 the default.

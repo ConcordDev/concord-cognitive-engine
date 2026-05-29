@@ -32,7 +32,7 @@
 export const SEVERITY_FEEL = Object.freeze({
   none:      Object.freeze({ targetPauseMs: 0,   attackerPauseMs: 0,  knockback: 0,   knockMs: 0,   wince: "none"  }),
   flinch:    Object.freeze({ targetPauseMs: 55,  attackerPauseMs: 0,  knockback: 0,   knockMs: 0,   wince: "light" }),
-  rocked:    Object.freeze({ targetPauseMs: 115, attackerPauseMs: 45, knockback: 4.5, knockMs: 220, wince: "heavy" }),
+  rocked:    Object.freeze({ targetPauseMs: 150, attackerPauseMs: 45, knockback: 4.5, knockMs: 220, wince: "heavy" }),
   knockdown: Object.freeze({ targetPauseMs: 205, attackerPauseMs: 60, knockback: 7.5, knockMs: 340, wince: "crit"  }),
 });
 

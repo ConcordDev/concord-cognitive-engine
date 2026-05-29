@@ -198,9 +198,12 @@ Per Phase E §0: common/ambient NPCs scale to **70–85%** of player tier (power
 rivals + world bosses to **100–110%** (stakes preserved). This is the decisive dial — matters more
 than the XP curve. Verify the scaling code path and wire these rates.
 
-### E2 — Combat-feel micro-tune — S
-Per §1: drop input buffer ~110→**90ms**; raise heavy hitstop ~80→**150ms**; keep coyote 120 / jump
-buffer 130 / kill-freeze. Pairs with D1 (graded reactions) and D2 (windows).
+### E2 — Combat-feel micro-tune — DONE
+Per §1: input buffer `DEFAULT_BUFFER_MS` 110→**90ms** (`combat-input-buffer.ts`); heavy-tier
+("rocked") hitstop `SEVERITY_FEEL.rocked.targetPauseMs` 115→**150ms** (`impact-feel.js`, toward the
+SF2 ~167ms heavy benchmark) — note the old "80ms heavy" was the *replaced* GameJuice heuristic; the
+impact-feel mapping already graded it. Coyote 120 / jump buffer 130 / kill-freeze kept. Tests:
+input-buffer 6/6, impact-feel + balance-dials 13/13 (ordering invariants intact).
 
 ### E3 — Skill-evolution drama + rank ladder — M
 Per §2–3: dramatize the ~per-10-level evolution as an "Arise"-style named beat via
