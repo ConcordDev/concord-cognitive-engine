@@ -1051,14 +1051,17 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // seedNPCAsymmetry (above) but was never read into the prompt. Best-effort;
       // NEVER injects narrative_context.secret — only the derived grudge/desire/
       // preoccupation prose, which is authored-for-players by design.
+      // Fetch the player's four-axis ecosystem metrics ONCE — used by both the
+      // asymmetry desire-matching and the D3 player-state reactivity read.
+      let playerMetrics = null;
+      try {
+        const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
+        playerMetrics = getMetrics(db, playerId, worldId);
+      } catch { /* metrics table optional */ }
+
       const asymmetryLines = [];
       try {
         const asym = await import("../lib/npc-asymmetry.js");
-        let playerMetrics = null;
-        try {
-          const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
-          playerMetrics = getMetrics(db, playerId, worldId);
-        } catch { /* metrics table optional */ }
         const ctx = asym.composeAsymmetryContext?.(db, npcId, playerId, playerMetrics);
         if (ctx) {
           if (ctx.persistent_grudge) asymmetryLines.push(`Persistent grudge (let it color your tone; do not recite it verbatim): ${ctx.persistent_grudge}`);
@@ -1068,12 +1071,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* asymmetry tables optional on minimal builds */ }
 
+      // D3 — player-state reactivity: NPCs notice WHO THE PLAYER HAS BECOME
+      // (their standing across the four axes), not just their stored opinion of
+      // past chats. Qualitative read only; never exposes raw numbers/secrets.
+      const playerStateLines = [];
+      try {
+        const { describePlayerStateForNpc } = await import("../lib/npc-player-read.js");
+        const reads = describePlayerStateForNpc(playerMetrics, {
+          max: 2, notorious: isHostileRep,
+        });
+        for (const line of reads) {
+          playerStateLines.push(`What you sense about this person (let it color your tone, don't recite it): ${line}`);
+        }
+      } catch { /* player-read optional */ }
+
       const promptLines = [
         TASK_PROMPTS.worldNpcPersonaHeader({
           npcName, archetype: npc.archetype, worldId,
           faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
         }),
         ...asymmetryLines,
+        ...playerStateLines,
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
         `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,

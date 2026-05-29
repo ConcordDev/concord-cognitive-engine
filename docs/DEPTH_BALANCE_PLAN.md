@@ -108,19 +108,21 @@ recovery-punish window; dodge → miss). Compose with D1's momentum model: windo
 contact lands, momentum governs *what it does*. Deterministic, server-authoritative, no RNG.
 **Borrowed signal:** Sekiro/Elden Ring two-layer model + guard-counter payoff.
 
-### D3 — Surface NPC interiority as visible signal (the "they see me" loop) — M
-**Finding:** Backend is deep (`character_opinions`, `npc_grudges`, `npc_schemes`, `npc_nemesis`,
-`weaponise-triggers.js`) but most of it never reaches the player's eyes/ears. Procedural NPCs in
-particular fall back to generic dialogue context.
-**Target (all cheap reads over existing tables):**
-- **Greeting barks from memory:** on NPC interaction, surface the last (npc,player) opinion/grudge
-  outcome as a one-line bark ("You again — after what you did to my brother.").
-- **Player-state reactivity:** wire 2–3 visible player states (recent combat / reputation / cleanliness
-  if tracked) into ambient barks, RDR2-style.
-- **Suspicion-on-follow:** simple state machine — NPC glances/flees when watched or followed.
-- **Observable scheme intersections:** ensure `scheme-overhear` + `EavesdropBubble` name *who* and
-  *why* (plotter/target archetype + faction + kind), keeping secrets out per the canary invariant.
-**Borrowed signal:** ctOS scannable life + RDR2 NPC memory ("continuity, not smarter AI").
+### D3 — Surface NPC interiority as visible signal (the "they see me" loop) — player-state read DONE; remainder partly pre-existing
+**Audit:** much of D3 was already wired — **memory IS surfaced**: the live `/dialogue` endpoint
+injects asymmetry (grudge/preoccupation/desire via `composeAsymmetryContext`, T1.2) + reputation tier +
+opinion into the LLM prompt; **scheme intersections** already name who/why via the T2.3 scheme-overhear
++ barge-in work. The genuine remaining gap was **player-state reactivity** — `playerMetrics`
+(four-axis) was *fetched but only used for desire-matching*, never surfaced as something the NPC reacts
+to.
+**Done:** new pure helper `server/lib/npc-player-read.js#describePlayerStateForNpc(metrics, {max,
+notorious})` turns the four-axis standing (refusal_debt / concordia_alignment / ecosystem_score /
+concord_alignment) into up to 2 qualitative "what I sense about you" prompt lines (no raw numbers,
+secrets excluded); wired into `/dialogue` (one shared `getMetrics` fetch now feeds both asymmetry and
+the read). Contract test 6/6. Thresholds logged in BALANCE_DIALS as playtest fodder.
+**Deferred (lower value / not blocking):** suspicion-on-follow state machine (needs a new follow
+detector); a per-NPC `scannable_profile` belongs with D4's procedural-NPC pass.
+**Borrowed signal:** RDR2 "NPCs react to your current state" — *now satisfied for standing*.
 
 ### D4 — Procedural-NPC depth floor → mid (close the authored gap) — L
 **Finding:** `server/lib/npc-generator.js` gives procedural NPCs personality vectors + density but
