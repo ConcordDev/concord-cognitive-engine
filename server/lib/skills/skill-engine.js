@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import { awardCharacterLevel } from './character-level.js';
 import { effectivenessMultiplier as crossWorldMul } from '../cross-world-effectiveness.js';
+import { grantTalentPoints } from '../talents.js';
 
 // ── Skill → native world type mapping ─────────────────────────────────────────
 
@@ -248,6 +249,14 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
         characterLevelResult = awardCharacterLevel(db, userId, opts.worldId);
       }
     } catch { /* non-fatal */ }
+  }
+
+  // F2.3 — earn 1 talent point per level gained (the live level-up gain site).
+  // Best-effort: the talents substrate is optional on minimal builds.
+  if (leveled && levelsGained > 0) {
+    try {
+      grantTalentPoints(db, userId, levelsGained);
+    } catch { /* talents table optional */ }
   }
 
   return { leveled, newLevel: level, newXp: xp, levelsGained, characterLevelResult };

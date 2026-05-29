@@ -24502,6 +24502,10 @@ registerNpcLegacyMacros(register);
 import registerZonesMacros from "./domains/zones.js";
 registerZonesMacros(register);
 
+// F2.3 — player talent allocation (earn 1/level, spend into combat/utility nodes).
+import registerTalentsMacros from "./domains/talents.js";
+registerTalentsMacros(register);
+
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
 // can render per-NPC nemesis glyphs over nearby NPCs.

@@ -1999,18 +1999,28 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // F2.1 — fold equipped-gear affix bonuses into the enchantment power so
       // a Flaming/Keen weapon actually changes the hit (the other half of the
       // affix wire; the loot-roll assigns them). Best-effort — no gear → +0.
+      const elementForGear = skillData.element || "none";
       let affixEnchant = 0;
+      let talentMul = 1, talentFlat = 0;
       try {
         const { combatEnchantmentFor } = await import("../lib/item-affixes.js");
         const { getLoadout } = await import("../lib/combat/loadout.js");
-        affixEnchant = combatEnchantmentFor(getLoadout(db, userId), skillData.element || "none");
+        affixEnchant = combatEnchantmentFor(getLoadout(db, userId), elementForGear);
       } catch { /* affix substrate optional — combat unaffected */ }
+      // F2.3 — fold the player's allocated talent bonuses (melee/element % +
+      // flat power). Kept inside computeDamage's raw inputs so _validateDamageCap
+      // still bounds the result.
+      try {
+        const { talentDamageFor } = await import("../lib/talents.js");
+        const t = talentDamageFor(db, userId, elementForGear);
+        talentMul = t.multiplier; talentFlat = t.flatPower;
+      } catch { /* talents substrate optional */ }
 
       const attackerStats = {
         skillLevel: eff.effectiveLevel,
         element: skillData.element || 'none',
-        basePower: skillData.base_power || 5,
-        enchantmentBonus: (skillData.enchantment_power || 0) + affixEnchant,
+        basePower: (skillData.base_power || 5) * talentMul,
+        enchantmentBonus: (skillData.enchantment_power || 0) + affixEnchant + talentFlat,
         worldMultiplier: eff.multiplier || 1.0,
       };
 
