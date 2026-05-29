@@ -2137,12 +2137,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         // (the existing combat path doesn't expose that signal), so we
         // charge the hit-cost. Future: pass a hit boolean.
         polish.spendGas(db, { actorKind: "player", actorId: userId, amount: playerProfile.gas_strike_cost });
-        const strike = polish.recordStrike(db, { actorKind: "player", actorId: userId, nowMs: Date.now() });
+        const strike = polish.recordStrike(db, {
+          actorKind: "player", actorId: userId, nowMs: Date.now(),
+          element: skillData.element || 'none',
+        });
         if (strike?.ok && strike.multiplier > 1) {
           damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.multiplier * 10) / 10;
           damageResult.comboMultiplier = strike.multiplier;
           damageResult.comboCount = strike.combo;
           damageResult.finisherUnlocked = strike.finisher_unlocked;
+        }
+        // WS4(c) element-combo: amplify complementary elemental chains, dampen
+        // cancelling ones (post-combo, like the combo multiplier itself).
+        if (strike?.ok && strike.element_multiplier && strike.element_multiplier !== 1) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.element_multiplier * 10) / 10;
+          damageResult.elementMultiplier = strike.element_multiplier;
         }
         // T1.4a — stagger from real IMPACT MOMENTUM (bone-mass × angular-
         // velocity × lever) vs the NPC's poise budget, not raw damage vs a
