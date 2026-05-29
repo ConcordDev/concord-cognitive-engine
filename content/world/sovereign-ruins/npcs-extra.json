@@ -764,7 +764,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "patrolling"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "drilling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "watching the gate"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "checking papers"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "workshop",
+        "activity": "off-duty rounds"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 15
   },
   {
     "id": "gen_sovereign-ruins_0001",
@@ -787,7 +844,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "at the forge"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "tavern",
+        "activity": "shaping work"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "finishing pieces"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "selling wares"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "workshop",
+        "activity": "cleaning tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "tavern",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 28
   },
   {
     "id": "gen_sovereign-ruins_0002",
@@ -810,7 +924,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "shrine",
+        "activity": "gathering herbs"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "tending the sick"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "mixing remedies"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "home",
+        "activity": "house calls"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "outskirts",
+        "activity": "writing notes"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 22
   },
   {
     "id": "gen_sovereign-ruins_0003",
@@ -833,7 +1004,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "market",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "shrine",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "shrine",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "market",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "market",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "tavern",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 33
   },
   {
     "id": "gen_sovereign-ruins_0004",
@@ -856,7 +1084,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "shrine",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "shrine",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "shrine",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "tavern",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 7
   },
   {
     "id": "gen_sovereign-ruins_0005",
@@ -879,7 +1164,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "shrine",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "outskirts",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "workshop",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "market",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "commons",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 32
   },
   {
     "id": "gen_sovereign-ruins_0006",
@@ -902,7 +1244,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "patrolling"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "drilling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "watching the gate"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "market",
+        "activity": "checking papers"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "off-duty rounds"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "gate",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 15
   },
   {
     "id": "gen_sovereign-ruins_0007",
@@ -925,7 +1324,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "tavern",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "home",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 24
   },
   {
     "id": "gen_sovereign-ruins_0008",
@@ -948,6 +1404,63 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "home",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "shrine",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "gate",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 19
   }
 ]

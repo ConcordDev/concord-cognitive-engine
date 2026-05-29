@@ -764,7 +764,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "outskirts",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "outskirts",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 26
   },
   {
     "id": "gen_lattice-crucible_0001",
@@ -787,7 +844,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "gathering herbs"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "shrine",
+        "activity": "tending the sick"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "mixing remedies"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "house calls"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "writing notes"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 13
   },
   {
     "id": "gen_lattice-crucible_0002",
@@ -810,7 +924,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "shrine",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "market",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "market",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 24
   },
   {
     "id": "gen_lattice-crucible_0003",
@@ -833,7 +1004,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "gate",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "commons",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 17
   },
   {
     "id": "gen_lattice-crucible_0004",
@@ -856,7 +1084,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "chores"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "commons",
+        "activity": "working the field"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "midday meal"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "errands"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "with family"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "workshop",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 28
   },
   {
     "id": "gen_lattice-crucible_0005",
@@ -879,7 +1164,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "home",
+        "activity": "opening the stall"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "haggling"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "home",
+        "activity": "restocking"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "home",
+        "activity": "counting takings"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "sharing gossip"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "market",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 33
   },
   {
     "id": "gen_lattice-crucible_0006",
@@ -902,7 +1244,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "market",
+        "activity": "meditating"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "home",
+        "activity": "reading omens"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "outskirts",
+        "activity": "communing"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "warding the threshold"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "home",
+        "activity": "chanting"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "home",
+        "activity": "dreaming"
+      }
+    ],
+    "starting_sparks": 22
   },
   {
     "id": "gen_lattice-crucible_0007",
@@ -925,7 +1324,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "outskirts",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "workshop",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "workshop",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "commons",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "gate",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 34
   },
   {
     "id": "gen_lattice-crucible_0008",
@@ -948,7 +1404,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "commons",
+        "activity": "tracking"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "setting snares"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "gate",
+        "activity": "field-dressing game"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "trading pelts"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "workshop",
+        "activity": "sharpening tools"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "commons",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 10
   },
   {
     "id": "gen_lattice-crucible_0009",
@@ -971,7 +1484,64 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "market",
+        "activity": "reading"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "shrine",
+        "activity": "annotating records"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "commons",
+        "activity": "debating"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "tavern",
+        "activity": "tutoring"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "tavern",
+        "activity": "observing the sky"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "outskirts",
+        "activity": "sleeping"
+      }
+    ],
+    "starting_sparks": 16
   },
   {
     "id": "gen_lattice-crucible_0010",
@@ -994,6 +1564,63 @@
       "origin": "authoring-pipeline"
     },
     "is_conscious": false,
-    "generated": true
+    "generated": true,
+    "daily_schedule": [
+      {
+        "phase": "dawn",
+        "phase_hours": [
+          5,
+          8
+        ],
+        "location": "workshop",
+        "activity": "gathering herbs"
+      },
+      {
+        "phase": "morning",
+        "phase_hours": [
+          8,
+          11
+        ],
+        "location": "gate",
+        "activity": "tending the sick"
+      },
+      {
+        "phase": "midday",
+        "phase_hours": [
+          11,
+          14
+        ],
+        "location": "shrine",
+        "activity": "mixing remedies"
+      },
+      {
+        "phase": "afternoon",
+        "phase_hours": [
+          14,
+          18
+        ],
+        "location": "workshop",
+        "activity": "house calls"
+      },
+      {
+        "phase": "evening",
+        "phase_hours": [
+          18,
+          22
+        ],
+        "location": "gate",
+        "activity": "writing notes"
+      },
+      {
+        "phase": "night",
+        "phase_hours": [
+          22,
+          5
+        ],
+        "location": "shrine",
+        "activity": "resting"
+      }
+    ],
+    "starting_sparks": 23
   }
 ]
