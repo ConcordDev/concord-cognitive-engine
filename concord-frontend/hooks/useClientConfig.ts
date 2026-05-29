@@ -18,8 +18,12 @@ export interface ClientConfig {
     timeLoopMs: number; climbingMs: number; horrorRoleMs: number; restaurantMs: number;
     themeParkMs: number; driftAlertMs: number; courtshipMs: number; footprintMs: number;
     forwardPredMs: number; worldHealthMs: number; partyCombatTickMs: number; partyCombatDiscMs: number;
+    rogueliteMs: number; brawlInviteMs: number; factionMovesMs: number; dreamReaderMs: number;
   };
-  throttle: { courtshipFrameMs: number; footprintFrameMs: number };
+  throttle: {
+    courtshipFrameMs: number; footprintFrameMs: number;
+    npcActivityFrameMs: number; nemesisFrameMs: number; dangerBandFrameMs: number; contextPromptFrameMs: number;
+  };
 }
 
 export const CLIENT_CONFIG_DEFAULTS: ClientConfig = {
@@ -28,8 +32,12 @@ export const CLIENT_CONFIG_DEFAULTS: ClientConfig = {
     timeLoopMs: 2000, climbingMs: 2000, horrorRoleMs: 2500, restaurantMs: 3000,
     themeParkMs: 3000, driftAlertMs: 15000, courtshipMs: 30000, footprintMs: 30000,
     forwardPredMs: 300000, worldHealthMs: 60000, partyCombatTickMs: 200, partyCombatDiscMs: 1000,
+    rogueliteMs: 5000, brawlInviteMs: 5000, factionMovesMs: 30000, dreamReaderMs: 60000,
   },
-  throttle: { courtshipFrameMs: 100, footprintFrameMs: 200 },
+  throttle: {
+    courtshipFrameMs: 100, footprintFrameMs: 200,
+    npcActivityFrameMs: 80, nemesisFrameMs: 80, dangerBandFrameMs: 500, contextPromptFrameMs: 80,
+  },
 };
 
 // Module-level cache so every component shares one fetch.

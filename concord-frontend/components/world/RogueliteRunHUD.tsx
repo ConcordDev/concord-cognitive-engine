@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Dice5, ShoppingCart, X, Coins } from 'lucide-react';
 
 interface ActiveRun {
@@ -27,9 +28,8 @@ interface Unlock {
   description: string;
 }
 
-const POLL_MS = 5000;
-
 export function RogueliteRunHUD() {
+  const POLL_MS = useClientConfig().poll.rogueliteMs; // E0 — server-tunable
   const [run, setRun] = useState<ActiveRun | null>(null);
   const [balance, setBalance] = useState(0);
 

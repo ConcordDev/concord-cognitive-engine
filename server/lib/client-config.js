@@ -39,10 +39,18 @@ export function getClientConfig() {
       worldHealthMs:      n("CONCORD_POLL_WORLD_HEALTH_MS", 60000),
       partyCombatTickMs:  n("CONCORD_POLL_PARTY_TICK_MS", 200),
       partyCombatDiscMs:  n("CONCORD_POLL_PARTY_DISCOVERY_MS", 1000),
+      rogueliteMs:        n("CONCORD_POLL_ROGUELITE_MS", 5000),
+      brawlInviteMs:      n("CONCORD_POLL_BRAWL_INVITE_MS", 5000),
+      factionMovesMs:     n("CONCORD_POLL_FACTION_MOVES_MS", 30000),
+      dreamReaderMs:      n("CONCORD_POLL_DREAM_READER_MS", 60000),
     },
     throttle: {
       courtshipFrameMs:   n("CONCORD_THROTTLE_COURTSHIP_FRAME_MS", 100),
       footprintFrameMs:   n("CONCORD_THROTTLE_FOOTPRINT_FRAME_MS", 200),
+      npcActivityFrameMs: n("CONCORD_THROTTLE_NPC_ACTIVITY_FRAME_MS", 80),
+      nemesisFrameMs:     n("CONCORD_THROTTLE_NEMESIS_FRAME_MS", 80),
+      dangerBandFrameMs:  n("CONCORD_THROTTLE_DANGER_BAND_FRAME_MS", 500),
+      contextPromptFrameMs: n("CONCORD_THROTTLE_CONTEXT_PROMPT_FRAME_MS", 80),
     },
   };
 }

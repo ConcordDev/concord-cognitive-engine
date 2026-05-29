@@ -18,9 +18,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useHUDContext } from './concordia-hud/HUDContextProvider';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 const VISIBLE_RADIUS_M = 12;
-const FRAME_THROTTLE_MS = 80;
 const POLL_INTERVAL_MS = 8000;
 
 interface NemesisRow {
@@ -47,6 +47,7 @@ interface Props {
 }
 
 export function NemesisGlyphLayer({ worldId, playerPosition, enabled = true }: Props) {
+  const FRAME_THROTTLE_MS = useClientConfig().throttle.nemesisFrameMs; // E0 — server-tunable
   const mode = useHUDContext((s) => s.inputMode);
   const projectorRef = useRef<Projector | null>(null);
   const [rows, setRows] = useState<NemesisRow[]>([]);

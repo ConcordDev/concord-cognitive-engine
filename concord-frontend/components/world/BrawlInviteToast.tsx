@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Swords, X, Check } from 'lucide-react';
 import { sfx, juice } from '@/lib/concordia/juice';
 
@@ -139,9 +140,8 @@ interface ActiveBrawl {
   startedAt: number;
 }
 
-const POLL_MS = 5000;
-
 export function BrawlActiveHUD() {
+  const POLL_MS = useClientConfig().poll.brawlInviteMs; // E0 — server-tunable
   const [active, setActive] = useState<ActiveBrawl | null>(null);
 
   const refresh = useCallback(async () => {

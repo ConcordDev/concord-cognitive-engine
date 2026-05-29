@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Moon, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 interface DreamRow {
   id: string;
@@ -27,7 +28,6 @@ interface DreamRow {
 }
 
 const SEEN_KEY = 'concordia:dream:seen';
-const POLL_MS = 60_000; // gentle refresh every minute
 
 function loadSeen(): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -42,6 +42,7 @@ function saveSeen(seen: Set<string>) {
 }
 
 export function DreamReader() {
+  const POLL_MS = useClientConfig().poll.dreamReaderMs; // E0 — server-tunable
   const [dreams, setDreams] = useState<DreamRow[]>([]);
   const [seenIds, setSeenIds] = useState<Set<string>>(() => loadSeen());
   const [expandedId, setExpandedId] = useState<string | null>(null);
