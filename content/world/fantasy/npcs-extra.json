@@ -835,5 +835,235 @@
       }
     ],
     "starting_sparks": 4000
+  },
+  {
+    "id": "gen_fantasy_0000",
+    "name": "Odo Thorne",
+    "archetype": "scholar",
+    "faction_id": "fantasy_pantheon_priesthood",
+    "level": 6,
+    "job": "hedge-mage",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute hedge-mage of fantasy. Tied to The Goblin Warband League. Lived through \"The Quiet Grove\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "hedge-mage",
+      "wealth_tier": "destitute",
+      "secret": "is not who they claim to be",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Hedge-mage · destitute · The Goblin Warband League",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0001",
+    "name": "Iko Reyes",
+    "archetype": "scholar",
+    "faction_id": "fantasy_goblin_warband_league",
+    "level": 26,
+    "job": "beast-tamer",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune beast-tamer of fantasy. Tied to House Voss. Lived through \"The Year the Bog Grew\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "beast-tamer",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "betrayed House Voss once and was never caught",
+      "quirk": "trusts animals more than people",
+      "bio": "Beast-tamer · hoarding a fortune · House Voss",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0002",
+    "name": "Fen Vance",
+    "archetype": "hunter",
+    "faction_id": "house_voss",
+    "level": 21,
+    "job": "loremaster",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by loremaster of fantasy. Tied to The Pantheon Priesthood of the Twelve. Lived through \"The First Masquerade Disappearances\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "loremaster",
+      "wealth_tier": "scraping by",
+      "secret": "is hiding from someone in fantasy",
+      "quirk": "counts under their breath",
+      "bio": "Loremaster · scraping by · The Pantheon Priesthood of the Twelve",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0003",
+    "name": "Oren Nyx",
+    "archetype": "scholar",
+    "faction_id": "fantasy_obsidian_crown",
+    "level": 40,
+    "job": "sellsword",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune sellsword of fantasy. Tied to The Obsidian Crown. Lived through \"The Apothecary's Master\". Known to laughs at the wrong moments.",
+    "personality_traits": [
+      "laughs at the wrong moments"
+    ],
+    "narrative_context": {
+      "occupation": "sellsword",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "is hiding from someone in fantasy",
+      "quirk": "laughs at the wrong moments",
+      "bio": "Sellsword · hoarding a fortune · The Obsidian Crown",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0004",
+    "name": "Cyl Jessup",
+    "archetype": "hunter",
+    "faction_id": "fantasy_arcane_university",
+    "level": 27,
+    "job": "rune-carver",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute rune-carver of fantasy. Tied to The Underwarrens Thieves' Guild. Lived through \"The Voss Ascension\". Known to laughs at the wrong moments.",
+    "personality_traits": [
+      "laughs at the wrong moments"
+    ],
+    "narrative_context": {
+      "occupation": "rune-carver",
+      "wealth_tier": "destitute",
+      "secret": "is hiding from someone in fantasy",
+      "quirk": "laughs at the wrong moments",
+      "bio": "Rune-carver · destitute · The Underwarrens Thieves' Guild",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0005",
+    "name": "Odo Thorne",
+    "archetype": "mystic",
+    "faction_id": "fantasy_goblin_warband_league",
+    "level": 21,
+    "job": "rune-carver",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off rune-carver of fantasy. Tied to The Pantheon Priesthood of the Twelve. Lived through \"The Thornwood Siege\". Known to laughs at the wrong moments.",
+    "personality_traits": [
+      "laughs at the wrong moments"
+    ],
+    "narrative_context": {
+      "occupation": "rune-carver",
+      "wealth_tier": "well-off",
+      "secret": "carries a relic they don't understand",
+      "quirk": "laughs at the wrong moments",
+      "bio": "Rune-carver · well-off · The Pantheon Priesthood of the Twelve",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0006",
+    "name": "Brael Okonkwo",
+    "archetype": "scholar",
+    "faction_id": "fantasy_paladin_order",
+    "level": 24,
+    "job": "pilgrim",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute pilgrim of fantasy. Tied to The Obsidian Crown. Lived through \"Ser Corin's Oath\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "pilgrim",
+      "wealth_tier": "destitute",
+      "secret": "is hiding from someone in fantasy",
+      "quirk": "never makes eye contact",
+      "bio": "Pilgrim · destitute · The Obsidian Crown",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0007",
+    "name": "Marn Pyke",
+    "archetype": "trader",
+    "faction_id": "fantasy_goblin_warband_league",
+    "level": 4,
+    "job": "loremaster",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute loremaster of fantasy. Tied to The Underwarrens Thieves' Guild. Lived through \"The Root Curse\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "loremaster",
+      "wealth_tier": "destitute",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Loremaster · destitute · The Underwarrens Thieves' Guild",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0008",
+    "name": "Lira Quist",
+    "archetype": "trader",
+    "faction_id": "fantasy_paladin_order",
+    "level": 35,
+    "job": "beast-tamer",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable beast-tamer of fantasy. Tied to The Obsidian Crown. Lived through \"The First Masquerade Disappearances\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "beast-tamer",
+      "wealth_tier": "comfortable",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "collects broken things",
+      "bio": "Beast-tamer · comfortable · The Obsidian Crown",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_fantasy_0009",
+    "name": "Tov Reza",
+    "archetype": "healer",
+    "faction_id": "fantasy_obsidian_crown",
+    "level": 36,
+    "job": "rune-carver",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by rune-carver of fantasy. Tied to House Voss. Lived through \"The Apothecary's Master\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "rune-carver",
+      "wealth_tier": "scraping by",
+      "secret": "betrayed House Voss once and was never caught",
+      "quirk": "always cold",
+      "bio": "Rune-carver · scraping by · House Voss",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

@@ -50,6 +50,9 @@ export interface CameraShot {
 
 export interface CinematicSequence {
   id:                 string;
+  /** Optional human-facing label + blurb for catalog UIs (narrative-walk). */
+  name?:              string;
+  summary?:           string;
   trigger:            string;        // event name e.g. 'quest:the_handshake_revelation:phase_4'
   /** When true, lock player input for the sequence duration. */
   lockInput:          boolean;

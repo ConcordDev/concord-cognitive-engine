@@ -11,7 +11,8 @@
 // near the player's current world UI showing distance + lost-coin
 // amount.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Skull } from 'lucide-react';
 
 interface ActiveCorpse {
@@ -28,7 +29,6 @@ interface CorpseMarkerProps {
   playerZ: number;
 }
 
-const POLL_MS = 5000;
 
 export function CorpseMarker({ worldId, playerX, playerZ }: CorpseMarkerProps) {
   const [corpses, setCorpses] = useState<ActiveCorpse[]>([]);
@@ -46,11 +46,9 @@ export function CorpseMarker({ worldId, playerX, playerZ }: CorpseMarkerProps) {
       .catch(() => {});
   }, [worldId]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  // Push: a death or corpse-drop refreshes nearby corpses instantly; slow
+  // backstop poll covers anything missed.
+  useRealtimeRefresh(['entity:death', 'player:corpse-dropped'], refresh, { backstopMs: 30000 });
 
   if (corpses.length === 0) return null;
 

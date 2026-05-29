@@ -4,7 +4,8 @@
 // Opens from `attraction_booth` building. Shows current_visitors +
 // revenue + appeal. Owner-only "Adjust ticket" + "Close" actions.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Ticket, Users, Sparkles, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
@@ -24,7 +25,6 @@ interface Attraction {
   closed_at: number | null;
 }
 
-const POLL_MS = 3000;
 
 export function ThemeParkAttractionPanel({ building, onClose, worldId }: OverlayProps) {
   const [list, setList] = useState<Attraction[]>([]);
@@ -50,11 +50,7 @@ export function ThemeParkAttractionPanel({ building, onClose, worldId }: Overlay
     } catch { /* swallow */ }
   }, [worldId, building.id]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  useRealtimeRefresh(['theme-park:state'], refresh, { backstopMs: 4000 });
 
   const closeAttraction = useCallback(async () => {
     if (!active) return;

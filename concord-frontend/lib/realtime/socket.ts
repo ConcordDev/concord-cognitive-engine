@@ -326,6 +326,41 @@ export type SocketEvent =
   | 'faction-war:tick'
   | 'faction-war:kill'
   | 'faction-war:end'
+  // WS5 — structural-strength faction clash outcome (living-world plan)
+  | 'faction-war:clash'
+  // WS4(b) — stress-triggered awakening opportunity (living-world plan)
+  | 'player:awakening-available'
+  // Realtime cleanup — events that exist server-side but were missing from the
+  // union, so HUDs can subscribe instead of polling (push + slow backstop).
+  | 'world:drift-alert'
+  | 'brawl-invited'
+  | 'climbing:route-completed'
+  | 'player:corpse-dropped'
+  // The System — diegetic push-driven status layer (players/NPCs/hostiles).
+  | 'system:level-up'
+  | 'system:skill-acquired'
+  | 'system:skill-evolved'
+  | 'system:danger-band'
+  | 'system:notice'
+  // Game-mode HUD realtime push (replacing per-mode polling).
+  | 'horde:state'
+  | 'party-combat:state'
+  | 'party-combat:tick'
+  | 'mahjong:state'
+  | 'submarine:dive-state'
+  | 'extraction:state'
+  | 'extraction:zones'
+  | 'time-loop:state'
+  | 'climbing:stamina-state'
+  | 'restaurant:state'
+  | 'horror:state'
+  | 'theme-park:state'
+  | 'roguelite:run-state'
+  | 'nemesis:nearby'
+  | 'lfg:board-update'
+  | 'tracking:footprints-updated'
+  | 'courtship:affinity-update'
+  | 'spectator:count-updated'
   // World scheduler
   | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler

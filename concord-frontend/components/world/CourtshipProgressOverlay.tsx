@@ -7,6 +7,7 @@
 // 3D-to-screen pattern.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 
 const VISIBLE_RADIUS_M = 16;
 const POLL_MS = 30_000;
@@ -56,12 +57,7 @@ export function CourtshipProgressOverlay({ npcs = [], playerPosition, enabled = 
     } catch { /* swallow */ }
   }, []);
 
-  useEffect(() => {
-    if (!enabled) return;
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [enabled, refresh]);
+  useRealtimeRefresh(['courtship:affinity-update'], refresh, { backstopMs: POLL_MS, enabled });
 
   useEffect(() => {
     if (!enabled || !npcs.length || byNpc.size === 0) {

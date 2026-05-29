@@ -742,5 +742,281 @@
       }
     ],
     "starting_sparks": 600
+  },
+  {
+    "id": "gen_concord-link-frontier_0000",
+    "name": "Swain Wills",
+    "archetype": "artisan",
+    "faction_id": "frontier_isolationists",
+    "level": 12,
+    "job": "tinker",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable tinker of concord-link-frontier. Tied to The Signal Pirates. Lived through \"The Mesh Gate\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "tinker",
+      "wealth_tier": "comfortable",
+      "secret": "owes a debt to The Signal Pirates they can't repay",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Tinker · comfortable · The Signal Pirates",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0001",
+    "name": "Ada Irons",
+    "archetype": "artisan",
+    "faction_id": "frontier_signal_pirates",
+    "level": 35,
+    "job": "courier",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable courier of concord-link-frontier. Tied to The Mesh Cult. Lived through \"Whether Walker Lin Remembers\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "courier",
+      "wealth_tier": "comfortable",
+      "secret": "is hiding from someone in concord-link-frontier",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Courier · comfortable · The Mesh Cult",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0002",
+    "name": "Swain Oller",
+    "archetype": "villager",
+    "faction_id": "frontier_freenodes",
+    "level": 27,
+    "job": "smith",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable smith of concord-link-frontier. Tied to The Signal Pirates. Lived through \"The Lost Parcel\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "smith",
+      "wealth_tier": "comfortable",
+      "secret": "is hiding from someone in concord-link-frontier",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Smith · comfortable · The Signal Pirates",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0003",
+    "name": "Una Eaves",
+    "archetype": "guard",
+    "faction_id": "frontier_mesh_cult",
+    "level": 33,
+    "job": "trader",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute trader of concord-link-frontier. Tied to The Signal Pirates. Lived through \"The First Walk\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "trader",
+      "wealth_tier": "destitute",
+      "secret": "betrayed The Signal Pirates once and was never caught",
+      "quirk": "never makes eye contact",
+      "bio": "Trader · destitute · The Signal Pirates",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0004",
+    "name": "Marn Brecker",
+    "archetype": "villager",
+    "faction_id": "frontier_pioneer_alliance",
+    "level": 25,
+    "job": "scholar",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by scholar of concord-link-frontier. Tied to The Mesh Cult. Lived through \"The Third Incursion\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "scraping by",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "counts under their breath",
+      "bio": "Scholar · scraping by · The Mesh Cult",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0005",
+    "name": "Dell Irons",
+    "archetype": "scholar",
+    "faction_id": "frontier_isolationists",
+    "level": 25,
+    "job": "farmer",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off farmer of concord-link-frontier. Tied to The Isolationist Enclaves. Lived through \"The Third Incursion\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "farmer",
+      "wealth_tier": "well-off",
+      "secret": "is not who they claim to be",
+      "quirk": "collects broken things",
+      "bio": "Farmer · well-off · The Isolationist Enclaves",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0006",
+    "name": "Pell Reza",
+    "archetype": "artisan",
+    "faction_id": "frontier_couriers_guild",
+    "level": 39,
+    "job": "archivist",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by archivist of concord-link-frontier. Tied to The Couriers' Guild. Lived through \"The First Walk\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "archivist",
+      "wealth_tier": "scraping by",
+      "secret": "betrayed The Couriers' Guild once and was never caught",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Archivist · scraping by · The Couriers' Guild",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0007",
+    "name": "Hana Okonkwo",
+    "archetype": "hunter",
+    "faction_id": "frontier_signal_pirates",
+    "level": 9,
+    "job": "scribe",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune scribe of concord-link-frontier. Tied to The Pioneer Township Alliance. Lived through \"Dust Rose Arrives\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "scribe",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "owes a debt to The Pioneer Township Alliance they can't repay",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Scribe · hoarding a fortune · The Pioneer Township Alliance",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0008",
+    "name": "Vesna Locke",
+    "archetype": "guard",
+    "faction_id": "frontier_signal_pirates",
+    "level": 12,
+    "job": "scholar",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by scholar of concord-link-frontier. Tied to The Freenodes. Lived through \"Dust Rose Arrives\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "scraping by",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Scholar · scraping by · The Freenodes",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0009",
+    "name": "Hana Bauer",
+    "archetype": "trader",
+    "faction_id": "frontier_couriers_guild",
+    "level": 33,
+    "job": "scholar",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off scholar of concord-link-frontier. Tied to The Isolationist Enclaves. Lived through \"The Compromised Relays\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "well-off",
+      "secret": "is hiding from someone in concord-link-frontier",
+      "quirk": "speaks in proverbs",
+      "bio": "Scholar · well-off · The Isolationist Enclaves",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0010",
+    "name": "Ada Bauer",
+    "archetype": "scholar",
+    "faction_id": "frontier_pioneer_alliance",
+    "level": 39,
+    "job": "trader",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off trader of concord-link-frontier. Tied to The Mesh Cult. Lived through \"The Mesh Gate\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "trader",
+      "wealth_tier": "well-off",
+      "secret": "owes a debt to The Mesh Cult they can't repay",
+      "quirk": "always cold",
+      "bio": "Trader · well-off · The Mesh Cult",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_concord-link-frontier_0011",
+    "name": "Mara Ashford",
+    "archetype": "hunter",
+    "faction_id": "frontier_signal_pirates",
+    "level": 31,
+    "job": "trader",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off trader of concord-link-frontier. Tied to The Couriers' Guild. Lived through \"The Compromised Relays\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "trader",
+      "wealth_tier": "well-off",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "never makes eye contact",
+      "bio": "Trader · well-off · The Couriers' Guild",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

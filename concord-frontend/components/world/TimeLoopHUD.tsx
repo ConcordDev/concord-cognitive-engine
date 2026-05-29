@@ -7,6 +7,7 @@
 // shift (existing avatar shader pipeline consumes these).
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Hourglass, RotateCcw } from 'lucide-react';
 
 interface ActiveLoop {
@@ -36,13 +37,13 @@ export function TimeLoopHUD() {
     } catch { /* swallow */ }
   }, [worldId]);
 
+  // Push: loop state on socket events; backstop poll covers gaps.
+  useRealtimeRefresh(['time-loop:state'], refresh, { backstopMs: POLL_MS, enabled: !!worldId });
+  // Local countdown clock (not a network poll — kept as-is).
   useEffect(() => {
-    if (!worldId) return;
-    refresh();
-    const r = setInterval(refresh, POLL_MS);
     const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    return () => { clearInterval(r); clearInterval(t); };
-  }, [worldId, refresh]);
+    return () => clearInterval(t);
+  }, []);
 
   // Shader tint dispatch based on remaining-time ratio (1.0 fresh, 0.0 expired).
   useEffect(() => {

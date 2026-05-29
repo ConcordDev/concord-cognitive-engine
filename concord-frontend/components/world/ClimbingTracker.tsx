@@ -12,6 +12,7 @@
 // achievements consume the resulting climbing_routes rows.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Mountain, TrendingUp } from 'lucide-react';
 import { milestoneJuice } from '@/lib/concordia/juice';
 
@@ -128,11 +129,8 @@ export function ClimbingTracker({ worldId, playerY }: Props) {
     } catch { /* network */ }
   }, [worldId]);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  // Push: a completed climb route refreshes the list instantly; slow backstop.
+  useRealtimeRefresh(['climbing:route-completed'], refresh, { backstopMs: POLL_MS });
 
   // Don't show if not climbing AND no recent route to advertise.
   if (!active && routes.length === 0) return null;

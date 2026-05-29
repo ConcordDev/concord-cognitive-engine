@@ -283,6 +283,30 @@ const DriftAlertToast = dynamic(
     })),
   { ssr: false }
 );
+// WS6 — radial danger-band telegraphing (safe hub → lethal frontier).
+const DangerBandHUD = dynamic(
+  () =>
+    import('@/components/world/DangerBandHUD').then((m) => ({
+      default: m.DangerBandHUD,
+    })),
+  { ssr: false }
+);
+// WS4(b) — near-death awakening opportunity toast.
+const AwakeningToast = dynamic(
+  () =>
+    import('@/components/world/AwakeningToast').then((m) => ({
+      default: m.AwakeningToast,
+    })),
+  { ssr: false }
+);
+// The System — diegetic push-driven status windows (level-up, power, quest, world).
+const SystemFeed = dynamic(
+  () =>
+    import('@/components/world/SystemFeed').then((m) => ({
+      default: m.SystemFeed,
+    })),
+  { ssr: false }
+);
 const FootprintLayer = dynamic(
   () =>
     import('@/components/world/FootprintLayer').then((m) => ({
@@ -1103,7 +1127,6 @@ function CityStreamingSection() {
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
   // Creator controls
-  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu
   const [myStream, setMyStream] = useState<CityStream | null>(null);
   const [streamTitle, setStreamTitle] = useState('');
   const [streamCityId, setStreamCityId] = useState('concordia-central');
@@ -1598,6 +1621,7 @@ export default function WorldLensPage() {
   // emote wheel, etc. Escape exits both.
   const exploreShellRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu (used by HUDOverlay onMenuOpen)
   const [isPointerLocked, setIsPointerLocked] = useState(false);
 
   useEffect(() => {
@@ -4737,6 +4761,9 @@ export default function WorldLensPage() {
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
+          <DangerBandHUD />
+          <AwakeningToast />
+          <SystemFeed />
           <PersonalBeatWidget />
           {/* Concordia 5-layer dynamic HUD — replaces the old static
               ConcordiaHUDPanels. See the plan file for layer breakdown:

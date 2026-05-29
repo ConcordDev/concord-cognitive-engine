@@ -6,6 +6,7 @@
 // distance. Extract button if inside an active zone.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Package, MapPin, Clock, ArrowRight, AlertTriangle } from 'lucide-react';
 
 interface Run {
@@ -58,18 +59,18 @@ export function ExtractionRunHUD() {
     }
   }, [worldId]);
 
+  // Push: run/zone state arrives on socket events; backstop poll covers gaps.
+  useRealtimeRefresh(['extraction:state', 'extraction:zones'], refresh, { backstopMs: POLL_MS });
+  // Local clock + player-pose ticker (not a network poll — kept as-is).
   useEffect(() => {
-    refresh();
-    const r = setInterval(refresh, POLL_MS);
     const t = setInterval(() => {
       setNow(Math.floor(Date.now() / 1000));
-      // Player position is pulled from a window-level pose hint set by AvatarSystem3D.
       if (typeof window !== 'undefined' && window.__concordiaPlayerPos) {
         setPlayerPos({ ...window.__concordiaPlayerPos });
       }
     }, 500);
-    return () => { clearInterval(r); clearInterval(t); };
-  }, [refresh]);
+    return () => clearInterval(t);
+  }, []);
 
   if (!run || run.ended_at) return null;
 

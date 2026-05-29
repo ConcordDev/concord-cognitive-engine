@@ -758,7 +758,7 @@ export default function SkyWeatherRenderer({
         });
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- theme colors are derived from the listed deps; re-running on them is sufficient
+   
   }, [timeOfDay, weather, windDirection, windSpeed, season, quality, themeSkyTop, themeSkyHorizon, sunDisk]);
 
   return (

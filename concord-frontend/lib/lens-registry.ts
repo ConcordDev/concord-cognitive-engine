@@ -142,7 +142,11 @@ export type LensCategory =
   | 'ai'
   | 'system'
   | 'specialized'
-  | 'superlens';
+  | 'superlens'
+  | 'progression'
+  | 'economy'
+  | 'social'
+  | 'world';
 
 export interface LensEntry {
   /** Unique identifier matching the route directory name */
@@ -2885,6 +2889,10 @@ export const LENS_CATEGORIES: Record<LensCategory, { label: string; color: strin
   system: { label: 'System', color: 'text-gray-400' },
   specialized: { label: 'Specialized', color: 'text-neon-cyan' },
   superlens: { label: 'Industry Domains', color: 'text-orange-400' },
+  progression: { label: 'Progression', color: 'text-amber-400' },
+  economy: { label: 'Economy', color: 'text-green-400' },
+  social: { label: 'Social', color: 'text-pink-400' },
+  world: { label: 'World', color: 'text-emerald-400' },
 };
 
 // ── Derived accessors ──────────────────────────────────────────

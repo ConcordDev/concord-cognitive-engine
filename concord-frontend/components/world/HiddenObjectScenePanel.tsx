@@ -103,6 +103,10 @@ export function HiddenObjectScenePanel() {
 
         <div className="relative">
           {sceneId ? (
+            // next/image is intentionally not used: this is a ref-driven game
+            // scene whose click→object coordinate mapping depends on the raw
+            // <img> element + its naturalWidth/Height, with a dynamic server URL.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               ref={imgRef}
               src={

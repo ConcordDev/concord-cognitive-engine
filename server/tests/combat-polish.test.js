@@ -76,9 +76,18 @@ function makeFakeDb() {
       return { changes: 0 };
     }
     if (sql.startsWith("UPDATE combat_actor_state SET combo_count = ?, combo_last_at_ms = ?")) {
-      const [count, lastAt, kind, id] = args;
+      // WS4(c): the primary UPDATE now carries last_element between combo_last_at_ms
+      // and the WHERE keys; the fallback UPDATE omits it. Extract accordingly.
+      const hasElement = sql.includes("last_element = ?");
+      const [count, lastAt, ...rest] = args;
+      const element = hasElement ? rest.shift() : undefined;
+      const [kind, id] = rest;
       const r = tables.combat_actor_state.get(key(kind, id));
-      if (r) { r.combo_count = count; r.combo_last_at_ms = lastAt; return { changes: 1 }; }
+      if (r) {
+        r.combo_count = count; r.combo_last_at_ms = lastAt;
+        if (hasElement) r.last_element = element;
+        return { changes: 1 };
+      }
       return { changes: 0 };
     }
     if (sql.startsWith("UPDATE combat_actor_state SET rocked_until_ms = ?")) {

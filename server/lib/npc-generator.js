@@ -18,6 +18,9 @@
 // what makes generated NPCs feel real instead of archetype-generic.
 
 import crypto from "node:crypto";
+import {
+  gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange, radialWorldsEnabled,
+} from "./world-gradient.js";
 
 // ── Personality dimensions ──────────────────────────────────────────────────
 
@@ -414,6 +417,21 @@ export function persistGeneratedNpc(db, npc, opts = {}) {
   const ax = opts.x ?? (uniform(seedBuf, 0) * 400 - 200);
   const az = opts.z ?? (uniform(seedBuf, 4) * 400 - 200);
 
+  // WS2: when radial worlds are on, the NPC's level is band-appropriate for
+  // where it actually spawns — a hostile placed near the frontier is strong,
+  // a villager near the hub stays weak. Falls back to the generator's level.
+  let spawnLevel = npc.level;
+  if (radialWorldsEnabled()) {
+    try {
+      const world = db.prepare(`SELECT * FROM worlds WHERE id = ?`).get(npc.home_world);
+      const cfg = gradientConfigFor(world || null);
+      const anchor = hubAnchorFor(db, npc.home_world, cfg);
+      const [lo, hi] = bandLevelRange(cfg, dangerBandAt(cfg, anchor, ax, az));
+      const h = sha1Bytes(`${npc.id}|lvl`)[0];
+      spawnLevel = hi > lo ? lo + (h % (hi - lo + 1)) : lo;
+    } catch { /* keep generator level */ }
+  }
+
   // Idempotency check.
   try {
     const existing = db.prepare(`SELECT npc_id FROM procedural_npcs WHERE npc_id = ?`).get(npc.id);
@@ -441,7 +459,7 @@ export function persistGeneratedNpc(db, npc, opts = {}) {
         ON CONFLICT(id) DO NOTHING
       `).run(
         npc.id, npc.home_world, npc.archetype, npc.faction_id,
-        npc.level, ax, az,
+        spawnLevel, ax, az,
         JSON.stringify({ x: ax, z: az }),
         JSON.stringify({ x: ax, z: az }),
         stateJson,

@@ -14,11 +14,12 @@
 
 import { useCallback, useState } from 'react';
 import { Dice5, Zap, Crosshair, Ghost, Hourglass, Swords, X } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
 
 interface ModeConfig {
   id: string;
   label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   color: string;
   description: string;
   start: (worldId: string) => Promise<{ ok: boolean; error?: string; sessionId?: string }>;

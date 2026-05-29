@@ -7,6 +7,7 @@
 // enforces.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Ghost, Flashlight, Camera, X, Trophy, Skull } from 'lucide-react';
 
 interface Session {
@@ -46,12 +47,7 @@ export function HorrorRoleHUDs() {
     } catch { /* swallow */ }
   }, [worldId, session]);
 
-  useEffect(() => {
-    if (!worldId) return;
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [worldId, refresh]);
+  useRealtimeRefresh(['horror:state'], refresh, { backstopMs: POLL_MS, enabled: !!worldId });
 
   // Shader hooks for both roles.
   useEffect(() => {

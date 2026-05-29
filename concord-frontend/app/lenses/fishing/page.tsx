@@ -6,6 +6,7 @@
 // reaction-timed minigame.
 
 import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Fish, Trophy, Sparkles, Loader2 } from 'lucide-react';
 
 interface FishCatalog {
@@ -70,6 +71,7 @@ export default function FishingLensPage() {
   }, [worldId]);
 
   return (
+    <LensShell lensId="fishing">
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-cyan-200">
@@ -120,5 +122,6 @@ export default function FishingLensPage() {
         </section>
       </div>
     </div>
+    </LensShell>
   );
 }

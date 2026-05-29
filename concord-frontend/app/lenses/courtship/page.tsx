@@ -5,6 +5,7 @@
 // propose / wed if affinity threshold met.
 
 import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Heart, Crown, Baby, Loader2 } from 'lucide-react';
 
 interface Courtship {
@@ -89,6 +90,7 @@ export default function CourtshipLensPage() {
   };
 
   return (
+    <LensShell lensId="courtship">
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-pink-200">
@@ -175,5 +177,6 @@ export default function CourtshipLensPage() {
 
       {pending && <div className="text-center text-xs text-pink-300/70"><Loader2 className="inline animate-spin" size={11} /> updating…</div>}
     </div>
+    </LensShell>
   );
 }

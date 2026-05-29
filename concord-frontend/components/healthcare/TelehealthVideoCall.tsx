@@ -61,7 +61,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } catch (e) {
+    } catch {
       setStatus('error');
       setError('Camera + microphone permission required for video visits.');
       return;
@@ -96,7 +96,7 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
     try {
       const { io } = await import('socket.io-client');
       socket = io({ path: '/socket.io', transports: ['websocket', 'polling'], reconnection: true });
-    } catch (e) {
+    } catch {
       setStatus('error');
       setError('Realtime connection unavailable. Try refreshing.');
       return;
@@ -250,15 +250,18 @@ export function TelehealthVideoCall({ visitId, initiator = false, onEnd }: Props
 
   // Auto-start once on mount.
   useEffect(() => {
+    // Capture the stable peers Map so the cleanup doesn't read a possibly-changed
+    // ref.current (the Map identity is fixed for the component's life).
+    const peers = peersRef.current;
     void start();
     return () => {
       // Tear down on unmount.
       try { socketRef.current?.emit('webrtc:leave', { visitId }); } catch { /* ignore */ }
       try { socketRef.current?.disconnect(); } catch { /* ignore */ }
-      for (const peer of peersRef.current.values()) {
+      for (const peer of peers.values()) {
         try { peer.destroy(); } catch { /* ignore */ }
       }
-      peersRef.current.clear();
+      peers.clear();
       try { localStreamRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

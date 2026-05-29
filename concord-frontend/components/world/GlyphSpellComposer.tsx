@@ -6,7 +6,7 @@
 // /mint.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sparkles, Plus, X, Wand2, Loader2 } from 'lucide-react';
+import { X, Wand2, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { milestoneJuice, sfx } from '@/lib/concordia/juice';

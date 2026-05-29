@@ -5,6 +5,7 @@
 // crossbreeding; view lineage of any creature by id.
 
 import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Dna, Sparkles, GitBranch, Loader2 } from 'lucide-react';
 
 interface Population {
@@ -70,6 +71,7 @@ export default function CreaturesLensPage() {
   };
 
   return (
+    <LensShell lensId="creatures">
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-violet-200">
@@ -156,5 +158,6 @@ export default function CreaturesLensPage() {
         )}
       </section>
     </div>
+    </LensShell>
   );
 }

@@ -75,7 +75,7 @@ export function useAvatarAnimator() {
       );
     } catch (err) {
       stateRef.current.failed = true;
-      // eslint-disable-next-line no-console
+       
       console.warn('[avatar-animator] worker spawn failed, falling back to main thread', err);
       return;
     }
@@ -99,23 +99,26 @@ export function useAvatarAnimator() {
         return;
       }
       if (msg.type === 'animate-error') {
-        // eslint-disable-next-line no-console
+         
         console.warn('[avatar-animator] worker error for avatar', msg.avatarId, msg.error);
       }
     });
 
     worker.addEventListener('error', (err) => {
       stateRef.current.failed = true;
-      // eslint-disable-next-line no-console
+       
       console.warn('[avatar-animator] worker error event', err);
     });
 
     stateRef.current.worker = worker;
 
+    // Capture the stable ref object so the cleanup doesn't read a possibly-changed
+    // ref.current (the object identity is fixed; only its fields mutate).
+    const state = stateRef.current;
     return () => {
       try { worker?.terminate(); } catch { /* worker may already be gone */ }
-      stateRef.current.worker = null;
-      stateRef.current.ready = false;
+      state.worker = null;
+      state.ready = false;
     };
   }, [mode]);
 
@@ -149,7 +152,7 @@ export function useAvatarAnimator() {
       });
     } catch (err) {
       st.failed = true;
-      // eslint-disable-next-line no-console
+       
       console.warn('[avatar-animator] postMessage failed', err);
       return null;
     }

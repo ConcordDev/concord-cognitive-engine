@@ -2,6 +2,7 @@
 // Elemental and physical damage calculation with resistance factors.
 
 import crypto from 'node:crypto';
+import { npcMaxHpForLevel } from '../entity-power.js';
 
 // ── Resistance columns on entities ────────────────────────────────────────────
 // NPC resistances are stored as fire_resistance, ice_resistance, etc. (0-1 scale)
@@ -178,7 +179,7 @@ export function applyDamageToPlayer(db, worldId, attackerId, attackerType, userI
  */
 export function getOrCreateNPCResistances(db, npcId) {
   const npc = db.prepare(`
-    SELECT id, archetype, fire_resistance, ice_resistance, lightning_resistance,
+    SELECT id, archetype, level, fire_resistance, ice_resistance, lightning_resistance,
            physical_resistance, poison_resistance, bio_resistance, energy_resistance,
            max_hp, current_hp, status_effects
     FROM world_npcs WHERE id = ?
@@ -188,6 +189,10 @@ export function getOrCreateNPCResistances(db, npcId) {
   // If no resistance is set yet, seed from archetype defaults
   if (npc.fire_resistance === null || npc.fire_resistance === undefined) {
     const defaults = ARCHETYPE_RESISTANCES[npc.archetype] || {};
+    // WS1: HP scales with grown level when CONCORD_ABSOLUTE_POWER is on; falls
+    // back to the legacy flat 100 when the flag is off. Only seeds the pool the
+    // first time (COALESCE preserves any already-set HP).
+    const seedHp = npcMaxHpForLevel(npc.level ?? 1);
     db.prepare(`
       UPDATE world_npcs SET
         fire_resistance      = ?,
@@ -197,8 +202,8 @@ export function getOrCreateNPCResistances(db, npcId) {
         poison_resistance    = ?,
         bio_resistance       = ?,
         energy_resistance    = ?,
-        max_hp               = COALESCE(max_hp, 100),
-        current_hp           = COALESCE(current_hp, 100)
+        max_hp               = COALESCE(max_hp, ?),
+        current_hp           = COALESCE(current_hp, ?)
       WHERE id = ?
     `).run(
       defaults.fire_resistance      ?? 0,
@@ -208,9 +213,11 @@ export function getOrCreateNPCResistances(db, npcId) {
       defaults.poison_resistance    ?? 0,
       defaults.bio_resistance       ?? 0,
       defaults.energy_resistance    ?? 0,
+      seedHp,
+      seedHp,
       npcId,
     );
-    return { ...npc, ...defaults, max_hp: npc.max_hp ?? 100, current_hp: npc.current_hp ?? 100 };
+    return { ...npc, ...defaults, max_hp: npc.max_hp ?? seedHp, current_hp: npc.current_hp ?? seedHp };
   }
 
   return npc;

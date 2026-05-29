@@ -15,7 +15,8 @@
 // If you never start a party-tactics session, this component renders null.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, FastForward, Zap, Heart, X } from 'lucide-react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { Pause, Play, FastForward, Zap } from 'lucide-react';
 
 interface Combatant {
   entity_id: string;
@@ -54,21 +55,17 @@ export function PartyCombatHUD() {
   const [nowMs, setNowMs] = useState(Date.now());
   const tickRef = useRef<number | null>(null);
 
-  // Discovery loop while not in a session.
-  useEffect(() => {
-    let cancelled = false;
-    const discover = async () => {
-      try {
-        const j = await fetch('/api/party-combat/active', { credentials: 'include' }).then(r => r.ok ? r.json() : null);
-        if (!cancelled) setSession(j?.session || null);
-      } catch { /* swallow */ }
-    };
-    if (!session) {
-      discover();
-      const t = setInterval(discover, DISCOVERY_MS);
-      return () => { cancelled = true; clearInterval(t); };
-    }
-  }, [session]);
+  // Discovery: a starting/changing party-combat session is pushed via
+  // party-combat:state; we only backstop-poll while NOT yet in a session. Once a
+  // session is active the 200ms tick loop below drives it (that's the combat
+  // engine, not status polling).
+  const discover = useCallback(async () => {
+    try {
+      const j = await fetch('/api/party-combat/active', { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+      setSession(j?.session || null);
+    } catch { /* swallow */ }
+  }, []);
+  useRealtimeRefresh(['party-combat:state'], discover, { backstopMs: DISCOVERY_MS, enabled: !session });
 
   // Tick + resolve loop while in a session.
   useEffect(() => {

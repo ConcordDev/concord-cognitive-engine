@@ -6,6 +6,7 @@
 // LFG requests in the current world; lets the player post their own.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Users, X, Plus, Loader2 } from 'lucide-react';
 import { successJuice, failureJuice } from '@/lib/concordia/juice';
 
@@ -53,12 +54,7 @@ export function LFGBoardPanel() {
     } catch { /* swallow */ }
   }, [worldId, filterRole]);
 
-  useEffect(() => {
-    if (!open) return;
-    refresh();
-    const t = setInterval(refresh, 15_000);
-    return () => clearInterval(t);
-  }, [open, refresh]);
+  useRealtimeRefresh(['lfg:board-update'], refresh, { backstopMs: 20_000, enabled: open });
 
   const post = useCallback(async () => {
     if (!worldId) return;

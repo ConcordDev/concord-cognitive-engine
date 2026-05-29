@@ -5,6 +5,7 @@
 // Revenue + tips ledger at top.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { ChefHat, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
@@ -47,12 +48,13 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
     } catch { /* swallow */ }
   }, [building.id]);
 
+  // Push: order/tip state on socket events; backstop poll covers gaps.
+  useRealtimeRefresh(['restaurant:state'], refresh, { backstopMs: POLL_MS });
+  // Local clock for order-timer rendering (not a network poll — kept as-is).
   useEffect(() => {
-    refresh();
-    const r = setInterval(refresh, POLL_MS);
     const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 500);
-    return () => { clearInterval(r); clearInterval(t); };
-  }, [refresh]);
+    return () => clearInterval(t);
+  }, []);
 
   const serve = useCallback(async (orderId: string) => {
     setPending(true);

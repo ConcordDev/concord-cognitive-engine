@@ -21,6 +21,7 @@ import { sfx, juice } from '@/lib/concordia/juice';
 import {
   MessageCircle, Crown, Swords, Heart, Eye, ShoppingBag, Briefcase, X,
 } from 'lucide-react';
+import type { LucideIcon } from "lucide-react";
 
 interface NPCContext {
   npcId: string;
@@ -224,7 +225,7 @@ export function NPCActionMenu() {
 }
 
 interface ItemProps {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: LucideIcon;
   label: string;
   onClick: () => void;
   accent?: 'amber' | 'rose' | 'pink' | 'emerald' | 'violet';

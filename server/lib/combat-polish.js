@@ -239,16 +239,43 @@ export function recoverGas(db, { actorKind, actorId, dtSeconds }) {
 
 // ── Combo encoder ───────────────────────────────────────────────────────────
 
+// WS4(c) — element-combo (Todoroki/Plus-Ultra). Chaining a complementary element
+// off the previous strike amplifies; cancelling pairs (fire→water) dampen.
+// Bonus magnitude env-overridable.
+const COMBO_ELEMENT_BONUS = (() => {
+  const v = Number(process.env.CONCORD_COMBO_ELEMENT_BONUS);
+  return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 0.15;
+})();
+// Sorted-pair sets ("a|b" with a<b).
+const COMBO_AMPLIFY = new Set([
+  "air|fire", "fire|wind", "fire|lightning", "lightning|water", "air|lightning", "lightning|wind",
+]);
+const COMBO_CANCEL = new Set(["fire|water", "fire|ice"]);
+
+/** Damage multiplier from chaining `cur` element off `prev`. Pure. */
+export function elementComboMultiplier(prev, cur) {
+  if (!prev || !cur) return 1;
+  const a = String(prev).toLowerCase();
+  const b = String(cur).toLowerCase();
+  if (a === "none" || b === "none") return 1;
+  if (a === b) return 1 + COMBO_ELEMENT_BONUS;              // resonance
+  const key = [a, b].sort().join("|");
+  if (COMBO_AMPLIFY.has(key)) return 1 + COMBO_ELEMENT_BONUS; // complementary
+  if (COMBO_CANCEL.has(key)) return 1 - COMBO_ELEMENT_BONUS;  // cancelling
+  return 1;
+}
+
 /**
  * Record a successful strike and update combo state. Returns
- *   { combo, finisher_unlocked, multiplier, broken_previous_combo }
+ *   { combo, finisher_unlocked, multiplier, element_multiplier, broken_previous_combo }
  *
  * - combo: integer current combo length
  * - finisher_unlocked: true if combo just hit profile.finisher_threshold
  * - multiplier: damage multiplier from combo (1.0 + 0.04 × combo, capped 2.5)
+ * - element_multiplier: WS4(c) elemental-chain bonus/penalty vs the prior strike
  * - broken_previous_combo: true if the prior chain expired before this strike
  */
-export function recordStrike(db, { actorKind, actorId, nowMs }) {
+export function recordStrike(db, { actorKind, actorId, nowMs, element = null }) {
   if (!db || !actorKind || !actorId) return { ok: false, reason: "missing_inputs" };
   const state = getOrCreateActorState(db, { actorKind, actorId });
   if (!state) return { ok: false, reason: "no_state" };
@@ -270,13 +297,27 @@ export function recordStrike(db, { actorKind, actorId, nowMs }) {
   const finisherUnlocked = (combo === profile.finisher_threshold);
   const multiplier = Math.min(2.5, 1 + 0.04 * combo);
 
+  // Element chain: compare against the previous strike's element (cleared on a
+  // broken combo so a fresh chain starts neutral).
+  const prevElement = broken ? null : (state.last_element || null);
+  const elementMultiplier = elementComboMultiplier(prevElement, element);
+
   try {
     db.prepare(`
       UPDATE combat_actor_state
-      SET combo_count = ?, combo_last_at_ms = ?, updated_at = unixepoch()
+      SET combo_count = ?, combo_last_at_ms = ?, last_element = ?, updated_at = unixepoch()
       WHERE actor_kind = ? AND actor_id = ?
-    `).run(combo, t, actorKind, actorId);
-  } catch { return { ok: false, reason: "update_failed" }; }
+    `).run(combo, t, element || null, actorKind, actorId);
+  } catch {
+    // Older schema without last_element — keep combo working without the column.
+    try {
+      db.prepare(`
+        UPDATE combat_actor_state
+        SET combo_count = ?, combo_last_at_ms = ?, updated_at = unixepoch()
+        WHERE actor_kind = ? AND actor_id = ?
+      `).run(combo, t, actorKind, actorId);
+    } catch { return { ok: false, reason: "update_failed" }; }
+  }
 
   if (combo === 1) {
     insertEvent(db, state.world_id, actorKind, actorId, "combo_start", { combo, multiplier });
@@ -286,8 +327,16 @@ export function recordStrike(db, { actorKind, actorId, nowMs }) {
   if (finisherUnlocked) {
     insertEvent(db, state.world_id, actorKind, actorId, "combo_finish", { combo, multiplier });
   }
+  if (elementMultiplier !== 1) {
+    insertEvent(db, state.world_id, actorKind, actorId, "element_combo", {
+      prev: prevElement, cur: element, multiplier: elementMultiplier,
+    });
+  }
 
-  return { ok: true, combo, finisher_unlocked: finisherUnlocked, multiplier, broken_previous_combo: broken };
+  return {
+    ok: true, combo, finisher_unlocked: finisherUnlocked, multiplier,
+    element_multiplier: elementMultiplier, broken_previous_combo: broken,
+  };
 }
 
 // ── Parry / Dodge ───────────────────────────────────────────────────────────

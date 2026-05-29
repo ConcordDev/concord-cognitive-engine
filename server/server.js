@@ -111,6 +111,18 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// WS3: outward-migration engine (NPC re-anchor half). As NPCs out-level the
+// ring they stand in, they step toward their home band's inner edge so the
+// strong drain to the frontier and the hub refills with weak spawns. Per-world
+// scope (writes world_npcs). Slow cadence (~5 min) — migration is a journey.
+// No-op unless CONCORD_RADIAL_WORLDS is on; kill-switch CONCORD_WORLD_MIGRATION=0.
+import { runWorldMigrationCycle } from "./emergent/world-migration-cycle.js";
+registerHeartbeat("world-migration-cycle", {
+  frequency: 20,
+  handler: runWorldMigrationCycle,
+  scope: "world",
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing
@@ -7754,6 +7766,32 @@ async function tryInitWebSockets(server) {
     pingTimeout: 60000,
     pingInterval: 25000
   });
+
+  // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
+  // when REDIS_URL (or CONCORD_REDIS_URL) is set, so single-process deploys are
+  // unchanged. Once enabled, `io.to(room).emit(...)` fans out across every node
+  // sharing the Redis, so a horizontally-scaled deploy (or rolling restart)
+  // keeps every player in `world:${worldId}` / `user:${userId}` in sync.
+  // Best-effort: a Redis failure logs + falls back to single-process, never
+  // blocks boot.
+  const _redisUrl = process.env.REDIS_URL || process.env.CONCORD_REDIS_URL || null;
+  if (_redisUrl) {
+    (async () => {
+      try {
+        const { createAdapter } = await import("@socket.io/redis-adapter");
+        const { createClient } = await import("redis");
+        const pubClient = createClient({ url: _redisUrl });
+        const subClient = pubClient.duplicate();
+        pubClient.on("error", (e) => structuredLog("warn", "socketio_redis_pub_error", { error: e?.message }));
+        subClient.on("error", (e) => structuredLog("warn", "socketio_redis_sub_error", { error: e?.message }));
+        await Promise.all([pubClient.connect(), subClient.connect()]);
+        io.adapter(createAdapter(pubClient, subClient));
+        structuredLog("info", "socketio_redis_adapter_enabled", { url: _redisUrl.replace(/\/\/.*@/, "//***@") });
+      } catch (e) {
+        structuredLog("warn", "socketio_redis_adapter_failed", { error: e?.message, fallback: "single_process" });
+      }
+    })();
+  }
 
   REALTIME.io = io;
   REALTIME.ready = true;
@@ -24449,6 +24487,17 @@ registerDtuPortabilityMacros(register);
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
 
+// Game-mode realtime push helper (used by the mode-push middleware below).
+import { emitModeToUser } from "./lib/mode-realtime.js";
+
+// WS4(d) — player cross-skill fusion (the MHA fusion engine for players).
+import registerSkillFusionMacros from "./domains/skill-fusion.js";
+registerSkillFusionMacros(register);
+
+// WS4(b) — awakening + specialization (Deku/Bakugo power growth).
+import registerSkillAwakeningMacros from "./domains/skill-awakening.js";
+registerSkillAwakeningMacros(register);
+
 // Theme deferred (game-feel pass): async-cooperation player signs.
 // Register the macro domain + the cleanup heartbeat.
 import registerPlayerSignsMacros from "./domains/player-signs.js";
@@ -37471,6 +37520,13 @@ app.get("/api/admin/governance-rejections", requireOwner, asyncHandler(async (re
   res.json({ ok: true, rejections, count: rejections.length });
 }));
 
+// WS7 — living-world gradient-health telemetry. Is the hub staying low-level
+// (grindable) and are veterans migrating outward toward the frontier?
+app.get("/api/admin/world-gradient-health", requireOwner, asyncHandler(async (_req, res) => {
+  const { allWorldsGradientHealth } = await import("./lib/world-gradient-health.js");
+  res.json(allWorldsGradientHealth(db));
+}));
+
 // Admin integrity check endpoint
 app.get("/api/admin/integrity", requireOwner, asyncHandler(async (req, res) => {
   const runFresh = req.query.run === "true";
@@ -48929,6 +48985,38 @@ app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
     res.json({ ok: true, songs: [], error: e?.message });
   }
 }));
+
+// ── Game-mode realtime push (polling→push) ──────────────────────────────────
+// One middleware that makes every PLAYER-ACTION mode mutation push instead of
+// requiring the HUD to poll: it decorates res.json for POSTs to the mode paths
+// below and emits `<mode>:state` to the caller's user room on a successful
+// response. The HUD's useRealtimeRefresh treats it as a "refresh now" signal.
+// Background/heartbeat-driven changes (order timers, dread, visitors, etc.) are
+// pushed separately from their cycles; the HUD backstop covers anything missed.
+const _MODE_EVENT = Object.freeze({
+  horde: "horde:state", mahjong: "mahjong:state", extraction: "extraction:state",
+  "time-loop": "time-loop:state", restaurant: "restaurant:state", horror: "horror:state",
+  "theme-park": "theme-park:state", roguelite: "roguelite:run-state", lfg: "lfg:board-update",
+  courtship: "courtship:affinity-update",
+});
+const _MODE_PATH_RE = /^\/api\/(horde|mahjong|extraction|time-loop|restaurant|horror|theme-park|roguelite|lfg|courtship)\//;
+app.use((req, res, next) => {
+  if (req.method !== "POST") return next();
+  const m = req.path.match(_MODE_PATH_RE);
+  if (!m) return next();
+  const event = _MODE_EVENT[m[1]];
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    try {
+      const userId = req.user?.id || req.user?.userId;
+      if (event && userId && body && body.ok !== false) {
+        emitModeToUser(req.app.locals.io, userId, event, { changed: true });
+      }
+    } catch { /* push is best-effort */ }
+    return origJson(body);
+  };
+  next();
+});
 
 // Phase E4 — full mahjong tile sim. The old /api/mahjong/resolve route
 // stays for back-compat with the declarative-yaku UI; new routes below

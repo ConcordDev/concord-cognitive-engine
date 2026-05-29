@@ -540,6 +540,12 @@
       ]
     },
     {
+      "file": "world-migration-cycle.js",
+      "handlers": [
+        "runWorldMigrationCycle"
+      ]
+    },
+    {
       "file": "world-population-cycle.js",
       "handlers": [
         "runWorldPopulationCycle"
@@ -971,5 +977,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-05-29T02:57:33.472Z"
+  "scannedAt": "2026-05-29T13:17:27.850Z"
 }

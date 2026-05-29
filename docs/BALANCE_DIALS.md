@@ -137,3 +137,65 @@ npm run test:sim      # runs all G3 sims, regenerates audit/balance/*.json
 - New balance dial added → add a row in the relevant section.
 - Existing default changed → update the value column; note the rationale in the commit message.
 - Playtest result locks in a new default → update the default in source AND this doc together.
+
+## Living World (WS0–WS7) — radial danger gradient, absolute power, migration, fusion
+
+The living-world system ships ON by default; each flag is a kill-switch.
+
+### Master switches
+| Flag | Default | Effect when disabled |
+|---|---|---|
+| `CONCORD_ABSOLUTE_POWER` | on | NPC/creature HP + damage revert to flat 100 HP / `5+criminal_rep*10` |
+| `CONCORD_RADIAL_WORLDS` | on | Spawns keep the legacy ±400 footprint; everything stays band 0–1 |
+| `CONCORD_WORLD_MIGRATION` | on | Outward NPC re-anchor cycle no-ops |
+| `CONCORD_SKILL_FUSION` | on | Crossbreeding/player fusion produces no fused power |
+| `CONCORD_FACTION_STRENGTH` | on | Wars/raids ignore structural strength |
+
+### WS0 — radial gradient geometry (`server/lib/world-gradient.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_WORLD_RADIUS_M` | 1000 | Frontier rim; matches TerrainRenderer TERRAIN_SIZE/2. Per-world override via `worlds.rule_modulators.gradient.worldRadiusM`. |
+| `CONCORD_GRADIENT_HUB_RADIUS_M` | 150 | Safe hub disc (band 0). |
+| `CONCORD_GRADIENT_BANDS` | 6 | Concentric danger bands. |
+| `CONCORD_GRADIENT_CURVE` | 1.65 | Super-linear danger ramp (>1 keeps inner bands gentle, spikes the frontier). |
+| `CONCORD_GRADIENT_FRONTIER_LEVEL` | 100 | Commons level at the rim (named threats exceed it). |
+| `CONCORD_GRADIENT_FRONTIER_DENSITY` | 0.2 | Spawn-density floor at the frontier (1.0 at the hub). |
+
+### WS1 — absolute power (`server/lib/entity-power.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_NPC_BASE_HP` | 100 | Legacy base HP. |
+| `CONCORD_NPC_HP_PER_LEVEL` | 0.12 | +12% base HP per level → frontier bullet-sponges. |
+| `CONCORD_NPC_BASE_POWER` | 5 | Legacy base attack power. |
+| `CONCORD_NPC_POWER_PER_LEVEL` | 0.65 | NPC basePower growth per level. |
+| `CONCORD_NPC_DAMAGE_HARD_CAP` | 500 | NPC-side outgoing damage cap. |
+| `CONCORD_NPC_DAMAGE_CRIT_MULT` | 3 | cap = min(hardCap, basePower × this). |
+
+### WS3 — migration (`server/lib/world-migration.js`, `emergent/world-migration-cycle.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_MIGRATION_STEP_M` | 40 | Max outward step per NPC re-anchor pass (migration reads as a journey). |
+
+### WS4 — fusion (`server/lib/skill-fusion.js`) + element-combo (`server/lib/combat-polish.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_FUSION_GAIN_MIN` | 1.2 | Unstable fusion multiplier vs the stronger parent. |
+| `CONCORD_FUSION_GAIN_MAX` | 1.85 | Perfectly-stable fusion multiplier. |
+| `CONCORD_FUSION_GEN_DECAY` | 0.95 | Per-generation diminishing of the fusion bonus. |
+| `CONCORD_FUSION_INBRED_PENALTY` | 0.85 | Inbreeding dilution. |
+| `CONCORD_FUSION_SINGULARITY_GEN` | 8 | Deep-lineage One-For-All unlock. |
+| `CONCORD_FUSION_SINGULARITY_BONUS` | 0.22 | Extra gain at the singularity. |
+| `CONCORD_COMBO_ELEMENT_BONUS` | 0.15 | ±15% element-chain amplify/cancel in combat. |
+
+### WS5 — faction strength (`server/lib/faction-strength.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_FACTION_LEADER_WEIGHT` | 4 | Leader level weight in strength. |
+| `CONCORD_FACTION_MEMBER_WEIGHT` | 1 | Per-member level weight. |
+| `CONCORD_FACTION_COUNT_WEIGHT` | 2.5 | Headcount weight. |
+| `CONCORD_FACTION_CONSCRIPTION_BONUS` | 0.25 | Realm-mult bonus when a conscription decree is active. |
+
+### WS7 — telemetry
+`GET /api/admin/world-gradient-health` (owner-only) reports per-world band level
+distributions + `{ hubLowLevel, veteransOutward }` health flags — the signal that
+the hub stays grindable and veterans are draining to the frontier.

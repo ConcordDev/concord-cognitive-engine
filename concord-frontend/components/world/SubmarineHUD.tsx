@@ -13,8 +13,9 @@
 // HUD polls GET /api/players/me/dive-state every 1s; auto-hides when
 // is_swimming = 0.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Anchor, AlertTriangle, Activity } from 'lucide-react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 
 interface DiveState {
   isSwimming: boolean;
@@ -30,24 +31,19 @@ const POLL_MS = 1000;
 export function SubmarineHUD() {
   const [state, setState] = useState<DiveState | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function poll() {
-      try {
-        const r = await fetch('/api/players/me/dive-state', { credentials: 'include' });
-        if (!r.ok) return;
-        const j = await r.json();
-        if (!cancelled && j?.ok && j.diveState?.isSwimming) {
-          setState(j.diveState);
-        } else if (!cancelled) {
-          setState(null);
-        }
-      } catch { /* network blip */ }
-    }
-    poll();
-    const t = setInterval(poll, POLL_MS);
-    return () => { cancelled = true; clearInterval(t); };
+  const refresh = useCallback(async () => {
+    try {
+      const r = await fetch('/api/players/me/dive-state', { credentials: 'include' });
+      if (!r.ok) return;
+      const j = await r.json();
+      setState(j?.ok && j.diveState?.isSwimming ? j.diveState : null);
+    } catch { /* network blip */ }
   }, []);
+
+  // Push: discrete dive events (enter/exit water, depth-band change, sonar
+  // contact) arrive on submarine:dive-state. Oxygen decays continuously
+  // server-side, so a tight backstop keeps the % live between discrete events.
+  useRealtimeRefresh(['submarine:dive-state'], refresh, { backstopMs: POLL_MS });
 
   if (!state || !state.isSwimming) return null;
 

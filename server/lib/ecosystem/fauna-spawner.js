@@ -16,6 +16,44 @@ import { speciesForBiome } from "./loot-tables.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
 import { getWorldMeta } from "../cross-world-effectiveness.js";
 import { ensureHomeFor, recordImbalance } from "./creature-homes.js";
+import {
+  gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange,
+  spawnDensityFor, worldBoundsFor, radialWorldsEnabled,
+} from "../world-gradient.js";
+
+/**
+ * WS2: deterministic per-species cluster center that sits in a specific danger
+ * band, so EVERY band — including the hub — reliably gets fauna (a new player
+ * always has weak creatures to grind near the hub, instead of relying on a
+ * uniform scatter that can leave the hub empty). Each species hashes to a band;
+ * its cluster anchors at a hashed radius/angle within that band.
+ */
+function radialClusterCenter(cfg, anchor, worldId, biome, speciesId) {
+  const h = crypto.createHash("sha1").update(`${worldId}::${biome}::${speciesId}`).digest();
+  const band = h[0] % cfg.bandCount;
+  const span = Math.max(1, cfg.worldRadiusM - cfg.hubRadiusM);
+  const innerR = cfg.hubRadiusM + (band / cfg.bandCount) * span;
+  const outerR = cfg.hubRadiusM + ((band + 1) / cfg.bandCount) * span;
+  // Keep the center comfortably inside the band so its spread doesn't all spill
+  // into neighbours.
+  const r = innerR + (h[1] / 255) * Math.max(1, outerR - innerR) * 0.6 + (outerR - innerR) * 0.2;
+  const ang = (h.readUInt32BE(2) / 0xffffffff) * Math.PI * 2;
+  return { x: anchor.x + Math.cos(ang) * r, z: anchor.z + Math.sin(ang) * r };
+}
+
+/**
+ * WS2: deterministic band-appropriate level for a creature spawned at (x,z).
+ * Near the hub → low level (dense weak flocks); toward the frontier → high
+ * level. Seeded by id so it's stable. Reads the world's radial gradient; with
+ * legacy ±400 bounds every point is band 0–1, so levels stay low (unchanged).
+ */
+function levelForSpawn(cfg, anchor, x, z, seedKey) {
+  const band = dangerBandAt(cfg, anchor, x, z);
+  const [lo, hi] = bandLevelRange(cfg, band);
+  if (hi <= lo) return lo;
+  const h = crypto.createHash("sha1").update(String(seedKey)).digest().readUInt32BE(0);
+  return lo + (h % (hi - lo + 1));
+}
 
 const BIOMES = ["plains", "forest", "highland", "mountain", "water", "arid"];
 
@@ -152,7 +190,15 @@ export function runFaunaSpawner({ state, db }) {
   // world_id, archetype, species_id, x, y, z, is_dead). Older builds
   // with a stricter schema throw on the .run; the catch in the loop
   // skips gracefully (spawner is best-effort, never fatal).
+  // WS2: include `level` so spawned creatures carry band-appropriate strength.
+  // Older builds with a stricter schema (no level column) throw on .run; the
+  // per-spawn catch falls back to the legacy column set.
   const insert = db.prepare(`
+    INSERT INTO world_npcs
+      (id, world_id, archetype, species_id, x, y, z, is_dead, level)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertLegacy = db.prepare(`
     INSERT INTO world_npcs
       (id, world_id, archetype, species_id, x, y, z, is_dead)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -176,10 +222,17 @@ export function runFaunaSpawner({ state, db }) {
     // When the world meta is hooked, this will be looked up from
     // worlds.universe_type.
     let universe = "standard";
+    let worldRow = null;
     try {
-      const w = db.prepare(`SELECT universe_type FROM worlds WHERE id = ?`).get(worldId);
-      if (w?.universe_type) universe = w.universe_type;
+      worldRow = db.prepare(`SELECT * FROM worlds WHERE id = ?`).get(worldId);
+      if (worldRow?.universe_type) universe = worldRow.universe_type;
     } catch { /* worlds table may not exist on minimal deployments */ }
+
+    // WS2: per-world radial gradient — config (with rule_modulators overrides)
+    // + hub anchor, computed once per world per pass. Used to place spawns at a
+    // band-appropriate level and density.
+    const gradCfg = gradientConfigFor(worldRow || null);
+    const hubAnchor = hubAnchorFor(db, worldId, gradCfg);
 
     // Layer 7: Read current environmental signals once per world per
     // tick. The per-species _signalModifierFor() consumes these to
@@ -258,9 +311,22 @@ export function runFaunaSpawner({ state, db }) {
         // target. e.g. a "bug" species in a cold biome (temperature < 5°C)
         // gets target × 0.1 → far fewer spawn attempts and population
         // settles at ~10% of warm-zone density.
+        // WS2: radial bounds (frontier-wide when enabled) + the species'
+        // deterministic cluster center, computed up-front so density can taper
+        // by danger band — dense flocks near the hub, sparse toward the frontier.
+        const radial = radialWorldsEnabled();
+        const bounds = radial ? worldBoundsFor(gradCfg, hubAnchor) : biomeBoundsForWorld(worldId);
+        // Radial: anchor the species cluster in a deterministic band so every
+        // band (incl. the hub) gets fauna. Legacy: original uniform scatter.
+        const center = radial
+          ? radialClusterCenter(gradCfg, hubAnchor, worldId, biome, sp.id)
+          : clusterCenterFor(worldId, biome, sp.id, bounds);
+        const clusterBand = dangerBandAt(gradCfg, hubAnchor, center.x, center.z);
+        const density = spawnDensityFor(gradCfg, clusterBand);
+
         const baseTarget = existing?.target_count ?? sp.target;
         const modifier = _signalModifierFor(sp.id, worldSignals);
-        const target = Math.max(0, Math.round(baseTarget * modifier));
+        const target = Math.max(0, Math.round(baseTarget * modifier * density));
         const need = Math.max(0, target - liveCount);
         if (need === 0) {
           db.prepare(`
@@ -271,19 +337,20 @@ export function runFaunaSpawner({ state, db }) {
           continue;
         }
 
-        const bounds = biomeBoundsForWorld(worldId);
         // Theme 2 (game-feel pass): cluster around a deterministic center
         // per (world, biome, species) instead of uniform-random point cloud.
         // Cluster radius scales modestly with target_count so high-density
         // species occupy a plausibly larger range. randomPos remains as the
         // fallback for unbounded universes.
-        const center = clusterCenterFor(worldId, biome, sp.id, bounds);
         const clusterRadius = Math.max(40, Math.min(180, 18 + (target * 1.5)));
         for (let i = 0; i < Math.min(need, BATCH_LIMIT - spawned); i++) {
           const pos = clusterOffsetPos(center.x, center.z, clusterRadius, bounds);
           // Suppress the unused-but-kept-for-fallback complaint.
           void randomPos;
           const id = `cr_${crypto.randomUUID()}`;
+          // WS2: band-appropriate level at this spawn point. With WS1's flag on,
+          // this drives HP + damage so frontier fauna are genuinely lethal.
+          const level = levelForSpawn(gradCfg, hubAnchor, pos.x, pos.z, id);
           try {
             insert.run(
               id,
@@ -294,13 +361,20 @@ export function runFaunaSpawner({ state, db }) {
               0,  // is_dead = 0 (alive). Previously this was 1 — every
                   // spawned creature landed in world_npcs marked dead, so
                   // none ever showed up in /npcs queries or flock cycles.
+              level,
             );
             spawned++;
           } catch {
-            // world_npcs may have a stricter schema in some builds —
-            // skip gracefully; spawner is best-effort.
-            void popKey;
-            break;
+            // Stricter schema without a `level` column — retry the legacy shape.
+            try {
+              insertLegacy.run(id, worldId, `creature:${sp.id}`, sp.id, pos.x, 0, pos.z, 0);
+              spawned++;
+            } catch {
+              // world_npcs may have a stricter schema in some builds —
+              // skip gracefully; spawner is best-effort.
+              void popKey;
+              break;
+            }
           }
         }
         db.prepare(`

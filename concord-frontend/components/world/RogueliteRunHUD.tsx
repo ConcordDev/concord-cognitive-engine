@@ -9,6 +9,7 @@
 // dispatching concordia:open-roguelite-shop.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Dice5, ShoppingCart, X, Coins } from 'lucide-react';
 
 interface ActiveRun {
@@ -43,11 +44,7 @@ export function RogueliteRunHUD() {
     } catch { /* swallow */ }
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  useRealtimeRefresh(['roguelite:run-state'], refresh, { backstopMs: POLL_MS * 2 });
 
   if (!run) return null;
 

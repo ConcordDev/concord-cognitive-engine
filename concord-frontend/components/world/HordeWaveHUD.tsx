@@ -2,7 +2,8 @@
 
 // Phase DB4 — Bullet heaven horde HUD + upgrade picker.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Zap, X } from 'lucide-react';
 
 interface ActiveHorde {
@@ -17,7 +18,6 @@ interface ActiveHorde {
 
 interface Upgrade { id: string; name: string; effect: string; }
 
-const POLL_MS = 1000;
 
 export function HordeWaveHUD() {
   const [horde, setHorde] = useState<ActiveHorde | null>(null);
@@ -30,11 +30,7 @@ export function HordeWaveHUD() {
     } catch { /* swallow */ }
   }, []);
 
-  useEffect(() => {
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [refresh]);
+  useRealtimeRefresh(['horde:state'], refresh, { backstopMs: 3000 });
 
   // Listen for wave-advance from server (e.g. concordia:horde-wave-advance)
   // or trigger next wave on demand.

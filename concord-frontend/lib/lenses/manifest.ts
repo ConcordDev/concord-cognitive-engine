@@ -5031,6 +5031,28 @@ export const LENS_MANIFESTS: LensManifest[] = [
       ],
     },
   },
+
+  // ── Living-world + game/utility lens registrations ─────────────────────────
+  // Minimal manifest entries so these real lens pages are recognised by the
+  // lens-manifest lint rule and the generic shell can resolve their id. Each
+  // lens drives its own custom page; macros follow the lens.<domain>.* convention.
+  { domain: 'achievements',  label: 'Achievements',       artifacts: ['achievement'], macros: { list: 'lens.achievements.list',  get: 'lens.achievements.get' },  exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'announcements', label: 'Announcements',      artifacts: ['announcement'],macros: { list: 'lens.announcements.list', get: 'lens.announcements.get' }, exports: ['json'], actions: [], category: 'operations' },
+  { domain: 'auction',       label: 'Auction House',      artifacts: ['auction'],     macros: { list: 'lens.auction.list',       get: 'lens.auction.get' },       exports: ['json'], actions: ['bid'], category: 'finance' },
+  { domain: 'detective',     label: 'Detective',          artifacts: ['case'],        macros: { list: 'lens.detective.list',     get: 'lens.detective.get' },     exports: ['json'], actions: ['deduce'], category: 'lifestyle' },
+  { domain: 'housing',       label: 'Housing',            artifacts: ['house'],       macros: { list: 'lens.housing.list',       get: 'lens.housing.get' },       exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'lfg',           label: 'Looking for Group',  artifacts: ['lfg_post'],    macros: { list: 'lens.lfg.list',           get: 'lens.lfg.get' },           exports: ['json'], actions: [], category: 'social' },
+  { domain: 'mail',          label: 'Mail',               artifacts: ['mail'],        macros: { list: 'lens.mail.list',          get: 'lens.mail.get' },          exports: ['json'], actions: [], category: 'social' },
+  { domain: 'narrative-walk',label: 'Narrative Walk',     artifacts: ['cinematic'],   macros: { list: 'lens.narrative-walk.list',get: 'lens.narrative-walk.get' },exports: ['json'], actions: [], category: 'creative' },
+  { domain: 'ops-telemetry', label: 'Ops Telemetry',      artifacts: ['metric'],      macros: { list: 'lens.ops-telemetry.list', get: 'lens.ops-telemetry.get' }, exports: ['json'], actions: [], category: 'operations' },
+  { domain: 'photos',        label: 'Photos',             artifacts: ['photo'],       macros: { list: 'lens.photos.list',        get: 'lens.photos.get' },        exports: ['json'], actions: ['share'], category: 'creative' },
+  { domain: 'quests',        label: 'Quests',             artifacts: ['quest'],       macros: { list: 'lens.quests.list',        get: 'lens.quests.get' },        exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'spectate',      label: 'Spectate',           artifacts: ['spectacle'],   macros: { list: 'lens.spectate.list',      get: 'lens.spectate.get' },      exports: ['json'], actions: ['bet'], category: 'social' },
+  { domain: 'training-room', label: 'Training Room',      artifacts: ['drill'],       macros: { list: 'lens.training-room.list', get: 'lens.training-room.get' }, exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'courtship',     label: 'Courtship',          artifacts: ['courtship'],   macros: { list: 'lens.courtship.list',     get: 'lens.courtship.get' },     exports: ['json'], actions: [], category: 'lifestyle' },
+  { domain: 'creatures',     label: 'Creatures',          artifacts: ['creature'],    macros: { list: 'lens.creatures.list',     get: 'lens.creatures.get' },     exports: ['json'], actions: ['breed'], category: 'lifestyle' },
+  { domain: 'fishing',       label: 'Fishing',            artifacts: ['catch'],       macros: { list: 'lens.fishing.list',       get: 'lens.fishing.get' },       exports: ['json'], actions: ['cast'], category: 'lifestyle' },
+  { domain: 'garage',        label: 'Garage',             artifacts: ['vehicle'],     macros: { list: 'lens.garage.list',        get: 'lens.garage.get' },        exports: ['json'], actions: [], category: 'lifestyle' },
 ];
 
 // ---- Sub-lens auto-registration ----

@@ -2137,12 +2137,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         // (the existing combat path doesn't expose that signal), so we
         // charge the hit-cost. Future: pass a hit boolean.
         polish.spendGas(db, { actorKind: "player", actorId: userId, amount: playerProfile.gas_strike_cost });
-        const strike = polish.recordStrike(db, { actorKind: "player", actorId: userId, nowMs: Date.now() });
+        const strike = polish.recordStrike(db, {
+          actorKind: "player", actorId: userId, nowMs: Date.now(),
+          element: skillData.element || 'none',
+        });
         if (strike?.ok && strike.multiplier > 1) {
           damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.multiplier * 10) / 10;
           damageResult.comboMultiplier = strike.multiplier;
           damageResult.comboCount = strike.combo;
           damageResult.finisherUnlocked = strike.finisher_unlocked;
+        }
+        // WS4(c) element-combo: amplify complementary elemental chains, dampen
+        // cancelling ones (post-combo, like the combo multiplier itself).
+        if (strike?.ok && strike.element_multiplier && strike.element_multiplier !== 1) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * strike.element_multiplier * 10) / 10;
+          damageResult.elementMultiplier = strike.element_multiplier;
         }
         // T1.4a — stagger from real IMPACT MOMENTUM (bone-mass × angular-
         // velocity × lever) vs the NPC's poise budget, not raw damage vs a
@@ -2567,17 +2576,22 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } = await import("../lib/combat/damage-calculator.js");
 
       const npc = db.prepare(`
-        SELECT archetype, criminal_rep, fire_resistance, ice_resistance,
+        SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
                physical_resistance, current_hp, max_hp
         FROM world_npcs WHERE id = ?
       `).get(npcId);
       if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
 
-      // NPC attack power scales with criminal_rep and archetype
-      const npcPower = 5 + (npc.criminal_rep || 0) * 10;
+      // WS1: NPC attack power derives from its GROWN combat level (skill +
+      // evolution), so a leveled frontier hostile genuinely threatens a player
+      // while a level-1 hub NPC stays harmless. Gated behind CONCORD_ABSOLUTE_POWER
+      // — with the flag off, npcAttackStats returns the legacy
+      // `5 + criminal_rep*10` shape so behaviour is unchanged.
+      const { getEntityCombatLevel, npcAttackStats, capNpcDamage } =
+        await import("../lib/entity-power.js");
       const element = npc.archetype === 'mage' ? 'energy' : 'physical';
-
-      const attackerStats = { skillLevel: 5, element, basePower: npcPower, enchantmentBonus: 0, worldMultiplier: 1 };
+      const combatLevel = getEntityCombatLevel(db, npc.id);
+      const attackerStats = npcAttackStats(combatLevel, element, { criminalRep: npc.criminal_rep || 0 });
 
       // Fetch player resistances from equipped armor DTUs
       const armorDtu = db.prepare(`
@@ -2596,6 +2610,9 @@ export default function createWorldsRouter({ requireAuth, db }) {
       };
 
       const damageResult = computeDamage(attackerStats, defenderStats, {});
+      // WS1 anti-cheat / anti-misconfig: cap NPC outgoing damage (mirrors the
+      // player-side _validateDamageCap). No-op when the flag is off.
+      damageResult.finalDamage = capNpcDamage(damageResult.finalDamage, attackerStats);
       const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });
@@ -2613,7 +2630,83 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       } catch { /* Layer 8 disabled — combat still works */ }
 
+      // WS4(b) — near-death awakening trigger. If the player SURVIVED a hit that
+      // dropped them to a sliver of HP, surface an awakening opportunity (a
+      // stress-triggered power spike, MHA-style). Advisory event; the client
+      // confirms which skill to awaken via the skill-awakening.awaken macro.
+      if (!kill) {
+        try {
+          const { isNearDeath } = await import("../lib/skill-awakening.js");
+          const bars = db.prepare(
+            `SELECT hp, max_hp FROM player_resource_bars WHERE user_id = ? AND world_id = ?`
+          ).get(userId, worldId);
+          if (bars && isNearDeath(bars.hp, bars.max_hp)) {
+            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:awakening-available", {
+              worldId, hp: bars.hp, maxHp: bars.max_hp, source: 'near_death_survived',
+            });
+          }
+        } catch { /* awakening surfacing is best-effort */ }
+      }
+
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/worlds/:worldId/danger?x=&z= — WS6 danger telegraphing.
+  // Returns the danger band at a point + the nearest entities with their level
+  // relative to the caller, so the client can render "entering the Wilds" cues
+  // and per-enemy danger tells. Never walls the player off — purely advisory.
+  router.get("/:worldId/danger", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const x = Number(req.query.x) || 0;
+      const z = Number(req.query.z) || 0;
+      const playerLevel = Math.max(1, Number(req.query.level) || 1);
+      const { gradientAt } = await import("../lib/world-gradient.js");
+      const { dangerLabel } = await import("../lib/world-danger.js");
+      const g = gradientAt(db, worldId, x, z);
+
+      let nearby = [];
+      try {
+        nearby = db.prepare(`
+          SELECT id, archetype, level, x, z FROM world_npcs
+          WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
+            AND x IS NOT NULL AND z IS NOT NULL
+          ORDER BY ((x - ?) * (x - ?) + (z - ?) * (z - ?)) ASC
+          LIMIT 16
+        `).all(worldId, x, x, z, z).map((n) => ({
+          id: n.id,
+          archetype: n.archetype,
+          level: n.level || 1,
+          distance: Math.round(Math.hypot(n.x - x, n.z - z)),
+          tell: dangerLabel((n.level || 1) - playerLevel),
+        }));
+      } catch { /* world_npcs optional */ }
+
+      res.json({
+        ok: true,
+        band: g.band,
+        bandName: g.bandName,
+        minLevel: g.minLevel,
+        maxLevel: g.maxLevel,
+        inHub: g.inHub,
+        distance: Math.round(g.distance),
+        density: Math.round(g.density * 100) / 100,
+        nearby,
+        // Gradient config + hub anchor so the client can compute the danger band
+        // LOCALLY from the player position (no per-frame poll). Fetched once on
+        // world entry; the System reads bands off the live pose instead.
+        config: {
+          worldRadiusM: g.config.worldRadiusM,
+          hubRadiusM: g.config.hubRadiusM,
+          bandCount: g.config.bandCount,
+          dangerCurve: g.config.dangerCurve,
+          frontierLevel: g.config.frontierLevel,
+        },
+        anchor: { x: g.anchor.x, z: g.anchor.z, radiusM: g.anchor.radiusM },
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

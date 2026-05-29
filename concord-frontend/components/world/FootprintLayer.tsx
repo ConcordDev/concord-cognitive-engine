@@ -5,6 +5,7 @@
 // to tracking_skill_xp.level >= 5 via /api/tracking/recent.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 
 const POLL_MS = 30_000;
 const FRAME_THROTTLE_MS = 200;
@@ -54,12 +55,7 @@ export function FootprintLayer({ enabled = true }: Props) {
     } catch { /* swallow */ }
   }, [worldId]);
 
-  useEffect(() => {
-    if (!enabled || !worldId) return;
-    refresh();
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [enabled, worldId, refresh]);
+  useRealtimeRefresh(['tracking:footprints-updated'], refresh, { backstopMs: POLL_MS, enabled: enabled && !!worldId });
 
   useEffect(() => {
     if (!enabled || gated || tracks.length === 0) { setPositions(new Map()); return; }
