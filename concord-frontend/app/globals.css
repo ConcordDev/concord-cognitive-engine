@@ -802,3 +802,32 @@ body.concord-time-dilated::after {
 .concordia-hud-slide-top    { animation: concordiaHudSlideTop    220ms cubic-bezier(0.16, 1, 0.3, 1); }
 .concordia-hud-slide-bottom { animation: concordiaHudSlideBottom 220ms cubic-bezier(0.16, 1, 0.3, 1); }
 .concordia-hud-fade         { animation: concordiaHudFade        220ms ease-out; }
+
+/* ── G3.1 — accessibility DOM hooks (applied by AccessibilityDOMApplier) ──── */
+
+/* Colorblind correction filters (Machado-style SVG matrices live in the
+   #a11y-cb-filters defs injected by the applier mount; data-attr selects). */
+html[data-colorblind="protanopia"]   { filter: url('#cb-protanopia'); }
+html[data-colorblind="deuteranopia"] { filter: url('#cb-deuteranopia'); }
+html[data-colorblind="tritanopia"]   { filter: url('#cb-tritanopia'); }
+
+/* High-contrast — boost text/background separation + outline focus. */
+html.a11y-high-contrast {
+  --tw-contrast-boost: 1;
+  filter: contrast(1.15);
+}
+html.a11y-high-contrast :focus-visible {
+  outline: 3px solid #ffe14a !important;
+  outline-offset: 2px;
+}
+
+/* Reduced motion — kill CSS animation/transition everywhere; the 3D world +
+   GameJuice additionally gate on window.__CONCORD_REDUCE_MOTION__. */
+html.a11y-reduce-motion *,
+html.a11y-reduce-motion *::before,
+html.a11y-reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

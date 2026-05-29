@@ -32,6 +32,7 @@
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import CombatVFXBridge from '@/components/world/CombatVFXBridge';
+import { ImpactMomentumBridge } from '@/components/world/ImpactMomentumBridge';
 // Phase 8 add-ons: the ImpactFeedback layer exposes three global emit
 // functions the bridges call inline. ImpactFeedback itself is mounted
 // once at app/lenses/world/page.tsx; the emitters are no-ops until
@@ -660,6 +661,84 @@ export function LethalHitBridge() {
   return null;
 }
 
+// ── T1.4b: server-authoritative combat feel (impact → hitstop/knockback/wince) ─
+/**
+ * T1.4b — the server now resolves a real poise stagger from impact momentum
+ * (T1.4a: bone-mass × angular-velocity × lever vs the recipient's poise
+ * budget) and emits `combat:impact` carrying a `feel` block with the exact
+ * hitstop windows, knockback magnitude, and wince severity the client should
+ * apply. This bridge dispatches the very same CustomEvents the avatar update
+ * loop already honours — `concordia:hit-pause` (mixer freeze window),
+ * `concordia:knockback` (kinematic impulse via physicsWorld.knockbackKinematic),
+ * and `concordia:hit-reaction` (wince/stagger reflex animation) — but now keyed
+ * on physics, not the old `damage > 25` heuristic. GameJuice's local heuristic
+ * still fires for instant optimistic feedback; this layer is the authoritative
+ * correction (idempotent on the receiver — last-write-wins on the pause window).
+ *
+ * Direction is derived from attacker→target so the shove points away from the
+ * source, matching the GameJuice knockback convention.
+ */
+export function CombatImpactFeelBridge() {
+  useEffect(() => {
+    const off = subscribe('combat:impact' as Parameters<typeof subscribe>[0], (payload: unknown) => {
+      const ev = payload as {
+        attackerId?: string;
+        targetId?: string;
+        severity?: 'none' | 'flinch' | 'rocked' | 'knockdown';
+        isKill?: boolean;
+        targetPosition?: { x: number; y?: number; z: number } | null;
+        attackerPosition?: { x: number; y?: number; z: number } | null;
+        feel?: {
+          targetPauseMs?: number;
+          attackerPauseMs?: number;
+          knockback?: number;
+          knockMs?: number;
+          wince?: 'none' | 'light' | 'heavy' | 'crit';
+        };
+      };
+      if (!ev?.targetId || !ev.feel) return;
+      const feel = ev.feel;
+
+      // 1) Hitstop — freeze the target's (and briefly the attacker's) mixer.
+      if ((feel.targetPauseMs ?? 0) > 0) {
+        window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
+          detail: { entityId: ev.targetId, durationMs: feel.targetPauseMs },
+        }));
+      }
+      if ((feel.attackerPauseMs ?? 0) > 0 && ev.attackerId) {
+        window.dispatchEvent(new CustomEvent('concordia:hit-pause', {
+          detail: { entityId: ev.attackerId, durationMs: feel.attackerPauseMs },
+        }));
+      }
+
+      // 2) Knockback — kinematic impulse away from the attacker. Only when we
+      // know both endpoints so the direction is real (matches GameJuice).
+      if ((feel.knockback ?? 0) > 0 && ev.targetPosition && ev.attackerPosition) {
+        const dx = ev.targetPosition.x - ev.attackerPosition.x;
+        const dz = ev.targetPosition.z - ev.attackerPosition.z;
+        const mag = Math.hypot(dx, dz) || 1;
+        window.dispatchEvent(new CustomEvent('concordia:knockback', {
+          detail: {
+            entityId: ev.targetId,
+            direction: { x: dx / mag, z: dz / mag },
+            magnitude: feel.knockback,
+            durationMs: feel.knockMs ?? 220,
+          },
+        }));
+      }
+
+      // 3) Wince / topple reflex — the recipient's hit-reaction animation,
+      // graded by the server severity rather than the local damage threshold.
+      const wince = feel.wince ?? 'none';
+      if (wince !== 'none') {
+        dispatchHitReaction(ev.targetId, wince === 'crit' ? 'crit' : wince === 'heavy' ? 'heavy' : 'light');
+      }
+    });
+    return () => { off?.(); };
+  }, []);
+  return null;
+}
+
 // ── Convenience: mount everything ───────────────────────────────────────────
 
 export function CombatPolishLayer({ userId }: { userId: string | null }) {
@@ -676,6 +755,10 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       <BuildingCollapseBridge userId={userId} />
       {/* Phase B2 — combat:hit (lethal) → ragdoll bridge */}
       <LethalHitBridge />
+      {/* T1.4b — server-authoritative impact → hitstop/knockback/wince (NPC path) */}
+      <CombatImpactFeelBridge />
+      {/* T1.4b/T3.1b — live client momentum model on the PvP combat:hit path */}
+      <ImpactMomentumBridge />
       {/* Visual polish — element bursts + blood decals on every combat hit */}
       <CombatVFXBridge />
     </>

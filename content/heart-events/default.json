@@ -1,0 +1,35 @@
+[
+  {
+    "milestoneId": "first_spark",
+    "threshold": 0.3,
+    "title": "A Shared Quiet",
+    "scene": [
+      { "speaker": "partner", "line": "You found me at the hour when the work is done and the lamps aren't lit yet. I don't usually let anyone see me in the in-between." },
+      { "speaker": "partner", "line": "Sit. You don't have to fill the quiet. Most people do. I've started to notice that you don't." },
+      { "speaker": "narrator", "line": "They make room for you on the bench without being asked. The space is small. Neither of you moves to make it larger." }
+    ],
+    "affinityBonus": 0.05
+  },
+  {
+    "milestoneId": "deepening",
+    "threshold": 0.6,
+    "title": "The Thing Not Said",
+    "scene": [
+      { "speaker": "partner", "line": "There's a thing I tell almost no one. I'm going to tell you, and then we'll both pretend it was easy." },
+      { "speaker": "partner", "line": "When I was young I was certain I'd leave this place. I stayed. Most days I don't regret it. The days I do, I'd like you to be the one who notices." },
+      { "speaker": "narrator", "line": "They look at you for a long moment, as if checking the weight of the floor before trusting it. Then they let out a breath they seem to have been holding for years." }
+    ],
+    "affinityBonus": 0.06
+  },
+  {
+    "milestoneId": "devotion",
+    "threshold": 0.85,
+    "title": "Before the Asking",
+    "scene": [
+      { "speaker": "partner", "line": "I keep rehearsing a question and losing my nerve at the last word. So I'll say the part before it instead." },
+      { "speaker": "partner", "line": "Whatever you are building — the worlds, the work, the long strange life of it — I would like to be standing inside it. Not behind you. Beside." },
+      { "speaker": "narrator", "line": "They take your hand the way a mason sets a keystone: slowly, certain, as though everything afterward will rest on whether it holds. It holds." }
+    ],
+    "affinityBonus": 0.04
+  }
+]

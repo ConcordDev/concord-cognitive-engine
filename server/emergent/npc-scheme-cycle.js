@@ -76,5 +76,16 @@ export async function runNpcSchemeCycle({ db, state: _state, tickCount: _t } = {
     } catch { /* noop */ }
   }
 
+  // 3) T2.1 — NPC-autonomous secret weaponisation. Holders that hold a secret
+  //    against a live NPC subject and have a hostile disposition open a
+  //    blackmail scheme along that secret-edge (the secret is the motive).
+  //    Fires once per secret. Best-effort — never blocks the cycle.
+  try {
+    const { weaponiseHeldSecrets } = await import("../lib/secrets.js");
+    const w = weaponiseHeldSecrets(db, { proposeScheme, io: _state?.io || globalThis.__CONCORD_IO__ || null });
+    stats.secretsWeaponised = (w?.weaponised || []).length;
+    stats.proposed += stats.secretsWeaponised;
+  } catch { /* secrets substrate optional */ }
+
   return stats;
 }

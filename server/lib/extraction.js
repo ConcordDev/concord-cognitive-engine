@@ -8,27 +8,47 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { addRunParticipant, findActivePartyRun } from "./run-coop.js";
 
 const DEFAULT_RUN_TIMEOUT_S = 45 * 60;  // 45 minutes
 
 export function startRun(db, userId, opts = {}) {
   if (!db || !userId) return { ok: false, error: "missing_inputs" };
-  const { worldId, timeoutSeconds = DEFAULT_RUN_TIMEOUT_S } = opts;
+  const { worldId, timeoutSeconds = DEFAULT_RUN_TIMEOUT_S, partyId = null } = opts;
   if (!worldId) return { ok: false, error: "missing_worldId" };
   try {
     const active = db.prepare(`
       SELECT id FROM extraction_runs WHERE user_id = ? AND ended_at IS NULL
     `).get(userId);
-    if (active) return { ok: true, runId: active.id, alreadyActive: true };
+    if (active) {
+      addRunParticipant(db, "extraction", active.id, userId);
+      return { ok: true, runId: active.id, alreadyActive: true };
+    }
+
+    // C4 — co-op: join a party-mate's active run instead of soloing.
+    if (partyId) {
+      const partyRun = findActivePartyRun(db, "extraction_runs", partyId);
+      if (partyRun) {
+        addRunParticipant(db, "extraction", partyRun, userId);
+        logger.info?.("extraction", "run_joined", { runId: partyRun, userId, partyId });
+        return { ok: true, runId: partyRun, joined: true };
+      }
+    }
 
     const id = `extr_${crypto.randomBytes(6).toString("hex")}`;
     const timeoutAt = Math.floor(Date.now() / 1000) + Math.max(60, Math.floor(timeoutSeconds));
-    db.prepare(`
-      INSERT INTO extraction_runs (id, user_id, world_id, timeout_at)
-      VALUES (?, ?, ?, ?)
-    `).run(id, userId, worldId, timeoutAt);
-    logger.info?.("extraction", "run_started", { runId: id, userId });
-    return { ok: true, runId: id, timeoutAt };
+    // party_id is added by migration 270; degrade gracefully on a pre-270 build.
+    const hasPartyCol = db.prepare(`PRAGMA table_info(extraction_runs)`).all().some((c) => c.name === "party_id");
+    if (hasPartyCol) {
+      db.prepare(`INSERT INTO extraction_runs (id, user_id, world_id, timeout_at, party_id) VALUES (?, ?, ?, ?, ?)`)
+        .run(id, userId, worldId, timeoutAt, partyId);
+    } else {
+      db.prepare(`INSERT INTO extraction_runs (id, user_id, world_id, timeout_at) VALUES (?, ?, ?, ?)`)
+        .run(id, userId, worldId, timeoutAt);
+    }
+    addRunParticipant(db, "extraction", id, userId);
+    logger.info?.("extraction", "run_started", { runId: id, userId, partyId });
+    return { ok: true, runId: id, timeoutAt, partyId };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

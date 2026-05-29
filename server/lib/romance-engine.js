@@ -15,6 +15,7 @@
 // On player death, heir succession cascades the skill snapshot.
 
 import crypto from "node:crypto";
+import { checkHeartEvent } from "./heart-events.js";
 
 const COURT_AFFINITY_DELTA = 0.05;
 const ENGAGE_THRESHOLD     = 0.70;
@@ -48,8 +49,15 @@ export function courtInteraction(db, playerUserId, partnerKind, partnerId, senti
     `).run(playerUserId, partnerKind, partnerId, Math.max(-1, Math.min(1, delta)));
     return { ok: true, affinity: delta, status: "acquainted", new: true };
   }
-  const next = Math.max(-1, Math.min(1, existing.affinity + delta));
+  let next = Math.max(-1, Math.min(1, existing.affinity + delta));
   let status = existing.status;
+  // H3 — fire an authored heart-event scene when this interaction crosses a
+  // milestone threshold (once per milestone per partner). The scene's small
+  // affinity bonus is folded in so the milestone beat feels earned.
+  const heartEvent = checkHeartEvent(db, playerUserId, partnerKind, partnerId, existing.affinity, next);
+  if (heartEvent?.affinityBonus) {
+    next = Math.max(-1, Math.min(1, next + Number(heartEvent.affinityBonus)));
+  }
   // Auto-promote toward courting at moderate affinity
   if (status === "acquainted" && next > 0.30) status = "courting";
   if (status === "courting" && next < 0)       status = "acquainted";
@@ -57,7 +65,7 @@ export function courtInteraction(db, playerUserId, partnerKind, partnerId, senti
     UPDATE player_courtship SET affinity = ?, status = ?, last_interaction = unixepoch()
     WHERE player_user_id = ? AND partner_kind = ? AND partner_id = ?
   `).run(next, status, playerUserId, partnerKind, partnerId);
-  return { ok: true, affinity: next, status, new: false, delta };
+  return { ok: true, affinity: next, status, new: false, delta, heartEvent: heartEvent || null };
 }
 
 export function listMyCourtships(db, playerUserId, status = null) {

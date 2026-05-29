@@ -149,3 +149,26 @@ export function resolveBinding(key: string, variant: 'tap' | 'hold' | 'double-ta
 export function resetToDefault(): void {
   saveActiveProfile(DEFAULT_PROFILE);
 }
+
+/**
+ * F2 — rebind a single action to a new key (pure; returns a new profile).
+ * If another action already holds (newKey, sameVariant), the two swap keys so
+ * the player never ends up with an unreachable action or a silent conflict.
+ * The profile id becomes 'custom' to mark it user-edited.
+ */
+export function remapAction(profile: KeyProfile, action: KeyAction, newKey: string): KeyProfile {
+  const key = (newKey || '').toLowerCase().trim();
+  if (!key || !profile.bindings[action]) return profile;
+  const variant = profile.bindings[action].variant;
+  const bindings: Record<KeyAction, KeyBinding> = { ...profile.bindings };
+  // Find any action currently holding (key, variant) — swap to avoid a clash.
+  const collidingEntry = (Object.entries(bindings) as Array<[KeyAction, KeyBinding]>)
+    .find(([a, b]) => a !== action && b.key === key && b.variant === variant);
+  const oldKey = bindings[action].key;
+  bindings[action] = { key, variant };
+  if (collidingEntry) {
+    const [collidingAction, collidingBinding] = collidingEntry;
+    bindings[collidingAction] = { ...collidingBinding, key: oldKey };
+  }
+  return { id: 'custom', name: 'Custom', bindings };
+}

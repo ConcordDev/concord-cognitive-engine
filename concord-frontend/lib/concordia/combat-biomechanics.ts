@@ -86,6 +86,74 @@ function hasOffHandCounter(tier: number): boolean { return tier >= 4; }
 // Tier 5 enables back-leg drive + recoil tail
 function hasFullKinematicChain(tier: number): boolean { return tier >= 5; }
 
+// ── Impact kinematics (T1.4b/T3.1b — feeds the live computeImpactMomentum) ──
+//
+// Nominal adult mass for the Dempster ratios (Winter 2009 Table 4.1).
+const NOMINAL_ACTOR_MASS_KG = 70;
+// Dempster 1955 segment-mass ratios (fraction of total body mass):
+//   forearm 0.016 + hand 0.006 = 0.022 (striking with the fist/forearm)
+//   leg below knee: shank 0.0465 + foot 0.0145 = 0.061 (striking with the shin/foot)
+const DEMPSTER_SEGMENT_RATIO = {
+  punch: 0.022,
+  kick:  0.061,
+  // a swung blade carries the forearm + the implement; treat as forearm+hand
+  // plus a modest weapon mass contribution.
+  weapon: 0.022,
+} as const;
+// Segment lengths (m) from joint pivot to contact point — anthropometric means.
+const LEVER_ARM_M = {
+  punch:  0.46,   // shoulder pivot → fist on an extended cross
+  kick:   0.50,   // hip pivot → shin/foot on a round/front kick
+  weapon: 0.95,   // shoulder pivot → blade contact (sword reach)
+} as const;
+// The peak-snap window (ms) the strike's angular sweep completes in. Higher
+// tiers snap faster (more trained acceleration), so momentum rises with tier
+// both via amplitude AND via a shorter window.
+function impactWindowMs(tier: number): number {
+  const t = Math.max(1, Math.min(5, Math.floor(tier)));
+  return [120, 108, 96, 84, 72][t - 1];
+}
+
+export interface ImpactKinematics {
+  boneMass: number;        // kg-equivalent of the striking segment
+  angularVelocity: number; // rad/s at contact
+  leverArmM: number;       // m from pivot to contact
+}
+
+/**
+ * Real impact kinematics for a strike, feeding computeImpactMomentum. Punches
+ * drive off the elbow-extension sweep, kicks off the hip-axial+knee sweep,
+ * weapon swings off the shoulder-forward sweep — each scaled by the tier
+ * amplitude and completed in the tier's snap window. boneMass uses published
+ * Dempster ratios × the actor's body-scale mass. No invented constants.
+ */
+export function impactKinematics(
+  action: CombatAction,
+  tier: number,
+  body: BodyType = 'average',
+): ImpactKinematics {
+  const B = BODY_SCALES[body];
+  const amp = amplitudeFor(tier);
+  const windowS = impactWindowMs(tier) / 1000;
+
+  const isKick = action === 'kick';
+  const isWeapon = action === 'attack-heavy'; // heavy = committed/weapon swing
+  const kind = isKick ? 'kick' : isWeapon ? 'weapon' : 'punch';
+
+  // Angular sweep (rad) of the dominant striking joint at this amplitude.
+  const sweepRad = isKick
+    ? (JOINT_LIMITS.hip_axial + JOINT_LIMITS.knee_flex) * amp
+    : isWeapon
+      ? (JOINT_LIMITS.shoulder_fwd + JOINT_LIMITS.hip_axial * 0.5) * amp
+      : (JOINT_LIMITS.elbow_ext + JOINT_LIMITS.shoulder_abd) * amp;
+
+  const angularVelocity = sweepRad / windowS;
+  const boneMass = DEMPSTER_SEGMENT_RATIO[kind] * NOMINAL_ACTOR_MASS_KG * B.mass;
+  const leverArmM = LEVER_ARM_M[kind] * B.reach;
+
+  return { boneMass, angularVelocity, leverArmM };
+}
+
 interface Pose {
   t: number;
   bones: Record<string, { rot?: [number, number, number]; pos?: [number, number, number] }>;

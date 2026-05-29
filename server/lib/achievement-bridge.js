@@ -12,6 +12,7 @@
 // back to the parent which then routes through this bridge.
 
 import { evaluateAchievement } from "./achievement-engine.js";
+import { recordObjectiveProgressFromEvent } from "./weekly-objectives.js";
 
 const RELEVANT_EVENTS = new Set([
   "combat:hit",
@@ -54,6 +55,10 @@ export function bridgeRealtimeEvent(eventKind, payload = {}) {
   for (const userId of userIds) {
     try {
       evaluateAchievement(_dbRef, userId, eventKind, payload);
+    } catch { /* dispatch best-effort */ }
+    // D2 — the same real events drive the weekly objective chain.
+    try {
+      recordObjectiveProgressFromEvent(_dbRef, userId, eventKind);
     } catch { /* dispatch best-effort */ }
   }
 }

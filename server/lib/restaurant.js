@@ -14,8 +14,11 @@ import logger from "../logger.js";
 // playtest-tunable; the canonical doc is `docs/BALANCE_DIALS.md`.
 const DEFAULT_ORDER_TTL_S = Number(process.env.CONCORD_RESTAURANT_ORDER_TTL_S) || (5 * 60);
 const BASE_PRICE_CC = Number(process.env.CONCORD_RESTAURANT_BASE_PRICE_CC) || 15;
-const TIP_FRACTION_FAST = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_FAST) || 0.30; // within 30s
-const TIP_FRACTION_OK = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_OK) || 0.10;     // within ttl
+// T3.4 — adopted the G3.1 sim recommendation (audit/balance/restaurant-tips.json):
+// fast 0.20 / ok 0.15 gives steadier earnings (incomeSd 1.42, expiredRatio 0)
+// than the burst-y 0.30/0.10 without changing total payout meaningfully.
+const TIP_FRACTION_FAST = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_FAST) || 0.20; // within 30s
+const TIP_FRACTION_OK = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_OK) || 0.15;     // within ttl
 const TIP_FRACTION_SLOW = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_SLOW) || 0;
 
 const DISH_CATALOG = Object.freeze([

@@ -196,6 +196,8 @@ function LegacyModal({ legacy, onClose }: { legacy: LegacyDetail; onClose: () =>
         <blockquote className="bg-zinc-900 border-l-[3px] border-amber-500 rounded px-3 py-2 italic text-stone-100 mb-4">
           {legacy.last_words || '(no last words recorded)'}
         </blockquote>
+        {/* Authored heirs/preoccupations (only present if the row carries them;
+            the canonical lineage is the InheritanceLog below). */}
         {heirs && heirs.length > 0 && (
           <p className="text-sm mb-1">
             <strong className="text-stone-200">Heirs:</strong> {heirs.join(', ')}
@@ -206,6 +208,9 @@ function LegacyModal({ legacy, onClose }: { legacy: LegacyDetail; onClose: () =>
             <strong className="text-stone-200">Preoccupations passed on:</strong> {preocs.length}
           </p>
         )}
+        {/* T2.2 — the cross-time inheritance thread: what passed to whom when
+            this NPC died (grudges, recipes, wealth, desires…). */}
+        <InheritanceLog deceasedNpcId={legacy.npc_id} />
         <div className="text-right mt-4">
           <button
             type="button"
@@ -218,6 +223,92 @@ function LegacyModal({ legacy, onClose }: { legacy: LegacyDetail; onClose: () =>
       </div>
     </div>
   );
+}
+
+// ── T2.2 — InheritanceLog ────────────────────────────────────────────────────
+/**
+ * The cross-time narrative thread: when this NPC died, who inherited what.
+ * Reads npc_legacy.inheritance_from_deceased (npc_inheritance_links joined to
+ * heir names). Renders nothing when there's no lineage — a fresh death whose
+ * heir-resolution pass hasn't run, or an NPC with no heirs.
+ */
+interface InheritanceLink {
+  id: string;
+  deceased_npc_id: string;
+  heir_npc_id: string;
+  heir_name?: string | null;
+  inherited_kind: 'grudge' | 'preoccupation' | 'desire' | 'recipe' | 'wealth' | 'inventory';
+  detail_json: string | null;
+  inherited_at: number;
+}
+
+const KIND_LABEL: Record<InheritanceLink['inherited_kind'], string> = {
+  grudge: 'a grudge', preoccupation: 'a preoccupation', desire: 'an unfinished desire',
+  recipe: 'a recipe', wealth: 'wealth', inventory: 'belongings',
+};
+
+function InheritanceLog({ deceasedNpcId }: { deceasedNpcId: string }) {
+  const [links, setLinks] = useState<InheritanceLink[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch('/api/lens/run', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            domain: 'npc_legacy',
+            name: 'inheritance_from_deceased',
+            input: { deceasedNpcId },
+          }),
+        });
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!cancelled && Array.isArray(data?.links)) setLinks(data.links as InheritanceLink[]);
+      } catch { /* silent */ } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [deceasedNpcId]);
+
+  if (!loaded || links.length === 0) return null;
+
+  // Group by heir so each heir reads as one line ("Vesper inherited a grudge,
+  // a recipe, and wealth").
+  const byHeir = new Map<string, { name: string; kinds: string[] }>();
+  for (const l of links) {
+    const key = l.heir_npc_id;
+    const name = l.heir_name || l.heir_npc_id;
+    const entry = byHeir.get(key) || { name, kinds: [] };
+    entry.kinds.push(KIND_LABEL[l.inherited_kind] || l.inherited_kind);
+    byHeir.set(key, entry);
+  }
+
+  return (
+    <div className="mt-3 border-t border-zinc-800 pt-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+        What passed on
+      </h3>
+      <ul className="space-y-1">
+        {[...byHeir.values()].map((h) => (
+          <li key={h.name} className="text-sm text-stone-200">
+            <span className="text-amber-300">{h.name}</span> inherited {joinKinds(h.kinds)}.
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function joinKinds(kinds: string[]): string {
+  const uniq = [...new Set(kinds)];
+  if (uniq.length === 1) return uniq[0];
+  if (uniq.length === 2) return `${uniq[0]} and ${uniq[1]}`;
+  return `${uniq.slice(0, -1).join(', ')}, and ${uniq[uniq.length - 1]}`;
 }
 
 function safeJsonParse<T>(raw: string): T | null {

@@ -14,7 +14,11 @@
 import logger from "../logger.js";
 
 const POLL_INTERVAL_MS = 15_000;
-const HEAP_LIMIT_MB = Number(process.env.MAX_OLD_SPACE_SIZE || 3584);
+// G2.3 fix — default aligned to the documented 32GB deploy (CLAUDE.md: "start
+// node with --max-old-space-size=32768 ... the watchdog reads the env var").
+// The prior 3584 default meant that on the 32GB box, if the env var was unset,
+// the watchdog shed at 80% of 3.5GB — premature shedding. Explicit env wins.
+const HEAP_LIMIT_MB = Number(process.env.MAX_OLD_SPACE_SIZE || 32768);
 const WARN_RATIO = 0.70;
 const SHED_RATIO = 0.80;
 const CRITICAL_RATIO = 0.90;
@@ -172,7 +176,9 @@ function _resumeBackgroundWork(STATE) {
   delete STATE._memoryPausedFeatures;
 }
 
-function _aggressiveEviction(STATE) {
+// Exported for testing the watchdog's LRU map-trim (G2.2). Safe to call
+// directly; it's the same routine the watchdog runs under critical pressure.
+export function _aggressiveEviction(STATE) {
   // Evict ALL sessions older than 10 minutes under critical pressure
   if (!STATE?.sessions || typeof STATE.sessions.forEach !== "function") return;
 
@@ -244,6 +250,12 @@ function _aggressiveEviction(STATE) {
     ["listings", 5000],
     ["entitlements", 5000],
     ["styleVectors", 500],
+    // G2.2 fix — STATE.shadowDtus had a documented cap (CONCORD_MAX_SHADOWS,
+    // default 50000) that was only enforced inside the ShadowGraph class, not
+    // on the raw STATE.shadowDtus Map that the social-NPC bridge + context
+    // engine .set() into unboundedly → OOM/scale risk. The watchdog now
+    // LRU-trims it like every other unbounded Map.
+    ["shadowDtus", Number(process.env.CONCORD_MAX_SHADOWS) || 50000],
   ];
   for (const [field, cap] of mapCaps) {
     const m = STATE[field];

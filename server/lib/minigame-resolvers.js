@@ -114,15 +114,22 @@ export function resolveKaraoke(input = {}) {
 /* ───────── Mahjong ─────────────────────────────────────────────────── */
 
 // Score per hand kind (Riichi-style simplified).
+// T3.4 — re-weighted so reward tracks rarity. The G3.3 frequency sim
+// (audit/balance/mahjong-yaku.json) is pure tile-combinatorics — the
+// distribution can't be moved by scoring — so the balance lever is to pay the
+// over-common yaku less and the rare ones more. Outliers addressed:
+//   iipeiko (0.337, 2.06× mean — most common) 200 → 100
+//   pinfu   (0.046, 0.28× mean — rare)        100 → 250
+//   ittsuu  (0.006, 0.04× mean — rarest)      500 → 700
 const MAHJONG_HAND_VALUES = Object.freeze({
-  pinfu:        100,
+  pinfu:        250,
   tanyao:       100,
   yakuhai:      200,
-  iipeiko:      200,
+  iipeiko:      100,
   riichi:       300,
   tsumo:        300,
   sanshoku:     500,
-  ittsuu:       500,
+  ittsuu:       700,
   toitoi:       600,
   honitsu:      800,
   chinitsu:    1200,

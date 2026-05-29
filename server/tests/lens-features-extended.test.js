@@ -251,11 +251,12 @@ describe("UNIVERSAL_FEATURES", () => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("EXTENDED_FEATURES — structural invariants", () => {
-  it("is a plain object with 59 lens entries", () => {
+  it("is a plain object with 60 lens entries", () => {
     assert.equal(typeof EXTENDED_FEATURES, "object");
     assert.ok(!Array.isArray(EXTENDED_FEATURES));
-    // 58 (lensNumber 66–123) + forge (lensNumber 124, AI_EXT, Phase B).
-    assert.equal(ALL_LENS_KEYS.length, 59);
+    // 58 (lensNumber 66–123) + forge (124, AI_EXT, Phase B) +
+    // ops-telemetry (125, SYSTEM — the admin telemetry surface).
+    assert.equal(ALL_LENS_KEYS.length, 60);
   });
 
   it("every entry has the standard lens shape", () => {
@@ -289,11 +290,11 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     assert.equal(new Set(numbers).size, numbers.length, "duplicate lens numbers");
   });
 
-  it("lens numbers span 66 to 124", () => {
+  it("lens numbers span 66 to 125", () => {
     const numbers = ALL_LENS_KEYS.map((k) => EXTENDED_FEATURES[k].lensNumber);
     assert.equal(Math.min(...numbers), 66);
-    // 124 = forge (AI_EXT, added in Phase B). Pre-Phase-B max was 123.
-    assert.equal(Math.max(...numbers), 124);
+    // 125 = ops-telemetry (SYSTEM). 124 = forge (AI_EXT, Phase B).
+    assert.equal(Math.max(...numbers), 125);
   });
 
   it("all lens numbers are contiguous (no gaps)", () => {
@@ -322,15 +323,13 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
     }
   });
 
-  it("total extended features equal 280", () => {
+  it("total extended features equal 284", () => {
     let total = 0;
     for (const key of ALL_LENS_KEYS) {
       total += EXTENDED_FEATURES[key].features.length;
     }
-    // 274 pre-Phase-B + 6 forge features (template_picker,
-    // section_configurator, config_validator, live_preview,
-    // export_download, dtu_publish) = 280.
-    assert.equal(total, 280);
+    // 280 pre-ops-telemetry + 4 ops-telemetry features = 284.
+    assert.equal(total, 284);
   });
 
   it("every category is one of the expected values", () => {
@@ -343,6 +342,7 @@ describe("EXTENDED_FEATURES — structural invariants", () => {
       "BRIDGE",
       "CREATIVE",
       "SPECIALIZED",
+      "SYSTEM", // ops-telemetry (admin telemetry surface)
     ]);
     for (const key of ALL_LENS_KEYS) {
       assert.ok(
@@ -494,7 +494,8 @@ describe("EXTENDED_FEATURES — access flags", () => {
   it("lenses without emergent access are the documented set", () => {
     const noEmergent = ALL_LENS_KEYS.filter((k) => !EXTENDED_FEATURES[k].emergentAccess);
     noEmergent.sort();
-    assert.deepEqual(noEmergent, ["defense", "ext_finance", "law-enforcement", "legacy", "organ"]);
+    // ops-telemetry is the admin telemetry surface — no emergent/bot access.
+    assert.deepEqual(noEmergent, ["defense", "ext_finance", "law-enforcement", "legacy", "ops-telemetry", "organ"]);
   });
 
   it("lenses without bot access are the expected set", () => {
@@ -509,6 +510,7 @@ describe("EXTENDED_FEATURES — access flags", () => {
       "ext_ethics",
       "ext_suffering",
       "ext_vote",
+      "ops-telemetry",
       "reflection",
     ]);
   });

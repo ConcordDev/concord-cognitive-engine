@@ -9,6 +9,8 @@
  *  - step(dt) advances the simulation each game-loop frame
  */
 
+import { canJump, shouldFlushBuffer, cutJump } from './jump-forgiveness';
+
 type RapierType = typeof import('@dimforge/rapier3d-compat');
 type WorldType   = InstanceType<RapierType['World']>;
 type CharCtrl    = ReturnType<WorldType['createCharacterController']>;
@@ -70,6 +72,13 @@ interface KinematicState {
   gliding: boolean;
   /** Swim active (capsule below water-line for current world). */
   swimming: boolean;
+  // B1 — movement forgiveness layer.
+  /** Wall-clock ms of the last ground contact (coyote-time source). */
+  lastGroundedAt: number;
+  /** Wall-clock ms of a jump requested while airborne (jump-buffer; 0 = none). */
+  jumpBufferedAt: number;
+  /** Pending buffered jump velocity. */
+  jumpVyPending: number;
 }
 
 const MAX_KB_M = 1.5;       // total knockback displacement cap (metres)
@@ -621,6 +630,16 @@ class PhysicsWorld {
       if (ks.verticalVel <= 0) {
         ks.verticalVel = 0;
         ks.isAirborne = false;
+        // B1 — record the ground contact (coyote source) + flush a buffered
+        // jump that was pressed just before landing.
+        const nowMs = Date.now();
+        ks.lastGroundedAt = nowMs;
+        if (shouldFlushBuffer(ks, nowMs)) {
+          ks.verticalVel = ks.jumpVyPending || JUMP_DEFAULT_VY;
+          ks.isAirborne = true;
+          ks.snapDisabledUntil = nowMs + 250;
+        }
+        ks.jumpBufferedAt = 0;
       }
     } else if (!ks.swimming && Math.abs(verticalDelta) > 0.01) {
       ks.isAirborne = true;
@@ -642,6 +661,9 @@ class PhysicsWorld {
         snapDisabledUntil: 0,
         gliding: false,
         swimming: false,
+        lastGroundedAt: 0,
+        jumpBufferedAt: 0,
+        jumpVyPending: 0,
       };
       this.kinematic.set(id, ks);
     }
@@ -709,14 +731,33 @@ class PhysicsWorld {
   requestJump(id: string, jumpVy: number = JUMP_DEFAULT_VY): boolean {
     if (!this.controllers.has(id)) return false;
     const ks = this._ensureKinematic(id);
-    if (ks.isAirborne || ks.swimming) return false;
     if (ks.kbExpiresAt > performance.now()) return false; // can't jump while knocked back
-    ks.verticalVel = Math.max(0.5, Math.min(15, Number(jumpVy)));
+    const vy = Math.max(0.5, Math.min(15, Number(jumpVy)));
+    const now = Date.now();
+    // B1 — coyote time: a jump just after leaving a ledge still fires.
+    if (!canJump(ks, now)) {
+      // B1 — jump buffer: pressed mid-air → queue it; it fires on touchdown.
+      ks.jumpBufferedAt = now;
+      ks.jumpVyPending = vy;
+      return false;
+    }
+    ks.verticalVel = vy;
     ks.isAirborne = true;
+    ks.jumpBufferedAt = 0;
     ks.snapDisabledUntil = performance.now() + 250;
     const ctrl = this.controllers.get(id);
     try { (ctrl as { disableSnapToGround?: () => void }).disableSnapToGround?.(); } catch { /* ok */ }
     return true;
+  }
+
+  /**
+   * B1 — variable jump height: releasing the jump button early cuts the ascent
+   * for a shorter hop. No-op while falling or grounded.
+   */
+  releaseJump(id: string): void {
+    const ks = this.kinematic.get(id);
+    if (!ks || !ks.isAirborne) return;
+    ks.verticalVel = cutJump(ks.verticalVel);
   }
 
   /** Returns true when the controller is currently airborne (jumping or falling). */

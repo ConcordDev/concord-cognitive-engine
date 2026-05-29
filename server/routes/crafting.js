@@ -276,6 +276,38 @@ export function createCraftingRouter({ db, requireAuth }) {
     }
   });
 
+  // ── GET /api/crafting/skills/mastery — all skills with mastery + VFX ───────
+  // T3.1: per-skill mastery (tier + progress + bonuses) and the per-skill VFX
+  // descriptor the client renders. Aggregated across world-types per skill.
+  router.get("/skills/mastery", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { getAllSkillMastery } = await import("../lib/skills/skill-mastery.js");
+      const skills = getAllSkillMastery(db, userId);
+      res.json({ ok: true, skills });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // ── GET /api/crafting/skills/mastery/:skillType — one skill's mastery ──────
+  // Optional ?element=fire&kind=staff to tag the VFX palette/preset. When a
+  // skill DTU id is known the caller can pass its element; defaults to none.
+  router.get("/skills/mastery/:skillType", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { skillType } = req.params;
+      const { getSkillMastery } = await import("../lib/skills/skill-mastery.js");
+      const mastery = getSkillMastery(db, userId, skillType, {
+        element: typeof req.query.element === "string" ? req.query.element : "none",
+        kind: typeof req.query.kind === "string" ? req.query.kind : null,
+      });
+      res.json({ ok: true, mastery });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // ── GET /api/crafting/skills/cross-unlock/:skillType — check prereqs ────────
   router.get("/skills/cross-unlock/:skillType", requireAuth, (req, res) => {
     try {

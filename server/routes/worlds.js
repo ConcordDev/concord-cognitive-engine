@@ -1129,6 +1129,26 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* non-fatal */ }
 
+      // T2.1 — weaponise_at consumption. If befriending this NPC (its
+      // authoritative opinion of the player crossed the befriend threshold)
+      // satisfies an authored "Befriend X; the secret surfaces" trigger, fire
+      // it: mint a citable revelation DTU + emit weaponise:fired. Once-only.
+      let weaponiseFired = [];
+      try {
+        const { checkBefriendTriggers, BEFRIEND_OPINION_THRESHOLD } =
+          await import("../lib/embodied/weaponise-triggers.js");
+        const op = await import("../lib/npc-opinions.js");
+        const opRow = op.getOpinion?.(db, npcId, "player", playerId);
+        const score = Number(opRow?.score ?? 0);
+        if (score >= BEFRIEND_OPINION_THRESHOLD) {
+          const r = checkBefriendTriggers(db, {
+            userId: playerId, worldId, befriendedNpcId: npcId,
+            opinionScore: score, io: req.app?.locals?.io,
+          });
+          weaponiseFired = r.fired || [];
+        }
+      } catch { /* weaponise consumption best-effort — never blocks dialogue */ }
+
       // 10. Return structured response
       res.json({
         ok: true, npcId, npcName,
@@ -1138,6 +1158,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
         subtext: subtext || undefined,
         reputation,
         opinion: interactResult.opinion,
+        weaponiseFired: weaponiseFired.length ? weaponiseFired : undefined,
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
@@ -1903,6 +1924,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       }
 
+      // ── T3.3 — world-zone combat gate ──────────────────────────────────────
+      // Off-hub, a 'safe'/'sanctuary' zone at the attacker's position refuses
+      // combat the same way the hub does (server-authoritative). Other zone
+      // kinds (pvp/lawless/hazard) allow combat; their extra effects apply
+      // farther down. Best-effort — no zone / no table → world default.
+      try {
+        const { combatRuleFor } = await import("../lib/world-zones.js");
+        const aPos = cityPresence.getUserPosition?.(userId);
+        if (aPos && Number.isFinite(aPos.x)) {
+          const rule = combatRuleFor(db, worldId, aPos.x, aPos.z ?? 0);
+          if (!rule.combatAllowed) {
+            return res.status(403).json({
+              ok: false,
+              error: "zone_combat_refusal",
+              reason: `Combat is refused in ${rule.zone?.name || "this sanctuary"}.`,
+              zone: rule.zone,
+            });
+          }
+        }
+      } catch { /* zone gate best-effort — combat falls through to world default */ }
+
       const {
         computeDamage,
         applyDamageToNPC,
@@ -1954,11 +1996,41 @@ export default function createWorldsRouter({ requireAuth, db }) {
         : {};
       const eff = computeSkillEffectiveness(skillTypeForLookup, skillRow?.level || 1, rules, { worldId });
 
+      // F2.1 — fold equipped-gear affix bonuses into the enchantment power so
+      // a Flaming/Keen weapon actually changes the hit (the other half of the
+      // affix wire; the loot-roll assigns them). Best-effort — no gear → +0.
+      const elementForGear = skillData.element || "none";
+      let affixEnchant = 0;
+      let talentMul = 1, talentFlat = 0;
+      let setMul = 1;
+      try {
+        const { combatEnchantmentFor } = await import("../lib/item-affixes.js");
+        const { setDamageFor } = await import("../lib/item-sets.js");
+        const { getLoadout } = await import("../lib/combat/loadout.js");
+        const loadout = getLoadout(db, userId);
+        affixEnchant = combatEnchantmentFor(loadout, elementForGear);
+        // F2.2 — set bonuses (2+/4+ themed pieces) multiply damage.
+        setMul = setDamageFor(loadout, elementForGear).multiplier;
+      } catch { /* affix/set substrate optional — combat unaffected */ }
+      // F2.3 — fold the player's allocated talent bonuses (melee/element % +
+      // flat power). Kept inside computeDamage's raw inputs so _validateDamageCap
+      // still bounds the result.
+      try {
+        const { talentDamageFor } = await import("../lib/talents.js");
+        const t = talentDamageFor(db, userId, elementForGear);
+        talentMul = t.multiplier; talentFlat = t.flatPower;
+      } catch { /* talents substrate optional */ }
+      // D30 — fold the player's endgame ascension/paragon multiplier.
+      try {
+        const { ascensionDamageMultiplier } = await import("../lib/ascension.js");
+        talentMul = Math.round(talentMul * ascensionDamageMultiplier(db, userId, elementForGear) * 1000) / 1000;
+      } catch { /* ascension substrate optional */ }
+
       const attackerStats = {
         skillLevel: eff.effectiveLevel,
         element: skillData.element || 'none',
-        basePower: skillData.base_power || 5,
-        enchantmentBonus: skillData.enchantment_power || 0,
+        basePower: (skillData.base_power || 5) * talentMul * setMul,
+        enchantmentBonus: (skillData.enchantment_power || 0) + affixEnchant + talentFlat,
         worldMultiplier: eff.multiplier || 1.0,
       };
 
@@ -1970,7 +2042,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Server-authoritative position validation. A modified client can't
       // attack an NPC across the map. NPC row already loaded for opinion
       // broadcast below — fetch it now and reuse.
-      const npcPosRow = db.prepare("SELECT id, x, y, z FROM world_npcs WHERE id = ?").get(npcId);
+      const npcPosRow = db.prepare("SELECT id, x, y, z, rotation FROM world_npcs WHERE id = ?").get(npcId);
       const reachCheck = _validateCombatReach(userId, npcPosRow, skillData);
       if (!reachCheck.ok) {
         logger.warn?.('worlds', 'combat_reach_rejected', { userId, npcId, ...reachCheck });
@@ -2085,13 +2157,38 @@ export default function createWorldsRouter({ requireAuth, db }) {
             kind: weaponKind, tier, frame,
             actorMassKg: damageResult.attackerMassKg || undefined,
           });
+          // F3.1/F3.2 — capture the target's pre-hit stagger (for the deathblow
+          // execution) + whether it has hyperarmor (mid-heavy-commit). A heavy
+          // strike grants the attacker hyperarmor for their active frames.
+          const exec = await import("../lib/combat/executions.js");
+          const preHitSeverity = exec.currentStaggerSeverity(db, { actorKind: "npc", actorId: npcId });
+          const targetHyperarmor = exec.hasHyperarmor(db, { actorKind: "npc", actorId: npcId });
+          const isHeavy = !!(skillData?.heavy || /heavy|hammer|axe|greatsword|maul/i.test(weaponKind));
+          if (isHeavy) exec.grantHyperarmor(db, { actorKind: "player", actorId: userId });
+
+          // A3 — offAxis from the NPC's facing vs the attacker's position, so a
+          // hit from behind both breaks poise harder AND triggers the backstab
+          // execution. Falls to 0 (dead-front) when presence is unavailable.
+          const _aPos = cityPresence.getUserPosition?.(userId) || null;
+          const offAxis = exec.offAxisFromFacing(npcPosRow?.rotation, npcPosRow, _aPos);
+
           const stagger = polish.triggerStaggerFromImpact(db, {
-            actorKind: "npc", actorId: npcId, momentum,
+            actorKind: "npc", actorId: npcId, momentum, offAxis,
             massKg: damageResult.targetMassKg || undefined,
+            hyperarmor: targetHyperarmor,
           });
           if (stagger?.severity && stagger.severity !== "none") {
             damageResult.staggerSeverity = stagger.severity;
             damageResult.impactMomentum = Math.round(momentum * 10) / 10;
+          }
+          // F3.2 — execution: a deathblow on an already-broken target, or a
+          // backstab from behind (offAxis), multiplies damage. Applied like the
+          // mass multiplier (post-cap legitimate skill burst).
+          const ex = exec.resolveExecution({ offAxis, targetSeverity: preHitSeverity });
+          if (ex.multiplier > 1 && Number.isFinite(damageResult.finalDamage)) {
+            damageResult.finalDamage = Math.round(damageResult.finalDamage * ex.multiplier * 10) / 10;
+            damageResult.execution = ex.kind;
+            damageResult.executionMultiplier = ex.multiplier;
           }
         } catch {
           // Momentum model optional — fall back to magnitude-based rocked.
@@ -2131,6 +2228,56 @@ export default function createWorldsRouter({ requireAuth, db }) {
           req.app.locals.io?.to(`world:${worldId}`).emit('boss:state', payload);
         }
       } catch { /* boss HUD emit best-effort — never blocks combat */ }
+
+      // T1.4b — server-authoritative combat FEEL. The poise severity that
+      // T1.4a computed from real impact momentum (set on damageResult above)
+      // is mapped to the exact hitstop / knockback / wince parameters the
+      // client applies verbatim, so the *feel* matches the *physics* and a
+      // client can't inflate it. Emit `combat:impact` to the world room; the
+      // CombatImpactFeelBridge dispatches the hit-pause / knockback /
+      // hit-reaction CustomEvents the avatar loop already honours.
+      try {
+        const io = req.app?.locals?.io;
+        const severity = damageResult.staggerSeverity || "none";
+        const landed = (damageResult.finalDamage || 0) > 0;
+        // Emit on any landed hit so the client can render mastery-scaled VFX;
+        // the feel block is zero-feel for severity "none" (client no-ops it).
+        if (io && (landed || severity !== "none" || kill)) {
+          const { buildImpactPayload } = await import("../lib/combat/impact-feel.js");
+          const { skillVfxDescriptor } = await import("../lib/skills/skill-mastery.js");
+          const { skillKeyForSkill } = await import("../lib/skills/skill-key.js");
+          const skillKey = skillKeyForSkill(skillData);
+          const tPos = npcPosRow && Number.isFinite(npcPosRow.x)
+            ? { x: npcPosRow.x, y: npcPosRow.y ?? 0, z: npcPosRow.z }
+            : null;
+          const aPos = cityPresence.getUserPosition?.(userId) || null;
+          // T3.1 — per-skill VFX scaled by the caster's mastery tier for this
+          // skill. A grandmaster's cast throws a bigger, brighter burst.
+          const vfx = skillVfxDescriptor({
+            skillType: skillData.skill_type || skillData.kind || null,
+            element: skillData.element || "none",
+            kind: skillData.kind || skillData.weapon_kind || null,
+            level: skillRow?.level || skillData.skill_level || 0,
+          });
+          io.to(`world:${worldId}`).emit("combat:impact", {
+            ...buildImpactPayload({
+              worldId,
+              attackerId: userId,
+              targetId: npcId,
+              targetKind: "npc",
+              severity,
+              momentum: damageResult.impactMomentum || 0,
+              element: skillData.element || "none",
+              damage: damageResult.finalDamage || 0,
+              isKill: !!kill,
+              targetPosition: tPos,
+              attackerPosition: aPos,
+            }),
+            vfx,
+            skillKey,
+          });
+        }
+      } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
 
       // Phase T — NPC defender accumulates skill XP. Same XP curve as
       // user_skills, so a frequently-attacked NPC ends up better at
@@ -2467,6 +2614,55 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } catch { /* Layer 8 disabled — combat still works */ }
 
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/schemes/:id/intervene — T2.3 barge-in.
+  // The player clicks an active eavesdrop bubble within range and chooses to
+  // expose / abet / ignore the plot. Proximity-gated to the plotter NPC so you
+  // must actually be there to intervene. Branches the scheme state machine,
+  // shifts opinions, and emits the resolution. body: { action }
+  router.post("/:worldId/schemes/:id/intervene", requireAuth, async (req, res) => {
+    try {
+      const { worldId, id: schemeId } = req.params;
+      const userId = req.user.id;
+      const action = String(req.body?.action || "ignore");
+      if (!["expose", "abet", "ignore"].includes(action)) {
+        return res.status(400).json({ ok: false, error: "action must be expose|abet|ignore" });
+      }
+
+      const { interveneInScheme } = await import("../lib/npc-schemes.js");
+
+      // Proximity gate (skip for 'ignore' — dismissing from anywhere is fine).
+      if (action !== "ignore") {
+        try {
+          const db2 = db;
+          const sch = db2.prepare(`SELECT plotter_id, plotter_kind FROM npc_schemes WHERE id = ?`).get(schemeId);
+          if (sch?.plotter_kind === "npc") {
+            const plotter = db2.prepare(`SELECT x, z FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+            const pos = cityPresence.getUserPosition?.(userId);
+            if (plotter && pos && Number.isFinite(plotter.x) && Number.isFinite(pos.x)) {
+              const dist = Math.hypot(pos.x - plotter.x, (pos.z ?? 0) - (plotter.z ?? 0));
+              if (dist > 30) {
+                return res.status(403).json({ ok: false, error: "too_far", reason: "Move closer to intervene.", dist: Math.round(dist) });
+              }
+            }
+          }
+        } catch { /* proximity gate best-effort — fall through to the action */ }
+      }
+
+      const result = interveneInScheme(db, userId, schemeId, action);
+      if (result.ok) {
+        try {
+          req.app?.locals?.io?.to(`world:${worldId}`).emit("scheme:intervened", {
+            schemeId, worldId, userId, action,
+            exposed: !!result.exposed, ts: Date.now(),
+          });
+        } catch { /* socket optional */ }
+      }
+      return res.status(result.ok ? 200 : 422).json(result);
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -141,7 +141,18 @@ function buildHandlers(opts: {
     'concordia:view-player-profile': (e) => {
       if (e.detail?.playerId) router.push(`/profile/${encodeURIComponent(e.detail.playerId)}`);
     },
-    'concord:a11y-changed': () => addToast({ type: 'success', message: 'Accessibility settings updated', duration: 2000 }),
+    'concord:a11y-changed': (e) => {
+      // G3.1 fix — the settings page dispatched this event (and a toast fired)
+      // but NOTHING wrote the global a11y store, so colorblind / text-scale /
+      // high-contrast / reduced-motion applied to nothing. Bridge the stores
+      // here so every dispatcher lands in the store the consumers + the DOM
+      // applier (AccessibilityDOMApplier) read.
+      try {
+        const next = e.detail;
+        if (next && typeof next === 'object') useUIStore.getState().setAllAccessibility(next);
+      } catch { /* store write best-effort */ }
+      addToast({ type: 'success', message: 'Accessibility settings updated', duration: 2000 });
+    },
     'concord:settings-saved': () => addToast({ type: 'success', message: 'Settings saved', duration: 2000 }),
     'concordia:goddess-click': () => addToast({ type: 'info', message: 'The goddess turns to you…', duration: 3000 }),
     'concordia:open-listing': (e) => {

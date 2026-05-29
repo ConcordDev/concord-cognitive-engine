@@ -23,6 +23,10 @@ interface SkyWeatherRendererProps {
    * sky-shader defaults when unset. */
   themeSkyTop?: number;       // hex (0xrrggbb)
   themeSkyHorizon?: number;
+  /** T3.3: per-world sun/moon disk — a billboarded glowing disk so the sky
+   * reads as a real dome, not a flat gradient. Resolved by sunDiskForWorld in
+   * concordia-theme.ts. Unset → no disk (back-compat). */
+  sunDisk?: { color: number; sizeM: number; glow: number };
 }
 
 // ── Sky Shader ──────────────────────────────────────────────────
@@ -248,6 +252,28 @@ function hexToVec3(hex: number): { x: number; y: number; z: number } {
   };
 }
 
+// T3.3 — radial-gradient sun-disk texture: bright core → coloured glow → fade.
+// `glow` (0..1) widens the halo. Built on a 128² canvas (cheap, cached by the
+// sprite material). THREE is passed in to avoid a top-level import.
+function makeSunDiskTexture(THREE: typeof import('three'), color: number, glow = 0.6): InstanceType<typeof THREE.CanvasTexture> {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const haloStop = 0.18 + (1 - Math.max(0, Math.min(1, glow))) * 0.12;
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(haloStop, `rgba(${r},${g},${b},0.95)`);
+  grad.addColorStop(0.55, `rgba(${r},${g},${b},${0.35 * (0.5 + glow)})`);
+  grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export default function SkyWeatherRenderer({
   timeOfDay,
   weather,
@@ -257,6 +283,7 @@ export default function SkyWeatherRenderer({
   quality,
   themeSkyTop,
   themeSkyHorizon,
+  sunDisk,
 }: SkyWeatherRendererProps) {
   const skyGroupRef = useRef<unknown>(null);
   const sunLightRef = useRef<unknown>(null);
@@ -314,6 +341,30 @@ export default function SkyWeatherRenderer({
       const skyDome = new THREE.Mesh(skyGeom, skyMaterial);
       skyDome.userData = { isSkyDome: true };
       skyGroup.add(skyDome);
+
+      // ── T3.3: per-world sun/moon disk ──────────────────────
+      // A billboarded radial-gradient sprite placed along the sun direction at
+      // a large radius (inside the 2000 dome). Always faces the camera; dims
+      // automatically with the sun below the horizon (sy <= 0 → moon-ish).
+      if (sunDisk && sunDir.y > -0.15) {
+        const tex = makeSunDiskTexture(THREE, sunDisk.color, sunDisk.glow);
+        const spriteMat = new THREE.SpriteMaterial({
+          map: tex,
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          blending: THREE.AdditiveBlending,
+          opacity: Math.max(0.25, Math.min(1, 0.4 + sunDir.y)),
+        });
+        const sprite = new THREE.Sprite(spriteMat);
+        const r = 1600;
+        sprite.position.set(sunDir.x * r, sunDir.y * r, sunDir.z * r);
+        const s = Math.max(20, sunDisk.sizeM) * 6; // sprite world size
+        sprite.scale.set(s, s, 1);
+        sprite.userData = { isSunDisk: true };
+        sprite.renderOrder = -1; // behind scene geometry, in front of dome
+        skyGroup.add(sprite);
+      }
 
       // ── Star field (visible at night) ──────────────────────
       const isNight = timeOfDay < 5 || timeOfDay > 20;
@@ -708,7 +759,7 @@ export default function SkyWeatherRenderer({
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- theme colors are derived from the listed deps; re-running on them is sufficient
-  }, [timeOfDay, weather, windDirection, windSpeed, season, quality]);
+  }, [timeOfDay, weather, windDirection, windSpeed, season, quality, themeSkyTop, themeSkyHorizon, sunDisk]);
 
   return (
     <div

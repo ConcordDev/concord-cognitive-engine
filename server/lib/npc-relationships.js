@@ -5,8 +5,8 @@
 // Shadow-of-Mordor's "yes and..." rule expressed as a graph:
 // every player action that touches NPC A is a candidate to escalate A's
 // existing relationships with other NPCs. The graph lives in
-// npc_relationships (sorted pair), every escalation drops a row into
-// npc_relationship_events.
+// npc_nemesis (sorted pair), every escalation drops a row into
+// npc_nemesis_events.
 //
 // This module is plumbing only. The rule engine that decides WHEN to
 // form/escalate lives in server/emergent/nemesis-cycle.js — this file
@@ -61,7 +61,7 @@ export function formRelationship(db, npcA, npcB, kind, intensity = 0, opts = {})
 
   try {
     const existing = db.prepare(`
-      SELECT id, intensity FROM npc_relationships
+      SELECT id, intensity FROM npc_nemesis
       WHERE npc_a_id = ? AND npc_b_id = ? AND kind = ?
     `).get(a, b, kind);
 
@@ -71,7 +71,7 @@ export function formRelationship(db, npcA, npcB, kind, intensity = 0, opts = {})
 
     const id = _newId();
     db.prepare(`
-      INSERT INTO npc_relationships
+      INSERT INTO npc_nemesis
         (id, world_id, npc_a_id, npc_b_id, kind, intensity, formed_from_event)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(id, worldId, a, b, kind, intensity, formedFromEvent);
@@ -93,20 +93,20 @@ export function escalate(db, relationshipId, eventKind, summary, opts = {}) {
   const witnessedBy = opts.witnessedByPlayerId || null;
 
   try {
-    const r = db.prepare(`SELECT intensity FROM npc_relationships WHERE id = ?`)
+    const r = db.prepare(`SELECT intensity FROM npc_nemesis WHERE id = ?`)
       .get(relationshipId);
     if (!r) return { ok: false, error: "no_relationship" };
 
     const eventId = _newEventId();
     db.prepare(`
-      INSERT INTO npc_relationship_events
+      INSERT INTO npc_nemesis_events
         (id, relationship_id, kind, summary, witnessed_by_player_id)
       VALUES (?, ?, ?, ?, ?)
     `).run(eventId, relationshipId, eventKind, summary, witnessedBy);
 
     const next = Math.max(-1, Math.min(1, (r.intensity || 0) + intensityDelta));
     db.prepare(`
-      UPDATE npc_relationships
+      UPDATE npc_nemesis
       SET intensity = ?, last_event_at = unixepoch()
       WHERE id = ?
     `).run(next, relationshipId);
@@ -125,7 +125,7 @@ export function decay(db, ageThresholdS = DEFAULT_DECAY_THRESHOLD_S) {
   try {
     const cutoff = Math.floor(Date.now() / 1000) - ageThresholdS;
     const r = db.prepare(`
-      DELETE FROM npc_relationships WHERE last_event_at < ?
+      DELETE FROM npc_nemesis WHERE last_event_at < ?
     `).run(cutoff);
     return { ok: true, removed: r.changes || 0 };
   } catch (err) {
@@ -141,7 +141,7 @@ export function listForNpc(db, npcId) {
   try {
     const rows = db.prepare(`
       SELECT id, npc_a_id, npc_b_id, kind, intensity, formed_at, last_event_at
-      FROM npc_relationships
+      FROM npc_nemesis
       WHERE npc_a_id = ? OR npc_b_id = ?
       ORDER BY last_event_at DESC
     `).all(npcId, npcId);
@@ -167,7 +167,7 @@ export function listInWorld(db, worldId, opts = {}) {
     const limit = Math.max(1, Math.min(500, opts.limit || 100));
     const sql = `
       SELECT id, npc_a_id, npc_b_id, kind, intensity, last_event_at
-      FROM npc_relationships
+      FROM npc_nemesis
       WHERE world_id = ? ${kindFilter}
       ORDER BY last_event_at DESC
       LIMIT ?
@@ -202,8 +202,8 @@ export function getVillageGossipFeed(db, worldId, opts = {}) {
         r.npc_b_id        AS npc_b_id,
         r.kind            AS relationship_kind,
         r.intensity       AS intensity
-      FROM npc_relationship_events e
-      JOIN npc_relationships r ON r.id = e.relationship_id
+      FROM npc_nemesis_events e
+      JOIN npc_nemesis r ON r.id = e.relationship_id
       WHERE r.world_id = ? AND e.ts >= ?
       ORDER BY e.ts DESC
       LIMIT ?

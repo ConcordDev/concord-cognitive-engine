@@ -40,7 +40,7 @@ function nextTickAt(now = Math.floor(Date.now() / 1000)) {
  * Propose a scheme: deterministic gate based on plotter's stress, opinion
  * of target, and coping trait. Returns { ok, action, schemeId? }.
  */
-export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null }) {
+export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null }) {
   if (!db || !plotterNpcId || !targetKind || !targetId) return { ok: false, reason: "missing_inputs" };
 
   // Don't propose against yourself.
@@ -51,12 +51,17 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
   const opinionScore = op?.score ?? 0;
 
   // Gate: stress ≥ 60 AND opinion ≤ -50 (or coping trait paranoid/cruel
-  // which are wild-card propose triggers).
-  const wildCard = stress?.coping_trait === "paranoid" || stress?.coping_trait === "cruel";
-  const stressed = (stress?.stress ?? 30) >= 60;
-  const hates = opinionScore <= -50;
-  if (!wildCard && !(stressed && hates)) {
-    return { ok: false, reason: "no_motive" };
+  // which are wild-card propose triggers). T2.1: a held secret is itself a
+  // motive — when the caller passes motive:'secret' (a real secret backs the
+  // plot) the disposition gate is bypassed; the leverage is the secret, not
+  // hatred.
+  if (motive !== "secret") {
+    const wildCard = stress?.coping_trait === "paranoid" || stress?.coping_trait === "cruel";
+    const stressed = (stress?.stress ?? 30) >= 60;
+    const hates = opinionScore <= -50;
+    if (!wildCard && !(stressed && hates)) {
+      return { ok: false, reason: "no_motive" };
+    }
   }
 
   // Don't open a parallel scheme of the same kind on the same target.
@@ -318,8 +323,101 @@ export function discoverScheme(db, userId, schemeId, evidenceKind = "observed") 
     if (sch.plotter_id) {
       try { bumpStress(db, sch.plotter_id, "scheme_exposed"); } catch { /* noop */ }
     }
+    // T2.1 — weaponise_at consumption. Exposing a scheme exposes its plotter:
+    // fire any authored "Expose X; ..." trigger naming that NPC. Once-only.
+    try {
+      const worldRow = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+      if (worldRow?.world_id) {
+        // Lazy require to avoid a load-time cycle (npc-schemes is imported widely).
+        // eslint-disable-next-line global-require
+        const wt = requireWeaponise();
+        wt?.checkExposeTriggers?.(db, {
+          userId, worldId: worldRow.world_id, exposedNpcId: sch.plotter_id, io: globalThis.__CONCORD_IO__ || null,
+        });
+      }
+    } catch { /* weaponise expose consumption best-effort */ }
   }
   return { ok: true, evidenceMarked: r.changes, exposed, evidenceKind };
+}
+
+// Lazy, cached loader for the weaponise-triggers module (ESM dynamic import is
+// async; npc-schemes' callers are sync). We resolve it once on first use.
+let _weaponiseMod = null;
+let _weaponiseLoading = false;
+function requireWeaponise() {
+  if (_weaponiseMod) return _weaponiseMod;
+  if (!_weaponiseLoading) {
+    _weaponiseLoading = true;
+    import("./embodied/weaponise-triggers.js").then((m) => { _weaponiseMod = m; }).catch(() => { /* optional */ });
+  }
+  return _weaponiseMod; // null on the very first call; populated thereafter
+}
+// Pre-warm at module load so the expose hook is ready before the first scheme
+// is discovered (the import resolves on the next microtask).
+requireWeaponise();
+
+/**
+ * T2.3 — barge-in: the player intervenes in an active scheme they overheard.
+ * Three branches, all real state-machine effects:
+ *   - expose: surfaces evidence (via discoverScheme) → may flip to 'exposed';
+ *     plotter's opinion of the player drops (you named their plot).
+ *   - abet:   the player joins as an accomplice → success_pct climbs, the
+ *     plotter's opinion of the player rises (you helped).
+ *   - ignore: the player walks away; recorded so the bubble dismisses, no
+ *     state change beyond a dismissal marker.
+ * Returns { ok, action, scheme:{...}, exposed? } or { ok:false, reason }.
+ */
+export function interveneInScheme(db, userId, schemeId, action = "ignore") {
+  if (!db || !userId || !schemeId) return { ok: false, reason: "missing_inputs" };
+  const sch = db.prepare(`
+    SELECT id, plotter_kind, plotter_id, target_kind, target_id, kind, phase, success_pct, accomplice_count
+    FROM npc_schemes WHERE id = ?
+  `).get(schemeId);
+  if (!sch) return { ok: false, reason: "scheme_not_found" };
+  if (["complete", "abandoned", "exposed"].includes(sch.phase)) {
+    return { ok: false, reason: "scheme_terminal", phase: sch.phase };
+  }
+
+  if (action === "expose") {
+    const r = discoverScheme(db, userId, schemeId, "barge_in");
+    // Player named the plot to the plotter's face → plotter resents it.
+    if (sch.plotter_kind === "npc") {
+      try {
+        recordOpinionEvent(db, { npcId: sch.plotter_id, targetKind: "player", targetId: userId },
+          -20, "barged in and exposed my scheme");
+      } catch { /* opinions optional */ }
+    }
+    const after = db.prepare(`SELECT phase, success_pct FROM npc_schemes WHERE id = ?`).get(schemeId);
+    return { ok: true, action: "expose", exposed: !!r.exposed, scheme: { id: schemeId, ...after } };
+  }
+
+  if (action === "abet") {
+    // Join as accomplice (idempotent) + boost success; plotter warms to you.
+    let added = false;
+    try {
+      const exists = db.prepare(
+        `SELECT 1 FROM npc_scheme_accomplices WHERE scheme_id = ? AND npc_id = ?`
+      ).get(schemeId, `player:${userId}`);
+      if (!exists) {
+        db.prepare(`INSERT INTO npc_scheme_accomplices (scheme_id, npc_id, role) VALUES (?, ?, 'player_abettor')`)
+          .run(schemeId, `player:${userId}`);
+        added = true;
+      }
+    } catch { /* accomplices table optional */ }
+    const newSuccess = Math.min(100, (sch.success_pct || 30) + (added ? 15 : 0));
+    db.prepare(`UPDATE npc_schemes SET success_pct = ?, accomplice_count = accomplice_count + ? WHERE id = ?`)
+      .run(newSuccess, added ? 1 : 0, schemeId);
+    if (sch.plotter_kind === "npc") {
+      try {
+        recordOpinionEvent(db, { npcId: sch.plotter_id, targetKind: "player", targetId: userId },
+          +18, "abetted my scheme");
+      } catch { /* opinions optional */ }
+    }
+    return { ok: true, action: "abet", scheme: { id: schemeId, success_pct: newSuccess, accomplice_added: added } };
+  }
+
+  // ignore — mark dismissed so the eavesdrop bubble closes; no state change.
+  return { ok: true, action: "ignore", scheme: { id: schemeId, phase: sch.phase } };
 }
 
 /** List active schemes a user is suspected of being targeted by. */

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useContext, createCont
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 
 // ── Device capability detection ────────────────────────────────────
@@ -227,6 +228,13 @@ export default function ConcordiaScene({
   const rendererRef = useRef<unknown>(null);
   const sceneRef = useRef<unknown>(null);
   const cameraRef = useRef<unknown>(null);
+  // Sprint 1 (juice) — camera-punch impulse. concordia:camera-punch is already
+  // dispatched (CombatStaggerCameraBridge / BuildingCollapseBridge) but had no
+  // consumer; the render loop reads this decaying impulse and adds positional
+  // jitter + a brief FOV kick after the base camera transform each frame.
+  const cameraPunchRef = useRef<{ until: number; start: number; shake: number; fov: number }>(
+    { until: 0, start: 0, shake: 0, fov: 0 },
+  );
   const composerRef = useRef<{
     render: (delta: number) => void;
     setSize: (w: number, h: number) => void;
@@ -747,6 +755,19 @@ export default function ConcordiaScene({
       } catch (skyErr) {
         console.warn('[ConcordiaScene] Sky / clouds unavailable:', skyErr);
       }
+
+      // ── I3: procedural per-world landmarks (stylized canon identity) ──
+      // Real CC0 GLB/PBR drops would mount through the same group; until then
+      // these procedural silhouettes are the deliberate identity per world.
+      try {
+        const { createWorldLandmarks } = await import('@/lib/world-lens/landmarks');
+        // themeProp shares ids with canon world ids (tunya, concordia-hub, …).
+        const landmarks = createWorldLandmarks(THREE, themeProp, activeTheme);
+        scene.add(landmarks);
+        (scene as unknown as { __concordLandmarks?: unknown }).__concordLandmarks = landmarks;
+      } catch (lmErr) {
+        console.warn('[ConcordiaScene] Landmarks unavailable:', lmErr);
+      }
       // Sprint 9 — expose scene globally so the QuestWaypointBeacon
       // can attach its 3D objects without prop-drilling through the
       // entire scene tree. Same pattern as __concordiaRenderer.
@@ -1047,6 +1068,31 @@ export default function ConcordiaScene({
           }
         }
 
+        // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
+        // transform: a decaying random positional jitter + a brief FOV kick.
+        // Read after the camera transform so it layers, not fights it.
+        {
+          const punch = cameraPunchRef.current;
+          const nowMs = performance.now();
+          if (nowMs < punch.until) {
+            const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
+            const k = remain * remain; // ease-out
+            const amp = (punch.shake / 100) * k;
+            camera.position.x += (Math.random() - 0.5) * amp;
+            camera.position.y += (Math.random() - 0.5) * amp;
+            camera.position.z += (Math.random() - 0.5) * amp;
+            if (punch.fov > 0) {
+              const baseFov = 55;
+              camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
+              camera.updateProjectionMatrix();
+            }
+          } else if (punch.fov > 0 && Math.abs(camera.fov - 55) > 0.01) {
+            // Settle FOV back to base once the punch ends.
+            camera.fov = 55;
+            camera.updateProjectionMatrix();
+          }
+        }
+
         // Update weather transition + emit modifiers
         weatherSys.update(delta);
         onWeatherModifiersRef.current?.(weatherSys.getModifiers());
@@ -1142,7 +1188,13 @@ export default function ConcordiaScene({
 
         const avgFps = fpsBuffer.reduce((a, b) => a + b, 0) / fpsBuffer.length;
 
-        // ── Frustum culling — hide buildings outside camera view ────
+        // ── G1: frustum + distance culling with CACHED bounding spheres ──
+        // Buildings are static placements, so we compute each one's world-space
+        // bounding sphere exactly once (on first sight / after addBuilding sets
+        // __boundsDirty) and cache it on userData. The per-frame test is then a
+        // cheap O(1) frustum.intersectsSphere + squared-distance check — no
+        // per-frame setFromObject geometry traversal, so frame cost no longer
+        // scales with hidden/complex geometry.
         if (THREE && cameraRef.current && layersRef.current?.buildings) {
           const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
           cam.updateMatrixWorld();
@@ -1153,11 +1205,29 @@ export default function ConcordiaScene({
           const buildingsGroup = layersRef.current.buildings as InstanceType<
             typeof import('three').Group
           >;
-          const box = new THREE.Box3();
+          const camPos = cam.position;
+          // Hard render distance scales with camera far plane (default 5000).
+          const maxDist = Math.min(2200, (cam.far ?? 5000) * 0.5);
+          const tmpBox = new THREE.Box3();
           buildingsGroup.children.forEach((obj) => {
-            if (!obj) return;
-            box.setFromObject(obj);
-            obj.visible = frustum.intersectsBox(box);
+            const o = obj as unknown as {
+              visible: boolean;
+              userData?: Record<string, unknown>;
+            };
+            if (!o) return;
+            const ud = (o.userData ??= {});
+            let sphere = ud.__boundsSphere as InstanceType<typeof import('three').Sphere> | undefined;
+            if (!sphere || ud.__boundsDirty) {
+              tmpBox.setFromObject(obj);
+              sphere = new THREE.Sphere();
+              tmpBox.getBoundingSphere(sphere);
+              ud.__boundsSphere = sphere;
+              ud.__boundsDirty = false;
+            }
+            const inFrustum = frustum.intersectsSphere(sphere);
+            const c = sphere.center;
+            const dSq = (c.x - camPos.x) ** 2 + (c.y - camPos.y) ** 2 + (c.z - camPos.z) ** 2;
+            o.visible = decideVisible(inFrustum, dSq, maxDist);
           });
         }
 
@@ -1224,6 +1294,24 @@ export default function ConcordiaScene({
       }
     }
     window.addEventListener('resize', handleResize);
+
+    // Sprint 1 (juice) — camera-punch consumer. Sets a decaying impulse the
+    // render loop reads after the base camera transform. Locality is already
+    // gated by the dispatcher (local_relevance); we honour it here too.
+    const handleCameraPunch = (e: Event) => {
+      const d = (e as CustomEvent).detail as
+        { duration_ms?: number; shake?: number; zoom?: number; local_relevance?: boolean } | undefined;
+      if (!d || d.local_relevance === false) return;
+      const now = performance.now();
+      const dur = Math.max(120, Math.min(2000, Number(d.duration_ms) || 300));
+      cameraPunchRef.current = {
+        start: now,
+        until: now + dur,
+        shake: Math.max(0, Math.min(12, Number(d.shake) || 4)),
+        fov: Math.max(0, Math.min(0.25, (Number(d.zoom) || 1.05) - 1)),
+      };
+    };
+    window.addEventListener('concordia:camera-punch', handleCameraPunch);
 
     // ── Click handler ─────────────────────────────────────────────
     function handleCanvasClick(e: MouseEvent) {
@@ -1384,6 +1472,7 @@ export default function ConcordiaScene({
       disposed = true;
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('concordia:camera-punch', handleCameraPunch);
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
@@ -1469,6 +1558,9 @@ export default function ConcordiaScene({
       const id = (userData.buildingId as string) ?? `building_${Date.now()}`;
       userData.buildingId = id;
       userData.isBuilding = true;
+      // G1 — invalidate the cached bounding sphere so the cull loop recomputes
+      // it once (buildings are static, so we never recompute again after that).
+      userData.__boundsDirty = true;
       buildingMapRef.current.set(id, buildingGroup);
       const layer = layersRef.current['buildings'] as { add: (child: unknown) => void } | undefined;
       layer?.add(buildingGroup);

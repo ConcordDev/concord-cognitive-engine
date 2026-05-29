@@ -74,6 +74,33 @@ export interface ConcordiaTheme {
    * by the world-event-scheduler; absent fields default to neutral.
    */
   weatherProfile?: Partial<Record<'clear' | 'rain' | 'snow' | 'storm' | 'overcast' | 'fog' | 'sandstorm', number>>;
+  /**
+   * T3.3 — sun/moon disk in the sky. Renders a billboarded glowing disk so the
+   * sky reads as a real dome, not a flat gradient. `elevationDeg`/`azimuthDeg`
+   * place it; `color`/`sizeM` style it; `glow` is the halo strength 0..1.
+   * Optional — themes without it get a sensible disk derived from sunLight.
+   */
+  sunDisk?: {
+    color: number;
+    sizeM: number;
+    elevationDeg: number;
+    azimuthDeg: number;
+    glow: number;
+  };
+  /**
+   * T3.3 — per-world building silhouette. Drives the building renderer's mesh
+   * proportions + material so cyber reads neon-vertical and crime noir-lowrise
+   * instead of every world sharing one block style. Material/proportion only —
+   * no GLB pipeline dependency.
+   */
+  buildingStyle?:
+    | 'neon-tower'      // tall, thin, emissive edges (cyber)
+    | 'noir-lowrise'    // squat brick, few windows, muted (crime)
+    | 'ruins-marble'    // broken columns, weathered stone (sovereign-ruins)
+    | 'frontier-timber' // low timber + thatch (tunya/frontier)
+    | 'arcology'        // clean white megastructure (superhero/minimal)
+    | 'fantasy-stone'   // turreted stone + banners (fantasy/classic)
+    | 'default';
 }
 
 /**
@@ -354,3 +381,74 @@ export const CANON_WORLD_THEMES: ConcordiaThemeId[] = [
 ];
 
 export const DEFAULT_THEME_ID: ConcordiaThemeId = 'neon-punk';
+
+// ── T3.3 — per-world silhouette resolvers ───────────────────────────────────
+
+type BuildingStyle = NonNullable<ConcordiaTheme['buildingStyle']>;
+
+// Canonical building silhouette per theme. A theme may also set `buildingStyle`
+// inline (which wins); this table is the lore-derived default so every world
+// reads distinct without editing all 12 entries.
+const BUILDING_STYLE_BY_THEME: Record<ConcordiaThemeId, BuildingStyle> = {
+  'neon-punk':             'neon-tower',
+  'cyber':                 'neon-tower',
+  'crime':                 'noir-lowrise',
+  'sovereign-ruins':       'ruins-marble',
+  'tunya':                 'frontier-timber',
+  'concord-link-frontier': 'frontier-timber',
+  'superhero':             'arcology',
+  'minimal':               'arcology',
+  'fantasy':               'fantasy-stone',
+  'classic':               'fantasy-stone',
+  'lattice-crucible':      'neon-tower',
+  'concordia-hub':         'fantasy-stone',
+};
+
+// Per-style proportions + material the building renderer reads. heightMul/
+// widthMul scale the base box; emissive drives edge glow; roughness/metalness
+// style the material; windowDensity tunes the window-light shader.
+export interface BuildingStyleSpec {
+  style: BuildingStyle;
+  heightMul: number;
+  widthMul: number;
+  emissive: number;        // hex; 0 = none
+  emissiveIntensity: number;
+  roughness: number;
+  metalness: number;
+  windowDensity: number;   // 0..1
+}
+
+const BUILDING_STYLE_SPECS: Record<BuildingStyle, BuildingStyleSpec> = {
+  'neon-tower':      { style: 'neon-tower',      heightMul: 1.9, widthMul: 0.7, emissive: 0x18d0ff, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.7, windowDensity: 0.85 },
+  'noir-lowrise':    { style: 'noir-lowrise',    heightMul: 0.7, widthMul: 1.2, emissive: 0x000000, emissiveIntensity: 0.0,  roughness: 0.9,  metalness: 0.1, windowDensity: 0.25 },
+  'ruins-marble':    { style: 'ruins-marble',    heightMul: 0.85, widthMul: 1.1, emissive: 0x000000, emissiveIntensity: 0.0, roughness: 0.95, metalness: 0.0, windowDensity: 0.1 },
+  'frontier-timber': { style: 'frontier-timber', heightMul: 0.6, widthMul: 1.05, emissive: 0x000000, emissiveIntensity: 0.0, roughness: 0.85, metalness: 0.05, windowDensity: 0.3 },
+  'arcology':        { style: 'arcology',        heightMul: 1.3, widthMul: 1.0, emissive: 0xeaf4ff, emissiveIntensity: 0.12, roughness: 0.25, metalness: 0.4, windowDensity: 0.6 },
+  'fantasy-stone':   { style: 'fantasy-stone',   heightMul: 1.0, widthMul: 1.0, emissive: 0x000000, emissiveIntensity: 0.0, roughness: 0.8,  metalness: 0.05, windowDensity: 0.35 },
+  'default':         { style: 'default',         heightMul: 1.0, widthMul: 1.0, emissive: 0x000000, emissiveIntensity: 0.0, roughness: 0.7,  metalness: 0.2, windowDensity: 0.4 },
+};
+
+/** Resolve the building-style spec for a world (theme inline override wins). */
+export function buildingStyleForWorld(worldId: string | null | undefined): BuildingStyleSpec {
+  const themeId = themeForWorldId(worldId);
+  const inline = CONCORDIA_THEMES[themeId]?.buildingStyle;
+  const style = inline || BUILDING_STYLE_BY_THEME[themeId] || 'default';
+  return BUILDING_STYLE_SPECS[style] || BUILDING_STYLE_SPECS.default;
+}
+
+/**
+ * Resolve the sun-disk for a world. Uses the theme's inline `sunDisk` when set,
+ * otherwise derives a sensible disk from sunLight color + a mid-elevation so
+ * every world gets a real disk in the sky dome.
+ */
+export function sunDiskForWorld(worldId: string | null | undefined): NonNullable<ConcordiaTheme['sunDisk']> {
+  const theme = CONCORDIA_THEMES[themeForWorldId(worldId)] || CONCORDIA_THEMES[DEFAULT_THEME_ID];
+  if (theme.sunDisk) return theme.sunDisk;
+  return {
+    color: theme.sunLight?.color ?? 0xffe8b0,
+    sizeM: 60,
+    elevationDeg: 38,
+    azimuthDeg: 135,
+    glow: 0.6,
+  };
+}

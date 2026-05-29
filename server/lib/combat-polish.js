@@ -22,6 +22,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { poiseBudget, resolvePoiseStagger } from "./combat-impact.js";
+import { applyHyperarmorDowngrade } from "./combat/executions.js";
 
 // ── Combat profiles (the genre dial) ────────────────────────────────────────
 
@@ -387,7 +388,7 @@ export function isRocked(db, { actorKind, actorId, nowMs }) {
  * @param {number} [args.poiseMul] mount/gear poise modifier (see mount-combat-overlay)
  * @returns {{ severity, momentum, poise, until_ms, duration_ms }}
  */
-export function triggerStaggerFromImpact(db, { actorKind, actorId, momentum, offAxis = 0, massKg, bracing = false, poiseMul = 1, nowMs }) {
+export function triggerStaggerFromImpact(db, { actorKind, actorId, momentum, offAxis = 0, massKg, bracing = false, poiseMul = 1, hyperarmor = false, nowMs }) {
   if (!db || !(momentum >= 0)) return { severity: "none" };
   const state = getOrCreateActorState(db, { actorKind, actorId });
   if (!state) return { severity: "none" };
@@ -399,6 +400,14 @@ export function triggerStaggerFromImpact(db, { actorKind, actorId, momentum, off
     gasFraction, bracing, poiseMul,
   });
   const res = resolvePoiseStagger({ momentum, poise, offAxis });
+
+  // F3.1 — hyperarmor: a recipient mid-heavy-commit absorbs flinch/rocked; only
+  // a knockdown still interrupts the attack. Single source of truth in
+  // executions.js so the rule stays consistent everywhere.
+  const downgraded = applyHyperarmorDowngrade(res.severity, hyperarmor);
+  if (downgraded.absorbed) {
+    return { severity: "none", momentum: res.momentum, poise, hyperarmorAbsorbed: true };
+  }
 
   if (res.severity === "none") return { severity: "none", momentum: res.momentum, poise };
 

@@ -43,12 +43,15 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createInputBuffer } from '@/lib/concordia/combat-input-buffer';
 import {
   type KeyAction,
   loadActiveProfile,
   resolveBinding,
 } from '@/lib/concordia/keybindings';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+import { useGamepad, type GamepadButton } from '@/hooks/useGamepad';
+import { loadGamepadCombatMap, resolveGamepadButton, type GamepadCombatMap } from '@/lib/concordia/gamepad-combat-map';
 
 // Lock-on read helper. Returns the active locked-target id if the player
 // has soft- or hard-locked an enemy via LockOnController. Falls back to
@@ -190,7 +193,7 @@ function buildValidKeySet(): Set<string> {
 const DOUBLE_TAP_WINDOW_MS = 280;
 
 export default function CombatInputController({
-  inputMode, context, hasTarget: _hasTarget, playerId: _playerId, worldSocket, modifierHeld, loadout, onAction,
+  inputMode, context, hasTarget: _hasTarget, playerId, worldSocket, modifierHeld, loadout, onAction,
 }: Props) {
   // Track per-key press time to differentiate tap vs hold
   const downAtRef = useRef<Map<string, number>>(new Map());
@@ -201,6 +204,10 @@ export default function CombatInputController({
   const holdFiredRef = useRef<Set<string>>(new Set());
   // Per-key last-tap time for double-tap detection
   const lastTapAtRef = useRef<Map<string, number>>(new Map());
+  // A2 — input buffer: a press made during the previous action's cooldown is
+  // held briefly and fired the instant the cooldown lifts (fighting-game feel),
+  // instead of being dropped.
+  const inputBufferRef = useRef(createInputBuffer());
 
   // Live valid-key set rebuilt when the profile changes
   const [validKeys, setValidKeys] = useState<Set<string>>(buildValidKeySet);
@@ -269,6 +276,29 @@ export default function CombatInputController({
     //                                                 no kick action token —
     //                                                 distinguish via meta)
     //   modifier-boost                   → combat:modifier (held boost flag)
+    // G2.1 — client-side prediction. Combat input → feedback was a full socket
+    // round-trip (no local swing), breaking the ≤16ms feel bar. Play the local
+    // player's swing/kick/dodge animation IMMEDIATELY on input via the same
+    // concordia:combat-anim event AvatarSystem3D consumes, so the body moves on
+    // the same frame as the keypress. Damage stays server-authoritative (the
+    // authoritative combat:impact still drives the target reaction); the
+    // predicted motion is the attacker's own cosmetic swing, so there's nothing
+    // to reconcile — the server never contradicts it. Light attacks also get a
+    // tiny predicted attacker hit-pause for weight.
+    if (playerId && typeof window !== 'undefined') {
+      const predAnim = resolved.startsWith('attack') || resolved.includes('blast') || resolved.includes('ram') || resolved.includes('shot')
+        ? (variant === 'hold' || resolved.includes('heavy') ? 'attack-heavy' : 'attack-light')
+        : resolved === 'kick' || resolved === 'dismount-kick' ? 'kick'
+        : (resolved === 'dodge' || resolved === 'air-dash' || resolved === 'drift') ? 'dodge'
+        : (resolved === 'parry' || resolved === 'evasive' || resolved === 'air-dodge') ? 'block'
+        : null;
+      if (predAnim) {
+        window.dispatchEvent(new CustomEvent('concordia:combat-anim', {
+          detail: { entityId: playerId, animation: predAnim, predicted: true },
+        }));
+      }
+    }
+
     if (!worldSocket?.isConnected) {
       onAction?.(evt);
       return;
@@ -353,6 +383,28 @@ export default function CombatInputController({
     onAction?.(evt);
   }, [context, modifierHeld, worldSocket, onAction, resolveHand]);
 
+  // F2 — gamepad write-through. The keyboard path is the canonical one; a
+  // connected Standard Gamepad dispatches the SAME combat actions through the
+  // same dispatchAction, resolved via the (remappable) gamepad→action map.
+  const dispatchRef = useRef(dispatchAction);
+  dispatchRef.current = dispatchAction;
+  const gamepadMapRef = useRef<GamepadCombatMap>(loadGamepadCombatMap());
+  useEffect(() => {
+    function refresh() { gamepadMapRef.current = loadGamepadCombatMap(); }
+    window.addEventListener('concordia:gamepad-map-changed', refresh);
+    return () => window.removeEventListener('concordia:gamepad-map-changed', refresh);
+  }, []);
+  const combatActiveRef = useRef(false);
+  combatActiveRef.current = COMBAT_MODES.has(inputMode);
+  useGamepad({
+    onButtonDown: (button: GamepadButton) => {
+      if (!combatActiveRef.current) return;
+      const binding = resolveGamepadButton(gamepadMapRef.current, button);
+      if (!binding) return;
+      dispatchRef.current(ACTION_TO_KEY[binding.action], binding.variant);
+    },
+  });
+
   // Keydown: stamp the time, schedule the hold-fire timer.
   useEffect(() => {
     if (!COMBAT_MODES.has(inputMode)) return;
@@ -378,9 +430,14 @@ export default function CombatInputController({
       downAtRef.current.delete(k);
       if (downAt == null) return;
       const heldMs = performance.now() - downAt;
-      // 200ms cooldown per key so spam doesn't outpace the server tick
+      // 200ms cooldown per key so spam doesn't outpace the server tick.
+      // A2 — instead of dropping a press made during the cooldown, buffer it;
+      // the 50ms tick flushes it the instant the cooldown lifts.
       const lastFire = lastFireAtRef.current.get(k) ?? 0;
-      if (performance.now() - lastFire < 200) return;
+      if (performance.now() - lastFire < 200) {
+        inputBufferRef.current.push(k, performance.now(), 'tap');
+        return;
+      }
       lastFireAtRef.current.set(k, performance.now());
 
       // If we already fired the hold during the keyhold tick, skip the tap
@@ -454,6 +511,17 @@ export default function CombatInputController({
         if (performance.now() - lastFire < 200) continue;
         lastFireAtRef.current.set(k, performance.now());
         dispatchAction(r.key, 'hold');
+      }
+      // A2 — flush a buffered press once its key's cooldown has lifted.
+      const buf = inputBufferRef.current.peek(now);
+      if (buf) {
+        const lastFire = lastFireAtRef.current.get(buf.action) ?? 0;
+        if (now - lastFire >= 200) {
+          inputBufferRef.current.take(now);
+          lastFireAtRef.current.set(buf.action, now);
+          const r = profileResolve(buf.action, (buf.variant as 'tap' | 'hold') || 'tap');
+          if (r) dispatchAction(r.key, (buf.variant as 'tap' | 'hold') || 'tap');
+        }
       }
     }, 50);
     return () => clearInterval(interval);

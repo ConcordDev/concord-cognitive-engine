@@ -64,6 +64,10 @@ interface BuildingRenderer3DProps {
   renderStyle?: 'pbr' | 'toon';
   toonGradient?: [string, string, string];
   onBuildingClick?: (buildingId: string) => void;
+  /** T3.3 — per-world building silhouette spec (from buildingStyleForWorld).
+   * Overrides material emissive/roughness/metalness so each world reads
+   * distinct. Unset → warm default glow (back-compat). */
+  buildingStyle?: import('@/lib/world-lens/concordia-theme').BuildingStyleSpec;
 }
 
 // ── Material Configuration ──────────────────────────────────────
@@ -133,6 +137,7 @@ export default function BuildingRenderer3D({
   renderStyle = 'pbr',
   toonGradient = ['#1a1a2e', '#3a3a5a', '#8888bb'],
   onBuildingClick,
+  buildingStyle,
 }: BuildingRenderer3DProps) {
   const buildingGroupRef = useRef<unknown>(null);
   const instancedMeshesRef = useRef<Map<string, unknown>>(new Map());
@@ -256,14 +261,21 @@ export default function BuildingRenderer3D({
       }
 
       const textures = overrides ? {} : getProceduralTextures(matType);
+      // T3.3 — per-world silhouette: when a buildingStyle spec is supplied, its
+      // emissive / roughness / metalness override the defaults so cyber reads
+      // neon-emissive and crime reads matte-noir. Falls back to the warm
+      // default glow when no style is active (back-compat).
+      const styleEmissive = buildingStyle && buildingStyle.emissive
+        ? new THREE.Color(buildingStyle.emissive) : new THREE.Color(0xffcc88);
+      const styleEmissiveIntensity = buildingStyle ? buildingStyle.emissiveIntensity : 0.08;
       return new THREE.MeshStandardMaterial({
         color: cfg.color,
-        roughness: cfg.roughness,
-        metalness: cfg.metalness,
+        roughness: buildingStyle ? buildingStyle.roughness : cfg.roughness,
+        metalness: buildingStyle ? buildingStyle.metalness : cfg.metalness,
         transparent: cfg.transparent,
         opacity: cfg.opacity,
-        emissive: new THREE.Color(0xffcc88),
-        emissiveIntensity: 0.08,
+        emissive: styleEmissive,
+        emissiveIntensity: styleEmissiveIntensity,
         ...textures,
       });
     };

@@ -1686,14 +1686,24 @@ Generate the summary.`;
     const userId = ctx?.actor?.userId || ctx?.userId || "anon";
     const bills = ensureBucket(state, "bills", userId);
     const leadDays = Math.max(0, Math.min(30, Number(params.leadDays) || 5));
-    const today = new Date();
+    const now = new Date();
+    // Normalise "today" to local midnight so day-count math is exact and not
+    // skewed by the time of day (a bill due yesterday must read as overdue,
+    // not roll a full month forward — the month-end edge bug).
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayMs = today.getTime();
+    const lastDayOfMonth = (y, m) => new Date(y, m + 1, 0).getDate();
     const reminders = [];
     for (const b of bills) {
       if (b.cadence !== "monthly" && b.cadence !== "annual") continue;
-      const due = new Date(today.getFullYear(), today.getMonth(), Math.min(b.dueDay, 28));
-      if (due.getTime() < todayMs - 86400000) due.setMonth(due.getMonth() + 1);
-      const daysUntil = Math.ceil((due.getTime() - todayMs) / 86400000);
+      // Clamp the due day to the current month's real last day (handles
+      // 29/30/31 + February) rather than a flat 28.
+      const clampedDay = Math.min(b.dueDay, lastDayOfMonth(today.getFullYear(), today.getMonth()));
+      const due = new Date(today.getFullYear(), today.getMonth(), clampedDay);
+      // Only roll to next month when the due date is more than `leadDays` in the
+      // past — a recently-passed bill stays surfaced as overdue.
+      if (due.getTime() < todayMs - leadDays * 86400000) due.setMonth(due.getMonth() + 1);
+      const daysUntil = Math.round((due.getTime() - todayMs) / 86400000);
       const status = b.paidThisCycle ? "paid"
         : daysUntil < 0 ? "overdue"
         : daysUntil <= leadDays ? "due_soon" : "scheduled";

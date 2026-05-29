@@ -4,6 +4,8 @@
 import crypto from 'node:crypto';
 import { awardCharacterLevel } from './character-level.js';
 import { effectivenessMultiplier as crossWorldMul } from '../cross-world-effectiveness.js';
+import { grantTalentPoints } from '../talents.js';
+import { gainAscensionXp } from '../ascension.js';
 
 // ── Skill → native world type mapping ─────────────────────────────────────────
 
@@ -219,7 +221,11 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
   let { level, xp, xp_to_next } = row;
 
   if (level >= MAX_LEVEL) {
-    return { leveled: false, newLevel: level, newXp: xp };
+    // D30 — at the skill cap, XP was previously discarded. Route it into the
+    // account-wide ascension/paragon endgame track instead (the day-30 sink).
+    let ascension = null;
+    try { ascension = gainAscensionXp(db, userId, xpGain); } catch { /* ascension table optional */ }
+    return { leveled: false, newLevel: level, newXp: xp, atCap: true, ascension };
   }
 
   xp += xpGain;
@@ -248,6 +254,14 @@ export function gainSkillXP(db, userId, skillType, worldType, xpGain, opts = {})
         characterLevelResult = awardCharacterLevel(db, userId, opts.worldId);
       }
     } catch { /* non-fatal */ }
+  }
+
+  // F2.3 — earn 1 talent point per level gained (the live level-up gain site).
+  // Best-effort: the talents substrate is optional on minimal builds.
+  if (leveled && levelsGained > 0) {
+    try {
+      grantTalentPoints(db, userId, levelsGained);
+    } catch { /* talents table optional */ }
   }
 
   return { leveled, newLevel: level, newXp: xp, levelsGained, characterLevelResult };

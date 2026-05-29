@@ -37,7 +37,7 @@ import OnboardingTutorial from '@/components/world-lens/OnboardingTutorial';
 
 import dynamic from 'next/dynamic';
 import { DEMO_DISTRICT } from '@/lib/world-lens/district-seed';
-import { themeForWorldId, CONCORDIA_THEMES } from '@/lib/world-lens/concordia-theme';
+import { themeForWorldId, CONCORDIA_THEMES, sunDiskForWorld, buildingStyleForWorld } from '@/lib/world-lens/concordia-theme';
 import { BARE_HANDS as controlSchemeForLegend } from '@/lib/concordia/combat/control-schemes';
 import { useHUDContext } from '@/components/world/concordia-hud/HUDContextProvider';
 import FactionOverlay from '@/components/world/FactionOverlay';
@@ -49,6 +49,9 @@ import { PartyPanel } from '@/components/world/PartyPanel';
 import { MapPingLayer } from '@/components/world/MapPingLayer';
 import { KillFeed } from '@/components/world/KillFeed';
 import { DiseaseStatusHUD } from '@/components/world/DiseaseStatusHUD';
+import SubtitleDisplay from '@/components/accessibility/SubtitleDisplay';
+import ScreenReaderAnnouncer from '@/components/accessibility/ScreenReaderAnnouncer';
+import WorldAccessibilityMenu from '@/components/accessibility/WorldAccessibilityMenu';
 import WorldQuestLogPanel from '@/components/world/WorldQuestLogPanel';
 import WorldMarketplacePanel from '@/components/world/WorldMarketplacePanel';
 import WorldAdventureKitPanel from '@/components/world/WorldAdventureKitPanel';
@@ -452,6 +455,10 @@ const WalkerNpcInjector = dynamic(
 );
 const TombsOverlay = dynamic(
   () => import('@/components/world/TombsOverlay'),
+  { ssr: false }
+);
+const ZoneBadge = dynamic(
+  () => import('@/components/world/ZoneBadge'),
   { ssr: false }
 );
 const ProcgenSettlementNpcs = dynamic(
@@ -1096,6 +1103,7 @@ function CityStreamingSection() {
   const { on, off, isConnected } = useSocket({ autoConnect: true });
 
   // Creator controls
+  const [a11yMenuOpen, setA11yMenuOpen] = useState(false); // F4 — world settings menu
   const [myStream, setMyStream] = useState<CityStream | null>(null);
   const [streamTitle, setStreamTitle] = useState('');
   const [streamCityId, setStreamCityId] = useState('concordia-central');
@@ -3393,6 +3401,31 @@ export default function WorldLensPage() {
       if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
     };
     worldSocket.on('world:sign-placed', handleSignPlaced);
+    // E2 — horror tension → window event for SoundscapeEngine's dissonant stem
+    // + spatial ghost footstep. Server emits per-investigator from the
+    // horror-dread-cycle heartbeat.
+    const handleHorrorTension = (...args: unknown[]) => {
+      const data = args[0] as Record<string, unknown> | undefined;
+      if (data) window.dispatchEvent(new CustomEvent('concordia:horror-tension', { detail: data }));
+    };
+    worldSocket.on('horror:tension', handleHorrorTension);
+
+    // F3 — mirror screen-reader-relevant socket events to window events so the
+    // ScreenReaderAnnouncer (and any a11y consumer) can voice them. Naming:
+    // 'world:crisis' → 'concordia:world-crisis'.
+    const SR_BRIDGE_EVENTS = [
+      'world:event:scheduled', 'world:plague-declared', 'world:crisis', 'world:crisis-resolved',
+      'faction-war:declared', 'combat:telegraph', 'combat:impact', 'player:low-health',
+    ];
+    const srBridges: Array<[string, (...a: unknown[]) => void]> = SR_BRIDGE_EVENTS.map((kind) => {
+      const winName = `concordia:${kind.replace(/:/g, '-')}`;
+      const h = (...a: unknown[]) => {
+        const d = a[0] as Record<string, unknown> | undefined;
+        window.dispatchEvent(new CustomEvent(winName, { detail: d || {} }));
+      };
+      worldSocket.on(kind, h);
+      return [kind, h];
+    });
 
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
@@ -3411,6 +3444,8 @@ export default function WorldLensPage() {
       worldSocket.off('world:deformation', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
+      worldSocket.off('horror:tension', handleHorrorTension);
+      for (const [kind, h] of srBridges) worldSocket.off(kind, h);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);
@@ -4154,7 +4189,7 @@ export default function WorldLensPage() {
           </div>
           {/* 3D scene rendering layers */}
           <TerrainRenderer districts={[]} lodCenter={{ x: 0, z: 0 }} quality="medium" />
-          <BuildingRenderer3D buildings={[]} viewMode="normal" />
+          <BuildingRenderer3D buildings={[]} viewMode="normal" buildingStyle={buildingStyleForWorld(worldIdForTheme)} />
           {/* Phase A3 — L-system trees + procedural rocks per biome.
               Mounts when worldId resolves (worldIdForTheme). */}
           <TreeLayer worldId={worldIdForTheme} biome="temperate_forest" quality="medium" />
@@ -4175,6 +4210,7 @@ export default function WorldLensPage() {
             quality="medium"
             themeSkyTop={skyThemeColors.top}
             themeSkyHorizon={skyThemeColors.horizon}
+            sunDisk={sunDiskForWorld(worldIdForTheme)}
           />
           <WaterRenderer
             riverConfig={{ width: 20, flowDirection: 0, flowSpeed: 1, centerX: 0, length: 100 }}
@@ -4536,8 +4572,13 @@ export default function WorldLensPage() {
             unreadCount={0}
             tools={[]}
             onToolSelect={() => {}}
-            onMenuOpen={() => {}}
+            onMenuOpen={() => setA11yMenuOpen(true)}
           />
+
+          {/* F1/F3/F4 — accessibility surfaces (subtitles, SR announcer, settings menu) */}
+          <SubtitleDisplay />
+          <ScreenReaderAnnouncer />
+          <WorldAccessibilityMenu open={a11yMenuOpen} onClose={() => setA11yMenuOpen(false)} />
 
           {/* ── Concordia mode overlays ── */}
           {inputMode === 'combat' && (
@@ -4814,6 +4855,7 @@ export default function WorldLensPage() {
               scene-add API; this is the substrate-bridge surface so
               players see their world's death log. */}
           <TombsOverlay worldId={activeDistrict?.id || 'concordia-hub'} />
+          <ZoneBadge worldId={activeDistrict?.id || 'concordia-hub'} />
 
           {/* Sprint B.5 — procgen settlement NPCs (Phase 11.4 substrate).
               Pulls procgen_settlement_npcs rows for this world via the

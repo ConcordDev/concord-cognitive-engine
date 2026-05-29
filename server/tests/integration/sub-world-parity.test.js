@@ -74,4 +74,24 @@ describe("Phase F2 — sub-world content parity", () => {
     assert.ok(questCount >= 60,
       `quests counter ${questCount} should reflect sub-world chains`);
   });
+
+  it("H1 — tunya's per-world quest chains seed (content/world/tunya/quests/)", async () => {
+    const db = new Database(":memory:");
+    upAsymmetry(db);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY);
+      CREATE TABLE IF NOT EXISTS world_npcs (id TEXT, world_id TEXT, x REAL, y REAL, z REAL, npc_data_json TEXT, PRIMARY KEY(id, world_id));
+      CREATE TABLE IF NOT EXISTS dtus (id TEXT PRIMARY KEY, kind TEXT, title TEXT, human_summary TEXT, created_at INTEGER, creator_id TEXT, scope TEXT, visibility TEXT);
+      CREATE TABLE IF NOT EXISTS factions (id TEXT PRIMARY KEY, name TEXT);
+      INSERT OR IGNORE INTO users (id) VALUES ('system');
+    `);
+    await seedContent({ db });
+    const { _authoredQuests } = await import("../../lib/content-seeder.js");
+    const tunyaIds = [...(_authoredQuests?.keys?.() ?? [])].filter((id) => String(id).startsWith("tunya_"));
+    // The 4 tunya chains (arks-of-memory, bloc-secret, medici-origin,
+    // nil-protection) live under content/world/tunya/quests/ and were stranded
+    // until H1 wired the per-world quest walker.
+    assert.ok(tunyaIds.length >= 4,
+      `expected tunya quest chains in the registry, got ${tunyaIds.length}: ${tunyaIds.join(",")}`);
+  });
 });

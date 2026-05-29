@@ -130,7 +130,11 @@ export function DialoguePanel({
     window.dispatchEvent(new CustomEvent('concordia:lip-sync', {
       detail: { npcId: state.npcId, text, wpm: 180 },
     }));
-  }, [state.messages, state.npcId]);
+    // F1 — feed the subtitle renderer (gated client-side on the a11y setting).
+    window.dispatchEvent(new CustomEvent('concordia:subtitle', {
+      detail: { speaker: state.npcName || 'NPC', text },
+    }));
+  }, [state.messages, state.npcId, state.npcName]);
 
   const handleSend = useCallback((text: string, skillCheck?: SkillCheckOption) => {
     if (!text.trim()) return;

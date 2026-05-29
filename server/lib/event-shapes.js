@@ -27,15 +27,21 @@ const RESERVED = new Set(["ts", "_seq", "_rid", "_evt"]);
 export const EVENT_SHAPES = Object.freeze({
   // ── Combat ────────────────────────────────────────────────────────
   "combat:attack": { required: ["attackerId"], optional: ["weapon", "animation", "direction", "position"] },
-  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon"] },
+  "combat:hit":    { required: ["attackerId", "victimId", "damage"], optional: ["isCrit", "blocked", "staggered", "hitDirection", "magnitude", "position", "weapon", "targetId", "targetHealth", "targetMaxHealth", "targetKilled", "targetPosition", "attackerPosition", "element", "skillId", "tier", "style", "skillKey"] },
   "combat:miss":   { required: ["attackerId", "victimId"], optional: ["missed"] },
   "combat:death":  { required: ["victimId"], optional: ["killerId", "position"] },
+  // Sprint 1 — defensive-loop wiring. ack events carry the granted i-frame
+  // window + parry result; the :perfect events drive the reward slow-mo.
+  "combat:dodge:ack":     { required: ["userId"], optional: ["direction", "t", "iframeMs", "perfect"] },
+  "combat:dodge:perfect": { required: ["userId"], optional: ["timeDilationPct", "durationMs", "t"] },
+  "combat:block:ack":     { required: ["userId"], optional: ["active", "t", "parried", "perfect", "riposteWindowMs"] },
+  "combat:parry:perfect": { required: ["userId"], optional: ["riposteWindowMs", "timeDilationPct", "durationMs", "t"] },
 
   // ── Combat presentation ───────────────────────────────────────────
   // Telegraph fires immediately before applyAttack resolves so clients
   // can render anticipation pose / weapon glow / stance shift before
   // the damage lands. anticipationMs mirrors the biomechanics ladder.
-  "combat:telegraph": { required: ["attackerId", "anticipationMs", "severity"], optional: ["targetId", "style", "tier"] },
+  "combat:telegraph": { required: ["attackerId", "anticipationMs", "severity"], optional: ["targetId", "style", "tier", "perilKind", "counter"] },
   // Combo evolution surfaces a procedurally-derived combo with an
   // LLM-selected name; client raises a slow-mo + audio sting + hotbar
   // icon. `evolved` is the array from flow-engine.evolveFighterCombos.
@@ -294,6 +300,9 @@ export const EVENT_SHAPES = Object.freeze({
 
   // ── Phase G1 — batched + chain + bridge surfacing ─────────────────
   "combat:chain":               { required: ["originActorId", "targets"], optional: ["worldId", "magnitude", "element"] },
+  // T1.4b — server-authoritative combat feel. `feel` carries the exact
+  // hitstop/knockback/wince parameters the client applies verbatim.
+  "combat:impact":              { required: ["attackerId", "targetId", "severity", "feel"], optional: ["worldId", "targetKind", "impactMomentum", "element", "damage", "isKill", "targetPosition", "attackerPosition", "vfx", "skillKey", "ts"] },
   "npc:activity-batch":         { required: ["worldId", "count", "transitions"], optional: [] },
   "npc:economy-batch":          { required: ["worldId", "gathers", "crafts", "trades", "rests", "notable"], optional: [] },
   "social:shadows-synced":      { required: ["createdShadows", "totalCapacity"], optional: ["droppedForPrivacy"] },

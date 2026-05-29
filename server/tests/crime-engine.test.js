@@ -51,7 +51,7 @@ beforeEach(() => {
       racket_income_cents INTEGER NOT NULL DEFAULT 0,
       established_at INTEGER NOT NULL DEFAULT (unixepoch())
     );
-    CREATE TABLE bounties (
+    CREATE TABLE crime_bounties (
       id TEXT PRIMARY KEY,
       target_kind TEXT NOT NULL,
       target_id TEXT NOT NULL,

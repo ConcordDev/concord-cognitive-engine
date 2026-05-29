@@ -63,7 +63,7 @@ describe("Phase AB — npc-relationships primitives", () => {
   it("formRelationship inserts with sorted pair", () => {
     const r = formRelationship(db, "npc-b", "npc-a", "rival", 0.2, { worldId: "tunya" });
     assert.equal(r.ok, true);
-    const row = db.prepare(`SELECT npc_a_id, npc_b_id FROM npc_relationships WHERE id = ?`).get(r.relationshipId);
+    const row = db.prepare(`SELECT npc_a_id, npc_b_id FROM npc_nemesis WHERE id = ?`).get(r.relationshipId);
     assert.equal(row.npc_a_id, "npc-a", "smaller id sorts first");
     assert.equal(row.npc_b_id, "npc-b");
   });
@@ -96,7 +96,7 @@ describe("Phase AB — npc-relationships primitives", () => {
 
   it("decay removes stale rows", () => {
     const r = formRelationship(db, "n1", "n2", "rival", 0.1, { worldId: "tunya" });
-    db.prepare(`UPDATE npc_relationships SET last_event_at = 0 WHERE id = ?`).run(r.relationshipId);
+    db.prepare(`UPDATE npc_nemesis SET last_event_at = 0 WHERE id = ?`).run(r.relationshipId);
     const d = decay(db, 60 * 60); // 1h threshold
     assert.equal(d.ok, true);
     assert.equal(d.removed, 1);
@@ -207,7 +207,7 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
 
   it("decay runs every tick (idempotent + cheap)", () => {
     formRelationship(db, "a", "b", "rival", 0.1, { worldId: "tunya" });
-    db.prepare(`UPDATE npc_relationships SET last_event_at = 0`).run();
+    db.prepare(`UPDATE npc_nemesis SET last_event_at = 0`).run();
     // Stub the decay threshold by pinning npc_grudges window short — but
     // the cycle's internal threshold is 60d; we directly test the
     // wrapper by calling decay() with a 1s threshold here.

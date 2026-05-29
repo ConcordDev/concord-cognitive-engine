@@ -564,6 +564,29 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "asymmetry_seed_skipped", { err: err?.message });
     }
+
+    // T2.1 — weaponise_at consumption. Parse each authored NPC's
+    // narrative_context.weaponise_at into a structured, once-firing trigger so
+    // the authored payoff ("Befriend Kit; the pact surfaces") actually fires
+    // when the player satisfies it. Idempotent on signature.
+    try {
+      const { seedAllWeaponiseTriggers } = await import("./embodied/weaponise-triggers.js");
+      const authored = [..._authoredNPCs.values()];
+      results.weaponiseTriggersSeeded = seedAllWeaponiseTriggers(db, authored);
+    } catch (err) {
+      logger.warn("content_seeder", "weaponise_seed_skipped", { err: err?.message });
+    }
+
+    // T3.3 — seed default world zones (hub sanctuary that agrees with the
+    // hardcoded Concordant Law + a spawn sanctuary per authored world).
+    try {
+      const { seedDefaultZones } = await import("./world-zones.js");
+      const worldIds = [...new Set([..._authoredNPCs.values()].map((n) => n.world_id).filter(Boolean))];
+      if (!worldIds.includes("concordia-hub")) worldIds.push("concordia-hub");
+      results.worldZonesSeeded = seedDefaultZones(db, worldIds);
+    } catch (err) {
+      logger.warn("content_seeder", "world_zones_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain
@@ -620,6 +643,28 @@ export async function seedContent({ db = null } = {}) {
       }
     }
   } catch { /* no sub-worlds dir — fine */ }
+
+  // H1 — per-world authored quest chains. Some worlds (e.g. tunya) keep their
+  // quest chains under content/world/<world>/quests/ alongside their npcs/
+  // factions/lore rather than under content/quests/sub-worlds/. Walk those too
+  // so authored-but-unloaded chains (tunya's 4 were stranded here) reach the
+  // engine. seedQuestFile is idempotent on authoredId, so a chain that somehow
+  // appears in both trees is seeded once.
+  try {
+    const worldRoot = join(CONTENT_ROOT, "world");
+    for (const worldName of readdirSync(worldRoot)) {
+      if (worldName.startsWith("_")) continue; // _shared, _meta
+      const questsDir = join(worldRoot, worldName, "quests");
+      let isDir = false;
+      try { isDir = statSync(questsDir).isDirectory(); } catch { /* no quests dir */ }
+      if (!isDir) continue;
+      for (const fname of readdirSync(questsDir)) {
+        if (!fname.endsWith(".json")) continue;
+        const chain = readJSON(`world/${worldName}/quests/${fname}`);
+        if (Array.isArray(chain)) results.quests += seedQuestFile(chain);
+      }
+    }
+  } catch { /* no world quests — fine */ }
 
   // Authored dialogue trees — keyed by `npcId:questId:phase`. The narrative
   // bridge looks these up and short-circuits the LLM dialogue path when a
@@ -696,6 +741,34 @@ export async function seedContent({ db = null } = {}) {
       }
     } catch (err) {
       logger.warn({ err: err.message }, "content_seeder_faction_strategy_failed");
+    }
+
+    // T3.2 — derive NPC↔NPC scheme edges from authored faction rivalries so
+    // CK3 plots fire along the authored lines (no invented relationships).
+    // Runs after NPCs are seeded so the live-NPC existence check passes.
+    try {
+      const { seedRivalryOpinionEdges } = await import("./faction-rivalry-schemes.js");
+      const factions = Array.from(_authoredFactions.values());
+      const r = seedRivalryOpinionEdges(db, factions);
+      results.rivalrySchemeEdges = r?.edges || 0;
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_rivalry_edges_failed");
+    }
+
+    // Sprint 1 — wire the built-but-unwired cross-world relationship seeder:
+    // authored NPCs with a `concord_link_resonance` ref become cross-world
+    // correspondents (feeds the cross-world relationship graph). Zero non-test
+    // callers before this.
+    try {
+      const { seedRelationshipsFromAuthored } = await import("./cross-world-relationships.js");
+      const npcRows = Array.from(_authoredNPCs.values())
+        .filter((n) => n?.id && n?.world_id && n?.concord_link_resonance);
+      if (npcRows.length) {
+        const r = seedRelationshipsFromAuthored(db, npcRows);
+        results.crossWorldRelationships = r?.created || 0;
+      }
+    } catch (err) {
+      logger.warn({ err: err.message }, "content_seeder_cross_world_rel_failed");
     }
   }
 

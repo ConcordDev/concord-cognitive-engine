@@ -661,6 +661,34 @@ registerHeartbeat("npc-scheme-cycle", {
   handler: runNpcSchemeCycle,
 });
 
+// T2.3 — scheme barge-in. Players near a plotting NPC overhear the plot (one
+// discovered evidence row + scheme:overheard event), feeding the discover/
+// expose pipeline. Runs ~every 2 min; scope 'world' (reads live presence).
+import { runSchemeOverhearCycle } from "./emergent/scheme-overhear-cycle.js";
+registerHeartbeat("scheme-overhear-cycle", {
+  frequency: 8,
+  scope: "world",
+  handler: runSchemeOverhearCycle,
+});
+
+// T3.3 — hazard zones bite: players standing in a 'hazard' world-zone take
+// steady damage through the Layer-8 pain ledger (~every 75s). Scope 'world'.
+import { runWorldZoneHazardCycle } from "./emergent/world-zone-hazard-cycle.js";
+registerHeartbeat("world-zone-hazard-cycle", {
+  frequency: 5,
+  scope: "world",
+  handler: runWorldZoneHazardCycle,
+});
+
+// E1 — horror dread substrate. Proximity-driven terror + chase + bleed-out
+// sweep for active asymmetric-horror sessions; emits horror:tension.
+import { runHorrorDreadCycle } from "./emergent/horror-dread-cycle.js";
+registerHeartbeat("horror-dread-cycle", {
+  frequency: 2,
+  scope: "world",
+  handler: runHorrorDreadCycle,
+});
+
 // Phase T — NPC equal-agency cross-world. Three heartbeats:
 //   * npc-travel-cycle (60, ~15min)         — drains npc_travel_intents +
 //                                             ambition-driven goal-seeks
@@ -8315,6 +8343,9 @@ async function tryInitWebSockets(server) {
           const _anticipationMs = _heavy
             ? Math.round(_antLadder[_tier - 1] * 1.45)
             : _antLadder[_tier - 1];
+          // A1 — typed peril: a committed attack broadcasts a thrust/sweep/grab
+          // tell + the counter that negates it, so the defender reads intent.
+          const _peril = telegraphPerilFor({ style: data.style, weapon: data.weapon, kind: data.weapon, heavy: _heavy });
           realtimeEmit("combat:telegraph", {
             attackerId: userId,
             targetId:   data.targetId,
@@ -8322,6 +8353,8 @@ async function tryInitWebSockets(server) {
             anticipationMs: _anticipationMs,
             style:      data.style || null,
             tier:       _tier,
+            perilKind:  _peril.perilKind,
+            counter:    _peril.counter,
           });
         } catch { /* telegraph is best-effort presentation */ }
 
@@ -8349,6 +8382,17 @@ async function tryInitWebSockets(server) {
           targetKilled: result.targetKilled,
           targetPosition: _hitTargetPos,
           attackerPosition: _hitAttackerPos,
+          // BUG B fix — the socket combat path never set element/skill, so
+          // CombatVFXBridge.normalizeElement fell back to 'physical' and the
+          // element burst + per-skill VFX never fired here. Carry the cast's
+          // element / skill / weapon / tier so the client renders the right VFX.
+          element: data.element || "physical",
+          skillId: data.skillId || data.skill || null,
+          weapon: data.weapon || "fist",
+          tier: Math.max(1, Math.min(5, Number(data.tier) || 2)),
+          style: data.style || null,
+          // T3.1 — canonical catalog key for the client per-skill descriptor.
+          skillKey: skillKeyForSkill({ element: data.element, weapon: data.weapon, kind: data.weapon, name: data.skillId }),
         });
 
         // Companion assist XP: deployed companions of the attacker get
@@ -8552,8 +8596,32 @@ async function tryInitWebSockets(server) {
       if (now - _lastDodgeAt < 400) return; // 2.5 dodges/sec cap
       _lastDodgeAt = now;
       const direction = ["left","right","back"].includes(data?.direction) ? data.direction : "back";
+
+      // Sprint 1 — grant i-frames so incoming hits whiff (applyHitToState
+      // checks iframeUntil). Baseline 350ms; a perfect dodge (input inside the
+      // first half of the dodge window vs a real incoming attack) extends to
+      // 500ms and fires a slow-mo time-dilation cue. Server-authoritative:
+      // attemptDodge scores the window from the client-supplied incoming time;
+      // with no timing we still grant the baseline window.
+      let perfectDodge = false, dodgeDilation = 0;
       try {
-        realtimeEmit("combat:dodge:ack", { userId, direction, t: now });
+        const incomingAt = Number(data?.attackArrivesAt ?? data?.incomingAt);
+        if (Number.isFinite(incomingAt)) {
+          const r = _attemptDodge(db, {
+            defenderKind: "player", defenderId: userId,
+            defenderInputAt: now, attackArrivesAt: incomingAt,
+          });
+          if (r?.dodged) { perfectDodge = !!r.perfect; dodgeDilation = r.time_dilation_pct || 0; }
+        }
+      } catch { /* scoring optional — baseline i-frames still granted */ }
+      try { _grantIFrames(userId, perfectDodge ? 500 : 350); } catch { /* in-memory state optional */ }
+
+      try {
+        realtimeEmit("combat:dodge:ack", { userId, direction, t: now, iframeMs: perfectDodge ? 500 : 350, perfect: perfectDodge });
+        if (perfectDodge) {
+          // Perfect-dodge reward: brief world slow-mo (the Sekiro/Sifu beat).
+          realtimeEmit("combat:dodge:perfect", { userId, timeDilationPct: dodgeDilation || 35, durationMs: 600, t: now });
+        }
       } catch (e) { /* socket emit silent */ }
       // Flow Combat: record dodge into the substrate. Hit=true if a recent
       // incoming attack was within the i-frame window (the client passes
@@ -8592,8 +8660,31 @@ async function tryInitWebSockets(server) {
       if (now - _lastBlockAt < 200) return;
       _lastBlockAt = now;
       const active = !!data?.active;
+
+      // Sprint 1 — a block engaged inside the parry window of a real incoming
+      // attack scores a parry; a perfect parry opens a riposte window + brief
+      // i-frames + a slow-mo cue. Built-but-unwired until now (attemptParry had
+      // zero non-test callers). Server-authoritative via the supplied timing.
+      let parried = false, perfectParry = false, riposteMs = 0;
       try {
-        realtimeEmit("combat:block:ack", { userId, active, t: now });
+        const incomingAt = Number(data?.attackArrivesAt ?? data?.incomingAt);
+        if (active && Number.isFinite(incomingAt)) {
+          const r = _attemptParry(db, {
+            defenderKind: "player", defenderId: userId,
+            defenderInputAt: now, attackArrivesAt: incomingAt,
+          });
+          if (r?.parried) {
+            parried = true; perfectParry = !!r.perfect; riposteMs = r.riposte_window_ms || 0;
+            if (perfectParry) { try { _grantIFrames(userId, 250); } catch { /* */ } }
+          }
+        }
+      } catch { /* parry scoring optional */ }
+
+      try {
+        realtimeEmit("combat:block:ack", { userId, active, t: now, parried, perfect: perfectParry, riposteWindowMs: riposteMs });
+        if (perfectParry) {
+          realtimeEmit("combat:parry:perfect", { userId, riposteWindowMs: riposteMs, timeDilationPct: 30, durationMs: 500, t: now });
+        }
       } catch (e) { /* socket emit silent */ }
       // Only record on block-engage (active=true), not on block-release —
       // a block held for 5 seconds is one decision, not 50.
@@ -10415,7 +10506,9 @@ async function runMacro(domain, name, input, ctx) {
     //  Set to avoid a duplicate-key lint error.)
     // npc_legacy (Sprint B Phase 11.1) — read-only tomb / last-words /
     // inheritance surface for the frontend TombMarker + InheritanceLog UI.
-    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir"]),
+    npc_legacy: new Set(["tombs_for_world", "get", "inheritance_for_heir", "inheritance_from_deceased"]),
+    // zones (T3.3) — read-only world-zone surface for the map overlay + gate.
+    zones: new Set(["list_for_world", "at"]),
     // cross_world_effectiveness (Sprint 5) — per-world skill potency
     // chip for the HUD. All read-only: explain a single (domain, world,
     // level) triple, dump every domain for the current player, list
@@ -10662,6 +10755,17 @@ async function runMacro(domain, name, input, ctx) {
 
   // safeReadBypass: comprehensive path check for ALL frontend GET routes (Gate 3 of 3, outer)
   const _safeReadPaths = [
+    // Gate-3 mirror of the newer Gate-1 public-read prefixes so the Chicken2
+    // safeReadBypass stays consistent with authMiddleware (three-gate invariant).
+    "/api/achievements/catalog", "/api/achievements/recent", "/api/ambient-chat/list",
+    "/api/announcements", "/api/auctions/", "/api/auctions/active", "/api/avatars",
+    "/api/bloodline", "/api/breakthroughs", "/api/climbing/world", "/api/combat/frame-data",
+    "/api/connective-tissue", "/api/creatures", "/api/cross-world/feed",
+    "/api/detective/crime", "/api/detective/open", "/api/diseases/catalog",
+    "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
+    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
+    "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
+    "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
     "/api/status", "/api/dtus", "/api/dtu", "/api/settings", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",
@@ -20377,7 +20481,13 @@ register("dtu", "create", async (ctx, input) => {
           hasPurchasedLicense: _lineageUnlockedByLicense.has(parentId),
           generation: 1,
         });
-        if (!result?.ok && result?.error !== "citation_cycle_detected") {
+        if (result?.ok) {
+          // Sprint 1 — award the cited creator XP for being cited. awardCitationXP
+          // was built-but-unwired (zero non-test callers); the citation register
+          // is its natural site. awardXP is the hoisted module fn.
+          try { awardCitationXP(awardXP, { ownerId: parentDtu.ownerId, dtuId: parentId, citedById: dtu.ownerId }); }
+          catch { /* XP best-effort — never blocks the cascade */ }
+        } else if (result?.error !== "citation_cycle_detected") {
           // Non-fatal — log and continue. Lineage on the DTU itself is
           // still recorded even if the royalty ledger insert failed.
           logger.debug('server', 'auto_register_citation_skipped', {
@@ -24412,6 +24522,31 @@ registerCombatPolishMacros(register);
 import registerNpcLegacyMacros from "./domains/npc-legacy.js";
 registerNpcLegacyMacros(register);
 
+// T3.3 — world zones (safe/sanctuary/pvp/lawless/hazard regions). Read surface
+// for the map overlay + the combat route's zone gate; upsert for authoring.
+import registerZonesMacros from "./domains/zones.js";
+registerZonesMacros(register);
+
+// F2.3 — player talent allocation (earn 1/level, spend into combat/utility nodes).
+import registerTalentsMacros from "./domains/talents.js";
+registerTalentsMacros(register);
+
+// D30 — endgame paragon/ascension (skill-cap overflow → permanent account bonuses).
+import registerAscensionMacros from "./domains/ascension.js";
+registerAscensionMacros(register);
+
+// C3/F5.1 — instanced dungeon/raid (party-scoped phased-boss encounter).
+import registerDungeonMacros from "./domains/dungeon.js";
+registerDungeonMacros(register);
+
+// F4.1 — shared in-run draft (boon/relic drafts for roguelite/extraction/horde).
+import registerRunDraftMacros from "./domains/run-draft.js";
+registerRunDraftMacros(register);
+
+// D2 — weekly meta objective chain (progressed by real events via the bridge).
+import registerWeeklyMacros from "./domains/weekly.js";
+registerWeeklyMacros(register);
+
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
 // can render per-NPC nemesis glyphs over nearby NPCs.
@@ -24469,6 +24604,18 @@ import { runCrossWorldSchemeCycle } from "./emergent/cross-world-scheme-cycle.js
 registerHeartbeat("cross-world-scheme-cycle", {
   frequency: 60,   // ~15 min
   handler: runCrossWorldSchemeCycle,
+});
+
+// T2.4 — emergent-module reconciliation: population-migration-cycle declared
+// itself a frequency-30 heartbeat in its own header but was never registered,
+// so due population_flow_events (kingdom decrees / refugee flows / voluntary
+// NPC migration arrivals) silently never landed. Wire it (the Layer-12
+// wire-the-unwired pattern). Cross-world infra → scope 'global'.
+import { runPopulationMigrationCycle } from "./emergent/population-migration-cycle.js";
+registerHeartbeat("population-migration-cycle", {
+  frequency: 30,   // ~7.5 min, matches the module's documented cadence
+  scope: "global",
+  handler: runPopulationMigrationCycle,
 });
 
 // Open-corpus ingest — pulls free + legal slices of OpenStax, Wikipedia,
@@ -30615,6 +30762,16 @@ import { startWorldClockBroadcast, getWorldPhase, getDayPhase, WORLD_CLOCK_CONST
 import { getCurrentBehavior as getNPCCurrentBehavior, setNPCSchedule, NPC_SCHEDULE_ARCHETYPES, batchCurrentBehaviors } from "./lib/npc-schedules.js";
 import { advanceWeather as advanceWorldWeather, getWeather as getWorldWeather, WEATHER_CONSTANTS } from "./lib/weather.js";
 import { applyHitToState, tickCombatState, getCombatState, grantIFrames as _grantIFrames, setBlock as _setBlock, resetCombatState } from "./lib/combat-state.js";
+// Sprint 1 (Connection) — the dodge/block socket handlers echoed :ack but never
+// granted i-frames or scored a perfect dodge/parry, so the entire defensive
+// combat loop was built-but-unwired. attemptDodge/attemptParry score the timing
+// window; grantIFrames makes applyHitToState whiff incoming hits.
+import { attemptDodge as _attemptDodge, attemptParry as _attemptParry } from "./lib/combat-polish.js";
+// T3.1 — resolve a combat payload to a SKILL_CATALOG key for the client's
+// per-skill descriptor (shipped on combat:hit).
+import { skillKeyForSkill } from "./lib/skills/skill-key.js";
+// A1 — typed attack telegraphs (thrust/sweep/grab peril + counter).
+import { perilFor as telegraphPerilFor } from "./lib/combat/telegraph-peril.js";
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
@@ -35460,6 +35617,17 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
   } catch (_e) {
     structuredLog("error", "buyer_debit_failed", { error: _e?.message });
   }
+  // Sprint 1 — award marketplace XP to seller + buyer. awardMarketplaceSaleXP
+  // was built-but-unwired (zero non-test callers); the royalty-aware purchase
+  // is its natural site. Best-effort — never blocks settlement.
+  try {
+    awardMarketplaceSaleXP(awardXP, {
+      sellerId: dtu.marketplace?.seller || dtu.meta?.createdBy || dtu.ownerId,
+      buyerId: ctx?.actor?.userId,
+      itemId: dtuId,
+      price,
+    });
+  } catch { /* XP best-effort */ }
   saveStateDebounced();
 
   // Clone DTU to buyer
@@ -48397,6 +48565,19 @@ app.get("/api/auctions/active", asyncHandler(async (req, res) => {
   res.json({ ok: true, auctions: listActiveAuctions(db, { limit: Number(req.query.limit) || 50 }) });
 }));
 
+// D1 / F7.1 — marketplace depth: per-item price-history time series + the
+// order-book depth (ask/bid levels + spread). Declared before /:auctionId so
+// "item" isn't captured as an auction id.
+app.get("/api/auctions/item/:itemId/price-history", asyncHandler(async (req, res) => {
+  const { getPriceHistory } = await import("./lib/auctions.js");
+  res.json({ ok: true, ...getPriceHistory(db, req.params.itemId, { limit: Number(req.query.limit) || 100 }) });
+}));
+
+app.get("/api/auctions/item/:itemId/depth", asyncHandler(async (req, res) => {
+  const { getMarketDepth } = await import("./lib/auctions.js");
+  res.json({ ok: true, ...getMarketDepth(db, req.params.itemId) });
+}));
+
 app.get("/api/auctions/:auctionId", asyncHandler(async (req, res) => {
   const { getAuction } = await import("./lib/auctions.js");
   const a = getAuction(db, req.params.auctionId);
@@ -48673,6 +48854,23 @@ app.get("/api/courtship/marriages/mine", requireAuth(), asyncHandler(async (req,
     ok: true,
     marriages: listMyMarriages(db, userId, true),
     children: listChildren(db, userId),
+  });
+}));
+
+// H3 — spouse behavior: the NPC ids wed to the player + each one's seen
+// heart-events. The world client's spouse-follow overlay reads this to make a
+// wed NPC follow/help, and the dialogue path shifts a spouse to the "devoted"
+// register (see routes/world-narrative.js).
+app.get("/api/courtship/spouses-following", requireAuth(), asyncHandler(async (req, res) => {
+  const { spousesFollowingPlayer, seenHeartEvents } = await import("./lib/heart-events.js");
+  const userId = req.user?.id || req.user?.userId;
+  const npcIds = spousesFollowingPlayer(db, userId);
+  res.json({
+    ok: true,
+    spouses: npcIds.map((npcId) => ({
+      npcId,
+      heartEventsSeen: seenHeartEvents(db, userId, "npc", npcId).map((h) => h.milestoneId),
+    })),
   });
 }));
 
@@ -49193,9 +49391,38 @@ app.post("/api/horror/session/:id/sighting", requireAuth(), asyncHandler(async (
 }));
 
 app.post("/api/horror/session/:id/down", requireAuth(), asyncHandler(async (req, res) => {
-  const { downInvestigator } = await import("./lib/horror.js");
+  const { downInvestigator, getSession } = await import("./lib/horror.js");
+  const { woundInvestigator } = await import("./lib/horror-dread.js");
+  const ghostUserId = req.user?.id || req.user?.userId;
+  const targetUserId = req.body?.targetUserId;
+  // E1 — a ghost hit climbs the dread ladder (healthy → wounded → downed)
+  // rather than one-shotting; only a 'downed' result triggers the win-check.
+  const sess = getSession(db, req.params.id);
+  if (!sess) return res.json({ ok: false, error: "no_session" });
+  if (sess.ghost_user_id !== ghostUserId) return res.json({ ok: false, error: "not_ghost" });
+  const wound = woundInvestigator(db, req.params.id, targetUserId);
+  if (wound.ok && wound.downed) {
+    const r = downInvestigator(db, req.params.id, ghostUserId, targetUserId);
+    return res.json({ ...r, healthTier: "downed" });
+  }
+  res.json(wound.ok ? { ok: true, healthTier: wound.healthTier, downed: false } : wound);
+}));
+
+// E1 — rally (revive) a wounded/downed teammate before bleed-out (comeback).
+app.post("/api/horror/session/:id/rally", requireAuth(), asyncHandler(async (req, res) => {
+  const { rallyInvestigator } = await import("./lib/horror-dread.js");
+  const { getSession } = await import("./lib/horror.js");
   const userId = req.user?.id || req.user?.userId;
-  res.json(downInvestigator(db, req.params.id, userId, req.body?.targetUserId));
+  const targetUserId = req.body?.targetUserId || userId;
+  const sess = getSession(db, req.params.id);
+  if (!sess || sess.ended_at) return res.json({ ok: false, error: "no_active_session" });
+  res.json(rallyInvestigator(db, req.params.id, targetUserId));
+}));
+
+// E1 — dread/tension state for the role HUD.
+app.get("/api/horror/session/:id/dread", requireAuth(), asyncHandler(async (req, res) => {
+  const { getDreadState } = await import("./lib/horror-dread.js");
+  res.json({ ok: true, dread: getDreadState(db, req.params.id) });
 }));
 
 app.post("/api/horror/session/:id/end", requireAuth(), asyncHandler(async (req, res) => {
@@ -49575,6 +49802,19 @@ app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) =
   const { listUnlocks } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;
   res.json({ ok: true, unlocks: listUnlocks(db, userId) });
+}));
+
+// C1 — the meta-unlock catalog (what's buyable + its run effect) and the run
+// modifiers the player's owned unlocks currently grant.
+app.get("/api/roguelite/catalog", asyncHandler(async (_req, res) => {
+  const { META_UNLOCK_CATALOG } = await import("./lib/roguelite.js");
+  res.json({ ok: true, catalog: Object.values(META_UNLOCK_CATALOG) });
+}));
+
+app.get("/api/roguelite/run-modifiers", requireAuth(), asyncHandler(async (req, res) => {
+  const { runMetaModifiers } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, modifiers: runMetaModifiers(db, userId) });
 }));
 
 app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) => {
@@ -55811,7 +56051,7 @@ app.post("/api/xp/award", (req, res) => {
 });
 
 // Wire XP hooks so all real activity events auto-award XP
-import { installXPHooks } from "./lib/xp-hooks.js";
+import { installXPHooks, awardCitationXP, awardMarketplaceSaleXP } from "./lib/xp-hooks.js";
 try {
   installXPHooks({ awardXP, getXPProfile, STATE, saveStateDebounced });
 } catch (e) {

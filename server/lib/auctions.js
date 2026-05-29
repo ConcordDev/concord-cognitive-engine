@@ -158,6 +158,14 @@ export function settleAuction(db, auctionId, opts = {}) {
     // inventory transfers handled elsewhere — this just marks the auction settled.
 
     db.prepare(`UPDATE auctions SET status = 'sold', settled_at = unixepoch() WHERE id = ?`).run(auctionId);
+
+    // D1 — record the sale into the per-item price-history time series.
+    try {
+      db.prepare(`
+        INSERT INTO auction_price_history (item_id, item_kind, world_id, sale_cc, auction_id)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(a.item_id, a.item_kind || null, a.world_id || null, winningBid, auctionId);
+    } catch { /* price-history table optional on a pre-271 build */ }
   });
 
   try {
@@ -473,4 +481,66 @@ export function sweepExpiredBuyOrders(db) {
   } catch (err) {
     return { ok: false, error: err?.message };
   }
+}
+
+// ── D1 / F7.1 — marketplace depth ────────────────────────────────────────────
+
+/** Per-item sale price-history time series (oldest → newest, capped). */
+export function getPriceHistory(db, itemId, opts = {}) {
+  if (!db || !itemId) return { points: [], stats: null };
+  const limit = Math.max(1, Math.min(500, Number(opts.limit) || 100));
+  let rows = [];
+  try {
+    rows = db.prepare(`
+      SELECT sale_cc, sold_at FROM auction_price_history
+      WHERE item_id = ? ORDER BY sold_at DESC LIMIT ?
+    `).all(itemId, limit).reverse();
+  } catch { return { points: [], stats: null }; }
+  if (rows.length === 0) return { points: [], stats: null };
+  const prices = rows.map((r) => r.sale_cc);
+  const min = Math.min(...prices), max = Math.max(...prices);
+  const avg = prices.reduce((s, p) => s + p, 0) / prices.length;
+  const first = prices[0], last = prices[prices.length - 1];
+  return {
+    points: rows.map((r) => ({ cc: r.sale_cc, at: r.sold_at })),
+    stats: {
+      count: prices.length,
+      min, max, avg: Math.round(avg * 100) / 100, last,
+      // appreciation curve: % change first→last sale
+      changePct: first > 0 ? Math.round(((last - first) / first) * 1000) / 10 : 0,
+    },
+  };
+}
+
+/**
+ * Order-book depth for an item: ask side from active auctions (asc by price),
+ * bid side from open buy-orders (desc by price), each aggregated to a level
+ * with total quantity — the buy/sell spread display.
+ */
+export function getMarketDepth(db, itemId) {
+  if (!db || !itemId) return { asks: [], bids: [], spread: null };
+  let askRows = [], bidRows = [];
+  try {
+    askRows = db.prepare(`
+      SELECT COALESCE(NULLIF(current_bid_cc, 0), start_cc) AS price, COUNT(*) AS qty
+      FROM auctions WHERE item_id = ? AND status = 'active'
+      GROUP BY price ORDER BY price ASC LIMIT 20
+    `).all(itemId);
+  } catch { /* auctions optional */ }
+  try {
+    bidRows = db.prepare(`
+      SELECT unit_price_cc AS price, SUM(quantity_wanted - quantity_filled) AS qty
+      FROM auction_buy_orders
+      WHERE item_descriptor = ? AND status IN ('open','partial')
+      GROUP BY unit_price_cc HAVING qty > 0 ORDER BY price DESC LIMIT 20
+    `).all(itemId);
+  } catch { /* buy-orders optional */ }
+  const bestAsk = askRows.length ? askRows[0].price : null;
+  const bestBid = bidRows.length ? bidRows[0].price : null;
+  const spread = bestAsk != null && bestBid != null ? Math.round((bestAsk - bestBid) * 100) / 100 : null;
+  return {
+    asks: askRows.map((r) => ({ price: r.price, qty: r.qty })),
+    bids: bidRows.map((r) => ({ price: r.price, qty: r.qty })),
+    bestAsk, bestBid, spread,
+  };
 }

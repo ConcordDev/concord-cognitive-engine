@@ -368,6 +368,32 @@ export function getInheritanceForHeir(db, heirNpcId) {
   } catch { return []; }
 }
 
+/**
+ * T2.2 — outgoing inheritance from a deceased NPC: who inherited what when this
+ * NPC died. Enriched with the heir's display name when world_npcs is present.
+ * This is the other half of the cross-time thread the InheritanceLog renders
+ * from a tomb's perspective ("their grudges/recipes passed to…").
+ */
+export function getInheritanceFromDeceased(db, deceasedNpcId) {
+  if (!db || !deceasedNpcId) return [];
+  try {
+    return db.prepare(`
+      SELECT l.*, n.name AS heir_name
+      FROM npc_inheritance_links l
+      LEFT JOIN world_npcs n ON n.id = l.heir_npc_id
+      WHERE l.deceased_npc_id = ? ORDER BY l.inherited_at DESC LIMIT 50
+    `).all(deceasedNpcId);
+  } catch {
+    // world_npcs may be absent on a minimal build — fall back without the join.
+    try {
+      return db.prepare(`
+        SELECT * FROM npc_inheritance_links
+        WHERE deceased_npc_id = ? ORDER BY inherited_at DESC LIMIT 50
+      `).all(deceasedNpcId);
+    } catch { return []; }
+  }
+}
+
 export const _internal = {
   LAST_WORDS_BY_CAUSE,
   inheritGrudges,
