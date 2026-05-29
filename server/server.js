@@ -49717,6 +49717,19 @@ app.get("/api/roguelite/unlocks", requireAuth(), asyncHandler(async (req, res) =
   res.json({ ok: true, unlocks: listUnlocks(db, userId) });
 }));
 
+// C1 — the meta-unlock catalog (what's buyable + its run effect) and the run
+// modifiers the player's owned unlocks currently grant.
+app.get("/api/roguelite/catalog", asyncHandler(async (_req, res) => {
+  const { META_UNLOCK_CATALOG } = await import("./lib/roguelite.js");
+  res.json({ ok: true, catalog: Object.values(META_UNLOCK_CATALOG) });
+}));
+
+app.get("/api/roguelite/run-modifiers", requireAuth(), asyncHandler(async (req, res) => {
+  const { runMetaModifiers } = await import("./lib/roguelite.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json({ ok: true, modifiers: runMetaModifiers(db, userId) });
+}));
+
 app.get("/api/roguelite/active", requireAuth(), asyncHandler(async (req, res) => {
   const { getActiveRun } = await import("./lib/roguelite.js");
   const userId = req.user?.id || req.user?.userId;

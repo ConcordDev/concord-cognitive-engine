@@ -17,6 +17,37 @@ const DEATH_PENALTY_MULT = 0.5;       // half the banked currency on death
 const EXTRACT_BONUS_MULT = 1.25;
 const CURRENCY_PER_DEPTH = 5;
 
+// C1 / F4.2 — meta-unlock catalog. Purchased unlocks now MODIFY a run (they were
+// stored but never read — hasUnlock had no caller). Each effect is a real run
+// modifier the run reads at start. Costs are catalog-driven (server-priced) so
+// the client can't self-price.
+export const META_UNLOCK_CATALOG = Object.freeze({
+  veteran_vigor:  { id: "veteran_vigor",  name: "Veteran's Vigor",  costCc: 150, effect: { stat: "startingHpBonus", value: 25 } },
+  sharp_start:    { id: "sharp_start",    name: "Sharp Start",      costCc: 200, effect: { stat: "damageMult", value: 0.10 } },
+  extra_pick:     { id: "extra_pick",     name: "Extra Boon",       costCc: 300, effect: { stat: "extraDraftPicks", value: 1 } },
+  fortune_finder: { id: "fortune_finder", name: "Fortune Finder",   costCc: 250, effect: { stat: "metaCurrencyMult", value: 0.25 } },
+  second_chance:  { id: "second_chance",  name: "Second Chance",    costCc: 500, effect: { stat: "revives", value: 1 } },
+});
+
+/**
+ * C1 — the run modifiers a player's purchased meta-unlocks grant. Reads the
+ * owned unlocks (via hasUnlock) and sums their catalog effects. This is what
+ * makes a purchased unlock measurably change the next run.
+ */
+export function runMetaModifiers(db, userId) {
+  const out = { startingHpBonus: 0, damageMult: 0, extraDraftPicks: 0, metaCurrencyMult: 0, revives: 0 };
+  if (!db || !userId) return out;
+  for (const unlock of Object.values(META_UNLOCK_CATALOG)) {
+    if (hasUnlock(db, userId, unlock.id)) {
+      const { stat, value } = unlock.effect;
+      if (stat in out) out[stat] += value;
+    }
+  }
+  out.damageMult = Math.round(out.damageMult * 1000) / 1000;
+  out.metaCurrencyMult = Math.round(out.metaCurrencyMult * 1000) / 1000;
+  return out;
+}
+
 function _earnedCurrency(depth, reason) {
   const base = Math.max(0, depth) * CURRENCY_PER_DEPTH;
   if (reason === "death") return Math.floor(base * DEATH_PENALTY_MULT);
@@ -53,7 +84,8 @@ export function startRun(db, userId, opts = {}) {
       VALUES (?, ?, ?, ?)
     `).run(id, userId, worldId, regionId);
     logger.info?.("roguelite", "run_started", { runId: id, userId, regionId });
-    return { ok: true, runId: id, alreadyActive: false };
+    // C1 — surface the meta-unlock modifiers the run starts with.
+    return { ok: true, runId: id, alreadyActive: false, modifiers: runMetaModifiers(db, userId) };
   } catch (err) {
     return { ok: false, error: err?.message };
   }
@@ -114,7 +146,10 @@ export function getBalance(db, userId) {
  */
 export function purchaseUnlock(db, userId, unlockId, costCc) {
   if (!db || !userId || !unlockId) return { ok: false, error: "missing_inputs" };
-  const cost = Math.max(0, Number(costCc) || 0);
+  // C1 — catalog-priced: a known unlock uses its server cost (client can't
+  // self-price); unknown ids fall back to the passed cost for back-compat.
+  const catalogEntry = META_UNLOCK_CATALOG[unlockId];
+  const cost = catalogEntry ? catalogEntry.costCc : Math.max(0, Number(costCc) || 0);
   try {
     const existing = db.prepare(`
       SELECT 1 FROM roguelite_unlocks WHERE user_id = ? AND unlock_id = ?
