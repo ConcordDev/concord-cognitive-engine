@@ -277,6 +277,12 @@
       ]
     },
     {
+      "file": "horror-dread-cycle.js",
+      "handlers": [
+        "runHorrorDreadCycle"
+      ]
+    },
+    {
       "file": "idle-behavior.js",
       "handlers": [
         "runIdleBehavior"
@@ -965,5 +971,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-05-29T00:02:48.410Z"
+  "scannedAt": "2026-05-29T02:12:43.841Z"
 }

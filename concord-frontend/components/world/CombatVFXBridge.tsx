@@ -102,6 +102,8 @@ export default function CombatVFXBridge() {
     let off2: (() => void) | null = null;
     let off3: (() => void) | null = null;
     let off4: (() => void) | null = null;
+    let off5: (() => void) | null = null;
+    let off6: (() => void) | null = null;
     const sceneReady = async (event: Event) => {
       if (disposed || sceneReadyRef.current) return;
       const detail = (event as CustomEvent).detail as { scene?: unknown } | undefined;
@@ -181,6 +183,18 @@ export default function CombatVFXBridge() {
       vfxRef.current?.spawn(element, pos, magnitude);
     });
 
+    // Perfect dodge / parry → brief bullet-time (the reward feel). The server
+    // emits the dilation %; apply it through the shared time-scale primitive.
+    const onPerfectDefense = (payload: unknown) => {
+      const ev = (payload as { timeDilationPct?: number; durationMs?: number }) || {};
+      const scale = Math.max(0.1, Math.min(1, 1 - (Number(ev.timeDilationPct) || 30) / 100));
+      const durationMs = Number(ev.durationMs) || 500;
+      import('@/lib/concordia/use-time-scale').then((m) => m.slowMo(scale, durationMs)).catch(() => {});
+      window.dispatchEvent(new CustomEvent('concordia:perfect-defense', { detail: ev }));
+    };
+    off5 = subscribe('combat:dodge:perfect' as Parameters<typeof subscribe>[0], onPerfectDefense);
+    off6 = subscribe('combat:parry:perfect' as Parameters<typeof subscribe>[0], onPerfectDefense);
+
     return () => {
       disposed = true;
       window.removeEventListener('concordia:scene-ready', sceneReady as EventListener);
@@ -189,6 +203,8 @@ export default function CombatVFXBridge() {
       try { off2?.(); } catch { /* idempotent */ }
       try { off3?.(); } catch { /* idempotent */ }
       try { off4?.(); } catch { /* idempotent */ }
+      try { off5?.(); } catch { /* idempotent */ }
+      try { off6?.(); } catch { /* idempotent */ }
       try { vfxRef.current?.dispose(); } catch { /* idempotent */ }
       try { decalRef.current?.dispose(); } catch { /* idempotent */ }
       vfxRef.current = null;
