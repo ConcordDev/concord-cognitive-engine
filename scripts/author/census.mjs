@@ -11,11 +11,19 @@
 import { join } from "path";
 import { loadBible, listWorlds, readJSON, asArray, CONTENT } from "./lib.mjs";
 
-const WORLD_TARGETS = { npcs: 30, creatures: 10, factions: 8 };
+// Only consumer-verified, FILE-DRIVEN content gets a target. Deliberately
+// excludes code-defined surfaces that earlier audits mis-flagged as content
+// gaps: fauna species (loot-tables.js BIOME_SPECIES, not creatures.json) and
+// mahjong yaku (minigame-resolvers.js + mahjong/yaku-detect.js, not JSON).
+const WORLD_TARGETS = { npcs: 30, factions: 8 };
 const LIB_TARGETS = {
-  "hidden-objects.json": 8, "mahjong-yaku.json": 24, "crops.json": 18,
-  "hacking-puzzles.json": 30, "code-puzzles.json": 20,
-  "trivia-questions.json": 30, "karaoke-songs.json": 25,
+  // filename → target. Filenames match what content-seeder.js / farming.js read.
+  "crops.json": 18,                 // read by lib/farming.js
+  "hacking-puzzles.json": 30,       // seeded by content-seeder
+  "code-puzzles.json": 20,          // seeded by content-seeder
+  "trivia-questions.json": 30,      // seeded
+  "karaoke-songs.json": 25,         // seeded
+  "hidden-object-scenes.json": 12,  // seeded (already stocked; real filename)
 };
 
 function worldRow(world) {
