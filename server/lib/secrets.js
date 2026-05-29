@@ -18,6 +18,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { recordOpinionEvent } from "./npc-opinions.js";
+import { grantHookFromSecret, getActiveHooks, spendHook } from "./npc-hooks.js";
 
 const KIND_FALLBACK = "grudge_origin";
 
@@ -80,7 +81,18 @@ export async function seedFromAuthored(db) {
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO NOTHING
       `).run(id, npc.id, subj.subject_kind, subj.subject_id, kind, txt, 5);
-      if (r.changes > 0) inserted++; else skipped++;
+      if (r.changes > 0) {
+        inserted++;
+        // D5 — the holder NPC now HOLDS a hook over the secret's subject:
+        // real, spendable blackmail leverage that the scheme engine can read
+        // (and a strong one passively restrains the subject from scheming back).
+        try {
+          grantHookFromSecret(db, {
+            holderKind: "npc", holderId: npc.id,
+            secret: { id, subject_kind: subj.subject_kind, subject_id: subj.subject_id, discovery_difficulty: 5 },
+          });
+        } catch { /* hooks optional on minimal builds */ }
+      } else skipped++;
     } catch (err) {
       errors++;
       try { logger.debug?.("secrets_seed_failed", { npcId: npc.id, error: err?.message }); } catch { /* noop */ }
@@ -95,18 +107,23 @@ export async function seedFromAuthored(db) {
  */
 export function discoverSecret(db, userId, secretId, via = "dialogue") {
   if (!db || !userId || !secretId) return { ok: false, reason: "missing_inputs" };
-  const exists = db.prepare(`SELECT id, holder_npc_id, subject_kind, subject_id, kind FROM secrets WHERE id = ?`).get(secretId);
+  const exists = db.prepare(`SELECT id, holder_npc_id, subject_kind, subject_id, kind, discovery_difficulty FROM secrets WHERE id = ?`).get(secretId);
   if (!exists) return { ok: false, reason: "secret_not_found" };
   const r = db.prepare(`
     INSERT INTO secret_discoveries (user_id, secret_id, via)
     VALUES (?, ?, ?)
     ON CONFLICT(user_id, secret_id) DO NOTHING
   `).run(userId, secretId, via);
-  // First-time discovery → mark secret revealed_at if still null.
+  // First-time discovery → mark secret revealed_at + grant the player a HOOK
+  // over the secret's subject (D5). Discovering someone's secret IS leverage:
+  // a weak hook (single exposure), or a strong one for a deep secret.
   if (r.changes > 0) {
     try {
       db.prepare(`UPDATE secrets SET revealed_at = COALESCE(revealed_at, unixepoch()) WHERE id = ?`).run(secretId);
     } catch { /* ignore */ }
+    try {
+      grantHookFromSecret(db, { holderKind: "player", holderId: userId, secret: exists });
+    } catch { /* hooks optional on minimal builds */ }
   }
   return { ok: true, action: r.changes > 0 ? "discovered" : "already_known", secret: exists };
 }
@@ -145,12 +162,28 @@ export function weaponiseSecret(db, userId, secretId, againstNpcId) {
     WHERE user_id = ? AND secret_id = ?
   `).run(againstNpcId || sec.subject_id, userId, secretId);
 
+  // D5 — weaponising spends the player's hook over the subject. Weak hooks are
+  // consumed (the leverage is used up); a strong hook persists (you can keep
+  // holding it over them). Best-effort — never blocks the weaponise result.
+  let hookConsumed = false;
+  try {
+    const held = getActiveHooks(db, {
+      holderKind: "player", holderId: userId,
+      targetKind: sec.subject_kind, targetId: sec.subject_id,
+    }).filter((h) => h.source_secret_id === secretId);
+    if (held.length > 0) {
+      const r = spendHook(db, held[0].id);
+      hookConsumed = !!r?.consumed;
+    }
+  } catch { /* hooks optional */ }
+
   return {
     ok: true, action: "weaponised",
     holder: sec.holder_npc_id,
     subject_kind: sec.subject_kind,
     subject_id: sec.subject_id,
     kind: sec.kind,
+    hookConsumed,
   };
 }
 

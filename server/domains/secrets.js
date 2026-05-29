@@ -81,4 +81,23 @@ export default function registerSecretsMacros(register) {
     if (!userId || !input.targetNpcId) return { ok: false, reason: "missing_inputs" };
     return rollSurveillance(db, userId, input.targetNpcId);
   });
+
+  /**
+   * hooks.mine — D5: the leverage the player currently HOLDS (CK3 hooks).
+   * Each entry is spendable (weak) or unlimited+blocking (strong). The
+   * SecretsCodex / trait inspector surfaces these so the player can see what
+   * they can coerce. input: { targetKind?, targetId? } to filter to one target.
+   */
+  register("hooks", "mine", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId;
+    if (!userId) return { ok: false, reason: "no_user" };
+    const { getActiveHooks } = await import("../lib/npc-hooks.js");
+    const hooks = getActiveHooks(db, {
+      holderKind: "player", holderId: userId,
+      targetKind: input.targetKind || null, targetId: input.targetId || null,
+    });
+    return { ok: true, hooks };
+  }, { note: "list the leverage (hooks) the player holds" });
 }

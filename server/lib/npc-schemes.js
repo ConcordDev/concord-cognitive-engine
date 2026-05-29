@@ -22,6 +22,7 @@ import logger from "../logger.js";
 import { recordOpinionEvent, getOpinion } from "./npc-opinions.js";
 import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
+import { hasBlockingHook, getActiveHooks } from "./npc-hooks.js";
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -46,6 +47,28 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
   // Don't propose against yourself.
   if (targetKind === "npc" && targetId === plotterNpcId) return { ok: false, reason: "self_target" };
 
+  // D5 — CK3 strong-hook passive block: if the TARGET holds a strong hook over
+  // the plotter, the plotter cannot move hostilely against them. Leverage
+  // restrains action, not just punishes it after the fact.
+  let blocked = false;
+  try {
+    blocked = hasBlockingHook(db, {
+      holderKind: targetKind, holderId: targetId,
+      targetKind: "npc", targetId: plotterNpcId,
+    });
+  } catch { /* hooks optional */ }
+  if (blocked) return { ok: false, reason: "blocked_by_hook" };
+
+  // D5 — does the plotter HOLD a hook over the target? A held hook is itself a
+  // motive (you act *because* you have leverage), so it bypasses the
+  // disposition gate exactly like motive:'secret' and biases toward blackmail.
+  let hasLeverage = false;
+  try {
+    hasLeverage = getActiveHooks(db, {
+      holderKind: "npc", holderId: plotterNpcId, targetKind, targetId,
+    }).length > 0;
+  } catch { /* hooks optional */ }
+
   const stress = getStress(db, plotterNpcId);
   const op = getOpinion(db, plotterNpcId, targetKind, targetId);
   const opinionScore = op?.score ?? 0;
@@ -53,9 +76,9 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
   // Gate: stress ≥ 60 AND opinion ≤ -50 (or coping trait paranoid/cruel
   // which are wild-card propose triggers). T2.1: a held secret is itself a
   // motive — when the caller passes motive:'secret' (a real secret backs the
-  // plot) the disposition gate is bypassed; the leverage is the secret, not
-  // hatred.
-  if (motive !== "secret") {
+  // plot) OR the plotter holds a hook (D5), the disposition gate is bypassed;
+  // the leverage is the secret/hook, not hatred.
+  if (motive !== "secret" && !hasLeverage) {
     const wildCard = stress?.coping_trait === "paranoid" || stress?.coping_trait === "cruel";
     const stressed = (stress?.stress ?? 30) >= 60;
     const hates = opinionScore <= -50;
@@ -74,7 +97,8 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
 
   // Pick a kind based on traits. assassinate wins on cruel; blackmail on
   // paranoid; seduce on liked-target-but-rejected; default assassinate.
-  const pickedKind = kind || pickSchemeKind(stress?.coping_trait, opinionScore);
+  // D5 — held leverage naturally points at blackmail (you have something on them).
+  const pickedKind = kind || (hasLeverage ? "blackmail" : pickSchemeKind(stress?.coping_trait, opinionScore));
   const id = `sch_${crypto.randomUUID().slice(0, 16)}`;
   const successBase = pickedKind === "seduce" ? 40 : pickedKind === "blackmail" ? 50 : 30;
   const discoveryBase = pickedKind === "fabricate_secret" ? 25 : 10;

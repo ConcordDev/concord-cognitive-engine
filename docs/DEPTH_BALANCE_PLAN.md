@@ -171,19 +171,26 @@ legacy) read authored fields and no-op on procedural NPCs.
 **Borrowed signal:** ctOS + RDR2 (routine + scannable fact + memory).
 **Remaining for D4:** gear/apparel (#3) + the quest-gating-secret stretch (#5).
 
-### D5 — CK3 "hooks": information as a spendable asset — M/L
-**Finding:** Secrets and opinions are stored; `weaponise_at` fires a one-shot betrayal; but there is
-**no hook primitive** — no held, spendable, expiring leverage. This is CK3's keystone depth mechanic
-and the single highest-leverage *new* system the web research identified.
-**Target:** add a per-(holder,target) `hook{strength: weak|strong, source_secret_id, expires_at,
-uses_left}` record (new migration + lib). Spymaster/secret discovery *generates hook opportunities*;
-weak hook = single-use coercion, strong hook = passively blocks the target from hostile action
-(scheme/betrayal), both decay (~in-world decade). Wire hooks into: scheme proposal inputs, the
-intervene route (expose-vs-blackmail branch), and — crucially — **inheritance** (`npc-legacy.js`): a
-hook held over a dead NPC's heir still bites. Surface held hooks in the trait inspector.
-**Borrowed signal:** CK3 hooks/secrets/agents — "information itself is a currency."
-**Sequence:** builds on the already-deep secrets/opinions substrate; do after D3 so the surfacing
-patterns exist.
+### D5 — CK3 "hooks": information as a spendable asset — DONE
+**Done:** new `npc_hooks` substrate (migration **277**) + `server/lib/npc-hooks.js`:
+- per-(holder,target) hook `{strength: weak|strong, source, source_secret_id, uses_left, expires_at}`,
+  holder/target either player or NPC. **weak** = single-use coercion (spent on use); **strong** =
+  unlimited use AND passively **blocks** the target from hostile action against the holder.
+- `grantHook` (idempotent on holder+target+secret), `getActiveHooks`, `hasBlockingHook`, `spendHook`
+  (weak depletes, strong never), `expireHooks` GC, `grantHookFromSecret` (strength scales with secret
+  discovery_difficulty — deep secrets = strong leverage), `inheritHooks`.
+- **Wired into the existing substrate (5 points):** `discoverSecret` grants the player a hook over the
+  secret's subject; `weaponiseSecret` spends it (weak consumed, strong persists); `seedFromAuthored`
+  gives each holder NPC a hook over their secret's subject (NPC blackmail leverage); `proposeScheme`
+  now (a) returns `blocked_by_hook` when the target holds a strong hook over the plotter [CK3 passive
+  block] and (b) treats a held hook as motive (bypasses the disposition gate + biases to blackmail);
+  `onNpcDeath` calls `inheritHooks` so leverage outlives the person ("a hook over a dead man's son
+  still bites" — both held hooks → heir and hooks-over-deceased → heir).
+- Player surface: `hooks.mine` macro (leverage you hold). Privacy invariant intact (hooks store only
+  `source_secret_id`, never the secret body — the secret-leakage test stays green).
+- Env dials: `CONCORD_HOOK_TTL_S` (default 0 = no expiry), `CONCORD_HOOK_STRONG_DIFFICULTY` (default 8).
+- Tests: `npc-hooks.test.js` 16/16; touched-lib regression (secrets/schemes/legacy) 79/79.
+**Borrowed signal:** CK3 hooks/secrets — "information itself is a currency"; satisfied end-to-end.
 
 ### D6 — Run-mode payout-on-loss + risk-scaled spikes — S/M
 **Finding (Phase E §4):** horror 30 min / time-loop 22 min are in the sweet spot, but verify

@@ -22,6 +22,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { inheritHooks } from "./npc-hooks.js";
 
 // ── Last-words composer ─────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ export function onNpcDeath(db, npc, opts = {}) {
   }
 
   const heirs = findHeirs(db, npc);
-  const inherited = { grudge: 0, preoccupation: 0, desire: 0, recipe: 0, wealth: 0 };
+  const inherited = { grudge: 0, preoccupation: 0, desire: 0, recipe: 0, wealth: 0, hooks: 0 };
 
   if (heirs.length > 0) {
     const primary = heirs[0];
@@ -323,6 +324,13 @@ export function onNpcDeath(db, npc, opts = {}) {
     inherited.desire        = inheritDesires(db, npc, primary);
     inherited.recipe        = inheritRecipes(db, npc, primary);
     inherited.wealth        = inheritWealth(db, npc, heirs);
+    // D5 — leverage outlives the person: the deceased's held hooks pass to the
+    // heir, and hooks held OVER the deceased re-target to the heir ("a hook over
+    // a dead man's son still bites"). Best-effort — never blocks the death path.
+    try {
+      const h = inheritHooks(db, "npc", npc.id, primary.id);
+      inherited.hooks = (h?.held || 0) + (h?.over || 0);
+    } catch { /* hooks optional */ }
   }
 
   return { ok: true, legacyId, heirs: heirs.map(h => h.id), inherited };
