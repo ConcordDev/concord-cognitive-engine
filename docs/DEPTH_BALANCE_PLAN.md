@@ -409,10 +409,10 @@ All high- and medium-value D/E items + the verified-real polish-audit fixes are
 execution-status section above and the CLAUDE.md "Recent shipped work" row).
 
 **Genuinely still open (lower value, each non-blocking):**
-- **D8 (music):** `ai-playlist` is wired (stale claim corrected). Still unwired: free-API
-  ingestion (Jamendo/Audius/iTunes) and the collaborative-playlist *edit* path
-  (DB-schema-only). Either wire one end-to-end or mark roadmap in the spec — no
-  "shipped" language over the stub.
+- **D8 (music):** `ai-playlist` is wired (stale claim corrected) and the **collaborative-
+  playlist edit path is now wired** (cross-user add/detail/list, `tests/music-collab-
+  playlist.test.js`). Only **free-API ingestion** (Jamendo/Audius/iTunes) remains unwired —
+  needs network egress; wire it end-to-end or mark roadmap (no "shipped" over a stub).
 - **E0 (full migration):** the infra shipped (`/api/config/client` + `useClientConfig`);
   DriftAlertToast + RestaurantDashboard migrated. The other ~22 poll components can adopt
   the hook mechanically (one-line each) — pure follow-on, no new design.
