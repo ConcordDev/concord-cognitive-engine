@@ -15,7 +15,8 @@
  * action affordance attached.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { useHUDContext } from './concordia-hud/HUDContextProvider';
 
 const VISIBLE_RADIUS_M = 12;
@@ -60,30 +61,26 @@ export function NemesisGlyphLayer({ worldId, playerPosition, enabled = true }: P
     return () => window.removeEventListener('concordia:projector-ready', onProjector);
   }, []);
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!enabled) return;
-    let cancelled = false;
-    async function poll() {
-      try {
-        const r = await fetch('/api/lens/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            domain: 'nemesis',
-            name: 'nearby',
-            input: { worldId, x: playerPosition?.x, z: playerPosition?.z, radius: 40 },
-          }),
-        });
-        const j = await r.json();
-        if (!cancelled && j?.ok && Array.isArray(j.npcs)) {
-          setRows((j.npcs as NemesisRow[]).filter((n) => n.isNemesis || n.scheme || n.grudge || n.desire));
-        }
-      } catch { /* poll best-effort */ }
-    }
-    poll();
-    const id = setInterval(poll, POLL_INTERVAL_MS);
-    return () => { cancelled = true; clearInterval(id); };
+    try {
+      const r = await fetch('/api/lens/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          domain: 'nemesis',
+          name: 'nearby',
+          input: { worldId, x: playerPosition?.x, z: playerPosition?.z, radius: 40 },
+        }),
+      });
+      const j = await r.json();
+      if (j?.ok && Array.isArray(j.npcs)) {
+        setRows((j.npcs as NemesisRow[]).filter((n) => n.isNemesis || n.scheme || n.grudge || n.desire));
+      }
+    } catch { /* best-effort */ }
   }, [enabled, worldId, playerPosition?.x, playerPosition?.z]);
+  // Push: NPC nemesis/scheme/grudge changes on socket events; slow backstop poll.
+  useRealtimeRefresh(['nemesis:nearby'], refresh, { backstopMs: POLL_INTERVAL_MS * 2, enabled });
 
   useEffect(() => {
     if (!enabled || rows.length === 0) {

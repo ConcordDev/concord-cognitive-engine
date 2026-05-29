@@ -8,6 +8,7 @@
 // winning 14-tile shape.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Sparkles, Hand, Loader2, Trophy, AlertTriangle } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
@@ -82,11 +83,10 @@ export function MahjongTable({ building, onClose, worldId }: OverlayProps) {
   }, [session?.id]);
 
   // Light polling for end-state detection (NPC tsumo wins).
-  useEffect(() => {
-    if (!session?.id || session.ended_at || session.turn_seat === 0) return;
-    const t = setInterval(refresh, POLL_MS);
-    return () => clearInterval(t);
-  }, [session?.id, session?.ended_at, session?.turn_seat, refresh]);
+  useRealtimeRefresh(['mahjong:state'], refresh, {
+    backstopMs: POLL_MS * 6, immediate: false,
+    enabled: !!session?.id && !session?.ended_at && session?.turn_seat !== 0,
+  });
 
   // Catch end-of-session.
   useEffect(() => {

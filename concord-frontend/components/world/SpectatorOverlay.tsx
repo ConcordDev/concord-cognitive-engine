@@ -8,6 +8,7 @@
 // `concordia:exit-spectator-mode`.
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
 import { Eye, X } from 'lucide-react';
 import { sfx } from '@/lib/concordia/juice';
 
@@ -61,12 +62,7 @@ export function SpectatorOverlay() {
     } catch { /* swallow */ }
   }, [active?.worldId]);
 
-  useEffect(() => {
-    if (!active) return;
-    refreshCount();
-    const t = setInterval(refreshCount, 10_000);
-    return () => clearInterval(t);
-  }, [active, refreshCount]);
+  useRealtimeRefresh(['spectator:count-updated'], refreshCount, { backstopMs: 15_000, enabled: !!active });
 
   const exit = () => {
     window.dispatchEvent(new CustomEvent('concordia:exit-spectator-mode'));
