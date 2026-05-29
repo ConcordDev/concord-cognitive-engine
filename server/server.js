@@ -10755,6 +10755,17 @@ async function runMacro(domain, name, input, ctx) {
 
   // safeReadBypass: comprehensive path check for ALL frontend GET routes (Gate 3 of 3, outer)
   const _safeReadPaths = [
+    // Gate-3 mirror of the newer Gate-1 public-read prefixes so the Chicken2
+    // safeReadBypass stays consistent with authMiddleware (three-gate invariant).
+    "/api/achievements/catalog", "/api/achievements/recent", "/api/ambient-chat/list",
+    "/api/announcements", "/api/auctions/", "/api/auctions/active", "/api/avatars",
+    "/api/bloodline", "/api/breakthroughs", "/api/climbing/world", "/api/combat/frame-data",
+    "/api/connective-tissue", "/api/creatures", "/api/cross-world/feed",
+    "/api/detective/crime", "/api/detective/open", "/api/diseases/catalog",
+    "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
+    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
+    "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
+    "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
     "/api/status", "/api/dtus", "/api/dtu", "/api/settings", "/api/lens",
     "/api/goals", "/api/growth", "/api/metrics", "/api/resonance", "/api/lattice",
     "/api/emergent", "/api/plugins", "/api/scope", "/api/events", "/api/guidance",

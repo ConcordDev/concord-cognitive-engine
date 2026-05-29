@@ -47,7 +47,7 @@ export function up(db) {
   `);
 
   db.exec(`
-    CREATE TABLE IF NOT EXISTS bounties (
+    CREATE TABLE IF NOT EXISTS crime_bounties (
       id              TEXT PRIMARY KEY,
       target_kind     TEXT NOT NULL CHECK (target_kind IN ('player','npc')),
       target_id       TEXT NOT NULL,
@@ -60,7 +60,7 @@ export function up(db) {
       claimed_by_user_id TEXT,
       cancelled_at    INTEGER
     );
-    CREATE INDEX IF NOT EXISTS idx_bounties_active ON bounties (target_kind, target_id) WHERE claimed_at IS NULL AND cancelled_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_crime_bounties_active ON crime_bounties (target_kind, target_id) WHERE claimed_at IS NULL AND cancelled_at IS NULL;
   `);
 
   db.exec(`

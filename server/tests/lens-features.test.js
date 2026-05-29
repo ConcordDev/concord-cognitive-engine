@@ -1038,6 +1038,8 @@ describe("Lens category distribution", () => {
       // Extended categories
       "GOVERNANCE_EXT", "SCIENCE_EXT", "AI_COGNITION_EXT", "AI_EXT",
       "SPECIALIZED_EXT", "BRIDGE", "CREATIVE",
+      // SYSTEM — the ops-telemetry admin surface.
+      "SYSTEM",
     ]);
     for (const lens of Object.values(LENS_FEATURES)) {
       assert.ok(

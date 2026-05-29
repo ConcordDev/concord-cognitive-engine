@@ -1506,7 +1506,7 @@ const _FEATURES = {
 
   foundry: {
     lensId: "foundry",
-    lensNumber: 125,
+    lensNumber: 126,
     category: "AI_EXT",
     features: [
       f("system_registry", "Composable System Registry", "Browse and select from ~34 Concord systems as game-building blocks", "creation", ["foundry"]),

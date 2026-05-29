@@ -1,7 +1,7 @@
 // Phase AA3 — tournament end-to-end test.
 //
 // Pins the chain: createTournament → registerForTournament → recordMatch →
-// finalizeTournament → payout plan. The existing tournaments.test.js
+// finalizeTournament → payout plan. The existing world_tournaments.test.js
 // covered each step individually with a memDb stub; this test exercises
 // the WHOLE LOOP and verifies the placement + payout math one last time
 // so future regressions get caught.
@@ -18,7 +18,7 @@ import {
 
 function memDb() {
   const t = {
-    tournaments: new Map(),
+    world_tournaments: new Map(),
     tournament_entries: new Map(),
     tournament_matches: new Map(),
   };
@@ -27,17 +27,17 @@ function memDb() {
   function _execute(sql, args, mode = "run") {
     const n = _trim(sql);
 
-    if (n.startsWith("INSERT INTO tournaments")) {
+    if (n.startsWith("INSERT INTO world_tournaments")) {
       const [id, world_id, kind, title, buyin_cc, starts_at, ends_at, ruleset_dtu_id, organizer_user_id] = args;
-      t.tournaments.set(id, {
+      t.world_tournaments.set(id, {
         id, world_id, kind, title,
         buyin_cc, prize_pool_cc: 0, starts_at, ends_at,
         ruleset_dtu_id, organizer_user_id, status: "open",
       });
       return { changes: 1 };
     }
-    if (n.startsWith("SELECT buyin_cc, status FROM tournaments WHERE id =")) {
-      return t.tournaments.get(args[0]) || null;
+    if (n.startsWith("SELECT buyin_cc, status FROM world_tournaments WHERE id =")) {
+      return t.world_tournaments.get(args[0]) || null;
     }
     if (n.startsWith("INSERT INTO tournament_entries")) {
       const [tid, uid] = args;
@@ -47,9 +47,9 @@ function memDb() {
       }
       return { changes: 1 };
     }
-    if (n.startsWith("UPDATE tournaments SET prize_pool_cc = prize_pool_cc + ?")) {
+    if (n.startsWith("UPDATE world_tournaments SET prize_pool_cc = prize_pool_cc + ?")) {
       const [amt, id] = args;
-      const r = t.tournaments.get(id);
+      const r = t.world_tournaments.get(id);
       if (r) r.prize_pool_cc += amt;
       return { changes: 1 };
     }
@@ -64,8 +64,8 @@ function memDb() {
       if (e && !e.eliminated_at) e.eliminated_at = Math.floor(Date.now() / 1000);
       return { changes: 1 };
     }
-    if (n.startsWith("SELECT * FROM tournaments WHERE id =")) {
-      return t.tournaments.get(args[0]) || null;
+    if (n.startsWith("SELECT * FROM world_tournaments WHERE id =")) {
+      return t.world_tournaments.get(args[0]) || null;
     }
     if (n.startsWith("SELECT user_id, registered_at, eliminated_at, placement")) {
       const [tid] = args;
@@ -93,8 +93,8 @@ function memDb() {
       if (e) e.placement = p;
       return { changes: 1 };
     }
-    if (n.startsWith("UPDATE tournaments SET status = 'complete'")) {
-      const r = t.tournaments.get(args[0]);
+    if (n.startsWith("UPDATE world_tournaments SET status = 'complete'")) {
+      const r = t.world_tournaments.get(args[0]);
       if (r) { r.status = "complete"; r.ends_at = Math.floor(Date.now() / 1000); }
       return { changes: 1 };
     }

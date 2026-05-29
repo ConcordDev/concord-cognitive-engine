@@ -70,7 +70,7 @@ export function up(db) {
 
   // ── S — Tournaments ────────────────────────────────────────────────
   db.exec(`
-    CREATE TABLE IF NOT EXISTS tournaments (
+    CREATE TABLE IF NOT EXISTS world_tournaments (
       id                TEXT PRIMARY KEY,
       world_id          TEXT NOT NULL,
       kind              TEXT NOT NULL CHECK (kind IN ('pvp','league','heist','custom')),
@@ -86,8 +86,8 @@ export function up(db) {
       organizer_user_id TEXT,
       created_at        INTEGER NOT NULL DEFAULT (unixepoch())
     );
-    CREATE INDEX IF NOT EXISTS idx_tournaments_world ON tournaments(world_id, starts_at);
-    CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status, starts_at);
+    CREATE INDEX IF NOT EXISTS idx_world_tournaments_world ON world_tournaments(world_id, starts_at);
+    CREATE INDEX IF NOT EXISTS idx_world_tournaments_status ON world_tournaments(status, starts_at);
 
     CREATE TABLE IF NOT EXISTS tournament_entries (
       tournament_id     TEXT NOT NULL,
@@ -137,7 +137,7 @@ export function down(db) {
   try { db.exec(`DROP TABLE IF EXISTS ai_residents;`); } catch { /* idempotent */ }
   try { db.exec(`DROP TABLE IF EXISTS tournament_matches;`); } catch { /* idempotent */ }
   try { db.exec(`DROP TABLE IF EXISTS tournament_entries;`); } catch { /* idempotent */ }
-  try { db.exec(`DROP TABLE IF EXISTS tournaments;`); } catch { /* idempotent */ }
+  try { db.exec(`DROP TABLE IF EXISTS world_tournaments;`); } catch { /* idempotent */ }
   try { db.exec(`DROP TABLE IF EXISTS world_tenant_members;`); } catch { /* idempotent */ }
   try { db.exec(`DROP TABLE IF EXISTS world_tenancies;`); } catch { /* idempotent */ }
   try { db.exec(`DROP TABLE IF EXISTS ugc_worlds;`); } catch { /* idempotent */ }

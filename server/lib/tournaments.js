@@ -17,7 +17,7 @@ export function createTournament(db, input) {
   const id = `tour_${crypto.randomBytes(6).toString("hex")}`;
   try {
     db.prepare(`
-      INSERT INTO tournaments
+      INSERT INTO world_tournaments
         (id, world_id, kind, title, buyin_cc, prize_pool_cc, starts_at, ends_at, ruleset_dtu_id, organizer_user_id)
       VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)
     `).run(id, worldId, kind, title, Number(buyinCc) || 0, Math.floor(Number(startsAt)), endsAt ? Math.floor(Number(endsAt)) : null, rulesetDtuId, organizerUserId);
@@ -30,7 +30,7 @@ export function createTournament(db, input) {
 export function registerForTournament(db, tournamentId, userId) {
   if (!db || !tournamentId || !userId) return { ok: false, error: "missing_inputs" };
   try {
-    const t = db.prepare(`SELECT buyin_cc, status FROM tournaments WHERE id = ?`).get(tournamentId);
+    const t = db.prepare(`SELECT buyin_cc, status FROM world_tournaments WHERE id = ?`).get(tournamentId);
     if (!t) return { ok: false, error: "no_tournament" };
     if (t.status !== "open") return { ok: false, error: "registration_closed" };
     db.prepare(`
@@ -41,7 +41,7 @@ export function registerForTournament(db, tournamentId, userId) {
     // caller's responsibility (the route does walletDebit before this
     // function is invoked).
     if (t.buyin_cc > 0) {
-      db.prepare(`UPDATE tournaments SET prize_pool_cc = prize_pool_cc + ? WHERE id = ?`).run(t.buyin_cc, tournamentId);
+      db.prepare(`UPDATE world_tournaments SET prize_pool_cc = prize_pool_cc + ? WHERE id = ?`).run(t.buyin_cc, tournamentId);
     }
     return { ok: true };
   } catch (err) {
@@ -52,7 +52,7 @@ export function registerForTournament(db, tournamentId, userId) {
 export function getTournament(db, tournamentId) {
   if (!db) return null;
   try {
-    const t = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId);
+    const t = db.prepare(`SELECT * FROM world_tournaments WHERE id = ?`).get(tournamentId);
     if (!t) return null;
     const entries = db.prepare(`
       SELECT user_id, registered_at, eliminated_at, placement
@@ -76,7 +76,7 @@ export function listActiveTournaments(db, opts = {}) {
   try {
     return db.prepare(`
       SELECT id, world_id, kind, title, buyin_cc, prize_pool_cc, starts_at, status
-      FROM tournaments
+      FROM world_tournaments
       WHERE status IN ('open', 'running')
       ORDER BY starts_at ASC LIMIT ?
     `).all(limit);
@@ -121,7 +121,7 @@ export function recordMatch(db, tournamentId, { round, players, winnerUserId, re
  */
 export function finalizeTournament(db, tournamentId) {
   try {
-    const t = db.prepare(`SELECT * FROM tournaments WHERE id = ?`).get(tournamentId);
+    const t = db.prepare(`SELECT * FROM world_tournaments WHERE id = ?`).get(tournamentId);
     if (!t) return { ok: false, error: "no_tournament" };
     if (t.status === "complete") return { ok: false, error: "already_complete" };
 
@@ -147,8 +147,8 @@ export function finalizeTournament(db, tournamentId) {
       }
     }
 
-    db.prepare(`UPDATE tournaments SET status = 'complete', ends_at = unixepoch() WHERE id = ?`).run(tournamentId);
-    logger.info?.("tournaments", "finalized", { tournamentId, payouts, platformFee });
+    db.prepare(`UPDATE world_tournaments SET status = 'complete', ends_at = unixepoch() WHERE id = ?`).run(tournamentId);
+    logger.info?.("world_tournaments", "finalized", { tournamentId, payouts, platformFee });
     return { ok: true, payouts, platformFee, netPool, grossPool };
   } catch (err) {
     return { ok: false, error: err?.message };

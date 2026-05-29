@@ -38,8 +38,8 @@ describe("Phase CB4 — restaurant management", () => {
     const s = serveOrder(db, "u1", o.orderId);
     assert.equal(s.ok, true);
     assert.equal(s.payment, BASE_PRICE_CC);
-    // Served fast (within 30s) → 30% tip.
-    assert.equal(s.tipFrac, 0.30);
+    // Served fast (within 30s) → 20% tip (T3.4-adopted TIP_FRACTION_FAST).
+    assert.equal(s.tipFrac, 0.20);
     const sum = getRestaurantSummary(db, r.restaurantId);
     assert.equal(sum.orders_served, 1);
     assert.ok(sum.total_revenue > 0);

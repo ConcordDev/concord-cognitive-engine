@@ -1,4 +1,4 @@
-// Phase S — tournaments shape contract.
+// Phase S — world_tournaments shape contract.
 //
 // Uses a sqlite in-memory stub via plain JS Maps so we can run this test
 // without better-sqlite3 installed. Real-DB integration is covered by the
@@ -10,7 +10,7 @@ import { createTournament, registerForTournament, getTournament, recordMatch, fi
 
 function memDb() {
   const tables = {
-    tournaments: new Map(),
+    world_tournaments: new Map(),
     tournament_entries: new Map(), // key: tournamentId|userId
     tournament_matches: new Map(),
   };
@@ -27,14 +27,14 @@ function memDb() {
   }
   function _execute(sql, args, mode = "run") {
     const normalised = sql.replace(/\s+/g, " ").trim();
-    // INSERT INTO tournaments
-    if (normalised.startsWith("INSERT INTO tournaments")) {
+    // INSERT INTO world_tournaments
+    if (normalised.startsWith("INSERT INTO world_tournaments")) {
       const [id, worldId, kind, title, buyinCc, startsAt, endsAt, rulesetDtuId, organizerUserId] = args;
-      tables.tournaments.set(id, { id, world_id: worldId, kind, title, buyin_cc: buyinCc, prize_pool_cc: 0, starts_at: startsAt, ends_at: endsAt, status: "open", ruleset_dtu_id: rulesetDtuId, organizer_user_id: organizerUserId });
+      tables.world_tournaments.set(id, { id, world_id: worldId, kind, title, buyin_cc: buyinCc, prize_pool_cc: 0, starts_at: startsAt, ends_at: endsAt, status: "open", ruleset_dtu_id: rulesetDtuId, organizer_user_id: organizerUserId });
       return { changes: 1 };
     }
-    if (normalised.startsWith("SELECT buyin_cc, status FROM tournaments WHERE id =")) {
-      return tables.tournaments.get(args[0]) || null;
+    if (normalised.startsWith("SELECT buyin_cc, status FROM world_tournaments WHERE id =")) {
+      return tables.world_tournaments.get(args[0]) || null;
     }
     if (normalised.startsWith("INSERT INTO tournament_entries")) {
       const [tournamentId, userId] = args;
@@ -44,14 +44,14 @@ function memDb() {
       }
       return { changes: 1 };
     }
-    if (normalised.startsWith("UPDATE tournaments SET prize_pool_cc = prize_pool_cc")) {
+    if (normalised.startsWith("UPDATE world_tournaments SET prize_pool_cc = prize_pool_cc")) {
       const [amount, id] = args;
-      const t = tables.tournaments.get(id);
+      const t = tables.world_tournaments.get(id);
       if (t) t.prize_pool_cc += amount;
       return { changes: 1 };
     }
-    if (normalised.startsWith("SELECT * FROM tournaments WHERE id =")) {
-      return tables.tournaments.get(args[0]) || null;
+    if (normalised.startsWith("SELECT * FROM world_tournaments WHERE id =")) {
+      return tables.world_tournaments.get(args[0]) || null;
     }
     if (normalised.startsWith("SELECT user_id, registered_at, eliminated_at, placement")) {
       const [tournamentId] = args;
@@ -66,7 +66,7 @@ function memDb() {
         .map(m => ({ id: m.id, round: m.round, players_json: m.players_json, winner_user_id: m.winner_user_id, replay_dtu_id: m.replay_dtu_id, played_at: m.played_at }));
     }
     if (normalised.startsWith("SELECT id, world_id, kind, title")) {
-      return [...tables.tournaments.values()]
+      return [...tables.world_tournaments.values()]
         .filter(t => t.status === "open" || t.status === "running");
     }
     if (normalised.startsWith("INSERT INTO tournament_matches")) {
@@ -100,9 +100,9 @@ function memDb() {
       if (e) e.placement = placement;
       return { changes: 1 };
     }
-    if (normalised.startsWith("UPDATE tournaments SET status =")) {
+    if (normalised.startsWith("UPDATE world_tournaments SET status =")) {
       const [id] = args;
-      const t = tables.tournaments.get(id);
+      const t = tables.world_tournaments.get(id);
       if (t) { t.status = "complete"; t.ends_at = Math.floor(Date.now() / 1000); }
       return { changes: 1 };
     }
@@ -111,7 +111,7 @@ function memDb() {
   return { prepare: prep, tables };
 }
 
-describe("Phase S — tournaments", () => {
+describe("Phase S — world_tournaments", () => {
   let db;
   beforeEach(() => { db = memDb(); });
 

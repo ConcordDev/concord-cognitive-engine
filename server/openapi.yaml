@@ -3313,6 +3313,115 @@ paths:
                     items:
                       type: object
 
+  # ── Admin telemetry surfaces ──────────────────────────────────────────────
+  /api/admin/heartbeat-stats:
+    get:
+      tags: [Admin]
+      summary: Per-heartbeat-module timing stats (p50/p90/p99)
+      responses: { '200': { description: Heartbeat stats } }
+  /api/admin/worker-stats:
+    get:
+      tags: [Admin]
+      summary: Macro + heartbeat worker-pool utilisation
+      responses: { '200': { description: Worker stats } }
+  /api/admin/brain-endpoints:
+    get:
+      tags: [Admin]
+      summary: Per-brain endpoint inflight + failure counts
+      responses: { '200': { description: Brain endpoint stats } }
+  /api/admin/stats:
+    get:
+      tags: [Admin]
+      summary: Aggregate platform stats
+      responses: { '200': { description: Platform stats } }
+  /api/admin/integrity:
+    get:
+      tags: [Admin]
+      summary: Treasury + ledger integrity snapshot
+      responses: { '200': { description: Integrity report } }
+  /api/admin/queue/stats:
+    get:
+      tags: [Admin]
+      summary: Background queue depth + throughput
+      responses: { '200': { description: Queue stats } }
+  /api/admin/memory/pressure:
+    get:
+      tags: [Admin]
+      summary: Heap memory-pressure watchdog reading
+      responses: { '200': { description: Memory pressure } }
+  /api/admin/repair/status:
+    get:
+      tags: [Admin]
+      summary: Repair-cortex status
+      responses: { '200': { description: Repair status } }
+  /api/admin/scaling/status:
+    get:
+      tags: [Admin]
+      summary: Auto-scaling pressure status
+      responses: { '200': { description: Scaling status } }
+  /api/admin/sync/status:
+    get:
+      tags: [Admin]
+      summary: Federation/sync status
+      responses: { '200': { description: Sync status } }
+  /api/admin/backup/status:
+    get:
+      tags: [Admin]
+      summary: Backup history status
+      responses: { '200': { description: Backup status } }
+  /api/admin/compression-stats:
+    get:
+      tags: [Admin]
+      summary: DTU consolidation/compression stats
+      responses: { '200': { description: Compression stats } }
+
+  # ── Achievements ──────────────────────────────────────────────────────────
+  /api/achievements/catalog:
+    get:
+      tags: [Achievements]
+      summary: Full achievement catalog
+      responses: { '200': { description: Catalog } }
+  /api/achievements/mine:
+    get:
+      tags: [Achievements]
+      summary: Achievements the caller has earned
+      responses: { '200': { description: Earned achievements } }
+  /api/achievements/recent:
+    get:
+      tags: [Achievements]
+      summary: Recently unlocked achievements (global feed)
+      responses: { '200': { description: Recent unlocks } }
+
+  # ── Auction price discovery (D1) ──────────────────────────────────────────
+  /api/auctions/item/{itemId}/price-history:
+    get:
+      tags: [Marketplace]
+      summary: Price-history time series for an item
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      responses: { '200': { description: Price-history points + stats } }
+  /api/auctions/item/{itemId}/depth:
+    get:
+      tags: [Marketplace]
+      summary: Order-book depth (asks + bids) for an item
+      parameters:
+        - { name: itemId, in: path, required: true, schema: { type: string } }
+      responses: { '200': { description: Market depth } }
+
+  # ── Horror dread + courtship (E1/H3) ──────────────────────────────────────
+  /api/horror/session/{id}/dread:
+    get:
+      tags: [World]
+      summary: Per-investigator dread/tension state for a horror session
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses: { '200': { description: Dread state } }
+  /api/courtship/spouses-following:
+    get:
+      tags: [World]
+      summary: NPC spouses currently wed to the caller (follow set)
+      responses: { '200': { description: Spouse follow set } }
+
 components:
   securitySchemes:
     cookieAuth:

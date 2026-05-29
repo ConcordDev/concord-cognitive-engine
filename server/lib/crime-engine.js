@@ -68,7 +68,7 @@ export function issueBounty(db, opts) {
   }
   const id = uid("bounty");
   db.prepare(`
-    INSERT INTO bounties (id, target_kind, target_id, issued_by_kind, issued_by_id, amount_cents, reason)
+    INSERT INTO crime_bounties (id, target_kind, target_id, issued_by_kind, issued_by_id, amount_cents, reason)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     id, opts.targetKind, opts.targetId,
@@ -80,29 +80,29 @@ export function issueBounty(db, opts) {
 }
 
 export function claimBounty(db, bountyId, claimantUserId) {
-  const b = db.prepare("SELECT * FROM bounties WHERE id = ?").get(bountyId);
+  const b = db.prepare("SELECT * FROM crime_bounties WHERE id = ?").get(bountyId);
   if (!b) return { ok: false, reason: "bounty_not_found" };
   if (b.claimed_at) return { ok: false, reason: "already_claimed" };
   if (b.cancelled_at) return { ok: false, reason: "cancelled" };
   if (b.target_kind === "player" && b.target_id === claimantUserId) return { ok: false, reason: "cannot_claim_self" };
   db.prepare(`
-    UPDATE bounties SET claimed_at = unixepoch(), claimed_by_user_id = ? WHERE id = ?
+    UPDATE crime_bounties SET claimed_at = unixepoch(), claimed_by_user_id = ? WHERE id = ?
   `).run(claimantUserId, bountyId);
   return { ok: true, amountCents: b.amount_cents };
 }
 
 export function cancelBounty(db, bountyId, issuerId) {
-  const b = db.prepare("SELECT * FROM bounties WHERE id = ?").get(bountyId);
+  const b = db.prepare("SELECT * FROM crime_bounties WHERE id = ?").get(bountyId);
   if (!b) return { ok: false, reason: "bounty_not_found" };
   if (b.issued_by_id !== issuerId) return { ok: false, reason: "not_issuer" };
   if (b.claimed_at || b.cancelled_at) return { ok: false, reason: "already_closed" };
-  db.prepare("UPDATE bounties SET cancelled_at = unixepoch() WHERE id = ?").run(bountyId);
+  db.prepare("UPDATE crime_bounties SET cancelled_at = unixepoch() WHERE id = ?").run(bountyId);
   return { ok: true };
 }
 
 export function listBountiesOnTarget(db, targetKind, targetId) {
   return db.prepare(`
-    SELECT * FROM bounties WHERE target_kind = ? AND target_id = ? AND claimed_at IS NULL AND cancelled_at IS NULL
+    SELECT * FROM crime_bounties WHERE target_kind = ? AND target_id = ? AND claimed_at IS NULL AND cancelled_at IS NULL
     ORDER BY amount_cents DESC LIMIT 50
   `).all(targetKind, targetId);
 }
