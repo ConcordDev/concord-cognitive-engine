@@ -199,6 +199,7 @@ function playToneSpatial(
   def: SFXDef,
   masterGain: GainNode,
   worldPos: { x: number; y: number; z: number },
+  pitchMul = 1,
 ): void {
   const panner = ctx.createPanner();
   panner.panningModel  = 'HRTF';
@@ -211,9 +212,10 @@ function playToneSpatial(
   panner.positionZ.value = worldPos.z;
   panner.connect(masterGain);
 
-  const freqs = def.semitones
+  const baseFreqs = def.semitones
     ? def.semitones.map(s => def.freq * Math.pow(2, s / 12))
     : [def.freq];
+  const freqs = pitchMul === 1 ? baseFreqs : baseFreqs.map((f) => f * pitchMul);
 
   const now = ctx.currentTime;
   const stepDuration = def.duration / freqs.length;
@@ -344,10 +346,18 @@ function getOrCreateAudioContext(
   return ref.current;
 }
 
-function playToneSequence(ctx: AudioContext, def: SFXDef, masterGain: GainNode): void {
-  const freqs = def.semitones
+// Sprint 1 (juice) — small per-trigger pitch jitter so no two SFX of the same
+// id sound identical (the "every hit sounds the same" tell). ±5% is natural
+// variation; musical/UI cues pass 1.0 to stay on-pitch.
+function pitchJitter(): number {
+  return 0.95 + Math.random() * 0.10;
+}
+
+function playToneSequence(ctx: AudioContext, def: SFXDef, masterGain: GainNode, pitchMul = 1): void {
+  const baseFreqs = def.semitones
     ? def.semitones.map(s => def.freq * Math.pow(2, s / 12))
     : [def.freq];
+  const freqs = pitchMul === 1 ? baseFreqs : baseFreqs.map((f) => f * pitchMul);
 
   const now = ctx.currentTime;
   const stepDuration = def.duration / freqs.length;
@@ -792,12 +802,13 @@ export default function SoundscapeEngine({
         for (const step of layers) enqueueSfx(step.sfx);
         return;
       }
+      const jit = pitchJitter();
       for (const step of layers) {
         const def = SFX_MAP[step.sfx];
         if (!def) continue;
-        if (step.delayMs <= 0) playToneSequence(ctx, def, masterGainRef.current);
+        if (step.delayMs <= 0) playToneSequence(ctx, def, masterGainRef.current, jit);
         else setTimeout(() => {
-          if (masterGainRef.current) playToneSequence(ctx, def, masterGainRef.current);
+          if (masterGainRef.current) playToneSequence(ctx, def, masterGainRef.current, jit);
         }, step.delayMs);
       }
       return;
@@ -809,7 +820,7 @@ export default function SoundscapeEngine({
       enqueueSfx(sfxId);
       return;
     }
-    playToneSequence(ctx, def, masterGainRef.current);
+    playToneSequence(ctx, def, masterGainRef.current, pitchJitter());
   }, [initAudio, enqueueSfx]);
 
   const playSpatialSFX = useCallback((sfxId: string, worldPos: { x: number; y: number; z: number }) => {
@@ -820,12 +831,13 @@ export default function SoundscapeEngine({
         for (const step of layers) enqueueSfx(step.sfx, worldPos);
         return;
       }
+      const jit = pitchJitter();
       for (const step of layers) {
         const def = SFX_MAP[step.sfx];
         if (!def) continue;
-        if (step.delayMs <= 0) playToneSpatial(ctx, def, masterGainRef.current, worldPos);
+        if (step.delayMs <= 0) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit);
         else setTimeout(() => {
-          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos);
+          if (masterGainRef.current) playToneSpatial(ctx, def, masterGainRef.current, worldPos, jit);
         }, step.delayMs);
       }
       return;
@@ -837,7 +849,7 @@ export default function SoundscapeEngine({
       enqueueSfx(sfxId, worldPos);
       return;
     }
-    playToneSpatial(ctx, def, masterGainRef.current, worldPos);
+    playToneSpatial(ctx, def, masterGainRef.current, worldPos, pitchJitter());
   }, [initAudio, enqueueSfx]);
 
   const playMusicTrack = useCallback((url: string) => {
