@@ -272,3 +272,12 @@ shifting courtship affinity and estranging the marriage when it sours.
 | Dial | Default | Notes |
 |---|---|---|
 | `CONCORD_PROCGEN_SECRET_FRACTION` | 0.33 | Fraction of procedural NPCs whose generated secret is promoted into the discoverable `secrets` table (deterministic per NPC id). |
+
+### E0 — server-tunable client cadence dials (`server/lib/client-config.js`, `GET /api/config/client`)
+The ~24 frontend POLL_MS / FRAME_THROTTLE_MS constants are now env-overridable and
+fetched by `useClientConfig()` (merged over baked defaults). Tuning a poll is a
+server env change + refresh — no rebuild. Keys: `CONCORD_POLL_{HORDE,MAHJONG,
+SUBMARINE,EXTRACTION,TIMELOOP,CLIMBING,HORROR,RESTAURANT,THEMEPARK,DRIFT,COURTSHIP,
+FOOTPRINT,FORWARD_PRED,WORLD_HEALTH,PARTY_TICK,PARTY_DISCOVERY}_MS` +
+`CONCORD_THROTTLE_{COURTSHIP,FOOTPRINT}_FRAME_MS`. DriftAlertToast + RestaurantDashboard
+migrated as the reference; remaining components follow the same one-line pattern.

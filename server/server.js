@@ -46887,6 +46887,16 @@ app.get("/api/activity", (req, res) => {
 });
 
 // ---- Wave 5: Frontend Config Endpoints ----
+// E0 — server-rendered, env-tunable client cadence dials (poll/throttle ms).
+// Public read; the client merges over its baked defaults, so a failed fetch is
+// harmless. Tuning a poll no longer needs a frontend rebuild.
+app.get("/api/config/client", async (req, res) => {
+  try {
+    const { getClientConfig } = await import("./lib/client-config.js");
+    res.json({ ok: true, config: getClientConfig() });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+});
+
 app.get("/api/config/themes", (req, res) => {
   res.json({ ok: true, themes: getAllThemes() });
 });
