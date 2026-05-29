@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Users, UserPlus, Send, X, Globe, ChevronRight, AlertCircle, Check, Mail } from 'lucide-react';
-import { useWorldTravel, ACTIVE_WORLD_KEY } from '@/hooks/useWorldTravel';
+import { useWorldTravel } from '@/hooks/useWorldTravel';
 
 interface FriendPresence {
   friendUserId: string;

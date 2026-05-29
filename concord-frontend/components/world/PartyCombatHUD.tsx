@@ -15,7 +15,7 @@
 // If you never start a party-tactics session, this component renders null.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, FastForward, Zap, Heart, X } from 'lucide-react';
+import { Pause, Play, FastForward, Zap } from 'lucide-react';
 
 interface Combatant {
   entity_id: string;

@@ -8,7 +8,7 @@
  * party is created if you're not in one, the poster gets invited.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Users2, Filter, RefreshCcw, Send, Plus, Check, AlertCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';

@@ -4,6 +4,7 @@
 // Lists recent reasoning traces; filter by mode (7 reasoning modes).
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Brain, Filter } from 'lucide-react';
 
 interface Trace {
@@ -45,6 +46,7 @@ export default function ReasoningTracesPage() {
   };
 
   return (
+    <LensShell lensId="reasoning">
     <div className="mx-auto max-w-5xl space-y-4 p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-cyan-200">
@@ -94,5 +96,6 @@ export default function ReasoningTracesPage() {
         </div>
       </div>
     </div>
+    </LensShell>
   );
 }

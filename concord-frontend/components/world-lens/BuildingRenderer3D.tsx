@@ -607,7 +607,7 @@ export default function BuildingRenderer3D({
     group.position.set(dtu.position.x, dtu.position.y, dtu.position.z);
 
     return group;
-  }, [viewMode, renderStyle, toonGradient]);
+  }, [viewMode, renderStyle, toonGradient, buildingStyle]);
 
   // ── Build all buildings ────────────────────────────────────────
 

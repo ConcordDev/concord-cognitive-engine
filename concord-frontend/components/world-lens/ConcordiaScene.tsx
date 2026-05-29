@@ -1468,6 +1468,9 @@ export default function ConcordiaScene({
     document.addEventListener('mousemove', handleMouseMove);
 
     // ── Cleanup ───────────────────────────────────────────────────
+    // Capture the stable ref object so the cleanup doesn't read a possibly-changed
+    // ref.current (identity is fixed; only its fields mutate).
+    const polishMat = polishMatRef.current;
     return () => {
       disposed = true;
       cancelAnimationFrame(frameIdRef.current);
@@ -1510,7 +1513,7 @@ export default function ConcordiaScene({
         polishPassesRef.current?.autoExposure?.dispose();
       } catch { /* idempotent */ }
       polishPassesRef.current = null;
-      polishMatRef.current.prev = null;
+      polishMat.prev = null;
       try {
         const sky = (sceneRef.current as unknown as { __concordSky?: { mesh: unknown; dispose: () => void } } | null)?.__concordSky;
         const clouds = (sceneRef.current as unknown as { __concordClouds?: { mesh: unknown; dispose: () => void } } | null)?.__concordClouds;

@@ -6,7 +6,7 @@
 // the duration, submits to /api/karaoke/resolve, displays S/A/B/C/D.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Mic, MicOff, Square, Loader2, Music } from 'lucide-react';
+import { Mic, Square, Loader2, Music } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, milestoneJuice, sfx } from '@/lib/concordia/juice';
@@ -105,7 +105,7 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
     } catch (e) {
       setError((e as Error).message || 'mic_access_failed');
     }
-  }, [song]);
+  }, [song, lyricFile]);
 
   const stop = useCallback(async () => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);

@@ -381,7 +381,7 @@ export default function CombatInputController({
         break;
     }
     onAction?.(evt);
-  }, [context, modifierHeld, worldSocket, onAction, resolveHand]);
+  }, [context, modifierHeld, worldSocket, onAction, resolveHand, playerId]);
 
   // F2 — gamepad write-through. The keyboard path is the canonical one; a
   // connected Standard Gamepad dispatches the SAME combat actions through the

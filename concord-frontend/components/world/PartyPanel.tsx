@@ -10,7 +10,7 @@
  * Mounted in /lenses/world next to the friends panel.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Users2, X, Crown, UserMinus, LogOut, ShieldOff, Send, AlertCircle, Check } from 'lucide-react';
 

@@ -343,7 +343,7 @@ export function CollabDocWorkspace() {
       if (ins) lamportRef.current = ins.lamport;
     }
     setTimeout(() => { editingRef.current = false; }, 700);
-  }, [activeDocId]);
+  }, [activeDocId, yDocSynced]);
 
   // ── Create document ──────────────────────────────────────────────────────
   const createDoc = useCallback(async () => {

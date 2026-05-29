@@ -5,6 +5,7 @@
 // Spawn/despawn + mount/dismount actions.
 
 import { useCallback, useEffect, useState } from 'react';
+import { LensShell } from '@/components/lens/LensShell';
 import { Car, Plus, Loader2 } from 'lucide-react';
 
 interface Vehicle {
@@ -59,6 +60,7 @@ export default function GarageLensPage() {
   }, [worldId, spawnKind, refresh]);
 
   return (
+    <LensShell lensId="garage">
     <div className="mx-auto max-w-4xl space-y-4 p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-amber-200">
@@ -113,5 +115,6 @@ export default function GarageLensPage() {
         ))}
       </div>
     </div>
+    </LensShell>
   );
 }

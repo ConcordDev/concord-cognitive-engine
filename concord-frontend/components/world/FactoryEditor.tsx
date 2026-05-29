@@ -7,7 +7,7 @@
 // at 1Hz for live state.
 
 import { useCallback, useEffect, useState } from 'react';
-import { Box, ArrowRight, Cog, Trash2, Loader2 } from 'lucide-react';
+import { Box, ArrowRight, Cog, Loader2 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
