@@ -68,9 +68,14 @@ export async function runPeriodicDriftScan({ db: _db, state: _state, tickCount: 
   // when the realtime emitter has been bootstrapped — guarded with
   // optional chaining so the orchestrator stays drop-in for tests.
   try {
-    const alerts = typeof mod.getDriftAlerts === "function"
-      ? mod.getDriftAlerts(_STATE_REF, { severity: "high" })
-      : [];
+    // DRIFT_SEVERITY enum is info|warning|alert|critical — there is no "high".
+    // The prior { severity: "high" } filter matched NOTHING, so HIGH/CRITICAL
+    // findings never reached HLR and never emitted world:drift-alert. Route the
+    // two actionable tiers (alert + critical) instead.
+    const alertsResult = typeof mod.getDriftAlerts === "function"
+      ? mod.getDriftAlerts(_STATE_REF, { severity: ["alert", "critical"] })
+      : { alerts: [] };
+    const alerts = Array.isArray(alertsResult) ? alertsResult : (alertsResult.alerts || []);
     if (Array.isArray(alerts) && alerts.length > 0) {
       // Emit moodboard-tinting alerts before HLR so the UI gets the
       // signal even when HLR is degraded.

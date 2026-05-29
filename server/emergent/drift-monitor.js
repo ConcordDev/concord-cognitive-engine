@@ -400,7 +400,12 @@ export function getDriftAlerts(STATE, filters = {}) {
   let results = store.alerts;
 
   if (filters.type) results = results.filter(a => a.type === filters.type);
-  if (filters.severity) results = results.filter(a => a.severity === filters.severity);
+  if (filters.severity) {
+    // Accept a single severity string OR an array (e.g. ["alert","critical"]).
+    // The orchestrator needs the multi-value form to route HIGH/CRITICAL → HLR.
+    const sevs = Array.isArray(filters.severity) ? filters.severity : [filters.severity];
+    results = results.filter(a => sevs.includes(a.severity));
+  }
   if (filters.since) {
     results = results.filter(a => a.timestamp >= filters.since);
   }
