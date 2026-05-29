@@ -24510,6 +24510,10 @@ registerTalentsMacros(register);
 import registerAscensionMacros from "./domains/ascension.js";
 registerAscensionMacros(register);
 
+// F4.1 — shared in-run draft (boon/relic drafts for roguelite/extraction/horde).
+import registerRunDraftMacros from "./domains/run-draft.js";
+registerRunDraftMacros(register);
+
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
 // can render per-NPC nemesis glyphs over nearby NPCs.
