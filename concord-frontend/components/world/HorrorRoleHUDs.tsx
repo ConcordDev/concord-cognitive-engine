@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Ghost, Flashlight, Camera, X, Trophy, Skull } from 'lucide-react';
 
 interface Session {
@@ -23,9 +24,8 @@ interface Session {
   role: 'ghost' | 'investigator';
 }
 
-const POLL_MS = 2500;
-
 export function HorrorRoleHUDs() {
+  const POLL_MS = useClientConfig().poll.horrorRoleMs; // E0 — server-tunable
   const [worldId, setWorldId] = useState<string | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [endedAck, setEndedAck] = useState<Session | null>(null);

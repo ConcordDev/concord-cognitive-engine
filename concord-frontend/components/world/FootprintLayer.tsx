@@ -6,9 +6,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
-
-const POLL_MS = 30_000;
-const FRAME_THROTTLE_MS = 200;
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
@@ -24,6 +22,9 @@ interface Track {
 interface Props { enabled?: boolean; }
 
 export function FootprintLayer({ enabled = true }: Props) {
+  const _cfg = useClientConfig(); // E0 — server-tunable cadence
+  const POLL_MS = _cfg.poll.footprintMs;
+  const FRAME_THROTTLE_MS = _cfg.throttle.footprintFrameMs;
   const projectorRef = useRef<Projector | null>(null);
   const [worldId, setWorldId] = useState<string | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);

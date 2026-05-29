@@ -8,10 +8,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 const VISIBLE_RADIUS_M = 16;
-const POLL_MS = 30_000;
-const FRAME_THROTTLE_MS = 100;
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
@@ -31,6 +30,9 @@ interface Props {
 }
 
 export function CourtshipProgressOverlay({ npcs = [], playerPosition, enabled = true }: Props) {
+  const _cfg = useClientConfig(); // E0 — server-tunable cadence
+  const POLL_MS = _cfg.poll.courtshipMs;
+  const FRAME_THROTTLE_MS = _cfg.throttle.courtshipFrameMs;
   const projectorRef = useRef<Projector | null>(null);
   const [screenPositions, setScreenPositions] = useState<Map<string, Projection>>(new Map());
   const [byNpc, setByNpc] = useState<Map<string, CourtshipRow>>(new Map());

@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Package, MapPin, Clock, ArrowRight, AlertTriangle } from 'lucide-react';
 
 interface Run {
@@ -27,13 +28,12 @@ interface Zone {
 }
 interface Pos { x: number; z: number; }
 
-const POLL_MS = 2000;
-
 declare global {
   interface Window { __concordiaPlayerPos?: Pos; }
 }
 
 export function ExtractionRunHUD() {
+  const POLL_MS = useClientConfig().poll.extractionMs; // E0 — server-tunable
   const [run, setRun] = useState<Run | null>(null);
   const [zones, setZones] = useState<Zone[]>([]);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
