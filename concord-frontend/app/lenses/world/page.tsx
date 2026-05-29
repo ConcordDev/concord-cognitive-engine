@@ -291,6 +291,14 @@ const DangerBandHUD = dynamic(
     })),
   { ssr: false }
 );
+// WS4(b) — near-death awakening opportunity toast.
+const AwakeningToast = dynamic(
+  () =>
+    import('@/components/world/AwakeningToast').then((m) => ({
+      default: m.AwakeningToast,
+    })),
+  { ssr: false }
+);
 const FootprintLayer = dynamic(
   () =>
     import('@/components/world/FootprintLayer').then((m) => ({
@@ -4746,6 +4754,7 @@ export default function WorldLensPage() {
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
           <DangerBandHUD />
+          <AwakeningToast />
           <PersonalBeatWidget />
           {/* Concordia 5-layer dynamic HUD — replaces the old static
               ConcordiaHUDPanels. See the plan file for layer breakdown:

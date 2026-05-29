@@ -326,6 +326,10 @@ export type SocketEvent =
   | 'faction-war:tick'
   | 'faction-war:kill'
   | 'faction-war:end'
+  // WS5 — structural-strength faction clash outcome (living-world plan)
+  | 'faction-war:clash'
+  // WS4(b) — stress-triggered awakening opportunity (living-world plan)
+  | 'player:awakening-available'
   // World scheduler
   | 'world:event:scheduled'
   // Tier 3 deferral 12: faction event scheduler

@@ -32,6 +32,7 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'kingdom:decree-enacted',      channel: 'world',     label: 'Decree enacted' },
   { name: 'kingdom:contested',           channel: 'crisis',    label: 'Kingdom contested' },
   { name: 'kingdom:fallen',              channel: 'crisis',    label: 'Kingdom fallen' },
+  { name: 'faction-war:clash',           channel: 'crisis',    label: 'Faction clash' },
   { name: 'fishing:caught',              channel: 'world',     label: 'Fish caught' },
   { name: 'minigame:complete',           channel: 'world',     label: 'Minigame complete' },
   { name: 'world:refusal-field',         channel: 'world',   label: 'Refusal field' },
