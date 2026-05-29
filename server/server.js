@@ -7767,6 +7767,32 @@ async function tryInitWebSockets(server) {
     pingInterval: 25000
   });
 
+  // Phase 3a — multi-instance fan-out via the Redis adapter. Opt-in: only wired
+  // when REDIS_URL (or CONCORD_REDIS_URL) is set, so single-process deploys are
+  // unchanged. Once enabled, `io.to(room).emit(...)` fans out across every node
+  // sharing the Redis, so a horizontally-scaled deploy (or rolling restart)
+  // keeps every player in `world:${worldId}` / `user:${userId}` in sync.
+  // Best-effort: a Redis failure logs + falls back to single-process, never
+  // blocks boot.
+  const _redisUrl = process.env.REDIS_URL || process.env.CONCORD_REDIS_URL || null;
+  if (_redisUrl) {
+    (async () => {
+      try {
+        const { createAdapter } = await import("@socket.io/redis-adapter");
+        const { createClient } = await import("redis");
+        const pubClient = createClient({ url: _redisUrl });
+        const subClient = pubClient.duplicate();
+        pubClient.on("error", (e) => structuredLog("warn", "socketio_redis_pub_error", { error: e?.message }));
+        subClient.on("error", (e) => structuredLog("warn", "socketio_redis_sub_error", { error: e?.message }));
+        await Promise.all([pubClient.connect(), subClient.connect()]);
+        io.adapter(createAdapter(pubClient, subClient));
+        structuredLog("info", "socketio_redis_adapter_enabled", { url: _redisUrl.replace(/\/\/.*@/, "//***@") });
+      } catch (e) {
+        structuredLog("warn", "socketio_redis_adapter_failed", { error: e?.message, fallback: "single_process" });
+      }
+    })();
+  }
+
   REALTIME.io = io;
   REALTIME.ready = true;
   globalThis._concordREALTIME = REALTIME;

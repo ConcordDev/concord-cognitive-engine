@@ -299,6 +299,14 @@ const AwakeningToast = dynamic(
     })),
   { ssr: false }
 );
+// The System — diegetic push-driven status windows (level-up, power, quest, world).
+const SystemFeed = dynamic(
+  () =>
+    import('@/components/world/SystemFeed').then((m) => ({
+      default: m.SystemFeed,
+    })),
+  { ssr: false }
+);
 const FootprintLayer = dynamic(
   () =>
     import('@/components/world/FootprintLayer').then((m) => ({
@@ -4755,6 +4763,7 @@ export default function WorldLensPage() {
           <EmergentEventFeed />
           <DangerBandHUD />
           <AwakeningToast />
+          <SystemFeed />
           <PersonalBeatWidget />
           {/* Concordia 5-layer dynamic HUD — replaces the old static
               ConcordiaHUDPanels. See the plan file for layer breakdown:
