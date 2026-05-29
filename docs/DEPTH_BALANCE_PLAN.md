@@ -1,0 +1,271 @@
+# Concordia — Depth & Balance Plan (audit-grounded)
+
+**Branch:** `claude/concordia-depth-balance-audit-k0osH`
+**Date:** 2026-05-29
+**Method:** Direct codebase audit (5 parallel agents) + 6-game depth-benchmark web research.
+**Docs were treated as stale and verified against running code** — every claim below was
+grep/read-confirmed against the working tree, and several long-standing doc claims (including
+CLAUDE.md's own "honesty" section) turned out wrong in **both** directions.
+
+---
+
+## 0. Thesis
+
+Breadth is done. The platform has the *mechanics* of CK3 + Skyrim + Hades + Tarkov + Diner Dash +
+Zachtronics + ctOS running on one DTU/royalty substrate — unprecedented for one developer. The gap is
+**depth-per-feature**: it loses to each source game on feel and polish.
+
+The web research converged on **three universal, low-cost depth levers**, and they map almost 1:1 onto
+state Concordia *already stores but doesn't surface*:
+
+1. **Feedback density** — hit-stop graded by severity, graded hurt-reactions, percentile histograms.
+   Pure presentation layers over verbs already built.
+2. **Information asymmetry as the depth engine** — CK3 hooks/secrets, Tarkov/DbD hidden info, ctOS
+   scannable facts. Where state exists (opinions, grudges, secrets, schemes), the gap is *surfacing it
+   as spendable leverage or a visible signal*, not building new simulation.
+3. **Persistent, inheritable consequences** — losable kits, hooks that outlive their holder, NPC memory
+   of the player.
+
+This plan does not chase per-verb parity with specialist titles (unwinnable). It deepens the **feedback,
+leverage, and consequence loops** that are cheap to add and that the substrate uniquely supports.
+
+---
+
+## 1. Meta-finding: the docs are stale in BOTH directions — trust the code
+
+The single most important audit result: **CLAUDE.md's own self-corrections are themselves out of date.**
+Decisions must be made against code, not against any doc (including the prior `CONCORDIA_PLAN.md`).
+
+| Doc claim (CLAUDE.md / prior plan) | Code reality (verified) | Evidence |
+|---|---|---|
+| `code/Live Share` is "a polling op-log, not a real-time CRDT" | **Real Yjs CRDT** — `Y.Text` bindings, Socket.IO sync | `server/lib/yjs-realtime.js`; `attachYjsSync` @ `server.js:7810` |
+| `healthcare/telehealth` is "scheduling + optional Daily.co, not a video client" | **Real WebRTC client** — `simple-peer` + signalling relay; Daily.co is fallback | `components/healthcare/TelehealthVideoCall.tsx`, `server/lib/webrtc-signalling.js` |
+| Combat momentum model is "dead code" / reflex layer "never instantiated" | **Mounted & wired** — but disconnected mid-chain (see D1) | `ReflexBridge.tsx:29` `new ReflexLayer()`; `CombatMotorBridge`/`ReflexBridge` mounted @ `world/page.tsx:4848,4850`; `ImpactMomentumBridge` @ `CombatBridges.tsx:761` |
+| `weaponise_at` is "dead storage, never read" | **Consumed** (T2.1 landed) | `server/lib/embodied/weaponise-triggers.js`, `emergent/npc-scheme-cycle.js` |
+| Creature loader "only reads creatures.json; tunya grounds zero" | **Reads `bestiary.json` too** (T1.5 landed); tunya now grounds via bestiary | `server/lib/procedural-creature.js:157-161` |
+| Music EQ/crossfade is "a severe stub, zero GainNode code" | **Audio graph exists** (13 GainNode/biquad/crossfade/AudioContext refs) — depth uncertain, verify at runtime | `concord-frontend/lib/music/player.ts` |
+
+**Action (cheap, do first):** correct these six lines in CLAUDE.md / retire the stale prior-plan
+claims. A wrong honesty-doc is worse than no honesty-doc — it sends the next session chasing
+already-solved problems.
+
+---
+
+## 2. Corrected depth scorecard (verified)
+
+| System | Verified depth | Gap to close |
+|---|---|---|
+| Combat — momentum/poise/impact-feel/env-bending/terrain-stagger/anti-cheat | **DEEP & live** | none on resolution |
+| Combat — biomechanics → motor → reflex → bone animation | **Wired but disconnected mid-chain** | **D1 (highest combat ROI)** |
+| Combat — frame-data parry/dodge windows | **Derived, not enforced server-side** | **D2** |
+| NPC simulation backend (schemes/grudges/secrets/nemesis/factions/dynasty) | **DEEP** | surface as leverage (D3) |
+| Procedural NPCs (post P2/P3 density work) | **Floor** — personality + density, but 0 schedules / 0 load-bearing secrets / 0 relationships / 0 gear / 0 scannable profile | **D4** |
+| Information-as-currency (CK3 hooks) | **Absent** — secrets/opinions exist, no spendable hook asset | **D5** |
+| Run modes (roguelite/horde/extraction/horror/time-loop) | **Real loops**, untuned | **E-series + D6** |
+| Puzzles (programming/hacking) | **Real VM, pass/fail only** | **D7 (histograms)** |
+| Music lens | CRDT/WebRTC neighbors are real; **ingestion/AI-playlist/collab-playlist unwired**; EQ/crossfade verify | **D8** |
+| Content density | tunya lore (5), festivals hub-only, fauna hub-only, quests sparse per-world | **C-series** |
+| Balance dials | Phase E *designed*, values **not applied**; frontend polls not env-tunable | **E-series** |
+
+---
+
+## 3. Depth workstreams (D-series), priority-ordered
+
+Each item: **finding (file:line) → depth target → borrowed-game signal → effort**. Effort is
+S (<½ day) / M (1–2 days) / L (multi-day).
+
+### D1 — Connect the combat animation chain (★ highest combat ROI) — M
+**Finding:** The deep pieces exist and are mounted but the chain is broken at both ends.
+`CombatMotorBridge.tsx:54` calls `buildCombatExecution(action, style, [])` with an **empty
+biomechanics-poses array** ("uses sensible defaults"), so the 556-LOC `combat-biomechanics.ts`
+generators (`generatePunchPoses`/`generateKickPoses`, 7-phase, Dempster/Winter joint tables) never
+feed the motor. And the bridge's per-frame `concordia:combat-pose-targets` event has **zero
+consumers** — nothing applies the pose targets to avatar bones (`AvatarSystem3D`).
+**Target:** (a) feed real biomech poses into `buildCombatExecution` (call `buildBiomechClipMap`/the
+generators per action+tier+style); (b) add a consumer in `AvatarSystem3D` that applies
+`concordia:combat-pose-targets` to the bone driver / pose-broker; (c) verify `ReflexBridge`'s
+`ReflexLayer` wince output actually reaches the same bone overlay and isn't gated out by the
+hit-pause mixer-freeze. Result: the procedural biomechanics + PD motors + reflex wince that the pitch
+claims become *visible and felt*, not emitted into the void.
+**Borrowed signal:** Skyrim/Sekiro — graded hurt-reactions + directional wince are what sell weight;
+the receiving end is where "that hurt" lives.
+**Verify-first:** confirm no other consumer subscribes to pose-targets under a different string before
+building the consumer.
+
+### D2 — Enforce frame-data parry/dodge windows server-side — M
+**Finding:** `combat-frame-data.js` derives `parry_window_ms`/`dodge_window_ms`/`active_ms` per skill,
+exposed read-only at `/api/combat/frame-data/:skillId`, but the attack path in `routes/worlds.js`
+**does not gate on them** — a hit lands regardless of whether the defender's parry/dodge window was
+open. So "frame-perfect parry/dodge" is currently decorative.
+**Target:** in the combat-attack resolution, when the defender has an active parry/dodge action whose
+window overlaps contact, zero/scale the transferred momentum (parry → near-zero momentum + attacker
+recovery-punish window; dodge → miss). Compose with D1's momentum model: windows gate *whether*
+contact lands, momentum governs *what it does*. Deterministic, server-authoritative, no RNG.
+**Borrowed signal:** Sekiro/Elden Ring two-layer model + guard-counter payoff.
+
+### D3 — Surface NPC interiority as visible signal (the "they see me" loop) — M
+**Finding:** Backend is deep (`character_opinions`, `npc_grudges`, `npc_schemes`, `npc_nemesis`,
+`weaponise-triggers.js`) but most of it never reaches the player's eyes/ears. Procedural NPCs in
+particular fall back to generic dialogue context.
+**Target (all cheap reads over existing tables):**
+- **Greeting barks from memory:** on NPC interaction, surface the last (npc,player) opinion/grudge
+  outcome as a one-line bark ("You again — after what you did to my brother.").
+- **Player-state reactivity:** wire 2–3 visible player states (recent combat / reputation / cleanliness
+  if tracked) into ambient barks, RDR2-style.
+- **Suspicion-on-follow:** simple state machine — NPC glances/flees when watched or followed.
+- **Observable scheme intersections:** ensure `scheme-overhear` + `EavesdropBubble` name *who* and
+  *why* (plotter/target archetype + faction + kind), keeping secrets out per the canary invariant.
+**Borrowed signal:** ctOS scannable life + RDR2 NPC memory ("continuity, not smarter AI").
+
+### D4 — Procedural-NPC depth floor → mid (close the authored gap) — L
+**Finding:** `server/lib/npc-generator.js` gives procedural NPCs personality vectors + density but
+**0 schedules, 0 load-bearing secrets, 0 relationships, 0 gear, 0 quest hooks, 0 scannable profile**.
+Authored NPCs carry ~25–35 rich fields. Many simulation systems (routines, asymmetry, schemes,
+legacy) read authored fields and no-op on procedural NPCs.
+**Target (in priority order — each is a deterministic generator pass keyed by NPC id):**
+1. **6-block schedule** from role+personality → wires procedural NPCs into the routine-cycle so they
+   *move* and show activity tags (biggest perceived-life win). ~200 LOC.
+2. **Scannable profile** `{occupation, income, one_quirk}` — ctOS's highest-ROI trick: shallow per NPC,
+   universal, huge perceived depth. ~80 LOC.
+3. **Gear/apparel** from archetype pools → visual distinctness + lootable on death. ~250 LOC.
+4. **Seed grudges/opinion-edges into DB** for procedural NPCs from faction dynamics (rival factions →
+   auto-tension) so the asymmetry/scheme engines stop no-op'ing on them. ~300 LOC.
+5. *(stretch)* a small fraction (~5–10%) get a **quest-gating secret** + 1–2 cross-world relationship
+   edges so procedural NPCs can seed procedural content, not just flavor.
+**Borrowed signal:** ctOS + RDR2 (routine + scannable fact + memory).
+
+### D5 — CK3 "hooks": information as a spendable asset — M/L
+**Finding:** Secrets and opinions are stored; `weaponise_at` fires a one-shot betrayal; but there is
+**no hook primitive** — no held, spendable, expiring leverage. This is CK3's keystone depth mechanic
+and the single highest-leverage *new* system the web research identified.
+**Target:** add a per-(holder,target) `hook{strength: weak|strong, source_secret_id, expires_at,
+uses_left}` record (new migration + lib). Spymaster/secret discovery *generates hook opportunities*;
+weak hook = single-use coercion, strong hook = passively blocks the target from hostile action
+(scheme/betrayal), both decay (~in-world decade). Wire hooks into: scheme proposal inputs, the
+intervene route (expose-vs-blackmail branch), and — crucially — **inheritance** (`npc-legacy.js`): a
+hook held over a dead NPC's heir still bites. Surface held hooks in the trait inspector.
+**Borrowed signal:** CK3 hooks/secrets/agents — "information itself is a currency."
+**Sequence:** builds on the already-deep secrets/opinions substrate; do after D3 so the surfacing
+patterns exist.
+
+### D6 — Run-mode payout-on-loss + risk-scaled spikes — S/M
+**Finding (Phase E §4):** horror 30 min / time-loop 22 min are in the sweet spot, but verify
+**every** run mode (roguelite/horde/extraction) grants persistent meta-progress **on a loss**, and tie
+run XP/loot to difficulty tier so audacity yields outsized spikes.
+**Target:** audit each mode's death/timeout path for a meta-currency/unlock payout; add risk-scaled XP
+multiplier keyed to tier. **Add a terror-radius/dread escalation read** to extraction's final stretch
+(DbD anticipation > jump-scare; horror already has `horror-dread.js` terror/chase radii — reuse).
+**Borrowed signal:** Hades (loss still pays out) + Tarkov (the extract itself is the risk gradient).
+
+### D7 — Zachtronics percentile histograms for puzzles — S/M
+**Finding:** `programming-puzzle.js` (MAX_CYCLES=10k) and hacking puzzles track pass/fail only.
+**Target:** after a passing solution, score on **orthogonal axes** (cycles / instruction-count /
+something area-like) and show the player a **percentile histogram** vs the population of submitted
+solutions ("you're in the 78th percentile on cycles"). The single most portable Zachtronics idea;
+turns "it works" into an optimization endgame. Optional: a "watch it run" replay affordance.
+**Borrowed signal:** Opus Magnum multi-axis scoring + percentile feedback (not leaderboards).
+
+### D8 — Music lens: wire the unwired (or honestly scope it) — M
+**Finding:** CRDT and WebRTC neighbors are genuinely deep, but in the music domain: **free-API
+ingestion (Jamendo/Audius/iTunes) not wired, AI-playlist infra exists but no macro calls the LLM,
+collaborative playlists are DB-schema-only.** EQ/crossfade audio graph **exists** (13 refs) — verify
+whether it actually applies before declaring it a stub.
+**Target:** pick the highest-value one (likely AI-playlist: infra already exists, just connect the
+macro → LLM → frontend) and ship it front-to-back; for the rest, either wire or mark honestly as
+roadmap in the spec (no "shipped" language over a stub).
+**Borrowed signal:** n/a (parity cleanup, not depth-feel).
+
+---
+
+## 4. Balance pass (E-series) — apply the already-designed Phase E values
+
+`docs/PHASE_E_BALANCE_DESIGN.md` is research-grounded and **designed**, but the values are largely
+**not applied to code**. `docs/BALANCE_DIALS.md` + the full dial inventory below are the targets.
+
+### E0 — Make frontend dials tunable (infra prerequisite) — M
+**Finding:** ~20 `POLL_MS`/`TICK_MS`/`FRAME_THROTTLE_MS` constants are **hardcoded and not
+env-overridable** — a balance pass on them currently requires a frontend rebuild.
+**Target:** server-rendered constants endpoint (or build-time env injection) so polls/throttles become
+tunable without a rebuild. Until then, any poll tuning is a code edit.
+
+### E1 — Relative NPC scaling (the one law) — M
+Per Phase E §0: common/ambient NPCs scale to **70–85%** of player tier (power fantasy), named/authored
+rivals + world bosses to **100–110%** (stakes preserved). This is the decisive dial — matters more
+than the XP curve. Verify the scaling code path and wire these rates.
+
+### E2 — Combat-feel micro-tune — S
+Per §1: drop input buffer ~110→**90ms**; raise heavy hitstop ~80→**150ms**; keep coyote 120 / jump
+buffer 130 / kill-freeze. Pairs with D1 (graded reactions) and D2 (windows).
+
+### E3 — Skill-evolution drama + rank ladder — M
+Per §2–3: dramatize the ~per-10-level evolution as an "Arise"-style named beat via
+`LevelUpJuiceBridge`; surface faction reputation as an explicit E→S rank ladder decoupled from level.
+
+### E4 — Courtship: gift multipliers + spouse reactivity — M
+Per §5: keep `COURT_AFFINITY_DELTA 0.05` (earned cadence), **add loved/known-gift multipliers**, and
+make the spouse a **complicating force** (reacts to factions/schemes/deaths) rather than a trophy.
+
+### E5 — Run-mode + minigame dials — S
+Adopt the playtest-fodder values once D6/D7 land. Restaurant tips already at 0.20/0.15 (T3.4). Diner
+Dash batching-combo multiplier + visible patience timers are the satisfying-loop additions.
+
+> **Full untuned-dial inventory** (verified file:line, current values) is captured in
+> `docs/BALANCE_DIALS.md` and the audit appendix — restaurant TTL/tips, horror dread/terror/chase
+> radii, time-loop 1320s, code-puzzle 10k cycles, roguelite 0.5×/1.25×/5, horde 1.0/1.25×, player-sign
+> TTL/limits, corpse radius/loss, romance 0.05/0.60/0.85/0.30, theme-park 0.001/0.15, world-boss
+> 24/48/72h, ~20 frontend polls. None are constitutional invariants — they're playtest targets.
+
+---
+
+## 5. Content pass (C-series) — feed the engines that scale with content
+
+The content layer is decoupled (drop a JSON, the seeder + heartbeats consume it). Author into the
+fields the engines actually read.
+
+- **C1 — Tunya lore** (5 → ~12 items): the flagship world's lore is thinnest by far. Add creature-tied
+  + faction-tied events. **C-priority #1.**
+- **C2 — Festivals + fauna beyond hub:** both substrates exist only in `concordia-hub`. Author 1–2
+  festivals and a fauna/fish set per major world.
+- **C3 — Per-world quest chains:** quests are global/sparse (13 files). Author a 5–7 step chain + 2–3
+  side quests for the thin worlds via the existing `seedQuestFile` path, into the
+  forward-sim/beat-cascade fields.
+- **C4 — Author into engine-read NPC fields:** as D4 lands, ensure new authored NPCs carry rich
+  `narrative_context` + `relationships` (the scheme/faction engines consume them).
+- **(not a gap)** Tunya creatures: census artifact — loader reads `bestiary.json`; tunya is grounded.
+
+---
+
+## 6. Recommended sequence
+
+1. **Cheap truth-fixes first:** §1 doc corrections (S) — stop the next session re-solving solved
+   problems.
+2. **D1 + D2 + E2** — the combat-feel cluster. Highest single-domain ROI; D1 connects already-built
+   depth, D2 makes windows real, E2 tunes the feel. Ship together.
+3. **D3** — surface NPC memory/intersections (cheap reads, big perceived-life gain).
+4. **E1** — relative scaling (the one law; gates whether anything feels threatening).
+5. **D4** — procedural-NPC depth floor (schedule → scannable → gear → DB grudges).
+6. **D5** — CK3 hooks (new system; builds on D3's surfacing + the deep secrets substrate).
+7. **D6 / D7 / E3 / E4 / E5** — run-mode payout, puzzle histograms, evolution drama, courtship depth.
+8. **C-series** — content density into the now-fully-lit engines.
+9. **D8 + E0** — music wire-up + frontend-dial infra (parallelizable, lower urgency).
+
+**Quality bar (user's standard): done/complete, beyond-AAA — no stubs, no fake data, no deferrals.**
+Each D/E item ships with a contract test pinning the new behavior (deterministic where physics/state is
+involved — no RNG in resolution paths).
+
+---
+
+## 7. Audit appendix — what was personally verified this pass
+
+- Combat bridges mounted: `world/page.tsx:4848,4850`, `CombatBridges.tsx:761`. Motor fed empty poses
+  (`CombatMotorBridge.tsx:54`); `concordia:combat-pose-targets` has **0 consumers** (grep).
+- Live Share CRDT: `server/lib/yjs-realtime.js` present.
+- Telehealth WebRTC: `components/healthcare/TelehealthVideoCall.tsx`, `server/lib/webrtc-signalling.js`.
+- `weaponise_at` consumer: `server/lib/embodied/weaponise-triggers.js`.
+- Creature loader merges bestiary: `server/lib/procedural-creature.js:157-161`.
+- Music audio graph exists: `concord-frontend/lib/music/player.ts` (13 GainNode/biquad/crossfade refs).
+- Content census + balance-dial file:line inventory: 5-agent audit (this branch).
+- Recent landed work (git log): P2 NPC density →≥30/world, P3 content census (factions/crops/puzzles),
+  NPC depth-floor regression fix, T-series game-plan completion — reconciled into the scorecard above.
+</content>
+</invoke>
