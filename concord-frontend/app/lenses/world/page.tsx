@@ -283,6 +283,14 @@ const DriftAlertToast = dynamic(
     })),
   { ssr: false }
 );
+// WS6 — radial danger-band telegraphing (safe hub → lethal frontier).
+const DangerBandHUD = dynamic(
+  () =>
+    import('@/components/world/DangerBandHUD').then((m) => ({
+      default: m.DangerBandHUD,
+    })),
+  { ssr: false }
+);
 const FootprintLayer = dynamic(
   () =>
     import('@/components/world/FootprintLayer').then((m) => ({
@@ -4737,6 +4745,7 @@ export default function WorldLensPage() {
               previously fired silently (NPC death, evo-promotion, refusal
               fields, weather rolls, agent insights, etc.) */}
           <EmergentEventFeed />
+          <DangerBandHUD />
           <PersonalBeatWidget />
           {/* Concordia 5-layer dynamic HUD — replaces the old static
               ConcordiaHUDPanels. See the plan file for layer breakdown:

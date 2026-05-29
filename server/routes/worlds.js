@@ -2627,6 +2627,53 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/worlds/:worldId/danger?x=&z= — WS6 danger telegraphing.
+  // Returns the danger band at a point + the nearest entities with their level
+  // relative to the caller, so the client can render "entering the Wilds" cues
+  // and per-enemy danger tells. Never walls the player off — purely advisory.
+  router.get("/:worldId/danger", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const x = Number(req.query.x) || 0;
+      const z = Number(req.query.z) || 0;
+      const playerLevel = Math.max(1, Number(req.query.level) || 1);
+      const { gradientAt } = await import("../lib/world-gradient.js");
+      const { dangerLabel } = await import("../lib/world-danger.js");
+      const g = gradientAt(db, worldId, x, z);
+
+      let nearby = [];
+      try {
+        nearby = db.prepare(`
+          SELECT id, archetype, level, x, z FROM world_npcs
+          WHERE world_id = ? AND COALESCE(is_dead, 0) = 0
+            AND x IS NOT NULL AND z IS NOT NULL
+          ORDER BY ((x - ?) * (x - ?) + (z - ?) * (z - ?)) ASC
+          LIMIT 16
+        `).all(worldId, x, x, z, z).map((n) => ({
+          id: n.id,
+          archetype: n.archetype,
+          level: n.level || 1,
+          distance: Math.round(Math.hypot(n.x - x, n.z - z)),
+          tell: dangerLabel((n.level || 1) - playerLevel),
+        }));
+      } catch { /* world_npcs optional */ }
+
+      res.json({
+        ok: true,
+        band: g.band,
+        bandName: g.bandName,
+        minLevel: g.minLevel,
+        maxLevel: g.maxLevel,
+        inHub: g.inHub,
+        distance: Math.round(g.distance),
+        density: Math.round(g.density * 100) / 100,
+        nearby,
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/schemes/:id/intervene — T2.3 barge-in.
   // The player clicks an active eavesdrop bubble within range and chooses to
   // expose / abet / ignore the plot. Proximity-gated to the plotter NPC so you

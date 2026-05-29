@@ -76,15 +76,18 @@ describe("WS2 gradient spawning (radial)", () => {
     assert.ok(levels.size > 1, "expected a spread of levels across danger bands");
   });
 
-  it("legacy mode (flag off) keeps creatures near the hub at low level", () => {
+  it("legacy mode (flag off) keeps creatures inside the ±400 footprint", () => {
     process.env.CONCORD_RADIAL_WORLDS = "0";
     const db = setup();
     const r = runFaunaSpawner({ state: {}, db });
     assert.ok(r.ok);
-    const maxLevel = db.prepare(
-      "SELECT MAX(level) AS m FROM world_npcs WHERE archetype LIKE 'creature:%'"
-    ).get()?.m ?? 0;
-    // ±400 legacy bounds sit well inside the hub/inner bands → low commons.
-    assert.ok(maxLevel <= 20, `legacy spawns should stay low-level, got ${maxLevel}`);
+    const creatures = db.prepare(
+      "SELECT x, z FROM world_npcs WHERE archetype LIKE 'creature:%'"
+    ).all();
+    assert.ok(creatures.length > 0);
+    // Radial off → spawns stay within the legacy ±400 bounds (no frontier sprawl).
+    for (const c of creatures) {
+      assert.ok(Math.abs(c.x) <= 401 && Math.abs(c.z) <= 401, `legacy spawn out of bounds: ${c.x},${c.z}`);
+    }
   });
 });

@@ -39,8 +39,11 @@ export function radialWorldsEnabled() {
 export const GRADIENT_DEFAULTS = Object.freeze({
   // Radius of the central safe hub disc (band 0). Inside this, danger = 0.
   hubRadiusM: envNum("CONCORD_GRADIENT_HUB_RADIUS_M", 150, { min: 10 }),
-  // Outer edge of the playable world — the lethal frontier rim.
-  worldRadiusM: envNum("CONCORD_WORLD_RADIUS_M", 3000, { min: 200 }),
+  // Outer edge of the playable world — the lethal frontier rim. Defaults to the
+  // frontend terrain half-extent (TerrainRenderer TERRAIN_SIZE=2000 → ±1000),
+  // so the full hub→frontier ramp lands on rendered ground. Procedural worlds
+  // with a larger terrain override this via rule_modulators.gradient.worldRadiusM.
+  worldRadiusM: envNum("CONCORD_WORLD_RADIUS_M", 1000, { min: 200 }),
   // How many concentric danger bands between hub and frontier.
   bandCount: Math.round(envNum("CONCORD_GRADIENT_BANDS", 6, { min: 2, max: 32 })),
   // Super-linear ramp exponent: >1 keeps the inner bands gentle and makes the
