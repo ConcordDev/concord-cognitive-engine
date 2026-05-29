@@ -12,6 +12,8 @@
 
 // F2.1 — equippable drops roll item affixes by rarity.
 import { rollAffixes, RARITY_RULES } from "../item-affixes.js";
+// F2.2 — a themed drop joins an item set.
+import { setIdForAffixes } from "../item-sets.js";
 
 const LOOT = Object.freeze({
   // Standard biome herbivores
@@ -203,7 +205,13 @@ export function rollLoot(speciesId, qualityMultiplier = 1.0) {
     // combat damage calc reads these off the equipped weapon.
     if (_isEquippable(entry.item) && RARITY_RULES[entry.rarity] && RARITY_RULES[entry.rarity].count > 0) {
       const affixes = rollAffixes(entry.rarity);
-      if (affixes.length) drop.affixes = affixes;
+      if (affixes.length) {
+        drop.affixes = affixes;
+        // F2.2 — a themed piece (by dominant affix) joins a set; 2+/4+ equipped
+        // grant set bonuses.
+        const sid = setIdForAffixes(affixes);
+        if (sid) drop.set_id = sid;
+      }
     }
     out.push(drop);
   }

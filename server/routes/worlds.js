@@ -2002,11 +2002,16 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const elementForGear = skillData.element || "none";
       let affixEnchant = 0;
       let talentMul = 1, talentFlat = 0;
+      let setMul = 1;
       try {
         const { combatEnchantmentFor } = await import("../lib/item-affixes.js");
+        const { setDamageFor } = await import("../lib/item-sets.js");
         const { getLoadout } = await import("../lib/combat/loadout.js");
-        affixEnchant = combatEnchantmentFor(getLoadout(db, userId), elementForGear);
-      } catch { /* affix substrate optional — combat unaffected */ }
+        const loadout = getLoadout(db, userId);
+        affixEnchant = combatEnchantmentFor(loadout, elementForGear);
+        // F2.2 — set bonuses (2+/4+ themed pieces) multiply damage.
+        setMul = setDamageFor(loadout, elementForGear).multiplier;
+      } catch { /* affix/set substrate optional — combat unaffected */ }
       // F2.3 — fold the player's allocated talent bonuses (melee/element % +
       // flat power). Kept inside computeDamage's raw inputs so _validateDamageCap
       // still bounds the result.
@@ -2019,7 +2024,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const attackerStats = {
         skillLevel: eff.effectiveLevel,
         element: skillData.element || 'none',
-        basePower: (skillData.base_power || 5) * talentMul,
+        basePower: (skillData.base_power || 5) * talentMul * setMul,
         enchantmentBonus: (skillData.enchantment_power || 0) + affixEnchant + talentFlat,
         worldMultiplier: eff.multiplier || 1.0,
       };
