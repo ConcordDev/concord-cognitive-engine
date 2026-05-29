@@ -25,6 +25,17 @@ function envNum(name, dflt, { min = 0, max = Infinity } = {}) {
   return Number.isFinite(v) && v >= min && v <= max ? v : dflt;
 }
 
+/**
+ * Whether worlds use the large radial map (expanded spawn bounds out to the
+ * frontier). Opt-in so the renderer/terrain extent can be expanded in lockstep;
+ * with it off, spawners keep the legacy ±400 footprint and everything stays
+ * band 0–1 near the hub (i.e. legacy behaviour).
+ */
+export function radialWorldsEnabled() {
+  const v = String(process.env.CONCORD_RADIAL_WORLDS || "").toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "yes";
+}
+
 export const GRADIENT_DEFAULTS = Object.freeze({
   // Radius of the central safe hub disc (band 0). Inside this, danger = 0.
   hubRadiusM: envNum("CONCORD_GRADIENT_HUB_RADIUS_M", 150, { min: 10 }),
