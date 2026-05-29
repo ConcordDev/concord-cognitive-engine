@@ -24515,6 +24515,10 @@ registerTalentsMacros(register);
 import registerAscensionMacros from "./domains/ascension.js";
 registerAscensionMacros(register);
 
+// C3/F5.1 — instanced dungeon/raid (party-scoped phased-boss encounter).
+import registerDungeonMacros from "./domains/dungeon.js";
+registerDungeonMacros(register);
+
 // F4.1 — shared in-run draft (boon/relic drafts for roguelite/extraction/horde).
 import registerRunDraftMacros from "./domains/run-draft.js";
 registerRunDraftMacros(register);
