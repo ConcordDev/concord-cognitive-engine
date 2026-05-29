@@ -224,7 +224,11 @@ export function CollabDocWorkspace() {
     }
   }, []);
 
-  // ── Poll-based CRDT sync (1s) + presence ─────────────────────────────────
+  // ── Presence + reconciliation backstop (5s) ──────────────────────────────
+  // Realtime co-editing is now CRDT-pushed via useYjsDoc (yjs:update over the
+  // socket); the yText observer above hydrates the editor live. This slow poll
+  // only refreshes the presence roster and acts as a reconciliation safety net —
+  // it no longer drives realtime text (that would fight Yjs).
   useEffect(() => {
     if (!activeDocId) return;
     let stop = false;
@@ -247,7 +251,7 @@ export function CollabDocWorkspace() {
         }
       }
     };
-    const t = setInterval(tick, 1000);
+    const t = setInterval(tick, 5000);
 
     // Phase 4 realtime push: subscribe to the `collab:doc-op` /
     // `collab:doc-snapshot` / `collab:doc-restored` Socket.IO events the
