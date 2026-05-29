@@ -35,6 +35,33 @@
 import crypto from "crypto";
 import { generateCreature, validateCreaturePhysics, WORLD_MODIFIERS, TOPOLOGIES } from "./procedural-creature.js";
 import { evolveSkill, getSkill, createSkill, attachSkills } from "./emergent-skills.js";
+import { fuseTwoSkills, skillFusionEnabled } from "./skill-fusion.js";
+
+/**
+ * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
+ * from a parent's strongest damage-bearing ability seed, so two parents can be
+ * fused (Bakugo dynamic). Returns null when the parent has no damaging ability.
+ */
+function _skillDescriptorFromParent(parent) {
+  const seeds = Array.isArray(parent?.abilitySeeds) ? parent.abilitySeeds : [];
+  let best = null;
+  for (const seed of seeds) {
+    for (const eff of seed?.effects ?? []) {
+      if (eff?.kind === "damage" && Number(eff?.params?.amount) > 0) {
+        const amt = Number(eff.params.amount);
+        if (!best || amt > best.maxDamage) {
+          best = {
+            name: seed.name || parent?.provenance?.description || parent?.id || "power",
+            element: eff.params.element || (WORLD_MODIFIERS[parent?.worldId]?.abilityFlavors ?? [])[0] || "physical",
+            maxDamage: amt,
+            rangeM: Number(seed?.range_m) || undefined,
+          };
+        }
+      }
+    }
+  }
+  return best;
+}
 
 /* ── Bond tracking ────────────────────────────────────────────────── */
 
@@ -248,6 +275,33 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
     }
   }
 
+  // WS4 (Bakugo dynamic): when both parents have a damaging power, FUSE them
+  // into a novel child power stronger than either — combined element, bounded
+  // gain, scaled by stability + generation. This is the escalator that pushes
+  // strength toward the frontier (WS3). Additive + best-effort.
+  let fusionSkill = null;
+  if (skillFusionEnabled()) {
+    const da = _skillDescriptorFromParent(a);
+    const dbp = _skillDescriptorFromParent(b);
+    if (da && dbp) {
+      const fused = fuseTwoSkills(da, dbp, { stability, generation, seedKey: `${a.id}|${b.id}` });
+      const created = createSkill(db, {
+        name: fused.name,
+        verb: "fusion_strike",
+        requires: { bodyParts: [], topologies: [] },
+        costs: { stamina: 16, cooldownMs: 4000 },
+        effects: [{ kind: "damage", params: { amount: fused.maxDamage, element: fused.element } }],
+        origin: "fusion",
+        parentId: a.id,
+        gameplayEvent: `fusion of ${a.id} + ${b.id}`,
+      });
+      if (created.ok) {
+        fusionSkill = { ...created.skill, fusion: fused };
+        blueprint.skillIds.push(created.skill.id);
+      }
+    }
+  }
+
   // Persist lineage.
   if (db) {
     try {
@@ -266,6 +320,7 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
     crossWorld,
     inheritedSkillIds,
     tensionSkill,
+    fusionSkill,
     parents: [a.id, b.id],
     generation,
   };
