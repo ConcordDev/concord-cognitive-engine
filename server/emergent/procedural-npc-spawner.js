@@ -17,6 +17,7 @@
 
 import logger from "../logger.js";
 import { generateNpc, persistGeneratedNpc, FACTION_PROFILES } from "../lib/npc-generator.js";
+import { seedNPCAsymmetry } from "../lib/npc-asymmetry.js";
 
 const FACTION_TARGET = Number(process.env.CONCORD_FACTION_TARGET_POPULATION || 8);
 const MAX_PER_PASS = Number(process.env.CONCORD_PROCGEN_NPCS_PER_PASS || 12);
@@ -76,7 +77,19 @@ export async function runProceduralNpcSpawner({ db } = {}) {
         if (!npc) continue;
         try {
           const r = persistGeneratedNpc(db, npc);
-          if (r.ok && r.action === "created") spawned++;
+          if (r.ok && r.action === "created") {
+            spawned++;
+            // D4 (depth plan) — seed the scheme/asymmetry substrate for the
+            // freshly-spawned procedural NPC from its GENERATED interiority
+            // (narrative_context: secret/fear/current_goal). Without this the
+            // deep scheme + asymmetry engines silently no-op on procedural
+            // NPCs — they sit as flavour while only authored NPCs ever plot.
+            // seedNPCAsymmetry → deriveSchemeSubstrateFromNarrative (T1.3)
+            // turns that interiority into the stress/coping the scheme gate
+            // reads, so the bulk of the population can now scheme. Idempotent.
+            try { await seedNPCAsymmetry(db, npc); }
+            catch (e) { logger.debug?.("procgen-npc-spawner", "asymmetry_seed_failed", { id: npc.id, error: e?.message }); }
+          }
         } catch (err) {
           try { logger.debug?.("procgen-npc-spawner", "persist_failed", { id: npc.id, error: err?.message }); }
           catch { /* ignore */ }

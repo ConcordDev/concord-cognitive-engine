@@ -130,16 +130,20 @@ detector); a per-NPC `scannable_profile` belongs with D4's procedural-NPC pass.
 Authored NPCs carry ~25–35 rich fields. Many simulation systems (routines, asymmetry, schemes,
 legacy) read authored fields and no-op on procedural NPCs.
 **Target (in priority order — each is a deterministic generator pass keyed by NPC id):**
-1. **6-block schedule** from role+personality → wires procedural NPCs into the routine-cycle so they
-   *move* and show activity tags (biggest perceived-life win). ~200 LOC.
-2. **Scannable profile** `{occupation, income, one_quirk}` — ctOS's highest-ROI trick: shallow per NPC,
-   universal, huge perceived depth. ~80 LOC.
-3. **Gear/apparel** from archetype pools → visual distinctness + lootable on death. ~250 LOC.
-4. **Seed grudges/opinion-edges into DB** for procedural NPCs from faction dynamics (rival factions →
-   auto-tension) so the asymmetry/scheme engines stop no-op'ing on them. ~300 LOC.
-5. *(stretch)* a small fraction (~5–10%) get a **quest-gating secret** + 1–2 cross-world relationship
-   edges so procedural NPCs can seed procedural content, not just flavor.
+1. ~~**6-block schedule**~~ — **already landed** (recent P2 work + the user's "6 schedule blocks,
+   sparks" pass) → procedural NPCs run the routine-cycle + show activity tags.
+2. ~~**Scannable profile**~~ — **already landed** (recent P2 "ctOS profiles").
+3. **Gear/apparel** from archetype pools → visual distinctness + lootable on death. ~250 LOC. *(open)*
+4. **Seed asymmetry/scheme substrate** — **DONE.** The spawner (`procedural-npc-spawner.js`) now calls
+   `seedNPCAsymmetry(db, npc)` on each created procedural NPC, deriving stress/coping from its generated
+   `narrative_context` (secret/fear/goal) via T1.3's `deriveSchemeSubstrateFromNarrative`. Before this
+   the deep scheme + asymmetry engines silently no-op'd on the 74+ procedural NPCs — they sat as flavour
+   while only the authored cast ever plotted. Now the bulk of the population can scheme. Idempotent,
+   guarded so a seed failure never kills the spawn loop. Wiring test 2/2; spawner regression 21/21.
+5. *(stretch, open)* a small fraction get a **quest-gating secret** + 1–2 cross-world relationship edges
+   so procedural NPCs can seed procedural content, not just flavor.
 **Borrowed signal:** ctOS + RDR2 (routine + scannable fact + memory).
+**Remaining for D4:** gear/apparel (#3) + the quest-gating-secret stretch (#5).
 
 ### D5 — CK3 "hooks": information as a spendable asset — M/L
 **Finding:** Secrets and opinions are stored; `weaponise_at` fires a one-shot betrayal; but there is
