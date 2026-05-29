@@ -413,9 +413,23 @@ execution-status section above and the CLAUDE.md "Recent shipped work" row).
   playlist edit path is now wired** (cross-user add/detail/list, `tests/music-collab-
   playlist.test.js`). Only **free-API ingestion** (Jamendo/Audius/iTunes) remains unwired —
   needs network egress; wire it end-to-end or mark roadmap (no "shipped" over a stub).
-- **E0 (full migration):** the infra shipped (`/api/config/client` + `useClientConfig`);
-  DriftAlertToast + RestaurantDashboard migrated. The other ~22 poll components can adopt
-  the hook mechanically (one-line each) — pure follow-on, no new design.
+- **E0 (full migration):** the infra shipped (`/api/config/client` + `useClientConfig`); **11
+  components migrated** (DriftAlertToast, RestaurantDashboard, SubmarineHUD, ExtractionRunHUD,
+  TimeLoopHUD, ClimbingTracker, HorrorRoleHUDs, CourtshipProgressOverlay, FootprintLayer,
+  PartyCombatHUD, ForwardPredictionsPanel). Remaining components (RogueliteRunHUD, BrawlInviteToast,
+  StrategicWarBanner, DreamReader, MahjongTable, NemesisGlyphLayer, NPCActivityTag, DangerBandHUD,
+  ContextPromptLayer, AlertsPanel, usePagePresence) each need a new `client-config.js` key + the
+  same one-line hook swap — pure follow-on, no new design.
+
+> **Verifying frontend changes in this memory-constrained container:** the full-project
+> `tsc --noEmit` OOMs (it globs all ~hundreds of components). Since everything prior already
+> passed tsc, scope tsc to just the changed files: write a `concord-frontend/tsconfig.scoped.json`
+> that `{ "extends": "./tsconfig.json", "include": [<changed files> + "next-env.d.ts" + "hooks/useClientConfig.ts"] }`
+> (the `extends` keeps `@/` path aliases working), then
+> `NODE_OPTIONS=--max-old-space-size=1536 npx tsc -p tsconfig.scoped.json --noEmit --skipLibCheck`.
+> This checks only the changed files + their import graph — fits in memory, EXIT 0 = clean.
+> Delete the scoped config after (it's an ad-hoc artifact). Every frontend change this
+> session was verified this way.
 - **POLISH_AUDIT Tier-2 combat feel (T2.1, T2.7, T2.8, T2.11):** light-hit hitstop, dedupe
   the three overlapping hitstop systems, crit/kill FOV punch. **Caution:** these interact
   with the impact-feel system (E2) — touch as one coordinated pass with a dedupe authority,

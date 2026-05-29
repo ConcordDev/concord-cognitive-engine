@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { useClientConfig } from '@/hooks/useClientConfig';
 
 interface Prediction {
   id: string;
@@ -23,9 +24,8 @@ interface Prediction {
   expires_at: number;
 }
 
-const POLL_MS = 5 * 60_000;
-
 export function ForwardPredictionsPanel() {
+  const POLL_MS = useClientConfig().poll.forwardPredMs; // E0 — server-tunable
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [collapsed, setCollapsed] = useState(true); // default collapsed; quiet
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());

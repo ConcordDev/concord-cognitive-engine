@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/useRealtimeRefresh';
+import { useClientConfig } from '@/hooks/useClientConfig';
 import { Pause, Play, FastForward, Zap } from 'lucide-react';
 
 interface Combatant {
@@ -47,10 +48,10 @@ interface SessionState {
   queued: Queued[];
 }
 
-const DISCOVERY_MS = 1000;
-const TICK_MS = 200;
-
 export function PartyCombatHUD() {
+  const _cfg = useClientConfig(); // E0 — server-tunable cadence
+  const DISCOVERY_MS = _cfg.poll.partyCombatDiscMs;
+  const TICK_MS = _cfg.poll.partyCombatTickMs;
   const [session, setSession] = useState<SessionState | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
   const tickRef = useRef<number | null>(null);
