@@ -2695,6 +2695,17 @@ export default function createWorldsRouter({ requireAuth, db }) {
         distance: Math.round(g.distance),
         density: Math.round(g.density * 100) / 100,
         nearby,
+        // Gradient config + hub anchor so the client can compute the danger band
+        // LOCALLY from the player position (no per-frame poll). Fetched once on
+        // world entry; the System reads bands off the live pose instead.
+        config: {
+          worldRadiusM: g.config.worldRadiusM,
+          hubRadiusM: g.config.hubRadiusM,
+          bandCount: g.config.bandCount,
+          dangerCurve: g.config.dangerCurve,
+          frontierLevel: g.config.frontierLevel,
+        },
+        anchor: { x: g.anchor.x, z: g.anchor.z, radiusM: g.anchor.radiusM },
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
