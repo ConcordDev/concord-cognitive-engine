@@ -4,6 +4,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { resumeAudioContext } from '../../lib/audio/unlock';
 import { api as apiClient } from '../../lib/api/client';
+import { tensionStemParams, ghostStepParams, ghostStepWorldPos, type TensionBand } from '../../lib/audio/horror-tension';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -49,6 +50,11 @@ interface SoundscapeAPI {
    * (lightning casts, big hits) and by debug overlays.
    */
   setAmbientVolume: (level: number) => void;
+  /**
+   * E2 — drive the horror tension stem + spatial ghost footstep from a
+   * `horror:tension` server event. band='calm' silences the stem.
+   */
+  setHorrorTension: (band: TensionBand, dread: number, pursuerDistance: number | null, ghostPos?: { x: number; y: number; z: number } | null) => void;
 }
 
 /* ── District ambient config (base freq + texture) ────────────── */
@@ -143,6 +149,10 @@ const SFX_MAP: Record<string, SFXDef> = {
   // trigger so we can keep the SFX defs flat.
   'heartbeat-lub':     { freq: 65,   type: 'sine',     duration: 0.10, attack: 0.005, decay: 0.09 },
   'heartbeat-dub':     { freq: 50,   type: 'sine',     duration: 0.14, attack: 0.005, decay: 0.13 },
+  // E2 — the ghost's footfall in asymmetric horror. Dull, dragging low thud
+  // routed through the HRTF panner so the investigator hears which direction
+  // the stalker is closing from.
+  'ghost-step':        { freq: 58,   type: 'sawtooth', duration: 0.20, attack: 0.004, decay: 0.18, semitones: [0, -4] },
 };
 
 /**
@@ -253,6 +263,7 @@ const SoundscapeContext = createContext<SoundscapeAPI>({
   setMusicDistrict: () => {},
   setMusicCombatIntensity: () => {},
   setAmbientVolume: () => {},
+  setHorrorTension: () => {},
 });
 
 /* ── Procedural ambient music — per-district loops ─────────────── */
@@ -1026,10 +1037,77 @@ export default function SoundscapeEngine({
     } catch { /* gain ramp best-effort */ }
   }, []);
 
+  // ── E2 horror tension stem ──────────────────────────────────────────────
+  // A continuous detuned two-voice drone (root + tritone) whose gain/filter/
+  // dissonance track the band+dread. The ghost footstep is fired spatially on
+  // a distance-driven cadence so the investigator hears it close in.
+  const horrorStemRef = useRef<{ root: OscillatorNode; trit: OscillatorNode; gain: GainNode; filter: BiquadFilterNode } | null>(null);
+  const ghostStepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const setHorrorTension = useCallback((band: TensionBand, dread: number, pursuerDistance: number | null, ghostPos?: { x: number; y: number; z: number } | null) => {
+    const ctx = initAudio();
+    if (!ctx || !masterGainRef.current) return;
+    const params = tensionStemParams(band, dread);
+
+    if (!params.active) {
+      // Fade out + tear down the stem.
+      if (horrorStemRef.current) {
+        const { gain, root, trit } = horrorStemRef.current;
+        try { gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6); } catch { /* ok */ }
+        setTimeout(() => { try { root.stop(); trit.stop(); } catch { /* ok */ } }, 700);
+        horrorStemRef.current = null;
+      }
+      if (ghostStepTimerRef.current) { clearTimeout(ghostStepTimerRef.current); ghostStepTimerRef.current = null; }
+      return;
+    }
+
+    // Build the stem on first activation.
+    if (!horrorStemRef.current) {
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(params.filterHz, ctx.currentTime);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      filter.connect(gain);
+      gain.connect(masterGainRef.current);
+      const root = ctx.createOscillator();
+      root.type = 'sawtooth';
+      root.frequency.setValueAtTime(48, ctx.currentTime);
+      const trit = ctx.createOscillator();
+      trit.type = 'sawtooth';
+      // Tritone above the root (6 semitones) — the unstable "danger" interval.
+      trit.frequency.setValueAtTime(48 * Math.pow(2, 6 / 12), ctx.currentTime);
+      root.connect(filter);
+      trit.connect(filter);
+      try { root.start(); trit.start(); } catch { /* ok */ }
+      horrorStemRef.current = { root, trit, gain, filter };
+    }
+
+    const stem = horrorStemRef.current;
+    try {
+      stem.gain.gain.linearRampToValueAtTime(params.gain, ctx.currentTime + 0.3);
+      stem.filter.frequency.linearRampToValueAtTime(params.filterHz, ctx.currentTime + 0.3);
+      // Dissonance detunes the tritone voice slightly sharp for a beating clash.
+      stem.trit.frequency.linearRampToValueAtTime(48 * Math.pow(2, 6 / 12) * (1 + params.dissonance * 0.03), ctx.currentTime + 0.3);
+    } catch { /* ok */ }
+
+    // Spatial ghost footstep cadence.
+    if (ghostStepTimerRef.current) { clearTimeout(ghostStepTimerRef.current); ghostStepTimerRef.current = null; }
+    const step = ghostStepParams(pursuerDistance);
+    const pos = ghostStepWorldPos(ghostPos);
+    if (step.shouldPlay && pos) {
+      playSpatialSFX('ghost-step', pos);
+      // Schedule the next footfall (the next horror:tension tick will reschedule).
+      ghostStepTimerRef.current = setTimeout(() => {
+        if (horrorStemRef.current) playSpatialSFX('ghost-step', pos);
+      }, step.intervalMs);
+    }
+  }, [initAudio, playSpatialSFX]);
+
   const api: SoundscapeAPI = {
     setDistrict, setTimeOfDay, setInterior, setWeather,
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
-    setMusicDistrict, setMusicCombatIntensity, setAmbientVolume,
+    setMusicDistrict, setMusicCombatIntensity, setAmbientVolume, setHorrorTension,
   };
 
   // Allow any sibling or parent component to call SoundscapeEngine APIs via
@@ -1135,6 +1213,19 @@ export default function SoundscapeEngine({
     window.addEventListener('concordia:dialogue-active', dialogueOnHandler);
     window.addEventListener('concordia:dialogue-ended', dialogueOffHandler);
 
+    // E2 — horror tension. The world page bridges the `horror:tension` socket
+    // event to this window event; we drive the dissonant stem + spatial ghost
+    // footstep from it.
+    const horrorTensionHandler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        band?: TensionBand; dread?: number; pursuerDistance?: number | null;
+        ghostPos?: { x: number; y: number; z: number } | null;
+      } | undefined;
+      if (!detail) return;
+      setHorrorTension(detail.band ?? 'calm', detail.dread ?? 0, detail.pursuerDistance ?? null, detail.ghostPos ?? null);
+    };
+    window.addEventListener('concordia:horror-tension', horrorTensionHandler);
+
     return () => {
       window.removeEventListener('concordia:soundscape-command', handler);
       window.removeEventListener('concordia:sonic-pulse', pulseHandler);
@@ -1142,10 +1233,11 @@ export default function SoundscapeEngine({
       window.removeEventListener('concordia:death-collapse', combatHandler);
       window.removeEventListener('concordia:dialogue-active', dialogueOnHandler);
       window.removeEventListener('concordia:dialogue-ended', dialogueOffHandler);
+      window.removeEventListener('concordia:horror-tension', horrorTensionHandler);
       if (duckExpireTimer) clearTimeout(duckExpireTimer);
       if (pulseRestoreTimer) clearTimeout(pulseRestoreTimer);
     };
-  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity, setAmbientVolume]);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity, setAmbientVolume, setHorrorTension]);
 
   return (
     <SoundscapeContext.Provider value={api}>

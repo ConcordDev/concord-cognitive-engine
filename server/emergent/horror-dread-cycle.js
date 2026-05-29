@@ -63,7 +63,13 @@ export async function runHorrorDreadCycle({ db, io } = {}) {
       try {
         io?.to?.(`user:${p.userId}`)?.emit?.("horror:tension", {
           sessionId: p.sessionId, dread: p.dread, band: p.band,
-          inChase: p.inChase, pursuerDistance: p.pursuerDistance, healthTier: p.healthTier, ts: Date.now(),
+          inChase: p.inChase, pursuerDistance: p.pursuerDistance, healthTier: p.healthTier,
+          // E2 — ghost world position lets the client spatialise (HRTF) the
+          // footstep cue. Only sent within the audible band to avoid leaking
+          // the ghost's exact position when it's far away.
+          ghostPos: (Number.isFinite(p.pursuerDistance) && p.pursuerDistance <= 24)
+            ? { x: ghostPos.x, y: ghostPos.y || 0, z: ghostPos.z || 0 } : null,
+          ts: Date.now(),
         });
         tensionEmits++;
       } catch { /* emit best-effort */ }

@@ -3397,6 +3397,14 @@ export default function WorldLensPage() {
       if (sign) window.dispatchEvent(new CustomEvent('concordia:sign-placed', { detail: sign }));
     };
     worldSocket.on('world:sign-placed', handleSignPlaced);
+    // E2 — horror tension → window event for SoundscapeEngine's dissonant stem
+    // + spatial ghost footstep. Server emits per-investigator from the
+    // horror-dread-cycle heartbeat.
+    const handleHorrorTension = (...args: unknown[]) => {
+      const data = args[0] as Record<string, unknown> | undefined;
+      if (data) window.dispatchEvent(new CustomEvent('concordia:horror-tension', { detail: data }));
+    };
+    worldSocket.on('horror:tension', handleHorrorTension);
 
     return () => {
       worldSocket.off('player:load:ack', handleLoadAck);
@@ -3415,6 +3423,7 @@ export default function WorldLensPage() {
       worldSocket.off('world:deformation', handleWorldDeformation);
       worldSocket.off('world:sonic-pulse', handleSonicPulse);
       worldSocket.off('world:sign-placed', handleSignPlaced);
+      worldSocket.off('horror:tension', handleHorrorTension);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldSocket.isConnected, activeDistrict.id]);
