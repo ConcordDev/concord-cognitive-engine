@@ -18,6 +18,20 @@
 import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
 import { getAuthoredFaction } from "../lib/content-seeder.js";
+import { resolveFactionClash } from "../lib/faction-strength.js";
+
+// WS5: structural strength decides wars/raids. Kill-switch CONCORD_FACTION_STRENGTH=0.
+function factionStrengthEnabled() { return process.env.CONCORD_FACTION_STRENGTH !== "0"; }
+
+function nudgeMomentum(db, factionId, delta) {
+  try {
+    db.prepare(`
+      UPDATE faction_strategy_state
+      SET momentum = MAX(-1.0, MIN(1.0, momentum + ?)), updated_at = unixepoch()
+      WHERE faction_id = ?
+    `).run(delta, factionId);
+  } catch { /* best-effort */ }
+}
 
 /**
  * Sprint C / Track A1 — resolve a faction's current leader coping trait
@@ -38,7 +52,7 @@ function resolveLeaderCopingTrait(db, factionId) {
   } catch { return null; }
 }
 
-export async function runFactionStrategyCycle({ db, state: _state, tickCount: _tickCount } = {}) {
+export async function runFactionStrategyCycle({ db, io, state: _state, tickCount: _tickCount } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const now = Math.floor(Date.now() / 1000);
 
@@ -73,7 +87,36 @@ export async function runFactionStrategyCycle({ db, state: _state, tickCount: _t
       const applied = applyMove(db, f.faction_id, picked, allStates);
       if (applied) {
         advanced++;
-        moves.push({ factionId: f.faction_id, move: applied.move, target: applied.target });
+        const entry = { factionId: f.faction_id, move: applied.move, target: applied.target };
+        // WS5: a RAID or DECLARE_WAR is now decided by structural strength
+        // (leaders + trained members + realm setup). The stronger faction gains
+        // momentum, the weaker loses it, and a hot-event fires for the feed.
+        if (factionStrengthEnabled() && applied.target &&
+            (applied.move === "RAID" || applied.move === "DECLARE_WAR")) {
+          try {
+            const clash = resolveFactionClash(db, f.faction_id, applied.target);
+            if (!clash.draw) {
+              nudgeMomentum(db, clash.winner, clash.winnerMomentum);
+              nudgeMomentum(db, clash.loser, clash.loserMomentum);
+              entry.clash = {
+                winner: clash.winner, loser: clash.loser,
+                aStrength: clash.aStrength, bStrength: clash.bStrength, margin: clash.margin,
+              };
+              try {
+                io?.emit?.("faction-war:clash", {
+                  move: applied.move,
+                  attacker: f.faction_id,
+                  defender: applied.target,
+                  winner: clash.winner,
+                  loser: clash.loser,
+                  margin: clash.margin,
+                  strengths: { [f.faction_id]: clash.aStrength, [applied.target]: clash.bStrength },
+                });
+              } catch { /* emit best-effort */ }
+            }
+          } catch { /* strength resolution best-effort */ }
+        }
+        moves.push(entry);
       }
     } catch (err) {
       try { logger.warn("faction-strategy-cycle", "faction_failed", { factionId: f.faction_id, error: err?.message }); } catch { /* ignore */ }
