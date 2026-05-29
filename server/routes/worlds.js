@@ -2630,6 +2630,24 @@ export default function createWorldsRouter({ requireAuth, db }) {
         });
       } catch { /* Layer 8 disabled — combat still works */ }
 
+      // WS4(b) — near-death awakening trigger. If the player SURVIVED a hit that
+      // dropped them to a sliver of HP, surface an awakening opportunity (a
+      // stress-triggered power spike, MHA-style). Advisory event; the client
+      // confirms which skill to awaken via the skill-awakening.awaken macro.
+      if (!kill) {
+        try {
+          const { isNearDeath } = await import("../lib/skill-awakening.js");
+          const bars = db.prepare(
+            `SELECT hp, max_hp FROM player_resource_bars WHERE user_id = ? AND world_id = ?`
+          ).get(userId, worldId);
+          if (bars && isNearDeath(bars.hp, bars.max_hp)) {
+            req.app.locals.io?.to(`user:${userId}`)?.emit?.("player:awakening-available", {
+              worldId, hp: bars.hp, maxHp: bars.max_hp, source: 'near_death_survived',
+            });
+          }
+        } catch { /* awakening surfacing is best-effort */ }
+      }
+
       res.json({ ok: true, damageResult, eventId, kill, message: kill ? 'You have been defeated' : undefined });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

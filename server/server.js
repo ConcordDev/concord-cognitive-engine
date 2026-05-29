@@ -24465,6 +24465,10 @@ registerDiscoveryMacros(register);
 import registerSkillFusionMacros from "./domains/skill-fusion.js";
 registerSkillFusionMacros(register);
 
+// WS4(b) — awakening + specialization (Deku/Bakugo power growth).
+import registerSkillAwakeningMacros from "./domains/skill-awakening.js";
+registerSkillAwakeningMacros(register);
+
 // Theme deferred (game-feel pass): async-cooperation player signs.
 // Register the macro domain + the cleanup heartbeat.
 import registerPlayerSignsMacros from "./domains/player-signs.js";
