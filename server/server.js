@@ -24461,6 +24461,10 @@ registerDtuPortabilityMacros(register);
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
 
+// WS4(d) — player cross-skill fusion (the MHA fusion engine for players).
+import registerSkillFusionMacros from "./domains/skill-fusion.js";
+registerSkillFusionMacros(register);
+
 // Theme deferred (game-feel pass): async-cooperation player signs.
 // Register the macro domain + the cleanup heartbeat.
 import registerPlayerSignsMacros from "./domains/player-signs.js";
