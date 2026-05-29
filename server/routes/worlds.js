@@ -1996,11 +1996,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         : {};
       const eff = computeSkillEffectiveness(skillTypeForLookup, skillRow?.level || 1, rules, { worldId });
 
+      // F2.1 — fold equipped-gear affix bonuses into the enchantment power so
+      // a Flaming/Keen weapon actually changes the hit (the other half of the
+      // affix wire; the loot-roll assigns them). Best-effort — no gear → +0.
+      let affixEnchant = 0;
+      try {
+        const { combatEnchantmentFor } = await import("../lib/item-affixes.js");
+        const { getLoadout } = await import("../lib/combat/loadout.js");
+        affixEnchant = combatEnchantmentFor(getLoadout(db, userId), skillData.element || "none");
+      } catch { /* affix substrate optional — combat unaffected */ }
+
       const attackerStats = {
         skillLevel: eff.effectiveLevel,
         element: skillData.element || 'none',
         basePower: skillData.base_power || 5,
-        enchantmentBonus: skillData.enchantment_power || 0,
+        enchantmentBonus: (skillData.enchantment_power || 0) + affixEnchant,
         worldMultiplier: eff.multiplier || 1.0,
       };
 

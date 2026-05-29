@@ -10,6 +10,9 @@
 // rarity is folded into the inventory row's quality field. chance is
 // rolled per-drop (independent), so a corpse can yield multiple items.
 
+// F2.1 — equippable drops roll item affixes by rarity.
+import { rollAffixes, RARITY_RULES } from "../item-affixes.js";
+
 const LOOT = Object.freeze({
   // Standard biome herbivores
   deer: [
@@ -195,9 +198,21 @@ export function rollLoot(speciesId, qualityMultiplier = 1.0) {
     const [min, max] = entry.qtyRange;
     const baseQty = min + Math.floor(Math.random() * (max - min + 1));
     const quantity = Math.max(1, Math.round(baseQty * q));
-    out.push({ item: entry.item, quantity, quality: entry.rarity });
+    const drop = { item: entry.item, quantity, quality: entry.rarity };
+    // F2.1 — equippable drops roll affixes by rarity (raw materials don't). The
+    // combat damage calc reads these off the equipped weapon.
+    if (_isEquippable(entry.item) && RARITY_RULES[entry.rarity] && RARITY_RULES[entry.rarity].count > 0) {
+      const affixes = rollAffixes(entry.rarity);
+      if (affixes.length) drop.affixes = affixes;
+    }
+    out.push(drop);
   }
   return out;
+}
+
+// Heuristic: is a dropped item an equippable weapon/armor (vs a raw material)?
+function _isEquippable(itemName = "") {
+  return /sword|blade|dagger|axe|mace|hammer|spear|lance|staff|bow|wand|gun|rifle|pistol|shield|armou?r|helm|helmet|plate|mail|gauntlet|boot|greave|robe|cloak|ring|amulet|talisman|charm/i.test(String(itemName));
 }
 
 /** Static lookup: which species exist for a (universe, biome) combo. */
