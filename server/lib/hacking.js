@@ -12,6 +12,27 @@ import logger from "../logger.js";
 
 const VALID_COMMANDS = new Set(["ls", "cd", "cat", "connect", "exec", "decrypt", "ssh"]);
 
+// T1.5 — turn a solution step into trail GUIDANCE (the intent, not the literal
+// command) so exploring the system points you toward the next move instead of
+// requiring you to memorize an exact command list. The fiction (penetrate a
+// system by following leads) now matches the mechanic.
+export function hintForStep(stepCommand) {
+  if (!stepCommand) return "The trail goes cold here — you've reached the objective.";
+  const parts = String(stepCommand).trim().split(/\s+/);
+  const head = parts[0];
+  const arg = parts.slice(1).join(" ");
+  switch (head) {
+    case "connect":
+    case "ssh":   return arg ? `A reference points to a host: "${arg}". Try reaching it.` : "There's another host to reach.";
+    case "cd":    return arg ? `A path looks worth exploring: "${arg}".` : "There's a directory worth opening.";
+    case "cat":   return arg ? `A file here looks relevant: "${arg}". Read it.` : "A file here looks relevant — read it.";
+    case "decrypt": return arg ? `Something is encrypted: "${arg}". It can be cracked.` : "Something here is encrypted.";
+    case "exec":  return arg ? `An executable stands out: "${arg}". Run it.` : "An executable stands out.";
+    case "ls":    return "Look around first — list what's here.";
+    default:      return "Keep probing the system.";
+  }
+}
+
 export function authorPuzzle(db, opts = {}) {
   if (!db) return { ok: false, error: "missing_db" };
   const { name, difficulty = 1, targetDtuId, terminalTree, solutionPath, rewardCc = 50 } = opts;
@@ -70,12 +91,13 @@ export function attemptCommand(db, puzzleId, userId, command) {
     `).run(JSON.stringify(log), userId, puzzleId);
 
     if (!matches) {
-      // Wrong step — reset progress (Zachtronics-flavor: fail = retry).
+      // Wrong step — reset progress (Zachtronics-flavor: fail = retry). T1.5:
+      // re-point the player at the first lead so they can follow the trail.
       db.prepare(`
         UPDATE hacking_attempts SET commands_log = '[]'
         WHERE user_id = ? AND puzzle_id = ?
       `).run(userId, puzzleId);
-      return { ok: true, matched: false, progressReset: true };
+      return { ok: true, matched: false, progressReset: true, nextHint: hintForStep(solution[0]) };
     }
 
     if (nextStepIdx >= solution.length) {
@@ -86,7 +108,32 @@ export function attemptCommand(db, puzzleId, userId, command) {
       return { ok: true, matched: true, completed: true, rewardCc: puzzle.reward_cc };
     }
 
-    return { ok: true, matched: true, step: nextStepIdx, totalSteps: solution.length };
+    // T1.5 — guide the player toward the next lead instead of making them
+    // memorize the command list.
+    return { ok: true, matched: true, step: nextStepIdx, totalSteps: solution.length, nextHint: hintForStep(solution[nextStepIdx]) };
+  } catch (err) {
+    return { ok: false, error: err?.message };
+  }
+}
+
+/**
+ * T1.5 — the current trail hint for a player's in-progress attempt (the initial
+ * nudge shown when the terminal opens, and after a reset). Never leaks the
+ * literal command — only the lead. Solution path stays server-private.
+ */
+export function getHint(db, puzzleId, userId) {
+  if (!db || !puzzleId) return { ok: false, error: "missing_inputs" };
+  try {
+    const puzzle = db.prepare(`SELECT solution_path_json FROM hacking_puzzles WHERE id = ?`).get(puzzleId);
+    if (!puzzle) return { ok: false, error: "no_puzzle" };
+    const solution = JSON.parse(puzzle.solution_path_json);
+    let idx = 0;
+    if (userId) {
+      const attempt = db.prepare(`SELECT commands_log, completed_at FROM hacking_attempts WHERE user_id = ? AND puzzle_id = ?`).get(userId, puzzleId);
+      if (attempt?.completed_at) return { ok: true, completed: true, hint: null };
+      if (attempt?.commands_log) { try { idx = JSON.parse(attempt.commands_log).length; } catch { idx = 0; } }
+    }
+    return { ok: true, step: idx, totalSteps: solution.length, hint: hintForStep(solution[idx]) };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

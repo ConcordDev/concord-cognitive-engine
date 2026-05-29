@@ -49385,6 +49385,13 @@ app.get("/api/hacking/puzzles", asyncHandler(async (req, res) => {
   res.json({ ok: true, puzzles: listPuzzles(db, { limit: Number(req.query.limit) || 50 }) });
 }));
 
+// T1.5 — current trail hint for the player's attempt (initial nudge / after reset).
+app.get("/api/hacking/:puzzleId/hint", requireAuth(), asyncHandler(async (req, res) => {
+  const { getHint } = await import("./lib/hacking.js");
+  const userId = req.user?.id || req.user?.userId;
+  res.json(getHint(db, req.params.puzzleId, userId));
+}));
+
 app.get("/api/hacking/:puzzleId", asyncHandler(async (req, res) => {
   const { getPuzzle } = await import("./lib/hacking.js");
   const p = getPuzzle(db, req.params.puzzleId);
