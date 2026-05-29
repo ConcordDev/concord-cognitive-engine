@@ -1,0 +1,155 @@
+{
+  "high_chancellor_xochi_aekon:idle": {
+    "npcId": "high_chancellor_xochi_aekon",
+    "questId": "idle",
+    "greeting": "Twelve braids, twelve panels, one obsidian knife that has never tasted anything. The High Chancellor of the Twelve Districts receives you the way she receives everyone — as though the audience were scheduled a year ago and she has been rehearsing her patience since.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You are not Aekon. I can tell — you stand as if the floor is yours. Here the floor is the district's, and the district is the Bloc's. Sit, or stand, as you like. Both have been done before me.",
+        "playerOptions": [
+          { "text": "What is the Bloc, exactly?", "leadsTo": "node_bloc" },
+          { "text": "Twelve districts — but I only count eleven gates.", "leadsTo": "node_twelfth" },
+          { "text": "You sound tired, Chancellor.", "leadsTo": "node_tired" }
+        ]
+      },
+      {
+        "id": "node_bloc",
+        "npcText": "An agreement old enough that no one alive signed it and no one alive would dare unsign it. Aekon governs. Masond builds. Medici heals. Dinye remembers. The Bloc is the promise that none of those four will reach for the others' work. It holds because every High office spends its life proving it does not need to.",
+        "playerOptions": [
+          { "text": "And if one of them did reach?", "leadsTo": "node_reach" },
+          { "text": "That sounds exhausting to maintain.", "leadsTo": "node_tired" }
+        ]
+      },
+      {
+        "id": "node_reach",
+        "npcText": "Then I would be the one who failed to stop it, and the Twelve would remember my name for exactly as long as it took to carve a better one over mine. I do not plan to give them the chisel.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_twelfth",
+        "npcText": "The twelfth is closed. It was closed before my braids were long enough to count. I grew up inside its quiet, which is why they let me speak for it — I am the only one who will. Do not ask the gate-keepers about it. They will smile, and the smile is the whole answer they have been given to give.",
+        "playerOptions": [
+          { "text": "You grew up there?", "leadsTo": "node_grewup" },
+          { "text": "I won't ask, then.", "leadsTo": "node_respect" }
+        ]
+      },
+      {
+        "id": "node_grewup",
+        "npcText": "Everyone is from somewhere they are not supposed to talk about. Mine simply has a wall around it. The wall taught me that silence can be a kind of care — a roof held over people who never asked to be seen. I carry that roof now. It is heavier than the robes.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_respect",
+        "npcText": "Good. Restraint is the first Aekon virtue. You may yet make a passable guest.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_tired",
+        "npcText": "Tired is a private word and you said it in a public room. I will forgive it once. The Bloc must hold; the cost of holding it is mine; and one day someone in Aekon will be grateful, knowing I will be a long time dead before they are. That is not sorrow. That is the arithmetic of office.",
+        "playerOptions": [
+          { "text": "That's a lonely arithmetic.", "leadsTo": "node_lonely" },
+          { "text": "Then let me carry something, while I'm here.", "leadsTo": "node_carry" }
+        ]
+      },
+      {
+        "id": "node_lonely",
+        "npcText": "All true offices are. Loneliness is just responsibility with the witnesses removed.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_carry",
+        "npcText": "Outsiders always offer that, and they mean it, which is what makes it dangerous. If you wish to be useful, be useful in the open, where the Twelve can see it counted. The chancellery posts its needs at the morning audience. Come at Stratus. Bring no secrets — I have enough.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "high_mason_torrek_masond:idle": {
+    "npcId": "high_mason_torrek_masond",
+    "questId": "idle",
+    "greeting": "He does not look up when you arrive. A trowel moves, a stone settles, mortar is smoothed to a line you could check with a level and never fault. Only when the course is finished does Torrek of Masond, High Mason, set the tool down and consider you the way he considers a site before the first cut.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "...There. That will stand after both of us. Now. You wanted something. Most who climb to a mason's bench want a wall moved or a wall raised. Which is yours?",
+        "playerOptions": [
+          { "text": "Neither. I wanted to watch someone who knows their work.", "leadsTo": "node_watch" },
+          { "text": "What does Masond build, beyond walls?", "leadsTo": "node_build" },
+          { "text": "You don't waste words.", "leadsTo": "node_words" }
+        ]
+      },
+      {
+        "id": "node_watch",
+        "npcText": "Then you will be quiet, and you will be useful, which are the same thing on a site. Watch the joint, not the hand. The hand is only the rumor of the joint. The joint is the truth that has to hold a roof up in winter.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_build",
+        "npcText": "We build the things the Bloc agrees to need. Aekon decides what should stand; Masond decides whether it can. Sometimes those are the same answer. Sometimes the High Chancellor asks for a tower and I give her a long, plain, honest wall, and she learns to call that a tower in her speeches. We do not argue. We finish each other's walls.",
+        "playerOptions": [
+          { "text": "And when she insists on the tower?", "leadsTo": "node_insist" },
+          { "text": "That's a quiet kind of power.", "leadsTo": "node_power" }
+        ]
+      },
+      {
+        "id": "node_insist",
+        "npcText": "Then it falls, slowly, over a lifetime no one is watching for, and the mason who allowed it is remembered as the one who built it. I would rather be forgotten beside a wall that stands than famous beside a tower that leans. Masond keeps its name out of the stone on purpose.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_power",
+        "npcText": "Power is what falls down on you. A foundation is what does not. I am not interested in the first.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_words",
+        "npcText": "Words settle wrong if you lay them too fast. So I lay the foundation first, and speak only once it will bear the weight. You will find most of what I think already built into something near you. Look at it later. It will not interrupt you.",
+        "isTerminal": true
+      }
+    ]
+  },
+  "high_healer_aerasi_medici:idle": {
+    "npcId": "high_healer_aerasi_medici",
+    "questId": "idle",
+    "greeting": "The camp is warm in a way the air does not explain. Aerasi of the Choir sits among the convalescent, and when she speaks to them it is in a register the Tunyans call song — a healer-elder whose age no one will confirm, least of all her.",
+    "nodes": [
+      {
+        "id": "node_open",
+        "npcText": "You came on your own feet, so you are not my patient yet. Good. Sit at the edge of the warmth — not in it, the warmth is spoken for. Tell me: do you hurt somewhere you have not admitted to?",
+        "playerOptions": [
+          { "text": "Why do you sing to them?", "leadsTo": "node_song" },
+          { "text": "They say you healed Sanguire wounded who came at night.", "leadsTo": "node_sanguire" },
+          { "text": "How old are you, truly?", "leadsTo": "node_age" }
+        ]
+      },
+      {
+        "id": "node_song",
+        "npcText": "Because pain listens before the body does. A line held at the right pitch tells a wound it is allowed to close. The Choir is not a metaphor — it is medicine that happens to be beautiful so the dying will let it in. Anyone can learn the first three notes. Almost no one stays for the rest.",
+        "playerOptions": [
+          { "text": "Could I learn the first three?", "leadsTo": "node_learn" },
+          { "text": "What's at the end of the song?", "leadsTo": "node_end" }
+        ]
+      },
+      {
+        "id": "node_learn",
+        "npcText": "Come at the hour the Tunyans call Cumulus, when the camp is loudest, and stand at the back. If you can hold one note steady while a child cries beside you, you have the only talent that matters. The rest is years.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_end",
+        "npcText": "The same place as the end of every honest craft — the moment you understand you cannot save them all, and you sing anyway. That is not despair. That is the work.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_sanguire",
+        "npcText": "Wounded is wounded. The Choir does not ask a body's allegiance before it asks it to mend. Some came at night because the day would not forgive them for coming at all. I will not say who. A healer who keeps a ledger of who deserves it has already stopped being a healer.",
+        "isTerminal": true
+      },
+      {
+        "id": "node_age",
+        "npcText": "I will not confirm that I am the eldest. I will not deny it. I will not tell you the number. What I will tell you is that I have outlived every reason I was given to stop, and that is the only count a healer should keep.",
+        "isTerminal": true
+      }
+    ]
+  }
+}

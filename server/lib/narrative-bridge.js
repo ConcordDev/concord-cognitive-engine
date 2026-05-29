@@ -483,13 +483,17 @@ export async function generateAuthoredDialogue(npcId, questId = null, playerRela
   const result = await writeDialogueTree(npcTraits, questContext, playerRelationship);
 
   if (result.ok) {
-    const enriched = { ...result, authored };
+    // H2 — the LLM path is the IMPROVISED fallback, not canon. Label it so the
+    // client can badge improvised lines distinctly from hand-authored trees
+    // (which carry handAuthored:true above). Authored trees always win when
+    // one exists; this only fires when no tree is on disk for the context.
+    const enriched = { ...result, authored, handAuthored: false, improvised: true };
     cacheSet(_dialogueCache, cacheKey, enriched);
     return enriched;
   }
 
   logger.warn({ npcId, questId, error: result.error }, "narrative_bridge_dialogue_failed");
-  return { ...result, authored };
+  return { ...result, authored, handAuthored: false, improvised: true };
 }
 
 /**
