@@ -24487,6 +24487,9 @@ registerDtuPortabilityMacros(register);
 import registerDiscoveryMacros from "./domains/discovery.js";
 registerDiscoveryMacros(register);
 
+// Game-mode realtime push helper (used by the mode-push middleware below).
+import { emitModeToUser } from "./lib/mode-realtime.js";
+
 // WS4(d) — player cross-skill fusion (the MHA fusion engine for players).
 import registerSkillFusionMacros from "./domains/skill-fusion.js";
 registerSkillFusionMacros(register);
@@ -48982,6 +48985,38 @@ app.get("/api/karaoke/songs", asyncHandler(async (_req, res) => {
     res.json({ ok: true, songs: [], error: e?.message });
   }
 }));
+
+// ── Game-mode realtime push (polling→push) ──────────────────────────────────
+// One middleware that makes every PLAYER-ACTION mode mutation push instead of
+// requiring the HUD to poll: it decorates res.json for POSTs to the mode paths
+// below and emits `<mode>:state` to the caller's user room on a successful
+// response. The HUD's useRealtimeRefresh treats it as a "refresh now" signal.
+// Background/heartbeat-driven changes (order timers, dread, visitors, etc.) are
+// pushed separately from their cycles; the HUD backstop covers anything missed.
+const _MODE_EVENT = Object.freeze({
+  horde: "horde:state", mahjong: "mahjong:state", extraction: "extraction:state",
+  "time-loop": "time-loop:state", restaurant: "restaurant:state", horror: "horror:state",
+  "theme-park": "theme-park:state", roguelite: "roguelite:run-state", lfg: "lfg:board-update",
+  courtship: "courtship:affinity-update",
+});
+const _MODE_PATH_RE = /^\/api\/(horde|mahjong|extraction|time-loop|restaurant|horror|theme-park|roguelite|lfg|courtship)\//;
+app.use((req, res, next) => {
+  if (req.method !== "POST") return next();
+  const m = req.path.match(_MODE_PATH_RE);
+  if (!m) return next();
+  const event = _MODE_EVENT[m[1]];
+  const origJson = res.json.bind(res);
+  res.json = (body) => {
+    try {
+      const userId = req.user?.id || req.user?.userId;
+      if (event && userId && body && body.ok !== false) {
+        emitModeToUser(req.app.locals.io, userId, event, { changed: true });
+      }
+    } catch { /* push is best-effort */ }
+    return origJson(body);
+  };
+  next();
+});
 
 // Phase E4 — full mahjong tile sim. The old /api/mahjong/resolve route
 // stays for back-compat with the declarative-yaku UI; new routes below
