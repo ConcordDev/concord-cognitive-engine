@@ -429,10 +429,15 @@ execution-status section above and the CLAUDE.md "Recent shipped work" row).
 > This checks only the changed files + their import graph — fits in memory, EXIT 0 = clean.
 > Delete the scoped config after (it's an ad-hoc artifact). Every frontend change this
 > session was verified this way.
-- **POLISH_AUDIT Tier-2 combat feel (T2.1, T2.7, T2.8, T2.11):** light-hit hitstop, dedupe
-  the three overlapping hitstop systems, crit/kill FOV punch. **Caution:** these interact
-  with the impact-feel system (E2) — touch as one coordinated pass with a dedupe authority,
-  not piecemeal, or they'll double-fire.
+- **POLISH_AUDIT Tier-2 combat feel — T2.7 + T2.1 SHIPPED; T2.8/T2.11 deferred.**
+  - **T2.7 (done):** `lib/concordia/hit-pause.ts#requestHitPause` is the single deduped authority
+    — GameJuice (legacy/PvP) and CombatBridges (impact-feel) both route through it, so one strike =
+    one freeze (120ms window, first-wins). `tests/hit-pause.test.ts` 5/5.
+  - **T2.1 (done):** light landed hits get a 35ms freeze (was 0 — weightless).
+  - **T2.8 (FOV punch on crit/kill) + T2.11 (screen-shake) deferred:** the `concordia:camera-punch`
+    consumer exists, but GameJuice has no local-userId and its crit/kill triggers aren't reliably
+    player-scoped — dispatching blind would punch the camera on *witnessed* NPC crits (worse than
+    now). Needs local-player gating + a playtest to tune; left for a focused in-app pass.
 - **POLISH_AUDIT T3.3 (scarcity → player price):** wiring NPC↔NPC scarcity into a player
   buy price touches the constitutional marketplace-fee constants — needs governance care.
 
