@@ -24523,6 +24523,10 @@ registerDungeonMacros(register);
 import registerRunDraftMacros from "./domains/run-draft.js";
 registerRunDraftMacros(register);
 
+// D2 — weekly meta objective chain (progressed by real events via the bridge).
+import registerWeeklyMacros from "./domains/weekly.js";
+registerWeeklyMacros(register);
+
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
 // can render per-NPC nemesis glyphs over nearby NPCs.
