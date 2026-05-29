@@ -2567,17 +2567,22 @@ export default function createWorldsRouter({ requireAuth, db }) {
       } = await import("../lib/combat/damage-calculator.js");
 
       const npc = db.prepare(`
-        SELECT archetype, criminal_rep, fire_resistance, ice_resistance,
+        SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
                physical_resistance, current_hp, max_hp
         FROM world_npcs WHERE id = ?
       `).get(npcId);
       if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
 
-      // NPC attack power scales with criminal_rep and archetype
-      const npcPower = 5 + (npc.criminal_rep || 0) * 10;
+      // WS1: NPC attack power derives from its GROWN combat level (skill +
+      // evolution), so a leveled frontier hostile genuinely threatens a player
+      // while a level-1 hub NPC stays harmless. Gated behind CONCORD_ABSOLUTE_POWER
+      // — with the flag off, npcAttackStats returns the legacy
+      // `5 + criminal_rep*10` shape so behaviour is unchanged.
+      const { getEntityCombatLevel, npcAttackStats, capNpcDamage } =
+        await import("../lib/entity-power.js");
       const element = npc.archetype === 'mage' ? 'energy' : 'physical';
-
-      const attackerStats = { skillLevel: 5, element, basePower: npcPower, enchantmentBonus: 0, worldMultiplier: 1 };
+      const combatLevel = getEntityCombatLevel(db, npc.id);
+      const attackerStats = npcAttackStats(combatLevel, element, { criminalRep: npc.criminal_rep || 0 });
 
       // Fetch player resistances from equipped armor DTUs
       const armorDtu = db.prepare(`
@@ -2596,6 +2601,9 @@ export default function createWorldsRouter({ requireAuth, db }) {
       };
 
       const damageResult = computeDamage(attackerStats, defenderStats, {});
+      // WS1 anti-cheat / anti-misconfig: cap NPC outgoing damage (mirrors the
+      // player-side _validateDamageCap). No-op when the flag is off.
+      damageResult.finalDamage = capNpcDamage(damageResult.finalDamage, attackerStats);
       const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });
