@@ -44,8 +44,10 @@ export function runAuthor(args) {
   if (!args.world) throw new Error("--world is required");
 
   const bible = loadBible(args.world);
-  const startIndex = bible.npcs.length;
-  const candidates = spec.generate(bible, args.count, { startIndex, levelRange: args.levelRange });
+  // Stable sequence from 0 so re-runs are idempotent (the gate dedupes ids that
+  // are already present). `--count` is the pipeline-NPC sequence length for the
+  // world; extending it later adds only the new tail.
+  const candidates = spec.generate(bible, args.count, { startIndex: 0, levelRange: args.levelRange });
 
   const targetPath = spec.target(args.world);
   const existing = asArray(readJSON(targetPath, []), spec.key);

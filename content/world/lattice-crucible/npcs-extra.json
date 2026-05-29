@@ -742,5 +742,258 @@
       }
     ],
     "starting_sparks": 3500
+  },
+  {
+    "id": "gen_lattice-crucible_0000",
+    "name": "Gale Brecker",
+    "archetype": "hunter",
+    "faction_id": "crucible_procgen_collective",
+    "level": 29,
+    "job": "scholar",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune scholar of lattice-crucible. Tied to The Lattice Engineers. Lived through \"Emer Voss's First Crossing\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "owes a debt to The Lattice Engineers they can't repay",
+      "quirk": "counts under their breath",
+      "bio": "Scholar · hoarding a fortune · The Lattice Engineers",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0001",
+    "name": "Jorah Locke",
+    "archetype": "healer",
+    "faction_id": "crucible_witnesses",
+    "level": 11,
+    "job": "guard",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute guard of lattice-crucible. Tied to The Witnesses. Lived through \"The Charter Question\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "guard",
+      "wealth_tier": "destitute",
+      "secret": "is hiding from someone in lattice-crucible",
+      "quirk": "always cold",
+      "bio": "Guard · destitute · The Witnesses",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0002",
+    "name": "Xan Oller",
+    "archetype": "mystic",
+    "faction_id": "crucible_meta_witnesses",
+    "level": 26,
+    "job": "scribe",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute scribe of lattice-crucible. Tied to The Witnesses. Lived through \"The Drift Walker's Patrol\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "scribe",
+      "wealth_tier": "destitute",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "collects broken things",
+      "bio": "Scribe · destitute · The Witnesses",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0003",
+    "name": "Vesna Garran",
+    "archetype": "trader",
+    "faction_id": "crucible_lattice_engineers",
+    "level": 16,
+    "job": "scholar",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune scholar of lattice-crucible. Tied to The Drift Refugees. Lived through \"The Seven Doors\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "carries a relic they don't understand",
+      "quirk": "counts under their breath",
+      "bio": "Scholar · hoarding a fortune · The Drift Refugees",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0004",
+    "name": "Fen Locke",
+    "archetype": "villager",
+    "faction_id": "crucible_lattice_engineers",
+    "level": 31,
+    "job": "trader",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune trader of lattice-crucible. Tied to The Procgen Collective. Lived through \"The First Lattice-Born Quest\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "trader",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "collects broken things",
+      "bio": "Trader · hoarding a fortune · The Procgen Collective",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0005",
+    "name": "Dell Holt",
+    "archetype": "trader",
+    "faction_id": "crucible_witnesses",
+    "level": 37,
+    "job": "courier",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off courier of lattice-crucible. Tied to The Meta-Witnesses. Lived through \"The Calvex Alloys\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "courier",
+      "wealth_tier": "well-off",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "speaks in proverbs",
+      "bio": "Courier · well-off · The Meta-Witnesses",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0006",
+    "name": "Marn Garran",
+    "archetype": "mystic",
+    "faction_id": "crucible_meta_witnesses",
+    "level": 23,
+    "job": "guard",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by guard of lattice-crucible. Tied to The Witnesses. Lived through \"The Sage's Forty-Year Silence\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "guard",
+      "wealth_tier": "scraping by",
+      "secret": "carries a relic they don't understand",
+      "quirk": "trusts animals more than people",
+      "bio": "Guard · scraping by · The Witnesses",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0007",
+    "name": "Una Quist",
+    "archetype": "hunter",
+    "faction_id": "crucible_lattice_engineers",
+    "level": 39,
+    "job": "scholar",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by scholar of lattice-crucible. Tied to The Witnesses. Lived through \"Yorin's Arrival\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "scholar",
+      "wealth_tier": "scraping by",
+      "secret": "is hiding from someone in lattice-crucible",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Scholar · scraping by · The Witnesses",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0008",
+    "name": "Dara Zane",
+    "archetype": "hunter",
+    "faction_id": "crucible_meta_witnesses",
+    "level": 7,
+    "job": "smith",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off smith of lattice-crucible. Tied to The Procgen Collective. Lived through \"The Charter Question\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "smith",
+      "wealth_tier": "well-off",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "trusts animals more than people",
+      "bio": "Smith · well-off · The Procgen Collective",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0009",
+    "name": "Oren Zane",
+    "archetype": "scholar",
+    "faction_id": "crucible_procgen_collective",
+    "level": 15,
+    "job": "hunter",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off hunter of lattice-crucible. Tied to The Drift Cultists. Lived through \"The First Breakthrough Cycle\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "hunter",
+      "wealth_tier": "well-off",
+      "secret": "owes a debt to The Drift Cultists they can't repay",
+      "quirk": "trusts animals more than people",
+      "bio": "Hunter · well-off · The Drift Cultists",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_0010",
+    "name": "Eli Frost",
+    "archetype": "healer",
+    "faction_id": "crucible_meta_witnesses",
+    "level": 24,
+    "job": "tinker",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute tinker of lattice-crucible. Tied to The Lattice Engineers. Lived through \"The First Breakthrough Cycle\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "tinker",
+      "wealth_tier": "destitute",
+      "secret": "carries a relic they don't understand",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Tinker · destitute · The Lattice Engineers",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

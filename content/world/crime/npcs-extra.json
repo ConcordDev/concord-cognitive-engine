@@ -835,5 +835,258 @@
       }
     ],
     "starting_sparks": 600
+  },
+  {
+    "id": "gen_crime_0000",
+    "name": "Una Volkov",
+    "archetype": "trader",
+    "faction_id": "crime_federal_task_force",
+    "level": 5,
+    "job": "numbers-runner",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable numbers-runner of crime. Tied to The Iron Rose Syndicate. Lived through \"The Iron Rose Consolidation\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "numbers-runner",
+      "wealth_tier": "comfortable",
+      "secret": "betrayed The Iron Rose Syndicate once and was never caught",
+      "quirk": "speaks in proverbs",
+      "bio": "Numbers-runner · comfortable · The Iron Rose Syndicate",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0001",
+    "name": "Vex Nyx",
+    "archetype": "mystic",
+    "faction_id": "ghost_network",
+    "level": 21,
+    "job": "bagman",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off bagman of crime. Tied to The Hexshore Holdings Ring. Lived through \"The Unit Betrayal\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "bagman",
+      "wealth_tier": "well-off",
+      "secret": "betrayed The Hexshore Holdings Ring once and was never caught",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Bagman · well-off · The Hexshore Holdings Ring",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0002",
+    "name": "Vex Okonkwo",
+    "archetype": "villager",
+    "faction_id": "crime_corrupt_precinct",
+    "level": 28,
+    "job": "lookout",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable lookout of crime. Tied to The North Market Gang. Lived through \"The First Truce\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "lookout",
+      "wealth_tier": "comfortable",
+      "secret": "is not who they claim to be",
+      "quirk": "always cold",
+      "bio": "Lookout · comfortable · The North Market Gang",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0003",
+    "name": "Ada Reyes",
+    "archetype": "villager",
+    "faction_id": "ghost_network",
+    "level": 29,
+    "job": "enforcer",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable enforcer of crime. Tied to The North Market Gang. Lived through \"The Judge Who Refused\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "enforcer",
+      "wealth_tier": "comfortable",
+      "secret": "is not who they claim to be",
+      "quirk": "never makes eye contact",
+      "bio": "Enforcer · comfortable · The North Market Gang",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0004",
+    "name": "Mara Okonkwo",
+    "archetype": "healer",
+    "faction_id": "crime_corrupt_precinct",
+    "level": 33,
+    "job": "getaway driver",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute getaway driver of crime. Tied to Halloran & Greer Investigations. Lived through \"The Voss Envoy\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "getaway driver",
+      "wealth_tier": "destitute",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Getaway driver · destitute · Halloran & Greer Investigations",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0005",
+    "name": "Cael Irons",
+    "archetype": "artisan",
+    "faction_id": "crime_federal_task_force",
+    "level": 16,
+    "job": "numbers-runner",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off numbers-runner of crime. Tied to The 14th Precinct. Lived through \"Detective Voss's First Case\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "numbers-runner",
+      "wealth_tier": "well-off",
+      "secret": "is hiding from someone in crime",
+      "quirk": "speaks in proverbs",
+      "bio": "Numbers-runner · well-off · The 14th Precinct",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0006",
+    "name": "Cyl Reza",
+    "archetype": "healer",
+    "faction_id": "crime_corrupt_precinct",
+    "level": 25,
+    "job": "forger",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off forger of crime. Tied to The Federal Organized-Crime Task Force. Lived through \"The Coroner's Hidden Log\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "forger",
+      "wealth_tier": "well-off",
+      "secret": "owes a debt to The Federal Organized-Crime Task Force they can't repay",
+      "quirk": "counts under their breath",
+      "bio": "Forger · well-off · The Federal Organized-Crime Task Force",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0007",
+    "name": "Una Ashford",
+    "archetype": "hunter",
+    "faction_id": "crime_north_market_gang",
+    "level": 13,
+    "job": "fence",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable fence of crime. Tied to The Iron Rose Syndicate. Lived through \"The Anchor Disaster\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "fence",
+      "wealth_tier": "comfortable",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "speaks in proverbs",
+      "bio": "Fence · comfortable · The Iron Rose Syndicate",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0008",
+    "name": "Tov Kade",
+    "archetype": "trader",
+    "faction_id": "crime_north_market_gang",
+    "level": 40,
+    "job": "informant",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by informant of crime. Tied to The Hexshore Holdings Ring. Lived through \"The Unit Betrayal\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "informant",
+      "wealth_tier": "scraping by",
+      "secret": "is hiding from someone in crime",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Informant · scraping by · The Hexshore Holdings Ring",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0009",
+    "name": "Wrenn Reza",
+    "archetype": "villager",
+    "faction_id": "ghost_network",
+    "level": 36,
+    "job": "informant",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune informant of crime. Tied to The Federal Organized-Crime Task Force. Lived through \"The Anchor Disaster\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "informant",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "always cold",
+      "bio": "Informant · hoarding a fortune · The Federal Organized-Crime Task Force",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_crime_0010",
+    "name": "Cyl Wills",
+    "archetype": "trader",
+    "faction_id": "ghost_network",
+    "level": 40,
+    "job": "lookout",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by lookout of crime. Tied to Halloran & Greer Investigations. Lived through \"The Drone Swarm Aftermath\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "lookout",
+      "wealth_tier": "scraping by",
+      "secret": "is not who they claim to be",
+      "quirk": "counts under their breath",
+      "bio": "Lookout · scraping by · Halloran & Greer Investigations",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

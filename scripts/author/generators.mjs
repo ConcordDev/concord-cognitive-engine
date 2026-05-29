@@ -7,7 +7,7 @@
 // NPC gets a unique procedural life (name, occupation, wealth, bio, secret,
 // relationships, quirk), grounded in the world's existing factions + lore.
 
-import { seededRng, pick, sha1 } from "./lib.mjs";
+import { seededRng, pick } from "./lib.mjs";
 
 const GIVEN = ["Ada","Bram","Cael","Dara","Eli","Fen","Gale","Hana","Iko","Jorah","Kesh","Lira","Mara","Nuri","Oren","Pell","Quill","Rhea","Sol","Tov","Una","Vex","Wrenn","Xan","Yara","Zeph","Brael","Sira","Tamsin","Odo","Vesna","Cyl","Marn","Dell","Swain"];
 const SURNAME = ["Ashford","Brecker","Calder","Dunmore","Eaves","Frost","Garran","Holt","Irons","Jessup","Kade","Locke","Marsh","Nyx","Oller","Pyke","Quist","Reyes","Sable","Thorne","Underwood","Vance","Wills","Yarrow","Zane","Okonkwo","Sato","Reza","Bauer","Volkov"];
@@ -52,20 +52,19 @@ export function generateNpcs(bible, count, { startIndex = 0, levelRange = [2, 30
   const factionIds = (bible.factions || []).map((f) => f.id).filter(Boolean);
   const factionNames = (bible.factions || []).map((f) => f.name).filter(Boolean);
   const loreTitles = (bible.lore || []).map((l) => l.title).filter(Boolean);
-  const taken = new Set((bible.npcs || []).map((n) => (n.name || "").toLowerCase()));
   const out = [];
   for (let i = 0; i < count; i++) {
-    const idx = startIndex + i;
-    const rng = seededRng(`${bible.world}|npc|${idx}`);
-    // unique name (retry a few times against the bible)
-    let name = "";
-    for (let t = 0; t < 8; t++) {
-      const cand = `${pick(rng, GIVEN)} ${pick(rng, SURNAME)}`;
-      if (!taken.has(cand.toLowerCase())) { name = cand; break; }
-      name = `${cand} ${String.fromCharCode(65 + (idx % 26))}`;
-    }
-    taken.add(name.toLowerCase());
-    const id = `gen_${bible.world}_${sha1(`${bible.world}|${name}|${idx}`).slice(0, 10)}`;
+    // `index` is a STABLE per-world sequence (0..count-1), NOT offset by the
+    // live count — so re-running with the same count yields the same ids and the
+    // gate dedupes them (idempotent). `startIndex` lets a later run extend the
+    // sequence to add MORE without disturbing earlier entries.
+    const index = startIndex + i;
+    const rng = seededRng(`${bible.world}|npc|${index}`);
+    // Stable id from (world, index) — the dedupe key. Independent of name.
+    const id = `gen_${bible.world}_${String(index).padStart(4, "0")}`;
+    // Display name (deterministic from index); a numeric suffix disambiguates the
+    // rare same-name draw without affecting the stable id.
+    const name = `${pick(rng, GIVEN)} ${pick(rng, SURNAME)}${index >= GIVEN.length * SURNAME.length ? ` ${index}` : ""}`;
     const occupation = pick(rng, occ);
     const archetype = pick(rng, ARCHETYPES);
     const factionId = factionIds.length ? pick(rng, factionIds) : null;

@@ -742,5 +742,235 @@
       }
     ],
     "starting_sparks": 4000
+  },
+  {
+    "id": "gen_superhero_0000",
+    "name": "Sira Marsh",
+    "archetype": "mystic",
+    "faction_id": "superhero_normie_resistance",
+    "level": 36,
+    "job": "analyst",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune analyst of superhero. Tied to The Crimson Spire Cartel (Criminal Supers). Lived through \"The Founding of Luminary Industries\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "analyst",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Analyst · hoarding a fortune · The Crimson Spire Cartel (Criminal Supers)",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0001",
+    "name": "Odo Oller",
+    "archetype": "trader",
+    "faction_id": "superhero_civic_super_taskforce",
+    "level": 17,
+    "job": "investigator",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by investigator of superhero. Tied to The Movement for Emerged Civil Rights. Lived through \"The Founding of Luminary Industries\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "investigator",
+      "wealth_tier": "scraping by",
+      "secret": "is hiding from someone in superhero",
+      "quirk": "counts under their breath",
+      "bio": "Investigator · scraping by · The Movement for Emerged Civil Rights",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0002",
+    "name": "Tov Nyx",
+    "archetype": "villager",
+    "faction_id": "superhero_normie_resistance",
+    "level": 12,
+    "job": "reporter",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off reporter of superhero. Tied to Luminary Industries. Lived through \"The First Public Sighting of The Enforcer\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "reporter",
+      "wealth_tier": "well-off",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "counts under their breath",
+      "bio": "Reporter · well-off · Luminary Industries",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0003",
+    "name": "Eli Frost",
+    "archetype": "villager",
+    "faction_id": "enforcers_movement",
+    "level": 38,
+    "job": "lab tech",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune lab tech of superhero. Tied to The Enforcers' Movement. Lived through \"The Drone Swarm Incident\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "lab tech",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Lab tech · hoarding a fortune · The Enforcers' Movement",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0004",
+    "name": "Tov Sato",
+    "archetype": "guard",
+    "faction_id": "luminary_empire",
+    "level": 12,
+    "job": "beat cop",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by beat cop of superhero. Tied to The Enforcers' Movement. Lived through \"Dr. Pell's Breakthrough\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "beat cop",
+      "wealth_tier": "scraping by",
+      "secret": "betrayed The Enforcers' Movement once and was never caught",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Beat cop · scraping by · The Enforcers' Movement",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0005",
+    "name": "Quill Yarrow",
+    "archetype": "guard",
+    "faction_id": "superhero_civil_rights_emerged",
+    "level": 7,
+    "job": "beat cop",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable beat cop of superhero. Tied to The Crimson Spire Cartel (Criminal Supers). Lived through \"The First Battle at Dawn\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "beat cop",
+      "wealth_tier": "comfortable",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "trusts animals more than people",
+      "bio": "Beat cop · comfortable · The Crimson Spire Cartel (Criminal Supers)",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0006",
+    "name": "Vex Kade",
+    "archetype": "villager",
+    "faction_id": "superhero_civil_rights_emerged",
+    "level": 37,
+    "job": "lab tech",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune lab tech of superhero. Tied to The Enforcers' Movement. Lived through \"The Kane Tower Provocation\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "lab tech",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Lab tech · hoarding a fortune · The Enforcers' Movement",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0007",
+    "name": "Dara Dunmore",
+    "archetype": "trader",
+    "faction_id": "enforcers_movement",
+    "level": 38,
+    "job": "investigator",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by investigator of superhero. Tied to Luminary Industries. Lived through \"Dr. Pell's Breakthrough\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "investigator",
+      "wealth_tier": "scraping by",
+      "secret": "knows where a sealed record is buried",
+      "quirk": "speaks in proverbs",
+      "bio": "Investigator · scraping by · Luminary Industries",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0008",
+    "name": "Iko Jessup",
+    "archetype": "trader",
+    "faction_id": "enforcers_movement",
+    "level": 11,
+    "job": "power-broker",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute power-broker of superhero. Tied to The Movement for Emerged Civil Rights. Lived through \"Helen Knows\". Known to always cold.",
+    "personality_traits": [
+      "always cold"
+    ],
+    "narrative_context": {
+      "occupation": "power-broker",
+      "wealth_tier": "destitute",
+      "secret": "betrayed The Movement for Emerged Civil Rights once and was never caught",
+      "quirk": "always cold",
+      "bio": "Power-broker · destitute · The Movement for Emerged Civil Rights",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_superhero_0009",
+    "name": "Mara Sable",
+    "archetype": "artisan",
+    "faction_id": "superhero_criminal_supers",
+    "level": 30,
+    "job": "vigilante",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off vigilante of superhero. Tied to Luminary Industries. Lived through \"Dr. Pell's Breakthrough\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "vigilante",
+      "wealth_tier": "well-off",
+      "secret": "is hiding from someone in superhero",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Vigilante · well-off · Luminary Industries",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

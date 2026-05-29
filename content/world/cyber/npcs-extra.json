@@ -835,5 +835,258 @@
       }
     ],
     "starting_sparks": 2500
+  },
+  {
+    "id": "gen_cyber_0000",
+    "name": "Nuri Ashford",
+    "archetype": "hunter",
+    "faction_id": "cyber_fixer_guild",
+    "level": 20,
+    "job": "fixer",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by fixer of cyber. Tied to The Polysteel Society. Lived through \"The Voss Consultation\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "fixer",
+      "wealth_tier": "scraping by",
+      "secret": "carries a relic they don't understand",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Fixer · scraping by · The Polysteel Society",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0001",
+    "name": "Quill Eaves",
+    "archetype": "guard",
+    "faction_id": "cyber_arasacorp",
+    "level": 6,
+    "job": "drone-tech",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off drone-tech of cyber. Tied to The Street Docs Network. Lived through \"The Upload\". Known to laughs at the wrong moments.",
+    "personality_traits": [
+      "laughs at the wrong moments"
+    ],
+    "narrative_context": {
+      "occupation": "drone-tech",
+      "wealth_tier": "well-off",
+      "secret": "owes a debt to The Street Docs Network they can't repay",
+      "quirk": "laughs at the wrong moments",
+      "bio": "Drone-tech · well-off · The Street Docs Network",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0002",
+    "name": "Rhea Garran",
+    "archetype": "mystic",
+    "faction_id": "cyber_ai_rights_movement",
+    "level": 19,
+    "job": "drone-tech",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune drone-tech of cyber. Tied to The AI Rights Movement. Lived through \"The Week the Quarter Went Dark\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "drone-tech",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "betrayed The AI Rights Movement once and was never caught",
+      "quirk": "counts under their breath",
+      "bio": "Drone-tech · hoarding a fortune · The AI Rights Movement",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0003",
+    "name": "Odo Bauer",
+    "archetype": "scholar",
+    "faction_id": "zero_collective",
+    "level": 23,
+    "job": "corpo clerk",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute corpo clerk of cyber. Tied to The Street Docs Network. Lived through \"The First Ghost-7 Trace\". Known to speaks in proverbs.",
+    "personality_traits": [
+      "speaks in proverbs"
+    ],
+    "narrative_context": {
+      "occupation": "corpo clerk",
+      "wealth_tier": "destitute",
+      "secret": "betrayed The Street Docs Network once and was never caught",
+      "quirk": "speaks in proverbs",
+      "bio": "Corpo clerk · destitute · The Street Docs Network",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0004",
+    "name": "Cael Quist",
+    "archetype": "trader",
+    "faction_id": "zero_collective",
+    "level": 33,
+    "job": "drone-tech",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable drone-tech of cyber. Tied to The Street Docs Network. Lived through \"Officer Holt's Promotion\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "drone-tech",
+      "wealth_tier": "comfortable",
+      "secret": "is hiding from someone in cyber",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Drone-tech · comfortable · The Street Docs Network",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0005",
+    "name": "Ada Kade",
+    "archetype": "villager",
+    "faction_id": "zero_collective",
+    "level": 28,
+    "job": "ripperdoc",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off ripperdoc of cyber. Tied to The Zero Collective. Lived through \"The Resistance Correspondence\". Known to keeps a tally of small debts.",
+    "personality_traits": [
+      "keeps a tally of small debts"
+    ],
+    "narrative_context": {
+      "occupation": "ripperdoc",
+      "wealth_tier": "well-off",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "keeps a tally of small debts",
+      "bio": "Ripperdoc · well-off · The Zero Collective",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0006",
+    "name": "Rhea Pyke",
+    "archetype": "hunter",
+    "faction_id": "cyber_street_docs",
+    "level": 7,
+    "job": "fixer",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute fixer of cyber. Tied to The Cordon Guild of Fixers. Lived through \"The First Blackout\". Known to laughs at the wrong moments.",
+    "personality_traits": [
+      "laughs at the wrong moments"
+    ],
+    "narrative_context": {
+      "occupation": "fixer",
+      "wealth_tier": "destitute",
+      "secret": "is not who they claim to be",
+      "quirk": "laughs at the wrong moments",
+      "bio": "Fixer · destitute · The Cordon Guild of Fixers",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0007",
+    "name": "Hana Calder",
+    "archetype": "scholar",
+    "faction_id": "cyber_ai_rights_movement",
+    "level": 36,
+    "job": "data-broker",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off data-broker of cyber. Tied to The AI Rights Movement. Lived through \"The Resistance Correspondence\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "data-broker",
+      "wealth_tier": "well-off",
+      "secret": "is hiding from someone in cyber",
+      "quirk": "collects broken things",
+      "bio": "Data-broker · well-off · The AI Rights Movement",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0008",
+    "name": "Una Ashford",
+    "archetype": "mystic",
+    "faction_id": "blackout_resistance",
+    "level": 34,
+    "job": "netrunner",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable netrunner of cyber. Tied to ArasaCorp. Lived through \"Silver Vey's First Identity\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "netrunner",
+      "wealth_tier": "comfortable",
+      "secret": "is not who they claim to be",
+      "quirk": "trusts animals more than people",
+      "bio": "Netrunner · comfortable · ArasaCorp",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0009",
+    "name": "Vesna Jessup",
+    "archetype": "mystic",
+    "faction_id": "blackout_resistance",
+    "level": 17,
+    "job": "data-broker",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by data-broker of cyber. Tied to The Polysteel Society. Lived through \"Kira Zane's First Dive\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "data-broker",
+      "wealth_tier": "scraping by",
+      "secret": "is hiding from someone in cyber",
+      "quirk": "collects broken things",
+      "bio": "Data-broker · scraping by · The Polysteel Society",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_cyber_0010",
+    "name": "Sol Pyke",
+    "archetype": "trader",
+    "faction_id": "cyber_fixer_guild",
+    "level": 21,
+    "job": "drone-tech",
+    "wealth_tier": "scraping by",
+    "backstory": "A scraping by drone-tech of cyber. Tied to The Polysteel Society. Lived through \"Kira Zane's First Dive\". Known to collects broken things.",
+    "personality_traits": [
+      "collects broken things"
+    ],
+    "narrative_context": {
+      "occupation": "drone-tech",
+      "wealth_tier": "scraping by",
+      "secret": "owes a debt to The Polysteel Society they can't repay",
+      "quirk": "collects broken things",
+      "bio": "Drone-tech · scraping by · The Polysteel Society",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]

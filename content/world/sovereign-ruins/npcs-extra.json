@@ -742,5 +742,212 @@
       }
     ],
     "starting_sparks": 2500
+  },
+  {
+    "id": "gen_sovereign-ruins_0000",
+    "name": "Gale Sable",
+    "archetype": "guard",
+    "faction_id": "ruins_spell_spirits",
+    "level": 13,
+    "job": "archivist",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable archivist of sovereign-ruins. Tied to The Cascade Deniers. Lived through \"The Scribe's Hidden Copy\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "archivist",
+      "wealth_tier": "comfortable",
+      "secret": "betrayed The Cascade Deniers once and was never caught",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Archivist · comfortable · The Cascade Deniers",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0001",
+    "name": "Gale Bauer",
+    "archetype": "artisan",
+    "faction_id": "ruins_scavenger_crews",
+    "level": 31,
+    "job": "healer",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune healer of sovereign-ruins. Tied to The Cascade Deniers. Lived through \"The Quiet Evacuation\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "healer",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "owes a debt to The Cascade Deniers they can't repay",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Healer · hoarding a fortune · The Cascade Deniers",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0002",
+    "name": "Dara Reyes",
+    "archetype": "healer",
+    "faction_id": "ruins_cascade_deniers",
+    "level": 23,
+    "job": "courier",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune courier of sovereign-ruins. Tied to The Spell Spirits. Lived through \"The Refusal Cascade\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "courier",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "carries a relic they don't understand",
+      "quirk": "never makes eye contact",
+      "bio": "Courier · hoarding a fortune · The Spell Spirits",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0003",
+    "name": "Cyl Underwood",
+    "archetype": "hunter",
+    "faction_id": "ruins_cascade_deniers",
+    "level": 37,
+    "job": "smith",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute smith of sovereign-ruins. Tied to The Pilgrims of Refusal. Lived through \"The Court Unburned\". Known to never makes eye contact.",
+    "personality_traits": [
+      "never makes eye contact"
+    ],
+    "narrative_context": {
+      "occupation": "smith",
+      "wealth_tier": "destitute",
+      "secret": "secretly reveres the Sovereign's First Refusal",
+      "quirk": "never makes eye contact",
+      "bio": "Smith · destitute · The Pilgrims of Refusal",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0004",
+    "name": "Brael Thorne",
+    "archetype": "hunter",
+    "faction_id": "ruins_concordia_envoy",
+    "level": 3,
+    "job": "farmer",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute farmer of sovereign-ruins. Tied to The Three Archivists. Lived through \"The Discovery of the Refusal Glyph\". Known to trusts animals more than people.",
+    "personality_traits": [
+      "trusts animals more than people"
+    ],
+    "narrative_context": {
+      "occupation": "farmer",
+      "wealth_tier": "destitute",
+      "secret": "carries a relic they don't understand",
+      "quirk": "trusts animals more than people",
+      "bio": "Farmer · destitute · The Three Archivists",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0005",
+    "name": "Cyl Holt",
+    "archetype": "mystic",
+    "faction_id": "ruins_pilgrims",
+    "level": 36,
+    "job": "healer",
+    "wealth_tier": "well-off",
+    "backstory": "A well-off healer of sovereign-ruins. Tied to The Concordia Envoy. Lived through \"The Third Uprising\". Known to quotes lore nobody remembers.",
+    "personality_traits": [
+      "quotes lore nobody remembers"
+    ],
+    "narrative_context": {
+      "occupation": "healer",
+      "wealth_tier": "well-off",
+      "secret": "is hiding from someone in sovereign-ruins",
+      "quirk": "quotes lore nobody remembers",
+      "bio": "Healer · well-off · The Concordia Envoy",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0006",
+    "name": "Vesna Zane",
+    "archetype": "guard",
+    "faction_id": "ruins_spell_spirits",
+    "level": 14,
+    "job": "hunter",
+    "wealth_tier": "comfortable",
+    "backstory": "A comfortable hunter of sovereign-ruins. Tied to The Spell Spirits. Lived through \"Zaen's Disguise\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "hunter",
+      "wealth_tier": "comfortable",
+      "secret": "is not who they claim to be",
+      "quirk": "counts under their breath",
+      "bio": "Hunter · comfortable · The Spell Spirits",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0007",
+    "name": "Jorah Dunmore",
+    "archetype": "mystic",
+    "faction_id": "ruins_pilgrims",
+    "level": 26,
+    "job": "trader",
+    "wealth_tier": "hoarding a fortune",
+    "backstory": "A hoarding a fortune trader of sovereign-ruins. Tied to The Three Archivists. Lived through \"The Quiet Evacuation\". Known to counts under their breath.",
+    "personality_traits": [
+      "counts under their breath"
+    ],
+    "narrative_context": {
+      "occupation": "trader",
+      "wealth_tier": "hoarding a fortune",
+      "secret": "is not who they claim to be",
+      "quirk": "counts under their breath",
+      "bio": "Trader · hoarding a fortune · The Three Archivists",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
+  },
+  {
+    "id": "gen_sovereign-ruins_0008",
+    "name": "Lira Irons",
+    "archetype": "villager",
+    "faction_id": "ruins_scavenger_crews",
+    "level": 19,
+    "job": "healer",
+    "wealth_tier": "destitute",
+    "backstory": "A destitute healer of sovereign-ruins. Tied to The Concordia Envoy. Lived through \"Silv Marn's Refusal\". Known to hums an old refusal hymn.",
+    "personality_traits": [
+      "hums an old refusal hymn"
+    ],
+    "narrative_context": {
+      "occupation": "healer",
+      "wealth_tier": "destitute",
+      "secret": "owes a debt to The Concordia Envoy they can't repay",
+      "quirk": "hums an old refusal hymn",
+      "bio": "Healer · destitute · The Concordia Envoy",
+      "origin": "authoring-pipeline"
+    },
+    "is_conscious": false,
+    "generated": true
   }
 ]
