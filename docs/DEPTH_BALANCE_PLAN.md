@@ -413,13 +413,12 @@ execution-status section above and the CLAUDE.md "Recent shipped work" row).
   playlist edit path is now wired** (cross-user add/detail/list, `tests/music-collab-
   playlist.test.js`). Only **free-API ingestion** (Jamendo/Audius/iTunes) remains unwired —
   needs network egress; wire it end-to-end or mark roadmap (no "shipped" over a stub).
-- **E0 (full migration):** the infra shipped (`/api/config/client` + `useClientConfig`); **11
-  components migrated** (DriftAlertToast, RestaurantDashboard, SubmarineHUD, ExtractionRunHUD,
-  TimeLoopHUD, ClimbingTracker, HorrorRoleHUDs, CourtshipProgressOverlay, FootprintLayer,
-  PartyCombatHUD, ForwardPredictionsPanel). Remaining components (RogueliteRunHUD, BrawlInviteToast,
-  StrategicWarBanner, DreamReader, MahjongTable, NemesisGlyphLayer, NPCActivityTag, DangerBandHUD,
-  ContextPromptLayer, AlertsPanel, usePagePresence) each need a new `client-config.js` key + the
-  same one-line hook swap — pure follow-on, no new design.
+- **E0 (essentially DONE):** infra shipped (`/api/config/client` + `useClientConfig`); **20
+  Concordia world-lens components migrated** — every world-lens poll / frame-throttle cadence is
+  now server-tunable without a rebuild. Only **non-world surfaces remain** on hardcoded intervals
+  (`components/crisis-ops/AlertsPanel.tsx`, `components/docs/usePagePresence.ts`) plus a couple of
+  niche intervals (NemesisGlyphLayer's 8s discovery poll) — out of the Concordia HUD scope; migrate
+  with the same one-line pattern + a new config key if desired.
 
 > **Verifying frontend changes in this memory-constrained container:** the full-project
 > `tsc --noEmit` OOMs (it globs all ~hundreds of components). Since everything prior already
