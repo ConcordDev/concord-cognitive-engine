@@ -24,11 +24,11 @@ function envNum(name, dflt, { min = 0, max = Infinity } = {}) {
 
 export const FUSION_DIALS = Object.freeze({
   gainMin: envNum("CONCORD_FUSION_GAIN_MIN", 1.2, { min: 1 }),     // unstable fusion
-  gainMax: envNum("CONCORD_FUSION_GAIN_MAX", 1.8, { min: 1 }),     // perfectly stable fusion
+  gainMax: envNum("CONCORD_FUSION_GAIN_MAX", 1.85, { min: 1 }),     // perfectly stable fusion
   genDecay: envNum("CONCORD_FUSION_GEN_DECAY", 0.95, { min: 0.5, max: 1 }),
   inbredPenalty: envNum("CONCORD_FUSION_INBRED_PENALTY", 0.85, { min: 0.1, max: 1 }),
   singularityGen: Math.round(envNum("CONCORD_FUSION_SINGULARITY_GEN", 8, { min: 2 })),
-  singularityBonus: envNum("CONCORD_FUSION_SINGULARITY_BONUS", 0.25, { min: 0 }),
+  singularityBonus: envNum("CONCORD_FUSION_SINGULARITY_BONUS", 0.22, { min: 0 }),
 });
 
 /** Skill fusion is on by default (additive + desirable). Kill-switch: CONCORD_SKILL_FUSION=0. */

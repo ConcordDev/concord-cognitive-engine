@@ -38,7 +38,7 @@ export const POWER_DIALS = Object.freeze({
   baseHp: envNum("CONCORD_NPC_BASE_HP", 100, { min: 1 }),           // legacy default
   hpPerLevel: envNum("CONCORD_NPC_HP_PER_LEVEL", 0.12, { min: 0 }), // +12% base HP / level
   basePower: envNum("CONCORD_NPC_BASE_POWER", 5, { min: 0 }),       // legacy basePower
-  powerPerLevel: envNum("CONCORD_NPC_POWER_PER_LEVEL", 0.6, { min: 0 }),
+  powerPerLevel: envNum("CONCORD_NPC_POWER_PER_LEVEL", 0.65, { min: 0 }),
   // Anti-cheat / anti-misconfig: NPC outgoing damage is capped just like the
   // player path. cap = min(hardCap, scaled basePower * critMult).
   damageHardCap: envNum("CONCORD_NPC_DAMAGE_HARD_CAP", 500, { min: 1 }),

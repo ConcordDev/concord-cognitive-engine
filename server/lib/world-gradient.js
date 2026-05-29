@@ -48,7 +48,7 @@ export const GRADIENT_DEFAULTS = Object.freeze({
   bandCount: Math.round(envNum("CONCORD_GRADIENT_BANDS", 6, { min: 2, max: 32 })),
   // Super-linear ramp exponent: >1 keeps the inner bands gentle and makes the
   // frontier spike. 1.0 = linear.
-  dangerCurve: envNum("CONCORD_GRADIENT_CURVE", 1.6, { min: 0.5, max: 4 }),
+  dangerCurve: envNum("CONCORD_GRADIENT_CURVE", 1.65, { min: 0.5, max: 4 }),
   // Commons level at the frontier rim. Levels are unbounded engine-wide; this
   // only caps *ambient/common* spawns — named threats deliberately exceed it.
   frontierLevel: envNum("CONCORD_GRADIENT_FRONTIER_LEVEL", 100, { min: 5 }),

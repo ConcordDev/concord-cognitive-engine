@@ -22,10 +22,10 @@ function envNum(name, dflt, { min = -Infinity, max = Infinity } = {}) {
 }
 
 export const STRENGTH_DIALS = Object.freeze({
-  leaderWeight: envNum("CONCORD_FACTION_LEADER_WEIGHT", 3, { min: 0 }),
+  leaderWeight: envNum("CONCORD_FACTION_LEADER_WEIGHT", 4, { min: 0 }),
   memberWeight: envNum("CONCORD_FACTION_MEMBER_WEIGHT", 1, { min: 0 }),
-  countWeight: envNum("CONCORD_FACTION_COUNT_WEIGHT", 2, { min: 0 }),
-  conscriptionBonus: envNum("CONCORD_FACTION_CONSCRIPTION_BONUS", 0.3, { min: 0 }),
+  countWeight: envNum("CONCORD_FACTION_COUNT_WEIGHT", 2.5, { min: 0 }),
+  conscriptionBonus: envNum("CONCORD_FACTION_CONSCRIPTION_BONUS", 0.25, { min: 0 }),
 });
 
 function tableExists(db, name) {
