@@ -21,6 +21,24 @@ const TIP_FRACTION_FAST = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_FAS
 const TIP_FRACTION_OK = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_OK) || 0.15;     // within ttl
 const TIP_FRACTION_SLOW = Number(process.env.CONCORD_RESTAURANT_TIP_FRACTION_SLOW) || 0;
 
+// E5 — Diner-Dash batching combo. Serving orders in quick succession builds a
+// tip multiplier (the satisfying "rush" loop). Resets when you let the window
+// lapse. In-memory per restaurant — a session feel mechanic, not persisted.
+const COMBO_WINDOW_S = Number(process.env.CONCORD_RESTAURANT_COMBO_WINDOW_S) || 12;
+const COMBO_BONUS_PER = Number(process.env.CONCORD_RESTAURANT_COMBO_BONUS) || 0.08; // +8% tip per combo step
+const COMBO_MAX = Number(process.env.CONCORD_RESTAURANT_COMBO_MAX) || 5;
+const _comboState = new Map(); // restaurantId → { count, lastServedAt }
+
+/** Advance/reset the batching combo for a restaurant. Returns the new count. */
+function _bumpCombo(restaurantId, now) {
+  const s = _comboState.get(restaurantId);
+  const count = (s && now - s.lastServedAt <= COMBO_WINDOW_S) ? Math.min(COMBO_MAX, s.count + 1) : 1;
+  _comboState.set(restaurantId, { count, lastServedAt: now });
+  return count;
+}
+/** Test/▶ reset hook. */
+export function _resetComboState() { _comboState.clear(); }
+
 const DISH_CATALOG = Object.freeze([
   "stew", "roast", "soup", "bread", "salad", "pastry", "ale", "tea",
 ]);
@@ -109,7 +127,11 @@ export function serveOrder(db, ownerUserId, orderId) {
     else if (waited <= o.expires_at - o.ordered_at - 60) tipFrac = TIP_FRACTION_OK;
 
     const payment = BASE_PRICE_CC;
-    const tip = Math.round(payment * tipFrac * 100) / 100;
+    // E5 — a serve only counts toward the combo if it earned a tip (served in
+    // time); a 0-tip late serve breaks neither builds the rush.
+    const combo = tipFrac > 0 ? _bumpCombo(o.restaurant_id, now) : 1;
+    const comboMult = 1 + (combo - 1) * COMBO_BONUS_PER;
+    const tip = Math.round(payment * tipFrac * comboMult * 100) / 100;
     const total = payment + tip;
 
     db.prepare(`
@@ -126,7 +148,7 @@ export function serveOrder(db, ownerUserId, orderId) {
       WHERE id = ?
     `).run(payment, tip, o.restaurant_id);
 
-    return { ok: true, payment, tip, total, tipFrac };
+    return { ok: true, payment, tip, total, tipFrac, combo, comboMult: Math.round(comboMult * 100) / 100 };
   } catch (err) {
     return { ok: false, error: err?.message };
   }

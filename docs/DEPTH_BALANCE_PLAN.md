@@ -65,6 +65,41 @@ thought absent is real (mig 261). Trust the code.
   pays a 1/item consolation so a wipe still advances meta. New `extractionDanger` (final-stretch
   DbD dread, reuses `horror-dread` radii) surfaced at `GET /api/extraction/:runId/danger`.
   Contract test `tests/run-mode-payout.test.js` 12/12; roguelite/horde/extraction regressions green.
+- **E3 — skill-evolution drama + faction E→S rank ladder: SHIPPED.** Fixed the missing
+  `skill:evolution-available` emit (the EvolutionModal listened but nothing fired it) + a
+  deterministic "Arise" `skill:evolved` beat; faction `rankLetterFor`/`tierToRank` (E→S, level-
+  independent) + `reputation:rank-up` on upward crossing; juice-bridge listeners. 8/8.
+- **E4 — spouse reactivity: SHIPPED.** `lib/spouse-reactivity.js` — a married NPC reacts to the
+  player's factions/kills/schemes/death (deterministic off the spouse's faction+opinions), shifts
+  affinity, estranges past threshold; wired into the NPC-kill path + `romance.spouse_react` macro.
+  9/9. (Gift preferences — the Stardew half — were already shipped.)
+- **D4 #3 — procedural NPC gear: SHIPPED.** Verified the spawner never called `seedStarterGear`;
+  wired it into `persistGeneratedNpc` (level-scaled) so procedural NPCs are visually distinct AND
+  drop loot on death via the existing kill-path generator. 3/3. (Reused the existing gear economy,
+  not a parallel system.)
+- **E5 — restaurant Diner-Dash combo: SHIPPED.** Batching combo (quick consecutive serves build a
+  tip multiplier, caps at 5, breaks on a late/0-tip serve or lapsed window) + dashboard combo flash;
+  visible patience countdown already existed. 4/4.
+
+### Polish-audit items folded in (docs/POLISH_AUDIT.md from main — verified against code first)
+- **T0.1 (🔴) code puzzles unsolvable: FIXED.** Editor `{op,a,b}` vs VM `{dst,src,to}` mismatch made
+  every program a no-op; added a backward-compatible `_normalizeInstr` adapter. 8/8.
+- **T0.2 (🔴) station/HUD audio silent: FIXED.** 38 underscored juice sfx ids never matched the
+  hyphenated SFX_MAP; added `SFX_ALIASES` + `resolveSfxId` routed through trigger/spatial SFX.
+- **T1.1 NPC dialogue LLM-or-nothing: FIXED.** `composeDeterministicDialogue` — grounded, mood-keyed
+  fallback from the same context, no secret leak; wired as the route default. 7/7.
+- **T1.2 trivia unwinnable: FIXED.** `getAnswerChoices` (answer + distractor DTUs) → kiosk is now a
+  multiple-choice picker; correctness path unchanged. 6/6.
+- **T1.5 hacking cosmetic tree: FIXED.** `hintForStep`/`getHint`/`nextHint` turn it into a guided
+  trail (the lead, never the literal command); terminal shows "» lead: …". 8/8.
+- **T3.2 scheme overhear had no client listener: FIXED.** `SchemeOverhearBargeIn` surfaces
+  `scheme:overheard` with Expose / Blackmail (D5 hook) / Ignore. tsc clean.
+- **Verified STALE (no work needed — audit/docs wrong, code already does it):** D8 `music.ai-playlist`
+  is already LLM-wired with a deterministic fallback (`domains/music.js:1195`); **T3.1** faction-
+  strategy already emits `faction:{war-declared,alliance-formed,truce-sought}` and `StrategicWarBanner`
+  + `EmergentEventFeed` consume them (mounted in the world lens); **C-series** every world already has
+  10–33 lore items (seeder reads `lore.json.history`) — tunya has 33, not "5". The meta-finding holds:
+  the docs are stale in both directions; trust the code.
 
 ---
 

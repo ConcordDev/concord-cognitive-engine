@@ -260,3 +260,10 @@ shifting courtship affinity and estranging the marriage when it sours.
 | `CONCORD_SPOUSE_KILL_KIN` | -0.22 | Killed the spouse's kin. |
 | `CONCORD_SPOUSE_SCHEME` | -0.05 | Player scheme exposed (cruel/paranoid spouse instead +0.04). |
 | `CONCORD_SPOUSE_ESTRANGE_THRESHOLD` | -0.3 | Affinity below this estranges a marriage. |
+
+### E5 — restaurant batching combo (`server/lib/restaurant.js`)
+| Dial | Default | Notes |
+|---|---|---|
+| `CONCORD_RESTAURANT_COMBO_WINDOW_S` | 12 | Max gap between serves to keep the combo alive. |
+| `CONCORD_RESTAURANT_COMBO_BONUS` | 0.08 | Tip multiplier added per combo step. |
+| `CONCORD_RESTAURANT_COMBO_MAX` | 5 | Combo cap. |

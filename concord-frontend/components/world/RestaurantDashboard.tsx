@@ -36,6 +36,7 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
   const [orders, setOrders] = useState<Order[]>([]);
   const [pending, setPending] = useState(false);
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  const [combo, setCombo] = useState(0); // E5 — batching-combo flash
 
   const refresh = useCallback(async () => {
     try {
@@ -64,7 +65,14 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
         headers: { 'content-type': 'application/json' }, body: '{}',
       });
       const j = await r.json().catch(() => null);
-      if (j?.ok !== false) successJuice('ui_dish_serve');
+      if (j?.ok !== false) {
+        successJuice('ui_dish_serve');
+        // E5 — flash the batching combo on a rush.
+        if (typeof j?.combo === 'number' && j.combo >= 2) {
+          setCombo(j.combo);
+          setTimeout(() => setCombo(0), 1500);
+        }
+      }
       refresh();
     } finally { setPending(false); }
   }, [refresh]);
@@ -110,6 +118,12 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
             <div className="font-mono text-base text-red-300">{summary?.orders_missed ?? 0}</div>
           </div>
         </div>
+
+        {combo >= 2 && (
+          <div className="concordia-hud-fade mb-2 rounded-md border border-orange-400/60 bg-orange-900/40 px-3 py-1 text-center text-sm font-bold text-orange-100">
+            🔥 ×{combo} combo! bigger tips
+          </div>
+        )}
 
         <div className="space-y-1.5">
           {orders.length === 0 && (
