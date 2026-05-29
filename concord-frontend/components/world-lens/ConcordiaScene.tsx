@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useContext, createCont
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
+import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
 
 // ── Device capability detection ────────────────────────────────────
@@ -1174,7 +1175,13 @@ export default function ConcordiaScene({
 
         const avgFps = fpsBuffer.reduce((a, b) => a + b, 0) / fpsBuffer.length;
 
-        // ── Frustum culling — hide buildings outside camera view ────
+        // ── G1: frustum + distance culling with CACHED bounding spheres ──
+        // Buildings are static placements, so we compute each one's world-space
+        // bounding sphere exactly once (on first sight / after addBuilding sets
+        // __boundsDirty) and cache it on userData. The per-frame test is then a
+        // cheap O(1) frustum.intersectsSphere + squared-distance check — no
+        // per-frame setFromObject geometry traversal, so frame cost no longer
+        // scales with hidden/complex geometry.
         if (THREE && cameraRef.current && layersRef.current?.buildings) {
           const cam = cameraRef.current as InstanceType<typeof import('three').PerspectiveCamera>;
           cam.updateMatrixWorld();
@@ -1185,11 +1192,29 @@ export default function ConcordiaScene({
           const buildingsGroup = layersRef.current.buildings as InstanceType<
             typeof import('three').Group
           >;
-          const box = new THREE.Box3();
+          const camPos = cam.position;
+          // Hard render distance scales with camera far plane (default 5000).
+          const maxDist = Math.min(2200, (cam.far ?? 5000) * 0.5);
+          const tmpBox = new THREE.Box3();
           buildingsGroup.children.forEach((obj) => {
-            if (!obj) return;
-            box.setFromObject(obj);
-            obj.visible = frustum.intersectsBox(box);
+            const o = obj as unknown as {
+              visible: boolean;
+              userData?: Record<string, unknown>;
+            };
+            if (!o) return;
+            const ud = (o.userData ??= {});
+            let sphere = ud.__boundsSphere as InstanceType<typeof import('three').Sphere> | undefined;
+            if (!sphere || ud.__boundsDirty) {
+              tmpBox.setFromObject(obj);
+              sphere = new THREE.Sphere();
+              tmpBox.getBoundingSphere(sphere);
+              ud.__boundsSphere = sphere;
+              ud.__boundsDirty = false;
+            }
+            const inFrustum = frustum.intersectsSphere(sphere);
+            const c = sphere.center;
+            const dSq = (c.x - camPos.x) ** 2 + (c.y - camPos.y) ** 2 + (c.z - camPos.z) ** 2;
+            o.visible = decideVisible(inFrustum, dSq, maxDist);
           });
         }
 
@@ -1520,6 +1545,9 @@ export default function ConcordiaScene({
       const id = (userData.buildingId as string) ?? `building_${Date.now()}`;
       userData.buildingId = id;
       userData.isBuilding = true;
+      // G1 — invalidate the cached bounding sphere so the cull loop recomputes
+      // it once (buildings are static, so we never recompute again after that).
+      userData.__boundsDirty = true;
       buildingMapRef.current.set(id, buildingGroup);
       const layer = layersRef.current['buildings'] as { add: (child: unknown) => void } | undefined;
       layer?.add(buildingGroup);
