@@ -755,6 +755,19 @@ export default function ConcordiaScene({
       } catch (skyErr) {
         console.warn('[ConcordiaScene] Sky / clouds unavailable:', skyErr);
       }
+
+      // ── I3: procedural per-world landmarks (stylized canon identity) ──
+      // Real CC0 GLB/PBR drops would mount through the same group; until then
+      // these procedural silhouettes are the deliberate identity per world.
+      try {
+        const { createWorldLandmarks } = await import('@/lib/world-lens/landmarks');
+        // themeProp shares ids with canon world ids (tunya, concordia-hub, …).
+        const landmarks = createWorldLandmarks(THREE, themeProp, activeTheme);
+        scene.add(landmarks);
+        (scene as unknown as { __concordLandmarks?: unknown }).__concordLandmarks = landmarks;
+      } catch (lmErr) {
+        console.warn('[ConcordiaScene] Landmarks unavailable:', lmErr);
+      }
       // Sprint 9 — expose scene globally so the QuestWaypointBeacon
       // can attach its 3D objects without prop-drilling through the
       // entire scene tree. Same pattern as __concordiaRenderer.
