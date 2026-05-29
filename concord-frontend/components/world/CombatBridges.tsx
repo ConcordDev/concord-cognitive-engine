@@ -32,6 +32,8 @@
 import { useEffect } from 'react';
 import { subscribe } from '@/lib/realtime/socket';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
+import { computeImpactCameraPunch } from '@/lib/concordia/combat-camera';
+import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import CombatVFXBridge from '@/components/world/CombatVFXBridge';
 import { ImpactMomentumBridge } from '@/components/world/ImpactMomentumBridge';
 // Phase 8 add-ons: the ImpactFeedback layer exposes three global emit
@@ -679,7 +681,8 @@ export function LethalHitBridge() {
  * Direction is derived from attacker→target so the shove points away from the
  * source, matching the GameJuice knockback convention.
  */
-export function CombatImpactFeelBridge() {
+export function CombatImpactFeelBridge({ userId = null }: { userId?: string | null } = {}) {
+  const { effectiveReducedMotion } = useAccessibilitySettings();
   useEffect(() => {
     const off = subscribe('combat:impact' as Parameters<typeof subscribe>[0], (payload: unknown) => {
       const ev = payload as {
@@ -728,9 +731,19 @@ export function CombatImpactFeelBridge() {
       if (wince !== 'none') {
         dispatchHitReaction(ev.targetId, wince === 'crit' ? 'crit' : wince === 'heavy' ? 'heavy' : 'light');
       }
+
+      // 4) T2.8 — camera FOV punch on a HEAVY outcome, but ONLY for the local
+      // player (attacker or target), severity-scaled, reduced-motion-gated. The
+      // pure decision lives in computeImpactCameraPunch (unit-tested); NPC-vs-NPC
+      // strikes the player merely witnesses never punch the camera. Reuses the
+      // existing concordia:camera-punch consumer (ConcordiaScene, clamps applied).
+      const punch = computeImpactCameraPunch(ev, { userId, reducedMotion: effectiveReducedMotion });
+      if (punch) {
+        window.dispatchEvent(new CustomEvent('concordia:camera-punch', { detail: punch }));
+      }
     });
     return () => { off?.(); };
-  }, []);
+  }, [userId, effectiveReducedMotion]);
   return null;
 }
 
@@ -751,7 +764,7 @@ export function CombatPolishLayer({ userId }: { userId: string | null }) {
       {/* Phase B2 — combat:hit (lethal) → ragdoll bridge */}
       <LethalHitBridge />
       {/* T1.4b — server-authoritative impact → hitstop/knockback/wince (NPC path) */}
-      <CombatImpactFeelBridge />
+      <CombatImpactFeelBridge userId={userId} />
       {/* T1.4b/T3.1b — live client momentum model on the PvP combat:hit path */}
       <ImpactMomentumBridge />
       {/* Visual polish — element bursts + blood decals on every combat hit */}
