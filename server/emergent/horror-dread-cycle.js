@@ -74,6 +74,9 @@ export async function runHorrorDreadCycle({ db, io } = {}) {
         tensionEmits++;
       } catch { /* emit best-effort */ }
     }
+    // Push the converted HorrorRoleHUDs to refresh session state each dread tick
+    // (dread/sightings/downs advance autonomously here, not on a player action).
+    try { io?.to?.(`world:${s.world_id}`)?.emit?.("horror:state", { sessionId: s.id, ts: Date.now() }); } catch { /* best-effort */ }
     ticked++;
   }
   return { ok: true, ticked, tensionEmits, sessions: sessions.length };
