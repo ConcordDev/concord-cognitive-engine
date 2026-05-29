@@ -21,6 +21,7 @@ import crypto from "node:crypto";
 import {
   gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange, radialWorldsEnabled,
 } from "./world-gradient.js";
+import { seedStarterGear } from "./npc-gear.js";
 
 // ── Personality dimensions ──────────────────────────────────────────────────
 
@@ -477,6 +478,16 @@ export function persistGeneratedNpc(db, npc, opts = {}) {
       JSON.stringify(npc._generated.personality),
       JSON.stringify([npc._generated.life_event]),
     );
+
+    // D4 #3 — join the existing gear economy (lib/npc-gear.js) so procedural
+    // NPCs are visually distinct (gear_level + archetype loadout) AND drop loot
+    // on death via the existing kill-path loot generator (which reads
+    // getNPCGear). Gear level scales with the NPC's own level. Until now the
+    // spawner skipped this, so the bulk of the population had 0 gear / 0 loot.
+    try {
+      const gearLvl = Math.max(1, Math.min(10, Math.ceil((Number(spawnLevel) || npc.level || 5) / 5)));
+      seedStarterGear(db, npc.id, npc.archetype || "default", gearLvl);
+    } catch { /* npc_gear table optional on minimal builds */ }
   });
 
   try { tx(); } catch (err) { return { ok: false, reason: "tx_failed", error: err?.message }; }
