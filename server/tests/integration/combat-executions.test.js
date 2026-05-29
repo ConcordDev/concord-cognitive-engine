@@ -18,7 +18,7 @@ import { up as upPolish } from "../../migrations/140_combat_polish.js";
 import { up as up268 } from "../../migrations/268_combat_hyperarmor.js";
 import {
   applyHyperarmorDowngrade, resolveExecution, grantHyperarmor, hasHyperarmor,
-  currentStaggerSeverity, EXECUTION_CONSTANTS,
+  currentStaggerSeverity, offAxisFromFacing, EXECUTION_CONSTANTS,
 } from "../../lib/combat/executions.js";
 import { triggerStaggerFromImpact, getOrCreateActorState } from "../../lib/combat-polish.js";
 
@@ -82,6 +82,27 @@ describe("F3.2 — execution resolution", () => {
     assert.equal(resolveExecution({ targetSeverity: "rocked" }).multiplier, EXECUTION_CONSTANTS.DEATHBLOW_MULT);
     assert.equal(resolveExecution({ offAxis: 0.7 }).multiplier, EXECUTION_CONSTANTS.BACKSTAB_MULT);
     assert.equal(resolveExecution({}).multiplier, 1);
+  });
+});
+
+describe("A3 — offAxisFromFacing", () => {
+  it("dead-behind ≈ 1, dead-front ≈ 0, flank ≈ 0.5", () => {
+    // NPC at origin facing +z (yaw 0). Attacker behind (−z) → offAxis ~1.
+    const behind = offAxisFromFacing(0, { x: 0, z: 0 }, { x: 0, z: -5 });
+    assert.ok(behind > 0.9, `behind expected ~1, got ${behind}`);
+    // Attacker in front (+z) → offAxis ~0.
+    const front = offAxisFromFacing(0, { x: 0, z: 0 }, { x: 0, z: 5 });
+    assert.ok(front < 0.1, `front expected ~0, got ${front}`);
+    // Attacker to the side (+x) → ~0.5.
+    const flank = offAxisFromFacing(0, { x: 0, z: 0 }, { x: 5, z: 0 });
+    assert.ok(Math.abs(flank - 0.5) < 0.05, `flank expected ~0.5, got ${flank}`);
+  });
+  it("a behind-hit triggers the backstab execution", () => {
+    const off = offAxisFromFacing(0, { x: 0, z: 0 }, { x: 0, z: -5 });
+    assert.equal(resolveExecution({ offAxis: off, targetSeverity: "none" }).kind, "backstab");
+  });
+  it("degrades to 0 with missing positions", () => {
+    assert.equal(offAxisFromFacing(0, null, { x: 1, z: 1 }), 0);
   });
 });
 

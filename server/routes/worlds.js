@@ -2042,7 +2042,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Server-authoritative position validation. A modified client can't
       // attack an NPC across the map. NPC row already loaded for opinion
       // broadcast below — fetch it now and reuse.
-      const npcPosRow = db.prepare("SELECT id, x, y, z FROM world_npcs WHERE id = ?").get(npcId);
+      const npcPosRow = db.prepare("SELECT id, x, y, z, rotation FROM world_npcs WHERE id = ?").get(npcId);
       const reachCheck = _validateCombatReach(userId, npcPosRow, skillData);
       if (!reachCheck.ok) {
         logger.warn?.('worlds', 'combat_reach_rejected', { userId, npcId, ...reachCheck });
@@ -2166,8 +2166,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
           const isHeavy = !!(skillData?.heavy || /heavy|hammer|axe|greatsword|maul/i.test(weaponKind));
           if (isHeavy) exec.grantHyperarmor(db, { actorKind: "player", actorId: userId });
 
+          // A3 — offAxis from the NPC's facing vs the attacker's position, so a
+          // hit from behind both breaks poise harder AND triggers the backstab
+          // execution. Falls to 0 (dead-front) when presence is unavailable.
+          const _aPos = cityPresence.getUserPosition?.(userId) || null;
+          const offAxis = exec.offAxisFromFacing(npcPosRow?.rotation, npcPosRow, _aPos);
+
           const stagger = polish.triggerStaggerFromImpact(db, {
-            actorKind: "npc", actorId: npcId, momentum,
+            actorKind: "npc", actorId: npcId, momentum, offAxis,
             massKg: damageResult.targetMassKg || undefined,
             hyperarmor: targetHyperarmor,
           });
@@ -2175,11 +2181,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
             damageResult.staggerSeverity = stagger.severity;
             damageResult.impactMomentum = Math.round(momentum * 10) / 10;
           }
-          // F3.2 — execution: a hit on an already-broken target deathblows for a
-          // burst. Applied like the mass multiplier (post-cap legitimate skill
-          // burst). Backstab (offAxis) resolves the same way when facing data
-          // is available; deathblow is the fully-server-knowable case.
-          const ex = exec.resolveExecution({ offAxis: 0, targetSeverity: preHitSeverity });
+          // F3.2 — execution: a deathblow on an already-broken target, or a
+          // backstab from behind (offAxis), multiplies damage. Applied like the
+          // mass multiplier (post-cap legitimate skill burst).
+          const ex = exec.resolveExecution({ offAxis, targetSeverity: preHitSeverity });
           if (ex.multiplier > 1 && Number.isFinite(damageResult.finalDamage)) {
             damageResult.finalDamage = Math.round(damageResult.finalDamage * ex.multiplier * 10) / 10;
             damageResult.execution = ex.kind;

@@ -71,6 +71,25 @@ export function currentStaggerSeverity(db, { actorKind, actorId, nowMs } = {}) {
   } catch { return "none"; }
 }
 
+/**
+ * A3 — compute offAxis (0 = dead front, 1 = dead behind) from the target's
+ * facing yaw and the attacker's position. Pure. Feeds both the backstab
+ * execution (resolveExecution) and the poise-break angle factor.
+ */
+export function offAxisFromFacing(targetYaw, targetPos, attackerPos) {
+  if (!targetPos || !attackerPos) return 0;
+  const dx = attackerPos.x - targetPos.x;
+  const dz = (attackerPos.z ?? 0) - (targetPos.z ?? 0);
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-4) return 0;
+  // Target facing unit vector from yaw (z-forward convention, matches the
+  // renderer's sin/cos heading).
+  const fx = Math.sin(Number(targetYaw) || 0);
+  const fz = Math.cos(Number(targetYaw) || 0);
+  const dot = (fx * dx + fz * dz) / len; // +1 attacker in front, −1 behind
+  return Math.max(0, Math.min(1, (1 - dot) / 2));
+}
+
 export const EXECUTION_CONSTANTS = Object.freeze({
   HYPERARMOR_DEFAULT_MS, BACKSTAB_OFFAXIS_MIN, BACKSTAB_MULT, DEATHBLOW_MULT,
 });
