@@ -43,6 +43,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createInputBuffer } from '@/lib/concordia/combat-input-buffer';
 import {
   type KeyAction,
   loadActiveProfile,
@@ -201,6 +202,10 @@ export default function CombatInputController({
   const holdFiredRef = useRef<Set<string>>(new Set());
   // Per-key last-tap time for double-tap detection
   const lastTapAtRef = useRef<Map<string, number>>(new Map());
+  // A2 — input buffer: a press made during the previous action's cooldown is
+  // held briefly and fired the instant the cooldown lifts (fighting-game feel),
+  // instead of being dropped.
+  const inputBufferRef = useRef(createInputBuffer());
 
   // Live valid-key set rebuilt when the profile changes
   const [validKeys, setValidKeys] = useState<Set<string>>(buildValidKeySet);
@@ -401,9 +406,14 @@ export default function CombatInputController({
       downAtRef.current.delete(k);
       if (downAt == null) return;
       const heldMs = performance.now() - downAt;
-      // 200ms cooldown per key so spam doesn't outpace the server tick
+      // 200ms cooldown per key so spam doesn't outpace the server tick.
+      // A2 — instead of dropping a press made during the cooldown, buffer it;
+      // the 50ms tick flushes it the instant the cooldown lifts.
       const lastFire = lastFireAtRef.current.get(k) ?? 0;
-      if (performance.now() - lastFire < 200) return;
+      if (performance.now() - lastFire < 200) {
+        inputBufferRef.current.push(k, performance.now(), 'tap');
+        return;
+      }
       lastFireAtRef.current.set(k, performance.now());
 
       // If we already fired the hold during the keyhold tick, skip the tap
@@ -477,6 +487,17 @@ export default function CombatInputController({
         if (performance.now() - lastFire < 200) continue;
         lastFireAtRef.current.set(k, performance.now());
         dispatchAction(r.key, 'hold');
+      }
+      // A2 — flush a buffered press once its key's cooldown has lifted.
+      const buf = inputBufferRef.current.peek(now);
+      if (buf) {
+        const lastFire = lastFireAtRef.current.get(buf.action) ?? 0;
+        if (now - lastFire >= 200) {
+          inputBufferRef.current.take(now);
+          lastFireAtRef.current.set(buf.action, now);
+          const r = profileResolve(buf.action, (buf.variant as 'tap' | 'hold') || 'tap');
+          if (r) dispatchAction(r.key, (buf.variant as 'tap' | 'hold') || 'tap');
+        }
       }
     }, 50);
     return () => clearInterval(interval);
