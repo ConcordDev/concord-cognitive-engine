@@ -9,6 +9,32 @@ CLAUDE.md's own "honesty" section) turned out wrong in **both** directions.
 
 ---
 
+## Execution status (this session, branch `claude/concordia-depth-balance-audit-k0osH`)
+
+Shipped + tested + pushed, in sequence:
+- **§1 doc truth-fixes** — corrected 6 stale CLAUDE.md/doc claims (Live Share CRDT, telehealth WebRTC,
+  combat scaffolds, weaponise_at, creature loader, music audio graph).
+- **D1** — retired two redundant dead combat scaffolds (`CombatMotorBridge`/`ReflexBridge`); confirmed
+  the momentum-feel chain already ships via `ImpactMomentumBridge`. (momentum test 8/8)
+- **D2** — server-side defensive enforcement: dodge i-frames whiff NPC hits, held block halves damage,
+  `combat:block` now engages the block window. (5/5)
+- **E2** — combat-feel tune: input buffer 110→90ms, heavy hitstop 115→150ms. (19/19)
+- **D3** — NPC player-state reactivity in dialogue (four-axis "what I sense about you"). (6/6)
+- **E1** — relative NPC scaling mechanism (the "one law"), env-gated default-off. (7/7, +41/41 regr.)
+- **D4** — procedural NPCs now seed the scheme/asymmetry substrate (the 74+ procgen NPCs can scheme). (2/2, +21/21)
+- **D7** — Zachtronics percentile histograms for programming puzzles, surfaced in the editor. (8/8)
+
+Found **already shipped** during audit (no work needed): D3 NPC-memory injection (T1.2), D4
+schedules + ctOS scannable profiles (recent P2), E4 gift-preference multipliers (`gifting.js`),
+scheme overhear/barge-in (T2.3), `weaponise_at` consumption (T2.1).
+
+**Remaining (large items, specced below):** D4 #3/#5 (gear + quest-gating secrets), D5 (CK3 hooks
+substrate — new migration+lib), D6 (run-mode payout-on-loss audit), D8 (music wire-up), E0
+(frontend-dial infra), E3 (evolution drama + rank ladder), E4 spouse-reactivity, E5 (minigame dials),
+C-series (content authoring: tunya lore, festivals/fauna per world, per-world quests).
+
+---
+
 ## 0. Thesis
 
 Breadth is done. The platform has the *mechanics* of CK3 + Skyrim + Hades + Tarkov + Diner Dash +
@@ -231,9 +257,15 @@ input-buffer 6/6, impact-feel + balance-dials 13/13 (ordering invariants intact)
 Per §2–3: dramatize the ~per-10-level evolution as an "Arise"-style named beat via
 `LevelUpJuiceBridge`; surface faction reputation as an explicit E→S rank ladder decoupled from level.
 
-### E4 — Courtship: gift multipliers + spouse reactivity — M
-Per §5: keep `COURT_AFFINITY_DELTA 0.05` (earned cadence), **add loved/known-gift multipliers**, and
-make the spouse a **complicating force** (reacts to factions/schemes/deaths) rather than a trophy.
+### E4 — Courtship: gift multipliers (DONE/pre-existing) + spouse reactivity (open) — M
+**Audit:** the gift-preference multiplier part is **already shipped** — `server/lib/gifting.js` has
+per-archetype + authored-override gift preferences, `giftReaction`, `GIFT_DELTA` (loved 0.15 / liked
+0.10 / neutral 0.03 / disliked −0.05) + `REACTION_SENTIMENT`, wired via the `romance.give_gift` macro
+through `courtInteraction`. That's the Stardew "knowing the person" model §5 asked for. `COURT_AFFINITY_
+DELTA 0.05` (earned cadence) is intact.
+**Open:** spouse **reactivity** — make the spouse a complicating force that reacts to the player's
+faction choices / schemes / deaths (the "bigger than the love story" benchmark). Deeper feature; not
+started.
 
 ### E5 — Run-mode + minigame dials — S
 Adopt the playtest-fodder values once D6/D7 land. Restaurant tips already at 0.20/0.15 (T3.4). Diner
