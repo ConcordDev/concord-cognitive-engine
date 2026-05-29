@@ -2020,6 +2020,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
         const t = talentDamageFor(db, userId, elementForGear);
         talentMul = t.multiplier; talentFlat = t.flatPower;
       } catch { /* talents substrate optional */ }
+      // D30 — fold the player's endgame ascension/paragon multiplier.
+      try {
+        const { ascensionDamageMultiplier } = await import("../lib/ascension.js");
+        talentMul = Math.round(talentMul * ascensionDamageMultiplier(db, userId, elementForGear) * 1000) / 1000;
+      } catch { /* ascension substrate optional */ }
 
       const attackerStats = {
         skillLevel: eff.effectiveLevel,

@@ -24506,6 +24506,10 @@ registerZonesMacros(register);
 import registerTalentsMacros from "./domains/talents.js";
 registerTalentsMacros(register);
 
+// D30 — endgame paragon/ascension (skill-cap overflow → permanent account bonuses).
+import registerAscensionMacros from "./domains/ascension.js";
+registerAscensionMacros(register);
+
 // Phase 5 — nemesis surface. Read-only macros over the npc-asymmetry
 // substrate (grudges + preoccupations + stress + schemes) so the HUD
 // can render per-NPC nemesis glyphs over nearby NPCs.
