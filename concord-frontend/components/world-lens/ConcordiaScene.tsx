@@ -227,6 +227,13 @@ export default function ConcordiaScene({
   const rendererRef = useRef<unknown>(null);
   const sceneRef = useRef<unknown>(null);
   const cameraRef = useRef<unknown>(null);
+  // Sprint 1 (juice) — camera-punch impulse. concordia:camera-punch is already
+  // dispatched (CombatStaggerCameraBridge / BuildingCollapseBridge) but had no
+  // consumer; the render loop reads this decaying impulse and adds positional
+  // jitter + a brief FOV kick after the base camera transform each frame.
+  const cameraPunchRef = useRef<{ until: number; start: number; shake: number; fov: number }>(
+    { until: 0, start: 0, shake: 0, fov: 0 },
+  );
   const composerRef = useRef<{
     render: (delta: number) => void;
     setSize: (w: number, h: number) => void;
@@ -1047,6 +1054,31 @@ export default function ConcordiaScene({
           }
         }
 
+        // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
+        // transform: a decaying random positional jitter + a brief FOV kick.
+        // Read after the camera transform so it layers, not fights it.
+        {
+          const punch = cameraPunchRef.current;
+          const nowMs = performance.now();
+          if (nowMs < punch.until) {
+            const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
+            const k = remain * remain; // ease-out
+            const amp = (punch.shake / 100) * k;
+            camera.position.x += (Math.random() - 0.5) * amp;
+            camera.position.y += (Math.random() - 0.5) * amp;
+            camera.position.z += (Math.random() - 0.5) * amp;
+            if (punch.fov > 0) {
+              const baseFov = 55;
+              camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
+              camera.updateProjectionMatrix();
+            }
+          } else if (punch.fov > 0 && Math.abs(camera.fov - 55) > 0.01) {
+            // Settle FOV back to base once the punch ends.
+            camera.fov = 55;
+            camera.updateProjectionMatrix();
+          }
+        }
+
         // Update weather transition + emit modifiers
         weatherSys.update(delta);
         onWeatherModifiersRef.current?.(weatherSys.getModifiers());
@@ -1225,6 +1257,24 @@ export default function ConcordiaScene({
     }
     window.addEventListener('resize', handleResize);
 
+    // Sprint 1 (juice) — camera-punch consumer. Sets a decaying impulse the
+    // render loop reads after the base camera transform. Locality is already
+    // gated by the dispatcher (local_relevance); we honour it here too.
+    const handleCameraPunch = (e: Event) => {
+      const d = (e as CustomEvent).detail as
+        { duration_ms?: number; shake?: number; zoom?: number; local_relevance?: boolean } | undefined;
+      if (!d || d.local_relevance === false) return;
+      const now = performance.now();
+      const dur = Math.max(120, Math.min(2000, Number(d.duration_ms) || 300));
+      cameraPunchRef.current = {
+        start: now,
+        until: now + dur,
+        shake: Math.max(0, Math.min(12, Number(d.shake) || 4)),
+        fov: Math.max(0, Math.min(0.25, (Number(d.zoom) || 1.05) - 1)),
+      };
+    };
+    window.addEventListener('concordia:camera-punch', handleCameraPunch);
+
     // ── Click handler ─────────────────────────────────────────────
     function handleCanvasClick(e: MouseEvent) {
       if (disposed || !THREE) return;
@@ -1384,6 +1434,7 @@ export default function ConcordiaScene({
       disposed = true;
       cancelAnimationFrame(frameIdRef.current);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('concordia:camera-punch', handleCameraPunch);
       canvas.removeEventListener('click', handleCanvasClick);
       canvas.removeEventListener('contextmenu', handleContextMenu);
       canvas.removeEventListener('mousedown', maybeRequestPointerLock);
