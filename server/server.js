@@ -111,6 +111,18 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// WS3: outward-migration engine (NPC re-anchor half). As NPCs out-level the
+// ring they stand in, they step toward their home band's inner edge so the
+// strong drain to the frontier and the hub refills with weak spawns. Per-world
+// scope (writes world_npcs). Slow cadence (~5 min) — migration is a journey.
+// No-op unless CONCORD_RADIAL_WORLDS is on; kill-switch CONCORD_WORLD_MIGRATION=0.
+import { runWorldMigrationCycle } from "./emergent/world-migration-cycle.js";
+registerHeartbeat("world-migration-cycle", {
+  frequency: 20,
+  handler: runWorldMigrationCycle,
+  scope: "world",
+});
+
 // Theme 3 (game-feel pass): chemistry-cascade. Turns embodied_signal_log
 // from a write-only ledger into a real substrate — fire spreads to dry
 // adjacent cells, rain damps it, hot+humid produces steam (cleansing

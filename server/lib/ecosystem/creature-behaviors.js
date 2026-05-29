@@ -21,6 +21,9 @@
 //
 // Per the heartbeat invariant: this module never throws.
 
+import { gradientConfigFor, hubAnchorFor, radialWorldsEnabled } from "../world-gradient.js";
+import { outwardDriftForce } from "../world-migration.js";
+
 const SEP_R         = 4;     // separation radius (m)
 const NBR_R         = 12;    // neighbour radius for alignment + cohesion (m)
 const FLEE_R        = 12;    // player flee radius (m)
@@ -77,7 +80,7 @@ export function tickFlock(db, state, worldId) {
   let creatures;
   try {
     creatures = db.prepare(`
-      SELECT id, archetype, x, z FROM world_npcs
+      SELECT id, archetype, x, z, level FROM world_npcs
       WHERE world_id = ? AND is_dead = 0
         AND archetype LIKE 'creature:%'
     `).all(worldId);
@@ -112,6 +115,22 @@ export function tickFlock(db, state, worldId) {
 
   const motion = getMotionStore(state, worldId);
   const updates = [];
+
+  // WS3: outward-migration drift. When radial worlds are on, creatures that
+  // out-level their current ring feel a gentle pull toward the inner edge of
+  // their home band — strong fauna drift to the frontier, the hub stays weak.
+  // Off → no drift and the legacy ±400 soft bound applies (unchanged).
+  let migrate = null;
+  let boundsM = BOUNDS_M;
+  if (radialWorldsEnabled()) {
+    try {
+      const world = db.prepare(`SELECT * FROM worlds WHERE id = ?`).get(worldId);
+      const cfg = gradientConfigFor(world || null);
+      const anchor = hubAnchorFor(db, worldId, cfg);
+      migrate = { cfg, anchor };
+      boundsM = cfg.worldRadiusM;
+    } catch { /* no worlds table → no migration, legacy bounds */ }
+  }
 
   for (const [, members] of groups) {
     if (members.length === 0) continue;
@@ -217,13 +236,20 @@ export function tickFlock(db, state, worldId) {
         // them back toward the flock centre.
         vx = fleeX * MAX_SPEED * 1.4;
         vz = fleeZ * MAX_SPEED * 1.4;
+      } else if (migrate) {
+        // WS3 outward drift — only when not fleeing (survival first). Pulls an
+        // over-leveled creature toward its home band's inner edge; a no-op once
+        // it's far enough out.
+        const { fx, fz } = outwardDriftForce(migrate.cfg, migrate.anchor, m.x, m.z, m.level);
+        vx += fx;
+        vz += fz;
       }
 
-      // Soft world bounds: gentle pushback past ±BOUNDS_M
-      if (m.x >  BOUNDS_M) vx -= (m.x - BOUNDS_M) * 0.02;
-      if (m.x < -BOUNDS_M) vx += (-BOUNDS_M - m.x) * 0.02;
-      if (m.z >  BOUNDS_M) vz -= (m.z - BOUNDS_M) * 0.02;
-      if (m.z < -BOUNDS_M) vz += (-BOUNDS_M - m.z) * 0.02;
+      // Soft world bounds: gentle pushback past ±boundsM (radial-aware)
+      if (m.x >  boundsM) vx -= (m.x - boundsM) * 0.02;
+      if (m.x < -boundsM) vx += (-boundsM - m.x) * 0.02;
+      if (m.z >  boundsM) vz -= (m.z - boundsM) * 0.02;
+      if (m.z < -boundsM) vz += (-boundsM - m.z) * 0.02;
 
       // Clamp magnitude so creatures don't streak.
       const cl = clampSpeed(vx, vz, fleeing ? MAX_SPEED * 1.6 : MAX_SPEED);
