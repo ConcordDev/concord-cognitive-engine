@@ -1,0 +1,70 @@
+[
+  {
+    "id": "gen_lattice-crucible_faction_0000",
+    "name": "Accord Seekers",
+    "motto": "What is held is held in trust.",
+    "goal": "preserve the old charters against erasure",
+    "values": [
+      "cunning",
+      "mercy",
+      "sacrifice"
+    ],
+    "fears": [
+      "being remembered as the villains of the tale",
+      "a rival learning where the cache is hidden"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "crucible_drift_refugees"
+    ],
+    "allied_factions": [
+      "crucible_procgen_collective"
+    ],
+    "npc_ids": [
+      "refugee_elder_taln"
+    ],
+    "dialogue_style": "terse_guarded",
+    "reputation_currency": "standing",
+    "world_id": "lattice-crucible",
+    "visual": {
+      "primary_color": "#96399c",
+      "secondary_color": "#84d920",
+      "accent_color": "#6bda37"
+    },
+    "generated": true
+  },
+  {
+    "id": "gen_lattice-crucible_faction_0001",
+    "name": "Accord Hands",
+    "motto": "What is held is held in trust.",
+    "goal": "consolidate the splintered districts under one accord",
+    "values": [
+      "discipline",
+      "vigilance",
+      "endurance"
+    ],
+    "fears": [
+      "being remembered as the villains of the tale",
+      "a rival learning where the cache is hidden"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "crucible_witnesses"
+    ],
+    "allied_factions": [
+      "crucible_drift_refugees"
+    ],
+    "npc_ids": [
+      "procgen_first_voice_andra"
+    ],
+    "dialogue_style": "zealous_fervent",
+    "reputation_currency": "standing",
+    "world_id": "lattice-crucible",
+    "visual": {
+      "primary_color": "#2d6dce",
+      "secondary_color": "#1bc753",
+      "accent_color": "#681538"
+    },
+    "generated": true
+  }
+]

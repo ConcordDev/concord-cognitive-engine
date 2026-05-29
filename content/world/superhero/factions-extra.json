@@ -1,0 +1,34 @@
+[
+  {
+    "id": "gen_superhero_faction_0000",
+    "name": "Meridian Taskforce",
+    "motto": "Nothing kept that is not earned.",
+    "goal": "hold the line on a threat the public can't yet name",
+    "values": [
+      "restraint",
+      "sacrifice"
+    ],
+    "fears": [
+      "a single strike at the heart of their power"
+    ],
+    "controlled_districts": [],
+    "rival_factions": [
+      "superhero_civil_rights_emerged"
+    ],
+    "allied_factions": [
+      "luminary_empire"
+    ],
+    "npc_ids": [
+      "baseline_lead_devon_cross"
+    ],
+    "dialogue_style": "wry_evasive",
+    "reputation_currency": "trust_rating",
+    "world_id": "superhero",
+    "visual": {
+      "primary_color": "#479731",
+      "secondary_color": "#52b5c8",
+      "accent_color": "#825a29"
+    },
+    "generated": true
+  }
+]

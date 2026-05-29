@@ -65,9 +65,57 @@ export function validateCreature(o) {
   return { ok: true };
 }
 
+// Commands the hacking VM accepts (mirrors hacking.js VALID_COMMANDS). A
+// solution path's first token must be one of these.
+const HACK_COMMANDS = new Set(["ls", "cd", "cat", "connect", "exec", "decrypt", "ssh"]);
+
+// Crops are read by lib/farming.js: { id, name, seasons:[int 0..5], growth_days, yield }.
+// 6 seasons exist (seasons.js Phase 5c).
+export function validateCrop(o) {
+  if (!isObj(o)) return { ok: false, reason: "not_object" };
+  if (typeof o.id !== "string" || !o.id) return { ok: false, reason: "missing_id" };
+  if (typeof o.name !== "string" || !o.name) return { ok: false, reason: "missing_name" };
+  if (!Array.isArray(o.seasons) || o.seasons.length === 0) return { ok: false, reason: "missing_seasons" };
+  for (const s of o.seasons) {
+    if (!Number.isInteger(s) || s < 0 || s > 5) return { ok: false, reason: "season_out_of_range" };
+  }
+  if (!Number.isInteger(o.growth_days) || o.growth_days <= 0) return { ok: false, reason: "invalid_growth_days" };
+  if (!Number.isInteger(o.yield) || o.yield <= 0) return { ok: false, reason: "invalid_yield" };
+  return { ok: true };
+}
+
+// Hacking puzzles are seeded via hacking.js#authorPuzzle (deduped by name).
+export function validateHackingPuzzle(o) {
+  if (!isObj(o)) return { ok: false, reason: "not_object" };
+  if (typeof o.id !== "string" || !o.id) return { ok: false, reason: "missing_id" };
+  if (typeof o.name !== "string" || !o.name) return { ok: false, reason: "missing_name" };
+  if (!isObj(o.terminalTree)) return { ok: false, reason: "missing_terminal_tree" };
+  if (!Array.isArray(o.solutionPath) || o.solutionPath.length === 0) return { ok: false, reason: "empty_solution_path" };
+  for (const step of o.solutionPath) {
+    if (typeof step !== "string" || !step.trim()) return { ok: false, reason: "invalid_solution_step" };
+    if (!HACK_COMMANDS.has(step.trim().split(/\s+/)[0])) return { ok: false, reason: "unknown_command" };
+  }
+  return { ok: true };
+}
+
+// Programming puzzles are seeded via programming-puzzle.js#authorPuzzle (deduped by name).
+export function validateCodePuzzle(o) {
+  if (!isObj(o)) return { ok: false, reason: "not_object" };
+  if (typeof o.id !== "string" || !o.id) return { ok: false, reason: "missing_id" };
+  if (typeof o.name !== "string" || !o.name) return { ok: false, reason: "missing_name" };
+  if (!Array.isArray(o.testCases) || o.testCases.length === 0) return { ok: false, reason: "missing_test_cases" };
+  for (const tc of o.testCases) {
+    if (!isObj(tc)) return { ok: false, reason: "test_case_not_object" };
+    if (!Array.isArray(tc.input)) return { ok: false, reason: "test_case_missing_input" };
+    if (!Array.isArray(tc.expected)) return { ok: false, reason: "test_case_missing_expected" };
+  }
+  return { ok: true };
+}
+
 export const VALIDATORS = Object.freeze({
   npc: validateNpc, faction: validateFaction, quest: validateQuest,
   lore: validateLoreEvent, creature: validateCreature,
+  crop: validateCrop, hacking: validateHackingPuzzle, code: validateCodePuzzle,
 });
 
 /**
