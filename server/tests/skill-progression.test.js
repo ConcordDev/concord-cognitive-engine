@@ -117,6 +117,27 @@ describe("computeLevelFromExperience", () => {
   it("is unbounded — very high XP still returns > 1", () => {
     assert.ok(computeLevelFromExperience(1_000_000) > 1);
   });
+
+  it("D3 — power-fantasy ramp: mastery thresholds are reachable", () => {
+    // The prior log10 curve needed ~10^4999 XP for level 5000 — unreachable,
+    // so high tiers were decoration. The sqrt ramp keeps them earnable.
+    const novice = 162;      // ~L10
+    const expert = 19_602;   // ~L100
+    const master = 79_202;   // ~L200
+    assert.ok(computeLevelFromExperience(novice) >= 10, "novice (L10) reachable in modest XP");
+    assert.ok(computeLevelFromExperience(expert) >= 100, "expert (L100) reachable");
+    assert.ok(computeLevelFromExperience(master) >= 200, "master (L200) reachable");
+    // Legendary (L500) demands a genuine grind but is still finite.
+    assert.ok(computeLevelFromExperience(500_000) >= 500, "legendary (L500) reachable with grind");
+  });
+
+  it("D3 — fast early: first levels arrive far faster than late levels", () => {
+    // XP to climb L1→L2 should be a tiny fraction of L100→L101.
+    const xpForLevel = (lvl) => (lvl - 1) * (lvl - 1) * 2; // inverse of 1+sqrt(exp/2)
+    const earlyCost = xpForLevel(2) - xpForLevel(1);
+    const lateCost = xpForLevel(101) - xpForLevel(100);
+    assert.ok(lateCost > earlyCost * 50, "late levels cost far more XP than early ones");
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

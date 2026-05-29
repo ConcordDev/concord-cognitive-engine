@@ -25,13 +25,32 @@ const MASTERY_THRESHOLDS = [
 ];
 
 /**
+ * Curve constant (D3). Lower = faster levelling. Tunable via env.
+ * level = 1 + sqrt(totalExp / XP_CURVE_C)
+ */
+const XP_CURVE_C = Number(process.env.CONCORD_XP_CURVE_C) || 2;
+
+/**
  * Compute floating-point level from accumulated experience.
- * Unbounded: 1 + log10(1 + totalExp/10)
+ *
+ * D3 — power-fantasy ramp. The prior curve was `1 + log10(1 + exp/10)`,
+ * which is so flat the authored mastery thresholds (level 5000) needed
+ * ~10^4999 XP — effectively unreachable, so high tiers read as decoration.
+ *
+ * The square-root curve `1 + sqrt(exp / C)` is still concave (each extra
+ * XP yields less level — "deliberate late") but its marginal gain is
+ * steepest at exp→0 ("fast early"), and it makes the thresholds reachable:
+ * with C=2, novice (L10) ≈ 162 XP, skilled (L50) ≈ 4.8k, expert (L100)
+ * ≈ 19.6k, master (L200) ≈ 79k — a genuine power-fantasy ramp where you
+ * feel strong quickly and mastery is a deliberate grind.
+ *
+ * Unbounded. Returns exactly 1 at zero XP.
  * @param {number} totalExp
  * @returns {number}
  */
 export function computeLevelFromExperience(totalExp) {
-  return 1 + Math.log10(1 + (totalExp / 10));
+  const exp = Math.max(0, totalExp || 0);
+  return 1 + Math.sqrt(exp / XP_CURVE_C);
 }
 
 /**
