@@ -399,3 +399,31 @@ involved — no RNG in resolution paths).
   NPC depth-floor regression fix, T-series game-plan completion — reconciled into the scorecard above.
 </content>
 </invoke>
+
+---
+
+## 8. Remaining after the 2026-05-29 continuation (for the next session)
+
+All high- and medium-value D/E items + the verified-real polish-audit fixes are
+**shipped, tested, and pushed** on `claude/audit-findings-remaining-BkcKy` (see the
+execution-status section above and the CLAUDE.md "Recent shipped work" row).
+
+**Genuinely still open (lower value, each non-blocking):**
+- **D8 (music):** `ai-playlist` is wired (stale claim corrected). Still unwired: free-API
+  ingestion (Jamendo/Audius/iTunes) and the collaborative-playlist *edit* path
+  (DB-schema-only). Either wire one end-to-end or mark roadmap in the spec — no
+  "shipped" language over the stub.
+- **E0 (full migration):** the infra shipped (`/api/config/client` + `useClientConfig`);
+  DriftAlertToast + RestaurantDashboard migrated. The other ~22 poll components can adopt
+  the hook mechanically (one-line each) — pure follow-on, no new design.
+- **POLISH_AUDIT Tier-2 combat feel (T2.1, T2.7, T2.8, T2.11):** light-hit hitstop, dedupe
+  the three overlapping hitstop systems, crit/kill FOV punch. **Caution:** these interact
+  with the impact-feel system (E2) — touch as one coordinated pass with a dedupe authority,
+  not piecemeal, or they'll double-fire.
+- **POLISH_AUDIT T3.3 (scarcity → player price):** wiring NPC↔NPC scarcity into a player
+  buy price touches the constitutional marketplace-fee constants — needs governance care.
+
+**Verified STALE (do NOT re-solve — the code already does it):** D8 ai-playlist,
+T3.1 faction-strategy surfaced (StrategicWarBanner + EmergentEventFeed), C-series content
+(10–33 lore items per world). The meta-finding stands: the docs are stale in BOTH
+directions — verify against code before building.
