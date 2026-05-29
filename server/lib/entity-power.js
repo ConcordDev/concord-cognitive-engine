@@ -45,6 +45,66 @@ export const POWER_DIALS = Object.freeze({
   damageCritMult: envNum("CONCORD_NPC_DAMAGE_CRIT_MULT", 3, { min: 1 }),
 });
 
+// ── E1 (Phase E §0 — "the one law": power must never outrun stakes) ─────────
+// RELATIVE scaling, not 1:1 (the Oblivion-glass-armor failure). The player
+// should feel godlike vs the COMMON world (trash gets curb-stomped — the isekai
+// power fantasy is real and good), while NAMED/authored rivals + bosses stay a
+// credible threat so the stakes layer survives. Bands are the research-decided
+// defaults (4 of 5 angles corroborated this): common 70–85% of player tier,
+// named/boss 100–110%. Gated by CONCORD_RELATIVE_SCALING (default OFF — the
+// living-world absolute model stays the default; flipping this on is the
+// playtest-driven tuning step, mirroring CONCORD_ABSOLUTE_POWER's handling).
+export function relativeScalingEnabled() {
+  const v = String(process.env.CONCORD_RELATIVE_SCALING ?? "").toLowerCase();
+  return v === "1" || v === "true" || v === "on" || v === "yes";
+}
+
+export const RELATIVE_DIALS = Object.freeze({
+  commonLo: envNum("CONCORD_REL_COMMON_LO", 0.70, { min: 0, max: 2 }),
+  commonHi: envNum("CONCORD_REL_COMMON_HI", 0.85, { min: 0, max: 2 }),
+  namedLo:  envNum("CONCORD_REL_NAMED_LO", 1.00, { min: 0, max: 3 }),
+  namedHi:  envNum("CONCORD_REL_NAMED_HI", 1.10, { min: 0, max: 3 }),
+});
+
+/**
+ * The player's current combat level — MAX grown skill level across
+ * `player_skill_levels` (mirrors getEntityCombatLevel for NPCs). Falls back to
+ * 1 on minimal builds / no skills. Bounded + crash-safe.
+ */
+export function getPlayerCombatLevel(db, userId) {
+  if (!db || !userId) return 1;
+  try {
+    if (tableExists(db, "player_skill_levels")) {
+      const row = db.prepare("SELECT MAX(level) AS lvl FROM player_skill_levels WHERE user_id = ?").get(userId);
+      if (row && Number.isFinite(row.lvl) && row.lvl > 0) return row.lvl;
+    }
+  } catch { /* degrade to 1 */ }
+  return 1;
+}
+
+/**
+ * Apply relative scaling to an entity's own (absolute) combat level given the
+ * player's level. Pure + deterministic.
+ *   - common: clamp DOWN to the band ceiling (player*commonHi) so a leveled
+ *     player genuinely outgrows trash — but never below the entity's own level
+ *     if that's already under the ceiling (we only cap, never inflate trash).
+ *   - named/boss: floor UP to the player's band (player*(namedLo..namedHi) mid)
+ *     so a named rival is always a credible threat — but keep the entity's own
+ *     grown level if it's *already* higher (an over-leveled boss stays scary).
+ * No-op (returns npcLevel) when CONCORD_RELATIVE_SCALING is off.
+ */
+export function relativeScaledLevel(npcLevel, playerLevel, { named = false } = {}) {
+  const own = Math.max(1, Number(npcLevel) || 1);
+  if (!relativeScalingEnabled()) return own;
+  const pl = Math.max(1, Number(playerLevel) || 1);
+  if (named) {
+    const target = Math.round(pl * ((RELATIVE_DIALS.namedLo + RELATIVE_DIALS.namedHi) / 2));
+    return Math.max(own, target);
+  }
+  const ceiling = Math.round(pl * RELATIVE_DIALS.commonHi);
+  return Math.min(own, Math.max(1, ceiling));
+}
+
 function tableExists(db, name) {
   try { return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name); }
   catch { return false; }

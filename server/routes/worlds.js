@@ -2595,7 +2595,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const npc = db.prepare(`
         SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
-               physical_resistance, current_hp, max_hp
+               physical_resistance, current_hp, max_hp, npc_type, is_conscious
         FROM world_npcs WHERE id = ?
       `).get(npcId);
       if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
@@ -2605,10 +2605,22 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // while a level-1 hub NPC stays harmless. Gated behind CONCORD_ABSOLUTE_POWER
       // — with the flag off, npcAttackStats returns the legacy
       // `5 + criminal_rep*10` shape so behaviour is unchanged.
-      const { getEntityCombatLevel, npcAttackStats, capNpcDamage } =
+      const { getEntityCombatLevel, npcAttackStats, capNpcDamage,
+              getPlayerCombatLevel, relativeScaledLevel } =
         await import("../lib/entity-power.js");
       const element = npc.archetype === 'mage' ? 'energy' : 'physical';
-      const combatLevel = getEntityCombatLevel(db, npc.id);
+      // E1 (Phase E §0) — RELATIVE scaling (no-op unless CONCORD_RELATIVE_SCALING
+      // is on): named/authored NPCs + bosses are floored to ~player tier so they
+      // stay a credible threat; common NPCs are capped below the player so a
+      // leveled player genuinely outgrows trash (the power fantasy). "Named" =
+      // boss type, an authored/conscious NPC, or a title-bearing archetype.
+      const isNamedNpc = npc.npc_type === 'boss' || !!npc.is_conscious
+        || /boss|warlord|champion|overlord|queen|king|captain|lord|elder|matriarch/i.test(npc.archetype || '');
+      const combatLevel = relativeScaledLevel(
+        getEntityCombatLevel(db, npc.id),
+        getPlayerCombatLevel(db, userId),
+        { named: isNamedNpc },
+      );
       const attackerStats = npcAttackStats(combatLevel, element, { criminalRep: npc.criminal_rep || 0 });
 
       // Fetch player resistances from equipped armor DTUs

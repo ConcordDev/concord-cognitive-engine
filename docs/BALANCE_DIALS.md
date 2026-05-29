@@ -125,6 +125,15 @@ code (not env-overridable; they're game-feel constants):
 | `DEFAULT_BUFFER_MS` | 110 | **90** | `concord-frontend/lib/concordia/combat-input-buffer.ts` | 110 sat at the top of the proven 50–110ms input-buffer range and over-buffered queued specials; 90ms keeps forgiveness without lag (Phase E §1, SF6 ≈5f). |
 | `SEVERITY_FEEL.rocked.targetPauseMs` | 115 | **150** | `server/lib/combat/impact-feel.js` | Heavy-tier hitstop toward the SF2 ~167ms benchmark to sell weight. (The old "80ms heavy" was the replaced GameJuice heuristic.) Ordering invariant knockdown(205)>rocked(150)>flinch(55)>none(0) preserved. |
 
+**E1 relative NPC scaling — "the one law" (Phase E §0; depth plan).** Mechanism
+shipped but **gated OFF by default** — flipping it on is the playtest step.
+
+| Env var | Default | Bound | Effect |
+|---|---|---|---|
+| `CONCORD_RELATIVE_SCALING` | off | on/off | Master switch. When ON, NPC combat level is scaled relative to the player's: common NPCs capped below the player (curb-stomp trash → power fantasy), named/boss floored to ~player tier (credible threat → stakes). When OFF, NPCs use their own absolute grown level (unchanged). `server/lib/entity-power.js` |
+| `CONCORD_REL_COMMON_LO` / `_HI` | 0.70 / **0.85** | 0–2 | Common-NPC band as a fraction of player level (the cap uses HI). |
+| `CONCORD_REL_NAMED_LO` / `_HI` | 1.00 / 1.10 | 0–3 | Named/boss band; the floor uses the midpoint (~1.05×). |
+
 Guarded by `server/tests/integration/balance-dials.test.js` — pins each
 default, its bounds, and that an out-of-range/garbage env value falls back to
 the default.

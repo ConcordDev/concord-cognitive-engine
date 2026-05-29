@@ -195,10 +195,20 @@ env-overridable** — a balance pass on them currently requires a frontend rebui
 **Target:** server-rendered constants endpoint (or build-time env injection) so polls/throttles become
 tunable without a rebuild. Until then, any poll tuning is a code edit.
 
-### E1 — Relative NPC scaling (the one law) — M
-Per Phase E §0: common/ambient NPCs scale to **70–85%** of player tier (power fantasy), named/authored
-rivals + world bosses to **100–110%** (stakes preserved). This is the decisive dial — matters more
-than the XP curve. Verify the scaling code path and wire these rates.
+### E1 — Relative NPC scaling (the one law) — mechanism DONE (gated; enable = playtest step)
+**Audit:** `entity-power.js` scaled NPCs by their **own grown level** (absolute), with **no
+player-relative scaling** — so the §0 "one law" wasn't implemented.
+**Done:** added `getPlayerCombatLevel` + `relativeScaledLevel(npcLevel, playerLevel, {named})` +
+`RELATIVE_DIALS` to `entity-power.js` implementing the research bands (common capped at player×0.85 so
+the player outgrows trash; named/boss floored to ~player×1.05 so they stay a credible threat; never
+inflates weak trash nor nerfs an already-overlevelled boss). Wired into `/combat/npc-attack` (named =
+boss type / authored-conscious / title-bearing archetype). **Env-gated by `CONCORD_RELATIVE_SCALING`,
+default OFF** — the absolute living-world model stays default; flipping it on is the playtest-driven
+tuning step (mirrors `CONCORD_ABSOLUTE_POWER`). Bands env-overridable (`CONCORD_REL_COMMON_LO/HI`,
+`CONCORD_REL_NAMED_LO/HI`). Band-math + gating test 7/7; entity-power regression 41/41.
+**Why gated, not on:** §0 is "the decisive dial" but the Phase E doc itself frames it as
+playtest-driven; shipping the mechanism gated lets a playtest flip it without a code change, and keeps
+default behaviour a strict no-op (zero regression risk).
 
 ### E2 — Combat-feel micro-tune — DONE
 Per §1: input buffer `DEFAULT_BUFFER_MS` 110→**90ms** (`combat-input-buffer.ts`); heavy-tier
