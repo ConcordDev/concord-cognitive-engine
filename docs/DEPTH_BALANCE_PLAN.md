@@ -429,15 +429,21 @@ execution-status section above and the CLAUDE.md "Recent shipped work" row).
 > This checks only the changed files + their import graph — fits in memory, EXIT 0 = clean.
 > Delete the scoped config after (it's an ad-hoc artifact). Every frontend change this
 > session was verified this way.
-- **POLISH_AUDIT Tier-2 combat feel — T2.7 + T2.1 SHIPPED; T2.8/T2.11 deferred.**
+- **POLISH_AUDIT Tier-2 combat feel — T2.7 + T2.1 + T2.8 SHIPPED.**
   - **T2.7 (done):** `lib/concordia/hit-pause.ts#requestHitPause` is the single deduped authority
     — GameJuice (legacy/PvP) and CombatBridges (impact-feel) both route through it, so one strike =
     one freeze (120ms window, first-wins). `tests/hit-pause.test.ts` 5/5.
   - **T2.1 (done):** light landed hits get a 35ms freeze (was 0 — weightless).
-  - **T2.8 (FOV punch on crit/kill) + T2.11 (screen-shake) deferred:** the `concordia:camera-punch`
-    consumer exists, but GameJuice has no local-userId and its crit/kill triggers aren't reliably
-    player-scoped — dispatching blind would punch the camera on *witnessed* NPC crits (worse than
-    now). Needs local-player gating + a playtest to tune; left for a focused in-app pass.
+  - **T2.8 (done):** camera FOV punch on crit/kill, gated to the LOCAL player only. The gating I'd
+    deferred is solved — `CombatImpactFeelBridge` (server-authoritative `combat:impact`, already has
+    severity/isKill/ids) now takes `userId` (the `CombatPolishLayer` thread); pure unit-tested
+    `lib/concordia/combat-camera.ts#computeImpactCameraPunch` punches ONLY when the local player is
+    attacker/target, severity-scaled (rocked<knockdown<kill), suppressed under reduced-motion /
+    flinch, within the consumer's clamps. Reuses the in-scene `concordia:camera-punch` consumer
+    (ConcordiaScene) — so the meaningful combat shake is the real FOV kick, not the empty 2D HUD div.
+    `tests/combat-camera.test.ts` 8/8. **T2.11** is effectively addressed for combat (the impactful
+    shake now routes to the real in-scene camera); the legacy GameJuice 2D-div shake remains for
+    non-combat juice triggers and is harmless. Per-severity feel values are playtest-tunable.
 - **POLISH_AUDIT T3.3 (scarcity → player price):** wiring NPC↔NPC scarcity into a player
   buy price touches the constitutional marketplace-fee constants — needs governance care.
 
