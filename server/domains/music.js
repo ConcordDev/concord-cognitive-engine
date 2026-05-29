@@ -306,6 +306,24 @@ export default function registerMusicActions(registerLensAction) {
   const muNum = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
   const muClean = (v, max = 200) => String(v == null ? "" : v).trim().slice(0, max);
   const findTrack = (s, userId, id) => (s.tracks.get(userId) || []).find((t) => t.id === id) || null;
+  // D8 — collaborative playlists. A playlist lives under its owner's userId, so a
+  // collaborator's edit must find it across users (and only when it's flagged
+  // collaborative). Track ids on a shared playlist may belong to any contributor,
+  // so detail resolves them across all libraries.
+  const findAnyPlaylist = (s, playlistId, { collaborativeOnly = false } = {}) => {
+    for (const [ownerId, list] of s.playlists) {
+      const pl = (list || []).find((p) => p.id === playlistId);
+      if (pl && (!collaborativeOnly || pl.collaborative === true)) return { pl, ownerId };
+    }
+    return null;
+  };
+  const findTrackAnyUser = (s, trackId) => {
+    for (const [, list] of s.tracks) {
+      const t = (list || []).find((x) => x.id === trackId);
+      if (t) return t;
+    }
+    return null;
+  };
 
   // ── Tracks / library ────────────────────────────────────────────────
   registerLensAction("music", "track-add", (ctx, _a, params = {}) => {
@@ -391,32 +409,54 @@ export default function registerMusicActions(registerLensAction) {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
     const tracks = new Map((s.tracks.get(userId) || []).map((t) => [t.id, t]));
-    const playlists = (s.playlists.get(userId) || []).map((p) => ({
-      ...p,
-      trackCount: p.trackIds.length,
-      durationSec: p.trackIds.reduce((a, id) => a + (tracks.get(id)?.durationSec || 0), 0),
-    }));
+    const dur = (p) => p.trackIds.reduce((a, id) => a + (tracks.get(id)?.durationSec || findTrackAnyUser(s, id)?.durationSec || 0), 0);
+    const own = (s.playlists.get(userId) || []).map((p) => ({ ...p, trackCount: p.trackIds.length, durationSec: dur(p) }));
+    // D8 — also surface collaborative playlists this user contributes to.
+    const collab = [];
+    for (const [ownerId, list] of s.playlists) {
+      if (ownerId === userId) continue;
+      for (const p of (list || [])) {
+        if (p.collaborative === true && (p.contributors || []).includes(userId)) {
+          collab.push({ ...p, sharedBy: ownerId, trackCount: p.trackIds.length, durationSec: dur(p) });
+        }
+      }
+    }
+    const playlists = [...own, ...collab];
     return { ok: true, result: { playlists, count: playlists.length } };
   });
 
   registerLensAction("music", "playlist-add-track", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
-    const pl = (s.playlists.get(userId) || []).find((p) => p.id === params.playlistId);
+    // Owner edit first; otherwise a collaborative playlist anyone may edit (D8).
+    let pl = (s.playlists.get(userId) || []).find((p) => p.id === params.playlistId);
+    let ownerId = userId;
+    if (!pl) {
+      const found = findAnyPlaylist(s, params.playlistId, { collaborativeOnly: true });
+      if (found) { pl = found.pl; ownerId = found.ownerId; }
+    }
     if (!pl) return { ok: false, error: "playlist not found" };
+    // The contributor must actually hold the track in their own library.
     if (!findTrack(s, userId, params.trackId)) return { ok: false, error: "track not found" };
     if (params.remove === true) pl.trackIds = pl.trackIds.filter((x) => x !== params.trackId);
     else if (!pl.trackIds.includes(params.trackId)) pl.trackIds.push(String(params.trackId));
+    // Record a non-owner contributor so the playlist surfaces in their list.
+    if (ownerId !== userId) {
+      pl.contributors = Array.from(new Set([...(pl.contributors || []), userId]));
+    }
     saveMusicState();
-    return { ok: true, result: { playlistId: pl.id, trackCount: pl.trackIds.length } };
+    return { ok: true, result: { playlistId: pl.id, trackCount: pl.trackIds.length, collaborative: !!pl.collaborative, ownerId } };
   });
 
   registerLensAction("music", "playlist-detail", (ctx, _a, params = {}) => {
     const s = getMusicState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = muAid(ctx);
-    const pl = (s.playlists.get(userId) || []).find((p) => p.id === params.id);
+    let pl = (s.playlists.get(userId) || []).find((p) => p.id === params.id);
+    // D8 — collaborators (and any viewer) can open a collaborative playlist.
+    if (!pl) { const f = findAnyPlaylist(s, params.id, { collaborativeOnly: true }); if (f) pl = f.pl; }
     if (!pl) return { ok: false, error: "playlist not found" };
-    const tracks = pl.trackIds.map((id) => findTrack(s, userId, id)).filter(Boolean);
+    // Resolve track ids across all contributors' libraries (shared playlist).
+    const tracks = pl.trackIds.map((id) => findTrack(s, userId, id) || findTrackAnyUser(s, id)).filter(Boolean);
     return {
       ok: true,
       result: { playlist: pl, tracks, durationSec: tracks.reduce((a, t) => a + t.durationSec, 0) },
