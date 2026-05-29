@@ -1051,14 +1051,17 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // seedNPCAsymmetry (above) but was never read into the prompt. Best-effort;
       // NEVER injects narrative_context.secret — only the derived grudge/desire/
       // preoccupation prose, which is authored-for-players by design.
+      // Fetch the player's four-axis ecosystem metrics ONCE — used by both the
+      // asymmetry desire-matching and the D3 player-state reactivity read.
+      let playerMetrics = null;
+      try {
+        const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
+        playerMetrics = getMetrics(db, playerId, worldId);
+      } catch { /* metrics table optional */ }
+
       const asymmetryLines = [];
       try {
         const asym = await import("../lib/npc-asymmetry.js");
-        let playerMetrics = null;
-        try {
-          const { getMetrics } = await import("../lib/ecosystem/score-engine.js");
-          playerMetrics = getMetrics(db, playerId, worldId);
-        } catch { /* metrics table optional */ }
         const ctx = asym.composeAsymmetryContext?.(db, npcId, playerId, playerMetrics);
         if (ctx) {
           if (ctx.persistent_grudge) asymmetryLines.push(`Persistent grudge (let it color your tone; do not recite it verbatim): ${ctx.persistent_grudge}`);
@@ -1068,12 +1071,27 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* asymmetry tables optional on minimal builds */ }
 
+      // D3 — player-state reactivity: NPCs notice WHO THE PLAYER HAS BECOME
+      // (their standing across the four axes), not just their stored opinion of
+      // past chats. Qualitative read only; never exposes raw numbers/secrets.
+      const playerStateLines = [];
+      try {
+        const { describePlayerStateForNpc } = await import("../lib/npc-player-read.js");
+        const reads = describePlayerStateForNpc(playerMetrics, {
+          max: 2, notorious: isHostileRep,
+        });
+        for (const line of reads) {
+          playerStateLines.push(`What you sense about this person (let it color your tone, don't recite it): ${line}`);
+        }
+      } catch { /* player-read optional */ }
+
       const promptLines = [
         TASK_PROMPTS.worldNpcPersonaHeader({
           npcName, archetype: npc.archetype, worldId,
           faction: npc.faction, level: npc.level, isConscious: npc.is_conscious,
         }),
         ...asymmetryLines,
+        ...playerStateLines,
         `Job: ${npc.job_type || 'none'}. Current task: ${npc.current_task || 'idle'}.`,
         `Schedule phase: ${npc.schedule_phase || 'day'}. Grief level: ${npc.grief_level ?? 0}.`,
         `Criminal reputation: ${npc.criminal_rep || 0}. Wanted: ${npc.is_wanted ? 'yes' : 'no'}.`,
@@ -2577,7 +2595,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const npc = db.prepare(`
         SELECT id, archetype, criminal_rep, fire_resistance, ice_resistance,
-               physical_resistance, current_hp, max_hp
+               physical_resistance, current_hp, max_hp, npc_type, is_conscious
         FROM world_npcs WHERE id = ?
       `).get(npcId);
       if (!npc) return res.status(404).json({ ok: false, error: "NPC not found" });
@@ -2587,10 +2605,22 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // while a level-1 hub NPC stays harmless. Gated behind CONCORD_ABSOLUTE_POWER
       // — with the flag off, npcAttackStats returns the legacy
       // `5 + criminal_rep*10` shape so behaviour is unchanged.
-      const { getEntityCombatLevel, npcAttackStats, capNpcDamage } =
+      const { getEntityCombatLevel, npcAttackStats, capNpcDamage,
+              getPlayerCombatLevel, relativeScaledLevel } =
         await import("../lib/entity-power.js");
       const element = npc.archetype === 'mage' ? 'energy' : 'physical';
-      const combatLevel = getEntityCombatLevel(db, npc.id);
+      // E1 (Phase E §0) — RELATIVE scaling (no-op unless CONCORD_RELATIVE_SCALING
+      // is on): named/authored NPCs + bosses are floored to ~player tier so they
+      // stay a credible threat; common NPCs are capped below the player so a
+      // leveled player genuinely outgrows trash (the power fantasy). "Named" =
+      // boss type, an authored/conscious NPC, or a title-bearing archetype.
+      const isNamedNpc = npc.npc_type === 'boss' || !!npc.is_conscious
+        || /boss|warlord|champion|overlord|queen|king|captain|lord|elder|matriarch/i.test(npc.archetype || '');
+      const combatLevel = relativeScaledLevel(
+        getEntityCombatLevel(db, npc.id),
+        getPlayerCombatLevel(db, userId),
+        { named: isNamedNpc },
+      );
       const attackerStats = npcAttackStats(combatLevel, element, { criminalRep: npc.criminal_rep || 0 });
 
       // Fetch player resistances from equipped armor DTUs
@@ -2613,6 +2643,36 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // WS1 anti-cheat / anti-misconfig: cap NPC outgoing damage (mirrors the
       // player-side _validateDamageCap). No-op when the flag is off.
       damageResult.finalDamage = capNpcDamage(damageResult.finalDamage, attackerStats);
+
+      // D2 (depth plan) — honor the player's server-tracked defensive state so
+      // a well-timed dodge (i-frames) or a held block actually matters against
+      // an NPC attack. Before this, the NPC→player path applied damage with no
+      // defensive check, so dodge/parry/block were cosmetic here while the
+      // socket handlers dutifully recorded i-frames/block windows that nothing
+      // ever consulted. combat-state.js is a single shared module instance
+      // (ESM path-cached), so the dodge i-frames granted on the socket path are
+      // visible here. applyHitToState early-returns on i-frames before poise
+      // depletion, so a whiffed hit costs the player no poise.
+      try {
+        const { applyHitToState } = await import("../lib/combat-state.js");
+        const defMod = applyHitToState(userId, {
+          damage: damageResult.finalDamage,
+          isCrit: !!damageResult.isCrit,
+        });
+        if (defMod.iframed) {
+          try {
+            req.app.locals.io?.to(`world:${worldId}`).emit("combat:npc-attack-evaded", {
+              worldId, npcId, userId, reason: "iframe", t: Date.now(),
+            });
+          } catch { /* evade emit best-effort */ }
+          return res.json({ ok: true, evaded: true, reason: "iframe", finalDamage: 0, eventId: null });
+        }
+        if (defMod.damageMul !== 1 && Number.isFinite(damageResult.finalDamage)) {
+          damageResult.finalDamage = Math.round(damageResult.finalDamage * defMod.damageMul);
+          if (defMod.blocked) damageResult.blocked = true;
+        }
+      } catch { /* combat-state optional — fall through to undefended damage */ }
+
       const { eventId, kill } = applyDamageToPlayer(db, worldId, npcId, 'npc', userId, damageResult, {
         element, bar_used: 'hp', bar_cost: damageResult.finalDamage,
       });

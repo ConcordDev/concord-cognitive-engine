@@ -418,14 +418,15 @@ const CombatPolishHUD = dynamic(
     })),
   { ssr: false }
 );
-const CombatMotorBridge = dynamic(
-  () => import('@/components/world/CombatMotorBridge').then((m) => ({ default: m.CombatMotorBridge })),
-  { ssr: false },
-);
-const ReflexBridge = dynamic(
-  () => import('@/components/world/ReflexBridge').then((m) => ({ default: m.ReflexBridge })),
-  { ssr: false },
-);
+// (Depth/balance plan D1, 2026-05-29) CombatMotorBridge + ReflexBridge were
+// retired here. Both were superseded by ImpactMomentumBridge (mounted in
+// CombatBridges/CombatPolishLayer), which runs the live momentum model on
+// combat:hit and dispatches the momentum-graded concordia:hit-pause /
+// :knockback / :hit-reaction the avatar loop already honours. CombatMotorBridge
+// emitted concordia:combat-pose-targets with zero consumers; ReflexBridge
+// computed reflexes it never emitted and subscribed the wrong combat:stagger
+// (terrain) event. The momentum FUNCTION (computeImpactMomentum) is still live
+// via impact-resolver; only the two dead per-frame rAF bridges were removed.
 // Phase O — transparent R3F canvas overlay so R3F-only orphan
 // components (WalkerOnHorizon, LandmarkSpires, etc.) can run alongside
 // the imperative ConcordiaScene without rewriting them. Camera is
@@ -4844,10 +4845,8 @@ export default function WorldLensPage() {
           <AdaptiveMusicBridge />
           {/* Visual-polish wave 3 — per-terrain footstep audio + dust + cold-breath */}
           <EmbodiedParticlesBridge />
-          {/* Phase C1 — combat-motor-driver event bridge. */}
-          <CombatMotorBridge userId={playerAvatar?.id || null} />
-          {/* Phase C4 — reflex-layer driver for the local player. */}
-          <ReflexBridge />
+          {/* D1 (depth plan): CombatMotorBridge + ReflexBridge retired —
+              superseded by ImpactMomentumBridge (momentum-graded feel). */}
 
           {/* Body-language overlay — surfaces combat:telegraph (server
               fires immediately before applyAttack resolves) so the player
