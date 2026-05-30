@@ -24,11 +24,15 @@ import logger from "../logger.js";
 
 export const RAW_RESOURCES = [
   "wood", "stone", "ore", "herb", "fiber", "meat", "salt", "crystal",
+  // Living Society Phase 1 — civilian raw taps.
+  "grain", "fish",
 ];
 
 export const FINISHED_GOODS = [
   "weapon", "armor", "tool", "remedy", "cloth", "meal",
   "preserved_food", "jewel",
+  // Living Society Phase 1 — civilian transformed goods.
+  "produce", "masonry", "ingot", "lumber", "flour",
 ];
 
 // Archetype → what they gather in 'wilds' / 'grove'.
@@ -40,6 +44,16 @@ const ARCHETYPE_GATHER_TARGETS = {
   healer:   ["herb", "fiber"],
   trader:   ["salt", "stone"],
   guard:    ["stone", "ore"],
+  // Living Society Phase 1 — civilian producers. These are the raw-resource
+  // taps under the heroes (farmer grows grain, miner pulls ore, etc.).
+  farmer:   ["grain", "herb"],
+  builder:  ["stone", "wood"],
+  miner:    ["ore", "stone"],
+  logger:   ["wood", "fiber"],
+  miller:   ["grain", "wood"],
+  fisher:   ["fish", "salt"],
+  cook:     ["meat", "herb"],
+  laborer:  ["wood", "stone"],
   default:  ["wood", "stone"],
 };
 
@@ -53,6 +67,15 @@ const ARCHETYPE_CRAFT_RECIPES = {
   healer:   { output: "remedy",         inputs: ["herb", "fiber"] },
   hunter:   { output: "preserved_food", inputs: ["meat", "salt"] },
   trader:   { output: "cloth",          inputs: ["fiber", "salt"] },
+  // Living Society Phase 1 — civilian transformers (the labor→goods chain).
+  farmer:   { output: "produce",        inputs: ["grain", "herb"] },
+  builder:  { output: "masonry",        inputs: ["stone", "wood"] },
+  miner:    { output: "ingot",          inputs: ["ore", "stone"] },
+  logger:   { output: "lumber",         inputs: ["wood", "fiber"] },
+  miller:   { output: "flour",          inputs: ["grain", "grain"] },
+  fisher:   { output: "preserved_food", inputs: ["fish", "salt"] },
+  cook:     { output: "meal",           inputs: ["meat", "herb"] },
+  laborer:  { output: "masonry",        inputs: ["stone", "wood"] },
   default:  { output: "meal",           inputs: ["meat", "herb"] },
 };
 

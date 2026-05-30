@@ -71,7 +71,7 @@ export const FACTION_PROFILES = Object.freeze({
     fear_pool: ["losing the watch", "the wrong reinforcement arriving late", "a duel-pact roll going unsigned", "becoming the kind of captain who looks the other way", "the gate falling on their watch"],
   },
   scholars_guild: {
-    archetypes: ["scholar", "scholar", "scholar", "healer", "mystic"],
+    archetypes: ["scholar", "scholar", "healer", "mystic", "miller", "cook", "laborer"],
     dimensions: {
       discipline:    { mean: 0.70, std: 0.13 },
       loyalty:       { mean: 0.55, std: 0.18 },
@@ -88,7 +88,7 @@ export const FACTION_PROFILES = Object.freeze({
     fear_pool: ["the wrong vault burning next", "their citation chain failing audit", "discovering their thesis is wrong after publication", "being asked to forget a thing they remember", "the Purge happening twice"],
   },
   merchant_collective: {
-    archetypes: ["trader", "trader", "trader", "trader", "guard", "scholar"],
+    archetypes: ["trader", "trader", "trader", "guard", "miller", "cook", "builder", "laborer"],
     dimensions: {
       discipline:    { mean: 0.65, std: 0.15 },
       loyalty:       { mean: 0.55, std: 0.20 },
@@ -105,7 +105,7 @@ export const FACTION_PROFILES = Object.freeze({
     fear_pool: ["a deal closing wrong", "the Wardens being right about them", "leaving more money in the room than they should have", "outliving their reputation", "their rivals' children doing better than theirs"],
   },
   verdant_veil_remnant: {
-    archetypes: ["mystic", "mystic", "healer", "hunter", "mystic"],
+    archetypes: ["mystic", "healer", "hunter", "farmer", "logger", "fisher", "cook"],
     dimensions: {
       discipline:    { mean: 0.65, std: 0.15 },
       loyalty:       { mean: 0.78, std: 0.13 },
@@ -139,7 +139,7 @@ export const FACTION_PROFILES = Object.freeze({
     fear_pool: ["being remembered wrong", "the third handle being burned before the fourth is set", "a counterpart they trusted naming them", "being known by the right name", "the Wardens already knowing"],
   },
   pinewood_coalition: {
-    archetypes: ["warrior", "hunter", "trader", "scholar", "healer"],
+    archetypes: ["warrior", "hunter", "trader", "healer", "farmer", "logger", "miner", "builder"],
     dimensions: {
       discipline:    { mean: 0.72, std: 0.12 },
       loyalty:       { mean: 0.80, std: 0.10 },
@@ -156,7 +156,7 @@ export const FACTION_PROFILES = Object.freeze({
     fear_pool: ["the Coalition fragmenting", "the Wardens making a separate peace", "being remembered as the cousin who broke the line", "the salt-route closing for good", "having to choose between Pinewood and the gate"],
   },
   default: {
-    archetypes: ["default"],
+    archetypes: ["default", "farmer", "laborer", "cook", "builder", "miner", "logger", "fisher", "miller"],
     dimensions: {},
     name_first: ["Wren", "Hollin", "Ash", "Pell", "Cyra", "Oren", "Mira", "Tann", "Esme"],
     name_last:  ["Marrow", "Linden", "Vellis", "Wright", "Thorne", "Reedmere"],

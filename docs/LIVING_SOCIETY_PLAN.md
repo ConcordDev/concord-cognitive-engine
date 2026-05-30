@@ -97,7 +97,13 @@ uprising → legibility → reskin) and each leaves the system working.
   `CONCORD_RESOURCE_GATED_BUILD`. Test `tests/terrain-deformation.test.js` (7). Client heightfield-apply +
   dynamic water surface is the remaining client-render slice (tracked under Phase 9 cross-cutting). **Server
   substrate 100%.**
-- Phases 1 → 13 (9 player-actionability cross-cutting): not started; specs below are current.
+- **Phase 1 — civilian occupation roster: SHIPPED.** 8 civilian archetypes (farmer/builder/miner/logger/
+  miller/fisher/cook/laborer) added to `npc-routines.js` (`ARCHETYPE_ROUTINES` + 7 new `ACTIVITY_SIGNALS`
+  production verbs), `npc-economy.js` (`ARCHETYPE_GATHER_TARGETS` + `ARCHETYPE_CRAFT_RECIPES` + grain/fish
+  raw + produce/masonry/ingot/lumber/flour goods), and `npc-generator.js` (`FACTION_PROFILES` — civilians
+  weighted into the 4 non-martial factions + default). No new tables. Civilians carry no martial archetype
+  (poise invariant holds). Test `tests/civilian-roster.test.js` (12). **Phase 1 = 100%.**
+- Phases 1.5 → 13 (9 player-actionability cross-cutting): not started; specs below are current.
 
 ## Unifying model (the one substrate)
 

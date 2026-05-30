@@ -408,8 +408,12 @@ describe("npc-economy-cycle heartbeat", () => {
 });
 
 describe("internals", () => {
-  it("RAW_RESOURCES + FINISHED_GOODS each have 8 items", () => {
-    assert.equal(RAW_RESOURCES.length, 8);
-    assert.equal(FINISHED_GOODS.length, 8);
+  it("RAW_RESOURCES + FINISHED_GOODS include the base 8 + the Phase-1 civilian items", () => {
+    // Base martial economy = 8 each; Living Society Phase 1 adds civilian taps
+    // (grain, fish) + transformed goods (produce, masonry, ingot, lumber, flour).
+    assert.equal(RAW_RESOURCES.length, 10);
+    assert.equal(FINISHED_GOODS.length, 13);
+    for (const r of ["wood", "stone", "ore", "herb", "fiber", "meat", "salt", "crystal"]) assert.ok(RAW_RESOURCES.includes(r));
+    for (const g of ["grain", "fish"]) assert.ok(RAW_RESOURCES.includes(g));
   });
 });
