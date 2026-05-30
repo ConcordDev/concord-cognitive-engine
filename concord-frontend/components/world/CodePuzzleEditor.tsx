@@ -9,6 +9,7 @@ import { Cpu, Play, Send, Trash2, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, milestoneJuice, failureJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface PuzzleStub { id: string; name: string; description?: string; optimal_cycles?: number; optimal_size?: number; }
 interface TestCase { input: number[]; expected: number[]; }
@@ -60,6 +61,7 @@ export function CodePuzzleEditor({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('hack'); // typing at the console
         setResult(j);
         if (j.passed) successJuice('ui_code_test_pass');
         else failureJuice('ui_code_test_fail');

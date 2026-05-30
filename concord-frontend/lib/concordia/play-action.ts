@@ -53,3 +53,19 @@ export function playAction(verb: string, opts: PlayActionOpts = {}): ActionDescr
   }
   return descriptor;
 }
+
+/**
+ * Convenience for station/labor UI: embody the verb on the LOCAL player and
+ * anchor the VFX burst at the player's live world position (set on
+ * `window.__concordiaPlayerPos` by AvatarSystem3D). Falls back to the bridge's
+ * default position when the player position isn't known yet. This is the one
+ * call a station overlay makes on a successful action so "doing" moves the body.
+ */
+export function playActionAtPlayer(verb: string, opts: PlayActionOpts = {}): ActionDescriptor {
+  let pos = opts.pos;
+  if (!pos && typeof window !== 'undefined') {
+    const p = (window as { __concordiaPlayerPos?: { x: number; y?: number; z: number } }).__concordiaPlayerPos;
+    if (p) pos = { x: p.x, y: p.y ?? 1, z: p.z };
+  }
+  return playAction(verb, { ...opts, pos });
+}

@@ -14,6 +14,7 @@ import { Sparkles, Hand, Loader2, Trophy, AlertTriangle } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, milestoneJuice, failureJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 import { Tile } from './mahjong/Tile';
 
 interface Seat {
@@ -110,6 +111,7 @@ export function MahjongTable({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('craft'); // tile placement — hand manipulation in place
         successJuice('ui_mahjong_discard');
         setPicked(null);
         refresh();
@@ -130,6 +132,7 @@ export function MahjongTable({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('wave'); // victory flourish on the winning hand
         milestoneJuice('ui_mahjong_tsumo');
         setEndResult({ winnerSeat: 0, reason: 'tsumo', scoring: j.scoring });
         refresh();

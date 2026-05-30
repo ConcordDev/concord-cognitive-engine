@@ -10,6 +10,7 @@ import { Sparkles, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, failureJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Choice { dtuId: string; title: string; }
 interface Question {
@@ -65,6 +66,7 @@ export function TriviaKioskPanel({ building, onClose, worldId }: OverlayProps) {
       const j = await r.json();
       setResult(j);
       if (j?.ok && j.isCorrect) {
+        playActionAtPlayer('wave'); // celebratory gesture on a correct answer
         successJuice('ui_trivia_correct');
         setTimeout(() => { setActive(null); setPicked(null); setResult(null); }, 1500);
       } else if (j?.ok && !j.isCorrect) {
