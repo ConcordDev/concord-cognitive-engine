@@ -135,7 +135,7 @@ export function shareOutfit(db, outfitId, userId) {
   const dtuId = `dtu_outfit_${crypto.randomBytes(6).toString("hex")}`;
   try {
     db.prepare(`
-      INSERT INTO dtus (id, title, kind, created_by, created_at, meta_json)
+      INSERT INTO dtus (id, title, type, creator_id, created_at, data)
       VALUES (?, ?, 'outfit_recipe', ?, unixepoch(), ?)
     `).run(dtuId, outfit.name, userId, JSON.stringify({ outfit_slots: outfit.slots, source_outfit_id: outfitId }));
     return { ok: true, dtuId };

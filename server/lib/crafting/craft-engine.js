@@ -141,7 +141,7 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
         || Number(recipeData.minPotency) || 0;
       resolved = resolveCraft({
         inputs: _craftInputsFromRecipe(db, userId, resourceRequirements),
-        recipe: { minPotency, name: recipeDtu.name },
+        recipe: { minPotency, name: recipeDtu.title },
         playerSkill: craftSkill,
         stationQuality: Number(opts.stationQuality) || 0,
         risk: Number(opts.risk) || 0,
@@ -212,10 +212,10 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
 
     const dtuId = crypto.randomUUID();
     const outputType = recipeData.output_type || spec.output_type || 'item';
-    const dtuName = recipeDtu.name || spec.name || 'Crafted Item';
+    const dtuName = recipeDtu.title || spec.name || 'Crafted Item';
 
     db.prepare(`
-      INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+      INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(dtuId, userId, outputType, dtuName, JSON.stringify(outputData), playerCraftingLevel);
 

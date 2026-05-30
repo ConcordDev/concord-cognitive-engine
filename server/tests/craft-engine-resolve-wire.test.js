@@ -29,7 +29,7 @@ function makeDb() {
       id TEXT PRIMARY KEY, world_type TEXT, rule_modulators TEXT
     );
     CREATE TABLE dtus (
-      id TEXT PRIMARY KEY, creator_id TEXT, type TEXT, name TEXT,
+      id TEXT PRIMARY KEY, creator_id TEXT, type TEXT, title TEXT,
       data TEXT, skill_level INTEGER, created_at INTEGER DEFAULT (unixepoch())
     );
     CREATE TABLE player_skill_levels (
@@ -71,7 +71,7 @@ function makeRecipe(db, { resources, minPotency = 0, outputType = "weapon", outp
     skill_requirements: [],
     output_type: outputType,
   };
-  db.prepare(`INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+  db.prepare(`INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
               VALUES (?, 'system', 'recipe', 'Test Blade', ?, 0)`).run(id, JSON.stringify(data));
   return id;
 }

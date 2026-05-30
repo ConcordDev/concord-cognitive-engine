@@ -148,7 +148,7 @@ export function ensureNpcAuthoredSkills(db, npc) {
 
     try {
       db.prepare(`
-        INSERT OR IGNORE INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+        INSERT OR IGNORE INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 0, unixepoch())
       `).run(
         recipeId,

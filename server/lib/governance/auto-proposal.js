@@ -115,9 +115,9 @@ export function postAutoProposal({ db, kind, title, body, evidence = {}, suggest
       ).get();
       if (dtuColExists) {
         db.prepare(`
-          INSERT INTO dtus (id, kind, scope, creator_id, content, content_type,
+          INSERT INTO dtus (id, type, creator_id, data,
             created_at, updated_at)
-          VALUES (?, 'auto_proposal', 'system', 'system', ?, 'application/json', ?, ?)
+          VALUES (?, 'auto_proposal', 'system', ?, ?, ?)
         `).run(
           dtuId,
           JSON.stringify({ proposal, evidence }),
