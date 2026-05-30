@@ -155,6 +155,15 @@ registerHeartbeat("pay-cycle", {
   handler: runPayCycle,
 });
 
+// Living Society Phase 5 — the Movement/Cell keystone. Seed coalitions from
+// grievance clusters, recruit cross-tier under secrecy-vs-discovery, tick to
+// `acting` at threshold (Phase 6 erupts it).
+import { runMovementRecruitmentCycle } from "./emergent/movement-recruitment-cycle.js";
+registerHeartbeat("movement-recruitment-cycle", {
+  frequency: 50,
+  handler: runMovementRecruitmentCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so

@@ -126,7 +126,16 @@ uprising → legibility → reskin) and each leaves the system working.
   normalises authority kinds onto the mig-128 CHECK [realm/faction→faction, ruler/enforcer→npc];
   accumulates on one edge rather than spamming rows) + `grievanceAgainstAuthority` query. Wired by Phase 3
   unpaid-flow; combat/decree hooks land with Phase 6. Test `tests/sparks-flow.test.js` (6). **Phase 4 = 100%.**
-- Phases 1.5, 5 → 13 (9 cross-cutting): 1.5 (settlement composition) + 5 (movement keystone) next.
+- **Phase 5 — the Movement/Cell primitive (KEYSTONE): SHIPPED.** The one genuinely-new structure. Mig 284
+  (`movements` + `movement_members` [cross-world member_world_id] + `movement_plans` + `movement_visibility`,
+  all per-world write tables); `lib/movements.js` (`seedMovementFromGrievance` clusters open grudges vs one
+  authority and founds a movement led by the angriest holder, idempotent via a unique seed index; `recruit`
+  grows members + raises visibility [secrecy↔discovery tension], supports cross-tier player + cross-world
+  membership — a 2-person cross-world coalition is a valid movement; `exposeMovement` counter-intel raises
+  visibility → suppress past the line; `tickMovement` flips recruiting→organized→acting at threshold; invariant:
+  can't recruit its own target); `movement-recruitment-cycle` heartbeat (freq 50) seeds+recruits+ticks+exposes
+  per world. Dials `CONCORD_MOVEMENT_*`. Test `tests/movements.test.js` (7). **Phase 5 = 100%.**
+- Phases 1.5, 6 → 13 (9 cross-cutting): 6 (uprising→faction+quest) next; 1.5 (settlement composition) pending.
 
 ## Unifying model (the one substrate)
 
