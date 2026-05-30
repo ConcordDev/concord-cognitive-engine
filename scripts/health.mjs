@@ -58,6 +58,13 @@ try {
     detail: j.ok ? "all constitutional constants hold" : `${bad} drifted` });
 } catch { gates.push({ name: "economic-inv", pct: null, floor: 100, detail: "gate errored" }); }
 
+// 3d. Schema/query drift (informational — a triage backlog, not a %; ratchets down)
+try {
+  const j = JSON.parse(run("node scripts/verify-schema-drift.mjs --json"));
+  gates.push({ name: "schema-drift", pct: null, floor: 0,
+    detail: `${j.drift} drift candidates (triage queue; ${j.checked} checks, ${j.unverified} skipped) — runtime-confirm each` });
+} catch { gates.push({ name: "schema-drift", pct: null, floor: 0, detail: "gate errored" }); }
+
 // 3c. Render-parity (static appearance layer)
 try {
   const j = JSON.parse(run("node scripts/verify-render-parity.mjs --json"));

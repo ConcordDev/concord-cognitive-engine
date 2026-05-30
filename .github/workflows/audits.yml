@@ -71,6 +71,18 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 77
 
+      - name: Schema/query drift gate (ratchet — prevents NEW drift)
+        run: |
+          # Runs all migrations into an in-memory DB (PRAGMA = authoritative column
+          # truth) and validates db.prepare/exec column references where attribution
+          # is unambiguous (INSERT/UPDATE cols, single-table SELECTs, alias.col).
+          # The current count is a TRIAGE BACKLOG (runtime-confirm each before
+          # editing — some are migration/code or live-vs-fresh-schema mismatches,
+          # NOT all hard bugs). The --ci floor ratchets DOWN as the queue is worked;
+          # it fails the build only if NEW drift is introduced above the floor.
+          node scripts/verify-schema-drift.mjs
+          node scripts/verify-schema-drift.mjs --ci 411
+
       - name: Render-parity gate (static appearance layer)
         run: |
           node scripts/verify-render-parity.mjs
