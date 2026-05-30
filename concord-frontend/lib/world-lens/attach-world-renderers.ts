@@ -29,6 +29,7 @@ import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
 import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createAvatarAuraRenderer } from './avatar-aura-renderer';
 import { createUprisingCrowdRenderer } from './uprising-crowd-renderer';
+import { createCorpseMeshRenderer } from './corpse-mesh-renderer';
 import { createWorldVFXBridge } from './world-vfx-bridge';
 
 export interface WorldRenderersHandle {
@@ -86,6 +87,7 @@ export function attachWorldRenderers(
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
   mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
   mount(() => createUprisingCrowdRenderer(infrastructureGroup, dataOpts));
+  mount(() => createCorpseMeshRenderer(infrastructureGroup, dataOpts));
   mount(() => createAvatarAuraRenderer(particlesGroup, { authToken, apiBase: opts.apiBase }));
   mount(() => createWorldVFXBridge(particlesGroup, { maxBursts: opts.maxBursts }));
 
