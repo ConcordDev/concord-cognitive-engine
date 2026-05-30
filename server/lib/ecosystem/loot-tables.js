@@ -9,6 +9,12 @@
 //
 // rarity is folded into the inventory row's quality field. chance is
 // rolled per-drop (independent), so a corpse can yield multiple items.
+//
+// Living Society P0.5: rollLoot now accepts an optional { blueprint, lineage }
+// so a hybrid (whose generated species_id has no table entry) composes drops
+// from its blueprint instead of returning [] — see procedural-meat-composer.js.
+
+import { composeDrops as _composeDrops } from "./procedural-meat-composer.js";
 
 // F2.1 — equippable drops roll item affixes by rarity.
 import { rollAffixes, RARITY_RULES } from "../item-affixes.js";
@@ -190,8 +196,16 @@ const LOOT = Object.freeze({
  * minigame) scales chance and qtyRange linearly within the [0.5, 2.0] band.
  * @returns {Array<{ item, quantity, quality }>}
  */
-export function rollLoot(speciesId, qualityMultiplier = 1.0) {
+export function rollLoot(speciesId, qualityMultiplier = 1.0, opts = {}) {
   const table = LOOT[speciesId];
+  // Living Society P0.5 — no table entry (e.g. a hybrid's generated id) used to
+  // return [] (the empty-loot bug). With a blueprint/lineage, compose drops
+  // from the creature so it always yields something propertied.
+  if ((!table || table.length === 0) && (opts.blueprint || opts.lineage)) {
+    try {
+      return _composeDrops({ blueprint: opts.blueprint, lineage: opts.lineage, speciesId, qualityMultiplier, db: opts.db });
+    } catch { return []; }
+  }
   if (!table || table.length === 0) return [];
   const q = Math.max(0.5, Math.min(2.0, qualityMultiplier));
   const out = [];

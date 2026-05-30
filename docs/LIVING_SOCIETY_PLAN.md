@@ -71,7 +71,18 @@ uprising → legibility → reskin) and each leaves the system working.
   - Contract tests: `tests/resources.test.js` (11), `tests/craft-resolve.test.js` (9),
     `tests/craft-engine-resolve-wire.test.js` (7), `tests/craft-resolve-wire-extra.test.js` (7),
     `tests/craft-resolve-tail.test.js` (5). Dials in `docs/BALANCE_DIALS.md`. **Phase 0 = 100% complete.**
-- Phases 0.5 → 13 (incl. 0.6 destructible world + load-bearing hydrology, 9 player-actionability):
+- **Phase 0.5 — procedural food + crossbreed materials: SHIPPED.** Mig 280 (`material_profiles` table +
+  `creature_corpses.lineage_json`/`blueprint_json` + `creature_lineage.material_profile`);
+  `lib/ecosystem/material-profiles.js` (authored catalog + `profileFor` + `deriveProfileFromBlueprint` +
+  `blendMaterialProfile` with gen-decay clamp + `composeMaterialName` seeded pools + `seedMaterialProfiles`);
+  `lib/ecosystem/procedural-meat-composer.js#composeDrops` (FIXES the hybrid empty-loot bug — a hybrid now
+  always yields ≥1 named, propertied drop derived from its blueprint/lineage). `rollLoot` accepts an
+  optional `{ blueprint, lineage }`; the butcher route detects hybrids + persists `properties_json`; the
+  kill path stamps blueprint/lineage onto the corpse; `generateHybrid` blends + persists a material
+  profile; `cook-engine.applyConsumable` scales buff magnitude by the resolved quality. Seeded at boot.
+  Dial `CONCORD_MATERIAL_MUTATION` (+ reuses `CONCORD_FUSION_GEN_DECAY`). Test
+  `tests/material-profiles.test.js` (7). **Phase 0.5 = 100%.**
+- Phases 0.6 → 13 (incl. 0.6 destructible world + load-bearing hydrology, 9 player-actionability):
   not started; specs below are current and fully audit-grounded.
 
 ## Unifying model (the one substrate)

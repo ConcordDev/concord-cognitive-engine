@@ -77,6 +77,12 @@ export function applyConsumable(db, userId, dtuId) {
   let body = {};
   try { body = JSON.parse(dtu.body_json || "{}"); } catch { /* malformed */ }
   const effects = Array.isArray(body?.effects) ? body.effects : [];
+  // Living Society P0.5 — a better-cooked meal grants a stronger buff. The
+  // craft-resolve quality_multiplier (derived from ingredient properties in
+  // Phase 0) scales every effect's magnitude. Defaults to 1.0 when absent so
+  // authored recipes apply their effects exactly as written.
+  const qmRaw = Number(body?.quality_multiplier ?? body?.data?.quality_multiplier ?? 1.0);
+  const buffScale = Math.max(0.5, Math.min(2.0, Number.isFinite(qmRaw) ? qmRaw : 1.0));
 
   // Inventory deduction — one item, FIFO.
   const inv = db.prepare(`
@@ -102,16 +108,17 @@ export function applyConsumable(db, userId, dtuId) {
     for (const eff of effects) {
       if (!eff?.effect_id) continue;
       const durationS = Math.max(1, Math.floor((eff.durationMs ?? 300000) / 1000));
+      const magnitude = Math.round((Number(eff.magnitude ?? 1) * buffScale) * 1000) / 1000;
       insert.run(
         `eff_${crypto.randomUUID()}`,
         userId,
         String(eff.effect_id),
         eff.kind === "debuff" ? "debuff" : "buff",
-        Number(eff.magnitude ?? 1),
+        magnitude,
         dtuId,
         now + durationS,
       );
-      applied.push({ effect_id: eff.effect_id, magnitude: eff.magnitude ?? 1, expires_in_s: durationS });
+      applied.push({ effect_id: eff.effect_id, magnitude, expires_in_s: durationS });
     }
     return applied;
   });

@@ -813,6 +813,16 @@ export async function seedContent({ db = null } = {}) {
       logger.warn("content_seeder", "resource_props_seed_failed", { err: err?.message });
     }
 
+    // Living Society P0.5 — seed authored material profiles (effect tags +
+    // props per drop kind) so cooking/crafting reads inheritable effects.
+    try {
+      const { seedMaterialProfiles } = await import("./ecosystem/material-profiles.js");
+      const r = seedMaterialProfiles(db);
+      results.materialProfiles = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "material_profiles_seed_failed", { err: err?.message });
+    }
+
     try {
       const hpJson = readJSON("hacking-puzzles.json");
       if (Array.isArray(hpJson) && hpJson.length > 0) {
