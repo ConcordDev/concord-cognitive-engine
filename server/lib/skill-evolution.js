@@ -27,6 +27,7 @@ import crypto from "node:crypto";
 import logger from "../logger.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
 import { resolveCraft } from "./craft-resolve.js";
+import { stampMoveMeta } from "./move-descriptor.js";
 
 // Living Society P0 — optional resource fuel for a skill evolution. Same
 // potency-proportional model as glyph-spell fuel: consuming high-potency mats
@@ -647,6 +648,10 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
     if (Array.isArray(evolution.requiredLimbs)) {
       meta.required_limbs = evolution.requiredLimbs;
     }
+    // Universal Move System P1 — backfill the motion descriptor so recipes minted
+    // before stamping gain an explicit animation block on their next evolution
+    // (no-op when already present; kill-switch CONCORD_MOVE_RESOLVER=0).
+    stampMoveMeta(meta, { skillKind: meta.skill_kind, element: meta.element, worldId: opts.worldId });
     meta.revision_history = (Array.isArray(meta.revision_history) ? meta.revision_history : [])
       .concat([{
         revision_num: evolution.revisionNum,

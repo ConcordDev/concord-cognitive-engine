@@ -15,6 +15,7 @@
 import crypto from "node:crypto";
 import { add as glyphAdd, computeBase6Layer } from "./refusal-algebra/operations.js";
 import { resolveCraft } from "./craft-resolve.js";
+import { stampMoveMeta } from "./move-descriptor.js";
 
 const MIN_COMPONENTS = 2;
 const MAX_COMPONENTS = 5;
@@ -241,6 +242,10 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
   if (fuel) {
     meta.fuel = { items: fuel.items, multiplier: fuel.multiplier, affinity: fuel.affinity };
   }
+  // Universal Move System P1 — stamp the motion descriptor + native world so the
+  // client resolver animates this spell per element+archetype (not generic cast)
+  // and cross-world potency can read where it was made. Kill-switch CONCORD_MOVE_RESOLVER=0.
+  stampMoveMeta(meta, { skillKind: "spell", element: composed.element, worldId });
 
   const tx = db.transaction(() => {
     // Consume one of each owned fuel item (FIFO, world-scoped). Guarded — the
