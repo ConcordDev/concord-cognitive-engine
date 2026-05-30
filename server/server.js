@@ -49066,7 +49066,7 @@ app.get("/api/fishing/catches/mine", requireAuth(), asyncHandler(async (req, res
   const userId = req.user?.id || req.user?.userId;
   try {
     const rows = db.prepare(`
-      SELECT id, world_id, item_id, item_name, acquired_at, meta_json
+      SELECT id, world_id, item_id, item_name, acquired_at, metadata AS meta_json
       FROM player_inventory
       WHERE user_id = ? AND item_type = 'raw_fish'
       ORDER BY acquired_at DESC LIMIT 50

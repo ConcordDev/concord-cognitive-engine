@@ -34,7 +34,7 @@ function setupInventoryTable(db) {
       item_name TEXT,
       quantity INTEGER NOT NULL DEFAULT 1,
       schema_id TEXT,
-      meta_json TEXT,
+      metadata TEXT,
       acquired_at INTEGER NOT NULL DEFAULT (unixepoch())
     )
   `);
