@@ -190,12 +190,12 @@ export default function registerDtuSurfaceMacros(register) {
     const maxDepth = Math.min(Math.max(Number(input.maxDepth) || 6, 1), MAX_TRAIL_DEPTH);
 
     const hasDtus = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtus'`).get();
-    const hasCitations = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtu_citations'`).get();
+    const hasCitations = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='royalty_lineage'`).get();
     if (!hasDtus) return { ok: false, reason: "dtus_table_missing" };
 
     const getDtu = (id) => db.prepare(`SELECT id, title, lens_id AS source_lens, creator_id, type AS kind FROM dtus WHERE id = ?`).get(id);
     const getParents = hasCitations
-      ? db.prepare(`SELECT parent_id FROM dtu_citations WHERE child_id = ? LIMIT 5`)
+      ? db.prepare(`SELECT parent_id FROM royalty_lineage WHERE child_id = ? LIMIT 5`)
       : null;
     const surfaceCount = db.prepare(`SELECT COUNT(*) AS c FROM dtu_surface_log WHERE dtu_id = ?`);
 

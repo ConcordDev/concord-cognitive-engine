@@ -70,15 +70,16 @@ export async function runDtuLineageDetector({ db, opts = {} } = {}) {
     }
 
     // ── 2. Citation loops ─────────────────────────────────────────────
-    if (tables.has("dtu_citations")) {
-      const cols = new Set(db.prepare(`PRAGMA table_info(dtu_citations)`).all().map(r => r.name));
-      if (cols.has("citing_dtu_id") && cols.has("cited_dtu_id")) {
+    if (tables.has("royalty_lineage")) {
+      const cols = new Set(db.prepare(`PRAGMA table_info(royalty_lineage)`).all().map(r => r.name));
+      if (cols.has("child_id") && cols.has("parent_id")) {
+        // A citation row means child_id cites parent_id; a loop is the mutual pair.
         const loops = db.prepare(`
-          SELECT a.citing_dtu_id AS x, a.cited_dtu_id AS y
-          FROM dtu_citations a
-          JOIN dtu_citations b
-            ON b.citing_dtu_id = a.cited_dtu_id
-           AND b.cited_dtu_id  = a.citing_dtu_id
+          SELECT a.child_id AS x, a.parent_id AS y
+          FROM royalty_lineage a
+          JOIN royalty_lineage b
+            ON b.child_id = a.parent_id
+           AND b.parent_id = a.child_id
           LIMIT ?
         `).all(cap);
         const seen = new Set();

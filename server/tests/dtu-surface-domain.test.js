@@ -39,7 +39,7 @@ function setup({ withDtus = false } = {}) {
         id TEXT PRIMARY KEY, title TEXT, lens_id TEXT,
         creator_id TEXT, type TEXT
       );
-      CREATE TABLE dtu_citations (
+      CREATE TABLE royalty_lineage (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         parent_id TEXT NOT NULL,
         child_id TEXT NOT NULL
@@ -198,8 +198,8 @@ describe("dtu_surface.provenance_trail", () => {
     db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("leaf", "Latest take", "chat", "alice", "note");
 
-    db.prepare("INSERT INTO dtu_citations (parent_id, child_id) VALUES (?, ?)").run("ancestor-1", "intermediate");
-    db.prepare("INSERT INTO dtu_citations (parent_id, child_id) VALUES (?, ?)").run("intermediate", "leaf");
+    db.prepare("INSERT INTO royalty_lineage (parent_id, child_id) VALUES (?, ?)").run("ancestor-1", "intermediate");
+    db.prepare("INSERT INTO royalty_lineage (parent_id, child_id) VALUES (?, ?)").run("intermediate", "leaf");
 
     await call("record", CTX(db), { dtuId: "leaf", lensId: "chat", surfaceKind: "feed" });
     await call("record", CTX(db), { dtuId: "ancestor-1", lensId: "paper", surfaceKind: "citation_chip" });

@@ -45,14 +45,13 @@ export function getCrossWorldFeed(db, opts = {}) {
   // DTU promotions across all worlds.
   try {
     const rows = db.prepare(`
-      SELECT id, world_id, title, kind, created_by, created_at,
-             COALESCE(meta_json, '{}') AS meta_json
+      SELECT id, world_id, title, type AS kind, creator_id AS created_by, created_at,
+             COALESCE(data, '{}') AS meta_json
       FROM dtus
-      WHERE COALESCE(promoted_at, 0) >= ?
-        OR (kind IN ('mega_dtu','hyper_dtu') AND created_at >= ?)
-      ORDER BY COALESCE(promoted_at, created_at) DESC
+      WHERE tier IN ('mega','hyper') AND created_at >= ?
+      ORDER BY created_at DESC
       LIMIT 100
-    `).all(since, since);
+    `).all(since);
     for (const r of rows) {
       events.push({
         kind: "dtu:promoted",
@@ -159,15 +158,15 @@ export function getCrossWorldRoyaltyFlow(db, opts = {}) {
     const rows = db.prepare(`
       SELECT
         c.id AS citation_id,
-        c.parent_dtu_id, c.child_dtu_id, c.created_at,
-        p.world_id AS parent_world_id, p.title AS parent_title, p.created_by AS parent_creator,
-        d.world_id AS child_world_id,  d.title AS child_title,  d.created_by AS child_creator,
-        l.amount_cc, l.ts AS payout_ts
-      FROM dtu_citations c
-      JOIN dtus p ON p.id = c.parent_dtu_id
-      JOIN dtus d ON d.id = c.child_dtu_id
-      LEFT JOIN economy_ledger l ON l.ref_id = c.id AND l.kind LIKE 'royalty_%'
-      WHERE c.created_at >= ?
+        c.parent_id AS parent_dtu_id, c.child_id AS child_dtu_id, c.created_at,
+        p.world_id AS parent_world_id, p.title AS parent_title, p.creator_id AS parent_creator,
+        d.world_id AS child_world_id,  d.title AS child_title,  d.creator_id AS child_creator,
+        l.amount AS amount_cc, l.created_at AS payout_ts
+      FROM royalty_lineage c
+      JOIN dtus p ON p.id = c.parent_id
+      JOIN dtus d ON d.id = c.child_id
+      LEFT JOIN economy_ledger l ON l.ref_id = c.id AND l.type = 'ROYALTY_PAYOUT'
+      WHERE c.created_at >= datetime(?, 'unixepoch')
         AND COALESCE(p.world_id, 'concordia-hub') != COALESCE(d.world_id, 'concordia-hub')
       ORDER BY c.created_at DESC
       LIMIT ?

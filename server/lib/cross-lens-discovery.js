@@ -148,9 +148,9 @@ export function getTrending(db, opts = {}) {
     return db.prepare(`
       SELECT c.parent_id AS id, COUNT(*) AS citations,
              d.title, d.type AS kind, d.creator_id
-      FROM dtu_citations c
+      FROM royalty_lineage c
       JOIN dtus d ON d.id = c.parent_id
-      WHERE c.created_at > ?
+      WHERE c.created_at > datetime(?, 'unixepoch')
       GROUP BY c.parent_id
       ORDER BY citations DESC
       LIMIT ?
