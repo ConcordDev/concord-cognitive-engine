@@ -2254,9 +2254,16 @@ export default function AvatarSystem3D({
                 1.0
               : 0;
 
+            // B2 — momentum-eased gait cadence. Drive leg speed from the
+            // accel-smoothed throttle (|pm|, the eased WASD magnitude 0→~1,
+            // diagonal up to 1.41 → clamped) × target speed, so cadence RAMPS on
+            // start/stop instead of snapping. The stride phase itself is already
+            // continuous (stridePhaseRef persists across stops — no reset).
+            const throttle = Math.hypot(planarMoveRef.current.x, planarMoveRef.current.z);
+            const gaitSpeed = Math.min(physicsSpeed, throttle * physicsSpeed);
             stridePhaseRef.current = advanceGaitPhase(
               stridePhaseRef.current,
-              physicsSpeed,
+              gaitSpeed,
               playerAvatar.appearance.bodyType as BodyType,
               delta
             );
@@ -2298,7 +2305,7 @@ export default function AvatarSystem3D({
             }
 
             const gaitParams: GaitParams = {
-              speed: physicsSpeed,
+              speed: gaitSpeed,
               direction: 0,
               slope: Math.atan(slopeAhead),
               load: physics.mass > 70 ? (physics.mass - 70) * 0.1 : 0,
