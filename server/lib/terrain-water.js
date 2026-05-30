@@ -93,7 +93,19 @@ export function totalWater(cells) {
 
 // ── DB wrappers ──────────────────────────────────────────────────────────────
 
-/** Load the water grid for a world into a solver-shaped Map (terrain injected). */
+const FLOW_NEIGHBOURS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/**
+ * Load the water grid for a world into a solver-shaped Map (terrain injected).
+ *
+ * Crucially, we ALSO inject each wet cell's 4 orthogonal neighbours as DRY
+ * cells (water=0) carrying their REAL terrain top — so the flow solver can pour
+ * water DOWNHILL into an empty, lower cell (e.g. a freshly-dug ditch). Without
+ * this, `solveFlowStep`'s `makeDryNeighbour` treats any cell absent from the map
+ * as terrain=Infinity (a wall), and water could only redistribute among
+ * already-wet cells — a dug ditch would never fill. Dry cells that stay dry are
+ * GC'd by `tickWaterFlow`, so this only widens the solve frontier by one ring.
+ */
 export function loadWaterGrid(db, worldId) {
   const cells = new Map();
   try {
@@ -106,6 +118,16 @@ export function loadWaterGrid(db, worldId) {
         terrain: terrainTop(db, worldId, r.cell_x, r.cell_z),
         water: Number(r.water_height) || 0,
       });
+    }
+    // Seed dry downhill neighbours so water can flow into empty lower cells.
+    for (const r of rows) {
+      for (const [dx, dz] of FLOW_NEIGHBOURS) {
+        const ncx = r.cell_x + dx;
+        const ncz = r.cell_z + dz;
+        const nk = `${ncx},${ncz}`;
+        if (cells.has(nk)) continue;
+        cells.set(nk, { cx: ncx, cz: ncz, terrain: terrainTop(db, worldId, ncx, ncz), water: 0 });
+      }
     }
   } catch { /* table absent */ }
   return cells;
