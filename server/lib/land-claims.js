@@ -62,6 +62,46 @@ export function claimLand(db, { userId, worldId, x, z, radiusM, walletDebit }) {
   return { ok: true, claimId, bond, radius: r, anchor: { x: ax, z: az } };
 }
 
+/**
+ * Living Society Phase 13b — grow a claim's safe radius OUTWARD at real,
+ * ESCALATING cost (risk scales with ambition, not with what you already have).
+ * The bond to expand grows quadratically with the new radius, so a small safe
+ * heart is cheap but a sprawling fief is expensive. Owner-only; overlap-checked.
+ */
+export function expandClaim(db, { claimId, userId, newRadiusM, walletDebit }) {
+  if (!db || !claimId || !userId) return { ok: false, reason: "missing_inputs" };
+  let claim = null;
+  try { claim = db.prepare(`SELECT * FROM land_claims WHERE id = ? AND status = 'active'`).get(claimId); }
+  catch { return { ok: false, reason: "no_claim" }; }
+  if (!claim) return { ok: false, reason: "no_claim" };
+  if (claim.owner_user_id !== userId) return { ok: false, reason: "not_owner" };
+  const target = Math.max(claim.radius_m, Math.min(MAX_RADIUS_M, Number(newRadiusM) || claim.radius_m));
+  if (target <= claim.radius_m) return { ok: false, reason: "not_larger" };
+
+  // Overlap check against other claims at the new radius.
+  try {
+    const others = db.prepare(`SELECT id, anchor_x, anchor_z, radius_m FROM land_claims WHERE world_id = ? AND status = 'active' AND id != ?`).all(claim.world_id, claimId);
+    for (const e of others) {
+      if (Math.hypot(e.anchor_x - claim.anchor_x, e.anchor_z - claim.anchor_z) < target + e.radius_m) {
+        return { ok: false, reason: "overlap", overlappingClaimId: e.id };
+      }
+    }
+  } catch { /* overlap best-effort */ }
+
+  // Escalating cost: the delta-bond grows with the SQUARE of the new radius
+  // (area), so each expansion costs more than the last.
+  const deltaBond = Math.max(BOND_FLOOR, Math.round((target * target - claim.radius_m * claim.radius_m) * RADIUS_TO_BOND_M / 10));
+  if (typeof walletDebit === "function") {
+    const charged = walletDebit(deltaBond);
+    if (!charged?.ok) return { ok: false, reason: "wallet_insufficient", deltaBond };
+  }
+  try {
+    db.prepare(`UPDATE land_claims SET radius_m = ?, bond_sparks = bond_sparks + ? WHERE id = ?`).run(target, deltaBond, claimId);
+  } catch (err) { return { ok: false, reason: "update_failed", error: err?.message }; }
+  insertEvent(db, claimId, "build", userId, { action: "claim_expanded", radius: target, deltaBond });
+  return { ok: true, claimId, radius: target, deltaBond };
+}
+
 /** Add a co-owner / guest / tax-collector. */
 export function inviteToClaim(db, { claimId, userId, role = "co_owner", invitedBy }) {
   if (!db || !claimId || !userId) return { ok: false, reason: "missing_inputs" };

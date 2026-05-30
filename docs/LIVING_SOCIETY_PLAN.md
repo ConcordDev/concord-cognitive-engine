@@ -211,7 +211,22 @@ uprising → legibility → reskin) and each leaves the system working.
   strategy hypocrisy gap → alert a rival can expose) + `detectEchoChamber` (near-identical faction positions),
   following the drift-monitor pattern. Test `tests/ideology.test.js` (6). **Phase 12 = 100%.** (The
   `lattice-orchestrator` drift `severity:"high"` filter bug was already unmuted on main — commit 468a4ad9.)
-- Phase 13 (world-creation as the highest-stakes verb) remains.
+- **Phase 13 — world-creation as the highest-stakes verb: SHIPPED.** Mig 291 (worlds.tier/sanctioned_by/
+  founder_grace_until/current_ruler_id/authored). `lib/world-sovereignty.js`: `setWorldTier` (open default;
+  canon requires an operator — no self-promote to rule-bending); `grantFoundingGrace`/`isUnderGrace` (a
+  protected startup heart); `conquerWorld` (control TRANSFERS to the conqueror, the historical founder
+  `created_by` is NEVER overwritten, refused for the hub [Concordant Law] + during grace); `canHardDeleteWorld`
+  (the authored-substrate sanctity invariant — a world with authored content/NPCs/visits can NEVER be
+  hard-deleted; topple, never `rm`); `conditionalGodTierForce` (canon-tier power as a CONDITION over a
+  constant — daylight-amplified / war-ramp / regen, reusing the env-coupled buff substrate). Plus
+  `land-claims.js#expandClaim` (grow the safe radius OUTWARD at escalating quadratic cost — risk scales
+  with ambition). Test `tests/world-sovereignty.test.js` (7). **Phase 13 = 100%.**
+
+### 🏁 ALL PHASES COMPLETE (0, 0.5, 0.6, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+Every phase ships migration(s) + lib(s) + heartbeat/domain wiring + a green contract test, on branch
+`claude/continue-plan-nkNAQ`. Migrations 278→291 apply clean on a fresh DB (schema v291). The cross-cutting
+frontend slices (lens pages, the general action-animation framework, the faction/ideology map overlay) sit
+on top of the now-complete server substrate.
 
 ## Unifying model (the one substrate)
 
