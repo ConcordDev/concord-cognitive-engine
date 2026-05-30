@@ -26,6 +26,14 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { TASK_PROMPTS } from "./prompt-registry.js";
+import { resolveCraft } from "./craft-resolve.js";
+
+// Living Society P0 — optional resource fuel for a skill evolution. Same
+// potency-proportional model as glyph-spell fuel: consuming high-potency mats
+// (soul gems / aether / dragonbone) amplifies the evolution's damage/range
+// growth. Player-only (NPC auto-evolution carries no fuel); no fuel =
+// byte-identical to the pre-P0 growth. Floored at 1.0× so fuel only ever helps.
+const EVOLUTION_FUEL_BOOST = Number(process.env.CONCORD_EVOLUTION_FUEL_BOOST) || 0.5;
 
 // ── Tunables ────────────────────────────────────────────────────────────────
 
@@ -547,6 +555,49 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
     const coh = validateRevisionCoherence(recipe, evolution, shape.revisionHistory);
     if (!coh.ok) throw new Error(`coherence_${coh.reason}`);
 
+    // Optional resource fuel (Living Society P0): scale the evolution's
+    // damage/range growth by the fuel potency before persisting. Player-only,
+    // world-scoped inventory, single-tx consume. Guarded throughout.
+    let fuel = null;
+    const fuelIds = (entityKind === "player" && opts.userId && opts.worldId
+      && Array.isArray(opts.fuelItemIds) && process.env.CONCORD_CRAFT_RESOLVE !== "0")
+      ? opts.fuelItemIds.filter(Boolean).slice(0, 4) : [];
+    if (fuelIds.length > 0) {
+      try {
+        const owned = [];
+        for (const itemId of fuelIds) {
+          const row = db.prepare(`
+            SELECT COALESCE(SUM(quantity),0) AS qty FROM player_inventory
+            WHERE user_id = ? AND world_id = ? AND item_id = ?
+          `).get(opts.userId, opts.worldId, itemId);
+          if ((row?.qty ?? 0) >= 1) owned.push(itemId);
+        }
+        if (owned.length > 0) {
+          const resolved = resolveCraft({ inputs: owned.map((id) => ({ itemId: id, qty: 1 })), db });
+          if (resolved?.ok) {
+            const mult = Math.max(1.0, 1 + (resolved.outputPotency / 100) * EVOLUTION_FUEL_BOOST);
+            for (const itemId of owned) {
+              const slot = db.prepare(`
+                SELECT id, quantity FROM player_inventory
+                WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
+                ORDER BY acquired_at ASC LIMIT 1
+              `).get(opts.userId, opts.worldId, itemId);
+              if (!slot) continue;
+              if (slot.quantity > 1) db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`).run(slot.id);
+              else db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+            }
+            if (Number.isFinite(evolution.maxDamageAfter)) {
+              evolution.maxDamageAfter = Math.round(evolution.maxDamageAfter * mult * 10) / 10;
+            }
+            if (Number.isFinite(evolution.rangeMAfter)) {
+              evolution.rangeMAfter = Math.max(0, Math.round(evolution.rangeMAfter * mult));
+            }
+            fuel = { items: owned, multiplier: Math.round(mult * 1000) / 1000, affinity: resolved.outputAffinity };
+          }
+        }
+      } catch { fuel = null; }
+    }
+
     const revisionId = crypto.randomUUID();
 
     db.prepare(`
@@ -631,12 +682,12 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
       `).run(revisionId, entityKind, entityId, evolution.recipeId);
     }
 
-    return { revisionId, recipeId: evolution.recipeId };
+    return { revisionId, recipeId: evolution.recipeId, fuel };
   });
 
   try {
     const result = tx();
-    return { ok: true, revisionId: result.revisionId, recipeId: result.recipeId };
+    return { ok: true, revisionId: result.revisionId, recipeId: result.recipeId, fuel: result.fuel };
   } catch (err) {
     return { ok: false, reason: err?.message || "apply_failed" };
   }

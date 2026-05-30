@@ -53,7 +53,7 @@ uprising → legibility → reskin) and each leaves the system working.
   - `server/lib/craft-resolve.js#resolveCraft` — the single deterministic resolve (potency = weighted
     input potency + skill + station + magical-fuel; dominant-affinity cascade; conflicting affinities →
     stability drop → seeded-hash backfire; potency floor; soft-fail with debuff, never throws).
-  - **Wrap, don't rewrite — 3 of 5 systems wired** (kill-switch `CONCORD_CRAFT_RESOLVE=0` on each):
+  - **Wrap, don't rewrite — ALL 5 systems wired** (kill-switch `CONCORD_CRAFT_RESOLVE=0` on each):
     - `craft-engine.js#executeCraft` ✅ — derives `qualityMultiplier` from input resource properties,
       stamps affinity/potency/stability provenance, applies the soft backfire/fizzle debuff. (Also
       covers `cook-engine.js`, which delegates to `executeCraft`.)
@@ -62,14 +62,15 @@ uprising → legibility → reskin) and each leaves the system working.
     - `glyph-spells.js#mintSpell` ✅ — optional power-source FUEL (soul gems / mana / aether) amplifies
       the composed spell potency-proportionally (the Fireball I→V gradient) and is consumed from
       inventory; no fuel = byte-identical to the pre-P0 path. Dial `CONCORD_SPELL_FUEL_BOOST`.
-  - **Remaining for Phase 0 (deferred — these consume NO structured resource inputs today, so a faithful
-    wrap needs a small schema/design step, not a drop-in):** `skill-evolution.js#applyEvolution` (the
-    evolution magnitude is precomputed; would need an optional resource-fuel input) and the multi-step
-    chain executor (`craft-chains.js#advanceStep` — the chain's `output_item` is a bare string with no
-    resource-input list; would need the chain schema to carry inputs). Track as the Phase 0 tail.
+    - `skill-evolution.js#applyEvolution` ✅ — optional resource FUEL (player-only, world-scoped,
+      consumed) amplifies the evolution's damage/range growth potency-proportionally. Dial
+      `CONCORD_EVOLUTION_FUEL_BOOST`.
+    - multi-step chain executor (`craft-chains.js`) ✅ — migration 279 added `craft_chains.inputs_json`
+      (a resource bill) + `player_craft_jobs.output_quality`; `startChain` verifies + consumes the bill,
+      `advanceStep` resolves the finished item's quality from those propertied inputs on completion.
   - Contract tests: `tests/resources.test.js` (11), `tests/craft-resolve.test.js` (9),
-    `tests/craft-engine-resolve-wire.test.js` (7), `tests/craft-resolve-wire-extra.test.js` (7). Dials in
-    `docs/BALANCE_DIALS.md`.
+    `tests/craft-engine-resolve-wire.test.js` (7), `tests/craft-resolve-wire-extra.test.js` (7),
+    `tests/craft-resolve-tail.test.js` (5). Dials in `docs/BALANCE_DIALS.md`. **Phase 0 = 100% complete.**
 - Phases 0.5 → 13 (incl. 0.6 destructible world + load-bearing hydrology, 9 player-actionability):
   not started; specs below are current and fully audit-grounded.
 
