@@ -57,23 +57,17 @@ const SERVER_ONLY_ALLOWLIST = new Set([
 // instead — the baseline isn't a hide-yet-ship pattern, it's a debt list.
 const KNOWN_DEAD_BASELINE = new Set([
   "app:created",                    // apps lens — author flow has no realtime preview yet
-  "boss:phase-enter",               // boss-phase-trigger — UI consumes via combat:telegraph instead
   "chat:update",                    // chat composer typing indicator — UI uses presence pulse
   "city:npcs",                      // city-presence sync — frontend pulls via REST, not socket
   "emergent:activity",              // emergent-engine summary — replaced by activity:new
   "graph:update",                   // knowledge graph diff — graph view pulls on-demand
   "pain:avoidance_created",         // pain cortex internal — used for cross-module triggers
   "qualia:policy",                  // qualia engine — internal substrate event, no UI surface
-  "quest:rewards_granted",          // quest reward fanfare — uses quest:completed instead
   "timeline:post",                  // public timeline — frontend uses fast-path REST refresh
-  "tournament:bracket-advanced",    // tournament UI — pulls bracket on round complete
-  "tournament:complete",            // tournament UI — pulls bracket on round complete
   "world:action",                   // generic world event — superseded by typed channels
   "world:broadcast",                // world chat — replaced by chat:update
-  "world:legendary-achievement",    // world hall-of-fame — frontend has no panel yet
   "world:loot-node",                // node loot drops — uses item:spawned channel
   "world:notification",             // generic world toast — replaced by per-domain toasts
-  "world:weather",                  // weather updates — frontend uses weather:update
 ]);
 
 function walkFiles(dir, out = []) {
