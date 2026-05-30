@@ -265,9 +265,15 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
         }
       }
     }
+    // Schema/query-drift fix (runtime-confirmed): dtus has `type` + `data`, NOT
+    // `kind`/`meta_json`. The old INSERT named non-existent columns, threw at
+    // prepare, and was SILENTLY swallowed by the catch — so minting "worked" but
+    // the recipe DTU was never created (no marketplace listing / citation /
+    // royalty, and the stamped meta_json.motion never persisted). Map to the real
+    // columns the combat+cast paths already read (`data` = the JSON meta blob).
     try {
       db.prepare(`
-        INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+        INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
         VALUES (?, 'spell_recipe', ?, ?, ?, 1, 0, unixepoch())
       `).run(recipeId, spellName, userId, JSON.stringify(meta));
     } catch { /* dtus optional */ }
