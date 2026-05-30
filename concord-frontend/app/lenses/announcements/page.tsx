@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Megaphone, Sparkles, Bell, Wrench, CalendarDays, Map, RefreshCcw } from 'lucide-react';
+import { Megaphone, Sparkles, Bell, Wrench, CalendarDays, Map, RefreshCcw, Loader2 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
@@ -42,13 +42,21 @@ function timeAgo(ts: number): string {
 export default function AnnouncementsLensPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [filter, setFilter] = useState<'all' | Announcement['kind']>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     const q = filter === 'all' ? '' : `?kind=${encodeURIComponent(filter)}`;
-    fetch(`/api/announcements${q}`)
+    setLoading(true);
+    setError(null);
+    fetch(`/api/announcements${q}`, { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.ok) setItems(d.announcements || []); })
-      .catch(() => {});
+      .then((d) => {
+        if (d?.ok) setItems(d.announcements || []);
+        else setError('Could not load announcements. Please try again.');
+      })
+      .catch(() => setError('Could not load announcements. Please try again.'))
+      .finally(() => setLoading(false));
   }, [filter]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -72,8 +80,8 @@ export default function AnnouncementsLensPage() {
               <h1 className="text-base font-semibold tracking-tight sm:text-lg">Announcements</h1>
               <p className="mt-0.5 truncate text-xs text-slate-400">What's shipped, what's coming.</p>
             </div>
-            <button onClick={refresh} aria-label="Refresh" className="rounded-full border border-violet-500/30 bg-violet-500/10 p-1.5 text-violet-300 hover:bg-violet-500/20">
-              <RefreshCcw className="h-3.5 w-3.5" />
+            <button onClick={refresh} aria-label="Refresh announcements" className="rounded-full border border-violet-500/30 bg-violet-500/10 p-1.5 text-violet-300 transition-colors hover:bg-violet-500/20">
+              <RefreshCcw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -92,7 +100,21 @@ export default function AnnouncementsLensPage() {
             ))}
           </div>
 
-          {items.length === 0 ? (
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+            >
+              {error}
+            </div>
+          )}
+
+          {loading && items.length === 0 ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-violet-300/70">
+              <Loader2 className="h-5 w-5 animate-spin text-violet-400" aria-hidden="true" />
+              Loading announcements…
+            </div>
+          ) : items.length === 0 ? (
             <p className="py-12 text-center text-[12px] text-slate-500">No announcements yet.</p>
           ) : (
             <ol className="space-y-3">

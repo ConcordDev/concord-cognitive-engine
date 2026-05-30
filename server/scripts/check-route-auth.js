@@ -46,6 +46,9 @@ const AUTH_NAMES = new Set([
   "requireAdmin",
   "requireAdminRole",
   "requireRole",
+  // adminGate is the brains.js-local alias for requireRole("owner","admin",
+  // "sovereign") — a genuine admin-role auth gate the name-match missed.
+  "adminGate",
   "requireApiKey",
   "requireToken",
   "requireSession",

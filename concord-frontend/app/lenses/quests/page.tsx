@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle } from 'lucide-react';
+import { ScrollText, Check, Clock, Users2, RefreshCcw, AlertCircle, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -30,6 +30,8 @@ export default function QuestsLensPage() {
   const [partyId, setPartyId] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -37,15 +39,22 @@ export default function QuestsLensPage() {
   }, []);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [q, p] = await Promise.all([
         fetch(`/api/quests/mine`, { credentials: 'include' }).then((r) => r.json()).catch(() => null),
         fetch('/api/parties/me', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       ]);
       if (q?.ok) setQuests(q.quests || []);
+      else setError('Could not load your quest log. Try refreshing.');
       if (p?.ok && p.party) setPartyId(p.party.party_id);
       else setPartyId(null);
-    } catch { /* network blip */ }
+    } catch {
+      setError('Could not load your quest log. Try refreshing.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -101,10 +110,20 @@ export default function QuestsLensPage() {
               {flash.msg}
             </div>
           )}
+          {error && (
+            <div role="alert" className="mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[11px] text-rose-200">
+              <AlertCircle className="h-3 w-3" />
+              {error}
+            </div>
+          )}
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
-          {filtered.length === 0 ? (
+          {loading && filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
+            </div>
+          ) : filtered.length === 0 ? (
             <p className="px-4 py-8 text-center text-[12px] text-slate-500">No quests in this list.</p>
           ) : (
             <ul className="space-y-3">

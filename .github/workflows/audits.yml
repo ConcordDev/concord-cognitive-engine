@@ -47,8 +47,10 @@ jobs:
         run: |
           node scripts/verify-lens-backends.mjs > /tmp/verify.log
           tail /tmp/verify.log
-          # Must be ≥234 WIRED, only 1 NO-BACKEND-CALL allowed
-          jq -e '.verdicts.WIRED >= 234' /tmp/verify.log >/dev/null || (
+          # The script's stdout is a human-readable table; the machine
+          # summary it writes to /tmp/lens-verify-summary.json is what
+          # the gate parses. Must be ≥234 WIRED.
+          jq -e '.verdicts.WIRED >= 234' /tmp/lens-verify-summary.json >/dev/null || (
             echo "::error::Lens wiring regressed below 234 WIRED."; exit 1
           )
 

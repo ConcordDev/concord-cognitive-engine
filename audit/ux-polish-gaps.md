@@ -1,8 +1,8 @@
 # UX Polish Audit
 
-Generated: 2026-05-24T17:49:43.597Z
+Generated: 2026-05-29T23:29:53.421Z
 
-Lenses scanned: 235
+Lenses scanned: 252
 
 
 ## Tier distribution
@@ -11,7 +11,7 @@ Lenses scanned: 235
 |---|---:|---:|---:|
 | raw | 0 | 0.0% | 0.2 |
 | functional | 0 | 0.0% | 0.6 |
-| polished | 235 | 100.0% | 1 |
+| polished | 252 | 100.0% | 1 |
 
 **Weighted UX polish score: 1** (1.0 = all polished)
 
@@ -19,16 +19,16 @@ Lenses scanned: 235
 
 | Signal | Lenses with it | % |
 |---|---:|---:|
-| loading | 235 | 100.0% |
-| emptyState | 235 | 100.0% |
-| errorUI | 232 | 98.7% |
-| aria | 227 | 96.6% |
-| keyboardHandlers | 168 | 71.5% |
-| nativeButtons | 235 | 100.0% |
-| responsive | 233 | 99.1% |
-| animation | 235 | 100.0% |
-| toasts | 58 | 24.7% |
-| altOnImages | 235 | 100.0% |
+| loading | 252 | 100.0% |
+| emptyState | 252 | 100.0% |
+| errorUI | 245 | 97.2% |
+| aria | 241 | 95.6% |
+| keyboardHandlers | 169 | 67.1% |
+| nativeButtons | 251 | 99.6% |
+| responsive | 250 | 99.2% |
+| animation | 252 | 100.0% |
+| toasts | 58 | 23.0% |
+| altOnImages | 252 | 100.0% |
 
 ## Anti-patterns
 

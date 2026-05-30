@@ -67,8 +67,8 @@ export function DiseaseStatusHUD() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" onClick={() => setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-rose-500/40 bg-slate-950 p-4">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" role="button" tabIndex={0} onClick={() => setOpen(false)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); setOpen(false); } }}>
+          <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-rose-500/40 bg-slate-950 p-4">
             <header className="mb-3 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-rose-100">
                 <Activity className="h-4 w-4" /> Active infections

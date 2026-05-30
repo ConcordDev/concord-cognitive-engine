@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Target, Crosshair, Timer, Sparkles, RefreshCcw } from 'lucide-react';
+import { Target, Crosshair, Timer, Sparkles, RefreshCcw, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -33,14 +33,24 @@ export default function TrainingRoomPage() {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [frameData, setFrameData] = useState<FrameData | null>(null);
   const [replayPhase, setReplayPhase] = useState<'idle' | 'startup' | 'active' | 'recovery'>('idle');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshSkills = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const r = await fetch('/api/dtus?type=skill&limit=20', { credentials: 'include' }).then((x) => x.json());
+      const res = await fetch('/api/dtus?type=skill&limit=20', { credentials: 'include' });
+      if (!res.ok) throw new Error('request failed');
+      const r = await res.json();
       const list = r?.dtus || r?.results || [];
       setSkills(list);
       if (!selectedSkillId && list.length > 0) setSelectedSkillId(list[0].id);
-    } catch { /* network blip */ }
+    } catch {
+      setError('Could not load your skills. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [selectedSkillId]);
 
   useEffect(() => { refreshSkills(); }, [refreshSkills]);
@@ -86,7 +96,16 @@ export default function TrainingRoomPage() {
         <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
           <aside className="rounded-xl border border-cyan-500/20 bg-zinc-950/60 p-3">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-cyan-300/60">Your skills</h2>
-            {skills.length === 0 ? (
+            {error && (
+              <div role="alert" className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                {error}
+              </div>
+            )}
+            {loading && skills.length === 0 ? (
+              <div className="flex items-center justify-center py-6" aria-live="polite">
+                <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
+              </div>
+            ) : skills.length === 0 ? (
               <p className="py-4 text-center text-[12px] text-slate-500">
                 Acquire a skill first — try a few combats, then come back.
               </p>

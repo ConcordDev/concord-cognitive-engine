@@ -52,8 +52,12 @@ export function StationOverlayShell({ title, subtitle, onClose, children, accent
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label="Dismiss overlay"
       className="concordia-overlay-shell fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
       onClick={(e) => { if (e.currentTarget === e.target) closeWithSfx(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); closeWithSfx(); } }}
     >
       <div className={`concordia-overlay-shell-inner w-full ${width} rounded-xl border ${tone.border} bg-zinc-950/95 p-4 shadow-2xl`}>
         <header className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">

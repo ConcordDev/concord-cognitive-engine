@@ -41,6 +41,14 @@ vi.mock('@/components/media/GlobalMediaController', () => ({
   GlobalMediaController: () => null,
 }));
 
+// AccessibilityDOMApplier mounts the OS prefers-reduced-motion watcher,
+// which reads setOsReducedMotion off the real store. Providers' own
+// behavior (socket/auth) is what's under test here, so stub it like the
+// other heavy children above.
+vi.mock('@/components/accessibility/AccessibilityDOMApplier', () => ({
+  default: () => null,
+}));
+
 vi.mock('@/store/ui', () => ({
   useUIStore: Object.assign(
     () => ({ addToast: vi.fn() }),

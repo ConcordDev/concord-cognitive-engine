@@ -10,6 +10,8 @@
 // per-user crafting state in globalThis._concordSTATE Maps. Every value
 // is real user input or computed from real input — no seed data.
 
+import { resolveCraft } from "../lib/craft-resolve.js";
+
 const RECIPE_TYPES = new Set([
   "fighting_style_recipe",
   "spell_recipe",
@@ -551,6 +553,30 @@ export default function registerCraftingActions(registerLensAction) {
         crit: tier.multiplier >= 1.7,
       },
     };
+  });
+
+  /**
+   * resolve — Living Society Phase 0 craft resolution. Derives output
+   * quality from the input resource PROPERTIES (potency/affinity/stability
+   * per material) + player skill + station quality + an optional risk
+   * choice, rather than a flat quality roll. Deterministic given the same
+   * inputs + seed. This is the canonical, property-grounded resolver the
+   * crafting UI calls for property-aware outcomes (conflicting affinities
+   * lower stability → a seeded backfire chance).
+   * params: { inputs:[itemId|{itemId,qty}], recipe?, playerSkill?,
+   *           stationQuality?, risk?, seed? }
+   */
+  registerLensAction("crafting", "resolve", (ctx, _artifact, params = {}) => {
+    const out = resolveCraft({
+      inputs: Array.isArray(params.inputs) ? params.inputs : [],
+      recipe: params.recipe || {},
+      playerSkill: Math.max(0, Number(params.playerSkill) || 0),
+      stationQuality: Math.max(0, Number(params.stationQuality) || 0),
+      risk: Math.min(1, Math.max(0, Number(params.risk) || 0)),
+      seed: Number.isFinite(params.seed) ? params.seed : null,
+      db: ctx?.db ?? null,
+    });
+    return { ok: true, result: out };
   });
 
   // ══ Backlog: Material gathering integration ════════════════════════

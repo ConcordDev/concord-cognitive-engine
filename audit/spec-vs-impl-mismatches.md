@@ -1,13 +1,14 @@
 # Spec-vs-Implementation Audit
 
-Generated: 2026-05-24T00:19:09.564Z
+Generated: 2026-05-29T17:37:43.608Z
 
-Specs scanned: 234. Mismatches detected: 30.
+Specs scanned: 234. Mismatches detected: 31.
 
 ## By category
 
 - **STUB-WHERE-INTEGRATION-CLAIMED**: 19
 - **CRUD-WHERE-WORKFLOW-CLAIMED**: 11
+- **POLLING-WHERE-REALTIME-CLAIMED**: 1
 
 ## By lens
 
@@ -74,15 +75,20 @@ Specs scanned: 234. Mismatches detected: 30.
 
 ### tools (2)
 
-- `tools.web_search` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:11041`](../server/server.js#L11041))
+- `tools.web_search` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:11697`](../server/server.js#L11697))
   - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
-- `legal.sign` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:24201`](../server/server.js#L24201))
+- `legal.sign` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:24901`](../server/server.js#L24901))
   - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
 
 ### cognitive-replay (1)
 
-- `chat.timeline` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/server.js:69576`](../server/server.js#L69576))
+- `chat.timeline` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/server.js:73030`](../server/server.js#L73030))
   - Implement the integration with await fetch to the API OR downgrade spec prose.
+
+### collab (1)
+
+- `collab.cursorUpdate` — **POLLING-WHERE-REALTIME-CLAIMED**  ([`server/domains/collab.js:482`](../server/domains/collab.js#L482))
+  - Add realtimeEmit to the handler OR downgrade spec prose to describe polling explicitly.
 
 ### insurance (1)
 
@@ -91,12 +97,12 @@ Specs scanned: 234. Mismatches detected: 30.
 
 ### observe (1)
 
-- `observer.compose_report` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/server.js:70621`](../server/server.js#L70621))
+- `observer.compose_report` — **STUB-WHERE-INTEGRATION-CLAIMED**  ([`server/server.js:74075`](../server/server.js#L74075))
   - Implement the integration with await fetch to the API OR downgrade spec prose.
 
 ### sentinel (1)
 
-- `shield.threats` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:22451`](../server/server.js#L22451))
+- `shield.threats` — **CRUD-WHERE-WORKFLOW-CLAIMED**  ([`server/server.js:23118`](../server/server.js#L23118))
   - Implement the multi-step workflow (orchestrate child macros via runMacro) OR downgrade spec prose.
 
 ### space (1)

@@ -6,7 +6,19 @@
 // declares the 9 deep-link routes.
 
 import { describe, expect, it } from '@jest/globals';
+import * as fs from 'fs';
+import * as path from 'path';
 import { getApiBaseUrl } from '../../config/api';
+import { DreamReaderScreen } from '../../surface/screens/DreamReaderScreen';
+import { StrategicWarBannerScreen } from '../../surface/screens/StrategicWarBannerScreen';
+import { ForwardPredictionsScreen } from '../../surface/screens/ForwardPredictionsScreen';
+import { NPCSchemeOverhearScreen } from '../../surface/screens/NPCSchemeOverhearScreen';
+import { LFGBoardScreen } from '../../surface/screens/LFGBoardScreen';
+import { BrawlMatchmakingScreen } from '../../surface/screens/BrawlMatchmakingScreen';
+import { SpectatorScreen } from '../../surface/screens/SpectatorScreen';
+import { EmergentEventFeedScreen } from '../../surface/screens/EmergentEventFeedScreen';
+import { PersonalBeatScreen } from '../../surface/screens/PersonalBeatScreen';
+import { AuthedWebView } from '../../surface/components/AuthedWebView';
 
 // Note: we deliberately avoid rendering these components in the test
 // because react-native-webview requires native module wiring that
@@ -20,32 +32,29 @@ describe('Phase G4 — WebView HUD wrappers', () => {
     expect(url.length).toBeGreaterThan(0);
   });
 
-  it('9 wrapper screens are importable', async () => {
-    const screens = await Promise.all([
-      import('../../surface/screens/DreamReaderScreen').then(m => m.DreamReaderScreen),
-      import('../../surface/screens/StrategicWarBannerScreen').then(m => m.StrategicWarBannerScreen),
-      import('../../surface/screens/ForwardPredictionsScreen').then(m => m.ForwardPredictionsScreen),
-      import('../../surface/screens/NPCSchemeOverhearScreen').then(m => m.NPCSchemeOverhearScreen),
-      import('../../surface/screens/LFGBoardScreen').then(m => m.LFGBoardScreen),
-      import('../../surface/screens/BrawlMatchmakingScreen').then(m => m.BrawlMatchmakingScreen),
-      import('../../surface/screens/SpectatorScreen').then(m => m.SpectatorScreen),
-      import('../../surface/screens/EmergentEventFeedScreen').then(m => m.EmergentEventFeedScreen),
-      import('../../surface/screens/PersonalBeatScreen').then(m => m.PersonalBeatScreen),
-    ]);
+  it('9 wrapper screens are importable', () => {
+    const screens = [
+      DreamReaderScreen,
+      StrategicWarBannerScreen,
+      ForwardPredictionsScreen,
+      NPCSchemeOverhearScreen,
+      LFGBoardScreen,
+      BrawlMatchmakingScreen,
+      SpectatorScreen,
+      EmergentEventFeedScreen,
+      PersonalBeatScreen,
+    ];
     for (const screen of screens) {
       expect(typeof screen).toBe('function');
     }
     expect(screens.length).toBe(9);
   });
 
-  it('AuthedWebView exports a function component', async () => {
-    const mod = await import('../../surface/components/AuthedWebView');
-    expect(typeof mod.AuthedWebView).toBe('function');
+  it('AuthedWebView exports a function component', () => {
+    expect(typeof AuthedWebView).toBe('function');
   });
 
-  it('AppNavigator declares the 9 new deep-link routes', async () => {
-    const fs = await import('fs');
-    const path = await import('path');
+  it('AppNavigator declares the 9 new deep-link routes', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, '..', '..', 'surface', 'navigation', 'AppNavigator.tsx'),
       'utf8',

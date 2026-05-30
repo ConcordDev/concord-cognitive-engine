@@ -245,6 +245,7 @@ export default function connectiveTissueRoutes({ db, requireAuth }) {
 
   // Phase Z4 — POST alias for the feed + social lenses which call
   // POST /search with a JSON body instead of GET with query params.
+  // AUTH: public (read-only DTU search; mirrors the public GET /search on publicReadPaths — searchDTUs applies its own visibility gate)
   router.post("/search", async (req, res) => {
     try {
       const { q, query, lensId, tier, minCreti, maxPrice, sortBy, limit, offset } = req.body || {};

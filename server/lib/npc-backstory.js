@@ -148,7 +148,7 @@ ${det}
         messages: [{ role: "system", content: system }, { role: "user", content: user }],
         timeoutMs: 8000,
       }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("llm_backstory_timeout")), 8000)),
+      new Promise((_, reject) => { setTimeout(() => reject(new Error("llm_backstory_timeout")), 8000); }),
     ]);
     if (r?.ok && typeof r.text === "string" && r.text.length > 20) {
       return r.text.trim();

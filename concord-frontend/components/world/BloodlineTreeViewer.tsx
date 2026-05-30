@@ -61,8 +61,8 @@ export function BloodlineTreeViewer() {
   if (!open) return null;
 
   return (
-    <div className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur" onClick={() => setOpen(false)}>
-      <div className="w-full max-w-2xl rounded-xl border border-amber-500/40 bg-zinc-950/95 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur" role="button" tabIndex={0} onClick={() => setOpen(false)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); setOpen(false); } }}>
+      <div className="w-full max-w-2xl rounded-xl border border-amber-500/40 bg-zinc-950/95 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <header className="mb-3 flex items-center justify-between border-b border-amber-500/20 pb-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-200">
             <Network size={14} /> Bloodline tree

@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Eye, Users, Sparkles } from 'lucide-react';
+import { Eye, Users, Sparkles, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -31,20 +31,36 @@ const AUTHORED_WORLDS = [
 
 export default function SpectateIndexPage() {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    const refresh = async () => {
+    const refresh = async (initial: boolean) => {
+      if (initial) { setLoading(true); setError(null); }
       try {
-        const r = await fetch('/api/worlds/spectator-counts');
+        const r = await fetch('/api/worlds/spectator-counts', { credentials: 'include' });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const j = await r.json();
-        if (!cancelled && j?.ok) setCounts(j.counts || {});
-      } catch { /* network blip */ }
+        if (cancelled) return;
+        if (j?.ok) {
+          setCounts(j.counts || {});
+          setError(null);
+        } else {
+          throw new Error('Bad response');
+        }
+      } catch {
+        if (!cancelled && initial) setError('Could not load live spectator counts. Retrying…');
+      } finally {
+        if (!cancelled && initial) setLoading(false);
+      }
     };
-    refresh();
-    const id = setInterval(refresh, 10_000);
+    refresh(true);
+    const id = setInterval(() => refresh(false), 10_000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
+
+  const hasWorlds = AUTHORED_WORLDS.length > 0;
 
   return (
     <LensShell lensId="spectate" asMain={false}>
@@ -65,6 +81,27 @@ export default function SpectateIndexPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+            >
+              {error}
+            </div>
+          )}
+
+          {loading && Object.keys(counts).length === 0 ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-fuchsia-300/70">
+              <Loader2 className="h-5 w-5 animate-spin text-fuchsia-400" aria-hidden="true" />
+              Loading worlds…
+            </div>
+          ) : !hasWorlds ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-fuchsia-300/70">
+              <Eye className="h-6 w-6 text-fuchsia-400/60" aria-hidden="true" />
+              <p>No worlds are available to spectate right now.</p>
+              <p className="text-xs text-slate-400">Check back once a world goes live.</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {AUTHORED_WORLDS.map((w) => {
               const watching = counts[w.id] ?? 0;
@@ -72,7 +109,7 @@ export default function SpectateIndexPage() {
                 <Link
                   key={w.id}
                   href={`/lenses/spectate/${w.id}`}
-                  className="group flex flex-col rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-4 transition hover:bg-fuchsia-500/10"
+                  className="group flex flex-col rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-4 transition-colors hover:bg-fuchsia-500/10"
                 >
                   <div className="mb-2 flex items-start justify-between">
                     <span className="text-sm font-semibold text-fuchsia-100">{w.name}</span>
@@ -90,6 +127,7 @@ export default function SpectateIndexPage() {
               );
             })}
           </div>
+          )}
         </section>
       </main>
     </LensShell>

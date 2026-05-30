@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Gavel, Plus, Coins, Clock, X, Check, AlertCircle, RefreshCcw } from 'lucide-react';
+import { Gavel, Plus, Coins, Clock, X, Check, AlertCircle, RefreshCcw, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -49,6 +49,8 @@ export default function AuctionLensPage() {
   const [createForm, setCreateForm] = useState({ title: '', itemKind: 'dtu' as 'dtu' | 'inventory', itemId: '', startCc: 1, buyoutCc: '', durationS: 3600 });
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
@@ -62,14 +64,20 @@ export default function AuctionLensPage() {
   });
 
   const refresh = useCallback(async () => {
+    setError(null);
+    let failed = false;
     try {
       const r = await fetch('/api/auctions/active').then((x) => x.json());
       if (r?.ok) setAuctions(r.auctions || []);
-    } catch { /* network blip */ }
+      else failed = true;
+    } catch { failed = true; }
     try {
       const r = await fetch('/api/auctions/buy-orders?limit=20').then((x) => x.json());
       if (r?.ok) setBuyOrders(r.buyOrders || []);
-    } catch { /* network blip */ }
+      else failed = true;
+    } catch { failed = true; }
+    if (failed) setError('Could not load the auction house. Retrying shortly…');
+    setLoading(false);
   }, []);
 
   const handlePlaceBuyOrder = useCallback(async () => {
@@ -225,7 +233,19 @@ export default function AuctionLensPage() {
           )}
         </header>
 
+        {error && (
+          <div role="alert" className="mx-auto mt-3 flex max-w-screen-2xl items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200 sm:px-6">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {error}
+          </div>
+        )}
+
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+          {loading && auctions.length === 0 ? (
+            <div className="flex items-center justify-center py-10" role="status" aria-label="Loading auctions">
+              <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
+            </div>
+          ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {auctions.length === 0 && (
               <p className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
@@ -259,6 +279,7 @@ export default function AuctionLensPage() {
               );
             })}
           </div>
+          )}
         </section>
 
         {/* Phase AC — buy orders (two-pane: open + post) */}
@@ -356,8 +377,15 @@ export default function AuctionLensPage() {
 
         {/* Bid modal */}
         {bidTarget && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" onClick={() => setBidTarget(null)}>
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close bid dialog"
+            onClick={() => setBidTarget(null)}
+            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setBidTarget(null); } }}
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur transition-opacity"
+          >
+            <div role="dialog" aria-modal="true" tabIndex={-1} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
               <header className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-amber-100">Bid on {bidTarget.title || bidTarget.itemId}</h2>
                 <button onClick={() => setBidTarget(null)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>
@@ -382,8 +410,15 @@ export default function AuctionLensPage() {
 
         {/* Create modal */}
         {showCreate && (
-          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur" onClick={() => setShowCreate(false)}>
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close create dialog"
+            onClick={() => setShowCreate(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCreate(false); } }}
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur transition-opacity"
+          >
+            <div role="dialog" aria-modal="true" tabIndex={-1} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-xl border border-amber-500/40 bg-slate-950 p-4">
               <header className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-amber-100">List an item</h2>
                 <button onClick={() => setShowCreate(false)} aria-label="Close" className="rounded p-1 text-slate-400 hover:bg-slate-800"><X className="h-3.5 w-3.5" /></button>

@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Trophy, Lock, Sparkles, Coins, Star } from 'lucide-react';
+import { Trophy, Lock, Sparkles, Coins, Star, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -44,8 +44,12 @@ export default function AchievementsLensPage() {
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [earned, setEarned] = useState<EarnedEntry[]>([]);
   const [category, setCategory] = useState<Category>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [c, e] = await Promise.all([
         fetch('/api/achievements/catalog').then((r) => r.json()).catch(() => null),
@@ -53,7 +57,12 @@ export default function AchievementsLensPage() {
       ]);
       if (c?.ok) setCatalog(c.catalog || []);
       if (e?.ok) setEarned(e.earned || []);
-    } catch { /* network blip */ }
+      if (!c?.ok && !e?.ok) setError('Could not load achievements. Please try again.');
+    } catch {
+      setError('Could not load achievements. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -116,6 +125,22 @@ export default function AchievementsLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-3 py-4 sm:px-6 sm:py-5">
+          {error && (
+            <div
+              role="alert"
+              className="mb-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+            >
+              {error}
+            </div>
+          )}
+
+          {loading && catalog.length === 0 && (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-fuchsia-300/70">
+              <Loader2 className="h-5 w-5 animate-spin text-fuchsia-400" aria-hidden="true" />
+              Loading achievements…
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {visible.map((a) => {
               const isEarned = earnedIds.has(a.id);
@@ -159,7 +184,7 @@ export default function AchievementsLensPage() {
               );
             })}
           </div>
-          {visible.length === 0 && (
+          {!loading && visible.length === 0 && (
             <p className="px-2 py-8 text-center text-[12px] text-slate-500">No achievements in this category yet.</p>
           )}
         </section>

@@ -184,3 +184,6 @@ console.log('=== macro domains registered:', macroDomains.size, ' route prefixes
 console.log('=== verdicts:', JSON.stringify(by), 'total', rows.length, '===\n');
 for (const r of rows) if (r.verdict !== 'WIRED') console.log(`${r.verdict.padEnd(16)} ${r.lens.padEnd(22)} ${r.detail}`);
 fs.writeFileSync('/tmp/lens-verify.json', JSON.stringify(rows, null, 1));
+// Machine-readable summary for CI gates (the stdout above is a
+// human-readable table, not JSON — gates must parse this file).
+fs.writeFileSync('/tmp/lens-verify-summary.json', JSON.stringify({ verdicts: by, total: rows.length }, null, 1));

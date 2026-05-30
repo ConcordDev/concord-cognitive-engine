@@ -89,8 +89,8 @@ export function resolvePhotograph(input = {}) {
 export function resolveKaraoke(input = {}) {
   // input: { pitchAccuracyHz, rhythmTimingMs, durationSec, songDifficulty 0..1,
   //          singingSkill 0..100 }
-  const pitchHz = Math.max(0, Math.min(50, Number(input.pitchAccuracyHz) ?? 12)); // lower is better
-  const rhythmMs = Math.max(0, Math.min(500, Number(input.rhythmTimingMs) ?? 60)); // lower is better
+  const pitchHz = Math.max(0, Math.min(50, Number(input.pitchAccuracyHz ?? 12))); // lower is better
+  const rhythmMs = Math.max(0, Math.min(500, Number(input.rhythmTimingMs ?? 60))); // lower is better
   const duration = Math.max(1, Math.min(600, Number(input.durationSec) || 60));
   const difficulty = Math.max(0, Math.min(1, Number(input.songDifficulty) || 0.5));
   const skill = Math.max(0, Math.min(100, Number(input.singingSkill) || 30));

@@ -22538,7 +22538,7 @@ Rules for tool use:
         const _followUpSystem = composeSystemPrompt("conscious", {
           mode,
           currentLens,
-          worldId: _worldId,
+          worldId: input.worldId || sess_pre?.worldId || null,
           extra: "You previously called tools and received their results. Now synthesize a final answer for the user.",
         }).system;
         try {
@@ -30398,6 +30398,7 @@ app.post("/api/audit/provenance/verify", async (req, res) => {
 import createWorldsRouter from "./routes/worlds.js";
 import { seedWorlds } from "./lib/world-seed.js";
 import { seedToolRecipes } from "./lib/tool-tree.js";
+import { seedResourceProperties } from "./lib/resources.js";
 import { seedLensPortals } from "./lib/lens-portal-registry.js";
 import { seedContent } from "./lib/content-seeder.js";
 import { initWorldFlavors, getWorldFlavor, listAllFlavors, getSkillCeiling as getWorldSkillCeiling } from "./lib/world-flavor.js";
@@ -30464,6 +30465,10 @@ if (db) {
   try {
     seedWorlds(db);
     seedToolRecipes(db);
+    // Living Society Phase 0 — persist the resource property catalog into
+    // migration 278's resource_properties table so the unified craft-resolve
+    // layer reads grounded potency/affinity/stability per material. Idempotent.
+    try { seedResourceProperties(db); } catch (e) { console.warn("[resource-properties]", e.message); }
     seedLensPortals(db, "concordia-hub");
     // Register db with the quest engine so completion grants can write
     // currency / inventory / skill xp via lib/quest-rewards. Must run before
@@ -48522,7 +48527,8 @@ app.post("/api/admin/diseases/contract", requireAuth(), asyncHandler(async (req,
   // Admin-only endpoint to trigger an infection (for testing + GM use).
   const isAdmin = ["owner", "admin", "founder", "sovereign"].includes(req.user?.role);
   if (!isAdmin) return res.status(403).json({ ok: false, error: "admin_only" });
-  res.json(contractDisease(db, req.body?.userId, req.body?.diseaseId, req.body || {}));
+  // eslint-disable-next-line no-restricted-syntax -- admin-only GM endpoint; req.body.userId is the infection TARGET, not the actor
+  res.json(contractDisease(db, req.body?.userId, req.body?.diseaseId, req.body || {})); // safe: admin-only target-identifier
 }));
 
 app.post("/api/medical/diagnose", requireAuth(), asyncHandler(async (req, res) => {
@@ -49193,7 +49199,8 @@ app.post("/api/garage/spawn", requireAuth(), asyncHandler(async (req, res) => {
   res.json(spawnVehicle(db, {
     ...(req.body || {}),
     ownerKind: req.body?.ownerKind || "player",
-    ownerId: req.body?.ownerKind === "player" ? userId : (req.body?.ownerId || ""),
+    // eslint-disable-next-line no-restricted-syntax -- actor is req.user.id (userId); ownerId only used for non-player owners
+    ownerId: req.body?.ownerKind === "player" ? userId : (req.body?.ownerId || ""), // safe: target-identifier
   }));
 }));
 
@@ -50008,10 +50015,12 @@ app.get("/api/roguelite/recent", requireAuth(), asyncHandler(async (req, res) =>
 app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res) => {
   const { inviteBrawl } = await import("./lib/brawl.js");
   const fromUserId = req.user?.id || req.user?.userId;
-  const r = inviteBrawl(fromUserId, req.body?.toUserId);
+  // eslint-disable-next-line no-restricted-syntax -- actor is fromUserId (req.user); toUserId is the invite TARGET
+  const r = inviteBrawl(fromUserId, req.body?.toUserId); // safe: target-identifier
   if (r.ok && !r.alreadyOpen) {
     try {
-      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
+      // eslint-disable-next-line no-restricted-syntax -- toUserId is the notification TARGET channel, not the actor
+      realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, { // safe: target-identifier
         inviteId: r.inviteId, from: fromUserId,
       });
     } catch { /* emit best-effort */ }
@@ -50336,10 +50345,12 @@ app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
 app.post("/api/parties/:partyId/invite", requireAuth(), asyncHandler(async (req, res) => {
   const { inviteToParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
-  const r = inviteToParty(db, req.params.partyId, userId, req.body?.toUserId);
+  // eslint-disable-next-line no-restricted-syntax -- actor is userId (req.user); toUserId is the party invitee TARGET
+  const r = inviteToParty(db, req.params.partyId, userId, req.body?.toUserId); // safe: target-identifier
   if (r.ok) {
     try {
-      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId });
+      // eslint-disable-next-line no-restricted-syntax -- toUserId is the realtime delivery TARGET; actor is userId
+      realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId }); // safe: target-identifier
     } catch { /* emit best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -50504,7 +50515,8 @@ app.post("/api/mail/send", requireAuth(), asyncHandler(async (req, res) => {
   const r = sendMail(db, { ...req.body, fromUserId });
   if (r.ok) {
     try {
-      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId });
+      // eslint-disable-next-line no-restricted-syntax -- toUserId is the mail recipient/delivery TARGET; actor is fromUserId (req.user)
+      realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId }); // safe: target-identifier
     } catch { /* best-effort */ }
   }
   res.status(r.ok ? 200 : 400).json(r);
@@ -50562,7 +50574,8 @@ app.post("/api/mail/:id/claim", requireAuth(), asyncHandler(async (req, res) => 
 app.post("/api/friends/request", requireAuth(), asyncHandler(async (req, res) => {
   const { sendFriendRequest } = await import("./lib/friendships.js");
   const userId = req.user?.id || req.user?.userId;
-  const targetId = String(req.body?.toUserId || "").trim();
+  // eslint-disable-next-line no-restricted-syntax -- actor is userId (req.user); toUserId is the friend-request TARGET
+  const targetId = String(req.body?.toUserId || "").trim(); // safe: target-identifier
   if (!targetId) return res.status(400).json({ ok: false, error: "toUserId required" });
   const r = sendFriendRequest(db, userId, targetId);
   if (r.ok) {
@@ -50696,7 +50709,8 @@ app.post("/api/world-marketplace/:tenantWorldId/members", requireAuth(), asyncHa
   if (myRole !== "owner" && myRole !== "admin") {
     return res.status(403).json({ ok: false, error: "not_authorized" });
   }
-  const r = addTenantMember(db, req.params.tenantWorldId, req.body?.userId, req.body?.role || "member");
+  // eslint-disable-next-line no-restricted-syntax -- actor (userId) is owner/admin-gated above; req.body.userId is the member being ADDED
+  const r = addTenantMember(db, req.params.tenantWorldId, req.body?.userId, req.body?.role || "member"); // safe: target-identifier
   res.status(r.ok ? 200 : 400).json(r);
 }));
 

@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Home, Lock, Eye, Users, RefreshCcw, Plus, Trash2 } from 'lucide-react';
+import { Home, Lock, Eye, Users, RefreshCcw, Plus, Trash2, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -52,6 +52,8 @@ export default function HousingLensPage() {
   const [publicHouses, setPublicHouses] = useState<HouseRow[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -59,11 +61,18 @@ export default function HousingLensPage() {
   }, []);
 
   const refreshMine = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const r = await fetch('/api/housing/mine', { credentials: 'include' });
+      if (!r.ok) throw new Error('request failed');
       const j = await r.json();
       if (j.ok) setMyHouses(j.houses || []);
-    } catch { /* network */ }
+    } catch {
+      setError('Could not load your houses. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const refreshPublic = useCallback(async (wid: string) => {
@@ -190,7 +199,16 @@ export default function HousingLensPage() {
           <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
             <aside className="rounded-xl border border-emerald-500/20 bg-zinc-950/60 p-3">
               <h2 className="mb-2 text-[11px] uppercase tracking-wider text-emerald-300/60">My houses</h2>
-              {myHouses.length === 0 ? (
+              {error && (
+                <div role="alert" className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                  {error}
+                </div>
+              )}
+              {loading && myHouses.length === 0 ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+                </div>
+              ) : myHouses.length === 0 ? (
                 <p className="py-4 text-center text-[12px] text-slate-500">No houses yet. Claim a land plot, place a building, then claim it as a house.</p>
               ) : (
                 <ul className="space-y-1">

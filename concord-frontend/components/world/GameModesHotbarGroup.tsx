@@ -182,8 +182,12 @@ export function GameModesHotbarGroup({ worldId }: Props) {
       {/* Confirm modal */}
       {confirm && (
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Dismiss dialog"
           className="concordia-hud-fade fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur"
           onClick={(e) => { if (e.currentTarget === e.target) setConfirm(null); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setConfirm(null); } }}
         >
           <div className="w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-950 p-4 shadow-2xl">
             <header className="mb-3 flex items-center justify-between border-b border-zinc-800 pb-2">

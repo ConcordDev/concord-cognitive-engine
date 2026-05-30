@@ -29,6 +29,50 @@ jest.mock('../../surface/screens/SettingsScreen', () => ({
 jest.mock('../../surface/screens/BuyCoinsScreen', () => ({
   BuyCoinsScreen: () => 'BuyCoinsScreen',
 }));
+// Phase Z9 — Phase D sidebar lens screens.
+jest.mock('../../surface/screens/CourtshipScreen', () => ({
+  CourtshipScreen: () => 'CourtshipScreen',
+}));
+jest.mock('../../surface/screens/FishingScreen', () => ({
+  FishingScreen: () => 'FishingScreen',
+}));
+jest.mock('../../surface/screens/CreaturesScreen', () => ({
+  CreaturesScreen: () => 'CreaturesScreen',
+}));
+jest.mock('../../surface/screens/GarageScreen', () => ({
+  GarageScreen: () => 'GarageScreen',
+}));
+jest.mock('../../surface/screens/ReasoningTracesScreen', () => ({
+  ReasoningTracesScreen: () => 'ReasoningTracesScreen',
+}));
+// Phase G4.3 — WebView HUD wrapper screens.
+jest.mock('../../surface/screens/DreamReaderScreen', () => ({
+  DreamReaderScreen: () => 'DreamReaderScreen',
+}));
+jest.mock('../../surface/screens/StrategicWarBannerScreen', () => ({
+  StrategicWarBannerScreen: () => 'StrategicWarBannerScreen',
+}));
+jest.mock('../../surface/screens/ForwardPredictionsScreen', () => ({
+  ForwardPredictionsScreen: () => 'ForwardPredictionsScreen',
+}));
+jest.mock('../../surface/screens/NPCSchemeOverhearScreen', () => ({
+  NPCSchemeOverhearScreen: () => 'NPCSchemeOverhearScreen',
+}));
+jest.mock('../../surface/screens/LFGBoardScreen', () => ({
+  LFGBoardScreen: () => 'LFGBoardScreen',
+}));
+jest.mock('../../surface/screens/BrawlMatchmakingScreen', () => ({
+  BrawlMatchmakingScreen: () => 'BrawlMatchmakingScreen',
+}));
+jest.mock('../../surface/screens/SpectatorScreen', () => ({
+  SpectatorScreen: () => 'SpectatorScreen',
+}));
+jest.mock('../../surface/screens/EmergentEventFeedScreen', () => ({
+  EmergentEventFeedScreen: () => 'EmergentEventFeedScreen',
+}));
+jest.mock('../../surface/screens/PersonalBeatScreen', () => ({
+  PersonalBeatScreen: () => 'PersonalBeatScreen',
+}));
 
 // Track registered screens via the navigator mocks
 const registeredTabScreens: string[] = [];
@@ -134,9 +178,11 @@ describe('AppNavigator', () => {
     expect(registeredTabScreens).toHaveLength(5);
   });
 
-  it('registers exactly 4 stack screens', () => {
+  it('registers exactly 18 stack screens', () => {
     render(<AppNavigator />);
-    expect(registeredStackScreens).toHaveLength(4);
+    // 4 original (Main, Atlas, Settings, BuyCoins) + 5 Phase Z9 lens
+    // screens + 9 Phase G4.3 WebView HUD wrappers.
+    expect(registeredStackScreens).toHaveLength(18);
   });
 
   it('does not register duplicate screen names in tabs', () => {
@@ -174,7 +220,23 @@ describe('AppNavigator', () => {
       PeerDetail: true,
       TransactionDetail: true,
       BuyCoins: true,
+      // Phase Z9 — Phase D sidebar lenses (mobile parallel screens).
+      Courtship: true,
+      Fishing: true,
+      Creatures: true,
+      Garage: true,
+      ReasoningTraces: true,
+      // Phase G4.3 — WebView HUD wrappers.
+      DreamReader: true,
+      StrategicWarBanner: true,
+      ForwardPredictions: true,
+      NPCSchemeOverhear: true,
+      LFGBoard: true,
+      BrawlMatchmaking: true,
+      Spectator: true,
+      EmergentEventFeed: true,
+      PersonalBeat: true,
     };
-    expect(Object.keys(stackKeys)).toHaveLength(8);
+    expect(Object.keys(stackKeys)).toHaveLength(22);
   });
 });

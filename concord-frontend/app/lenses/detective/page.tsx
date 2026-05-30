@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Search, FileText, Check, X } from 'lucide-react';
+import { Search, FileText, Check, X, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -25,12 +25,17 @@ export default function DetectiveLensPage() {
   const [form, setForm] = useState({ suspectId: '', weapon: '', motive: '' });
   const [result, setResult] = useState<{ correctCount: number; solved: boolean; reasons: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshCrimes = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch(`/api/detective/open/${encodeURIComponent(worldId)}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => { if (!r.ok) throw new Error('request failed'); return r.json(); })
       .then((d) => { if (d?.ok) setCrimes(d.crimes || []); })
-      .catch(() => {});
+      .catch(() => setError('Could not load open cases. Please try again.'))
+      .finally(() => setLoading(false));
   }, [worldId]);
 
   useEffect(() => { refreshCrimes(); }, [refreshCrimes]);
@@ -81,7 +86,16 @@ export default function DetectiveLensPage() {
         <section className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-4 px-4 py-5 sm:px-6 lg:grid-cols-3">
           <aside className="rounded-xl border border-amber-500/20 bg-zinc-950/60 p-3">
             <h2 className="mb-2 text-[11px] uppercase tracking-wider text-amber-300/60">Open cases</h2>
-            {crimes.length === 0 ? (
+            {error && (
+              <div role="alert" className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1.5 text-[11px] text-rose-200">
+                {error}
+              </div>
+            )}
+            {loading && crimes.length === 0 ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-5 w-5 animate-spin text-amber-400" />
+              </div>
+            ) : crimes.length === 0 ? (
               <p className="py-4 text-center text-[12px] text-slate-500">No open cases.</p>
             ) : (
               <ul className="space-y-1">

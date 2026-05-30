@@ -141,6 +141,7 @@ export function PublishAsAdaptiveMusicDialog({
       aria-label="Publish project as adaptive music"
       className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); onClose(); } }}
     >
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-xl p-5 text-zinc-200">
         <div className="flex items-baseline justify-between mb-4">

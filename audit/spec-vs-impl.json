@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-05-24T00:19:09.564Z",
+  "generatedAt": "2026-05-29T17:37:43.608Z",
   "totals": {
     "specs": 234,
-    "mismatches": 30,
+    "mismatches": 31,
     "byCategory": {
       "STUB-WHERE-INTEGRATION-CLAIMED": 19,
+      "POLLING-WHERE-REALTIME-CLAIMED": 1,
       "CRUD-WHERE-WORKFLOW-CLAIMED": 11
     }
   },
@@ -94,7 +95,7 @@
         "lens": "cognitive-replay",
         "macro": "chat.timeline",
         "file": "server/server.js",
-        "line": 69576,
+        "line": 73030,
         "category": "STUB-WHERE-INTEGRATION-CLAIMED",
         "evidence": {
           "bodyLoc": 1,
@@ -102,6 +103,22 @@
           "hasFrontToBack": false
         },
         "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+      }
+    ],
+    "collab": [
+      {
+        "lens": "collab",
+        "macro": "collab.cursorUpdate",
+        "file": "server/domains/collab.js",
+        "line": 482,
+        "category": "POLLING-WHERE-REALTIME-CLAIMED",
+        "evidence": {
+          "bodyLoc": 25,
+          "hasRealtimeEmit": false,
+          "looksPolling": true,
+          "hasFrontToBack": false
+        },
+        "suggestion": "Add realtimeEmit to the handler OR downgrade spec prose to describe polling explicitly."
       }
     ],
     "healthcare": [
@@ -227,7 +244,7 @@
         "lens": "observe",
         "macro": "observer.compose_report",
         "file": "server/server.js",
-        "line": 70621,
+        "line": 74075,
         "category": "STUB-WHERE-INTEGRATION-CLAIMED",
         "evidence": {
           "bodyLoc": 1,
@@ -322,7 +339,7 @@
         "lens": "sentinel",
         "macro": "shield.threats",
         "file": "server/server.js",
-        "line": 22451,
+        "line": 23118,
         "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
         "evidence": {
           "bodyLoc": 6,
@@ -389,7 +406,7 @@
         "lens": "tools",
         "macro": "tools.web_search",
         "file": "server/server.js",
-        "line": 11041,
+        "line": 11697,
         "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
         "evidence": {
           "bodyLoc": 1,
@@ -401,7 +418,7 @@
         "lens": "tools",
         "macro": "legal.sign",
         "file": "server/server.js",
-        "line": 24201,
+        "line": 24901,
         "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
         "evidence": {
           "bodyLoc": 1,
@@ -494,7 +511,7 @@
       "lens": "cognitive-replay",
       "macro": "chat.timeline",
       "file": "server/server.js",
-      "line": 69576,
+      "line": 73030,
       "category": "STUB-WHERE-INTEGRATION-CLAIMED",
       "evidence": {
         "bodyLoc": 1,
@@ -502,6 +519,20 @@
         "hasFrontToBack": false
       },
       "suggestion": "Implement the integration with await fetch to the API OR downgrade spec prose."
+    },
+    {
+      "lens": "collab",
+      "macro": "collab.cursorUpdate",
+      "file": "server/domains/collab.js",
+      "line": 482,
+      "category": "POLLING-WHERE-REALTIME-CLAIMED",
+      "evidence": {
+        "bodyLoc": 25,
+        "hasRealtimeEmit": false,
+        "looksPolling": true,
+        "hasFrontToBack": false
+      },
+      "suggestion": "Add realtimeEmit to the handler OR downgrade spec prose to describe polling explicitly."
     },
     {
       "lens": "healthcare",
@@ -619,7 +650,7 @@
       "lens": "observe",
       "macro": "observer.compose_report",
       "file": "server/server.js",
-      "line": 70621,
+      "line": 74075,
       "category": "STUB-WHERE-INTEGRATION-CLAIMED",
       "evidence": {
         "bodyLoc": 1,
@@ -710,7 +741,7 @@
       "lens": "sentinel",
       "macro": "shield.threats",
       "file": "server/server.js",
-      "line": 22451,
+      "line": 23118,
       "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
       "evidence": {
         "bodyLoc": 6,
@@ -771,7 +802,7 @@
       "lens": "tools",
       "macro": "tools.web_search",
       "file": "server/server.js",
-      "line": 11041,
+      "line": 11697,
       "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
       "evidence": {
         "bodyLoc": 1,
@@ -783,7 +814,7 @@
       "lens": "tools",
       "macro": "legal.sign",
       "file": "server/server.js",
-      "line": 24201,
+      "line": 24901,
       "category": "CRUD-WHERE-WORKFLOW-CLAIMED",
       "evidence": {
         "bodyLoc": 1,

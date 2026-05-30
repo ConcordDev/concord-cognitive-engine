@@ -36,19 +36,25 @@ export default function CourtshipLensPage() {
   const [marriages, setMarriages] = useState<Marriage[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setError(null);
     try {
-      const [cJ, mJ] = await Promise.all([
-        fetch('/api/courtship/mine', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/courtship/marriages/mine', { credentials: 'include' }).then(r => r.json()),
+      const [cR, mR] = await Promise.all([
+        fetch('/api/courtship/mine', { credentials: 'include' }),
+        fetch('/api/courtship/marriages/mine', { credentials: 'include' }),
       ]);
+      if (!cR.ok || !mR.ok) throw new Error('request failed');
+      const [cJ, mJ] = await Promise.all([cR.json(), mR.json()]);
       if (cJ?.ok) setCourtships(cJ.courtships || []);
       if (mJ?.ok) {
         setMarriages(mJ.marriages || []);
         setChildren(mJ.children || []);
       }
-    } catch { /* swallow */ }
+    } catch {
+      setError('Could not load your courtships. Please try again.');
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -91,13 +97,19 @@ export default function CourtshipLensPage() {
 
   return (
     <LensShell lensId="courtship">
-    <div className="mx-auto max-w-4xl space-y-6 p-6">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-6">
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold text-pink-200">
           <Heart size={22} /> Courtships
         </h1>
         <p className="text-sm text-zinc-400">Track affinity, propose, wed, raise children.</p>
       </header>
+
+      {error && (
+        <div role="alert" className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+          {error}
+        </div>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-pink-300">Active courtships ({courtships.length})</h2>

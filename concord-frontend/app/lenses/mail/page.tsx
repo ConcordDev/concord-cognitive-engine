@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Mail, Send, Inbox, Pencil, Coins, Package, RefreshCcw, X, Check, AlertCircle } from 'lucide-react';
+import { Mail, Send, Inbox, Pencil, Coins, Package, RefreshCcw, X, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -45,6 +45,8 @@ export default function MailLensPage() {
   const [composeCod, setComposeCod] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const showFlash = useCallback((kind: 'ok' | 'err', msg: string) => {
     setFlash({ kind, msg });
@@ -52,14 +54,24 @@ export default function MailLensPage() {
   }, []);
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const [i, s] = await Promise.all([
         fetch('/api/mail/inbox', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
         fetch('/api/mail/sent', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       ]);
+      if (!i?.ok && !s?.ok) {
+        setError('Could not load your mail. Try refreshing.');
+        return;
+      }
       if (i?.ok) setInbox(i.mail || []);
       if (s?.ok) setSent(s.mail || []);
-    } catch { /* network blip */ }
+    } catch {
+      setError('Could not load your mail. Try refreshing.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -180,6 +192,12 @@ export default function MailLensPage() {
               {flash.msg}
             </div>
           )}
+          {error && (
+            <div role="alert" className="mx-auto mt-2 flex max-w-screen-2xl items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-[11px] text-rose-200">
+              <AlertCircle className="h-3 w-3" />
+              {error}
+            </div>
+          )}
         </header>
 
         <section className="mx-auto grid max-w-screen-2xl gap-3 px-3 py-4 sm:grid-cols-[1fr_2fr] sm:px-6 sm:py-5">
@@ -187,7 +205,12 @@ export default function MailLensPage() {
             <>
               {/* Mail list */}
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-2">
-                {rows.length === 0 && (
+                {loading && rows.length === 0 && (
+                  <div className="flex items-center justify-center py-10">
+                    <Loader2 className="h-5 w-5 animate-spin text-fuchsia-400" />
+                  </div>
+                )}
+                {!loading && rows.length === 0 && (
                   <p className="px-2 py-4 text-center text-[11px] text-slate-500">
                     {tab === 'inbox' ? 'No mail. Friends can send you mail from the friends panel.' : 'Nothing sent yet.'}
                   </p>

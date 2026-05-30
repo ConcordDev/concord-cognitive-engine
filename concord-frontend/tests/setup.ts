@@ -46,18 +46,32 @@ Object.defineProperty(window, 'scrollTo', {
   value: vi.fn(),
 });
 
-// Mock localStorage
+// Mock localStorage — store-backed so round-trip reads work (a no-op stub
+// silently breaks any hook that writes then reads, e.g. useWorldTravel /
+// useAvatarAnimator). Methods stay vi.fn() spies so tests can still assert
+// calls or override a specific return value via .mockReturnValue(...).
+const localStorageStore = new Map<string, string>();
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((k: string) => (localStorageStore.has(k) ? localStorageStore.get(k)! : null)),
+  setItem: vi.fn((k: string, v: string) => { localStorageStore.set(k, String(v)); }),
+  removeItem: vi.fn((k: string) => { localStorageStore.delete(k); }),
+  clear: vi.fn(() => { localStorageStore.clear(); }),
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
+  configurable: true,
 });
 
 // Reset mocks between tests
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks wipes call history but not implementations / return-value
+  // overrides; re-establish the store-backed impl and clear the store so
+  // each test starts from an empty, persisting localStorage (and any prior
+  // test's .mockReturnValue override doesn't leak).
+  localStorageStore.clear();
+  localStorageMock.getItem.mockImplementation((k: string) => (localStorageStore.has(k) ? localStorageStore.get(k)! : null));
+  localStorageMock.setItem.mockImplementation((k: string, v: string) => { localStorageStore.set(k, String(v)); });
+  localStorageMock.removeItem.mockImplementation((k: string) => { localStorageStore.delete(k); });
+  localStorageMock.clear.mockImplementation(() => { localStorageStore.clear(); });
 });

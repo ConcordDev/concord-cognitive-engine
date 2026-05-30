@@ -158,7 +158,10 @@ export function CommandPalette() {
   return (
     <div
       className="concordia-hud-fade fixed inset-0 z-40 flex items-start justify-center bg-black/60 pt-24 backdrop-blur"
+      role="button"
+      tabIndex={0}
       onClick={(e) => { if (e.currentTarget === e.target) setOpen(false); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setOpen(false); } }}
     >
       <div className="w-full max-w-xl rounded-xl border border-sky-500/40 bg-zinc-950/95 shadow-2xl">
         <header className="flex items-center gap-2 border-b border-zinc-800 px-3 py-2">

@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { BookOpen, Play, Check, RefreshCcw } from 'lucide-react';
+import { BookOpen, Play, Check, RefreshCcw, Loader2, AlertCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -32,9 +32,13 @@ export default function NarrativeWalkLensPage() {
   const [catalog, setCatalog] = useState<CinematicSummary[]>([]);
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
     Promise.all([
       import('@/lib/world-lens/cinematic-sequences-registry'),
       import('@/lib/world-lens/cinematic-director'),
@@ -47,7 +51,11 @@ export default function NarrativeWalkLensPage() {
         summary: (s as { summary?: string }).summary,
       }));
       setCatalog(list);
-    }).catch(() => {});
+    }).catch(() => {
+      if (!cancelled) setError('Could not load the cinematic library.');
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) setWatched(new Set(JSON.parse(raw)));
@@ -94,8 +102,18 @@ export default function NarrativeWalkLensPage() {
         </header>
 
         <section className="mx-auto max-w-screen-2xl px-4 py-5 sm:px-6">
-          {catalog.length === 0 ? (
-            <p className="py-12 text-center text-[12px] text-slate-500">Cinematic library loading…</p>
+          {error && (
+            <div role="alert" className="mb-3 flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {error}
+            </div>
+          )}
+          {loading && catalog.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-violet-400" />
+            </div>
+          ) : catalog.length === 0 ? (
+            <p className="py-12 text-center text-[12px] text-slate-500">No cinematics in the library yet.</p>
           ) : (
             <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {catalog.map((c, idx) => {

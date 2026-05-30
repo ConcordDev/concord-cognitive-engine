@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Camera, Share2, Trash2, RefreshCcw, Globe2 } from 'lucide-react';
+import { Camera, Share2, Trash2, RefreshCcw, Globe2, Loader2, AlertCircle } from 'lucide-react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 
@@ -35,19 +35,33 @@ export default function PhotosLensPage() {
   const [mine, setMine] = useState<PhotoRow[]>([]);
   const [worldFeed, setWorldFeed] = useState<PhotoRow[]>([]);
   const [worldId, setWorldId] = useState('tunya');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshMine = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch('/api/photos/mine', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.ok) setMine(d.photos || []); })
-      .catch(() => {});
+      .then((d) => {
+        if (d?.ok) setMine(d.photos || []);
+        else setError('Could not load your photos.');
+      })
+      .catch(() => setError('Could not load your photos.'))
+      .finally(() => setLoading(false));
   }, []);
 
   const refreshWorld = useCallback((wid: string) => {
+    setLoading(true);
+    setError(null);
     fetch(`/api/photos/world/${encodeURIComponent(wid)}/public`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.ok) setWorldFeed(d.photos || []); })
-      .catch(() => {});
+      .then((d) => {
+        if (d?.ok) setWorldFeed(d.photos || []);
+        else setError('Could not load the world feed.');
+      })
+      .catch(() => setError('Could not load the world feed.'))
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { refreshMine(); }, [refreshMine]);
@@ -102,7 +116,18 @@ export default function PhotosLensPage() {
             </div>
           )}
 
-          {(tab === 'mine' ? mine : worldFeed).length === 0 ? (
+          {error && (
+            <div role="alert" className="mb-3 flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-[12px] text-rose-200">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {error}
+            </div>
+          )}
+
+          {loading && (tab === 'mine' ? mine : worldFeed).length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-sky-400" />
+            </div>
+          ) : (tab === 'mine' ? mine : worldFeed).length === 0 ? (
             <p className="py-12 text-center text-[12px] text-slate-500">
               {tab === 'mine' ? 'No photos yet. Press P in the world to open Photo Mode.' : 'No public photos in this world yet.'}
             </p>
