@@ -144,7 +144,18 @@ uprising → legibility → reskin) and each leaves the system working.
   idempotent per (movement, player)); wired into `movement-recruitment-cycle` (erupts on `acted`). Test
   `tests/uprising.test.js` (3). **Phase 6 = 100%.** (Notoriety→boss-pursuer + auto-summon-authority beats
   fold into Phase 9/10 combat surfacing.)
-- Phases 1.5, 7 → 13 (9 cross-cutting): 7 (Chronicle legibility) next; 1.5 (settlement composition) pending.
+- **Phase 7 — Chronicle legibility + ruler symptoms: SHIPPED (server).** Mig 286 (`world_chronicle` +
+  `world_chronicle_cursor`, per-world write tables); `lib/chronicle/compose.js` (deterministic per-kind
+  composers — uprising/unpaid_flow/fields_untended/worker_flight/recruitment/building_progress/vacancy/
+  decree — that never invent + `scrubSecrets` + a `secret:` canary so secret bodies never leak);
+  `lib/chronicle/chronicle.js` (`recordEntry` idempotent on dedupe_key; `weaveWorld` cursor-driven
+  exactly-once ingestion across uprising/world_events/recruitment sources; `realmHealth` DERIVED
+  labor-symptom surface — fields-untended %, depleted nodes, active movements, open grievance, treasury,
+  avg loyalty — NOT a rebellion bar; `mintSaga` writes a `kind='chronicle'` DTU citing the beats);
+  `chronicle-weave` heartbeat (freq 30); `domains/chronicle.js` macros (`list_entries`/`world_chronicle`/
+  `realm_health`/`compose_saga`/`my_saga`). Test `tests/chronicle.test.js` (7). **Server 100%; the
+  `/lenses/chronicle` lens + EmergentEventFeed channel are the frontend slice.**
+- Phases 1.5, 8 → 13 (9 cross-cutting): 8 (per-world reskin) next; 1.5 (settlement composition) pending.
 
 ## Unifying model (the one substrate)
 

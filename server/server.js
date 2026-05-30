@@ -164,6 +164,15 @@ registerHeartbeat("movement-recruitment-cycle", {
   handler: runMovementRecruitmentCycle,
 });
 
+// Living Society Phase 7 — the Chronicle weave. Ingest labor/pay/grievance/
+// movement beats into world_chronicle so the silent sim becomes a felt saga
+// and rulers read the uprising through symptoms.
+import { runChronicleWeave } from "./emergent/chronicle-weave.js";
+registerHeartbeat("chronicle-weave", {
+  frequency: 30,
+  handler: runChronicleWeave,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so
@@ -24435,6 +24444,11 @@ registerGlyphSpellMacros(register);
 // deformations, per-cell water column + hydrology flow.
 import registerTerrainMacros from "./domains/terrain.js";
 registerTerrainMacros(register);
+
+// Living Society Phase 7 — the Chronicle: list narrative beats, the ruler's
+// labor-symptom Realm Health surface, and saga minting.
+import registerChronicleMacros from "./domains/chronicle.js";
+registerChronicleMacros(register);
 
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
