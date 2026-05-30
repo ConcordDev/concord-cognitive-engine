@@ -164,7 +164,18 @@ uprising → legibility → reskin) and each leaves the system working.
   (freq 80); `npc-family.js#seedAuthoredRelationships` + `mapAuthoredRelType` ingest authored `relationships[]`
   into `npc_relationships`. Test `tests/settlements.test.js` (5). **Core 100%; taxonomy-fill at spawn +
   per-settlement scarcity are follow-on wiring in the spawner.**
-- Phases 8 → 13 (9 cross-cutting): 8 (per-world reskin) next.
+- **Phase 8 — per-world reskin (load-bearing mechanics): SHIPPED (core).** **Mastery-as-passport**:
+  `skill-engine.js#computeSkillEffectiveness` now takes `opts.masteryTierIndex` (from
+  `skill-mastery.js#masteryForLevel`) and applies a `MASTERY_PASSPORT_FLOOR` at all three nullification
+  points — a hostile/no-affinity world nullifies a low-mastery off-affinity skill, but expert/master/
+  grandmaster still fire it REDUCED (15/25/35% of native), not nullified — the skill ceiling is a
+  cross-world passport. **Authored tyranny → movement**: `npc-asymmetry.js#seedTyrannyGrievances` seeds
+  standing grievances from authored injustices (Augmented Children/Iron Rose/Vesper Kane/Calla Bren) so a
+  movement auto-seeds from the injustice on the recruitment pass. Test `tests/per-world-reskin.test.js`
+  (4). **Core mechanics 100%; the `world_professions` ingestion + per-world pay-form content is the
+  data-authoring slice.**
+- Phases 9 → 13: 9 (player actionability, cross-cutting), 10 (law/crime/jail), 11 (governance hierarchy),
+  12 (ideology), 13 (world-creation) remain.
 
 ## Unifying model (the one substrate)
 

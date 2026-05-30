@@ -548,6 +548,34 @@ function normalizeAuthorityKind(kind) {
   return "faction";
 }
 
+/**
+ * Living Society Phase 8 — seed standing grievances from authored tyranny
+ * (lore.json injustices: Augmented Children → their parents' cell, Iron Rose →
+ * the neighbourhood, Vesper Kane → the district, Calla Bren → sovereign-ruins).
+ * Each named aggrieved NPC gets a standing grudge against the tyrant authority,
+ * so a movement auto-seeds from the injustice on the first recruitment pass.
+ * Idempotent (deepens rather than spams).
+ *
+ * @param opts { tyrantKind:'faction'|'ruler', tyrantId, aggrieved:[npcId], severity? }
+ */
+export function seedTyrannyGrievances(db, worldId, opts = {}) {
+  if (!db || !worldId || !opts.tyrantId || !Array.isArray(opts.aggrieved)) {
+    return { ok: false, reason: "missing_inputs" };
+  }
+  let seeded = 0;
+  for (const npcId of opts.aggrieved) {
+    const r = recordAuthorityGrievance(db, npcId, {
+      targetKind: opts.tyrantKind || "faction",
+      targetId: opts.tyrantId,
+      eventKind: "authored_tyranny",
+      severity: opts.severity || 5,
+      narrative: opts.narrative || `the injustice of ${opts.tyrantId} is not forgotten.`,
+    });
+    if (r.ok) seeded++;
+  }
+  return { ok: true, seeded };
+}
+
 /** Sum of open grievance severity held against a given authority (per world optional). */
 export function grievanceAgainstAuthority(db, targetKind, targetId) {
   if (!db || !targetKind || !targetId) return { total: 0, count: 0 };
