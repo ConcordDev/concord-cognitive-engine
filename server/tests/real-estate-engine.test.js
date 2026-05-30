@@ -28,11 +28,11 @@ beforeEach(() => {
     CREATE TABLE world_buildings (
       id TEXT PRIMARY KEY,
       world_id TEXT NOT NULL,
-      archetype TEXT,
-      owner_kind TEXT NOT NULL DEFAULT 'realm',
+      building_type TEXT,
+      owner_type TEXT NOT NULL DEFAULT 'realm',
       owner_id TEXT,
-      pos_x REAL NOT NULL DEFAULT 0,
-      pos_z REAL NOT NULL DEFAULT 0,
+      x REAL NOT NULL DEFAULT 0,
+      z REAL NOT NULL DEFAULT 0,
       health_pct REAL NOT NULL DEFAULT 100,
       deed_dtu_id TEXT,
       monthly_rent_cents INTEGER NOT NULL DEFAULT 0,
@@ -67,11 +67,11 @@ beforeEach(() => {
   `);
   // Seed an alice-owned building + a realm-owned building
   db.prepare(`
-    INSERT INTO world_buildings (id, world_id, archetype, owner_kind, owner_id)
+    INSERT INTO world_buildings (id, world_id, building_type, owner_type, owner_id)
     VALUES ('b1', 'w1', 'tavern', 'player', 'alice')
   `).run();
   db.prepare(`
-    INSERT INTO world_buildings (id, world_id, archetype, owner_kind, owner_id)
+    INSERT INTO world_buildings (id, world_id, building_type, owner_type, owner_id)
     VALUES ('b2', 'w1', 'tavern', 'realm', 'realm1')
   `).run();
 });
@@ -125,7 +125,7 @@ describe("real-estate-engine library", () => {
     const p = purchaseBuilding(db, { buyerUserId: "bob", listingId: list.listingId }, wallet);
     assert.equal(p.ok, true);
     assert.equal(p.pricePaid, 5000);
-    const updated = db.prepare("SELECT owner_kind, owner_id FROM world_buildings WHERE id = 'b1'").get();
+    const updated = db.prepare("SELECT owner_type AS owner_kind, owner_id FROM world_buildings WHERE id = 'b1'").get();
     assert.equal(updated.owner_id, "bob");
     assert.equal(updated.owner_kind, "player");
     // Wallet log: bob debited 5000, alice credited 5000
