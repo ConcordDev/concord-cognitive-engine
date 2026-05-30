@@ -125,6 +125,21 @@ export function setWater(db, worldId, wx, wz, height) {
   } catch (e) { return { ok: false, error: e?.message }; }
 }
 
+/**
+ * All wet cells in a world (water_height > MIN_WATER), for the 3D client's
+ * dynamic water-surface renderer. Returns `[{ cell_x, cell_z, water_height }]`.
+ * Never throws — minimal builds without the table get `[]`.
+ */
+export function waterGridForWorld(db, worldId) {
+  if (!db || !worldId) return [];
+  try {
+    return db.prepare(`
+      SELECT cell_x, cell_z, water_height FROM world_water_cells
+      WHERE world_id = ? AND water_height > ?
+    `).all(worldId, MIN_WATER);
+  } catch { return []; }
+}
+
 /** Per-cell water depth at a world position (swim/drown reads this, not a plane). */
 export function waterDepthAt(db, worldId, wx, wz) {
   if (!db) return 0;

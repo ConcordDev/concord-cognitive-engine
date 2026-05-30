@@ -7,7 +7,7 @@
 
 import { tickWaterFlow } from "../lib/terrain-water.js";
 
-export function runWaterFlowCycle({ db } = {}) {
+export function runWaterFlowCycle({ db, io } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   let worlds = [];
   try {
@@ -15,8 +15,19 @@ export function runWaterFlowCycle({ db } = {}) {
   } catch { return { ok: true, worlds: 0 }; } // table absent
   let moved = 0;
   for (const w of worlds) {
-    try { const r = tickWaterFlow(db, w); moved += r?.cellsMoved || 0; }
-    catch { /* per-world isolation */ }
+    try {
+      const r = tickWaterFlow(db, w);
+      const cellsMoved = r?.cellsMoved || 0;
+      moved += cellsMoved;
+      // WS-A1 — hint the 3D client to refetch the water grid when the surface
+      // actually changed. A hint, not a payload: the client owns the full read
+      // via GET /api/worlds/:id/terrain. Floor-only — never break the tick.
+      if (cellsMoved > 0) {
+        try {
+          io?.to?.(`world:${w}`)?.emit?.("concordia:water-updated", { worldId: w, changed: cellsMoved });
+        } catch { /* realtime optional */ }
+      }
+    } catch { /* per-world isolation */ }
   }
   return { ok: true, worlds: worlds.length, cellsMoved: moved };
 }

@@ -26,6 +26,8 @@ import {
 } from "../lib/quests/quest-engine.js";
 import * as cityPresence from "../lib/city-presence.js";
 import { listActiveUprisingsWithLocation } from "../lib/uprising.js";
+import { deformationsForWorld, CELL_SIZE as TERRAIN_CELL_SIZE } from "../lib/terrain-deformation.js";
+import { waterGridForWorld } from "../lib/terrain-water.js";
 import { serverError } from "../lib/http-errors.js";
 
 // Combat anti-cheat constants. Server-side validation prevents a modified
@@ -1564,6 +1566,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { worldId } = req.params;
       const uprisings = listActiveUprisingsWithLocation(db, worldId);
       res.json({ ok: true, uprisings, count: uprisings.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // WS-A1 — bulk terrain state for the 3D client: persisted deformation deltas +
+  // the wet-cell water grid. The client replays this on load to deform the
+  // terrain mesh + rebuild the heightfield collider, and to render the dynamic
+  // water surface. Public read (no secrets); mirrors the /nodes + /buildings GETs.
+  router.get("/:worldId/terrain", (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const deformations = deformationsForWorld(db, worldId);
+      const water = waterGridForWorld(db, worldId);
+      res.json({ ok: true, cellSize: TERRAIN_CELL_SIZE, deformations, water });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
