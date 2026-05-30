@@ -20,6 +20,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { recordOpinionEvent, getOpinion } from "./npc-opinions.js";
+import { npcNameFromRow } from "./npc-name.js";
 import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
@@ -250,8 +251,9 @@ function applyResolution(db, sch, opts = {}) {
           db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`).run(sch.target_id);
         } catch { /* world_npcs may be absent */ }
         try {
-          const dec = db.prepare(`SELECT id, name, faction, archetype FROM world_npcs WHERE id = ?`).get(sch.target_id);
+          const dec = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(sch.target_id);
           if (dec) {
+            dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
             // Lazy import to avoid a circular load chain at module init.
             // Fire-and-forget by design — the resolution path doesn't need
             // to await the legacy cascade to consider the scheme complete.

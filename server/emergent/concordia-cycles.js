@@ -21,6 +21,7 @@
 // session if one isn't already open for the current season+year.
 
 import logger from "../logger.js";
+import { npcNameFromRow } from "../lib/npc-name.js";
 
 const SECONDS_PER_CONCORDIA_DAY = 86400;
 
@@ -75,8 +76,9 @@ export const runAgingCycle = safeRun("aging-cycle", async (state) => {
   for (const due of r.dueForDeath || []) {
     try {
       const { onNpcDeath } = await import("../lib/npc-legacy.js");
-      const dec = db.prepare(`SELECT id, name, faction, archetype FROM world_npcs WHERE id = ?`).get(due.npcId);
+      const dec = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(due.npcId);
       if (dec) {
+        dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
         // Mark dead.
         db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`).run(due.npcId);
         onNpcDeath(db, dec, { cause: "natural", killerId: null });

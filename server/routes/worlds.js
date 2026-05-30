@@ -5,6 +5,7 @@ import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
 import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
+import { npcNameFromRow } from "../lib/npc-name.js";
 import { loadWorld, listWorlds, getActiveWorldForPlayer } from "../lib/world-loader.js";
 import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
@@ -2332,8 +2333,9 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // its phases on the post-damage hp and emit boss:state for the HUD.
       try {
         const bossRow = db.prepare(
-          `SELECT name, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
+          `SELECT state, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
         ).get(npcId);
+        if (bossRow) bossRow.name = npcNameFromRow(bossRow); // world_npcs has no `name` column — derive from state
         const bossPhases = globalThis.__CONCORD_STATE__?.bossPhases?.get?.(npcId);
         const { isBossRow, computeBossState } = await import("../lib/combat/boss-hud.js");
         if (isBossRow(bossRow, bossPhases)) {

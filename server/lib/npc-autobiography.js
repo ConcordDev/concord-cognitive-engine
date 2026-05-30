@@ -16,6 +16,7 @@
 // Idempotent on (npc_id, generation) via mig 161 UNIQUE.
 
 import crypto from "node:crypto";
+import { npcNameFromRow } from "./npc-name.js";
 
 const MIN_GRUDGES = 10;
 const MIN_SCHEMES = 5;
@@ -107,7 +108,8 @@ export async function tryComposeForNpc(db, npcId) {
 
   let npc = null;
   try {
-    npc = db.prepare(`SELECT id, name FROM world_npcs WHERE id = ?`).get(npcId);
+    npc = db.prepare(`SELECT id, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(npcId);
+    if (npc) npc.name = npcNameFromRow(npc); // world_npcs has no `name` column — derive from state
   } catch { /* world_npcs optional in minimal builds */ }
   if (!npc) return { ok: false, reason: "npc_not_found" };
 
