@@ -103,7 +103,17 @@ uprising → legibility → reskin) and each leaves the system working.
   raw + produce/masonry/ingot/lumber/flour goods), and `npc-generator.js` (`FACTION_PROFILES` — civilians
   weighted into the 4 non-martial factions + default). No new tables. Civilians carry no martial archetype
   (poise invariant holds). Test `tests/civilian-roster.test.js` (12). **Phase 1 = 100%.**
-- Phases 1.5 → 13 (9 player-actionability cross-cutting): not started; specs below are current.
+- **Phase 2 — labor writes visible world-state: SHIPPED.** Mig 282
+  (`world_buildings.construction_progress_pct` + `build_target_state`); `lib/npc-labor-world.js`
+  (`performConstruction` raises a building over ticks frame→construction→standing; `performFarming`
+  advances the nearest unripe `claim_crops` a stage; `performLogging`/`performMining` DEPLETE
+  `world_resource_nodes` — gather no longer mints from thin air — + yield to `npc_inventory`); wired into
+  `npc-economy.js#dispatchEconomicAction` (`build`/`farm`/`log`/`mine`), driven by the existing
+  `npc-economy-cycle` (now selecting NPC x/z so labor targets the nearest site). All idempotent-per-tick
+  (progress/stage capped). Dials `CONCORD_CONSTRUCT_RATE_PCT`, `CONCORD_NPC_LOG_AMOUNT`,
+  `CONCORD_NPC_MINE_AMOUNT`. Test `tests/npc-labor-world.test.js` (6). **Phase 2 = 100%.**
+- Phases 1.5, 3 → 13 (9 player-actionability cross-cutting): 1.5 (settlement composition + cold-start
+  relationships + vacancy) pending; specs below are current.
 
 ## Unifying model (the one substrate)
 

@@ -63,7 +63,7 @@ export async function runNpcEconomyCycle({ db, state: _state, tickCount: _t } = 
     try {
       // Pull NPCs whose routine_state shows arrived AND world matches.
       arrived = db.prepare(`
-        SELECT n.id, n.archetype, n.faction, n.world_id, rs.activity_kind
+        SELECT n.id, n.archetype, n.faction, n.world_id, n.x, n.z, rs.activity_kind
         FROM world_npcs n
         JOIN npc_routine_state rs ON rs.npc_id = n.id
         WHERE n.world_id = ?

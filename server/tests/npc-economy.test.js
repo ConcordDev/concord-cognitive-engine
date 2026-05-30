@@ -128,14 +128,14 @@ function makeFakeDb() {
       for (const n of tables.world_npcs.values()) if (!n.is_dead) seen.add(n.world_id);
       return Array.from(seen).map(w => ({ world_id: w }));
     }
-    if (sql.startsWith("SELECT n.id, n.archetype, n.faction, n.world_id, rs.activity_kind FROM world_npcs n JOIN npc_routine_state rs")) {
+    if (sql.startsWith("SELECT n.id, n.archetype, n.faction, n.world_id, n.x, n.z, rs.activity_kind FROM world_npcs n JOIN npc_routine_state rs")) {
       const [worldId] = args;
       const out = [];
       for (const n of tables.world_npcs.values()) {
         if (n.world_id !== worldId || n.is_dead) continue;
         const rs = tables.npc_routine_state.get(n.id);
         if (!rs || rs.arrived_at == null) continue;
-        out.push({ id: n.id, archetype: n.archetype, faction: n.faction, world_id: n.world_id, activity_kind: rs.activity_kind });
+        out.push({ id: n.id, archetype: n.archetype, faction: n.faction, world_id: n.world_id, x: n.x ?? 0, z: n.z ?? 0, activity_kind: rs.activity_kind });
       }
       return out;
     }

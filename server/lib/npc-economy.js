@@ -19,6 +19,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { performConstruction, performFarming, performLogging, performMining } from "./npc-labor-world.js";
 
 // ── Resource taxonomy ───────────────────────────────────────────────────────
 
@@ -338,6 +339,11 @@ export function dispatchEconomicAction(db, npc, activityKind) {
     case "craft":   return performCraft(db, npc);
     case "trade":   return performTrade(db, npc);
     case "rest":    return consumePersonalNeeds(db, npc);
+    // Living Society Phase 2 — labor writes visible world-state.
+    case "build":   return performConstruction(db, npc);
+    case "farm":    return performFarming(db, npc);
+    case "log":     return performLogging(db, npc);
+    case "mine":    return performMining(db, npc);
     default:        return { ok: false, reason: "non_economic_activity" };
   }
 }
