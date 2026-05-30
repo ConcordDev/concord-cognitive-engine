@@ -52,6 +52,19 @@ export const SKILL_UNIVERSE_MAP = {
  * @returns {{ effective: boolean, effectiveLevel: number, multiplier: number,
  *   crossWorldMultiplier?: number, reason?: string }}
  */
+// Living Society Phase 8 — mastery-as-passport. A hostile world damps off-
+// affinity skills, but a high MASTERY tier overcomes that damping: a grandmaster
+// spell still fires in a no-magic world (reduced, not nullified). The floor is a
+// fraction of native level by mastery tier index (0..5); 0 for novice/apprentice/
+// adept (no passport), rising for expert/master/grandmaster. Pass
+// opts.masteryTierIndex (from skill-mastery.js#masteryForLevel) to enable it.
+const MASTERY_PASSPORT_FLOOR = Object.freeze([0, 0, 0, 0.15, 0.25, 0.35]);
+function _masteryPassport(nativeLevel, opts) {
+  const idx = Number(opts?.masteryTierIndex);
+  if (!Number.isFinite(idx) || idx < 3) return 0;
+  return Math.round(nativeLevel * MASTERY_PASSPORT_FLOOR[Math.min(5, idx)] * 10) / 10;
+}
+
 export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModulators, opts = {}) {
   const rules = typeof worldRuleModulators === 'string'
     ? _parseJSON(worldRuleModulators, {})
@@ -76,6 +89,10 @@ export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModul
   if (resistConfig) {
     const { threshold = 0, scaling = 1.0 } = resistConfig;
     if (nativeLevel < threshold) {
+      const passport = _masteryPassport(nativeLevel, opts);
+      if (passport > 0) {
+        return { effective: true, effectiveLevel: passport, multiplier: Math.round((passport / Math.max(1, nativeLevel)) * 1000) / 1000, masteryPassport: true, reason: `mastery passport: below threshold but a high-mastery cast fires reduced` };
+      }
       return {
         effective: false,
         effectiveLevel: 0,
@@ -92,6 +109,10 @@ export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModul
     const multiplier = ruleEntry.multiplier ?? 1.0;
 
     if (multiplier === 0.0) {
+      const passport = _masteryPassport(scaledLevel, opts);
+      if (passport > 0) {
+        return { effective: true, effectiveLevel: passport, multiplier: Math.round((passport / Math.max(1, scaledLevel)) * 1000) / 1000, masteryPassport: true, reason: `mastery passport: zero-effectiveness world, but a high-mastery cast fires reduced` };
+      }
       return {
         effective: false,
         effectiveLevel: 0,
@@ -115,6 +136,10 @@ export function computeSkillEffectiveness(skillType, nativeLevel, worldRuleModul
   const multiplier = ruleEntry.multiplier ?? 1.0;
 
   if (multiplier === 0.0) {
+    const passport = _masteryPassport(nativeLevel, opts);
+    if (passport > 0) {
+      return { effective: true, effectiveLevel: passport, multiplier: Math.round((passport / Math.max(1, nativeLevel)) * 1000) / 1000, masteryPassport: true, reason: `mastery passport: a no-affinity world damps but a grandmaster still fires reduced` };
+    }
     return {
       effective: false,
       effectiveLevel: 0,

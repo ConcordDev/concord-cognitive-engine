@@ -20,19 +20,21 @@ import { getDriftAlerts, DRIFT_SEVERITY } from "../emergent/drift-monitor.js";
 
 function stateWithAlerts() {
   // Pre-seed the in-memory drift store with one alert of each severity.
-  return {
-    _driftMonitor: {
-      snapshots: [],
-      alerts: [
-        { alertId: "a1", type: "goodhart",          severity: DRIFT_SEVERITY.INFO,     message: "i", timestamp: "2026-01-01" },
-        { alertId: "a2", type: "memetic_drift",     severity: DRIFT_SEVERITY.WARNING,  message: "w", timestamp: "2026-01-02" },
-        { alertId: "a3", type: "self_reference",    severity: DRIFT_SEVERITY.ALERT,    message: "a", timestamp: "2026-01-03" },
-        { alertId: "a4", type: "metric_divergence", severity: DRIFT_SEVERITY.CRITICAL, message: "c", timestamp: "2026-01-04" },
-      ],
-      metrics: { totalScans: 0, alertsByType: {}, alertsBySeverity: {}, lastScanAt: null },
-      thresholds: {},
-    },
+  // getDriftStore reads getEmergentState(STATE).__emergent._driftMonitor, so the
+  // store must be nested under __emergent (a bare top-level _driftMonitor is
+  // ignored — getEmergentState would create a fresh empty __emergent).
+  const driftMonitor = {
+    snapshots: [],
+    alerts: [
+      { alertId: "a1", type: "goodhart",          severity: DRIFT_SEVERITY.INFO,     message: "i", timestamp: "2026-01-01" },
+      { alertId: "a2", type: "memetic_drift",     severity: DRIFT_SEVERITY.WARNING,  message: "w", timestamp: "2026-01-02" },
+      { alertId: "a3", type: "self_reference",    severity: DRIFT_SEVERITY.ALERT,    message: "a", timestamp: "2026-01-03" },
+      { alertId: "a4", type: "metric_divergence", severity: DRIFT_SEVERITY.CRITICAL, message: "c", timestamp: "2026-01-04" },
+    ],
+    metrics: { totalScans: 0, alertsByType: {}, alertsBySeverity: {}, lastScanAt: null },
+    thresholds: {},
   };
+  return { __emergent: { _driftMonitor: driftMonitor } };
 }
 
 describe("Phase 12e — drift-alert severity filter", () => {

@@ -36,6 +36,7 @@ import crypto from "crypto";
 import { generateCreature, validateCreaturePhysics, WORLD_MODIFIERS, TOPOLOGIES } from "./procedural-creature.js";
 import { evolveSkill, getSkill, createSkill, attachSkills } from "./emergent-skills.js";
 import { fuseTwoSkills, skillFusionEnabled } from "./skill-fusion.js";
+import { deriveProfileFromBlueprint, blendMaterialProfile } from "./ecosystem/material-profiles.js";
 
 /**
  * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
@@ -302,6 +303,16 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
     }
   }
 
+  // Living Society P0.5 — blend the parents' material profiles into the child's
+  // so a hybrid corpse drops coherently-named, propertied meat with inherited +
+  // bounded-mutated effects (the gen-decay clamp keeps potency from running away).
+  const materialProfile = blendMaterialProfile(
+    deriveProfileFromBlueprint(a, "raw-meat"),
+    deriveProfileFromBlueprint(b, "raw-meat"),
+    { stability, generation, seedKey: `${a.id}|${b.id}` },
+  );
+  blueprint.materialProfile = materialProfile;
+
   // Persist lineage.
   if (db) {
     try {
@@ -310,6 +321,11 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
         INSERT INTO creature_lineage (child_id, parent_a, parent_b, generation, stability, cross_world, blueprint, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
       `).run(blueprint.id, a.id, b.id, generation, stability, crossWorld ? 1 : 0, JSON.stringify(blueprint));
+      // material_profile column is mig-280; write guarded so older builds register cleanly.
+      try {
+        db.prepare(`UPDATE creature_lineage SET material_profile = ? WHERE child_id = ?`)
+          .run(JSON.stringify(materialProfile), blueprint.id);
+      } catch { /* column absent */ }
     } catch { /* persist best-effort */ }
   }
 
@@ -321,6 +337,7 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
     inheritedSkillIds,
     tensionSkill,
     fusionSkill,
+    materialProfile,
     parents: [a.id, b.id],
     generation,
   };

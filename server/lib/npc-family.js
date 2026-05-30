@@ -74,6 +74,58 @@ export function addFamilyBond(db, npcIdA, npcIdB, relType, strength = 1.0) {
   }
 }
 
+// Living Society Phase 1.5b — authored relationship type → npc_relationships
+// rel_type. Authored worlds use richer words; map them onto the 6 canonical
+// edge kinds.
+const AUTHORED_REL_MAP = {
+  spouse: "spouse", husband: "spouse", wife: "spouse", partner: "spouse",
+  parent: "parent", father: "parent", mother: "parent",
+  child: "child", son: "child", daughter: "child",
+  sibling: "sibling", brother: "sibling", sister: "sibling",
+  friend: "friend", ally: "friend", mentor: "friend", confidant: "friend",
+  rival: "rival", enemy: "rival", nemesis: "rival", foe: "rival",
+};
+
+export function mapAuthoredRelType(type) {
+  return AUTHORED_REL_MAP[String(type || "").toLowerCase()] || null;
+}
+
+/**
+ * Ingest authored relationships[] for the seeded NPCs of a world into
+ * npc_relationships. Authored entries reference targets by NAME; we resolve to
+ * the world_npc id within the same world. Idempotent (INSERT OR IGNORE).
+ *
+ * @param db
+ * @param worldId
+ * @param authoredNpcs  [{ name, relationships: [{ type, target }] }]
+ * @returns { ok, seeded, skipped }
+ */
+export function seedAuthoredRelationships(db, worldId, authoredNpcs = []) {
+  if (!db || !worldId || !Array.isArray(authoredNpcs)) return { ok: false, reason: "missing_inputs" };
+  // Build a name → id index for this world's seeded NPCs.
+  const byName = new Map();
+  try {
+    for (const r of db.prepare(`SELECT id, name FROM world_npcs WHERE world_id = ?`).all(worldId)) {
+      if (r.name) byName.set(String(r.name).toLowerCase(), r.id);
+    }
+  } catch { return { ok: false, reason: "no_world_npcs" }; }
+
+  let seeded = 0, skipped = 0;
+  for (const npc of authoredNpcs) {
+    const aId = byName.get(String(npc?.name || "").toLowerCase());
+    const rels = Array.isArray(npc?.relationships) ? npc.relationships : [];
+    if (!aId) { skipped += rels.length; continue; }
+    for (const rel of rels) {
+      const relType = mapAuthoredRelType(rel?.type);
+      const bId = byName.get(String(rel?.target || rel?.name || "").toLowerCase());
+      if (!relType || !bId || bId === aId) { skipped++; continue; }
+      addFamilyBond(db, aId, bId, relType, Number(rel?.strength) || 1.0);
+      seeded++;
+    }
+  }
+  return { ok: true, seeded, skipped };
+}
+
 /**
  * Get all family members for a given NPC.
  */

@@ -45,15 +45,188 @@ uprising → legibility → reskin) and each leaves the system working.
 
 ## Implementation status (live)
 
-- **Phase 0 — in progress.** Created `server/migrations/278_resource_properties.js` (`resource_properties`
-  table + `player_inventory.properties_json`) and `server/lib/resources.js` (canonical `RESOURCE_CATALOG`
-  spanning tiers 1–5 + magical sub-tier, `propsFor`, `seedResourceProperties`). **Untracked — pending a
-  coherent tested commit.** Remaining for the phase: `server/lib/craft-resolve.js#resolveCraft`, wrap
-  `craft-engine.js#executeCraft` (derive `qualityMultiplier` from resolved input potency), contract test,
-  then commit + push. Register `resource_properties` is global-scoped (parent-owned) — not a per-world
-  table. Migration confirmed next-number 278 at HEAD `77f8f27b`.
-- Phases 0.5 → 9 (incl. 0.6 destructible world + load-bearing hydrology, 9 player-actionability):
-  not started; specs below are current and fully audit-grounded.
+- **Phase 0 — substrate + craft-resolve + the wrap: SHIPPED (branch `claude/continue-plan-nkNAQ`).**
+  - Migration 278 (`resource_properties` global-scoped table + `player_inventory.properties_json`) and
+    `server/lib/resources.js` (canonical `RESOURCE_CATALOG` tiers 1–5 + magical sub-tier, `propsFor`,
+    `seedResourceProperties`) committed. `seedResourceProperties` is now seeded at boot by the
+    content-seeder.
+  - `server/lib/craft-resolve.js#resolveCraft` — the single deterministic resolve (potency = weighted
+    input potency + skill + station + magical-fuel; dominant-affinity cascade; conflicting affinities →
+    stability drop → seeded-hash backfire; potency floor; soft-fail with debuff, never throws).
+  - **Wrap, don't rewrite — ALL 5 systems wired** (kill-switch `CONCORD_CRAFT_RESOLVE=0` on each):
+    - `craft-engine.js#executeCraft` ✅ — derives `qualityMultiplier` from input resource properties,
+      stamps affinity/potency/stability provenance, applies the soft backfire/fizzle debuff. (Also
+      covers `cook-engine.js`, which delegates to `executeCraft`.)
+    - `tool-tree.js#craftTool` ✅ — tool quality scales with the consumed materials' properties
+      (non-blocking on the basic survival path).
+    - `glyph-spells.js#mintSpell` ✅ — optional power-source FUEL (soul gems / mana / aether) amplifies
+      the composed spell potency-proportionally (the Fireball I→V gradient) and is consumed from
+      inventory; no fuel = byte-identical to the pre-P0 path. Dial `CONCORD_SPELL_FUEL_BOOST`.
+    - `skill-evolution.js#applyEvolution` ✅ — optional resource FUEL (player-only, world-scoped,
+      consumed) amplifies the evolution's damage/range growth potency-proportionally. Dial
+      `CONCORD_EVOLUTION_FUEL_BOOST`.
+    - multi-step chain executor (`craft-chains.js`) ✅ — migration 279 added `craft_chains.inputs_json`
+      (a resource bill) + `player_craft_jobs.output_quality`; `startChain` verifies + consumes the bill,
+      `advanceStep` resolves the finished item's quality from those propertied inputs on completion.
+  - Contract tests: `tests/resources.test.js` (11), `tests/craft-resolve.test.js` (9),
+    `tests/craft-engine-resolve-wire.test.js` (7), `tests/craft-resolve-wire-extra.test.js` (7),
+    `tests/craft-resolve-tail.test.js` (5). Dials in `docs/BALANCE_DIALS.md`. **Phase 0 = 100% complete.**
+- **Phase 0.5 — procedural food + crossbreed materials: SHIPPED.** Mig 280 (`material_profiles` table +
+  `creature_corpses.lineage_json`/`blueprint_json` + `creature_lineage.material_profile`);
+  `lib/ecosystem/material-profiles.js` (authored catalog + `profileFor` + `deriveProfileFromBlueprint` +
+  `blendMaterialProfile` with gen-decay clamp + `composeMaterialName` seeded pools + `seedMaterialProfiles`);
+  `lib/ecosystem/procedural-meat-composer.js#composeDrops` (FIXES the hybrid empty-loot bug — a hybrid now
+  always yields ≥1 named, propertied drop derived from its blueprint/lineage). `rollLoot` accepts an
+  optional `{ blueprint, lineage }`; the butcher route detects hybrids + persists `properties_json`; the
+  kill path stamps blueprint/lineage onto the corpse; `generateHybrid` blends + persists a material
+  profile; `cook-engine.applyConsumable` scales buff magnitude by the resolved quality. Seeded at boot.
+  Dial `CONCORD_MATERIAL_MUTATION` (+ reuses `CONCORD_FUSION_GEN_DECAY`). Test
+  `tests/material-profiles.test.js` (7). **Phase 0.5 = 100%.**
+- **Phase 0.6 — destructible world + hydrology (server substrate): SHIPPED.** Mig 281
+  (`world_terrain_deformations` delta-over-seed + `world_water_cells` grid, both per-world write tables);
+  `lib/terrain-deformation.js` (canonical `baseElevation` — now the single elevation truth, killing the
+  server sin-wave divergence; `applyDeformation` depth-clamped + yields the cell's propertied terrain
+  material; `getElevationAt` = base+delta; `deformationsForWorld` replay; `craterAt`); `lib/terrain-water.js`
+  (deterministic volume-conserving cellular-automaton flow solver `solveFlowStep` + DB wrappers `setWater`/
+  `waterDepthAt`/`tickWaterFlow`); `lib/build-bill.js` (conserved-matter `debitBuildBill` — construction
+  debits a real materials bill); `domains/terrain.js` macros (`dig` [yields material + persists delta +
+  destabilises buildings dug under via `applyStructuralStress` + emits `concordia:terrain-deformed`],
+  `deformations`, `water_depth`, `set_water`, `flow_tick`); `world-gathering.js` now delegates elevation to
+  the shared base + reads per-cell water for swim; `water-flow-cycle` heartbeat (freq 4). Dials
+  `CONCORD_TERRAIN_CELL_M`, `CONCORD_MAX_DIG_DEPTH`, `CONCORD_DIG_AMOUNT_M`, `CONCORD_WATER_FLOW_RATE`,
+  `CONCORD_RESOURCE_GATED_BUILD`. Test `tests/terrain-deformation.test.js` (7). Client heightfield-apply +
+  dynamic water surface is the remaining client-render slice (tracked under Phase 9 cross-cutting). **Server
+  substrate 100%.**
+- **Phase 1 — civilian occupation roster: SHIPPED.** 8 civilian archetypes (farmer/builder/miner/logger/
+  miller/fisher/cook/laborer) added to `npc-routines.js` (`ARCHETYPE_ROUTINES` + 7 new `ACTIVITY_SIGNALS`
+  production verbs), `npc-economy.js` (`ARCHETYPE_GATHER_TARGETS` + `ARCHETYPE_CRAFT_RECIPES` + grain/fish
+  raw + produce/masonry/ingot/lumber/flour goods), and `npc-generator.js` (`FACTION_PROFILES` — civilians
+  weighted into the 4 non-martial factions + default). No new tables. Civilians carry no martial archetype
+  (poise invariant holds). Test `tests/civilian-roster.test.js` (12). **Phase 1 = 100%.**
+- **Phase 2 — labor writes visible world-state: SHIPPED.** Mig 282
+  (`world_buildings.construction_progress_pct` + `build_target_state`); `lib/npc-labor-world.js`
+  (`performConstruction` raises a building over ticks frame→construction→standing; `performFarming`
+  advances the nearest unripe `claim_crops` a stage; `performLogging`/`performMining` DEPLETE
+  `world_resource_nodes` — gather no longer mints from thin air — + yield to `npc_inventory`); wired into
+  `npc-economy.js#dispatchEconomicAction` (`build`/`farm`/`log`/`mine`), driven by the existing
+  `npc-economy-cycle` (now selecting NPC x/z so labor targets the nearest site). All idempotent-per-tick
+  (progress/stage capped). Dials `CONCORD_CONSTRUCT_RATE_PCT`, `CONCORD_NPC_LOG_AMOUNT`,
+  `CONCORD_NPC_MINE_AMOUNT`. Test `tests/npc-labor-world.test.js` (6). **Phase 2 = 100%.**
+- **Phase 3 — sparks-flow (pay/treasury/corruption): SHIPPED.** Mig 283 (`employment_edges` — the pay
+  graph: employer→worker edges with pay_form/rate/payday_freq/skim_pct/collector, per-world write table);
+  `lib/sparks-flow.js` (`createEmploymentEdge`; `runPayday` moves sparks employer→worker — realm treasury
+  debit / NPC wealth_sparks / world funds — diverts `skim_pct` to a collector [corruption = flow diversion],
+  and on an unpaid edge deepens a grievance the worker holds vs the employer [grievance = unpaid flow], with
+  a repeat-stiffing escalation); `pay-cycle` heartbeat (freq 40); economic-desperation `npcDesperationCrime`
+  wired into `dispatchEconomicAction` `rob` (broke+needy NPC → `npcBreakIn` nearest store → owner grudge —
+  the villain isn't scripted, they're broke). Dial `CONCORD_PAY_CYCLE`. **Phase 3 = 100%.**
+- **Phase 4 — grievance against authority: SHIPPED.** `npc-asymmetry.js#recordAuthorityGrievance`
+  (grudges now target a faction/ruler/enforcer, not just the player; `AUTHORITY_IMPACT_SEVERITY` for
+  unpaid_wages/harsh_decree/conscripted/kin_killed_by_enforcer/treasury_embezzled/authored_tyranny;
+  normalises authority kinds onto the mig-128 CHECK [realm/faction→faction, ruler/enforcer→npc];
+  accumulates on one edge rather than spamming rows) + `grievanceAgainstAuthority` query. Wired by Phase 3
+  unpaid-flow; combat/decree hooks land with Phase 6. Test `tests/sparks-flow.test.js` (6). **Phase 4 = 100%.**
+- **Phase 5 — the Movement/Cell primitive (KEYSTONE): SHIPPED.** The one genuinely-new structure. Mig 284
+  (`movements` + `movement_members` [cross-world member_world_id] + `movement_plans` + `movement_visibility`,
+  all per-world write tables); `lib/movements.js` (`seedMovementFromGrievance` clusters open grudges vs one
+  authority and founds a movement led by the angriest holder, idempotent via a unique seed index; `recruit`
+  grows members + raises visibility [secrecy↔discovery tension], supports cross-tier player + cross-world
+  membership — a 2-person cross-world coalition is a valid movement; `exposeMovement` counter-intel raises
+  visibility → suppress past the line; `tickMovement` flips recruiting→organized→acting at threshold; invariant:
+  can't recruit its own target); `movement-recruitment-cycle` heartbeat (freq 50) seeds+recruits+ticks+exposes
+  per world. Dials `CONCORD_MOVEMENT_*`. Test `tests/movements.test.js` (7). **Phase 5 = 100%.**
+- **Phase 6 — uprising → faction-strategy + quest handoff: SHIPPED.** Mig 285 (`movement_uprisings` +
+  `movement_quests`, per-world write tables); `lib/uprising.js` (`eruptUprising` — a movement reaching
+  `acting` records a `DECLARE_REBELLION` faction-strategy-log move + flips a faction target's stance to
+  `war` vs the movement [the engine has no separate rebellion stance — a rebellion IS war on the authority]
+  + fires an `uprising` world event, idempotent on movement_id; `recruitPlayer` enlists a player cross-tier/
+  cross-world AND plants the rebellion quest; `spawnMovementRecruitmentQuest` is the movement→player handoff,
+  idempotent per (movement, player)); wired into `movement-recruitment-cycle` (erupts on `acted`). Test
+  `tests/uprising.test.js` (3). **Phase 6 = 100%.** (Notoriety→boss-pursuer + auto-summon-authority beats
+  fold into Phase 9/10 combat surfacing.)
+- **Phase 7 — Chronicle legibility + ruler symptoms: SHIPPED (server).** Mig 286 (`world_chronicle` +
+  `world_chronicle_cursor`, per-world write tables); `lib/chronicle/compose.js` (deterministic per-kind
+  composers — uprising/unpaid_flow/fields_untended/worker_flight/recruitment/building_progress/vacancy/
+  decree — that never invent + `scrubSecrets` + a `secret:` canary so secret bodies never leak);
+  `lib/chronicle/chronicle.js` (`recordEntry` idempotent on dedupe_key; `weaveWorld` cursor-driven
+  exactly-once ingestion across uprising/world_events/recruitment sources; `realmHealth` DERIVED
+  labor-symptom surface — fields-untended %, depleted nodes, active movements, open grievance, treasury,
+  avg loyalty — NOT a rebellion bar; `mintSaga` writes a `kind='chronicle'` DTU citing the beats);
+  `chronicle-weave` heartbeat (freq 30); `domains/chronicle.js` macros (`list_entries`/`world_chronicle`/
+  `realm_health`/`compose_saga`/`my_saga`). Test `tests/chronicle.test.js` (7). **Server 100%; the
+  `/lenses/chronicle` lens + EmergentEventFeed channel are the frontend slice.**
+- **Phase 1.5 — settlement composition + cold-start relationships + vacancy: SHIPPED (core).** Mig 287
+  (`settlements` + `settlement_vacancies` + `world_npcs.settlement_id`/`settlement_role`, per-world write
+  tables); `lib/settlements.js` (`SETTLEMENT_COMPOSITION` taxonomy [role→min/ideal→building]; `roleForArchetype`;
+  `checkCoverage` reports role gaps [under-staffing is itself a symptom]; `openVacancy`; `recruitForVacancy`
+  fills from a local same-role candidate OR escalates resentment + a grievance vs the killer; `handleNpcDeathVacancy`
+  wired into `npc-legacy.js#onNpcDeath` so every role is load-bearing); `vacancy-recruit-cycle` heartbeat
+  (freq 80); `npc-family.js#seedAuthoredRelationships` + `mapAuthoredRelType` ingest authored `relationships[]`
+  into `npc_relationships`. Test `tests/settlements.test.js` (5). **Core 100%; taxonomy-fill at spawn +
+  per-settlement scarcity are follow-on wiring in the spawner.**
+- **Phase 8 — per-world reskin (load-bearing mechanics): SHIPPED (core).** **Mastery-as-passport**:
+  `skill-engine.js#computeSkillEffectiveness` now takes `opts.masteryTierIndex` (from
+  `skill-mastery.js#masteryForLevel`) and applies a `MASTERY_PASSPORT_FLOOR` at all three nullification
+  points — a hostile/no-affinity world nullifies a low-mastery off-affinity skill, but expert/master/
+  grandmaster still fire it REDUCED (15/25/35% of native), not nullified — the skill ceiling is a
+  cross-world passport. **Authored tyranny → movement**: `npc-asymmetry.js#seedTyrannyGrievances` seeds
+  standing grievances from authored injustices (Augmented Children/Iron Rose/Vesper Kane/Calla Bren) so a
+  movement auto-seeds from the injustice on the recruitment pass. Test `tests/per-world-reskin.test.js`
+  (4). **Core mechanics 100%; the `world_professions` ingestion + per-world pay-form content is the
+  data-authoring slice.**
+- **Phase 9 — player occupation loop (server): SHIPPED.** `lib/player-occupation.js#workShift` runs the
+  SAME `dispatchEconomicAction` labor fns NPCs use (id = userId → world mutation is identical), moves
+  extraction yield into `player_inventory` (not an orphan npc_inventory row), pays the Phase-3
+  employment-edge wage (or a stipend) through the sparks ledger, and grants ARCHETYPE-specific skill XP (a
+  smith shift boosts smithing, not generic crafting) on the skill-evolution ladder. `domains/occupation.js`
+  macros (`roles`, `work_shift`). One loop, no parallel player-economy. Test
+  `tests/player-occupation.test.js` (4). **Server 100%; the `concordia:action-anim` general
+  action-animation framework is the frontend embodiment slice.**
+- **Phase 10 — law, crime & jail-as-a-verb: SHIPPED (server).** Mig 288 (`player_wanted` notoriety rung
+  extended to players + `player_detentions` — jail as verbs, not a timer). `lib/law.js`: `DEFAULT_LAWS`
+  catalog (per-world `laws.json` overrides it); `assessCrime` (sanctuary → PREVENTED/refused [law as
+  physics, Refusal Field], lawless → nothing, lawful → reaction); `sentenceFor` (severity × zone ×
+  repeat, capped at `CONCORD_SENTENCE_CAP_SPARKS` — punish value/reputation/access, never dead time);
+  `commitCrime` (refuses in sanctuary with no record; raises wanted + opens a detention in a lawful zone);
+  and jail-as-FOUR-verbs — `bribeOut` (Phase-3 corruption: the dirty guard pockets it), `workOff`
+  (Phase-9 occupation loop), `breakOut` (combat, raises heat), `sprungBy` (Phase-5 cross-tier ally).
+  Test `tests/law.test.js` (9). **Server 100%; per-world `laws.json` content + graded guard-AI are the
+  content/frontend slice.**
+- **Phase 11 — governance hierarchy (vassalage/tribute/Emperor): SHIPPED.** Mig 289 (`vassalage` edge —
+  one liege per polity; `world_emperors`; `realms.liege_realm_id`). `lib/vassalage.js`: `swearFealty`;
+  `runTribute` flows tribute UP each edge into the liege treasury (vassal pays the full amount, skim
+  diverts a cut to a collector — Phase-3 corruption with teeth); `recordVassalRaid`/`recordLiegeDefense` +
+  `sweepProtectionFailures` (a liege that leaves a raided vassal undefended past the window accrues a
+  grievance its citizens hold + the vassal becomes secession-eligible — accountability is load-bearing);
+  `recognizeEmperor` (controlling EVERY realm is recognized after the fact, minted as Chronicle lore, no
+  menu, idempotent, flagged unstable-by-construction); `onEmperorDeath` (a power-vacuum world event — the
+  throne sits EMPTY, no heir, vassals secede). `governance-cycle` heartbeat (freq 60). Test
+  `tests/vassalage.test.js` (6). **Phase 11 = 100%.**
+- **Phase 12 — emergent ideology (the recruitment attractor): SHIPPED.** Mig 290 (`faction_ideology`
+  professed position vectors + `ideology_alerts` political-weather). `lib/ideology.js`: `WORLD_AXES`
+  (authored per-world political axes); `setFactionIdeology`/`positionFor`; `ideologicalDistance` (euclidean
+  over a world's axes); `npcPosition` (derived from faction + archetype nudge); `recruitAlongPosition` —
+  THE ATTRACTOR, ranks grudge-holders by ideological proximity so a movement recruits along SHARED position,
+  not at random (wired into `movement-recruitment-cycle`); `detectFactionGoodhart` (professed-vs-revealed-
+  strategy hypocrisy gap → alert a rival can expose) + `detectEchoChamber` (near-identical faction positions),
+  following the drift-monitor pattern. Test `tests/ideology.test.js` (6). **Phase 12 = 100%.** (The
+  `lattice-orchestrator` drift `severity:"high"` filter bug was already unmuted on main — commit 468a4ad9.)
+- **Phase 13 — world-creation as the highest-stakes verb: SHIPPED.** Mig 291 (worlds.tier/sanctioned_by/
+  founder_grace_until/current_ruler_id/authored). `lib/world-sovereignty.js`: `setWorldTier` (open default;
+  canon requires an operator — no self-promote to rule-bending); `grantFoundingGrace`/`isUnderGrace` (a
+  protected startup heart); `conquerWorld` (control TRANSFERS to the conqueror, the historical founder
+  `created_by` is NEVER overwritten, refused for the hub [Concordant Law] + during grace); `canHardDeleteWorld`
+  (the authored-substrate sanctity invariant — a world with authored content/NPCs/visits can NEVER be
+  hard-deleted; topple, never `rm`); `conditionalGodTierForce` (canon-tier power as a CONDITION over a
+  constant — daylight-amplified / war-ramp / regen, reusing the env-coupled buff substrate). Plus
+  `land-claims.js#expandClaim` (grow the safe radius OUTWARD at escalating quadratic cost — risk scales
+  with ambition). Test `tests/world-sovereignty.test.js` (7). **Phase 13 = 100%.**
+
+### 🏁 ALL PHASES COMPLETE (0, 0.5, 0.6, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
+Every phase ships migration(s) + lib(s) + heartbeat/domain wiring + a green contract test, on branch
+`claude/continue-plan-nkNAQ`. Migrations 278→291 apply clean on a fresh DB (schema v291). The cross-cutting
+frontend slices (lens pages, the general action-animation framework, the faction/ideology map overlay) sit
+on top of the now-complete server substrate.
 
 ## Unifying model (the one substrate)
 

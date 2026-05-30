@@ -4,6 +4,8 @@
 
 import crypto from 'node:crypto';
 import logger from '../logger.js';
+import { baseElevation, getElevationAt } from './terrain-deformation.js';
+import { waterDepthAt } from './terrain-water.js';
 
 const WORLD_SIZE   = 2000;
 const WATER_ELEV   = 5;    // metres — below this is water
@@ -23,21 +25,11 @@ const TOOL_COMPAT = {
 
 // ── Terrain helper (same formula as client + npc-simulator) ───────────────────
 
+// Phase 0.6 — the base heightmap now lives in terrain-deformation.js so the
+// server, client, and NPC pathing all sample ONE source (killing the prior
+// sin-wave divergence). This is the seed base; persisted deltas layer on top.
 function getElevation(wx, wz) {
-  const nx = wx / WORLD_SIZE, nz = wz / WORLD_SIZE;
-  let elev = 0;
-  if (nx < 0.1)      elev = 2 + nx * 30;
-  else if (nx < 0.2) elev = 5 + Math.pow((nx - 0.1) / 0.1, 2) * 35;
-  else if (nx < 0.6) elev = 40 + Math.sin(nx * Math.PI * 3) * 5;
-  else {
-    elev = 45 + (nx - 0.6) * 80;
-    elev += Math.sin(nx * 12 + nz * 8) * 6 + Math.sin(nx * 7 - nz * 5) * 4;
-  }
-  const creekX = 0.35 + nz * 0.15;
-  const dc = Math.abs(nx - creekX);
-  if (dc < 0.04) elev -= 12 * (1 - dc / 0.04);
-  elev += Math.sin(nx * 47.3 + nz * 31.7) * 0.5 + Math.sin(nx * 97.1 + nz * 73.3) * 0.3;
-  return Math.max(0, Math.min(80, elev));
+  return baseElevation(wx, wz);
 }
 
 // ── Swimming ──────────────────────────────────────────────────────────────────
@@ -61,7 +53,18 @@ export function checkSwimState(pos) {
  */
 export function updateSwimState(db, worldId, userId, pos) {
   try {
-    const { swimming, waterDepth } = checkSwimState(pos);
+    let { swimming, waterDepth } = checkSwimState(pos);
+    // Phase 0.6 — prefer the persisted per-cell water column (a dug-and-flooded
+    // ditch makes you swim even on high ground) over the global low-elev plane.
+    try {
+      const cellWater = waterDepthAt(db, worldId, pos.x, pos.z);
+      if (cellWater > waterDepth) {
+        waterDepth = Math.round(cellWater * 10) / 10;
+        const surfaceElev = getElevationAt(db, worldId, pos.x, pos.z);
+        const playerY = pos.y ?? surfaceElev;
+        swimming = playerY <= surfaceElev + cellWater;
+      }
+    } catch { /* water grid absent — fall back to plane */ }
     db.prepare(`
       UPDATE world_visits SET is_swimming = ?, swim_depth = ?, last_position = ?
       WHERE world_id = ? AND user_id = ? AND departed_at IS NULL

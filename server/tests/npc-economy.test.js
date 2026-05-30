@@ -128,14 +128,14 @@ function makeFakeDb() {
       for (const n of tables.world_npcs.values()) if (!n.is_dead) seen.add(n.world_id);
       return Array.from(seen).map(w => ({ world_id: w }));
     }
-    if (sql.startsWith("SELECT n.id, n.archetype, n.faction, n.world_id, rs.activity_kind FROM world_npcs n JOIN npc_routine_state rs")) {
+    if (sql.startsWith("SELECT n.id, n.archetype, n.faction, n.world_id, n.x, n.z, rs.activity_kind FROM world_npcs n JOIN npc_routine_state rs")) {
       const [worldId] = args;
       const out = [];
       for (const n of tables.world_npcs.values()) {
         if (n.world_id !== worldId || n.is_dead) continue;
         const rs = tables.npc_routine_state.get(n.id);
         if (!rs || rs.arrived_at == null) continue;
-        out.push({ id: n.id, archetype: n.archetype, faction: n.faction, world_id: n.world_id, activity_kind: rs.activity_kind });
+        out.push({ id: n.id, archetype: n.archetype, faction: n.faction, world_id: n.world_id, x: n.x ?? 0, z: n.z ?? 0, activity_kind: rs.activity_kind });
       }
       return out;
     }
@@ -408,8 +408,12 @@ describe("npc-economy-cycle heartbeat", () => {
 });
 
 describe("internals", () => {
-  it("RAW_RESOURCES + FINISHED_GOODS each have 8 items", () => {
-    assert.equal(RAW_RESOURCES.length, 8);
-    assert.equal(FINISHED_GOODS.length, 8);
+  it("RAW_RESOURCES + FINISHED_GOODS include the base 8 + the Phase-1 civilian items", () => {
+    // Base martial economy = 8 each; Living Society Phase 1 adds civilian taps
+    // (grain, fish) + transformed goods (produce, masonry, ingot, lumber, flour).
+    assert.equal(RAW_RESOURCES.length, 10);
+    assert.equal(FINISHED_GOODS.length, 13);
+    for (const r of ["wood", "stone", "ore", "herb", "fiber", "meat", "salt", "crystal"]) assert.ok(RAW_RESOURCES.includes(r));
+    for (const g of ["grain", "fish"]) assert.ok(RAW_RESOURCES.includes(g));
   });
 });

@@ -138,6 +138,57 @@ registerHeartbeat("signal-propagation-cycle", {
   serial: true,
 });
 
+// Living Society Phase 0.6 — load-bearing hydrology. Advance the water flow
+// solver each cadence so a dug ditch fills over time (water to the lowest
+// adjacent cell, volume conserved). Worlds with no water cells = no-op.
+import { runWaterFlowCycle } from "./emergent/water-flow-cycle.js";
+registerHeartbeat("water-flow-cycle", {
+  frequency: 4,
+  handler: runWaterFlowCycle,
+});
+
+// Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
+// skim diverts to collectors (corruption); unpaid flow deepens grievances.
+import { runPayCycle } from "./emergent/pay-cycle.js";
+registerHeartbeat("pay-cycle", {
+  frequency: 40,
+  handler: runPayCycle,
+});
+
+// Living Society Phase 5 — the Movement/Cell keystone. Seed coalitions from
+// grievance clusters, recruit cross-tier under secrecy-vs-discovery, tick to
+// `acting` at threshold (Phase 6 erupts it).
+import { runMovementRecruitmentCycle } from "./emergent/movement-recruitment-cycle.js";
+registerHeartbeat("movement-recruitment-cycle", {
+  frequency: 50,
+  handler: runMovementRecruitmentCycle,
+});
+
+// Living Society Phase 7 — the Chronicle weave. Ingest labor/pay/grievance/
+// movement beats into world_chronicle so the silent sim becomes a felt saga
+// and rulers read the uprising through symptoms.
+import { runChronicleWeave } from "./emergent/chronicle-weave.js";
+registerHeartbeat("chronicle-weave", {
+  frequency: 30,
+  handler: runChronicleWeave,
+});
+
+// Living Society Phase 1.5c — fill settlement role vacancies (every role is
+// load-bearing). Unfilled posts escalate resentment + a grievance vs the killer.
+import { runVacancyRecruitCycle } from "./emergent/vacancy-recruit-cycle.js";
+registerHeartbeat("vacancy-recruit-cycle", {
+  frequency: 80,
+  handler: runVacancyRecruitCycle,
+});
+
+// Living Society Phase 11 — governance: tribute up the vassalage tree, protection
+// accountability (undefended raid → grievance + secession), Emperor recognition.
+import { runGovernanceCycle } from "./emergent/governance-cycle.js";
+registerHeartbeat("governance-cycle", {
+  frequency: 60,
+  handler: runGovernanceCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so
@@ -24403,6 +24454,22 @@ registerLandClaimsMacros(register);
 // DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
+
+// Living Society Phase 0.6 — destructible world: dig terrain (yields propertied
+// material + persists the delta + destabilises buildings dug under), load-replay
+// deformations, per-cell water column + hydrology flow.
+import registerTerrainMacros from "./domains/terrain.js";
+registerTerrainMacros(register);
+
+// Living Society Phase 7 — the Chronicle: list narrative beats, the ruler's
+// labor-symptom Realm Health surface, and saga minting.
+import registerChronicleMacros from "./domains/chronicle.js";
+registerChronicleMacros(register);
+
+// Living Society Phase 9 — player occupation: a work shift on the same NPC labor
+// loop (world mutation), paid the Phase-3 edge wage, archetype-specific XP.
+import registerOccupationMacros from "./domains/occupation.js";
+registerOccupationMacros(register);
 
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip

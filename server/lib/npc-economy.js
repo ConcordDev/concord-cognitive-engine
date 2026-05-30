@@ -19,16 +19,22 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { performConstruction, performFarming, performLogging, performMining } from "./npc-labor-world.js";
+import { npcBreakIn } from "./world-crime.js";
 
 // ── Resource taxonomy ───────────────────────────────────────────────────────
 
 export const RAW_RESOURCES = [
   "wood", "stone", "ore", "herb", "fiber", "meat", "salt", "crystal",
+  // Living Society Phase 1 — civilian raw taps.
+  "grain", "fish",
 ];
 
 export const FINISHED_GOODS = [
   "weapon", "armor", "tool", "remedy", "cloth", "meal",
   "preserved_food", "jewel",
+  // Living Society Phase 1 — civilian transformed goods.
+  "produce", "masonry", "ingot", "lumber", "flour",
 ];
 
 // Archetype → what they gather in 'wilds' / 'grove'.
@@ -40,6 +46,16 @@ const ARCHETYPE_GATHER_TARGETS = {
   healer:   ["herb", "fiber"],
   trader:   ["salt", "stone"],
   guard:    ["stone", "ore"],
+  // Living Society Phase 1 — civilian producers. These are the raw-resource
+  // taps under the heroes (farmer grows grain, miner pulls ore, etc.).
+  farmer:   ["grain", "herb"],
+  builder:  ["stone", "wood"],
+  miner:    ["ore", "stone"],
+  logger:   ["wood", "fiber"],
+  miller:   ["grain", "wood"],
+  fisher:   ["fish", "salt"],
+  cook:     ["meat", "herb"],
+  laborer:  ["wood", "stone"],
   default:  ["wood", "stone"],
 };
 
@@ -53,6 +69,15 @@ const ARCHETYPE_CRAFT_RECIPES = {
   healer:   { output: "remedy",         inputs: ["herb", "fiber"] },
   hunter:   { output: "preserved_food", inputs: ["meat", "salt"] },
   trader:   { output: "cloth",          inputs: ["fiber", "salt"] },
+  // Living Society Phase 1 — civilian transformers (the labor→goods chain).
+  farmer:   { output: "produce",        inputs: ["grain", "herb"] },
+  builder:  { output: "masonry",        inputs: ["stone", "wood"] },
+  miner:    { output: "ingot",          inputs: ["ore", "stone"] },
+  logger:   { output: "lumber",         inputs: ["wood", "fiber"] },
+  miller:   { output: "flour",          inputs: ["grain", "grain"] },
+  fisher:   { output: "preserved_food", inputs: ["fish", "salt"] },
+  cook:     { output: "meal",           inputs: ["meat", "herb"] },
+  laborer:  { output: "masonry",        inputs: ["stone", "wood"] },
   default:  { output: "meal",           inputs: ["meat", "herb"] },
 };
 
@@ -315,8 +340,60 @@ export function dispatchEconomicAction(db, npc, activityKind) {
     case "craft":   return performCraft(db, npc);
     case "trade":   return performTrade(db, npc);
     case "rest":    return consumePersonalNeeds(db, npc);
+    // Living Society Phase 2 — labor writes visible world-state.
+    case "build":   return performConstruction(db, npc);
+    case "farm":    return performFarming(db, npc);
+    case "log":     return performLogging(db, npc);
+    case "mine":    return performMining(db, npc);
+    // Living Society Phase 3 — economic desperation → autonomous crime.
+    case "rob":     return npcDesperationCrime(db, npc);
     default:        return { ok: false, reason: "non_economic_activity" };
   }
+}
+
+/**
+ * Living Society Phase 3 — the broke-villain beat. When an NPC is needy (no
+ * food) AND broke (no sparks to buy any), it breaks into the nearest vulnerable
+ * store. The theft records a grudge on the owner (existing asymmetry) — the
+ * villain isn't scripted, they're broke. Returns the crime result or a
+ * no-op reason. Guarded throughout.
+ */
+export function npcDesperationCrime(db, npc) {
+  if (!db || !npc?.id || !npc.world_id) return { ok: false, reason: "no_npc" };
+  // Broke + needy gate: skip if the NPC has food or meaningful wealth.
+  try {
+    const inv = getInventory(db, npc.id);
+    const hasFood = (inv || []).some((r) => NEED_CONSUMPTION.includes(r.resource_kind) && r.quantity > 0);
+    if (hasFood) return { ok: false, reason: "not_desperate" };
+    const wealth = db.prepare(`SELECT COALESCE(wealth_sparks,0) AS w FROM world_npcs WHERE id = ?`).get(npc.id)?.w ?? 0;
+    if (wealth > 30) return { ok: false, reason: "not_broke" };
+  } catch { /* tables vary — proceed best-effort */ }
+
+  // Find the nearest store with goods (owned, non-public) — a vulnerable target.
+  let building = null;
+  try {
+    const { x, z } = (() => {
+      let loc = npc.current_location || npc.spawn_location;
+      if (typeof loc === "string") { try { loc = JSON.parse(loc); } catch { loc = null; } }
+      return { x: Number(loc?.x ?? npc.x ?? 0), z: Number(loc?.z ?? npc.z ?? 0) };
+    })();
+    building = db.prepare(`
+      SELECT id FROM world_buildings
+      WHERE world_id = ? AND building_type IN ('market','warehouse','inn','forge','house')
+        AND state != 'collapsed' AND owner_id IS NOT NULL AND owner_id != ?
+      ORDER BY ((x-?)*(x-?) + (z-?)*(z-?)) ASC LIMIT 1
+    `).get(npc.world_id, npc.id, x, x, z, z);
+  } catch { building = null; }
+  if (!building) return { ok: false, reason: "no_target" };
+
+  let result = null;
+  try {
+    result = npcBreakIn(db, npc.id, building.id, npc.world_id);
+  } catch { result = null; }
+  if (!result || result.success === false) {
+    return { ok: false, reason: "crime_failed", target: building.id };
+  }
+  return { ok: true, action: "rob", crime: result, target: building.id };
 }
 
 export const _internal = {

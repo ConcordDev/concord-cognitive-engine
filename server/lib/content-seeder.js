@@ -499,6 +499,14 @@ export async function seedContent({ db = null } = {}) {
   const npcs = readJSON("world/npcs.json");
   if (Array.isArray(npcs)) {
     results.npcs = seedNPCs(npcs, { db, defaultWorldId: "concordia-hub" });
+    // Living Society Phase 1.5b — ingest authored relationships[] into
+    // npc_relationships once the hub NPCs exist (name-resolved within the world).
+    if (db) {
+      try {
+        const { seedAuthoredRelationships } = await import("./npc-family.js");
+        results.relationships = (results.relationships || 0) + (seedAuthoredRelationships(db, "concordia-hub", npcs).seeded || 0);
+      } catch { /* relationships best-effort */ }
+    }
   }
 
   // Lore events
@@ -544,6 +552,15 @@ export async function seedContent({ db = null } = {}) {
     // so we don't have to splice into the rich primary file.
     const subNpcsExtra = readJSON(`${sub.path}/npcs-extra.json`);
     if (Array.isArray(subNpcsExtra)) results.npcs += seedNPCs(subNpcsExtra, { db, defaultWorldId: sub.id });
+    // Living Society Phase 1.5b — ingest this sub-world's authored relationships
+    // once its NPCs are persisted.
+    if (db && (Array.isArray(subNpcs) || Array.isArray(subNpcsExtra))) {
+      try {
+        const { seedAuthoredRelationships } = await import("./npc-family.js");
+        const authoredHere = [...(subNpcs || []), ...(subNpcsExtra || [])];
+        results.relationships = (results.relationships || 0) + (seedAuthoredRelationships(db, sub.id, authoredHere).seeded || 0);
+      } catch { /* relationships best-effort */ }
+    }
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
   }
@@ -800,6 +817,27 @@ export async function seedContent({ db = null } = {}) {
       results.glyphComponents = r?.seeded ?? r?.inserted ?? 0;
     } catch (err) {
       logger.warn("content_seeder", "glyph_seed_failed", { err: err?.message });
+    }
+
+    // Living Society P0 — seed the canonical resource_properties baseline so
+    // DB-backed property lookups + the craft-resolve quality gradient have a
+    // floor on a fresh install (idempotent upsert; guarded when mig 278 absent).
+    try {
+      const { seedResourceProperties } = await import("./resources.js");
+      const r = seedResourceProperties(db);
+      results.resourceProperties = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "resource_props_seed_failed", { err: err?.message });
+    }
+
+    // Living Society P0.5 — seed authored material profiles (effect tags +
+    // props per drop kind) so cooking/crafting reads inheritable effects.
+    try {
+      const { seedMaterialProfiles } = await import("./ecosystem/material-profiles.js");
+      const r = seedMaterialProfiles(db);
+      results.materialProfiles = r?.seeded ?? 0;
+    } catch (err) {
+      logger.warn("content_seeder", "material_profiles_seed_failed", { err: err?.message });
     }
 
     try {

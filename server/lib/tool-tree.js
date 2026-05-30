@@ -5,6 +5,7 @@
 // Higher tiers require: previous-tier tool + minimum skill level + gathered materials.
 
 import crypto from "crypto";
+import { resolveCraft } from "./craft-resolve.js";
 
 // Hard-coded tool recipe tree seeded once at startup.
 export const TOOL_RECIPES = [
@@ -269,11 +270,40 @@ export function craftTool(db, userId, recipeId, worldId = "concordia-hub") {
     }
   }
 
+  // Living Society P0 — derive the tool's quality from the consumed materials'
+  // resource PROPERTIES (the same single craft-resolve layer executeCraft uses)
+  // instead of trusting the recipe's flat output_quality. Stronger mats →
+  // better tool. Tool-crafting is the basic survival path, so the soft-fail
+  // here only scales quality down (never blocks, never debuffs). Kill-switch
+  // CONCORD_CRAFT_RESOLVE=0 restores the flat scalar.
+  let quality = recipe.output_quality;
+  let resolved = null;
+  if (process.env.CONCORD_CRAFT_RESOLVE !== "0" && materials.length > 0) {
+    try {
+      const playerSkill = Math.min(100, getPlayerToolTier(db, userId) * 20);
+      resolved = resolveCraft({
+        inputs: materials.map((m) => ({ itemId: m.id, qty: Math.max(1, Number(m.quantity) || 1) })),
+        playerSkill,
+        stationQuality: 0,
+        db,
+      });
+      if (resolved?.ok) {
+        // qualityMultiplier ∈ [0.5, 2.0] centred ~1.0 → scale the base quality.
+        quality = Math.round(recipe.output_quality * resolved.qualityMultiplier);
+      }
+    } catch { resolved = null; }
+  }
+
   const id = crypto.randomUUID();
   db.prepare(`
     INSERT INTO player_tools (id, user_id, recipe_id, quality)
     VALUES (?, ?, ?, ?)
-  `).run(id, userId, recipeId, recipe.output_quality);
+  `).run(id, userId, recipeId, quality);
 
-  return { ok: true, tool: { id, recipeId, name: recipe.name, tier: recipe.tier, quality: recipe.output_quality } };
+  const tool = { id, recipeId, name: recipe.name, tier: recipe.tier, quality };
+  if (resolved?.ok) {
+    tool.resource_affinity = resolved.outputAffinity;
+    tool.resource_potency = resolved.outputPotency;
+  }
+  return { ok: true, tool };
 }

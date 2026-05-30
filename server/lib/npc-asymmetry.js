@@ -47,6 +47,18 @@ const IMPACT_SEVERITY = {
   honored_publicly:    -4,
 };
 
+// Living Society Phase 4 — grievance against AUTHORITY (ruler/faction/enforcer),
+// not just the player. These are the measurable unpaid/abused-flow events.
+const AUTHORITY_IMPACT_SEVERITY = {
+  unpaid_wages:           4,  // Phase 3 unpaid-flow
+  repeated_unpaid_wages:  6,
+  harsh_decree:           5,  // tax hike / embargo
+  conscripted:            4,
+  kin_killed_by_enforcer: 7,
+  treasury_embezzled:     6,
+  authored_tyranny:       5,  // lore.json standing grievance
+};
+
 // ── Template loaders ─────────────────────────────────────────────────────────
 
 const _templateCache = new LruMap();
@@ -471,6 +483,110 @@ export function recordPlayerImpactEvent(db, npcId, userId, eventKind, magnitudeO
     try { _bumpStress(db, npcId, "grudge_severe"); } catch { /* table absent on minimal builds */ }
   }
   return { ok: true, action: "added", id, severity };
+}
+
+/**
+ * Living Society Phase 4 — record a grievance held by an NPC against an
+ * AUTHORITY (a faction, a ruler, an enforcer-NPC), not the player. This is the
+ * measurable unpaid/abused-flow signal the movement engine (Phase 5) recruits
+ * on. Grudges accumulate on the SAME (npc_id, target) edge — a repeat unpaid
+ * wage deepens an existing grievance rather than spamming rows.
+ *
+ * @param db
+ * @param npcId       the aggrieved NPC
+ * @param opts        { targetKind:'faction'|'ruler'|'npc'|'realm', targetId, eventKind, severity?, narrative? }
+ */
+export function recordAuthorityGrievance(db, npcId, opts = {}) {
+  if (!db || !npcId || !opts.targetKind || !opts.targetId || !opts.eventKind) {
+    return { ok: false, reason: "missing_inputs" };
+  }
+  // Normalise authority kinds onto the npc_grudges CHECK (player|npc|faction):
+  // a realm/kingdom/faction authority → 'faction'; a ruler/enforcer NPC → 'npc';
+  // a player ruler → 'player'. (migration 128's constraint is unchanged.)
+  const targetKind = normalizeAuthorityKind(opts.targetKind);
+  const targetId = opts.targetId;
+  const severity = opts.severity != null
+    ? opts.severity
+    : (AUTHORITY_IMPACT_SEVERITY[opts.eventKind] ?? 4);
+  if (severity <= 0) return { ok: true, action: "noop" };
+
+  // Deepen an existing open grievance on the same edge (capped at 10) so the
+  // grievance MEASURES accumulated unpaid/abused flow.
+  let existing = null;
+  try {
+    existing = db.prepare(`
+      SELECT id, severity FROM npc_grudges
+      WHERE npc_id = ? AND target_kind = ? AND target_id = ? AND resolved_at IS NULL
+      ORDER BY event_at DESC LIMIT 1
+    `).get(npcId, targetKind, targetId);
+  } catch { existing = null; }
+
+  if (existing) {
+    const newSev = Math.min(10, existing.severity + Math.ceil(severity / 2));
+    try {
+      db.prepare(`UPDATE npc_grudges SET severity = ?, event_at = unixepoch() WHERE id = ?`).run(newSev, existing.id);
+    } catch { /* best-effort */ }
+    if (newSev >= 6) { try { _bumpStress(db, npcId, "grievance_authority"); } catch { /* optional */ } }
+    return { ok: true, action: "deepened", id: existing.id, severity: newSev };
+  }
+
+  const id = insertGrudge(db, npcId, {
+    target_kind: targetKind,
+    target_id: targetId,
+    narrative: opts.narrative || `${opts.eventKind.replace(/_/g, " ")} — they owe me, and they know it.`,
+    severity: Math.min(10, severity),
+  });
+  if (severity >= 6) { try { _bumpStress(db, npcId, "grievance_authority"); } catch { /* optional */ } }
+  return { ok: true, action: "added", id, severity: Math.min(10, severity) };
+}
+
+function normalizeAuthorityKind(kind) {
+  const k = String(kind || "").toLowerCase();
+  if (k === "player") return "player";
+  if (["ruler", "enforcer", "npc", "lord"].includes(k)) return "npc";
+  // realm / kingdom / faction / guild / org → faction
+  return "faction";
+}
+
+/**
+ * Living Society Phase 8 — seed standing grievances from authored tyranny
+ * (lore.json injustices: Augmented Children → their parents' cell, Iron Rose →
+ * the neighbourhood, Vesper Kane → the district, Calla Bren → sovereign-ruins).
+ * Each named aggrieved NPC gets a standing grudge against the tyrant authority,
+ * so a movement auto-seeds from the injustice on the first recruitment pass.
+ * Idempotent (deepens rather than spams).
+ *
+ * @param opts { tyrantKind:'faction'|'ruler', tyrantId, aggrieved:[npcId], severity? }
+ */
+export function seedTyrannyGrievances(db, worldId, opts = {}) {
+  if (!db || !worldId || !opts.tyrantId || !Array.isArray(opts.aggrieved)) {
+    return { ok: false, reason: "missing_inputs" };
+  }
+  let seeded = 0;
+  for (const npcId of opts.aggrieved) {
+    const r = recordAuthorityGrievance(db, npcId, {
+      targetKind: opts.tyrantKind || "faction",
+      targetId: opts.tyrantId,
+      eventKind: "authored_tyranny",
+      severity: opts.severity || 5,
+      narrative: opts.narrative || `the injustice of ${opts.tyrantId} is not forgotten.`,
+    });
+    if (r.ok) seeded++;
+  }
+  return { ok: true, seeded };
+}
+
+/** Sum of open grievance severity held against a given authority (per world optional). */
+export function grievanceAgainstAuthority(db, targetKind, targetId) {
+  if (!db || !targetKind || !targetId) return { total: 0, count: 0 };
+  try {
+    const r = db.prepare(`
+      SELECT COALESCE(SUM(severity),0) AS total, COUNT(*) AS count
+      FROM npc_grudges
+      WHERE target_kind = ? AND target_id = ? AND resolved_at IS NULL
+    `).get(normalizeAuthorityKind(targetKind), targetId);
+    return { total: r?.total || 0, count: r?.count || 0 };
+  } catch { return { total: 0, count: 0 }; }
 }
 
 /**

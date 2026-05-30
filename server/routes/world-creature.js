@@ -15,6 +15,7 @@
 import express from "express";
 import crypto from "node:crypto";
 import { rollLoot } from "../lib/ecosystem/loot-tables.js";
+import { composeDrops, isHybridCorpse } from "../lib/ecosystem/procedural-meat-composer.js";
 import { adjust as adjustEco } from "../lib/ecosystem/score-engine.js";
 import { checkHostilityAllowed } from "../lib/concordia/neutral-zone.js";
 import { isRefused } from "../lib/refusal-field.js";
@@ -58,12 +59,41 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
       const speciesId = String(npc.archetype).split(":")[1] || npc.name || "unknown";
       db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`).run(npc.id);
 
+      // Living Society P0.5 — if this creature is a hybrid (has a lineage row),
+      // stamp its blueprint + lineage onto the corpse so the butcher composes
+      // coherently-named, propertied drops (fixing the empty-loot bug) instead
+      // of a stale generic "meat". Guarded for builds without mig 280 / lineage.
+      let lineageJson = null;
+      let blueprintJson = null;
+      try {
+        const lin = db.prepare(`
+          SELECT child_id, parent_a, parent_b, generation, stability, blueprint, material_profile
+          FROM creature_lineage WHERE child_id = ?
+        `).get(speciesId);
+        if (lin) {
+          blueprintJson = lin.blueprint || null;
+          lineageJson = JSON.stringify({
+            parent_a: lin.parent_a, parent_b: lin.parent_b, generation: lin.generation,
+            stability: lin.stability, material_profile: lin.material_profile || null,
+          });
+        }
+      } catch { /* creature_lineage / material_profile absent */ }
+
       const corpseId = `corpse_${crypto.randomUUID()}`;
-      db.prepare(`
-        INSERT INTO creature_corpses
-          (id, world_id, species_id, killer_user_id, x, y, z)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(corpseId, npc.world_id, speciesId, userId, npc.x, npc.y, npc.z);
+      try {
+        db.prepare(`
+          INSERT INTO creature_corpses
+            (id, world_id, species_id, killer_user_id, x, y, z, lineage_json, blueprint_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(corpseId, npc.world_id, speciesId, userId, npc.x, npc.y, npc.z, lineageJson, blueprintJson);
+      } catch {
+        // mig 280 columns absent — fall back to the legacy corpse insert.
+        db.prepare(`
+          INSERT INTO creature_corpses
+            (id, world_id, species_id, killer_user_id, x, y, z)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(corpseId, npc.world_id, speciesId, userId, npc.x, npc.y, npc.z);
+      }
 
       // Hunting affects ecosystem_score: -1 base, -3 if the population is
       // already low (overhunt) — Concordia notices.
@@ -100,11 +130,32 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
         return res.status(403).json({ ok: false, error: "not_your_kill" });
       }
 
-      const drops = rollLoot(corpse.species_id, qualityMultiplier);
+      // Living Society P0.5 — derive drops from the (possibly hybrid) creature.
+      // A hybrid's species_id is never a loot-table key, so the table path
+      // returned [] (the empty-loot bug). When the corpse is a hybrid OR the
+      // species has no table, compose named, propertied drops from the blueprint.
+      let blueprint = null;
+      try { blueprint = corpse.blueprint_json ? JSON.parse(corpse.blueprint_json) : null; } catch { blueprint = null; }
+      let lineage = null;
+      try { lineage = corpse.lineage_json ? JSON.parse(corpse.lineage_json) : null; } catch { lineage = null; }
+
+      let drops = rollLoot(corpse.species_id, qualityMultiplier);
+      if (isHybridCorpse(corpse) || drops.length === 0) {
+        drops = composeDrops({ blueprint, lineage, speciesId: corpse.species_id, qualityMultiplier, db });
+      }
+      // Normalise: rollLoot entries lack item_name/properties.
+      drops = drops.map((d) => ({
+        item: d.item,
+        item_name: d.item_name || String(d.item).replace(/-/g, " "),
+        quantity: d.quantity,
+        quality: d.quality,
+        properties: d.properties || null,
+      }));
+
       const insertItem = db.prepare(`
         INSERT INTO player_inventory
-          (id, user_id, item_type, item_id, item_name, quantity, quality, spoils_at)
-        VALUES (?, ?, 'material', ?, ?, ?, ?, ?)
+          (id, user_id, item_type, item_id, item_name, quantity, quality, properties_json, spoils_at)
+        VALUES (?, ?, 'material', ?, ?, ?, ?, ?, ?)
       `);
 
       const tx = db.transaction(() => {
@@ -116,9 +167,10 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
             crypto.randomUUID(),
             userId,
             drop.item,
-            drop.item.replace(/-/g, " "),
+            drop.item_name,
             drop.quantity,
             drop.quality,
+            drop.properties ? JSON.stringify(drop.properties) : null,
             spoilsAt,
           );
         }
@@ -127,9 +179,10 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
 
       try { tx(); }
       catch (e) {
-        // If the spoils_at column is missing (migration 095 not yet applied)
-        // fall back to the legacy insert without the TTL column.
-        if (String(e?.message || "").includes("spoils_at")) {
+        // Fall back through the legacy column shapes when properties_json
+        // (mig 278) and/or spoils_at (mig 095) are absent on this build.
+        const msg = String(e?.message || "");
+        if (msg.includes("properties_json") || msg.includes("spoils_at")) {
           const legacy = db.prepare(`
             INSERT INTO player_inventory
               (id, user_id, item_type, item_id, item_name, quantity, quality)
@@ -137,7 +190,7 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
           `);
           const tx2 = db.transaction(() => {
             for (const drop of drops) {
-              legacy.run(crypto.randomUUID(), userId, drop.item, drop.item.replace(/-/g, " "), drop.quantity, drop.quality);
+              legacy.run(crypto.randomUUID(), userId, drop.item, drop.item_name, drop.quantity, drop.quality);
             }
             db.prepare(`UPDATE creature_corpses SET claimed = 1 WHERE id = ?`).run(corpse.id);
           });
