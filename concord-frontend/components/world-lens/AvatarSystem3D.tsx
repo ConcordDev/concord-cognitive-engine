@@ -1450,6 +1450,35 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:action-anim', handleActionAnim);
 
+      // ── WS4.5: NPC activity → action clip (the "fluid movement" combine) ──
+      // The server's needs-driven routine cycle emits npc:activity-batch when an
+      // NPC moves to a new activity (WS4). Map each activity_kind to a WS1 verb
+      // and dispatch concordia:action-anim on that NPC, so it plays the verb's
+      // clip (forge/commune/harvest…) through the same bridge above — combined
+      // with the per-NPC gait already driven below. Visible NPCs animate; far
+      // ones no-op (no mixer). Returns an unsubscribe for cleanup.
+      let offNpcActivity: (() => void) | null = null;
+      (async () => {
+        try {
+          const [{ subscribe }, { activityToActionVerb }] = await Promise.all([
+            import('@/lib/realtime/socket'),
+            import('@/lib/concordia/npc-activity-anim'),
+          ]);
+          offNpcActivity = subscribe('npc:activity-batch' as Parameters<typeof subscribe>[0],
+            (payload: unknown) => {
+              const list = (payload as { transitions?: Array<{ npcId?: string; activity?: string }> })?.transitions || [];
+              for (const t of list) {
+                const verb = activityToActionVerb(t?.activity);
+                if (verb && t?.npcId) {
+                  window.dispatchEvent(new CustomEvent('concordia:action-anim', {
+                    detail: { entityId: t.npcId, verb },
+                  }));
+                }
+              }
+            });
+        } catch { /* socket/bridge optional */ }
+      })();
+
       // ── Death collapse (Phase 5) ─────────────────────────────
       // Detail: { targetId: string, hitDirection?: { x: number; z: number } }
       // Procedural collapse + opacity fade. Avoids the 16-bone Rapier
@@ -2499,6 +2528,7 @@ export default function AvatarSystem3D({
         window.removeEventListener('concordia:knockback', handleKnockback);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);
         window.removeEventListener('concordia:action-anim', handleActionAnim);
+        try { offNpcActivity?.(); } catch { /* unsubscribe best-effort */ }
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);
         for (const t of hitReactionTimers.values()) clearTimeout(t);
