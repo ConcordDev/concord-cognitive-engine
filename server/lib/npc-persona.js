@@ -91,15 +91,16 @@ export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z =
   const npc = pkg.npc || {};
   try {
     db.prepare(`
-      INSERT INTO world_npcs (id, world_id, archetype, name, x, y, z, level, is_dead, is_conscious, is_immortal, narrative_context)
-      VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 0, 0, ?)
+      INSERT INTO world_npcs (id, world_id, archetype, x, y, z, level, is_dead, is_conscious, is_immortal, narrative_context, state)
+      VALUES (?, ?, ?, ?, 0, ?, ?, 0, 0, 0, ?, ?)
     `).run(
       newId, worldId,
       npc.archetype || "imported_persona",
-      npc.name || "Imported NPC",
       Number(x), Number(z),
       npc.level || 1,
       typeof npc.narrative_context === "string" ? npc.narrative_context : JSON.stringify(npc.narrative_context || {}),
+      // world_npcs has no `name` column — the NPC name lives in the state JSON blob.
+      JSON.stringify({ name: npc.name || "Imported NPC" }),
     );
   } catch (err) { return { ok: false, error: String(err?.message || err), at: "world_npcs_insert" }; }
 

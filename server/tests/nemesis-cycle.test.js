@@ -31,14 +31,17 @@ function freshDb() {
     CREATE TABLE world_npcs (
       id TEXT PRIMARY KEY,
       world_id TEXT,
-      faction_id TEXT,
+      faction TEXT,
       archetype TEXT,
       level INTEGER
     );
     CREATE TABLE npc_grudges (
       npc_id TEXT,
-      event_kind TEXT,
-      created_at INTEGER
+      target_kind TEXT,
+      target_id TEXT,
+      narrative TEXT,
+      severity INTEGER,
+      event_at INTEGER
     );
     CREATE TABLE npc_schemes (
       actor_npc_id TEXT,
@@ -143,8 +146,8 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
       .run("kin-2", "tunya", "faction-a", "guard", 8);
     db.prepare(`INSERT INTO world_npcs VALUES (?, ?, ?, ?, ?)`)
       .run("kin-3", "tunya", "faction-a", "guard", 7);
-    db.prepare(`INSERT INTO npc_grudges VALUES (?, ?, ?)`)
-      .run("victim", "killed_by_player", Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO npc_grudges (npc_id, target_kind, target_id, narrative, severity, event_at) VALUES (?, 'player', 'player', 'killed by player — the memory burns.', 8, ?)`)
+      .run("victim", Math.floor(Date.now() / 1000));
 
     const r = runNemesisCycle({ db, worldId: "tunya" });
     assert.equal(r.ok, true);
@@ -178,8 +181,8 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
   it("no kin → no edges (single victim, no surviving same-archetype)", () => {
     db.prepare(`INSERT INTO world_npcs VALUES (?, ?, ?, ?, ?)`)
       .run("victim", "tunya", "f", "guard", 5);
-    db.prepare(`INSERT INTO npc_grudges VALUES (?, ?, ?)`)
-      .run("victim", "killed_by_player", Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO npc_grudges (npc_id, target_kind, target_id, narrative, severity, event_at) VALUES (?, 'player', 'player', 'killed by player — the memory burns.', 8, ?)`)
+      .run("victim", Math.floor(Date.now() / 1000));
     const r = runNemesisCycle({ db, worldId: "tunya" });
     assert.equal(r.ok, true);
     assert.equal(r.processed, 0);

@@ -658,7 +658,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (!record) return res.json({ location: null });
 
       const npc = db.prepare(
-        "SELECT state_json FROM world_npcs WHERE id = ?"
+        "SELECT state AS state_json FROM world_npcs WHERE id = ?"
       ).get(record.npc_id);
       const state = npc ? _tryParseJSON(npc.state_json, {}) : {};
       res.json({ location: state.zone ?? null, npcId: record.npc_id, title: record.npc_title });

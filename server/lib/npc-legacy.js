@@ -400,7 +400,7 @@ export function getInheritanceFromDeceased(db, deceasedNpcId) {
   if (!db || !deceasedNpcId) return [];
   try {
     return db.prepare(`
-      SELECT l.*, n.name AS heir_name
+      SELECT l.*, COALESCE(json_extract(n.state, '$.name'), n.archetype) AS heir_name
       FROM npc_inheritance_links l
       LEFT JOIN world_npcs n ON n.id = l.heir_npc_id
       WHERE l.deceased_npc_id = ? ORDER BY l.inherited_at DESC LIMIT 50

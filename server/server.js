@@ -73573,8 +73573,8 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
   // Procgen regions that spawned.
   try {
     out.regionsSpawned = db.prepare(`
-      SELECT id, world_id, kind, drift_alert_signature, x, z, created_at
-      FROM procgen_regions WHERE created_at >= ? AND world_id = ? LIMIT 50
+      SELECT id, world_id, region_kind AS kind, drift_alert_signature, anchor_x AS x, anchor_z AS z, composed_at AS created_at
+      FROM procgen_regions WHERE composed_at >= ? AND world_id = ? LIMIT 50
     `).all(since, worldId);
   } catch { out.regionsSpawned = []; }
   // Lattice-born quests.

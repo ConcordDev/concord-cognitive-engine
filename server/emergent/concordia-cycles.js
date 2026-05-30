@@ -37,18 +37,15 @@ function safeRun(label, fn) {
   };
 }
 
-function currentConcordiaDay(db) {
-  // Read latest world_seasons row; fall back to unixepoch / 86400.
-  try {
-    const row = db.prepare(`SELECT current_concordia_day FROM world_seasons ORDER BY id DESC LIMIT 1`).get();
-    if (row && Number.isFinite(row.current_concordia_day)) return Number(row.current_concordia_day);
-  } catch { /* table absent */ }
+function currentConcordiaDay(_db) {
+  // world_seasons carries no per-day counter (season_idx/year_n/transitioned_at
+  // only); the Concordia day is derived deterministically from epoch.
   return Math.floor(Date.now() / 1000 / SECONDS_PER_CONCORDIA_DAY);
 }
 
 function currentSeasonId(db) {
   try {
-    const row = db.prepare(`SELECT season_index FROM world_seasons ORDER BY id DESC LIMIT 1`).get();
+    const row = db.prepare(`SELECT season_idx AS season_index FROM world_seasons ORDER BY transitioned_at DESC LIMIT 1`).get();
     if (row && Number.isFinite(row.season_index)) return Number(row.season_index);
   } catch { /* table absent */ }
   return 1;
@@ -56,7 +53,7 @@ function currentSeasonId(db) {
 
 function currentYear(db) {
   try {
-    const row = db.prepare(`SELECT year FROM world_seasons ORDER BY id DESC LIMIT 1`).get();
+    const row = db.prepare(`SELECT year_n AS year FROM world_seasons ORDER BY transitioned_at DESC LIMIT 1`).get();
     if (row && Number.isFinite(row.year)) return Number(row.year);
   } catch { /* table absent */ }
   return 1;
