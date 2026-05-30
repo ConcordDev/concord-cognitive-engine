@@ -236,7 +236,7 @@ function _globalStats(db) {
     () =>
       db
         .prepare(
-          `SELECT d.id AS id, d.human_summary AS name, d.creator_id AS creator,
+          `SELECT d.id AS id, json_extract(d.data, '$.human_summary') AS name, d.creator_id AS creator,
                   COUNT(*) AS citationsThisWeek
            FROM economy_ledger el
            JOIN dtus d ON json_extract(el.metadata_json, '$.dtuId') = d.id

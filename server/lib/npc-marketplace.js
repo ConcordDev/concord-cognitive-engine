@@ -184,7 +184,7 @@ function findPurchaseCandidate(db, buyer) {
     WHERE d.creator_id != ?
       AND COALESCE(n.faction, '') != COALESCE(?, '')
       AND d.data LIKE '%"author_kind":"npc"%'
-      AND d.kind IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
+      AND d.type IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
     LIMIT 50
   `).all(buyer.id, buyer.faction);
 

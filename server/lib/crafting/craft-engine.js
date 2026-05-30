@@ -338,7 +338,7 @@ export function createSkillDTU(db, userId, worldId, worldType, spec) {
   };
 
   db.prepare(`
-    INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+    INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(dtuId, userId, outputType, dtuName, JSON.stringify(dtuData), playerLevel);
 

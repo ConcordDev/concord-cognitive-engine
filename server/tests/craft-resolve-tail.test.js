@@ -48,7 +48,7 @@ function give(db, itemId, qty) {
 function makeEvoDb() {
   const db = new Database(":memory:");
   db.exec(`
-    CREATE TABLE dtus (id TEXT PRIMARY KEY, kind TEXT, title TEXT, creator_id TEXT, meta_json TEXT, skill_level INTEGER, total_experience INTEGER);
+    CREATE TABLE dtus (id TEXT PRIMARY KEY, type TEXT, title TEXT, creator_id TEXT, data TEXT, skill_level INTEGER, total_experience INTEGER);
     CREATE TABLE skill_revisions (
       id TEXT PRIMARY KEY, recipe_dtu_id TEXT, revision_num INTEGER, level_at_revision INTEGER,
       author_kind TEXT, author_id TEXT, description TEXT, composer TEXT,
@@ -70,7 +70,7 @@ function seedRecipe(db) {
     name: "Iron Fist", current_name: "Iron Fist", max_damage: 20, range_m: 3,
     revision_num: 0, revision_history: [], costs: { stamina: 5 },
   };
-  db.prepare(`INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience)
+  db.prepare(`INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience)
               VALUES ('rec1', 'fighting_style_recipe', 'Iron Fist', ?, ?, 10, 0)`).run(USER, JSON.stringify(meta));
   return db.prepare(`SELECT * FROM dtus WHERE id='rec1'`).get();
 }

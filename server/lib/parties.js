@@ -201,7 +201,7 @@ export function listIncomingInvites(db, userId) {
              p.name AS partyName, p.party_type AS partyType
       FROM party_invites pi
       JOIN parties p ON p.id = pi.party_id
-      WHERE pi.to_user_id = ? AND pi.status = 'pending'
+      WHERE pi.invited_id = ? AND pi.status = 'pending'
         AND p.disbanded_at IS NULL
       ORDER BY pi.created_at DESC
     `).all(userId);
