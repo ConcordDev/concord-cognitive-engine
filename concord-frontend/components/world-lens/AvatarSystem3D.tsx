@@ -1400,6 +1400,56 @@ export default function AvatarSystem3D({
       }
       window.addEventListener('concordia:combat-anim', handleCombatAnim);
 
+      // ── Living Society — general ACTION animation (every non-combat verb) ──
+      // Mirrors handleCombatAnim: builds a procedural clip from the verb's
+      // descriptor (action-biomechanics.ts) + plays it through the same mixer,
+      // then fires juice / sfx / particle feedback. Nothing is ever silent
+      // (resolveActionDescriptor falls back by category).
+      const actionClipMaps = new Map<string, import('three').AnimationClip>();
+      async function handleActionAnim(e: Event) {
+        const detail = (e as CustomEvent).detail as
+          | { entityId?: string; verb?: string; tier?: number; loop?: boolean;
+              pos?: { x: number; y?: number; z: number };
+              descriptor?: { juiceId?: string; sfxId?: string; vfx?: string } }
+          | undefined;
+        const verb = detail?.verb;
+        if (!verb) return;
+        const entityId = detail?.entityId || playerAvatar.id;
+        const mixer = mixersRef.current.get(entityId) as MixerType | undefined;
+        if (!mixer) return;
+        try {
+          const tier = Math.max(1, Math.min(5, Math.floor(detail?.tier ?? 3)));
+          const clipKey = `${verb}-t${tier}`;
+          let clip = actionClipMaps.get(clipKey);
+          if (!clip) {
+            const amod = await import('@/lib/concordia/action-biomechanics');
+            clip = amod.buildActionClip(verb, tier);
+            actionClipMaps.set(clipKey, clip);
+          }
+          const action = (mixer as unknown as import('three').AnimationMixer).clipAction(clip);
+          action.reset();
+          action.setLoop(detail?.loop ? 2201 /* LoopRepeat */ : 2200 /* LoopOnce */, detail?.loop ? Infinity : 1);
+          action.fadeIn(0.08);
+          action.setEffectiveWeight(1);
+          action.play();
+
+          // Feedback: resolve the descriptor (carried on the event, else re-resolve).
+          let d = detail?.descriptor;
+          if (!d) { const amod = await import('@/lib/concordia/action-biomechanics'); d = amod.resolveActionDescriptor(verb); }
+          const pa = await import('@/lib/concordia/play-action');
+          const ju = await import('@/lib/concordia/juice');
+          try { ju.juice(pa.juiceTriggerFor(d?.juiceId)); } catch { /* juice optional */ }
+          if (d?.sfxId) { try { ju.sfx(d.sfxId); } catch { /* sfx optional */ } }
+          if (d?.vfx) {
+            const pos = detail?.pos;
+            window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
+              detail: { type: d.vfx, position: pos ?? { x: 0, y: 1, z: 0 }, duration: 600, intensity: 1 },
+            }));
+          }
+        } catch { /* action clip generation/playback silent */ }
+      }
+      window.addEventListener('concordia:action-anim', handleActionAnim);
+
       // ── Death collapse (Phase 5) ─────────────────────────────
       // Detail: { targetId: string, hitDirection?: { x: number; z: number } }
       // Procedural collapse + opacity fade. Avoids the 16-bone Rapier
@@ -2448,6 +2498,7 @@ export default function AvatarSystem3D({
         window.removeEventListener('concordia:hit-pause', handleHitPause);
         window.removeEventListener('concordia:knockback', handleKnockback);
         window.removeEventListener('concordia:combat-anim', handleCombatAnim);
+        window.removeEventListener('concordia:action-anim', handleActionAnim);
         window.removeEventListener('concordia:death-collapse', handleDeathCollapse);
         window.removeEventListener('concordia:npc-look-at', handleNPCLookAt);
         for (const t of hitReactionTimers.values()) clearTimeout(t);

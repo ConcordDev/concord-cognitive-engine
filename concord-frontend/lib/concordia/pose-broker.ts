@@ -29,9 +29,11 @@ export type BodyPart =
   | 'left_arm' | 'right_arm' | 'left_hand' | 'right_hand'
   | 'left_leg' | 'right_leg' | 'left_foot' | 'right_foot';
 
-export type SourcePriority = 'reflex' | 'combat' | 'ik' | 'gait' | 'idle' | 'facial';
+// 'action' (Living Society) layers a non-combat verb motion over gait but
+// yields to combat/reflex — so a worker mid-swing still flinches when hit.
+export type SourcePriority = 'reflex' | 'combat' | 'action' | 'ik' | 'gait' | 'idle' | 'facial';
 
-const PRIORITY_ORDER: SourcePriority[] = ['reflex', 'combat', 'ik', 'gait', 'idle', 'facial'];
+const PRIORITY_ORDER: SourcePriority[] = ['reflex', 'combat', 'action', 'ik', 'gait', 'idle', 'facial'];
 
 interface Contribution {
   source:   SourcePriority;
