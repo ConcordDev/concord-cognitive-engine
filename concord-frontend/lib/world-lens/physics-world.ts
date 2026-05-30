@@ -10,6 +10,7 @@
  */
 
 import { canJump, shouldFlushBuffer, cutJump } from './jump-forgiveness';
+import { bakeDeltasIntoHeightmap } from './terrain-deform-math';
 
 type RapierType = typeof import('@dimforge/rapier3d-compat');
 type WorldType   = InstanceType<RapierType['World']>;
@@ -98,6 +99,15 @@ class PhysicsWorld {
   private bodies:      Map<string, RigidBody>  = new Map();
   private colliders:   Map<string, Collider>   = new Map();
   private kinematic:   Map<string, KinematicState> = new Map();
+  // WS-A2 — the terrain heightfield collider handle + its source heightmap, so
+  // deformations can SWAP it (Rapier heightfields are immutable: removeCollider
+  // + createCollider). _terrainHmData is the pristine base (normalized 0..1);
+  // rebuildHeightfieldWithDeltas bakes deltas into a copy and re-creates.
+  private _terrainCollider: Collider | null = null;
+  private _terrainHmData: Float32Array | null = null;
+  private _terrainHmW = 0;
+  private _terrainHmH = 0;
+  private _terrainScale: { x: number; y: number; z: number } = { x: 2000, y: 80, z: 2000 };
   // Re-entrancy guard. Rapier's WASM bindings panic ("recursive use of an
   // object detected which would lead to unsafe aliasing in rust") if JS
   // re-enters the world while another method is still executing on it —
@@ -181,7 +191,47 @@ class PhysicsWorld {
         { x: worldScale.x, y: worldScale.y, z: worldScale.z },
       );
       desc.setTranslation(0, 0, 0);
-      this.world.createCollider(desc);
+      // WS-A2 — keep the handle + a pristine copy of the source heightmap so the
+      // terrain can be deformed later via removeCollider + re-create.
+      this._terrainCollider = this.world.createCollider(desc);
+      this._terrainHmData = new Float32Array(hmData);
+      this._terrainHmW = hmWidth;
+      this._terrainHmH = hmHeight;
+      this._terrainScale = { x: worldScale.x, y: worldScale.y, z: worldScale.z };
+    }, undefined);
+  }
+
+  /**
+   * WS-A2 — deform the terrain collider to match server deformations. Bakes the
+   * per-cell height deltas (metres, keyed "cx,cz") into a copy of the pristine
+   * base heightmap, removes the current heightfield collider, and creates a new
+   * one. Rapier heightfields are immutable, so this swap is the only path.
+   *
+   * CALLER MUST DEBOUNCE — collider recreate is the expensive op; never call
+   * per-frame. No-op until a base heightfield has been registered.
+   */
+  rebuildHeightfieldWithDeltas(cellDeltas: Map<string, number>, cellSize = 10, maxElev?: number): void {
+    this._guard('rebuildHeightfieldWithDeltas', () => {
+      if (!this.RAPIER || !this.world || !this._terrainHmData) return;
+      const RAPIER = this.RAPIER;
+      const elev = Number.isFinite(maxElev as number) ? (maxElev as number) : this._terrainScale.y;
+      const baked = bakeDeltasIntoHeightmap(
+        this._terrainHmData, this._terrainHmW, this._terrainHmH,
+        cellDeltas, cellSize, elev, this._terrainScale.x,
+      );
+      // Remove the old heightfield, then create the deformed one.
+      if (this._terrainCollider) {
+        try { this.world.removeCollider(this._terrainCollider, false); } catch { /* already gone */ }
+        this._terrainCollider = null;
+      }
+      const desc = RAPIER.ColliderDesc.heightfield(
+        this._terrainHmH - 1,
+        this._terrainHmW - 1,
+        baked,
+        { x: this._terrainScale.x, y: this._terrainScale.y, z: this._terrainScale.z },
+      );
+      desc.setTranslation(0, 0, 0);
+      this._terrainCollider = this.world.createCollider(desc);
     }, undefined);
   }
 
