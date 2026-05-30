@@ -22,6 +22,8 @@ export interface PlayActionOpts {
   body?: 'slim' | 'average' | 'stocky' | 'tall';
   /** loop the action (sustained verbs: fishing line tension, forge hammer) */
   loop?: boolean;
+  /** skill element (fire/ice/lightning/…) — modulates motion amplitude + VFX (B3) */
+  element?: string;
 }
 
 /**

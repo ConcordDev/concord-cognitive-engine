@@ -1410,7 +1410,7 @@ export default function AvatarSystem3D({
       const actionClipMaps = new Map<string, import('three').AnimationClip>();
       async function handleActionAnim(e: Event) {
         const detail = (e as CustomEvent).detail as
-          | { entityId?: string; verb?: string; tier?: number; loop?: boolean;
+          | { entityId?: string; verb?: string; tier?: number; loop?: boolean; element?: string;
               pos?: { x: number; y?: number; z: number };
               descriptor?: { juiceId?: string; sfxId?: string; vfx?: string } }
           | undefined;
@@ -1420,7 +1420,10 @@ export default function AvatarSystem3D({
         const mixer = mixersRef.current.get(entityId) as MixerType | undefined;
         if (!mixer) return;
         try {
-          const tier = Math.max(1, Math.min(5, Math.floor(detail?.tier ?? 3)));
+          // B3 — skill-modulated motion: the element biases the effective tier so
+          // a fire slash arcs bigger, ice strikes sharp/small, lightning snaps.
+          const sm = await import('@/lib/concordia/skill-motion');
+          const tier = sm.effectiveTier(detail?.tier ?? 3, detail?.element);
           const clipKey = `${verb}-t${tier}`;
           let clip = actionClipMaps.get(clipKey);
           if (!clip) {
@@ -1441,11 +1444,15 @@ export default function AvatarSystem3D({
           const pa = await import('@/lib/concordia/play-action');
           const ju = await import('@/lib/concordia/juice');
           try { ju.juice(pa.juiceTriggerFor(d?.juiceId)); } catch { /* juice optional */ }
-          if (d?.sfxId) { try { ju.sfx(d.sfxId); } catch { /* sfx optional */ } }
-          if (d?.vfx) {
+          // B3 — element overrides the descriptor's default sfx/vfx so fire/ice/
+          // lightning READ different, not just recolour.
+          const sfxId = sm.modulatedSfx(d?.sfxId, detail?.element);
+          const vfxId = sm.modulatedVfx(d?.vfx, detail?.element);
+          if (sfxId) { try { ju.sfx(sfxId); } catch { /* sfx optional */ } }
+          if (vfxId) {
             const pos = detail?.pos;
             window.dispatchEvent(new CustomEvent('concordia:particle-effect', {
-              detail: { type: d.vfx, position: pos ?? { x: 0, y: 1, z: 0 }, duration: 600, intensity: 1 },
+              detail: { type: vfxId, position: pos ?? { x: 0, y: 1, z: 0 }, duration: 600, intensity: 1 },
             }));
           }
         } catch { /* action clip generation/playback silent */ }
