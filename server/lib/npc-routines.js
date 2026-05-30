@@ -23,6 +23,14 @@ const BLOCK_HOURS = 24 / BLOCKS_PER_DAY;
 const NUDGE_M_PER_TICK = 6;                // distance NPC moves toward target per advance
 const ARRIVAL_RADIUS_M = 4;
 const SIGNAL_EMIT_INTERVAL_S = 120;        // throttle env signal writes per NPC
+// Living Society WS0 — idle ambient motion. An NPC that has ARRIVED at its
+// activity station must not freeze as a statue (a priest communing at the
+// temple stood perfectly still — the first playtester's bug). When arrived it
+// instead PACES toward a gentle, deterministic point within this radius of the
+// station. < ARRIVAL_RADIUS_M so the NPC stays "arrived" (signals keep firing).
+const IDLE_WANDER_RADIUS_M = Number(process.env.CONCORD_IDLE_WANDER_RADIUS_M) || 2.5;
+const IDLE_NUDGE_M_PER_TICK = Number(process.env.CONCORD_IDLE_NUDGE_M) || 1.2; // slow amble at station
+const IDLE_WANDER_PERIOD_S = Number(process.env.CONCORD_IDLE_WANDER_PERIOD_S) || 18; // re-pick a pace point ~every 18s
 
 // Activity → embodied signal table (channel, delta, ttlSeconds).
 // Reuses Layer 7 channels; values are deltas added on top of baseline.
@@ -301,6 +309,20 @@ function deterministicOffset(npc, dayBlockKey) {
   return { dx, dz };
 }
 
+/**
+ * Living Society WS0 — a gentle pacing point within IDLE_WANDER_RADIUS_M of an
+ * NPC's station. Deterministic (seeded by npc id + a slow time-bucket) so it's
+ * testable and changes only ~every IDLE_WANDER_PERIOD_S — a slow amble, not a
+ * jitter. Returns the absolute world point to drift toward.
+ */
+export function idlePaceTarget(npcId, baseX, baseZ, now) {
+  const bucket = Math.floor((Number(now) || 0) / IDLE_WANDER_PERIOD_S);
+  const seed = crypto.createHash("sha1").update(`${npcId}|${bucket}|pace`).digest();
+  const angle = (seed[0] / 255) * Math.PI * 2;
+  const radius = (seed[1] / 255) * IDLE_WANDER_RADIUS_M;
+  return { x: baseX + Math.cos(angle) * radius, z: baseZ + Math.sin(angle) * radius };
+}
+
 // ── Public: deterministic schedule generation ───────────────────────────────
 
 /**
@@ -438,23 +460,35 @@ export async function advanceRoutine(db, npc, opts = {}) {
     transitioned = true;
   }
 
-  // Nudge position toward target.
-  const cur = parseLocation(npc.current_location) || { x: 0, z: 0 };
-  const dx = block.target_x - cur.x;
-  const dz = block.target_z - cur.z;
-  const dist = Math.hypot(dx, dz);
+  // Nudge position toward the station — or, once arrived, PACE around it so the
+  // NPC is never a frozen statue (WS0). Start position falls back to spawn, then
+  // to the station itself (never the {0,0} garbage step the bare boot produced).
+  const cur = parseLocation(npc.current_location)
+    || parseLocation(npc.spawn_location)
+    || { x: block.target_x, z: block.target_z };
+  const dist = Math.hypot(block.target_x - cur.x, block.target_z - cur.z);
+  const arrived = dist <= ARRIVAL_RADIUS_M;
 
+  // Choose this tick's move target + step size.
+  let moveX = block.target_x;
+  let moveZ = block.target_z;
+  let stepCap = NUDGE_M_PER_TICK;
+  if (arrived && IDLE_WANDER_RADIUS_M > 0) {
+    const pace = idlePaceTarget(npc.id, block.target_x, block.target_z, now);
+    moveX = pace.x;
+    moveZ = pace.z;
+    stepCap = IDLE_NUDGE_M_PER_TICK; // slow amble at the station
+  }
+  const mdx = moveX - cur.x;
+  const mdz = moveZ - cur.z;
+  const mdist = Math.hypot(mdx, mdz);
   let nx = cur.x;
   let nz = cur.z;
-  let arrived = dist <= ARRIVAL_RADIUS_M;
-  if (!arrived) {
-    const step = Math.min(NUDGE_M_PER_TICK, dist);
-    const nrm = step / dist;
-    nx = cur.x + dx * nrm;
-    nz = cur.z + dz * nrm;
-  } else {
-    nx = block.target_x;
-    nz = block.target_z;
+  if (mdist > 0.05) {
+    const step = Math.min(stepCap, mdist);
+    const nrm = step / mdist;
+    nx = cur.x + mdx * nrm;
+    nz = cur.z + mdz * nrm;
   }
   db.prepare(`UPDATE world_npcs SET current_location = ? WHERE id = ?`)
     .run(JSON.stringify({ x: nx, z: nz }), npc.id);
@@ -533,9 +567,13 @@ export const _internal = {
   NUDGE_M_PER_TICK,
   ARRIVAL_RADIUS_M,
   SIGNAL_EMIT_INTERVAL_S,
+  IDLE_WANDER_RADIUS_M,
+  IDLE_NUDGE_M_PER_TICK,
+  IDLE_WANDER_PERIOD_S,
   ACTIVITY_SIGNALS,
   ARCHETYPE_ROUTINES,
   preoccupationOverrides,
   parseLocation,
   deterministicOffset,
+  idlePaceTarget,
 };
