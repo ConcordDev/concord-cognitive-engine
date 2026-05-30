@@ -23,6 +23,15 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { inheritHooks } from "./hooks.js";
+import { handleNpcDeathVacancy } from "./settlements.js";
+
+// Living Society Phase 1.5c — open a settlement vacancy when a role-holder dies.
+function _openSettlementVacancyOnDeath(db, npc, opts) {
+  const killerId = opts.killerId || opts.killer_id || null;
+  const killerKind = opts.killerKind || opts.killer_kind || (opts.killerType === "player" ? "player" : (killerId ? "npc" : null));
+  if (!killerId && !npc.settlement_role) return;
+  handleNpcDeathVacancy(db, npc, { killerId, killerKind });
+}
 
 // ── Last-words composer ─────────────────────────────────────────────────────
 
@@ -284,6 +293,12 @@ export function onNpcDeath(db, npc, opts = {}) {
     const existing = db.prepare(`SELECT id FROM npc_legacies WHERE npc_id = ?`).get(npc.id);
     if (existing) return { ok: true, action: "already_recorded", legacyId: existing.id };
   } catch { /* table optional */ }
+
+  // Living Society Phase 1.5c — if the deceased held a settlement role, open a
+  // vacancy (every role is load-bearing). Best-effort; never blocks the legacy.
+  try {
+    _openSettlementVacancyOnDeath(db, npc, opts);
+  } catch { /* settlements optional */ }
 
   const cause = opts.cause || "unknown";
   const lastWords = composeLastWords(npc, cause);

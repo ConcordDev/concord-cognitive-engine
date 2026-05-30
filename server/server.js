@@ -173,6 +173,14 @@ registerHeartbeat("chronicle-weave", {
   handler: runChronicleWeave,
 });
 
+// Living Society Phase 1.5c — fill settlement role vacancies (every role is
+// load-bearing). Unfilled posts escalate resentment + a grievance vs the killer.
+import { runVacancyRecruitCycle } from "./emergent/vacancy-recruit-cycle.js";
+registerHeartbeat("vacancy-recruit-cycle", {
+  frequency: 80,
+  handler: runVacancyRecruitCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so

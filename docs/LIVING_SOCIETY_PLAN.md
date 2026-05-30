@@ -155,7 +155,16 @@ uprising → legibility → reskin) and each leaves the system working.
   `chronicle-weave` heartbeat (freq 30); `domains/chronicle.js` macros (`list_entries`/`world_chronicle`/
   `realm_health`/`compose_saga`/`my_saga`). Test `tests/chronicle.test.js` (7). **Server 100%; the
   `/lenses/chronicle` lens + EmergentEventFeed channel are the frontend slice.**
-- Phases 1.5, 8 → 13 (9 cross-cutting): 8 (per-world reskin) next; 1.5 (settlement composition) pending.
+- **Phase 1.5 — settlement composition + cold-start relationships + vacancy: SHIPPED (core).** Mig 287
+  (`settlements` + `settlement_vacancies` + `world_npcs.settlement_id`/`settlement_role`, per-world write
+  tables); `lib/settlements.js` (`SETTLEMENT_COMPOSITION` taxonomy [role→min/ideal→building]; `roleForArchetype`;
+  `checkCoverage` reports role gaps [under-staffing is itself a symptom]; `openVacancy`; `recruitForVacancy`
+  fills from a local same-role candidate OR escalates resentment + a grievance vs the killer; `handleNpcDeathVacancy`
+  wired into `npc-legacy.js#onNpcDeath` so every role is load-bearing); `vacancy-recruit-cycle` heartbeat
+  (freq 80); `npc-family.js#seedAuthoredRelationships` + `mapAuthoredRelType` ingest authored `relationships[]`
+  into `npc_relationships`. Test `tests/settlements.test.js` (5). **Core 100%; taxonomy-fill at spawn +
+  per-settlement scarcity are follow-on wiring in the spawner.**
+- Phases 8 → 13 (9 cross-cutting): 8 (per-world reskin) next.
 
 ## Unifying model (the one substrate)
 
