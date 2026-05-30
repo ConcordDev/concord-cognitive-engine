@@ -112,8 +112,21 @@ uprising → legibility → reskin) and each leaves the system working.
   `npc-economy-cycle` (now selecting NPC x/z so labor targets the nearest site). All idempotent-per-tick
   (progress/stage capped). Dials `CONCORD_CONSTRUCT_RATE_PCT`, `CONCORD_NPC_LOG_AMOUNT`,
   `CONCORD_NPC_MINE_AMOUNT`. Test `tests/npc-labor-world.test.js` (6). **Phase 2 = 100%.**
-- Phases 1.5, 3 → 13 (9 player-actionability cross-cutting): 1.5 (settlement composition + cold-start
-  relationships + vacancy) pending; specs below are current.
+- **Phase 3 — sparks-flow (pay/treasury/corruption): SHIPPED.** Mig 283 (`employment_edges` — the pay
+  graph: employer→worker edges with pay_form/rate/payday_freq/skim_pct/collector, per-world write table);
+  `lib/sparks-flow.js` (`createEmploymentEdge`; `runPayday` moves sparks employer→worker — realm treasury
+  debit / NPC wealth_sparks / world funds — diverts `skim_pct` to a collector [corruption = flow diversion],
+  and on an unpaid edge deepens a grievance the worker holds vs the employer [grievance = unpaid flow], with
+  a repeat-stiffing escalation); `pay-cycle` heartbeat (freq 40); economic-desperation `npcDesperationCrime`
+  wired into `dispatchEconomicAction` `rob` (broke+needy NPC → `npcBreakIn` nearest store → owner grudge —
+  the villain isn't scripted, they're broke). Dial `CONCORD_PAY_CYCLE`. **Phase 3 = 100%.**
+- **Phase 4 — grievance against authority: SHIPPED.** `npc-asymmetry.js#recordAuthorityGrievance`
+  (grudges now target a faction/ruler/enforcer, not just the player; `AUTHORITY_IMPACT_SEVERITY` for
+  unpaid_wages/harsh_decree/conscripted/kin_killed_by_enforcer/treasury_embezzled/authored_tyranny;
+  normalises authority kinds onto the mig-128 CHECK [realm/faction→faction, ruler/enforcer→npc];
+  accumulates on one edge rather than spamming rows) + `grievanceAgainstAuthority` query. Wired by Phase 3
+  unpaid-flow; combat/decree hooks land with Phase 6. Test `tests/sparks-flow.test.js` (6). **Phase 4 = 100%.**
+- Phases 1.5, 5 → 13 (9 cross-cutting): 1.5 (settlement composition) + 5 (movement keystone) next.
 
 ## Unifying model (the one substrate)
 

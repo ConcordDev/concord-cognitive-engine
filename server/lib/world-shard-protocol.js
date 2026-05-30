@@ -38,6 +38,7 @@ export const PER_WORLD_WRITE_TABLES = Object.freeze(new Set([
   "world_buildings",
   "world_terrain_deformations",
   "world_water_cells",
+  "employment_edges",
   "world_seasons",
   "season_events",
   "npc_schedules",

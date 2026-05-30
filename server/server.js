@@ -147,6 +147,14 @@ registerHeartbeat("water-flow-cycle", {
   handler: runWaterFlowCycle,
 });
 
+// Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
+// skim diverts to collectors (corruption); unpaid flow deepens grievances.
+import { runPayCycle } from "./emergent/pay-cycle.js";
+registerHeartbeat("pay-cycle", {
+  frequency: 40,
+  handler: runPayCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so
