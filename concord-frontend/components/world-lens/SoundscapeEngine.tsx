@@ -219,6 +219,35 @@ const SFX_ALIASES: Record<string, string> = {
   ui_brawl_invite: 'notification-glow', ui_brawl_accept: 'gather-success',
   ui_brawl_queue_join: 'snap-click', ui_brawl_queue_leave: 'snap-click',
   ui_lfg_posted: 'notification-glow', ui_spectate_join: 'snap-click',
+  // ── Move-render coverage (verify-move-render-coverage.mjs) ──────────────────
+  // The action-biomechanics ACTION_DESCRIPTORS + skill-motion ELEMENT_MOTION
+  // sfx vocabulary was authored against evocative names that never existed in
+  // SFX_MAP, so EVERY verb/created-move sound was silent (triggerSFX drops
+  // unknown ids). These are graceful-floor mappings onto existing synth voices
+  // (recognizable category, never silent) — final per-id voices are a feel pass.
+  // labor / extraction
+  axe_chop: 'sword-swoosh-heavy', pick_strike: 'hit-heavy', hoe_dig: 'low-thud',
+  shovel_dig: 'low-thud', rustle: 'inventory-rustle', crop_snap: 'gather-tick',
+  soil_pat: 'footstep-grass', reel: 'gather-tick', water_pour: 'footstep-water',
+  // craft / station
+  hammer: 'craft-ding', forge_ring: 'craft-ding', sizzle: 'craft-hold',
+  grind: 'rumble', wrench: 'snap-click', plate_set: 'craft-ding', work: 'craft-hold',
+  // magic / commune / sign
+  spell_cast: 'ascending-chime', chime: 'ascending-chime', post_drive: 'low-thud',
+  // social / npc
+  greet: 'notification-glow', coins: 'coin-clink', clap: 'snap-click',
+  // immersive-sim
+  keys: 'ui-click', pick: 'snap-click', cloth: 'inventory-rustle',
+  // mount / consume / photo
+  mount: 'low-thud', dismount: 'low-thud', eat: 'gather-tick', drink: 'gather-tick',
+  shutter: 'snap-click',
+  // traversal
+  dash: 'dodge-whoosh', slide: 'dodge-whoosh', scrape: 'footstep-stone',
+  vault: 'dodge-whoosh', thud: 'low-thud',
+  // element-motion voices (skill-motion ELEMENT_MOTION + move-resolver default)
+  fire_whoosh: 'sword-swoosh', ice_crackle: 'snap-click', thunder: 'rumble',
+  water_surge: 'footstep-water', hiss: 'craft-release-bad', energy_hum: 'notification-glow',
+  stone_grind: 'rumble',
 };
 
 function resolveSfxId(sfxId: string): string {

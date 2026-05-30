@@ -103,6 +103,21 @@ export function particleParamsForType(type: string): ParticleParams {
     case 'glitch':
       return { color: 0x39ffd0, count: 20, spread: 2.6, speed: 4.5, gravity: 0.0, lifetimeMs: 420, size: 0.13 };
 
+    // ── Element-motion voices (skill-motion ELEMENT_MOTION) ────────────────
+    // Emitted by the move-resolver for created spells/skills. Without these the
+    // elemental created moves fell to the generic default puff.
+    // (Covered by scripts/verify-move-render-coverage.mjs.)
+    case 'flame':
+      return { color: 0xff7a30, count: 24, spread: 0.9, speed: 3.0, gravity: -2.0, lifetimeMs: 550, size: 0.34 };
+    case 'frost':
+      return { color: 0x9ee9ff, count: 18, spread: 1.1, speed: 2.4, gravity: 2.4, lifetimeMs: 620, size: 0.30 };
+    case 'spark':
+      return { color: 0xfff39b, count: 14, spread: 1.4, speed: 5.5, gravity: 0.0, lifetimeMs: 320, size: 0.22 };
+    case 'toxin':
+      return { color: 0x86d96b, count: 16, spread: 0.6, speed: 1.6, gravity: -0.4, lifetimeMs: 950, size: 0.36 };
+    case 'heart':
+      return { color: 0xff8fc7, count: 14, spread: 0.8, speed: 1.4, gravity: 0.6, lifetimeMs: 900, size: 0.22 };
+
     default:
       return { ...DEFAULT_PARAMS };
   }

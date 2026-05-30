@@ -60,7 +60,7 @@ jobs:
           # only climb. Baseline at introduction: 45% (archetype 89.5 / vfx 75.7
           # / sfx 0 — the action+move SFX vocabulary is unbound in SoundscapeEngine).
           node scripts/verify-move-render-coverage.mjs
-          node scripts/verify-move-render-coverage.mjs --ci 45
+          node scripts/verify-move-render-coverage.mjs --ci 98
 
       - name: Macro depth grader
         run: |

@@ -146,9 +146,14 @@ function deriveVfx(family, element) {
   const fallback = family === 'combat_melee' ? 'impact' : 'arcane';
   return { id: fallback, fromTable: false };
 }
-function deriveSfx(element) {
+function deriveSfx(family, element) {
   const em = elementMotion[String(element).toLowerCase()];
-  return em ? em.sfx : null; // no element row → created move has NO element sfx
+  if (em) return em.sfx;
+  // mirrors move-resolver.ts fallbackSfx — never silent
+  return family === 'combat_melee' ? 'sword-swoosh'
+    : (family === 'combat_ranged' || family === 'firearm') ? 'spell_cast'
+    : family === 'movement' ? 'dash'
+    : 'spell_cast';
 }
 
 // ── 3. Enumerate every renderable primitive & classify each layer ────────────
@@ -182,11 +187,9 @@ for (const [kind, km] of Object.entries(skillKindMotion)) {
       ? `element vfx '${v.id}' (skill-motion table) is NOT a world-vfx-bridge particle type → generic puff`
       : `element '${el}' has no skill-motion row → falls to generic '${v.id}'`);
 
-    const s = deriveSfx(el);
+    const s = deriveSfx(km.family, el);
     if (s && sfxResolves(s)) ok('sfx');
-    else bad('sfx', 'created-move', tag, s
-      ? `element sfx '${s}' does not resolve to a SoundscapeEngine voice`
-      : `element '${el}' has no skill-motion row → created move emits NO sfx`);
+    else bad('sfx', 'created-move', tag, `resolved sfx '${s}' does not resolve to a SoundscapeEngine voice`);
   }
 }
 

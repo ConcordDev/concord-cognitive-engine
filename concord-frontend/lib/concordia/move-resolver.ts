@@ -74,7 +74,15 @@ export function resolveMove(input: ResolveMoveInput): ResolvedMove {
   // Element VFX/SFX (reuse the shipped skill-motion element table; default by family).
   const fallbackVfx = motionFamily === 'combat_melee' ? 'impact' : 'arcane';
   const vfx = modulatedVfx(fallbackVfx, element);
-  const sfxId = modulatedSfx(undefined, element);
+  // Default sfx per family so a created move is NEVER silent when its element has
+  // no skill-motion voice. These ids resolve via SoundscapeEngine SFX_ALIASES.
+  // (Mirrored in scripts/verify-move-render-coverage.mjs#deriveSfx.)
+  const fallbackSfx =
+    motionFamily === 'combat_melee' ? 'sword-swoosh'
+    : motionFamily === 'combat_ranged' || motionFamily === 'firearm' ? 'spell_cast'
+    : motionFamily === 'movement' ? 'dash'
+    : 'spell_cast';
+  const sfxId = modulatedSfx(fallbackSfx, element);
 
   return {
     motionFamily,
