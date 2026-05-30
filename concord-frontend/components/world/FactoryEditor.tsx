@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Box, ArrowRight, Cog, Loader2 } from 'lucide-react';
 import type { LucideIcon } from "lucide-react";
 import { StationOverlayShell } from './_StationOverlayShell';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 import type { OverlayProps } from './StationInteractionRouter';
 
 const GRID_W = 10;
@@ -86,7 +87,7 @@ export function FactoryEditor({ building, onClose, worldId }: OverlayProps) {
         body: JSON.stringify({ claimId, entityType, tileX: picker.x, tileY: picker.y }),
       });
       const j = await r.json();
-      if (j?.ok) { setMsg(`placed ${entityType}`); setPicker(null); refresh(); }
+      if (j?.ok) { playActionAtPlayer('build'); setMsg(`placed ${entityType}`); setPicker(null); refresh(); }
       else setMsg(j?.error || 'place_failed');
     } finally { setPending(false); }
   }, [picker, claimId, refresh]);
