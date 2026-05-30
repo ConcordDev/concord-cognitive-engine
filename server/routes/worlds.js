@@ -2037,11 +2037,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       // ── Resolve skill DTU for attack parameters ────────────────────────────
       let skillData = {};
+      let skillLevel = 1; // the skill DTU's level — Pillar-3 cross-world potency input
       if (skillDtuId) {
-        const dtu = db.prepare("SELECT data FROM dtus WHERE id = ?").get(skillDtuId);
+        const dtu = db.prepare("SELECT data, skill_level FROM dtus WHERE id = ?").get(skillDtuId);
         if (dtu) {
           try { skillData = typeof dtu.data === 'string' ? JSON.parse(dtu.data) : dtu.data; }
           catch { /* keep empty */ }
+          skillLevel = Number(dtu.skill_level ?? 1) || 1;
         }
       }
 
@@ -2186,6 +2188,31 @@ export default function createWorldsRouter({ requireAuth, db }) {
           damageResult.envBoost = envBoost;
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
+
+      // Universal Move System Pillar 3 — cross-world potency. A move sags when
+      // used outside its native world unless the skill is highly leveled. Reads
+      // skillData.nativeWorld (stamped by move-descriptor.js at mint/evolve) +
+      // the skill DTU's level. Applied AFTER the cap, like env boost. Defensive:
+      // only activates for a move with a native stamp used in a DIFFERENT world;
+      // every pre-MS-P1 move (no stamp) is a complete no-op. KS CONCORD_CROSS_WORLD_POTENCY=0.
+      try {
+        const nativeWorld = skillData?.nativeWorld ?? null;
+        if (nativeWorld && nativeWorld !== worldId && Number.isFinite(damageResult.finalDamage)) {
+          const { crossWorldPotency } = await import("../lib/cross-world-potency.js");
+          const worldRow = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
+          const potency = crossWorldPotency({
+            skillLevel,
+            skillKind: skillData?.skill_kind,
+            nativeWorldId: nativeWorld,
+            targetWorldId: worldId,
+            targetWorld: worldRow,
+          });
+          if (potency !== 1.0) {
+            damageResult.finalDamage = Math.round(damageResult.finalDamage * potency * 10) / 10;
+            damageResult.crossWorldPotency = potency;
+          }
+        }
+      } catch { /* potency disabled / no native stamp — neutral pass-through */ }
 
       // ── Concordia Phase 3: mass-based combat physics ───────────────────────
       // After env amplification, fold in attacker/target mass ratio clamped
