@@ -52,6 +52,16 @@ jobs:
             echo "::error::Lens wiring regressed below 234 WIRED."; exit 1
           )
 
+      - name: Move-render coverage gate
+        run: |
+          # Self-deriving gate: every move/skill/element/verb must resolve to a
+          # real anim clip + VFX + SFX (no generic fallback). Ratcheting floor on
+          # the OVERALL score — bump it as WS-RENDER slices land so coverage can
+          # only climb. Baseline at introduction: 45% (archetype 89.5 / vfx 75.7
+          # / sfx 0 — the action+move SFX vocabulary is unbound in SoundscapeEngine).
+          node scripts/verify-move-render-coverage.mjs
+          node scripts/verify-move-render-coverage.mjs --ci 45
+
       - name: Macro depth grader
         run: |
           node scripts/grade-macro-depth.mjs
