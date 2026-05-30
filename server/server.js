@@ -24833,6 +24833,9 @@ import registerGunMacros from "./domains/guns.js";
 registerGunMacros(register);
 import registerMovementPowerMacros from "./domains/movement-powers.js";
 registerMovementPowerMacros(register);
+// Universal Move System — opt-in verified-human badge (identity surface).
+import registerIdentityMacros from "./domains/identity.js";
+registerIdentityMacros(register);
 
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in

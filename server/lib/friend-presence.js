@@ -70,5 +70,18 @@ export function resolveUserDisplay(db, userIds) {
       if (titles[id]) out[id].activeTitle = titles[id];
     }
   } catch { /* title lookup best-effort */ }
+  // Universal Move System — opt-in verified-human badge (display = verified AND
+  // opted to show). Goes through this resolver like titles (never queried direct
+  // from the frontend). Best-effort: column may not exist on minimal DBs.
+  try {
+    const ph = userIds.map(() => "?").join(",");
+    const rows = db.prepare(
+      `SELECT id, verified_human, badge_visible FROM users WHERE id IN (${ph})`
+    ).all(...userIds);
+    const on = process.env.CONCORD_VERIFIED_HUMAN_BADGE !== "0";
+    for (const r of rows) {
+      if (on && r.verified_human && r.badge_visible && out[r.id]) out[r.id].verifiedHuman = true;
+    }
+  } catch { /* column absent / badge disabled — omit silently (default state) */ }
   return out;
 }
