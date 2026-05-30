@@ -265,6 +265,9 @@ export default function ConcordiaScene({
   // WS2 — world-state renderers (resource nodes / crops / claims / VFX) mounted
   // into the infrastructure + particles layers; disposed with the scene.
   const worldRenderersRef = useRef<{ dispose(): void } | null>(null);
+  // WS-A3 — terrain-deformation orchestrator (mesh re-push + collider rebuild
+  // from server deltas); disposed with the scene.
+  const terrainDeformRef = useRef<{ dispose(): void } | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -341,13 +344,42 @@ export default function ConcordiaScene({
 
       // Listen for terrain-ready to register heightfield collider
       function onTerrainPhysics(e: Event) {
-        const { hmData, hmWidth, hmHeight } = (e as CustomEvent).detail ?? {};
+        const { hmData, hmWidth, hmHeight, terrainGroup } = (e as CustomEvent).detail ?? {};
         if (hmData) {
           physicsWorld.createHeightfieldCollider(hmData, hmWidth, hmHeight, {
             x: 2000, // TERRAIN_SIZE
             y: 80, // maxElevation
             z: 2000,
           });
+        }
+        // WS-A3 — once terrain + its collider exist, attach the deformation
+        // orchestrator: replay GET /terrain + live concordia:terrain-deformed →
+        // deform the mesh chunks + debounced collider rebuild. Kill-switch
+        // CONCORD_TERRAIN_DEFORM_RENDER (default on). One-shot per scene.
+        if (terrainGroup && !terrainDeformRef.current) {
+          void (async () => {
+            try {
+              const [{ attachTerrainDeformation }, { getSocket }] = await Promise.all([
+                import('@/lib/world-lens/attach-terrain-deformation'),
+                import('@/lib/realtime/socket'),
+              ]);
+              if (disposed) return;
+              const worldId =
+                (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
+                'concordia-hub';
+              const enabled = (window as { __concordClientConfig?: { CONCORD_TERRAIN_DEFORM_RENDER?: unknown } })
+                .__concordClientConfig?.CONCORD_TERRAIN_DEFORM_RENDER !== 0;
+              terrainDeformRef.current = attachTerrainDeformation({
+                worldId,
+                getTerrainGroup: () => terrainGroup as { children: unknown[] },
+                physicsWorld: physicsWorld as unknown as {
+                  rebuildHeightfieldWithDeltas?: (m: Map<string, number>, cell?: number, maxElev?: number) => void;
+                },
+                socket: getSocket() as unknown as { on(ev: string, cb: (p: unknown) => void): void; off(ev: string, cb: (p: unknown) => void): void },
+                enabled,
+              });
+            } catch { /* deformation is progressive enhancement */ }
+          })();
         }
       }
       // @resource-leak-ok: terrain-ready is a one-shot scene-init signal; ConcordiaScene unmounts the whole canvas, not the listener individually
@@ -1533,6 +1565,8 @@ export default function ConcordiaScene({
       domeCleanupRef.current = null;
       try { worldRenderersRef.current?.dispose(); } catch { /* ignore */ }
       worldRenderersRef.current = null;
+      try { terrainDeformRef.current?.dispose(); } catch { /* ignore */ }
+      terrainDeformRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;

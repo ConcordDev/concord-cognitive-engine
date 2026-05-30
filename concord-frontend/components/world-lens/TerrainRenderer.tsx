@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useCallback } from 'react';
+import { getDeltaAt as getTerrainDeltaAt } from '@/lib/world-lens/terrain-deform-store';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -239,7 +240,10 @@ export default function TerrainRenderer({
     const bottom = h01 * (1 - fx) + h11 * fx;
     const elevation = top * (1 - fz) + bottom * fz;
 
-    return elevation * 80; // maxElevation
+    // WS-A3 — add the live deformation delta so the avatar Y-clamp + raycasts
+    // sit on the DEFORMED surface (the store is base+delta's delta half; matches
+    // the deformed mesh chunks + the rebuilt collider). 0 when undeformed.
+    return elevation * 80 + getTerrainDeltaAt(worldX, worldZ); // maxElevation
   }, []);
 
   // ── Build terrain geometry ────────────────────────────────────
