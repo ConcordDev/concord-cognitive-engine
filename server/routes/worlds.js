@@ -25,6 +25,7 @@ import {
   checkQuestCompletion,
 } from "../lib/quests/quest-engine.js";
 import * as cityPresence from "../lib/city-presence.js";
+import { listActiveUprisingsWithLocation } from "../lib/uprising.js";
 import { serverError } from "../lib/http-errors.js";
 
 // Combat anti-cheat constants. Server-side validation prevents a modified
@@ -1551,6 +1552,18 @@ export default function createWorldsRouter({ requireAuth, db }) {
         'SELECT * FROM world_buildings WHERE world_id = ? AND state != ? ORDER BY created_at ASC'
       ).all(worldId, 'collapsed');
       res.json({ ok: true, buildings, count: buildings.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // WS2.7 — active uprisings located at their members' centroid, for the
+  // 3D crowd renderer. Public read (no secrets — member positions + counts).
+  router.get("/:worldId/uprisings", (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const uprisings = listActiveUprisingsWithLocation(db, worldId);
+      res.json({ ok: true, uprisings, count: uprisings.length });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
