@@ -24458,6 +24458,11 @@ registerTerrainMacros(register);
 import registerChronicleMacros from "./domains/chronicle.js";
 registerChronicleMacros(register);
 
+// Living Society Phase 9 — player occupation: a work shift on the same NPC labor
+// loop (world mutation), paid the Phase-3 edge wage, archetype-specific XP.
+import registerOccupationMacros from "./domains/occupation.js";
+registerOccupationMacros(register);
+
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
 // ("Your magic is dampened here (15%)") and per-domain potency snapshot.

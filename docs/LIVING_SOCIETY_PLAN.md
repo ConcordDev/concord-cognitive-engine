@@ -174,8 +174,15 @@ uprising → legibility → reskin) and each leaves the system working.
   movement auto-seeds from the injustice on the recruitment pass. Test `tests/per-world-reskin.test.js`
   (4). **Core mechanics 100%; the `world_professions` ingestion + per-world pay-form content is the
   data-authoring slice.**
-- Phases 9 → 13: 9 (player actionability, cross-cutting), 10 (law/crime/jail), 11 (governance hierarchy),
-  12 (ideology), 13 (world-creation) remain.
+- **Phase 9 — player occupation loop (server): SHIPPED.** `lib/player-occupation.js#workShift` runs the
+  SAME `dispatchEconomicAction` labor fns NPCs use (id = userId → world mutation is identical), moves
+  extraction yield into `player_inventory` (not an orphan npc_inventory row), pays the Phase-3
+  employment-edge wage (or a stipend) through the sparks ledger, and grants ARCHETYPE-specific skill XP (a
+  smith shift boosts smithing, not generic crafting) on the skill-evolution ladder. `domains/occupation.js`
+  macros (`roles`, `work_shift`). One loop, no parallel player-economy. Test
+  `tests/player-occupation.test.js` (4). **Server 100%; the `concordia:action-anim` general
+  action-animation framework is the frontend embodiment slice.**
+- Phases 10 → 13: 10 (law/crime/jail), 11 (governance hierarchy), 12 (ideology), 13 (world-creation) remain.
 
 ## Unifying model (the one substrate)
 
