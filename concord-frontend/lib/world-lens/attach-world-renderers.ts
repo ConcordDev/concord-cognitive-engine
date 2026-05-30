@@ -26,6 +26,7 @@ import { getInjectedJwt } from '@/lib/auth-bridge';
 import { createResourceNodeRenderer } from './resource-node-renderer';
 import { createCropFieldRenderer } from './crop-field-renderer';
 import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
+import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createWorldVFXBridge } from './world-vfx-bridge';
 
 export interface WorldRenderersHandle {
@@ -81,6 +82,7 @@ export function attachWorldRenderers(
   mount(() => createResourceNodeRenderer(infrastructureGroup, dataOpts));
   mount(() => createCropFieldRenderer(infrastructureGroup, dataOpts));
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
+  mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
   mount(() => createWorldVFXBridge(particlesGroup, { maxBursts: opts.maxBursts }));
 
   let disposed = false;
