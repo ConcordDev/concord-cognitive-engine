@@ -30543,6 +30543,18 @@ if (db) {
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
     try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Living Society WS0 — the world breathes immediately. The heartbeat
+    // dispatcher only starts at boot+50s (then npc-routine-cycle every ~75s),
+    // so a bare boot leaves NPCs frozen for the first 1–2 minutes (the first
+    // playtester watched a priest stand still in a dying city). Run a couple of
+    // early routine passes ~8s + ~20s after the seed so NPCs take their first
+    // steps within seconds. Guarded + idempotent (the cycle is the same one the
+    // heartbeat runs).
+    try {
+      for (const delayMs of [8000, 20000]) {
+        setTimeout(() => { runNpcRoutineCycle({ db }).catch(() => {}); }, delayMs).unref?.();
+      }
+    } catch { /* early warm pass is best-effort */ }
     // Phase G — load per-world flavor JSONs (loops.json per sub-world).
     // Loops + climate + skill ceilings + NPC density + world voice all
     // resolve through this cache. Idempotent.
