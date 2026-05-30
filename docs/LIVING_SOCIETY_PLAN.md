@@ -82,8 +82,22 @@ uprising → legibility → reskin) and each leaves the system working.
   profile; `cook-engine.applyConsumable` scales buff magnitude by the resolved quality. Seeded at boot.
   Dial `CONCORD_MATERIAL_MUTATION` (+ reuses `CONCORD_FUSION_GEN_DECAY`). Test
   `tests/material-profiles.test.js` (7). **Phase 0.5 = 100%.**
-- Phases 0.6 → 13 (incl. 0.6 destructible world + load-bearing hydrology, 9 player-actionability):
-  not started; specs below are current and fully audit-grounded.
+- **Phase 0.6 — destructible world + hydrology (server substrate): SHIPPED.** Mig 281
+  (`world_terrain_deformations` delta-over-seed + `world_water_cells` grid, both per-world write tables);
+  `lib/terrain-deformation.js` (canonical `baseElevation` — now the single elevation truth, killing the
+  server sin-wave divergence; `applyDeformation` depth-clamped + yields the cell's propertied terrain
+  material; `getElevationAt` = base+delta; `deformationsForWorld` replay; `craterAt`); `lib/terrain-water.js`
+  (deterministic volume-conserving cellular-automaton flow solver `solveFlowStep` + DB wrappers `setWater`/
+  `waterDepthAt`/`tickWaterFlow`); `lib/build-bill.js` (conserved-matter `debitBuildBill` — construction
+  debits a real materials bill); `domains/terrain.js` macros (`dig` [yields material + persists delta +
+  destabilises buildings dug under via `applyStructuralStress` + emits `concordia:terrain-deformed`],
+  `deformations`, `water_depth`, `set_water`, `flow_tick`); `world-gathering.js` now delegates elevation to
+  the shared base + reads per-cell water for swim; `water-flow-cycle` heartbeat (freq 4). Dials
+  `CONCORD_TERRAIN_CELL_M`, `CONCORD_MAX_DIG_DEPTH`, `CONCORD_DIG_AMOUNT_M`, `CONCORD_WATER_FLOW_RATE`,
+  `CONCORD_RESOURCE_GATED_BUILD`. Test `tests/terrain-deformation.test.js` (7). Client heightfield-apply +
+  dynamic water surface is the remaining client-render slice (tracked under Phase 9 cross-cutting). **Server
+  substrate 100%.**
+- Phases 1 → 13 (9 player-actionability cross-cutting): not started; specs below are current.
 
 ## Unifying model (the one substrate)
 

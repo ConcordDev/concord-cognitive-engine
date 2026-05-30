@@ -138,6 +138,15 @@ registerHeartbeat("signal-propagation-cycle", {
   serial: true,
 });
 
+// Living Society Phase 0.6 — load-bearing hydrology. Advance the water flow
+// solver each cadence so a dug ditch fills over time (water to the lowest
+// adjacent cell, volume conserved). Worlds with no water cells = no-op.
+import { runWaterFlowCycle } from "./emergent/water-flow-cycle.js";
+registerHeartbeat("water-flow-cycle", {
+  frequency: 4,
+  handler: runWaterFlowCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so
@@ -24403,6 +24412,12 @@ registerLandClaimsMacros(register);
 // DTU so it flows through Phase 1 / 1.5 (evolution + marketplace).
 import registerGlyphSpellMacros from "./domains/glyph-spells.js";
 registerGlyphSpellMacros(register);
+
+// Living Society Phase 0.6 — destructible world: dig terrain (yields propertied
+// material + persists the delta + destabilises buildings dug under), load-replay
+// deformations, per-cell water column + hydrology flow.
+import registerTerrainMacros from "./domains/terrain.js";
+registerTerrainMacros(register);
 
 // Sprint 5 — Cross-world skill effectiveness surface. Reads per-world
 // meta.json skill_affinity + applies level-floor formula. Powers HUD chip
