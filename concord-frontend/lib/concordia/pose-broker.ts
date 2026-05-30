@@ -31,9 +31,12 @@ export type BodyPart =
 
 // 'action' (Living Society) layers a non-combat verb motion over gait but
 // yields to combat/reflex — so a worker mid-swing still flinches when hit.
-export type SourcePriority = 'reflex' | 'combat' | 'action' | 'ik' | 'gait' | 'idle' | 'facial';
+// 'traversal' (Part B) — dash/slide/climb/vault. Sits between combat and action
+// so a traversal move layers over gait + verb actions but still yields to
+// combat/reflex (you can flinch mid-dash) — movement reads as one fluid system.
+export type SourcePriority = 'reflex' | 'combat' | 'traversal' | 'action' | 'ik' | 'gait' | 'idle' | 'facial';
 
-const PRIORITY_ORDER: SourcePriority[] = ['reflex', 'combat', 'action', 'ik', 'gait', 'idle', 'facial'];
+const PRIORITY_ORDER: SourcePriority[] = ['reflex', 'combat', 'traversal', 'action', 'ik', 'gait', 'idle', 'facial'];
 
 interface Contribution {
   source:   SourcePriority;
