@@ -11,6 +11,7 @@ import { Terminal, Trophy, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, failureJuice, milestoneJuice, sfx } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface PuzzleStub {
   id: string; name: string; difficulty: number; reward_cc: number;
@@ -135,6 +136,7 @@ export function HackingTerminal({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('hack'); // lean-reach typing at the terminal
         if (j.completed) {
           milestoneJuice('ui_hack_complete');
           setCompleted({ rewardCc: j.rewardCc });

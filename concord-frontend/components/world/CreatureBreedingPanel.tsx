@@ -9,6 +9,7 @@ import { Dna, Sparkles, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { milestoneJuice, failureJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Population {
   id: string;
@@ -57,7 +58,7 @@ export function CreatureBreedingPanel({ building, onClose, worldId }: OverlayPro
         }),
       });
       const j = await r.json();
-      if (j?.ok && j.hybrid) milestoneJuice('ui_hybrid_minted');
+      if (j?.ok && j.hybrid) { playActionAtPlayer('commune'); milestoneJuice('ui_hybrid_minted'); }
       else failureJuice('ui_breed_failed');
       setResult(j);
     } finally { setPending(false); }

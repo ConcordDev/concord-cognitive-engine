@@ -11,6 +11,7 @@ import { ChefHat, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Order {
   id: string;
@@ -67,6 +68,7 @@ export function RestaurantDashboard({ building, onClose, worldId }: OverlayProps
       });
       const j = await r.json().catch(() => null);
       if (j?.ok !== false) {
+        playActionAtPlayer('serve');
         successJuice('ui_dish_serve');
         // E5 — flash the batching combo on a rush.
         if (typeof j?.combo === 'number' && j.combo >= 2) {

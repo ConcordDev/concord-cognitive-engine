@@ -9,6 +9,7 @@ import { Sprout, Wheat, Loader2 } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, failureJuice, milestoneJuice } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Crop {
   claim_id: string;
@@ -63,6 +64,7 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('plant');
         successJuice('ui_seed_plant');
         setMsg(`planted ${cropKind}`);
         setPicker(null);
@@ -84,6 +86,7 @@ export function FarmTileEditor({ building, onClose, worldId }: OverlayProps) {
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('harvest');
         milestoneJuice('ui_crop_harvest');
         setMsg(`harvested ${j.harvested?.quantity ?? 1} × ${j.harvested?.itemId}`);
         refresh();

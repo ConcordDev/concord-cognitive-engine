@@ -10,6 +10,7 @@ import { Mic, Square, Loader2, Music } from 'lucide-react';
 import { StationOverlayShell } from './_StationOverlayShell';
 import type { OverlayProps } from './StationInteractionRouter';
 import { successJuice, milestoneJuice, sfx } from '@/lib/concordia/juice';
+import { playActionAtPlayer } from '@/lib/concordia/play-action';
 
 interface Song { id: string; name: string; difficulty: number; bpm: number; key?: string; }
 interface Result { score: number; xpGained: number; payload: { grade: string; pitchScore: number; rhythmScore: number; }; }
@@ -137,6 +138,7 @@ export function KaraokeMicrophone({ building, onClose, worldId }: OverlayProps) 
       });
       const j = await r.json();
       if (j?.ok) {
+        playActionAtPlayer('sing'); // performance flourish
         const grade = j?.payload?.grade;
         if (grade === 'S' || grade === 'A') milestoneJuice('ui_karaoke_top_grade');
         else if (grade === 'B' || grade === 'C') successJuice('ui_karaoke_finish');
