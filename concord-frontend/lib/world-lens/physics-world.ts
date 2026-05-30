@@ -11,6 +11,9 @@
 
 import { canJump, shouldFlushBuffer, cutJump } from './jump-forgiveness';
 import { bakeDeltasIntoHeightmap } from './terrain-deform-math';
+import {
+  type TraversalState, freshTraversalState, beginDash, dashVelocityAt, isInvulnerable as tkInvulnerable,
+} from '../concordia/traversal-kinematics';
 
 type RapierType = typeof import('@dimforge/rapier3d-compat');
 type WorldType   = InstanceType<RapierType['World']>;
@@ -99,6 +102,9 @@ class PhysicsWorld {
   private bodies:      Map<string, RigidBody>  = new Map();
   private colliders:   Map<string, Collider>   = new Map();
   private kinematic:   Map<string, KinematicState> = new Map();
+  // Part B — per-entity traversal state (dash burst + i-frames + slide). Kept
+  // parallel to KinematicState; folded into moveCharacter like knockback.
+  private traversal:   Map<string, TraversalState> = new Map();
   // WS-A2 — the terrain heightfield collider handle + its source heightmap, so
   // deformations can SWAP it (Rapier heightfields are immutable: removeCollider
   // + createCollider). _terrainHmData is the pristine base (normalized 0..1);
@@ -642,10 +648,21 @@ class PhysicsWorld {
       glideBoostZ = desiredTranslation.z * GLIDE_HORIZ_BOOST;
     }
 
+    // Part B — dash burst: a short directional velocity that decays over the
+    // dash window, folded in like knockback so it composes with input + glide.
+    let dashDx = 0;
+    let dashDz = 0;
+    const ts = this.traversal.get(id);
+    if (ts) {
+      const dv = dashVelocityAt(ts, now);
+      dashDx = dv.vx * dt;
+      dashDz = dv.vz * dt;
+    }
+
     const finalDesired = {
-      x: desiredTranslation.x + kbDx + glideBoostX,
+      x: desiredTranslation.x + kbDx + glideBoostX + dashDx,
       y: desiredTranslation.y + verticalDelta,
-      z: desiredTranslation.z + kbDz + glideBoostZ,
+      z: desiredTranslation.z + kbDz + glideBoostZ + dashDz,
     };
 
     // Snap-to-ground policy: re-enable after the suppress window expires
@@ -856,6 +873,47 @@ class PhysicsWorld {
   /** Returns true when swim is active for `id`. */
   isSwimming(id: string): boolean {
     return !!this.kinematic.get(id)?.swimming;
+  }
+
+  // ── Part B (B1): traversal verbs — dash / dodge (+ i-frames) ───────────────
+
+  private _ensureTraversal(id: string): TraversalState {
+    let ts = this.traversal.get(id);
+    if (!ts) { ts = freshTraversalState(); this.traversal.set(id, ts); }
+    return ts;
+  }
+
+  /**
+   * Request a dash/dodge in a world-space direction. Sets a decaying velocity
+   * burst (folded into moveCharacter) + a brief i-frame window. No-op while a
+   * dash is already active (no dash-cancel-into-dash spam) or knocked back.
+   * Returns true if the dash started.
+   */
+  requestDash(id: string, dirX: number, dirZ: number): boolean {
+    if (!this.controllers.has(id)) return false;
+    const ks = this.kinematic.get(id);
+    if (ks && ks.kbExpiresAt > performance.now()) return false; // not while knocked back
+    const ts = this._ensureTraversal(id);
+    const now = performance.now();
+    if (ts.dashExpiresAt > now) return false; // already dashing
+    if (dirX === 0 && dirZ === 0) return false;
+    beginDash(ts, dirX, dirZ, now);
+    return true;
+  }
+
+  /** True during the dash i-frame window (combat should ignore damage). */
+  isInvulnerable(id: string): boolean {
+    const ts = this.traversal.get(id);
+    return ts ? tkInvulnerable(ts, performance.now()) : false;
+  }
+
+  /** Toggle slide (crouch-while-fast); purely a state flag the animator reads. */
+  setSlide(id: string, on: boolean): void {
+    this._ensureTraversal(id).sliding = !!on;
+  }
+
+  isSliding(id: string): boolean {
+    return !!this.traversal.get(id)?.sliding;
   }
 
   // ── Theme 6 (game-feel pass): water plane registry ────────────────────────

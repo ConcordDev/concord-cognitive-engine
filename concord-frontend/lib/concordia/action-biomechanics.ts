@@ -234,6 +234,14 @@ export const ACTION_DESCRIPTORS: Record<string, ActionDescriptor> = {
   eat:     { archetype: 'manipulate_in_place', leadingLimb: 'right_arm', phases: [180, 200, 180], juiceId: 'soft', sfxId: 'eat', vfx: 'sparkle' },
   drink:   { archetype: 'manipulate_in_place', leadingLimb: 'right_arm', phases: [180, 200, 180], juiceId: 'soft', sfxId: 'drink' },
   take_photo: { archetype: 'lean_reach', leadingLimb: 'both_arms', phases: [160, 120, 160], juiceId: 'success', sfxId: 'shutter', vfx: 'flash' },
+  // traversal (Part B) — dash/slide/climb/vault/mantle. locomotion_modal extends
+  // gait/combat modes; these layer via the pose-broker 'traversal' source.
+  dash:    { archetype: 'locomotion_modal', leadingLimb: 'legs', phases: [80, 120, 120], juiceId: 'whoosh', sfxId: 'dash', vfx: 'dust' },
+  dodge:   { archetype: 'locomotion_modal', leadingLimb: 'legs', phases: [80, 120, 140], juiceId: 'whoosh', sfxId: 'dash', vfx: 'dust' },
+  slide:   { archetype: 'locomotion_modal', leadingLimb: 'legs', phases: [120, 220, 180], juiceId: 'whoosh', sfxId: 'slide', vfx: 'dust' },
+  climb:   { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [220, 0, 200], loop: 'climb', juiceId: 'soft', sfxId: 'scrape' },
+  vault:   { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [140, 120, 140], juiceId: 'whoosh', sfxId: 'vault' },
+  mantle:  { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [180, 160, 180], juiceId: 'soft', sfxId: 'vault' },
 };
 
 // Category fallback so NO verb is ever silent.
