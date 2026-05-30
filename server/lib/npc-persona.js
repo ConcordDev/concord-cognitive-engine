@@ -60,7 +60,7 @@ export function mintPersonaDtu(db, { authorUserId, npcId, summary }) {
   };
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'npc_persona', ?, ?, ?, 1, 0, unixepoch())
     `).run(
       dtuId,

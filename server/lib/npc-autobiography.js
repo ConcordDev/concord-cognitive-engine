@@ -125,7 +125,7 @@ export async function tryComposeForNpc(db, npcId) {
   };
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'npc_autobiography', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Life of ${npc.name || npcId}, vol. ${decision.generation}`, "system", JSON.stringify({ ...meta, body: prose }));
     db.prepare(`
