@@ -336,6 +336,8 @@ export default function AvatarSystem3D({
   const planarMoveRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const playerPositionRef = useRef({ ...playerAvatar.position });
   const playerRotationRef = useRef(playerAvatar.rotation);
+  // B1b — double-tap dash memory (traversal dodge).
+  const dashTapRef = useRef<{ key: string; t: number }>({ key: '', t: 0 });
   const [activeAnimation, setActiveAnimation] = useState<AnimationClip>(
     playerAvatar.currentAnimation
   );
@@ -1914,7 +1916,55 @@ export default function AvatarSystem3D({
 
       function handleKeyDown(e: KeyboardEvent) {
         const k = e.key.toLowerCase();
+        const wasDown = keysRef.current.has(k);
         keysRef.current.add(k);
+
+        // B1b — traversal dash/dodge: a double-tap of a movement key fires a
+        // dash in the current move direction (or facing when stationary), with
+        // i-frames, animated via the WS1 'dash' verb. Behind CONCORD_TRAVERSAL_VERBS.
+        const traversalOn = (window as { __concordClientConfig?: { CONCORD_TRAVERSAL_VERBS?: unknown } })
+          .__concordClientConfig?.CONCORD_TRAVERSAL_VERBS !== 0;
+        if (traversalOn && !wasDown && (k === 'w' || k === 'a' || k === 's' || k === 'd')) {
+          const tgt = e.target as HTMLElement | null;
+          const typing = tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.isContentEditable);
+          if (!typing) {
+            void (async () => {
+              try {
+                const { isDoubleTap } = await import('@/lib/concordia/dash-input');
+                if (!isDoubleTap(dashTapRef.current, k, performance.now())) return;
+                // Direction: current planar move, else facing (sinθ, -cosθ).
+                const pm = planarMoveRef.current;
+                let dx = pm.x, dz = pm.z;
+                if (Math.hypot(dx, dz) < 0.05) {
+                  const rot = playerRotationRef.current;
+                  dx = Math.sin(rot); dz = -Math.cos(rot);
+                }
+                const started = (physicsWorld as { requestDash?: (id: string, x: number, z: number) => boolean })
+                  .requestDash?.('player', dx, dz);
+                if (started) {
+                  const pa = await import('@/lib/concordia/play-action');
+                  const p = playerPositionRef.current;
+                  pa.playAction('dodge', { pos: { x: p.x, y: p.y + 1, z: p.z } });
+                }
+              } catch { /* traversal optional */ }
+            })();
+          }
+        }
+        // B1b — slide: crouch (C) while moving fast preserves momentum into a slide.
+        if (traversalOn && k === 'c' && !wasDown) {
+          void (async () => {
+            try {
+              const moving = Math.hypot(planarMoveRef.current.x, planarMoveRef.current.z) > 0.05;
+              const running = keysRef.current.has('shift');
+              if (moving && running) {
+                (physicsWorld as { setSlide?: (id: string, on: boolean) => void }).setSlide?.('player', true);
+                const pa = await import('@/lib/concordia/play-action');
+                const p = playerPositionRef.current;
+                pa.playAction('slide', { pos: { x: p.x, y: p.y + 0.5, z: p.z } });
+              }
+            } catch { /* slide optional */ }
+          })();
+        }
         // Theme 6 (game-feel pass): Space = jump (when grounded) or
         // toggle glide (when airborne already and falling). We trigger
         // off keydown so a tap registers a single jump and a hold flips
@@ -1942,6 +1992,10 @@ export default function AvatarSystem3D({
       function handleKeyUp(e: KeyboardEvent) {
         const k = e.key.toLowerCase();
         keysRef.current.delete(k);
+        // B1b — end slide on crouch release.
+        if (k === 'c') {
+          (physicsWorld as { setSlide?: (id: string, on: boolean) => void }).setSlide?.('player', false);
+        }
         if (k === ' ' || k === 'spacebar') {
           // B1 — variable jump height: releasing Space early cuts an ascending
           // jump for a shorter hop (no-op while falling/grounded).
