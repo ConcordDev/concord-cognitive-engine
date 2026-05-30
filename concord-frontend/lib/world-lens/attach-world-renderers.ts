@@ -28,6 +28,7 @@ import { createCropFieldRenderer } from './crop-field-renderer';
 import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
 import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createAvatarAuraRenderer } from './avatar-aura-renderer';
+import { createUprisingCrowdRenderer } from './uprising-crowd-renderer';
 import { createWorldVFXBridge } from './world-vfx-bridge';
 
 export interface WorldRenderersHandle {
@@ -84,6 +85,7 @@ export function attachWorldRenderers(
   mount(() => createCropFieldRenderer(infrastructureGroup, dataOpts));
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
   mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
+  mount(() => createUprisingCrowdRenderer(infrastructureGroup, dataOpts));
   mount(() => createAvatarAuraRenderer(particlesGroup, { authToken, apiBase: opts.apiBase }));
   mount(() => createWorldVFXBridge(particlesGroup, { maxBursts: opts.maxBursts }));
 

@@ -126,3 +126,67 @@ export function listPlayerMovementQuests(db, playerId, status = null) {
       : db.prepare(`SELECT * FROM movement_quests WHERE player_id = ? ORDER BY created_at DESC`).all(playerId);
   } catch { return []; }
 }
+
+/**
+ * Active uprisings in a world, each LOCATED at the centroid of its NPC members'
+ * live positions — because a crowd is where its people actually stand, not at an
+ * abstract target. Returns `[{ movementId, targetKind, targetId, memberCount,
+ * x, z, grievance }]`; rows whose members have no resolvable position are
+ * returned with `x/z = null` so the client can skip rendering them (no fake
+ * crowds). Never throws — minimal builds without the tables get `[]`.
+ *
+ * WS2.7: the render surface for the Living Society uprising keystone.
+ */
+export function listActiveUprisingsWithLocation(db, worldId) {
+  if (!db || !worldId) return [];
+  let rows;
+  try {
+    rows = db.prepare(`
+      SELECT u.movement_id, u.target_kind, u.target_id, u.member_count,
+             m.grievance_severity AS grievance
+        FROM movement_uprisings u
+        JOIN movements m ON m.id = u.movement_id
+       WHERE u.world_id = ? AND m.status = 'acting'
+    `).all(worldId);
+  } catch { return []; }
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  function parseXZ(raw) {
+    if (raw == null) return null;
+    try {
+      const o = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const x = Number(o?.x);
+      const z = Number(o?.z);
+      if (Number.isFinite(x) && Number.isFinite(z)) return { x, z };
+    } catch { /* not JSON */ }
+    return null;
+  }
+
+  return rows.map((r) => {
+    let x = null;
+    let z = null;
+    try {
+      const members = db.prepare(`
+        SELECT n.current_location
+          FROM movement_members mm
+          JOIN world_npcs n ON n.id = mm.member_id
+         WHERE mm.movement_id = ? AND mm.member_kind = 'npc' AND mm.left_at IS NULL
+      `).all(r.movement_id);
+      let sx = 0, sz = 0, n = 0;
+      for (const mem of members) {
+        const p = parseXZ(mem.current_location);
+        if (p) { sx += p.x; sz += p.z; n += 1; }
+      }
+      if (n > 0) { x = sx / n; z = sz / n; }
+    } catch { /* world_npcs absent / no members → null position */ }
+    return {
+      movementId: r.movement_id,
+      targetKind: r.target_kind,
+      targetId: r.target_id,
+      memberCount: Number(r.member_count) || 0,
+      grievance: Number(r.grievance) || 0,
+      x,
+      z,
+    };
+  });
+}
