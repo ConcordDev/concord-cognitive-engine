@@ -15,6 +15,13 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+// WS4 — the motivated-movement layer (needs → utility goal among real POIs).
+import { getNeeds, setNeeds, decayNeeds, satisfyFromAdvertisement } from "./npc-needs.js";
+import { nearbyPOIs } from "./npc-pois.js";
+import { chooseNextGoal } from "./npc-utility.js";
+
+const NEED_ADVANCE_HOURS = Number(process.env.CONCORD_NEED_ADVANCE_HOURS) || 0.06; // need pressure per advance
+const POI_ARRIVE_SATISFY_M = 6; // satisfy a POI's needs when within this of it
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -435,6 +442,26 @@ export async function advanceRoutine(db, npc, opts = {}) {
   if (!block) return { ok: false, reason: "no_schedule" };
 
   const state = db.prepare(`SELECT * FROM npc_routine_state WHERE npc_id = ?`).get(npc.id) || null;
+  const willTransition = !state || state.current_block !== blockIdx;
+
+  // ── WS4: needs-driven goal selection (the motivated brain) ────────────────
+  // Decay the NPC's needs each advance; on a block TRANSITION, re-pick a goal
+  // among the REAL nearby buildings (smart-object POIs) by utility score and
+  // OVERRIDE the schedule's random-offset target with that motivated
+  // destination. The daily schedule becomes a bias (activity_kind), not a
+  // script. Guarded + env-gated (CONCORD_NPC_NEEDS=0 → pure schedule).
+  if (process.env.CONCORD_NPC_NEEDS !== "0") {
+    try {
+      let needs = decayNeeds(getNeeds(db, npc.id), NEED_ADVANCE_HOURS);
+      if (willTransition && npc.world_id) {
+        const pos = parseLocation(npc.current_location) || parseLocation(npc.spawn_location) || { x: block.target_x, z: block.target_z };
+        const pois = nearbyPOIs(db, npc.world_id, pos.x, pos.z, 12);
+        const goal = chooseNextGoal(npc, needs, pois, { activityKind: block.activity_kind, seedKey: `${npc.id}|${blockIdx}|${daySeed}` });
+        if (goal?.poi) { block.target_x = goal.poi.x; block.target_z = goal.poi.z; }
+      }
+      setNeeds(db, npc.id, needs);
+    } catch { /* needs layer best-effort */ }
+  }
 
   // Block transition?
   let transitioned = false;
@@ -458,6 +485,18 @@ export async function advanceRoutine(db, npc, opts = {}) {
     `).run(npc.id, blockIdx, block.activity_kind, block.location_kind,
            block.target_x, block.target_z, now, expectedEnd);
     transitioned = true;
+  }
+
+  // The authoritative move target is the routine_state's — which holds the WS4
+  // goal override picked on transition and PERSISTS across non-transition ticks
+  // (the schedule block re-read above carries the old random offset, so we must
+  // not move toward it once a goal was chosen).
+  {
+    const eff = db.prepare(`SELECT target_x, target_z FROM npc_routine_state WHERE npc_id = ?`).get(npc.id);
+    if (eff && Number.isFinite(eff.target_x) && Number.isFinite(eff.target_z)) {
+      block.target_x = eff.target_x;
+      block.target_z = eff.target_z;
+    }
   }
 
   // Nudge position toward the station — or, once arrived, PACE around it so the
@@ -496,6 +535,17 @@ export async function advanceRoutine(db, npc, opts = {}) {
   if (arrived) {
     db.prepare(`UPDATE npc_routine_state SET arrived_at = COALESCE(arrived_at, unixepoch()) WHERE npc_id = ?`)
       .run(npc.id);
+    // WS4 — at the destination POI, performing the activity SATISFIES the needs
+    // that POI advertises (lowers their deficit) — closing the goal→walk→act→
+    // satisfy loop so needs visibly cycle. Guarded + env-gated.
+    if (process.env.CONCORD_NPC_NEEDS !== "0" && npc.world_id) {
+      try {
+        const [poiHere] = nearbyPOIs(db, npc.world_id, nx, nz, 1);
+        if (poiHere && poiHere.dist <= POI_ARRIVE_SATISFY_M) {
+          setNeeds(db, npc.id, satisfyFromAdvertisement(getNeeds(db, npc.id), poiHere.advertises));
+        }
+      } catch { /* satisfy best-effort */ }
+    }
   }
 
   // Embodied signal write — only if arrived AND throttle interval passed.
