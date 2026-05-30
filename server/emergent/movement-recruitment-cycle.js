@@ -13,6 +13,7 @@ import {
   listMovements, memberCount, getMovement,
 } from "../lib/movements.js";
 import { eruptUprising } from "../lib/uprising.js";
+import { positionFor, recruitAlongPosition } from "../lib/ideology.js";
 
 const MAX_RECRUIT_PER_PASS = Number(process.env.CONCORD_MOVEMENT_RECRUIT_PER_PASS) || 2;
 
@@ -34,16 +35,30 @@ export function runMovementRecruitmentCycle({ db } = {}) {
         // Recruit fellow grudge-holders against the same target who aren't members yet.
         let candidates = [];
         try {
+          // Phase 12 — pull a wider pool with faction/archetype so the ideology
+          // attractor can pick the ideologically-closest first.
           candidates = db.prepare(`
-            SELECT DISTINCT g.npc_id FROM npc_grudges g
+            SELECT DISTINCT g.npc_id, n.faction, n.archetype FROM npc_grudges g
             JOIN world_npcs n ON n.id = g.npc_id
             WHERE g.resolved_at IS NULL AND n.world_id = ? AND g.target_kind = ? AND g.target_id = ?
               AND g.npc_id NOT IN (SELECT member_id FROM movement_members WHERE movement_id = ? AND member_kind='npc' AND left_at IS NULL)
             LIMIT ?
-          `).all(w, m.target_kind, m.target_id, m.id, MAX_RECRUIT_PER_PASS);
+          `).all(w, m.target_kind, m.target_id, m.id, MAX_RECRUIT_PER_PASS * 3);
         } catch { candidates = []; }
-        for (const c of candidates) {
-          const r = recruit(db, m.id, "npc", c.npc_id, { role: "soldier" });
+        // Recruit along SHARED position: rank by ideological proximity to the
+        // founder, then take the closest few. Falls back to grievance order when
+        // no ideology is authored (positionFor returns a neutral vector).
+        let ordered = candidates.map((c) => c.npc_id);
+        try {
+          // The founder's position = its faction's professed vector.
+          let founderFaction = null;
+          try { founderFaction = db.prepare(`SELECT faction FROM world_npcs WHERE id = ?`).get(m.founded_by_id)?.faction || null; } catch { founderFaction = null; }
+          const founderPos = founderFaction ? positionFor(db, w, founderFaction) : positionFor(db, w, m.target_id);
+          const ranked = recruitAlongPosition(db, w, founderPos, candidates.map((c) => ({ id: c.npc_id, faction: c.faction, archetype: c.archetype })));
+          ordered = ranked.map((r) => r.id);
+        } catch { /* attractor optional */ }
+        for (const npcId of ordered.slice(0, MAX_RECRUIT_PER_PASS)) {
+          const r = recruit(db, m.id, "npc", npcId, { role: "soldier" });
           if (r.ok) recruited++;
         }
 

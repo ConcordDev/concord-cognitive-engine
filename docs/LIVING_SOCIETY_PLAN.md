@@ -202,7 +202,16 @@ uprising → legibility → reskin) and each leaves the system working.
   menu, idempotent, flagged unstable-by-construction); `onEmperorDeath` (a power-vacuum world event — the
   throne sits EMPTY, no heir, vassals secede). `governance-cycle` heartbeat (freq 60). Test
   `tests/vassalage.test.js` (6). **Phase 11 = 100%.**
-- Phases 12 → 13: 12 (emergent ideology), 13 (world-creation) remain.
+- **Phase 12 — emergent ideology (the recruitment attractor): SHIPPED.** Mig 290 (`faction_ideology`
+  professed position vectors + `ideology_alerts` political-weather). `lib/ideology.js`: `WORLD_AXES`
+  (authored per-world political axes); `setFactionIdeology`/`positionFor`; `ideologicalDistance` (euclidean
+  over a world's axes); `npcPosition` (derived from faction + archetype nudge); `recruitAlongPosition` —
+  THE ATTRACTOR, ranks grudge-holders by ideological proximity so a movement recruits along SHARED position,
+  not at random (wired into `movement-recruitment-cycle`); `detectFactionGoodhart` (professed-vs-revealed-
+  strategy hypocrisy gap → alert a rival can expose) + `detectEchoChamber` (near-identical faction positions),
+  following the drift-monitor pattern. Test `tests/ideology.test.js` (6). **Phase 12 = 100%.** (The
+  `lattice-orchestrator` drift `severity:"high"` filter bug was already unmuted on main — commit 468a4ad9.)
+- Phase 13 (world-creation as the highest-stakes verb) remains.
 
 ## Unifying model (the one substrate)
 
