@@ -182,7 +182,17 @@ uprising → legibility → reskin) and each leaves the system working.
   macros (`roles`, `work_shift`). One loop, no parallel player-economy. Test
   `tests/player-occupation.test.js` (4). **Server 100%; the `concordia:action-anim` general
   action-animation framework is the frontend embodiment slice.**
-- Phases 10 → 13: 10 (law/crime/jail), 11 (governance hierarchy), 12 (ideology), 13 (world-creation) remain.
+- **Phase 10 — law, crime & jail-as-a-verb: SHIPPED (server).** Mig 288 (`player_wanted` notoriety rung
+  extended to players + `player_detentions` — jail as verbs, not a timer). `lib/law.js`: `DEFAULT_LAWS`
+  catalog (per-world `laws.json` overrides it); `assessCrime` (sanctuary → PREVENTED/refused [law as
+  physics, Refusal Field], lawless → nothing, lawful → reaction); `sentenceFor` (severity × zone ×
+  repeat, capped at `CONCORD_SENTENCE_CAP_SPARKS` — punish value/reputation/access, never dead time);
+  `commitCrime` (refuses in sanctuary with no record; raises wanted + opens a detention in a lawful zone);
+  and jail-as-FOUR-verbs — `bribeOut` (Phase-3 corruption: the dirty guard pockets it), `workOff`
+  (Phase-9 occupation loop), `breakOut` (combat, raises heat), `sprungBy` (Phase-5 cross-tier ally).
+  Test `tests/law.test.js` (9). **Server 100%; per-world `laws.json` content + graded guard-AI are the
+  content/frontend slice.**
+- Phases 11 → 13: 11 (governance hierarchy), 12 (ideology), 13 (world-creation) remain.
 
 ## Unifying model (the one substrate)
 
