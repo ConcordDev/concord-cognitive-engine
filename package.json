@@ -4,7 +4,8 @@
     "verify:event-consumers": "node scripts/verify-event-consumers.mjs",
     "verify:economic-invariants": "node scripts/verify-economic-invariants.mjs",
     "health": "node scripts/health.mjs",
-    "playtest": "node scripts/playtest/agent-playtest.mjs"
+    "playtest": "node scripts/playtest/agent-playtest.mjs",
+    "verify:render-parity": "node scripts/verify-render-parity.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

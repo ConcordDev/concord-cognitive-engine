@@ -71,6 +71,11 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 77
 
+      - name: Render-parity gate (static appearance layer)
+        run: |
+          node scripts/verify-render-parity.mjs
+          node scripts/verify-render-parity.mjs --ci 100
+
       - name: Economic invariants (exploit gate)
         run: |
           # Constitutional economy constants must not drift without governance.

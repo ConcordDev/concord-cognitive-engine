@@ -58,6 +58,13 @@ try {
     detail: j.ok ? "all constitutional constants hold" : `${bad} drifted` });
 } catch { gates.push({ name: "economic-inv", pct: null, floor: 100, detail: "gate errored" }); }
 
+// 3c. Render-parity (static appearance layer)
+try {
+  const j = JSON.parse(run("node scripts/verify-render-parity.mjs --json"));
+  gates.push({ name: "render-parity", pct: j.overall, floor: 100,
+    detail: `static appearance layer; ${j.stationGaps.length} station-interior gaps` });
+} catch { gates.push({ name: "render-parity", pct: null, floor: 100, detail: "gate errored" }); }
+
 // 4. Macro depth (reads the grader's last output file)
 {
   const j = readJson('audit/macro-depth.json');
