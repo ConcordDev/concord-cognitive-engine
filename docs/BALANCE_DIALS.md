@@ -308,3 +308,24 @@ SUBMARINE,EXTRACTION,TIMELOOP,CLIMBING,HORROR,RESTAURANT,THEMEPARK,DRIFT,COURTSH
 FOOTPRINT,FORWARD_PRED,WORLD_HEALTH,PARTY_TICK,PARTY_DISCOVERY}_MS` +
 `CONCORD_THROTTLE_{COURTSHIP,FOOTPRINT}_FRAME_MS`. DriftAlertToast + RestaurantDashboard
 migrated as the reference; remaining components follow the same one-line pattern.
+
+---
+
+## Universal Move System (kill-switches + dials)
+
+All move-system surfaces are kill-switched so off → today's behaviour.
+
+| Env | Default | Effect |
+|---|---|---|
+| `CONCORD_MOVE_RESOLVER` | on | `0` → server stops stamping `meta_json.motion`/`nativeWorld` at mint/evolve (created moves fall back to the client's derive-on-the-fly path). |
+| `CONCORD_CROSS_WORLD_POTENCY` | on | `0` → cross-world potency always 1.0 (Pillar 3 disabled). |
+| `CONCORD_POTENCY_MASTER_LEVEL` | 200 | Skill level at which a move travels at full potency in any world. Lower → easier cross-world; higher → deeper specialisation required to travel. |
+| `CONCORD_MOVEMENT_POWERS` | on | `0` → movement-power activation blocked. |
+
+**Firearms (`server/lib/firearms.js`, first-draft, untuned):** per-archetype
+`{ magazine, reloadMs, baseDamage, falloffStart, maxRange, minDamageFloor,
+fireIntervalMs, recoilPerShot, spreadBloom, pellets }`. Falloff is two-point
+linear to `minDamageFloor` (never zero). `RANGED_PARRY_WINDOW_MS = 0` is an
+invariant, not a dial. Movement-power profiles (`movement-powers.js`) carry
+`{ activationCost, drainPerSec, minLevel, baseSpeedMs, cooldownS }` — also
+first-draft. Walk these in a future balance pass; pin from observed play.
