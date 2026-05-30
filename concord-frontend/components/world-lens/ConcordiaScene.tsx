@@ -262,6 +262,9 @@ export default function ConcordiaScene({
   // Sovereign Mass Raid Phase 4 dome — listener cleanup. Set in scene init,
   // invoked during teardown so the listener disposes with the scene.
   const domeCleanupRef = useRef<(() => void) | null>(null);
+  // WS2 — world-state renderers (resource nodes / crops / claims / VFX) mounted
+  // into the infrastructure + particles layers; disposed with the scene.
+  const worldRenderersRef = useRef<{ dispose(): void } | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -799,6 +802,29 @@ export default function ConcordiaScene({
         layers[name] = group;
       }
       layersRef.current = layers;
+
+      // ── WS2 world-state renderers ───────────────────────────────
+      // Mount the resource-node / crop-field / claim-boundary renderers into the
+      // reserved `infrastructure` layer and the VFX bridge into `particles`. The
+      // per-frame fan-out below (LAYER_NAMES loop) calls each layer group's
+      // userData.update, so wiring the handle's update onto the infrastructure
+      // group is all that's needed to drive every data renderer; the VFX bridge
+      // is driven from the same handle (one update fans out to all four).
+      try {
+        const { attachWorldRenderers } = await import('@/lib/world-lens/attach-world-renderers');
+        const worldId =
+          (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
+          'concordia-hub';
+        const handle = attachWorldRenderers(layers.infrastructure, layers.particles, { worldId });
+        worldRenderersRef.current = handle;
+        (layers.infrastructure.userData as { update?: (d: number, e: number) => void }).update = (
+          d: number,
+          e: number,
+        ) => handle.update(d, e);
+      } catch {
+        // Renderers are progressive enhancement — a mount failure leaves the
+        // base scene (terrain/buildings/avatars) fully functional.
+      }
 
       // ── Sovereign Mass Raid Phase 4 dome ────────────────────────
       // Subscribes to world:refusal-field; when a dome_collapse field
@@ -1505,6 +1531,8 @@ export default function ConcordiaScene({
 
       try { domeCleanupRef.current?.(); } catch { /* ignore */ }
       domeCleanupRef.current = null;
+      try { worldRenderersRef.current?.dispose(); } catch { /* ignore */ }
+      worldRenderersRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
