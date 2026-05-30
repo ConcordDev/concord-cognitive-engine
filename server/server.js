@@ -45578,7 +45578,7 @@ app.get("/api/events/paginated", (req, res) => {
     // Source 4: Economy ledger
     if (db) {
       try {
-        const txRows = db.prepare("SELECT id, type, amount, from_user_id, to_user_id, created_at, memo FROM economy_ledger ORDER BY created_at DESC LIMIT 200").all();
+        const txRows = db.prepare("SELECT id, type, amount, from_user_id, to_user_id, created_at, metadata_json AS memo FROM economy_ledger ORDER BY created_at DESC LIMIT 200").all();
         for (const tx of txRows) {
           activities.push({
             id: tx.id, type: "economy", action: tx.type,
