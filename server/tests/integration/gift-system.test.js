@@ -26,13 +26,16 @@ function freshDb() {
   up050(db); up206(db);
   db.prepare(`INSERT INTO users (id) VALUES ('u1')`).run();
   // minimal world_npcs + the per-world inventory column (mig 101 adds world_id).
-  db.exec(`CREATE TABLE world_npcs (id TEXT PRIMARY KEY, archetype TEXT, name TEXT);`);
+  // Real schema shape: world_npcs has no `name` column — the name lives in the
+  // `state` JSON (see lib/npc-name.js). The old fixture's `name` column matched
+  // the drifted code, not production.
+  db.exec(`CREATE TABLE world_npcs (id TEXT PRIMARY KEY, archetype TEXT, npc_type TEXT, state TEXT);`);
   try { db.exec(`ALTER TABLE player_inventory ADD COLUMN world_id TEXT DEFAULT 'concordia-hub'`); } catch { /* may exist */ }
   return db;
 }
 
 function npc(db, id, archetype) {
-  db.prepare(`INSERT INTO world_npcs (id, archetype, name) VALUES (?, ?, ?)`).run(id, archetype, id);
+  db.prepare(`INSERT INTO world_npcs (id, archetype, npc_type, state) VALUES (?, ?, 'npc', ?)`).run(id, archetype, JSON.stringify({ name: id }));
 }
 function give(db, userId, itemId, itemName, qty = 1, world = "concordia-hub") {
   db.prepare(`

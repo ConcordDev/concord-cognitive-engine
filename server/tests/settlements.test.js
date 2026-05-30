@@ -26,7 +26,7 @@ function mkDb() {
   const db = new Database(":memory:");
   db.exec(`
     CREATE TABLE world_npcs (
-      id TEXT PRIMARY KEY, world_id TEXT, name TEXT, archetype TEXT, is_dead INTEGER DEFAULT 0
+      id TEXT PRIMARY KEY, world_id TEXT, name TEXT, archetype TEXT, npc_type TEXT, state TEXT, is_dead INTEGER DEFAULT 0
     );
     CREATE TABLE npc_grudges (id TEXT PRIMARY KEY, npc_id TEXT, target_kind TEXT, target_id TEXT, narrative TEXT, severity INTEGER, event_at INTEGER DEFAULT (unixepoch()), resolved_at INTEGER);
     CREATE TABLE npc_relationships (id TEXT PRIMARY KEY, npc_id TEXT, related_id TEXT, rel_type TEXT, strength REAL DEFAULT 1.0, created_at INTEGER DEFAULT (unixepoch()), UNIQUE(npc_id, related_id, rel_type));
@@ -35,8 +35,8 @@ function mkDb() {
   return db;
 }
 function addNpc(db, id, { name = id, archetype = "farmer", settlementId = null, role = null } = {}) {
-  db.prepare(`INSERT INTO world_npcs (id, world_id, name, archetype, settlement_id, settlement_role) VALUES (?, ?, ?, ?, ?, ?)`)
-    .run(id, W, name, archetype, settlementId, role);
+  db.prepare(`INSERT INTO world_npcs (id, world_id, name, archetype, npc_type, state, settlement_id, settlement_role) VALUES (?, ?, ?, ?, 'npc', ?, ?, ?)`)
+    .run(id, W, name, archetype, JSON.stringify({ name }), settlementId, role);
 }
 
 describe("Phase 1.5 — composition coverage", () => {
