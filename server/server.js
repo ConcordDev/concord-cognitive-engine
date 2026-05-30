@@ -72748,8 +72748,8 @@ register("npc", "eavesdrop", (ctx, input = {}) => {
     const rows = db.prepare(`
       SELECT c.id, c.npc_a, c.npc_b, c.composer, c.opened_at, c.last_msg_at,
              c.expires_at, c.messages_json, c.seed_context_json,
-             a.x AS ax, a.z AS az, a.name AS a_name,
-             b.x AS bx, b.z AS bz, b.name AS b_name
+             a.x AS ax, a.z AS az, json_extract(a.state, '$.name') AS a_name,
+             b.x AS bx, b.z AS bz, json_extract(b.state, '$.name') AS b_name
       FROM npc_conversations c
       LEFT JOIN world_npcs a ON a.id = c.npc_a
       LEFT JOIN world_npcs b ON b.id = c.npc_b
@@ -74071,7 +74071,7 @@ register("inheritance", "list_open", (_ctx, input = {}) => {
   try {
     const rows = db.prepare(`
       SELECT l.id, l.dying_npc_id, l.mentor_user_id, l.heir_slot_price_cc, l.listed_at,
-             n.name AS npc_name
+             json_extract(n.state, '$.name') AS npc_name
       FROM inheritance_market_listings l
       LEFT JOIN world_npcs n ON n.id = l.dying_npc_id
       WHERE l.status = 'open'
@@ -74382,7 +74382,7 @@ register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
   let comps = components;
   if (!Array.isArray(comps) && spellId) {
     try {
-      const spell = db.prepare(`SELECT components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
+      const spell = db.prepare(`SELECT component_chain AS components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
       if (spell?.components_json) {
         try { comps = JSON.parse(spell.components_json); } catch { /* keep undefined */ }
       }
@@ -74493,7 +74493,7 @@ register("sponsorship", "list_for_user", (ctx, _input = {}) => {
   try {
     const rows = db.prepare(`
       SELECT s.id, s.npc_id, s.monthly_cc, s.dispatch_freq_hours, s.started_at, s.last_dispatch_at,
-             n.name AS npc_name
+             json_extract(n.state, '$.name') AS npc_name
       FROM npc_sponsorships s
       LEFT JOIN world_npcs n ON n.id = s.npc_id
       WHERE s.sponsor_user_id = ? AND s.status = 'active'
