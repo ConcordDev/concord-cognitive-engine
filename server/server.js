@@ -144,7 +144,8 @@ registerHeartbeat("signal-propagation-cycle", {
 import { runWaterFlowCycle } from "./emergent/water-flow-cycle.js";
 registerHeartbeat("water-flow-cycle", {
   frequency: 4,
-  handler: runWaterFlowCycle,
+  // Inject io so the cycle can emit concordia:water-updated hints (WS-A1).
+  handler: ({ db } = {}) => runWaterFlowCycle({ db, io: REALTIME?.io }),
 });
 
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
