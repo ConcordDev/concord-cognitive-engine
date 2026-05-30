@@ -1,7 +1,8 @@
 {
   "scripts": {
     "verify:move-render": "node scripts/verify-move-render-coverage.mjs",
-    "verify:event-consumers": "node scripts/verify-event-consumers.mjs"
+    "verify:event-consumers": "node scripts/verify-event-consumers.mjs",
+    "health": "node scripts/health.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
