@@ -61,7 +61,7 @@ function setupDb() {
     CREATE TABLE world_visits (
       world_id TEXT,
       user_id TEXT,
-      entered_at INTEGER,
+      arrived_at INTEGER,
       departed_at INTEGER
     );
     CREATE TABLE dtus (
@@ -106,7 +106,7 @@ function seedActivity(db, userId, opts = {}) {
   `).run('inv_1', userId, 'w1', 'iron_ore', 'Iron Ore', 4, now - 800);
   // visit
   db.prepare(`
-    INSERT INTO world_visits (world_id, user_id, entered_at, departed_at)
+    INSERT INTO world_visits (world_id, user_id, arrived_at, departed_at)
     VALUES (?, ?, ?, ?)
   `).run('w1', userId, now - 7200, opts.online ? null : now - 600);
   // dtu created

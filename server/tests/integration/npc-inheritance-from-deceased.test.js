@@ -28,8 +28,8 @@ describe("T2.2 — getInheritanceFromDeceased", () => {
   it("returns links for a deceased NPC with heir names joined", () => {
     const db = new Database(":memory:");
     up133(db);
-    db.exec(`CREATE TABLE world_npcs (id TEXT PRIMARY KEY, name TEXT);`);
-    db.prepare(`INSERT INTO world_npcs (id, name) VALUES ('vesper','Vesper')`).run();
+    db.exec(`CREATE TABLE world_npcs (id TEXT PRIMARY KEY, state TEXT, archetype TEXT);`);
+    db.prepare(`INSERT INTO world_npcs (id, state) VALUES ('vesper','{"name":"Vesper"}')`).run();
     link(db, { id: "l1", deceased: "elias", heir: "vesper", kind: "grudge" });
     link(db, { id: "l2", deceased: "elias", heir: "vesper", kind: "recipe" });
     link(db, { id: "l3", deceased: "elias", heir: "unknown-heir", kind: "wealth" });
