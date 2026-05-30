@@ -338,6 +338,8 @@ export default function AvatarSystem3D({
   const playerRotationRef = useRef(playerAvatar.rotation);
   // B1b — double-tap dash memory (traversal dodge).
   const dashTapRef = useRef<{ key: string; t: number }>({ key: '', t: 0 });
+  // B4 — action chaining queue (lazy-constructed).
+  const actionQueueRef = useRef<import('@/lib/concordia/action-queue').ActionQueue | null>(null);
   const [activeAnimation, setActiveAnimation] = useState<AnimationClip>(
     playerAvatar.currentAnimation
   );
@@ -1420,6 +1422,23 @@ export default function AvatarSystem3D({
         const mixer = mixersRef.current.get(entityId) as MixerType | undefined;
         if (!mixer) return;
         try {
+          // B4 — action chaining: protect the current action's core window
+          // (windup+action) so a rapid second verb queues + flushes after,
+          // instead of hard-cutting the first. Only gate the LOCAL player; NPC
+          // activity clips and looped actions play immediately. Replayed flushes
+          // carry __chained so they don't re-queue.
+          const isPlayer = entityId === playerAvatar.id;
+          const replayed = (detail as { __chained?: boolean })?.__chained === true;
+          if (isPlayer && !detail?.loop && !replayed) {
+            const aqmod = await import('@/lib/concordia/action-queue');
+            if (!actionQueueRef.current) actionQueueRef.current = new aqmod.ActionQueue({ maxQueue: 1 });
+            const amod0 = await import('@/lib/concordia/action-biomechanics');
+            const d0 = amod0.resolveActionDescriptor(verb);
+            const protectMs = (d0.phases?.[0] ?? 150) + (d0.phases?.[1] ?? 100);
+            if (!actionQueueRef.current.request(detail, performance.now(), protectMs)) {
+              return; // queued; the per-frame flush will replay it
+            }
+          }
           // B3 — skill-modulated motion: the element biases the effective tier so
           // a fire slash arcs bigger, ice strikes sharp/small, lightning snaps.
           const sm = await import('@/lib/concordia/skill-motion');
@@ -2042,6 +2061,20 @@ export default function AvatarSystem3D({
         if (pauseMap.size > 0) {
           for (const [k, until] of pauseMap) {
             if (until <= now) pauseMap.delete(k);
+          }
+        }
+
+        // B4 — flush a queued chained action once the current one's core window
+        // has elapsed: replay its detail (tagged __chained so it plays straight
+        // through) so harvest→plant etc. flows out of the recovery.
+        if (actionQueueRef.current && actionQueueRef.current.pending > 0) {
+          const next = actionQueueRef.current.flush(performance.now());
+          if (next && typeof window !== 'undefined') {
+            try {
+              window.dispatchEvent(new CustomEvent('concordia:action-anim', {
+                detail: { ...(next as object), __chained: true },
+              }));
+            } catch { /* flush is best-effort */ }
           }
         }
 
