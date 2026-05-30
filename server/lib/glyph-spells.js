@@ -14,9 +14,21 @@
 
 import crypto from "node:crypto";
 import { add as glyphAdd, computeBase6Layer } from "./refusal-algebra/operations.js";
+import { resolveCraft } from "./craft-resolve.js";
 
 const MIN_COMPONENTS = 2;
 const MAX_COMPONENTS = 5;
+
+// Living Society P0 — optional power-source FUEL for spell minting. Consuming
+// high-potency magical resources (soul gems / mana crystals / aether / essence)
+// amplifies the composed spell's damage + range: the "Fireball I → Fireball V"
+// gradient. Fuel only ever strengthens (floored at 1.0×) — a spell minted
+// without fuel is byte-identical to the pre-P0 behaviour.
+const MAX_FUEL_ITEMS = 4;
+// Fuel amplification is potency-proportional (deterministic, no backfire roll):
+// mult = 1 + (resolvedPotency/100) × FUEL_BOOST. So tier-5 fuel (grand/black
+// gems, aether) pushes a spell far past tier-1 reagents — the power gradient.
+const FUEL_BOOST = Number(process.env.CONCORD_SPELL_FUEL_BOOST) || 1.0;
 
 // Default seed library — the migration writes these on first compose if
 // no rows exist. Tests + content-seeder can override.
@@ -159,10 +171,55 @@ export function composeSpell(db, componentIds) {
  * Wired so the resulting recipe enters Phase 1 (evolution) + 1.5
  * (marketplace + mentorship + demonstration) like any other recipe.
  */
-export function mintSpell(db, { userId, worldId, componentIds, name }) {
+export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds = [] }) {
   if (!db || !userId || !worldId) return { ok: false, reason: "missing_inputs" };
   const composed = composeSpell(db, componentIds);
   if (!composed.ok) return composed;
+
+  // ── Optional power-source fuel (Living Society P0) ──────────────────────
+  // Verify the fuel is owned (world-scoped), resolve a potency-driven boost via
+  // the single craft-resolve layer, scale the spell's damage/range, and queue
+  // the fuel for consumption inside the mint transaction. Guarded + soft: any
+  // failure (missing fuel, absent inventory table, kill-switch) leaves the
+  // spell un-boosted rather than blocking the mint.
+  let fuel = null;
+  const fuelIds = Array.isArray(fuelItemIds)
+    ? fuelItemIds.filter(Boolean).slice(0, MAX_FUEL_ITEMS)
+    : [];
+  if (fuelIds.length > 0 && process.env.CONCORD_CRAFT_RESOLVE !== "0") {
+    try {
+      const owned = [];
+      for (const itemId of fuelIds) {
+        const row = db.prepare(`
+          SELECT COALESCE(SUM(quantity), 0) AS qty
+          FROM player_inventory WHERE user_id = ? AND world_id = ? AND item_id = ?
+        `).get(userId, worldId, itemId);
+        if ((row?.qty ?? 0) >= 1) owned.push(itemId);
+      }
+      if (owned.length > 0) {
+        const resolved = resolveCraft({
+          inputs: owned.map((itemId) => ({ itemId, qty: 1 })),
+          playerSkill: 0,
+          stationQuality: 0,
+          db,
+        });
+        if (resolved?.ok) {
+          // Potency-proportional, deterministic (the item-craft backfire roll
+          // does not gate opt-in fuel) and floored at 1.0× so fuel only ever
+          // strengthens.
+          const mult = Math.max(1.0, 1 + (resolved.outputPotency / 100) * FUEL_BOOST);
+          fuel = {
+            items: owned,
+            multiplier: Math.round(mult * 1000) / 1000,
+            affinity: resolved.outputAffinity,
+            potency: resolved.outputPotency,
+          };
+          composed.max_damage = Math.round(composed.max_damage * mult * 10) / 10;
+          composed.range_m = Math.max(0, Math.round(composed.range_m * mult));
+        }
+      }
+    } catch { fuel = null; }
+  }
 
   const recipeId = `spell:${userId}:${crypto.randomUUID().slice(0, 8)}`;
   const spellName = (name && String(name).trim()) || `glyph_spell_${composed.composed_glyph}`;
@@ -181,8 +238,28 @@ export function mintSpell(db, { userId, worldId, componentIds, name }) {
     layer_signature: composed.layer_signature,
     glyph_chain: composed.chain.map(c => c.id),
   };
+  if (fuel) {
+    meta.fuel = { items: fuel.items, multiplier: fuel.multiplier, affinity: fuel.affinity };
+  }
 
   const tx = db.transaction(() => {
+    // Consume one of each owned fuel item (FIFO, world-scoped). Guarded — the
+    // ownership was verified above; this only debits.
+    if (fuel) {
+      for (const itemId of fuel.items) {
+        const slot = db.prepare(`
+          SELECT id, quantity FROM player_inventory
+          WHERE user_id = ? AND world_id = ? AND item_id = ? AND quantity > 0
+          ORDER BY acquired_at ASC LIMIT 1
+        `).get(userId, worldId, itemId);
+        if (!slot) continue;
+        if (slot.quantity > 1) {
+          db.prepare(`UPDATE player_inventory SET quantity = quantity - 1 WHERE id = ?`).run(slot.id);
+        } else {
+          db.prepare(`DELETE FROM player_inventory WHERE id = ?`).run(slot.id);
+        }
+      }
+    }
     try {
       db.prepare(`
         INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
@@ -208,7 +285,7 @@ export function mintSpell(db, { userId, worldId, componentIds, name }) {
   try { spellId = tx(); }
   catch (err) { return { ok: false, reason: "tx_failed", error: err?.message }; }
 
-  return { ok: true, recipeId, spellId, composed };
+  return { ok: true, recipeId, spellId, composed, fuel };
 }
 
 /** List spells composed by user. */

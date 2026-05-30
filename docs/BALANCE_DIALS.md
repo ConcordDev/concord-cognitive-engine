@@ -287,6 +287,12 @@ minigame score) still wins; otherwise the resolved multiplier is used.
 | `CONCORD_CRAFT_INPUT_WEIGHT` | 0.7 | Share of output potency derived from input potency. |
 | `CONCORD_CRAFT_CONFLICT_PENALTY` | 18 | Stability lost per EXTRA affinity (BotW-cancel twist → backfire chance). |
 | `CONCORD_CRAFT_POWER_BONUS` | 0.25 | Magical-fuel (soul-gem/mana/aether/essence) potency multiplier. |
+| `CONCORD_SPELL_FUEL_BOOST` | 1.0 | `glyph-spells.mintSpell` power-source fuel: spell damage/range × `1 + (fuelPotency/100)×boost` (potency-proportional, floored at 1.0×). |
+
+The wrap covers `executeCraft` (+ `cook-engine` by delegation), `tool-tree.craftTool`
+(material-driven tool quality), and `glyph-spells.mintSpell` (optional fuel
+amplification). `skill-evolution.applyEvolution` + the multi-step chain executor
+are the Phase 0 tail (they carry no structured resource inputs yet).
 
 Failure is SOFT: a conflicting-affinity backfire or a potency-floor fizzle
 consumes the mats, yields a weak (0.5×) item, and applies a short

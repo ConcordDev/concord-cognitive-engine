@@ -33,6 +33,7 @@ export default function registerGlyphSpellMacros(register) {
       worldId: input.worldId || "concordia-hub",
       componentIds: input.componentIds || [],
       name: input.name,
+      fuelItemIds: input.fuelItemIds || [],
     });
   }, { note: "mint a composed spell as a recipe DTU" });
 
