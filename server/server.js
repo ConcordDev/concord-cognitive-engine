@@ -24827,6 +24827,13 @@ registerMountMacros(register);
 import registerCodeSubstrateMacros from "./domains/code-substrate.js";
 registerCodeSubstrateMacros(register);
 
+// Universal Move System P3/P4 — gun ballistics + movement-power surfaces (pure,
+// read-only) over lib/firearms.js + lib/movement-powers.js.
+import registerGunMacros from "./domains/guns.js";
+registerGunMacros(register);
+import registerMovementPowerMacros from "./domains/movement-powers.js";
+registerMovementPowerMacros(register);
+
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in
 // Phase 4. Each is a small, dependency-light implementation; lenses
