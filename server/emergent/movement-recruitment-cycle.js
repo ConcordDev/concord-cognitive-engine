@@ -10,8 +10,9 @@
 
 import {
   seedMovementFromGrievance, recruit, tickMovement, exposeMovement,
-  listMovements, memberCount,
+  listMovements, memberCount, getMovement,
 } from "../lib/movements.js";
+import { eruptUprising } from "../lib/uprising.js";
 
 const MAX_RECRUIT_PER_PASS = Number(process.env.CONCORD_MOVEMENT_RECRUIT_PER_PASS) || 2;
 
@@ -53,7 +54,12 @@ export function runMovementRecruitmentCycle({ db } = {}) {
         }
 
         const t = tickMovement(db, m.id);
-        if (t.acted) acted++;
+        if (t.acted) {
+          acted++;
+          // Phase 6 — the movement erupts into a rebellion (faction-strategy
+          // move + world event). Idempotent on movement_id.
+          try { eruptUprising(db, getMovement(db, m.id) || m); } catch { /* isolation */ }
+        }
       }
     } catch { /* per-world isolation */ }
   }

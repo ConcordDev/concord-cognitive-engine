@@ -43,6 +43,8 @@ export const PER_WORLD_WRITE_TABLES = Object.freeze(new Set([
   "movement_members",
   "movement_plans",
   "movement_visibility",
+  "movement_uprisings",
+  "movement_quests",
   "world_seasons",
   "season_events",
   "npc_schedules",

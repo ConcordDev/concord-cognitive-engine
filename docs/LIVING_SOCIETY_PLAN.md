@@ -135,7 +135,16 @@ uprising → legibility → reskin) and each leaves the system working.
   visibility → suppress past the line; `tickMovement` flips recruiting→organized→acting at threshold; invariant:
   can't recruit its own target); `movement-recruitment-cycle` heartbeat (freq 50) seeds+recruits+ticks+exposes
   per world. Dials `CONCORD_MOVEMENT_*`. Test `tests/movements.test.js` (7). **Phase 5 = 100%.**
-- Phases 1.5, 6 → 13 (9 cross-cutting): 6 (uprising→faction+quest) next; 1.5 (settlement composition) pending.
+- **Phase 6 — uprising → faction-strategy + quest handoff: SHIPPED.** Mig 285 (`movement_uprisings` +
+  `movement_quests`, per-world write tables); `lib/uprising.js` (`eruptUprising` — a movement reaching
+  `acting` records a `DECLARE_REBELLION` faction-strategy-log move + flips a faction target's stance to
+  `war` vs the movement [the engine has no separate rebellion stance — a rebellion IS war on the authority]
+  + fires an `uprising` world event, idempotent on movement_id; `recruitPlayer` enlists a player cross-tier/
+  cross-world AND plants the rebellion quest; `spawnMovementRecruitmentQuest` is the movement→player handoff,
+  idempotent per (movement, player)); wired into `movement-recruitment-cycle` (erupts on `acted`). Test
+  `tests/uprising.test.js` (3). **Phase 6 = 100%.** (Notoriety→boss-pursuer + auto-summon-authority beats
+  fold into Phase 9/10 combat surfacing.)
+- Phases 1.5, 7 → 13 (9 cross-cutting): 7 (Chronicle legibility) next; 1.5 (settlement composition) pending.
 
 ## Unifying model (the one substrate)
 
