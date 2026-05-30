@@ -268,6 +268,8 @@ export default function ConcordiaScene({
   // WS-A3 — terrain-deformation orchestrator (mesh re-push + collider rebuild
   // from server deltas); disposed with the scene.
   const terrainDeformRef = useRef<{ dispose(): void } | null>(null);
+  // WS-A4 — dynamic water-grid surface renderer; disposed with the scene.
+  const waterGridRef = useRef<{ update(d: number, e: number): void; dispose(): void } | null>(null);
   const probeManagerRef = useRef<
     import('@/lib/world-lens/reflection-probes').ReflectionProbeManager | null
   >(null);
@@ -344,7 +346,7 @@ export default function ConcordiaScene({
 
       // Listen for terrain-ready to register heightfield collider
       function onTerrainPhysics(e: Event) {
-        const { hmData, hmWidth, hmHeight, terrainGroup } = (e as CustomEvent).detail ?? {};
+        const { hmData, hmWidth, hmHeight, terrainGroup, getElevationAt } = (e as CustomEvent).detail ?? {};
         if (hmData) {
           physicsWorld.createHeightfieldCollider(hmData, hmWidth, hmHeight, {
             x: 2000, // TERRAIN_SIZE
@@ -379,6 +381,43 @@ export default function ConcordiaScene({
                 enabled,
               });
             } catch { /* deformation is progressive enhancement */ }
+          })();
+        }
+        // WS-A4 — dynamic water surface from world_water_cells, placed on the
+        // (deformed) terrain top via getElevationAt. Kill-switch
+        // CONCORD_HYDRO_RENDER (default on). One-shot per scene.
+        if (!waterGridRef.current) {
+          void (async () => {
+            try {
+              const [{ createWaterGridRenderer }, { getSocket }, { getInjectedJwt }] = await Promise.all([
+                import('@/lib/world-lens/water-grid-renderer'),
+                import('@/lib/realtime/socket'),
+                import('@/lib/auth-bridge'),
+              ]);
+              if (disposed) return;
+              const hydroEnabled = (window as { __concordClientConfig?: { CONCORD_HYDRO_RENDER?: unknown } })
+                .__concordClientConfig?.CONCORD_HYDRO_RENDER !== 0;
+              if (!hydroEnabled) return;
+              const worldId =
+                (typeof window !== 'undefined' && window.localStorage?.getItem('concordia:activeWorldId')) ||
+                'concordia-hub';
+              const waterLayer = (layersRef.current?.['water'] ?? layersRef.current?.['particles']) as
+                InstanceType<typeof import('three').Group> | undefined;
+              if (!waterLayer) return;
+              const handle = createWaterGridRenderer(waterLayer as unknown as import('three').Group, {
+                worldId,
+                authToken: () => getInjectedJwt(),
+                elevationAt: typeof getElevationAt === 'function'
+                  ? (gx: number, gz: number) => getElevationAt(gx, gz)
+                  : undefined,
+                socket: getSocket() as unknown as { on(ev: string, cb: (p: unknown) => void): void; off(ev: string, cb: (p: unknown) => void): void },
+              });
+              waterGridRef.current = handle;
+              // Drive its per-frame update via the water layer's userData.update
+              // (the render loop's LAYER_NAMES fan-out calls this).
+              (waterLayer.userData as { update?: (d: number, e: number) => void }).update = (d: number, en: number) =>
+                handle.update(d, en);
+            } catch { /* hydrology is progressive enhancement */ }
           })();
         }
       }
@@ -1567,6 +1606,8 @@ export default function ConcordiaScene({
       worldRenderersRef.current = null;
       try { terrainDeformRef.current?.dispose(); } catch { /* ignore */ }
       terrainDeformRef.current = null;
+      try { waterGridRef.current?.dispose(); } catch { /* ignore */ }
+      waterGridRef.current = null;
 
       ssgiPassRef.current?.dispose();
       ssgiPassRef.current = null;
