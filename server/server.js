@@ -181,6 +181,14 @@ registerHeartbeat("vacancy-recruit-cycle", {
   handler: runVacancyRecruitCycle,
 });
 
+// Living Society Phase 11 — governance: tribute up the vassalage tree, protection
+// accountability (undefended raid → grievance + secession), Emperor recognition.
+import { runGovernanceCycle } from "./emergent/governance-cycle.js";
+registerHeartbeat("governance-cycle", {
+  frequency: 60,
+  handler: runGovernanceCycle,
+});
+
 // Concordia Mount System Phase B4: care heartbeat. Backstop pass
 // applies decay to mount loyalty / hunger for offline mounts. Most
 // decay flows through the lazy-read path on `mounts.care_state`, so

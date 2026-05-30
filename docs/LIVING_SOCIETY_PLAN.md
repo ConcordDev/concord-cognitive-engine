@@ -192,7 +192,17 @@ uprising → legibility → reskin) and each leaves the system working.
   (Phase-9 occupation loop), `breakOut` (combat, raises heat), `sprungBy` (Phase-5 cross-tier ally).
   Test `tests/law.test.js` (9). **Server 100%; per-world `laws.json` content + graded guard-AI are the
   content/frontend slice.**
-- Phases 11 → 13: 11 (governance hierarchy), 12 (ideology), 13 (world-creation) remain.
+- **Phase 11 — governance hierarchy (vassalage/tribute/Emperor): SHIPPED.** Mig 289 (`vassalage` edge —
+  one liege per polity; `world_emperors`; `realms.liege_realm_id`). `lib/vassalage.js`: `swearFealty`;
+  `runTribute` flows tribute UP each edge into the liege treasury (vassal pays the full amount, skim
+  diverts a cut to a collector — Phase-3 corruption with teeth); `recordVassalRaid`/`recordLiegeDefense` +
+  `sweepProtectionFailures` (a liege that leaves a raided vassal undefended past the window accrues a
+  grievance its citizens hold + the vassal becomes secession-eligible — accountability is load-bearing);
+  `recognizeEmperor` (controlling EVERY realm is recognized after the fact, minted as Chronicle lore, no
+  menu, idempotent, flagged unstable-by-construction); `onEmperorDeath` (a power-vacuum world event — the
+  throne sits EMPTY, no heir, vassals secede). `governance-cycle` heartbeat (freq 60). Test
+  `tests/vassalage.test.js` (6). **Phase 11 = 100%.**
+- Phases 12 → 13: 12 (emergent ideology), 13 (world-creation) remain.
 
 ## Unifying model (the one substrate)
 
