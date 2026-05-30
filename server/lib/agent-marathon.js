@@ -206,7 +206,7 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
       try {
         const initId = `init_mar_${sessionId.slice(4, 16)}_${Date.now().toString(36)}`;
         db.prepare(`
-          INSERT INTO initiatives (id, user_id, trigger, priority, message, status, created_at)
+          INSERT INTO initiatives (id, user_id, trigger_type, priority, message, status, created_at)
           VALUES (?, ?, ?, 'normal', ?, 'pending', unixepoch())
         `).run(initId, session.user_id, trigger, msg);
       } catch { /* initiatives table optional in test setups */ }

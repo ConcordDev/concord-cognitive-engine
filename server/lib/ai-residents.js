@@ -46,7 +46,7 @@ export function deployResident(db, input) {
     //    ai_residents row.
     try {
       db.prepare(`
-        INSERT INTO agent_marathon_sessions (id, user_id, status, intent, started_at)
+        INSERT INTO agent_marathon_sessions (id, user_id, status, goal, created_at)
         VALUES (?, ?, 'running', ?, unixepoch())
       `).run(marathonSessionId, ownerUserId, intent);
     } catch { /* table may not exist on minimal builds — intent still lives on the NPC */ }

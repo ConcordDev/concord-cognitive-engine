@@ -133,8 +133,8 @@ export function gatherFragments(db, userId, opts = {}) {
   // World visits
   try {
     const rows = db.prepare(`
-      SELECT world_id, entered_at FROM world_visits
-       WHERE user_id = ? AND entered_at >= ?
+      SELECT world_id, arrived_at AS entered_at FROM world_visits
+       WHERE user_id = ? AND arrived_at >= ?
        ORDER BY entered_at DESC LIMIT 25
     `).all(userId, since);
     for (const r of rows) {

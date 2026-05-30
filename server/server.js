@@ -72774,11 +72774,11 @@ register("npc", "schedule", (ctx, input = {}) => {
   if (!npcId) return { ok: false, reason: "missing_npcId" };
   try {
     const blocks = db.prepare(`
-      SELECT block_idx, activity_kind, location_kind, start_hour, end_hour
+      SELECT block_idx, activity_kind, location_kind
       FROM npc_schedules WHERE npc_id = ? ORDER BY block_idx ASC
     `).all(npcId);
     const state = db.prepare(`
-      SELECT current_block, activity, target_x, target_z, last_advanced_at
+      SELECT current_block, activity_kind AS activity, target_x, target_z, last_signal_at AS last_advanced_at
       FROM npc_routine_state WHERE npc_id = ?
     `).get(npcId);
     return { ok: true, npcId, blocks, state: state || null };
@@ -73098,10 +73098,10 @@ register("walker", "arbitrage", (ctx, input = {}) => {
     // commodities + their per-region price modulator. Higher scarcity
     // = higher price; arbitrage opp = "buy in low-scarcity region,
     // sell in high-scarcity region."
-    const where = commodityKind ? "AND commodity_kind = ?" : "";
+    const where = commodityKind ? "AND resource_kind = ?" : "";
     const args = commodityKind ? [worldId, commodityKind] : [worldId];
     const rows = db.prepare(`
-      SELECT region_id, commodity_kind, scarcity_score, computed_at
+      SELECT world_id AS region_id, resource_kind AS commodity_kind, scarcity AS scarcity_score, computed_at
       FROM regional_scarcity
       WHERE world_id = ? ${where}
       ORDER BY commodity_kind, scarcity_score DESC
@@ -73559,8 +73559,8 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
   // grudges table records origin_event_id).
   try {
     out.grudges = db.prepare(`
-      SELECT npc_id, target_kind, target_id, severity, created_at
-      FROM npc_grudges WHERE created_at >= ? LIMIT 50
+      SELECT npc_id, target_kind, target_id, severity, event_at AS created_at
+      FROM npc_grudges WHERE event_at >= ? LIMIT 50
     `).all(since);
   } catch { out.grudges = []; }
   // Faction strategy moves.
@@ -73607,7 +73607,7 @@ register("npc", "lie_probability", (ctx, input = {}) => {
     probability += Math.min(0.4, (signals.grudge || 0) / 25);
   } catch { /* no grudges table */ }
   try {
-    const stress = db.prepare(`SELECT level FROM npc_stress WHERE npc_id = ?`).get(npcId);
+    const stress = db.prepare(`SELECT stress AS level FROM npc_stress WHERE npc_id = ?`).get(npcId);
     signals.stress = stress?.level || 0;
     probability += Math.min(0.2, (signals.stress || 0) / 10);
   } catch { /* no stress table */ }

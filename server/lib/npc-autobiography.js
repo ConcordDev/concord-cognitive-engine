@@ -27,8 +27,8 @@ export function gatherFragments(db, npcId) {
   const out = { grudges: [], schemes: [], schedule_blocks: [], opinions: [], deaths_witnessed: [] };
   try {
     out.grudges = db.prepare(`
-      SELECT target_kind, target_id, severity, created_at
-      FROM npc_grudges WHERE npc_id = ? ORDER BY created_at ASC LIMIT 50
+      SELECT target_kind, target_id, severity, event_at AS created_at
+      FROM npc_grudges WHERE npc_id = ? ORDER BY event_at ASC LIMIT 50
     `).all(npcId);
   } catch { /* table optional */ }
   try {
@@ -46,8 +46,8 @@ export function gatherFragments(db, npcId) {
   } catch { /* optional */ }
   try {
     out.opinions = db.prepare(`
-      SELECT subject_kind, subject_id, score
-      FROM character_opinions WHERE holder_npc_id = ? LIMIT 30
+      SELECT target_kind AS subject_kind, target_id AS subject_id, score
+      FROM character_opinions WHERE npc_id = ? LIMIT 30
     `).all(npcId);
   } catch { /* optional */ }
   return out;

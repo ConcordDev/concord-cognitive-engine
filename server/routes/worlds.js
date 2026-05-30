@@ -1516,7 +1516,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Award gathering/survival XP — every gather is practice
       let skillProgress = null;
       try {
-        const world = db.prepare('SELECT world_type FROM worlds WHERE id = ?').get(worldId);
+        const world = db.prepare('SELECT universe_type AS world_type FROM worlds WHERE id = ?').get(worldId);
         const worldType = world?.world_type || 'standard';
         // Survival for ore/stone, crafting for wood/plant resources
         const node = db.prepare('SELECT node_type FROM world_resource_nodes WHERE id = ?').get(nodeId);
