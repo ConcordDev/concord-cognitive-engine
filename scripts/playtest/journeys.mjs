@@ -40,10 +40,11 @@ export const hydrologyFlows = {
   steps: [{
     name: "dig a pit, seed water uphill, tick",
     async run({ driver }) {
-      await driver.call("terrain", "dig", { x: 10, z: 10, depth: 3 });
-      await driver.call("terrain", "seed_water", { x: 8, z: 10, amount: 5 }); // uphill
+      const W = process.env.CONCORD_PLAYTEST_WORLD || "concordia-hub";
+      await driver.call("terrain", "dig", { x: 10, z: 10, depth: 3, worldId: W });
+      await driver.call("terrain", "set_water", { x: 8, z: 10, height: 6, worldId: W }); // uphill source
       const before = await driver.snapshot();
-      await driver.tick(4);
+      await driver.tick(6); // terrain.flow_tick advances hydrology on demand
       const after = await driver.snapshot();
       return { before, after };
     },

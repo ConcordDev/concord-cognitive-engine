@@ -16,10 +16,14 @@ import { runJourneys } from "./liveness.mjs";
 import { KEYSTONE_JOURNEYS } from "./journeys.mjs";
 
 const BASE = process.env.CONCORD_BASE_URL || "http://localhost:5050";
+const WORLD = process.env.CONCORD_PLAYTEST_WORLD || "concordia-hub";
 const ci = process.argv.includes("--ci");
+// A browser-like UA so the server's botGuardMiddleware admits the register/login
+// calls (authenticated calls bypass it; this is only needed pre-token).
+const UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
 async function api(method, path, body, token) {
-  const headers = { "content-type": "application/json" };
+  const headers = { "content-type": "application/json", "user-agent": UA };
   if (token) headers.authorization = `Bearer ${token}`;
   const res = await fetch(`${BASE}${path}`, {
     method, headers, body: body == null ? undefined : JSON.stringify(body),
@@ -30,8 +34,9 @@ async function api(method, path, body, token) {
 
 async function register() {
   const u = `playtest_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
-  const r = await api("POST", "/api/auth/signup", { username: u, password: "playtest-pw-123", email: `${u}@playtest.local` });
-  return r.token || r.accessToken || r.data?.token || null;
+  // Real public endpoint is /api/auth/register (not /signup).
+  const r = await api("POST", "/api/auth/register", { username: u, password: "Playtest-pw-123!", email: `${u}@playtest.local` });
+  return r.token || r.accessToken || r.user?.token || r.data?.token || null;
 }
 
 // Optional socket.io event collection — degrades to [] if the client isn't installed.
@@ -51,14 +56,33 @@ async function driverFor() {
   const token = await register();
   const sink = await makeEventSink(token);
   return {
-    async call(domain, name, input) { return api("POST", "/api/lens/run", { domain, name, input }, token); },
+    async call(domain, name, input) {
+      // /api/lens/run returns { ok, result } — unwrap result for the caller.
+      const r = await api("POST", "/api/lens/run", { domain, name, input }, token);
+      return r && r.result !== undefined ? { ok: r.ok !== false, ...r.result } : r;
+    },
     async http(method, path, body) { return api(method, path, body, token); },
-    async snapshot() { return (await api("GET", "/api/players/me/world-state", null, token)) || {}; },
+    async snapshot() {
+      // No /world-state endpoint; compose from the real surfaces:
+      //   NPC positions ← GET /api/worlds/:world/npcs ; pit water ← terrain.water_depth macro.
+      const npcRes = await api("GET", `/api/worlds/${WORLD}/npcs`, null, token);
+      const npcs = (npcRes.npcs || npcRes.result?.npcs || []).map((n) => ({
+        id: n.id, x: n.position?.x ?? n.x ?? 0, z: n.position?.z ?? n.z ?? 0,
+      }));
+      const wd = await api("POST", "/api/lens/run", { domain: "terrain", name: "water_depth", input: { x: 10, z: 10, worldId: WORLD } }, token);
+      const water = wd.result?.waterDepth ?? wd.waterDepth ?? 0;
+      return { npcs, pit: { water_height: water }, wallet: { cc: 0 } };
+    },
     events() { return sink.events(); },
     async tick(n = 1) {
-      // Prefer a test-only fast-tick if the server exposes one; else wait real ticks (capped).
-      const r = await api("POST", "/api/admin/test/tick", { ticks: n }, token);
-      if (!r.ok) await new Promise((res) => setTimeout(res, Math.min(n * 15000, 60000)));
+      // No force-tick endpoint. Hydrology advances on demand via terrain.flow_tick;
+      // for NPC/heartbeat liveness, wait real ticks (server interval ~60s, capped).
+      let advanced = false;
+      try {
+        const r = await api("POST", "/api/lens/run", { domain: "terrain", name: "flow_tick", input: { worldId: WORLD, steps: n } }, token);
+        advanced = r.ok !== false;
+      } catch { /* no flow_tick */ }
+      if (!advanced) await new Promise((res) => setTimeout(res, Math.min(n * 15000, 60000)));
     },
     drainFallbacks() { return []; }, // server logs fallbacks; CI parses them from the run log
     _close: () => sink.close(),
