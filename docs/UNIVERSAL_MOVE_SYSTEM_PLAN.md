@@ -4,25 +4,37 @@
 > (the isekai "[System]" where any user/NPC/creature creation → procedural animation + effect, fairly
 > leveled & lore-bound). It was researched across 5 deep web/code threads + a lore audit.
 >
-> **Progress so far (branch `claude/move-system-p1-resolver`, NOT yet merged):** Phase 1 keystone
-> STARTED — the pure client resolver + catalog core are built and unit-tested green (11/11):
-> - `concord-frontend/lib/concordia/move-catalog/move-types.ts` — MoveDescriptor + ResolvedMove +
->   `SKILL_KIND_MOTION` (7 kinds → archetype/limb/effect/gauge) + `ELEMENT_EFFECT_BIAS` + `clampTier`.
-> - `concord-frontend/lib/concordia/move-resolver.ts` — `resolveMove(input)` (never-null, backward-compat
->   derive from skill_kind+element) + `tierForLevel` (Pillar 1: level→tier, saturates at 5).
-> - `concord-frontend/tests/concordia/move-resolver.test.ts` — 11 tests, all green; scoped `tsc` clean.
+> **Progress (branch `claude/move-system-p1-resolver-C74D2`) — built, tested, pushed:**
+> The keystone shipped (#796) AND the verification spine + move-system substrate landed as kill-switched
+> slices. Shipped (all with tests, both suites green — frontend 2978/2978, server 21464/21464):
+> - **Render coverage → 100%.** `scripts/verify-move-render-coverage.mjs` (self-deriving gate) + the closes:
+>   SFX aliases (whole action/move audio vocabulary was silent), VFX element-id binds, 6 motion-extended
+>   archetype clips (firearm/flight/surface_ride/web_swing/speed_trail/blink).
+> - **Legibility gate** `scripts/verify-event-consumers.mjs` (64.7%→77.6%; surfaced 34 silent world-sim
+>   events in EmergentEventFeed) + **economic-invariants gate** + **`npm run health`** (composite dashboard).
+> - **Move System P1 (server):** `server/lib/move-descriptor.js#deriveMotion` + `stampMoveMeta` wired into
+>   `glyph-spells.js#mintSpell` + `skill-evolution.js#applyEvolution` (stamps `meta_json.motion` + `nativeWorld`).
+> - **Pillars 2/3:** `server/lib/cross-world-potency.js` + **enforced** in the `routes/worlds.js` combat path
+>   (post-cap, kill-switched, no-op for pre-stamp moves).
+> - **P3 guns:** `firearms.js`+`ammunition.js` (two-point falloff, parry-window 0) + `domains/guns.js`.
+> - **P4 movement powers:** `movement-powers.js` (sustained drain, level-gate, flight⊥speed) + `domains/movement-powers.js`.
+> - **WS-CHEMISTRY:** `server/lib/element-matrix.js` (BOTW Elements-vs-Materials).
+> - **WS-IDENTITY:** opt-in verified-human badge (mig 293 + `verified-human.js` + `domains/identity.js`).
+> - **Instrument 2:** `scripts/playtest/{liveness,journeys,agent-playtest}.mjs` (liveness harness + merchant
+>   arc + frozen-priest/hydrology detectors), proven headlessly (`server/tests/playtest-liveness.test.js`).
 >
-> **Next steps (finish Phase 1 → then Phases 2–9):**
-> 1. Server `server/lib/move-descriptor.js#deriveMotion(...)` + stamp `meta_json.motion` at
->    `glyph-spells.js#mintSpell` / `skill-evolution.js#applyEvolution` / recipe-create.
-> 2. Wire `resolveMove` into `lib/concordia/play-action.ts` + `AvatarSystem3D.handle{Action,Combat}Anim`,
->    replacing the generic `cast` fallback. Behind kill-switch `CONCORD_MOVE_RESOLVER`.
-> 3. Live-server probe (register → mint a move → confirm `meta_json.motion` stamped; L1 vs L200 differ).
-> 4. Then Phase 2 (the "[System]" builder + the 3 balance pillars), Phase 3 (guns), Phase 4 (movement
->    powers), etc. — see phases below.
+> **Next steps (need the live-engine / human, per discipline #3 "verify by playing"):**
+> 1. Client wiring: `resolveMove` into `play-action.ts` + `AvatarSystem3D.handle{Action,Combat}Anim`
+>    (replace the generic `cast`), behind `CONCORD_MOVE_RESOLVER`; add `motionFamily`/`traversalParams` to
+>    `skill-descriptors.ts`. (Server stamp is live; this is the render consumer.)
+> 2. `SystemMoveBuilder.tsx` (Phase 2 builder + modifier budget) + inspection UIs + the "[System]" prompter
+>    + consolidate the 7 `CommandPalette.tsx`.
+> 3. Run `npm run playtest` against a booted dev server (merchant arc, liveness) + the visual/LLaVA
+>    render-parity tier; close the remaining axis gates (shared-parity, naive-newbie, persistence, perf, telemetry).
+> 4. Phases 5–9 (fusion UI, effect-VFX rendering, per-genre starters, procedural depth, creatures).
 >
-> Cadence: small PRs per phase, each behind its kill-switch, merged green — same as the destructible-world
-> + fluidity work (#786–795). Pure logic unit-tested headless; visual/feel verified in-engine by the user.
+> Cadence: small PRs per phase, each behind its kill-switch, merged green. Pure logic unit-tested headless;
+> visual/feel verified in-engine by the user (Instrument 3).
 
 ---
 
