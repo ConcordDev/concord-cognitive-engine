@@ -81,8 +81,10 @@ const clipArchetypes = new Set();
 {
   // NB: the Record<…> type annotation contains a `=>` arrow, so anchor on the
   // first real `= {` assignment (lazy [\s\S]*? skips the arrow) rather than [^=]*.
-  const block = actionBio.match(/ARCHETYPE_GEN[\s\S]*?=\s*{([\s\S]*?)\n};/);
-  if (block) for (const m of block[1].matchAll(/(\w+):\s*poses_\w+/g)) clipArchetypes.add(m[1]);
+  for (const name of ['ARCHETYPE_GEN', 'MOTION_EXTRA_GEN']) {
+    const block = actionBio.match(new RegExp(name + '[\\s\\S]*?=\\s*{([\\s\\S]*?)\\n};'));
+    if (block) for (const m of block[1].matchAll(/(\w+):\s*poses_\w+/g)) clipArchetypes.add(m[1]);
+  }
 }
 
 // MotionArchetype union members (move-types.ts) — to find declared-but-ungenerated

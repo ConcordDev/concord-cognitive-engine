@@ -169,6 +169,75 @@ function poses_locomotion_modal(a: number): ActionPose[] {
   return [rest(), { t: 0.5, phase: 'action', bones: { [B.spine]: { rot: [0.1 * a, 0, 0] } } }, { t: 1, phase: 'settle', bones: {} }];
 }
 
+// ── Motion-extended archetypes (move-types.ts MotionArchetype) ───────────────
+// Created firearm/movement moves resolve (move-resolver.ts) to these archetypes.
+// Graceful-floor procedural poses so each reads distinct instead of falling to a
+// generic clip. Full mechanics (ammo, gauge drain, flight-physics activation) are
+// MS-P3/MS-P4; this is the render layer they animate through.
+
+/** firearm: draw/aim forward, recoil kick, recover. */
+function poses_firearm(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.25, phase: 'windup', bones: { [B.rArm]: { rot: [-0.3 * a, 0, -0.2 * a] }, [B.rFore]: { rot: [-0.6 * a, 0, 0] }, [B.spine]: { rot: [0, -0.18 * a, 0] } } },
+    { t: 0.42, phase: 'action', bones: { [B.rArm]: { rot: [0.05 * a, 0, 0] }, [B.rFore]: { rot: [0, 0, 0] }, [B.chest]: { rot: [-0.06 * a, 0, 0] } } },
+    { t: 0.55, phase: 'action', bones: { [B.rArm]: { rot: [-0.35 * a, 0, 0] }, [B.spine]: { rot: [-0.12 * a, 0, 0] }, [B.hips]: { pos: [0, 0, -0.03 * a] } } }, // recoil
+    { t: 0.8, phase: 'follow', bones: { [B.rArm]: { rot: [-0.05 * a, 0, 0] } } },
+    { t: 1, phase: 'settle', bones: {} },
+  ];
+}
+
+/** flight: superman pitch — torso forward, arms trailing, legs back. */
+function poses_flight(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.3, phase: 'windup', bones: { [B.spine]: { rot: [0.4 * a, 0, 0] }, [B.rArm]: { rot: [-2.6 * a, 0, -0.3 * a] }, [B.lArm]: { rot: [-2.6 * a, 0, 0.3 * a] } } },
+    { t: 0.6, phase: 'action', bones: { [B.spine]: { rot: [0.7 * a, 0, 0] }, [B.chest]: { rot: [0.2 * a, 0, 0] }, [B.lUpLeg]: { rot: [0.25 * a, 0, 0] }, [B.rUpLeg]: { rot: [0.25 * a, 0, 0] }, [B.head]: { rot: [-0.4 * a, 0, 0] } } },
+    { t: 1, phase: 'action', bones: { [B.spine]: { rot: [0.65 * a, 0, 0] }, [B.head]: { rot: [-0.35 * a, 0, 0] } } },
+  ];
+}
+
+/** surface_ride: ice-slide/board — crouch, torso forward, arms out for balance. */
+function poses_surface_ride(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.3, phase: 'windup', bones: { [B.hips]: { pos: [0, -0.14 * a, 0] }, [B.lUpLeg]: { rot: [-0.5 * a, 0, 0] }, [B.rUpLeg]: { rot: [-0.5 * a, 0, 0] }, [B.lLeg]: { rot: [0.7 * a, 0, 0] }, [B.rLeg]: { rot: [0.7 * a, 0, 0] } } },
+    { t: 0.6, phase: 'action', bones: { [B.hips]: { pos: [0, -0.16 * a, 0] }, [B.spine]: { rot: [0.25 * a, 0, 0.12 * a] }, [B.rArm]: { rot: [-0.3 * a, 0, -1.0 * a] }, [B.lArm]: { rot: [-0.3 * a, 0, 1.0 * a] } } },
+    { t: 1, phase: 'action', bones: { [B.hips]: { pos: [0, -0.15 * a, 0] }, [B.spine]: { rot: [0.22 * a, 0, -0.1 * a] } } },
+  ];
+}
+
+/** web_swing: reach up to anchor, body pendulum. */
+function poses_web_swing(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.25, phase: 'windup', bones: { [B.rArm]: { rot: [-2.8 * a, 0, -0.2 * a] }, [B.spine]: { rot: [-0.2 * a, 0, 0.1 * a] } } },
+    { t: 0.55, phase: 'action', bones: { [B.rArm]: { rot: [-2.9 * a, 0, 0] }, [B.spine]: { rot: [0.2 * a, 0, 0] }, [B.lUpLeg]: { rot: [0.5 * a, 0, 0] }, [B.rUpLeg]: { rot: [0.4 * a, 0, 0] }, [B.hips]: { pos: [0, -0.05 * a, 0.04 * a] } } },
+    { t: 0.8, phase: 'follow', bones: { [B.rArm]: { rot: [-2.2 * a, 0, 0] }, [B.spine]: { rot: [0.05 * a, 0, 0] } } },
+    { t: 1, phase: 'settle', bones: {} },
+  ];
+}
+
+/** speed_trail: deep forward lean, arms pumping back. */
+function poses_speed_trail(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.3, phase: 'windup', bones: { [B.spine]: { rot: [0.45 * a, 0, 0] }, [B.rArm]: { rot: [0.9 * a, 0, 0] }, [B.lArm]: { rot: [-0.9 * a, 0, 0] } } },
+    { t: 0.6, phase: 'action', bones: { [B.spine]: { rot: [0.5 * a, 0, 0] }, [B.rArm]: { rot: [-0.9 * a, 0, 0] }, [B.lArm]: { rot: [0.9 * a, 0, 0] }, [B.head]: { rot: [-0.3 * a, 0, 0] } } },
+    { t: 1, phase: 'action', bones: { [B.spine]: { rot: [0.48 * a, 0, 0] }, [B.head]: { rot: [-0.28 * a, 0, 0] } } },
+  ];
+}
+
+/** blink: compress then snap-extend (teleport burst). */
+function poses_blink(a: number): ActionPose[] {
+  return [
+    rest(),
+    { t: 0.2, phase: 'windup', bones: { [B.hips]: { pos: [0, -0.12 * a, 0] }, [B.spine]: { rot: [0.3 * a, 0, 0] }, [B.lUpLeg]: { rot: [-0.4 * a, 0, 0] }, [B.rUpLeg]: { rot: [-0.4 * a, 0, 0] } } },
+    { t: 0.35, phase: 'action', bones: { [B.hips]: { pos: [0, 0.06 * a, 0] }, [B.spine]: { rot: [-0.1 * a, 0, 0] }, [B.rArm]: { rot: [-0.5 * a, 0, 0] }, [B.lArm]: { rot: [-0.5 * a, 0, 0] } } },
+    { t: 1, phase: 'settle', bones: {} },
+  ];
+}
+
 const ARCHETYPE_GEN: Record<ActionArchetype, (a: number) => ActionPose[]> = {
   swing_down: poses_swing_down,
   thrust: poses_thrust,
@@ -182,9 +251,23 @@ const ARCHETYPE_GEN: Record<ActionArchetype, (a: number) => ActionPose[]> = {
   locomotion_modal: poses_locomotion_modal,
 };
 
-/** Pure: the pose sequence for an archetype at a tier (no THREE; testable). */
-export function buildActionPoses(archetype: ActionArchetype, tier = 3): ActionPose[] {
-  const gen = ARCHETYPE_GEN[archetype] || ARCHETYPE_GEN.manipulate_in_place;
+// Motion-extended archetypes (move-types.ts MotionArchetype beyond ActionArchetype).
+// Keyed by string so created firearm/movement moves resolve to a distinct clip.
+const MOTION_EXTRA_GEN: Record<string, (a: number) => ActionPose[]> = {
+  firearm: poses_firearm,
+  flight: poses_flight,
+  surface_ride: poses_surface_ride,
+  web_swing: poses_web_swing,
+  speed_trail: poses_speed_trail,
+  blink: poses_blink,
+};
+
+/** Pure: the pose sequence for an archetype at a tier (no THREE; testable).
+ *  Accepts ActionArchetype + the motion-extended archetypes; never null. */
+export function buildActionPoses(archetype: string, tier = 3): ActionPose[] {
+  const gen = (ARCHETYPE_GEN as Record<string, (a: number) => ActionPose[]>)[archetype]
+    || MOTION_EXTRA_GEN[archetype]
+    || ARCHETYPE_GEN.manipulate_in_place;
   return gen(ampFor(tier));
 }
 
@@ -305,4 +388,6 @@ export function buildActionClip(verb: string, tier = 3): THREE.AnimationClip {
 /** Master verb list (coverage target). */
 export const ACTION_VERBS = Object.keys(ACTION_DESCRIPTORS);
 export const ACTION_ARCHETYPES: ActionArchetype[] = Object.keys(ARCHETYPE_GEN) as ActionArchetype[];
+/** Motion-extended archetypes that have a graceful procedural clip (move-render). */
+export const MOTION_EXTRA_ARCHETYPES: string[] = Object.keys(MOTION_EXTRA_GEN);
 export const _internal = { B, ampFor, CATEGORY_FALLBACK, GENERIC, categoryOf };

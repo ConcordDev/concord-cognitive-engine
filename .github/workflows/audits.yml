@@ -60,7 +60,16 @@ jobs:
           # only climb. Baseline at introduction: 45% (archetype 89.5 / vfx 75.7
           # / sfx 0 — the action+move SFX vocabulary is unbound in SoundscapeEngine).
           node scripts/verify-move-render-coverage.mjs
-          node scripts/verify-move-render-coverage.mjs --ci 98
+          node scripts/verify-move-render-coverage.mjs --ci 100
+
+      - name: Event-consumer (legibility) gate
+        run: |
+          # Self-deriving: every realtime event the server emits should have a
+          # frontend consumer (no silent simulation). Ratcheting floor — bump as
+          # WS-LEGIBILITY slices add SocketEvent-union members + UI consumers.
+          # Baseline at introduction: 64.7% consumed.
+          node scripts/verify-event-consumers.mjs
+          node scripts/verify-event-consumers.mjs --ci 64
 
       - name: Macro depth grader
         run: |
