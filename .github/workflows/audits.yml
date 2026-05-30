@@ -71,6 +71,12 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 64
 
+      - name: Economic invariants (exploit gate)
+        run: |
+          # Constitutional economy constants must not drift without governance.
+          node scripts/verify-economic-invariants.mjs
+          node scripts/verify-economic-invariants.mjs --ci
+
       - name: Macro depth grader
         run: |
           node scripts/grade-macro-depth.mjs

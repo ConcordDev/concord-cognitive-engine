@@ -2,6 +2,7 @@
   "scripts": {
     "verify:move-render": "node scripts/verify-move-render-coverage.mjs",
     "verify:event-consumers": "node scripts/verify-event-consumers.mjs",
+    "verify:economic-invariants": "node scripts/verify-economic-invariants.mjs",
     "health": "node scripts/health.mjs"
   },
   "dependencies": {

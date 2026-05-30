@@ -50,6 +50,14 @@ try {
     floor: 100, detail: wired != null ? `${wired} WIRED (need ≥234)` : 'unparsed' });
 } catch { gates.push({ name: 'lens-backend', pct: null, floor: 100, detail: 'verifier errored' }); }
 
+// 3b. Economic invariants (the exploit gate, static half)
+try {
+  const j = JSON.parse(run("node scripts/verify-economic-invariants.mjs --json"));
+  const bad = j.invariants.filter((i) => !i.ok).length + j.derived.filter((d) => !d.ok).length;
+  gates.push({ name: "economic-inv", pct: j.ok ? 100 : 0, floor: 100,
+    detail: j.ok ? "all constitutional constants hold" : `${bad} drifted` });
+} catch { gates.push({ name: "economic-inv", pct: null, floor: 100, detail: "gate errored" }); }
+
 // 4. Macro depth (reads the grader's last output file)
 {
   const j = readJson('audit/macro-depth.json');
