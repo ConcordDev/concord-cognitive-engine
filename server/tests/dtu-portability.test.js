@@ -41,7 +41,7 @@ function makeFakeDb() {
     return null;
   }
   function allStmt(sql, args) {
-    if (sql.startsWith("SELECT id, kind, title, creator_id, meta_json")) {
+    if (sql.startsWith("SELECT id, type AS kind, title, creator_id, data AS meta_json")) {
       const [creatorId, limit] = args;
       return Array.from(tables.dtus.values()).filter(d => d.creator_id === creatorId).slice(0, limit);
     }

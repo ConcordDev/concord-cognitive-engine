@@ -39,14 +39,14 @@ function makeFakeDb({ schema = "creative_artifact_listings" } = {}) {
     return { changes: 0 };
   }
   function getStmt(sql, args) {
-    if (sql.startsWith("SELECT id, creator_id, meta_json FROM dtus WHERE id = ?")) {
+    if (sql.startsWith("SELECT id, creator_id, data AS meta_json FROM dtus WHERE id = ?")) {
       const r = tables.dtus.get(args[0]);
       return r ? { id: r.id, creator_id: r.creator_id, meta_json: r.meta_json } : null;
     }
     return null;
   }
   function allStmt(sql, args) {
-    if (sql.startsWith("SELECT id, title, meta_json, created_at FROM dtus WHERE kind = 'forge_app' AND creator_id = ?")) {
+    if (sql.startsWith("SELECT id, title, data AS meta_json, created_at FROM dtus WHERE type = 'forge_app' AND creator_id = ?")) {
       const [creator] = args;
       return Array.from(tables.dtus.values()).filter(d => d.creator_id === creator);
     }

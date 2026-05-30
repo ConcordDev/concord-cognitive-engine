@@ -140,7 +140,7 @@ export default function createCombatFlowRouter({ db, requireAuth }) {
       const userId = uidFrom(req);
       if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
       const rows = db.prepare(`
-        SELECT id, name, type, data, skill_level, created_at
+        SELECT id, title AS name, type, data, skill_level, created_at
         FROM dtus
         WHERE creator_id = ? AND type IN ('spell', 'ability')
         ORDER BY created_at DESC LIMIT 50

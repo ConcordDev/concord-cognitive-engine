@@ -91,7 +91,9 @@ function loadDream(db, userId, dreamId) {
       const r = db.prepare(`SELECT ${sel.join(", ")} FROM dtus WHERE id = ?`).get(row.dream_dtu_id);
       if (r) {
         const data = parseJson(r.data ?? r.body_json, {});
-        const meta = parseJson(r.meta_json, {});
+        // The `data` blob is the canonical meta store (the patch path writes
+        // scope/priceCc there); meta_json is a legacy fallback for old rows.
+        const meta = { ...parseJson(r.meta_json, {}), ...data };
         dtu = {
           id: r.id,
           title: r.title || "Dream",
@@ -112,16 +114,16 @@ function patchDtuMeta(db, dtuId, patch) {
   const cols = dtuColumns(db);
   if (!dtuId || !cols.size) return false;
   let existing = {};
-  if (cols.has("meta_json")) {
+  if (cols.has("data")) {
     try {
-      const r = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(dtuId);
+      const r = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);
       existing = parseJson(r?.meta_json, {});
     } catch { /* ignore */ }
   }
   const merged = { ...existing, ...patch };
   try {
-    if (cols.has("meta_json")) {
-      db.prepare(`UPDATE dtus SET meta_json = ? WHERE id = ?`).run(JSON.stringify(merged), dtuId);
+    if (cols.has("data")) {
+      db.prepare(`UPDATE dtus SET data = ? WHERE id = ?`).run(JSON.stringify(merged), dtuId);
     }
     if (patch.scope && cols.has("scope")) {
       db.prepare(`UPDATE dtus SET scope = ? WHERE id = ?`).run(patch.scope, dtuId);

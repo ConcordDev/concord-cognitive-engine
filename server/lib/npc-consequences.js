@@ -119,7 +119,7 @@ export function processDisrepairTick(db) {
     if (npc.home_dtu_id) {
       try {
         db.prepare(
-          "UPDATE dtus SET metadata = json_patch(COALESCE(metadata,'{}'), ?) WHERE id = ?"
+          "UPDATE dtus SET data = json_patch(COALESCE(data,'{}'), ?) WHERE id = ?"
         ).run(JSON.stringify({ condition: Math.max(0, 1 - newLevel), abandoned: true }), npc.home_dtu_id);
       } catch { /* non-fatal */ }
     }

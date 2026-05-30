@@ -669,7 +669,7 @@ export function applyEvolution(db, entityKind, entityId, evolution, opts = {}) {
       meta.revision_history = meta.revision_history.slice(-200);
     }
 
-    db.prepare(`UPDATE dtus SET meta_json = ? WHERE id = ?`)
+    db.prepare(`UPDATE dtus SET data = ? WHERE id = ?`)
       .run(JSON.stringify(meta), evolution.recipeId);
 
     // Mark the matching unlock as completed.

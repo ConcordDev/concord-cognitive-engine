@@ -148,9 +148,9 @@ export function gatherFragments(db, userId, opts = {}) {
   // and break the duplicate-signature dedupe).
   try {
     const rows = db.prepare(`
-      SELECT id, kind, created_at FROM dtus
+      SELECT id, type AS kind, created_at FROM dtus
        WHERE creator_id = ? AND created_at >= ?
-         AND COALESCE(kind, '') != 'dream'
+         AND COALESCE(type, '') != 'dream'
        ORDER BY created_at DESC LIMIT 25
     `).all(userId, since);
     for (const r of rows) {
@@ -284,20 +284,18 @@ export async function tryComposeForUser(db, userId, opts = {}) {
     try {
       db.prepare(`
         INSERT INTO dtus
-          (id, creator_id, kind, type, title, scope, data, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          (id, creator_id, type, title, data, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
       `).run(
-        dtuId, userId, 'dream', 'dream', dreamData.title || 'Dream',
-        dreamData.scope || 'personal',
-        JSON.stringify({ human: dreamData.human, core: dreamData.core, machine: dreamData.machine }),
+        dtuId, userId, 'dream', dreamData.title || 'Dream',
+        // scope is folded into the data blob — dtus has no scope column.
+        JSON.stringify({ human: dreamData.human, core: dreamData.core, machine: dreamData.machine, scope: dreamData.scope || 'personal' }),
         now,
       );
     } catch {
-      // Schema may use 'data' column with different layout; try minimal
-      // insert and let the caller's seeding decide the canonical shape.
-      // If even the minimal shape fails the outer try/catch on the tx
-      // call surfaces it as { ok: false, reason: 'insert_failed' }.
-      db.prepare(`INSERT INTO dtus (id, creator_id, kind, data, created_at) VALUES (?, ?, ?, ?, ?)`)
+      // Minimal fallback if the rich insert fails; the outer tx try/catch
+      // surfaces a hard failure as { ok: false, reason: 'insert_failed' }.
+      db.prepare(`INSERT INTO dtus (id, creator_id, type, data, created_at) VALUES (?, ?, ?, ?, ?)`)
         .run(dtuId, userId, 'dream', JSON.stringify(dreamData), now);
     }
     db.prepare(`

@@ -65,7 +65,7 @@ export function sendMail(db, input) {
   // claim path will surface the mismatch).
   for (const dtuId of attachmentDtuIds) {
     try {
-      db.prepare(`UPDATE dtus SET meta_json = json_set(COALESCE(meta_json,'{}'), '$.mail_escrow', 1) WHERE id = ? AND created_by = ?`)
+      db.prepare(`UPDATE dtus SET data = json_set(COALESCE(data,'{}'), '$.mail_escrow', 1) WHERE id = ? AND creator_id = ?`)
         .run(dtuId, fromUserId);
     } catch { /* meta_json column may not exist on minimal builds */ }
   }
@@ -210,8 +210,8 @@ export function claimAttachments(db, mailId, userId) {
     for (const dtuId of dtuIds) {
       try {
         db.prepare(`
-          UPDATE dtus SET created_by = ?,
-            meta_json = json_remove(COALESCE(meta_json,'{}'), '$.mail_escrow')
+          UPDATE dtus SET creator_id = ?,
+            data = json_remove(COALESCE(data,'{}'), '$.mail_escrow')
           WHERE id = ?
         `).run(userId, dtuId);
       } catch { /* dtus table or json_remove missing — leave the DTU as-is */ }
@@ -261,7 +261,7 @@ export function sweepExpiredMail(db) {
           }
           for (const dtuId of dtuIds) {
             try {
-              db.prepare(`UPDATE dtus SET meta_json = json_remove(COALESCE(meta_json,'{}'), '$.mail_escrow') WHERE id = ?`).run(dtuId);
+              db.prepare(`UPDATE dtus SET data = json_remove(COALESCE(data,'{}'), '$.mail_escrow') WHERE id = ?`).run(dtuId);
             } catch { /* best-effort */ }
           }
           db.prepare(`UPDATE player_mail SET status = 'expired' WHERE id = ?`).run(row.id);

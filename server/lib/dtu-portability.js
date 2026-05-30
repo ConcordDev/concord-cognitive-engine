@@ -64,7 +64,7 @@ export function exportUserCorpus(db, userId, opts = {}) {
   let dtus = [];
   try {
     dtus = db.prepare(`
-      SELECT id, kind, title, creator_id, meta_json,
+      SELECT id, type AS kind, title, creator_id, data AS meta_json,
              skill_level, total_experience, created_at
       FROM dtus WHERE creator_id = ?
       ORDER BY created_at ASC LIMIT ?

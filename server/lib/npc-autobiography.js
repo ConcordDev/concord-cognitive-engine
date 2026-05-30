@@ -141,7 +141,7 @@ export function getRecent(db, npcId, limit = 5) {
   try {
     return db.prepare(`
       SELECT a.id, a.npc_id, a.generation, a.dtu_id, a.composed_at,
-             d.title, d.meta_json
+             d.title, d.data AS meta_json
       FROM npc_autobiography_dtus a
       LEFT JOIN dtus d ON d.id = a.dtu_id
       WHERE a.npc_id = ? ORDER BY a.generation DESC LIMIT ?

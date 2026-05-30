@@ -33,7 +33,7 @@ function _readDtu(db, dtuId) {
   // Probe both modern (dtus.id, kind, meta_json) and personal_dtus shapes.
   // Prefer dtus.
   try {
-    const row = db.prepare(`SELECT id, kind, creator_id, meta_json FROM dtus WHERE id = ?`).get(dtuId);
+    const row = db.prepare(`SELECT id, type AS kind, creator_id, data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);
     if (row) return { ...row, _source: "dtus" };
   } catch { /* table may not exist on a minimal test DB */ }
   try {

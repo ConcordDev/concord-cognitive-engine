@@ -217,8 +217,8 @@ describe("tryComposeForUser", () => {
 
     const dtu = db.prepare(`SELECT * FROM dtus WHERE id = ?`).get(r.dreamDtuId);
     assert.ok(dtu);
-    assert.equal(dtu.kind, 'dream');
-    assert.equal(dtu.scope, 'personal');
+    assert.equal(dtu.type, 'dream');
+    assert.equal(JSON.parse(dtu.data).scope, 'personal');
   });
 
   it("respects MIN_COMPOSE_INTERVAL_S (cooldown)", async () => {

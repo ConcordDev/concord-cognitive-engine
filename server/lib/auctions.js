@@ -152,7 +152,7 @@ export function settleAuction(db, auctionId, opts = {}) {
     // Transfer item ownership.
     if (a.item_kind === "dtu") {
       try {
-        db.prepare(`UPDATE dtus SET created_by = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
+        db.prepare(`UPDATE dtus SET creator_id = ? WHERE id = ?`).run(a.leading_bidder_user_id, a.item_id);
       } catch { /* dtus optional on minimal builds */ }
     }
     // inventory transfers handled elsewhere — this just marks the auction settled.

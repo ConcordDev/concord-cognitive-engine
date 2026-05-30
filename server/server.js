@@ -56912,7 +56912,7 @@ app.get("/api/dreams/recent", requireAuth(), asyncHandler(async (req, res) => {
     const rows = db.prepare(`
       SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
              d.composer, d.composed_at,
-             dt.human_summary, dt.title
+             json_extract(dt.data, '$.human_summary') AS human_summary, dt.title
       FROM dreams d
       LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
       WHERE d.user_id = ?
@@ -72841,7 +72841,7 @@ register("dream", "recent_for_player", (ctx, input = {}) => {
     const rows = db.prepare(`
       SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
              d.signature, d.composer, d.composed_at,
-             dt.title, dt.meta_json
+             dt.title, dt.data AS meta_json
       FROM dreams d
       LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
       WHERE d.user_id = ?
@@ -73950,7 +73950,7 @@ register("dream", "publish", async (ctx, input = {}) => {
 
     // Flip scope on the underlying DTU
     db.prepare(`
-      UPDATE dtus SET meta_json = json_set(coalesce(meta_json, '{}'), '$.scope', 'public')
+      UPDATE dtus SET data = json_set(coalesce(data, '{}'), '$.scope', 'public'), visibility = 'public'
       WHERE id = ?
     `).run(row.dream_dtu_id);
 
@@ -74091,7 +74091,7 @@ register("compression_art", "shape_for", async (_ctx, input = {}) => {
     let sourceCount = 0;
     let dominantElement = null;
     try {
-      const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(megaId);
+      const dtu = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(megaId);
       if (dtu?.meta_json) {
         const m = JSON.parse(dtu.meta_json);
         sourceCount = (m.source_dtu_ids || m.sources || []).length || 0;
@@ -74248,7 +74248,7 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       observed_at: Date.now(),
     };
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
     return { ok: true, dtuId, ripple };
@@ -74945,7 +74945,7 @@ register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
   // Verify the DTU is a Forge app the user owns or has license to.
   let dtu = null;
   try {
-    dtu = db.prepare(`SELECT id, kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
+    dtu = db.prepare(`SELECT id, type AS kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
   } catch { /* dtus table may differ */ }
   if (!dtu) return { ok: false, reason: "forge_app_not_found" };
   if (dtu.kind !== "forge_app") return { ok: false, reason: "not_forge_app" };

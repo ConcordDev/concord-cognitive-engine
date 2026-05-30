@@ -73,7 +73,7 @@ export async function mintForgeAppAsDtu(db, opts) {
   let inserted = false;
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'forge_app', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, appName, userId, JSON.stringify(meta));
     inserted = true;
@@ -97,7 +97,7 @@ export async function mintForgeAppAsDtu(db, opts) {
       const royalty = await import("../economy/royalty-cascade.js");
       // Best-effort: parent meta + creator must exist, but we don't gate
       // a missing parent (some Forge templates may be system-owned).
-      const parent = db.prepare(`SELECT id, creator_id, meta_json FROM dtus WHERE id = ?`).get(templateId);
+      const parent = db.prepare(`SELECT id, creator_id, data AS meta_json FROM dtus WHERE id = ?`).get(templateId);
       if (parent && royalty?.registerCitation) {
         const r = royalty.registerCitation(db, {
           childId: dtuId,
@@ -157,8 +157,8 @@ export function listForgeAppsForUser(db, userId, limit = 50) {
   if (!db || !userId) return [];
   try {
     return db.prepare(`
-      SELECT id, title, meta_json, created_at FROM dtus
-      WHERE kind = 'forge_app' AND creator_id = ?
+      SELECT id, title, data AS meta_json, created_at FROM dtus
+      WHERE type = 'forge_app' AND creator_id = ?
       ORDER BY created_at DESC LIMIT ?
     `).all(userId, limit);
   } catch { return []; }

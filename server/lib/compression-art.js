@@ -56,7 +56,7 @@ export function listSigilsForUser(db, userId, limit = 100) {
   try {
     return db.prepare(`
       SELECT s.id, s.mega_dtu_id, s.tier, s.shape_seed, s.dominant_element, s.created_at,
-             d.title, d.meta_json
+             d.title, d.data AS meta_json
       FROM compression_art_sigils s
       JOIN dtus d ON d.id = s.mega_dtu_id
       WHERE d.creator_id = ?

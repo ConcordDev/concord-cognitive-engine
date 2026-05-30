@@ -80,7 +80,7 @@ export function mintPersonaDtu(db, { authorUserId, npcId, summary }) {
 
 export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z = 0 }) {
   if (!db || !dtuId || !worldId) return { ok: false, reason: "missing_inputs" };
-  const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(dtuId);
+  const dtu = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);
   if (!dtu) return { ok: false, reason: "dtu_not_found" };
   let meta = {};
   try { meta = JSON.parse(dtu.meta_json || "{}"); } catch { return { ok: false, reason: "bad_meta_json" }; }
