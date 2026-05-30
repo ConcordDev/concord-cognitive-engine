@@ -69,7 +69,7 @@ jobs:
           # WS-LEGIBILITY slices add SocketEvent-union members + UI consumers.
           # Baseline at introduction: 64.7% consumed.
           node scripts/verify-event-consumers.mjs
-          node scripts/verify-event-consumers.mjs --ci 64
+          node scripts/verify-event-consumers.mjs --ci 77
 
       - name: Economic invariants (exploit gate)
         run: |
