@@ -179,6 +179,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
       );
 
       const world = loadWorld(db, id);
+      // Living Society Phase 13 — a player-founded world is an OPEN moon (fully
+      // contestable, founding grants zero power) with a founding-grace window so
+      // a level-1 founder isn't griefed to dust before they can grow their heart.
+      try {
+        import("../lib/world-sovereignty.js").then((ws) => {
+          try { ws.setWorldTier(db, id, "open"); } catch { /* tier best-effort */ }
+          try { ws.grantFoundingGrace(db, id, req.user.id); } catch { /* grace best-effort */ }
+        }).catch(() => {});
+      } catch { /* sovereignty optional */ }
       // Seed world with resource nodes + seed city (non-blocking)
       try { seedWorldContent(db, id, universe_type); } catch (_se) { /* non-fatal */ }
       // Spawn a native emergent for the new world (non-blocking)

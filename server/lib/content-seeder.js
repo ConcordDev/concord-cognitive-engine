@@ -499,6 +499,14 @@ export async function seedContent({ db = null } = {}) {
   const npcs = readJSON("world/npcs.json");
   if (Array.isArray(npcs)) {
     results.npcs = seedNPCs(npcs, { db, defaultWorldId: "concordia-hub" });
+    // Living Society Phase 1.5b — ingest authored relationships[] into
+    // npc_relationships once the hub NPCs exist (name-resolved within the world).
+    if (db) {
+      try {
+        const { seedAuthoredRelationships } = await import("./npc-family.js");
+        results.relationships = (results.relationships || 0) + (seedAuthoredRelationships(db, "concordia-hub", npcs).seeded || 0);
+      } catch { /* relationships best-effort */ }
+    }
   }
 
   // Lore events
@@ -544,6 +552,15 @@ export async function seedContent({ db = null } = {}) {
     // so we don't have to splice into the rich primary file.
     const subNpcsExtra = readJSON(`${sub.path}/npcs-extra.json`);
     if (Array.isArray(subNpcsExtra)) results.npcs += seedNPCs(subNpcsExtra, { db, defaultWorldId: sub.id });
+    // Living Society Phase 1.5b — ingest this sub-world's authored relationships
+    // once its NPCs are persisted.
+    if (db && (Array.isArray(subNpcs) || Array.isArray(subNpcsExtra))) {
+      try {
+        const { seedAuthoredRelationships } = await import("./npc-family.js");
+        const authoredHere = [...(subNpcs || []), ...(subNpcsExtra || [])];
+        results.relationships = (results.relationships || 0) + (seedAuthoredRelationships(db, sub.id, authoredHere).seeded || 0);
+      } catch { /* relationships best-effort */ }
+    }
     const subLore = readJSON(`${sub.path}/lore.json`);
     if (subLore) results.lore += seedLore(subLore);
   }
