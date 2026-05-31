@@ -1414,10 +1414,30 @@ export default function AvatarSystem3D({
         const detail = (e as CustomEvent).detail as
           | { entityId?: string; verb?: string; tier?: number; loop?: boolean; element?: string;
               pos?: { x: number; y?: number; z: number };
+              // MS-P1 — a CREATED move carries its stamped motion descriptor
+              // (meta_json.motion) + skill identity, so it can resolve to its own
+              // animation/VFX/SFX instead of the generic 'cast'.
+              motion?: Record<string, unknown> | null; skillKind?: string; skillLevel?: number;
               descriptor?: { juiceId?: string; sfxId?: string; vfx?: string } }
           | undefined;
         const verb = detail?.verb;
         if (!verb) return;
+        // MS-P1 — resolve a created move to the canonical motion family + tier +
+        // VFX/SFX. Precedence: the stamped motion wins, else skill_kind defaults,
+        // else a safe generic — but NEVER the bare 'cast'/'arcane' silent fallback.
+        let resolvedMove: import('@/lib/concordia/move-catalog/move-types').ResolvedMove | null = null;
+        if (detail?.motion || detail?.skillKind || detail?.skillLevel != null) {
+          try {
+            const rmod = await import('@/lib/concordia/move-resolver');
+            resolvedMove = rmod.resolveMove({
+              motion: (detail.motion as never) ?? null,
+              skillKind: detail.skillKind ?? null,
+              element: detail.element ?? null,
+              skillLevel: detail.skillLevel ?? null,
+              tier: detail.tier ?? null,
+            });
+          } catch { /* resolver optional — fall through to the verb path */ }
+        }
         const entityId = detail?.entityId || playerAvatar.id;
         const mixer = mixersRef.current.get(entityId) as MixerType | undefined;
         if (!mixer) return;
@@ -1442,12 +1462,15 @@ export default function AvatarSystem3D({
           // B3 — skill-modulated motion: the element biases the effective tier so
           // a fire slash arcs bigger, ice strikes sharp/small, lightning snaps.
           const sm = await import('@/lib/concordia/skill-motion');
-          const tier = sm.effectiveTier(detail?.tier ?? 3, detail?.element);
-          const clipKey = `${verb}-t${tier}`;
+          // MS-P1 — a resolved created move carries its own (Pillar-1 level-gated)
+          // tier + motion archetype; use them so the clip + scale match the move.
+          const tier = resolvedMove?.tier ?? sm.effectiveTier(detail?.tier ?? 3, detail?.element);
+          const clipVerb = resolvedMove?.motionArchetype || verb;
+          const clipKey = `${clipVerb}-t${tier}`;
           let clip = actionClipMaps.get(clipKey);
           if (!clip) {
             const amod = await import('@/lib/concordia/action-biomechanics');
-            clip = amod.buildActionClip(verb, tier);
+            clip = amod.buildActionClip(clipVerb, tier);
             actionClipMaps.set(clipKey, clip);
           }
           const action = (mixer as unknown as import('three').AnimationMixer).clipAction(clip);
@@ -1465,8 +1488,10 @@ export default function AvatarSystem3D({
           try { ju.juice(pa.juiceTriggerFor(d?.juiceId)); } catch { /* juice optional */ }
           // B3 — element overrides the descriptor's default sfx/vfx so fire/ice/
           // lightning READ different, not just recolour.
-          const sfxId = sm.modulatedSfx(d?.sfxId, detail?.element);
-          const vfxId = sm.modulatedVfx(d?.vfx, detail?.element);
+          // MS-P1 — a resolved created move brings its own VFX/SFX (never the bare
+          // generic): prefer them, else the descriptor's element-modulated voices.
+          const sfxId = resolvedMove?.sfxId ?? sm.modulatedSfx(d?.sfxId, detail?.element);
+          const vfxId = resolvedMove?.vfx ?? sm.modulatedVfx(d?.vfx, detail?.element);
           if (sfxId) { try { ju.sfx(sfxId); } catch { /* sfx optional */ } }
           if (vfxId) {
             const pos = detail?.pos;
