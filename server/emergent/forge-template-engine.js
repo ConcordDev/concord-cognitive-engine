@@ -1,4 +1,7 @@
 // @resource-leak-ok: addEventListener inside backtick template emitted to user-generated test/runtime code
+// @drift-skip-file: code GENERATOR — its db.prepare(...) calls are emitted OUTPUT
+//   inside template literals (generated sample apps), not live queries against the
+//   Concord DB. (e.g. the users.display_name INSERT is generated app code.)
 /**
  * Forge Template Engine — Single-File Polyglot App Generator
  *

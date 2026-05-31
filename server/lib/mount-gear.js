@@ -30,16 +30,13 @@ const SLOT_COLUMNS = {
 
 function _readDtu(db, dtuId) {
   if (!db || !dtuId) return null;
-  // Probe both modern (dtus.id, kind, meta_json) and personal_dtus shapes.
-  // Prefer dtus.
+  // Gear DTUs live in the canonical dtus table. (A former personal_dtus
+  // fallback was dead — personal_dtus is an encrypted store with none of the
+  // kind/creator_id/meta_json columns gear reads.)
   try {
     const row = db.prepare(`SELECT id, type AS kind, creator_id, data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);
     if (row) return { ...row, _source: "dtus" };
   } catch { /* table may not exist on a minimal test DB */ }
-  try {
-    const row = db.prepare(`SELECT id, kind, creator_id, meta_json FROM personal_dtus WHERE id = ?`).get(dtuId);
-    if (row) return { ...row, _source: "personal_dtus" };
-  } catch { /* no personal_dtus either */ }
   return null;
 }
 

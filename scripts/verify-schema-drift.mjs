@@ -205,38 +205,62 @@ const files = walk(SERVER);
 let schema = await buildSchema();
 schema = mergeLibCreateTables(schema, files);
 const findings = [];
-const stats = { checked: 0, unverified: 0, files: 0, sites: 0 };
+const stats = { checked: 0, unverified: 0, files: 0, sites: 0, skippedFiles: 0 };
+// Allowlist annotations (mirror the codebase's @sync-fs-ok / @sql-loop-ok convention):
+//   @drift-skip-file  — whole-file opt-out for CODE GENERATORS whose db.prepare(...)
+//                       calls are emitted OUTPUT inside template literals, not live
+//                       queries (e.g. the forge template engine).
+//   @drift-known-unbuilt / @drift-ok — per-line park: a deliberately-deferred site,
+//                       labeled + excluded from the gate count but reported as parked.
+const ALLOWLIST_RE = /@drift-(known-unbuilt|ok|generated)\b/;
 for (const file of files) {
   const src = fs.readFileSync(file, "utf8");
+  if (/@drift-skip-file\b/.test(src)) { stats.skippedFiles++; continue; }
   const sqls = extractSqlStrings(src);
   if (sqls.length) stats.files++;
   for (const q of sqls) { stats.sites++; validateSql(q, schema, file, lineOf(src, q.index), findings, stats); }
 }
 
-// Group findings by (table,column) for a readable triage queue.
+// Park any finding whose source line carries an allowlist annotation (labeled,
+// excluded from the gate count). The rest are live drift.
+const parked = [];
+const live = [];
+const _srcLines = new Map();
+for (const f of findings) {
+  let lines = _srcLines.get(f.file);
+  if (!lines) { lines = fs.readFileSync(f.file, "utf8").split("\n"); _srcLines.set(f.file, lines); }
+  (ALLOWLIST_RE.test(lines[f.line - 1] || "") ? parked : live).push(f);
+}
+
+// Group live findings by (table,column) for a readable triage queue.
 const byTable = {};
-for (const f of findings) (byTable[f.table] ??= {})[f.column] = ((byTable[f.table]?.[f.column]) || 0) + 1;
+for (const f of live) (byTable[f.table] ??= {})[f.column] = ((byTable[f.table]?.[f.column]) || 0) + 1;
 
 if (asJson) {
-  console.log(JSON.stringify({ drift: findings.length, checked: stats.checked, unverified: stats.unverified, sites: stats.sites, byTable, findings }, null, 2));
+  console.log(JSON.stringify({ drift: live.length, parked: parked.length, skippedFiles: stats.skippedFiles, checked: stats.checked, unverified: stats.unverified, sites: stats.sites, byTable, findings: live, parkedFindings: parked }, null, 2));
 } else {
   console.log("\n=== Schema/Query Drift Gate ===");
   console.log(`scanned ${stats.sites} db.prepare/exec sites in ${stats.files} files · ${schema.size} tables`);
   console.log(`  high-confidence column checks: ${stats.checked} · unverified (joins/dynamic/*): ${stats.unverified}`);
-  console.log(`  DRIFT (column named that the table lacks): ${findings.length}`);
-  if (findings.length) {
+  console.log(`  parked (allowlisted known-unbuilt/generated): ${parked.length} · skipped generator files: ${stats.skippedFiles}`);
+  console.log(`  DRIFT (column named that the table lacks): ${live.length}`);
+  if (live.length) {
     console.log(`\n--- Drift queue (TRIAGE — runtime-confirm each before editing; some are joined-table/alias false positives) ---`);
     for (const t of Object.keys(byTable).sort()) {
       console.log(`\n  ${t}: ${Object.entries(byTable[t]).map(([c, n]) => `${c}×${n}`).join(", ")}`);
-      for (const f of findings.filter((x) => x.table === t)) console.log(`    · ${f.file}:${f.line}  [${f.kind}] ${t}.${f.column}`);
+      for (const f of live.filter((x) => x.table === t)) console.log(`    · ${f.file}:${f.line}  [${f.kind}] ${t}.${f.column}`);
     }
   } else {
     console.log("\n✓ No high-confidence schema/query drift.");
   }
+  if (parked.length) {
+    console.log(`\n--- Parked (allowlisted, labeled — not counted) ---`);
+    for (const f of parked) console.log(`    · ${f.file}:${f.line}  ${f.table}.${f.column}`);
+  }
   console.log("");
 }
 
-if (ciMode && findings.length > ciFloor) {
-  console.error(`[schema-drift] FAIL: ${findings.length} drift sites > floor ${ciFloor}`);
+if (ciMode && live.length > ciFloor) {
+  console.error(`[schema-drift] FAIL: ${live.length} drift sites > floor ${ciFloor}`);
   process.exit(1);
 }
