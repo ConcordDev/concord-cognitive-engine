@@ -11,6 +11,7 @@ and retracted honestly.
 | [2](EXPEDITION_2_findings.md) | Write-path crashes, locked routers, **column schema-drift** | 35 |
 | [3](EXPEDITION_3_findings.md) | **Ghost tables** (never-created), self-action logic, more drift | 32 |
 | [4](EXPEDITION_4_findings.md) | Deep interior: concurrency, money-math, **SQL injection**, event contracts | 2 (1 HIGH) + honest negatives |
+| [5](EXPEDITION_5_findings.md) | Authorization boundaries, content integrity, **full lens-system health** | 3 + verified-sound auth |
 
 ## Root-cause summary
 The large bug mass (rounds 2–3) collapses to **one cause**: the schema was
