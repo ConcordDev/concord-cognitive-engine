@@ -12,6 +12,7 @@ and retracted honestly.
 | [3](EXPEDITION_3_findings.md) | **Ghost tables** (never-created), self-action logic, more drift | 32 |
 | [4](EXPEDITION_4_findings.md) | Deep interior: concurrency, money-math, **SQL injection**, event contracts | 2 (1 HIGH) + honest negatives |
 | [5](EXPEDITION_5_findings.md) | Authorization boundaries, content integrity, **full lens-system health** | 3 + verified-sound auth |
+| [6](EXPEDITION_6_findings.md) | Frontend runtime: migrations, schema-source-of-truth, `next build`, white-screen risk | 3 + verified-sound migrations/build |
 
 ## Root-cause summary
 The large bug mass (rounds 2–3) collapses to **one cause**: the schema was
