@@ -71,10 +71,10 @@ function _declarePlague(db, worldId, ratio) {
   // accepts arbitrary kinds in some builds).
   try {
     db.prepare(`
-      INSERT INTO refusal_field (world_id, kind, expires_at, reason, glyph)
-      VALUES (?, 'quarantine_active', unixepoch() + 86400, 'plague outbreak', '⚕')
+      INSERT INTO refusal_fields (id, world_id, kind, expires_at, reason, glyph_hint)
+      VALUES (?, ?, 'quarantine_active', unixepoch() + 86400, 'plague outbreak', '⚕')
       ON CONFLICT DO NOTHING
-    `).run(worldId);
+    `).run(`quarantine_${worldId}`, worldId);
   } catch { /* table schema may differ */ }
 }
 
@@ -86,7 +86,7 @@ function _resolvePlague(db, worldId) {
   } catch { /* emit best-effort */ }
   try {
     db.prepare(`
-      DELETE FROM refusal_field WHERE world_id = ? AND kind = 'quarantine_active'
+      DELETE FROM refusal_fields WHERE world_id = ? AND kind = 'quarantine_active'
     `).run(worldId);
   } catch { /* table optional */ }
 }

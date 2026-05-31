@@ -1,18 +1,11 @@
 {
-  "generatedAt": "2026-05-31T22:18:12.885Z",
+  "generatedAt": "2026-05-31T22:28:25.384Z",
   "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 105,
-  "violationCount": 105,
+  "floor": 89,
+  "violationCount": 89,
   "violations": [
-    {
-      "file": "server/domains/chronicle.js",
-      "line": 42,
-      "kind": "column",
-      "table": null,
-      "column": "kind"
-    },
     {
       "file": "server/domains/crisis.js",
       "line": 184,
@@ -26,20 +19,6 @@
       "kind": "column",
       "table": null,
       "column": "user_id"
-    },
-    {
-      "file": "server/domains/faction-strategy.js",
-      "line": 30,
-      "kind": "column",
-      "table": null,
-      "column": "created_at"
-    },
-    {
-      "file": "server/domains/faction-strategy.js",
-      "line": 77,
-      "kind": "column",
-      "table": null,
-      "column": "created_at"
     },
     {
       "file": "server/domains/ghost-hunt.js",
@@ -152,13 +131,6 @@
       "kind": "ghost_table",
       "table": "economy_balances",
       "column": null
-    },
-    {
-      "file": "server/emergent/mount-behavior-cycle.js",
-      "line": 61,
-      "kind": "column",
-      "table": null,
-      "column": "kind"
     },
     {
       "file": "server/emergent/nemesis-cycle.js",
@@ -315,25 +287,11 @@
       "column": null
     },
     {
-      "file": "server/lib/chronicle/chronicle.js",
-      "line": 105,
-      "kind": "column",
-      "table": null,
-      "column": "realm_id"
-    },
-    {
-      "file": "server/lib/code-substrate/code-dtu-emitter.js",
-      "line": 255,
-      "kind": "column",
-      "table": null,
-      "column": "kind"
-    },
-    {
       "file": "server/lib/combat/match-chronicle.js",
       "line": 66,
-      "kind": "ghost_table",
-      "table": "combat_flow",
-      "column": null
+      "kind": "column",
+      "table": null,
+      "column": "recorded_at"
     },
     {
       "file": "server/lib/creator-dashboard.js",
@@ -462,25 +420,11 @@
       "column": null
     },
     {
-      "file": "server/lib/npc-gear.js",
-      "line": 202,
-      "kind": "column",
-      "table": null,
-      "column": "metadata"
-    },
-    {
       "file": "server/lib/npc-legacy.js",
       "line": 95,
       "kind": "ghost_table",
       "table": "npc_relations",
       "column": null
-    },
-    {
-      "file": "server/lib/npc-legacy.js",
-      "line": 227,
-      "kind": "column",
-      "table": null,
-      "column": "kind"
     },
     {
       "file": "server/lib/npc-relations.js",
@@ -494,34 +438,6 @@
       "line": 668,
       "kind": "ghost_table",
       "table": "world_events",
-      "column": null
-    },
-    {
-      "file": "server/lib/npc-skill-author.js",
-      "line": 131,
-      "kind": "column",
-      "table": null,
-      "column": "kind"
-    },
-    {
-      "file": "server/lib/npc-skill-author.js",
-      "line": 293,
-      "kind": "column",
-      "table": null,
-      "column": "meta_json"
-    },
-    {
-      "file": "server/lib/plague-event.js",
-      "line": 73,
-      "kind": "ghost_table",
-      "table": "refusal_field",
-      "column": null
-    },
-    {
-      "file": "server/lib/plague-event.js",
-      "line": 88,
-      "kind": "ghost_table",
-      "table": "refusal_field",
       "column": null
     },
     {
@@ -572,13 +488,6 @@
       "kind": "ghost_table",
       "table": "npc_relations",
       "column": null
-    },
-    {
-      "file": "server/lib/stealth-perception.js",
-      "line": 110,
-      "kind": "column",
-      "table": null,
-      "column": "owner_id"
     },
     {
       "file": "server/lib/tutorial-first-cycle.js",
@@ -672,20 +581,6 @@
       "column": null
     },
     {
-      "file": "server/routes/lens-portals.js",
-      "line": 87,
-      "kind": "column",
-      "table": null,
-      "column": "domain"
-    },
-    {
-      "file": "server/routes/player-inventory.js",
-      "line": 136,
-      "kind": "column",
-      "table": null,
-      "column": "owner_id"
-    },
-    {
       "file": "server/routes/social-engagement.js",
       "line": 321,
       "kind": "ghost_table",
@@ -698,13 +593,6 @@
       "kind": "ghost_table",
       "table": "economy_transactions",
       "column": null
-    },
-    {
-      "file": "server/routes/worlds.js",
-      "line": 599,
-      "kind": "column",
-      "table": null,
-      "column": "meta"
     },
     {
       "file": "server/server.js",

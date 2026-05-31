@@ -30,7 +30,7 @@ export default function registerFactionStrategyMacros(register) {
         const rows = db.prepare(`
           SELECT *
             FROM faction_strategy_log
-           ORDER BY created_at DESC
+           ORDER BY occurred_at DESC
            LIMIT ?
         `).all(limit);
         return { ok: true, moves: rows, count: rows.length };
@@ -77,8 +77,8 @@ export default function registerFactionStrategyMacros(register) {
       const rows = db.prepare(`
         SELECT *
           FROM faction_strategy_log
-         WHERE created_at >= unixepoch() - 600
-         ORDER BY created_at DESC
+         WHERE occurred_at >= unixepoch() - 600
+         ORDER BY occurred_at DESC
          LIMIT 5
       `).all();
       moveCount = rows.length;

@@ -87,10 +87,10 @@ export default function createLensPortalsRouter({ requireAuth, db }) {
         const skillDtu = db.prepare(`
           SELECT * FROM dtus
           WHERE creator_id = ? AND type = 'skill' AND (
-            body_json LIKE ? OR domain = ?
+            body_json LIKE ? OR tags_json LIKE ?
           )
           ORDER BY skill_level DESC LIMIT 1
-        `).get(userId, `%${domain}%`, domain);
+        `).get(userId, `%${domain}%`, `%${domain}%`);
 
         if (skillDtu) {
           xpResult = await awardExperience(

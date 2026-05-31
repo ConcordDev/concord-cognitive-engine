@@ -60,7 +60,7 @@ function _nearestFoodNode(db, worldId, x, z) {
   try {
     const rows = db.prepare(`
       SELECT id, x, z FROM world_resource_nodes
-       WHERE world_id = ? AND kind IN ('herb', 'fruit', 'tuber', 'plant')
+       WHERE world_id = ? AND node_type IN ('herb', 'fruit', 'tuber', 'plant')
        LIMIT 200
     `).all(worldId);
     let best = null;

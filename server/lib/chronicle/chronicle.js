@@ -102,7 +102,7 @@ export function realmHealth(db, worldId, realmId = null) {
   try { out.openGrievance = db.prepare(`SELECT COALESCE(SUM(g.severity),0) AS s FROM npc_grudges g JOIN world_npcs n ON n.id = g.npc_id WHERE n.world_id = ? AND g.resolved_at IS NULL AND g.target_kind IN ('faction','npc')`).get(worldId)?.s || 0; } catch { /* optional */ }
   if (realmId) {
     try { out.treasury = db.prepare(`SELECT treasury FROM realms WHERE id = ?`).get(realmId)?.treasury ?? null; } catch { /* optional */ }
-    try { out.avgLoyalty = db.prepare(`SELECT AVG(loyalty) AS a FROM realm_citizens WHERE realm_id = ?`).get(realmId)?.a ?? null; } catch { /* optional */ }
+    try { out.avgLoyalty = db.prepare(`SELECT AVG(loyalty) AS a FROM realm_citizens WHERE kingdom_id = ?`).get(realmId)?.a ?? null; } catch { /* optional */ }
   }
   return out;
 }

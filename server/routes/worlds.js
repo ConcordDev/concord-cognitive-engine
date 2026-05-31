@@ -596,7 +596,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       for (const skill of playerSkills) {
         const prestigenMeta = JSON.stringify({ prestige_from_level: skill.skill_level, world: req.params.worldId });
         db.prepare("UPDATE dtus SET skill_level = 1, total_experience = 0, practice_count = 0 WHERE id = ?").run(skill.id);
-        db.prepare("UPDATE dtus SET meta = json_patch(COALESCE(meta, '{}'), ?) WHERE id = ?")
+        db.prepare("UPDATE dtus SET metadata_json = json_patch(COALESCE(metadata_json, '{}'), ?) WHERE id = ?")
           .run(prestigenMeta, skill.id);
       }
 

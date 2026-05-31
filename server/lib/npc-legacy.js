@@ -226,7 +226,7 @@ function inheritRecipes(db, deceased, heir) {
   try {
     const rows = db.prepare(`
       SELECT id FROM dtus
-      WHERE creator_id = ? AND kind IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
+      WHERE creator_id = ? AND type IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
     `).all(deceased.id);
     for (const r of rows) {
       recordInheritanceLink(db, deceased.id, heir.id, "recipe", r.id);
