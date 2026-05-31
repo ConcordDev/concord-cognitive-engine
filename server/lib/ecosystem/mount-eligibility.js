@@ -112,6 +112,49 @@ export function markCompanionMountable(db, companionId, speciesId) {
 }
 
 /**
+ * Wave 7a glue #6 — topology-based rideability for BRED HYBRIDS.
+ *
+ * A crossbred hybrid has no `mount_species` row, so the species-table gate
+ * above can never flag it — yet a quadruped/winged-quadruped of adequate mass
+ * is obviously rideable. This pure rule lets a bred creature become a mount
+ * (closing tame→breed→mount) without inventing a fake species row.
+ */
+export const RIDEABLE_TOPOLOGIES = Object.freeze(new Set([
+  "quadruped", "winged_quadruped",
+]));
+const MIN_RIDEABLE_MASS_KG = 120; // a horse is ~450kg; a large hound ~40kg is not rideable.
+
+export function isTopologyRideable(topology, massKg) {
+  if (!RIDEABLE_TOPOLOGIES.has(topology)) return false;
+  const m = Number(massKg);
+  return Number.isFinite(m) && m >= MIN_RIDEABLE_MASS_KG;
+}
+
+/**
+ * Mark a companion mountable when its creature is a bred hybrid whose lineage
+ * blueprint is a rideable topology + mass. Reads `creature_lineage.blueprint`
+ * (stamped with `mountEligible` by generateHybrid). Idempotent + best-effort —
+ * a non-hybrid / unknown creature is a no-op (returns {ok:false}).
+ */
+export function markCompanionMountableForHybrid(db, companionId, creatureId) {
+  if (!db || !companionId || !creatureId) return { ok: false, reason: "missing_args" };
+  try {
+    const row = db.prepare(`SELECT blueprint FROM creature_lineage WHERE child_id = ?`).get(creatureId);
+    if (!row?.blueprint) return { ok: false, reason: "not_a_hybrid" };
+    let bp = null;
+    try { bp = JSON.parse(row.blueprint); } catch { return { ok: false, reason: "bad_blueprint" }; }
+    const rideable = bp?.mountEligible === true || isTopologyRideable(bp?.topology, bp?.massKg);
+    if (!rideable) return { ok: false, reason: "topology_not_rideable" };
+    const r = db.prepare(`
+      UPDATE player_companions SET mount_eligible = 1 WHERE id = ? AND mount_eligible = 0
+    `).run(companionId);
+    return { ok: true, changed: r.changes };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
+/**
  * Whether a given player_companion row carries the mount_eligible flag.
  */
 export function isCompanionMountable(db, companionId) {

@@ -36,10 +36,10 @@ function setup({ withDtus = false } = {}) {
   if (withDtus) {
     db.exec(`
       CREATE TABLE dtus (
-        id TEXT PRIMARY KEY, title TEXT, source_lens TEXT,
-        creator_id TEXT, kind TEXT
+        id TEXT PRIMARY KEY, title TEXT, lens_id TEXT,
+        creator_id TEXT, type TEXT
       );
-      CREATE TABLE dtu_citations (
+      CREATE TABLE royalty_lineage (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         parent_id TEXT NOT NULL,
         child_id TEXT NOT NULL
@@ -152,9 +152,9 @@ describe("dtu_surface.where_used", () => {
 describe("dtu_surface.surfaced_from", () => {
   it("lists DTUs surfaced into the target lens", async () => {
     const { db, call } = setup({ withDtus: true });
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("dtu-from-chem", "Caffeine notes", "chem", "alice", "compound");
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("dtu-from-paper", "Internal draft", "paper", "alice", "note");
 
     await call("record", CTX(db), { dtuId: "dtu-from-chem", lensId: "paper", surfaceKind: "citation_chip" });
@@ -170,7 +170,7 @@ describe("dtu_surface.surfaced_from", () => {
 
   it("includes own-origin when excludeOwnOrigin=false", async () => {
     const { db, call } = setup({ withDtus: true });
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("dtu-from-paper", "Internal", "paper", "alice", "note");
     await call("record", CTX(db), { dtuId: "dtu-from-paper", lensId: "paper", surfaceKind: "feed" });
     const res = await call("surfaced_from", CTX(db), { lensId: "paper", excludeOwnOrigin: false });
@@ -191,15 +191,15 @@ describe("dtu_surface.surfaced_from", () => {
 describe("dtu_surface.provenance_trail", () => {
   it("walks up the citation graph and joins surface counts", async () => {
     const { db, call } = setup({ withDtus: true });
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("ancestor-1", "Foundational paper", "paper", "alice", "claim");
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("intermediate", "Follow-on synthesis", "paper", "bob", "synthesis");
-    db.prepare("INSERT INTO dtus (id, title, source_lens, creator_id, kind) VALUES (?, ?, ?, ?, ?)")
+    db.prepare("INSERT INTO dtus (id, title, lens_id, creator_id, type) VALUES (?, ?, ?, ?, ?)")
       .run("leaf", "Latest take", "chat", "alice", "note");
 
-    db.prepare("INSERT INTO dtu_citations (parent_id, child_id) VALUES (?, ?)").run("ancestor-1", "intermediate");
-    db.prepare("INSERT INTO dtu_citations (parent_id, child_id) VALUES (?, ?)").run("intermediate", "leaf");
+    db.prepare("INSERT INTO royalty_lineage (parent_id, child_id) VALUES (?, ?)").run("ancestor-1", "intermediate");
+    db.prepare("INSERT INTO royalty_lineage (parent_id, child_id) VALUES (?, ?)").run("intermediate", "leaf");
 
     await call("record", CTX(db), { dtuId: "leaf", lensId: "chat", surfaceKind: "feed" });
     await call("record", CTX(db), { dtuId: "ancestor-1", lensId: "paper", surfaceKind: "citation_chip" });

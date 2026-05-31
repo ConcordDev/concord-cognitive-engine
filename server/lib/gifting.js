@@ -9,6 +9,7 @@
 // No fabricated per-NPC tables.
 
 import { courtInteraction } from "./romance-engine.js";
+import { npcNameFromRow } from "./npc-name.js";
 
 // item name → coarse category (keyword match, longest-intent first).
 const CATEGORY_KEYWORDS = [
@@ -93,8 +94,10 @@ export function giveGift(db, { userId, npcId, itemId, worldId = "concordia-hub" 
 
   // Look up the NPC (archetype + any authored gift_preferences via meta).
   let npc = null;
-  try { npc = db.prepare(`SELECT id, archetype, name FROM world_npcs WHERE id = ?`).get(npcId) || null; }
-  catch { /* world_npcs optional */ }
+  try {
+    npc = db.prepare(`SELECT id, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(npcId) || null;
+    if (npc) npc.name = npcNameFromRow(npc); // world_npcs has no `name` column — derive from state
+  } catch { /* world_npcs optional */ }
   if (!npc) return { ok: false, reason: "npc_not_found" };
 
   // Find a stack of the item the player owns in this world (oldest first).

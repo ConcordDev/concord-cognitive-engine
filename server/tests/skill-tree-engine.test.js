@@ -25,16 +25,15 @@ beforeEach(() => {
   db = new Database(":memory:");
   db.exec(`
     CREATE TABLE skill_revisions (
-      skill_id TEXT NOT NULL,
-      npc_id TEXT,
-      owner_user_id TEXT,
-      revision_num INTEGER NOT NULL DEFAULT 0,
-      mastery_score REAL NOT NULL DEFAULT 0
+      recipe_dtu_id TEXT NOT NULL,
+      author_kind TEXT,
+      author_id TEXT,
+      revision_num INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE npc_skill_acquisitions (
-      npc_id TEXT NOT NULL,
-      skill_id TEXT NOT NULL,
-      level INTEGER NOT NULL DEFAULT 0
+      buyer_npc_id TEXT NOT NULL,
+      recipe_dtu_id TEXT NOT NULL,
+      acquired_at INTEGER
     );
   `);
 });
@@ -54,33 +53,33 @@ describe("skill-tree-engine library", () => {
   });
 
   it("aggregates skill_revisions for a player", () => {
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num, mastery_score) VALUES ('swords', 'alice', 5, 75)`).run();
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num, mastery_score) VALUES ('swords', 'alice', 7, 88)`).run();
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num, mastery_score) VALUES ('cooking', 'alice', 3, 60)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('swords', 'player', 'alice', 5)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('swords', 'player', 'alice', 7)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('cooking', 'player', 'alice', 3)`).run();
     const t = getSkillTreeForActor(db, "player", "alice");
     assert.equal(t.skills.swords.level, 7);
-    assert.equal(t.skills.swords.mastery, 88);
+    assert.equal(t.skills.swords.mastery, 0);
     assert.equal(t.skills.cooking.level, 3);
     assert.equal(t.totalLevel, 10);
   });
 
   it("aggregates npc_skill_acquisitions for an NPC", () => {
-    db.prepare(`INSERT INTO npc_skill_acquisitions (npc_id, skill_id, level) VALUES ('npc_a', 'archery', 4)`).run();
+    db.prepare(`INSERT INTO npc_skill_acquisitions (buyer_npc_id, recipe_dtu_id) VALUES ('npc_a', 'archery')`).run();
     const t = getSkillTreeForActor(db, "npc", "npc_a");
-    assert.equal(t.skills.archery.level, 4);
+    assert.equal(t.skills.archery.level, 1);
     assert.equal(t.skills.archery.source, "npc_skill_acquisitions");
   });
 
   it("classifies skills into the right group", () => {
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num) VALUES ('photography', 'alice', 2)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('photography', 'player', 'alice', 2)`).run();
     const t = getSkillTreeForActor(db, "player", "alice");
     assert.equal(t.skills.photography.group, "arts");
     assert.ok(t.groups.arts.skills.some((s) => s.skill === "photography"));
   });
 
   it("checkSkillGate AND-combines requirements", () => {
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num) VALUES ('athletics', 'alice', 8)`).run();
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num) VALUES ('reflex', 'alice', 5)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('athletics', 'player', 'alice', 8)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('reflex', 'player', 'alice', 5)`).run();
     const r = checkSkillGate(db, "player", "alice", [
       { skill: "athletics", minLevel: 6 },
       { skill: "reflex",    minLevel: 5 },
@@ -114,14 +113,14 @@ describe("skill-tree-engine library", () => {
 
 describe("skill_tree domain macros", () => {
   it("for_me aggregates the current player's skills", async () => {
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num) VALUES ('cooking', 'alice', 3)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('cooking', 'player', 'alice', 3)`).run();
     const r = await call("for_me", ctxAlice());
     assert.equal(r.ok, true);
     assert.equal(r.skills.cooking.level, 3);
   });
 
   it("check_gate macro", async () => {
-    db.prepare(`INSERT INTO skill_revisions (skill_id, owner_user_id, revision_num) VALUES ('rhetoric', 'alice', 4)`).run();
+    db.prepare(`INSERT INTO skill_revisions (recipe_dtu_id, author_kind, author_id, revision_num) VALUES ('rhetoric', 'player', 'alice', 4)`).run();
     const r = await call("check_gate", ctxAlice(), { requirements: [{ skill: "rhetoric", minLevel: 3 }] });
     assert.equal(r.eligible, true);
   });

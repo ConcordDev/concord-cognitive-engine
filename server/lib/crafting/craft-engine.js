@@ -14,6 +14,7 @@ import {
 } from '../skills/skill-engine.js';
 import { validateDesign, estimateStats } from './recipe-validator.js';
 import { resolveCraft } from '../craft-resolve.js';
+import { onPlayerCraft } from '../gameplay-asset-bridge.js';
 
 // ── Living Society P0 — resource-grounded quality ────────────────────────────────
 //
@@ -141,7 +142,7 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
         || Number(recipeData.minPotency) || 0;
       resolved = resolveCraft({
         inputs: _craftInputsFromRecipe(db, userId, resourceRequirements),
-        recipe: { minPotency, name: recipeDtu.name },
+        recipe: { minPotency, name: recipeDtu.title },
         playerSkill: craftSkill,
         stationQuality: Number(opts.stationQuality) || 0,
         risk: Number(opts.risk) || 0,
@@ -212,10 +213,10 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
 
     const dtuId = crypto.randomUUID();
     const outputType = recipeData.output_type || spec.output_type || 'item';
-    const dtuName = recipeDtu.name || spec.name || 'Crafted Item';
+    const dtuName = recipeDtu.title || spec.name || 'Crafted Item';
 
     db.prepare(`
-      INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+      INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(dtuId, userId, outputType, dtuName, JSON.stringify(outputData), playerCraftingLevel);
 
@@ -283,6 +284,19 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     if (resolved.failed) out.failed = true;
     if (debuffApplied) out.debuff = debuffApplied;
   }
+
+  // N4-EVO: register the crafted item as an evolvable asset so it can refine
+  // through use. Best-effort + kill-switched (off → today). The bridge absorbs
+  // its own throws; the extra guard keeps a crafting bug impossible.
+  if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && resultDtu?.id) {
+    try {
+      onPlayerCraft(db, {
+        userId, recipeId, itemId: resultDtu.id,
+        quality: Math.max(0, Math.min(10, Math.round((out.qualityMultiplier ?? 1) * 2))),
+      });
+    } catch { /* evo-asset best-effort */ }
+  }
+
   return out;
 }
 
@@ -338,7 +352,7 @@ export function createSkillDTU(db, userId, worldId, worldType, spec) {
   };
 
   db.prepare(`
-    INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+    INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(dtuId, userId, outputType, dtuName, JSON.stringify(dtuData), playerLevel);
 

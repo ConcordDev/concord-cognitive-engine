@@ -47,6 +47,18 @@ const ACTIVITY_SIGNALS = {
     { channel: "sonic_os.ambient_db",               value: 8,    ttlSeconds: 240 },
     { channel: "thermal_os.ambient_temp",           value: 0.3,  ttlSeconds: 600 },
   ],
+  // Wave 7c — service-economy work-blocks (mechanic / stable-hand). A mechanic at
+  // a workbench emits wrench-noise + structural stress; a stable-hand emits the
+  // warm, low-noise signature of tending animals. These let an NPC routine carry
+  // a repair/stable block so the emergent service roles surface in the world.
+  repair: [
+    { channel: "sonic_os.ambient_db",                value: 10,   ttlSeconds: 240 },
+    { channel: "tactile_force_os.structural_stress", value: 0.04, ttlSeconds: 300 },
+  ],
+  stable: [
+    { channel: "chemical_os.air_quality",            value: -0.05, ttlSeconds: 300 },
+    { channel: "thermal_os.ambient_temp",            value: 0.2,   ttlSeconds: 600 },
+  ],
   gather: [
     { channel: "sonic_os.ambient_db",       value: 3,     ttlSeconds: 180 },
     { channel: "chemical_os.air_quality",   value: -0.05, ttlSeconds: 300 },
@@ -378,6 +390,35 @@ function parseLocation(json) {
  * row already exists with a different preoccupation_signature, it gets
  * overwritten. Returns the count of rows written.
  */
+// The mig-130 npc_schedules CHECK enums. Job-archetype routines (cook/miller/
+// miner/builder/fisher/farmer/logger) emit raw job verbs that aren't in these
+// sets — un-normalized they throw on INSERT ("persist_failed"), the NPC gets no
+// schedule, and never moves (the frozen-world bug). We clamp to the canonical
+// set so every NPC persists + animates; unknown values fall back to wander/workplace.
+const VALID_ACTIVITY = new Set(["sleep", "train", "craft", "gather", "trade", "commune", "socialize", "patrol", "wander", "rest"]);
+const VALID_LOCATION = new Set(["home", "workplace", "market", "grove", "temple", "tavern", "wilds", "plaza"]);
+const ACTIVITY_ALIAS = {
+  cook: "craft", mill: "craft", build: "craft", smith: "craft", brew: "craft", forge: "craft",
+  log: "gather", mine: "gather", farm: "gather", fish: "gather", forage: "gather", hunt: "gather", chop: "gather",
+  guard: "patrol", heal: "commune", pray: "commune", worship: "commune",
+  study: "train", teach: "train", spar: "train", sell: "trade", buy: "trade", barter: "trade",
+  eat: "rest", drink: "rest", relax: "rest", idle: "wander", roam: "wander",
+};
+const LOCATION_ALIAS = {
+  farm: "wilds", mine: "wilds", forest: "wilds", field: "wilds", quarry: "wilds", river: "wilds",
+  dock: "workplace", construction: "workplace", mill: "workplace", forge: "workplace", smithy: "workplace", workshop: "workplace",
+  shop: "market", stall: "market", bazaar: "market", shrine: "temple", church: "temple",
+  inn: "tavern", bar: "tavern", house: "home", hut: "home", square: "plaza", street: "plaza", road: "plaza",
+};
+export function normalizeActivityKind(a) {
+  const v = String(a || "").toLowerCase();
+  return VALID_ACTIVITY.has(v) ? v : (ACTIVITY_ALIAS[v] || "wander");
+}
+export function normalizeLocationKind(l) {
+  const v = String(l || "").toLowerCase();
+  return VALID_LOCATION.has(v) ? v : (LOCATION_ALIAS[v] || "workplace");
+}
+
 export function persistScheduleForNpc(db, npc, daySeed, preoccupation = null) {
   if (!db || !npc?.id) return 0;
   const slots = composeScheduleForNpc(npc, daySeed, preoccupation);
@@ -393,7 +434,7 @@ export function persistScheduleForNpc(db, npc, daySeed, preoccupation = null) {
           (id, npc_id, block_idx, activity_kind, location_kind,
            target_x, target_z, day_seed, preoccupation_signature, generated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
-      `).run(id, npc.id, s.block_idx, s.activity_kind, s.location_kind,
+      `).run(id, npc.id, s.block_idx, normalizeActivityKind(s.activity_kind), normalizeLocationKind(s.location_kind),
              s.target_x, s.target_z, daySeed, sig);
       written++;
     }

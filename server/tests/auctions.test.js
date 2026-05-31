@@ -91,10 +91,10 @@ function memDb() {
             t.ledger.push({ userId: args[1], kind: args[2], amount: args[3], ref: args[5] });
             return { changes: 1 };
           }
-          if (n.startsWith("UPDATE dtus SET created_by")) {
+          if (n.startsWith("UPDATE dtus SET creator_id")) {
             const [newOwner, dtuId] = args;
             const d = t.dtus.get(dtuId);
-            if (d) { d.created_by = newOwner; return { changes: 1 }; }
+            if (d) { d.creator_id = newOwner; return { changes: 1 }; }
             return { changes: 0 };
           }
           return { changes: 0 };
@@ -132,7 +132,7 @@ function memDb() {
     },
     _t: t,
     _seedWallet(userId, balance) { t.wallets.set(userId, balance); },
-    _seedDtu(id, ownerId) { t.dtus.set(id, { id, created_by: ownerId }); },
+    _seedDtu(id, ownerId) { t.dtus.set(id, { id, creator_id: ownerId }); },
   };
 }
 
@@ -190,7 +190,7 @@ describe("Phase V1 — auctions", () => {
     assert.equal(r.ok, true);
     assert.equal(r.settled, true);
     // DTU ownership transferred.
-    assert.equal(db._t.dtus.get("dtu_1").created_by, "buyer");
+    assert.equal(db._t.dtus.get("dtu_1").creator_id, "buyer");
     // Auction marked sold.
     assert.equal(db._t.auctions.get(c.auctionId).status, "sold");
   });

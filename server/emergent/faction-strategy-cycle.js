@@ -17,8 +17,13 @@
 
 import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
+import { ethicsEnabled, getSharedValueRuleIndex, factionMoveBias } from "../lib/viability/value-rule-index.js";
+import { collapseCascadeEnabled, cascadeCollapse } from "../lib/viability/collapse-cascade.js";
+
+const CASCADE_DRAG = 0.2; // bounded momentum drag applied to a contagion-collapsed faction
 import { getAuthoredFaction } from "../lib/content-seeder.js";
 import { resolveFactionClash } from "../lib/faction-strength.js";
+import { maybeEmitPersonalStake } from "../lib/personal-stake.js";
 
 // WS5: structural strength decides wars/raids. Kill-switch CONCORD_FACTION_STRENGTH=0.
 function factionStrengthEnabled() { return process.env.CONCORD_FACTION_STRENGTH !== "0"; }
@@ -75,6 +80,10 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
     allStates = [];
   }
 
+  // Wave 4 — institutional restraint: build the value-rule index once per pass
+  // (memoized), only when the flag is on + the corpus is loaded. Off → no bias.
+  const valueRuleIndex = (ethicsEnabled() && _state?.dtus) ? getSharedValueRuleIndex(_state.dtus) : null;
+
   let advanced = 0;
   const moves = [];
   for (const f of pending) {
@@ -83,11 +92,23 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
       // Sprint C / A1 — leader coping trait biases the roll. Trait stays
       // separate from persisted state so it doesn't leak into the move log.
       const stateWithBias = { ...f, coping_trait: resolveLeaderCopingTrait(db, f.faction_id) };
-      const picked = pickMove(stateWithBias, peers);
+      const ethicsBias = valueRuleIndex ? factionMoveBias(valueRuleIndex, f.faction_id) : null;
+      const picked = pickMove(stateWithBias, peers, ethicsBias ? { ethicsBias } : {});
       const applied = applyMove(db, f.faction_id, picked, allStates);
       if (applied) {
         advanced++;
         const entry = { factionId: f.faction_id, move: applied.move, target: applied.target };
+        // Legibility W2b — route a war move through any online player whose thread
+        // it pulls on ("the faction you backed is on the move"). Global (factions
+        // aren't per-world) → scans all online players. Best-effort, never blocks.
+        if (applied.move === "DECLARE_WAR" || applied.move === "RAID") {
+          maybeEmitPersonalStake(db, {
+            kind: "faction_war",
+            factionId: f.faction_id,
+            targetFactionId: applied.target ?? null,
+            headline: `${f.faction_id} ${applied.move === "RAID" ? "raids" : "declares war on"}${applied.target ? ` ${applied.target}` : ""}`,
+          }).catch(() => {});
+        }
         // WS5: a RAID or DECLARE_WAR is now decided by structural strength
         // (leaders + trained members + realm setup). The stronger faction gains
         // momentum, the weaker loses it, and a hot-event fires for the feed.
@@ -123,5 +144,36 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
     }
   }
 
-  return { ok: true, advanced, total: pending.length, moves };
+  // Wave 5 #22 — collapse cascade: after this pass's moves settle, an
+  // over-extended faction whose allies/patrons have fallen is dragged toward
+  // collapse too (the domino). Read fresh momenta (moves just changed them),
+  // run the pure cascade, and apply a bounded momentum drag to each
+  // contagion-collapsed faction + emit a feed event. Behind
+  // CONCORD_COLLAPSE_CASCADE; flag off → this whole block is skipped (today).
+  let cascade = null;
+  if (collapseCascadeEnabled()) {
+    try {
+      const fresh = db.prepare(`SELECT faction_id, momentum FROM faction_strategy_state`).all();
+      let relations = [];
+      try { relations = db.prepare(`SELECT faction_a, faction_b, kind FROM faction_relations`).all(); } catch { /* relations optional */ }
+      const result = cascadeCollapse(fresh, relations);
+      for (const fid of result.cascaded) {
+        nudgeMomentum(db, fid, -CASCADE_DRAG);
+      }
+      if (result.cascaded.length > 0) {
+        try {
+          io?.emit?.("faction:collapse-cascade", {
+            seeds: result.seeds,
+            cascaded: result.cascaded,
+            systemicRiskClusterSize: result.systemicRiskClusterSize,
+          });
+        } catch { /* emit best-effort */ }
+      }
+      cascade = { cascaded: result.cascaded.length, systemicRiskClusterSize: result.systemicRiskClusterSize };
+    } catch (err) {
+      try { logger.warn("faction-strategy-cycle", "cascade_failed", { error: err?.message }); } catch { /* ignore */ }
+    }
+  }
+
+  return { ok: true, advanced, total: pending.length, moves, ...(cascade ? { cascade } : {}) };
 }

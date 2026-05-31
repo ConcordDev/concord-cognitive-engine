@@ -60,7 +60,7 @@ export function mintPersonaDtu(db, { authorUserId, npcId, summary }) {
   };
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'npc_persona', ?, ?, ?, 1, 0, unixepoch())
     `).run(
       dtuId,
@@ -80,7 +80,7 @@ export function mintPersonaDtu(db, { authorUserId, npcId, summary }) {
 
 export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z = 0 }) {
   if (!db || !dtuId || !worldId) return { ok: false, reason: "missing_inputs" };
-  const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(dtuId);
+  const dtu = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(dtuId);
   if (!dtu) return { ok: false, reason: "dtu_not_found" };
   let meta = {};
   try { meta = JSON.parse(dtu.meta_json || "{}"); } catch { return { ok: false, reason: "bad_meta_json" }; }
@@ -91,15 +91,16 @@ export function installPersona(db, { dtuId, worldId, installerUserId, x = 0, z =
   const npc = pkg.npc || {};
   try {
     db.prepare(`
-      INSERT INTO world_npcs (id, world_id, archetype, name, x, y, z, level, is_dead, is_conscious, is_immortal, narrative_context)
-      VALUES (?, ?, ?, ?, ?, 0, ?, ?, 0, 0, 0, ?)
+      INSERT INTO world_npcs (id, world_id, archetype, x, y, z, level, is_dead, is_conscious, is_immortal, narrative_context, state)
+      VALUES (?, ?, ?, ?, 0, ?, ?, 0, 0, 0, ?, ?)
     `).run(
       newId, worldId,
       npc.archetype || "imported_persona",
-      npc.name || "Imported NPC",
       Number(x), Number(z),
       npc.level || 1,
       typeof npc.narrative_context === "string" ? npc.narrative_context : JSON.stringify(npc.narrative_context || {}),
+      // world_npcs has no `name` column — the NPC name lives in the state JSON blob.
+      JSON.stringify({ name: npc.name || "Imported NPC" }),
     );
   } catch (err) { return { ok: false, error: String(err?.message || err), at: "world_npcs_insert" }; }
 

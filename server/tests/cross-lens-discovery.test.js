@@ -22,14 +22,14 @@ function makeFakeDb() {
   }
   function runStmt() { return { changes: 0 }; }
   function allStmt(sql, args) {
-    if (sql.startsWith("SELECT id, kind, title, creator_id, meta_json, created_at FROM dtus")) {
+    if (sql.startsWith("SELECT id, type AS kind, title, creator_id, data AS meta_json, created_at FROM dtus")) {
       // Walk all params: like1, like2, [kind], [creatorId], [requesterId], limit
       // We extract the limit (last param) and the like pattern (first).
       const limit = args[args.length - 1];
       const likePattern = args[0]; // "%query%"
       const pattern = likePattern.slice(1, -1).toLowerCase();
       const requesterId = sql.includes("d.creator_id = ? OR") ? args[args.length - 2] : null;
-      const filterKind = sql.includes("d.kind = ?") ? args[2] : null;
+      const filterKind = sql.includes("d.type = ?") ? args[2] : null;
       const filterCreator = sql.includes("d.creator_id = ? AND") ? args[3] : null;
 
       const all = Array.from(tables.dtus.values()).filter(d => {
@@ -45,7 +45,7 @@ function makeFakeDb() {
       });
       return all.sort((a, b) => b.created_at - a.created_at).slice(0, limit);
     }
-    if (sql.startsWith("SELECT kind, COUNT(*) AS n FROM dtus")) {
+    if (sql.startsWith("SELECT type AS kind, COUNT(*) AS n FROM dtus")) {
       const requesterId = args[0] || null;
       const counts = {};
       for (const d of tables.dtus.values()) {
@@ -55,7 +55,7 @@ function makeFakeDb() {
       }
       return Object.entries(counts).map(([kind, n]) => ({ kind, n }));
     }
-    if (sql.startsWith("SELECT c.parent_id AS id, COUNT(*) AS citations, d.title, d.kind, d.creator_id FROM dtu_citations")) {
+    if (sql.startsWith("SELECT c.parent_id AS id, COUNT(*) AS citations,")) {
       const [cutoff, limit] = args;
       const counts = {};
       for (const c of tables.dtu_citations.values()) {

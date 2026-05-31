@@ -43,7 +43,7 @@ export function searchDtus(db, query, opts = {}) {
   params.push(likePattern, likePattern);
 
   if (opts.kind) {
-    where.push(`d.kind = ?`);
+    where.push(`d.type = ?`);
     params.push(opts.kind);
   }
 
@@ -66,7 +66,7 @@ export function searchDtus(db, query, opts = {}) {
   let rows = [];
   try {
     rows = db.prepare(`
-      SELECT id, kind, title, creator_id, meta_json, created_at
+      SELECT id, type AS kind, title, creator_id, data AS meta_json, created_at
       FROM dtus d
       WHERE ${where.join(" AND ")}
       ORDER BY created_at DESC
@@ -127,9 +127,9 @@ export function getKindFacets(db, requesterId = null) {
   if (!db) return [];
   try {
     const rows = db.prepare(`
-      SELECT kind, COUNT(*) AS n FROM dtus
-      ${requesterId ? `WHERE (creator_id = ? OR meta_json NOT LIKE '%"scope":"personal"%')` : ""}
-      GROUP BY kind ORDER BY n DESC LIMIT 50
+      SELECT type AS kind, COUNT(*) AS n FROM dtus
+      ${requesterId ? `WHERE (creator_id = ? OR data NOT LIKE '%"scope":"personal"%')` : ""}
+      GROUP BY type ORDER BY n DESC LIMIT 50
     `).all(...(requesterId ? [requesterId] : []));
     return rows;
   } catch { return []; }
@@ -147,10 +147,10 @@ export function getTrending(db, opts = {}) {
   try {
     return db.prepare(`
       SELECT c.parent_id AS id, COUNT(*) AS citations,
-             d.title, d.kind, d.creator_id
-      FROM dtu_citations c
+             d.title, d.type AS kind, d.creator_id
+      FROM royalty_lineage c
       JOIN dtus d ON d.id = c.parent_id
-      WHERE c.created_at > ?
+      WHERE c.created_at > datetime(?, 'unixepoch')
       GROUP BY c.parent_id
       ORDER BY citations DESC
       LIMIT ?

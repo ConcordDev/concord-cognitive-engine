@@ -128,12 +128,12 @@ export function mintSaga(db, { worldId, userId, title = null, entryLimit = 20 } 
   const dtuId = `chronicle_${crypto.randomUUID()}`;
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, human_summary, scope, visibility, created_at)
-      VALUES (?, 'chronicle', ?, ?, ?, 'personal', 'private', unixepoch())
-    `).run(dtuId, sagaTitle, userId, body.slice(0, 4000));
+      INSERT INTO dtus (id, type, title, creator_id, data, visibility, created_at)
+      VALUES (?, 'chronicle', ?, ?, ?, 'private', unixepoch())
+    `).run(dtuId, sagaTitle, userId, JSON.stringify({ human_summary: body.slice(0, 4000), scope: "personal" }));
   } catch (e) {
     // dtus column shape varies — best-effort minimal insert.
-    try { db.prepare(`INSERT INTO dtus (id, kind, title, creator_id) VALUES (?, 'chronicle', ?, ?)`).run(dtuId, sagaTitle, userId); }
+    try { db.prepare(`INSERT INTO dtus (id, type, title, creator_id) VALUES (?, 'chronicle', ?, ?)`).run(dtuId, sagaTitle, userId); }
     catch { return { ok: false, reason: "mint_failed", error: e?.message }; }
   }
   return { ok: true, dtuId, title: sagaTitle, citedEntries: entries.length };

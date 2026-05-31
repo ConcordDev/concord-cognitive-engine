@@ -189,10 +189,17 @@ export function seedFactionStrategyState(db, factions) {
  *
  * @returns {{ move: string, summary: string, target?: string, deltaMomentum: number, newStance?: string, newKind?: string, newScore?: number }}
  */
-export function pickMove(state, peers = []) {
+export function pickMove(state, peers = [], opts = {}) {
   const rng = _rng(state.faction_id + ":" + state.phase);
   const stance = state.stance ?? "consolidate";
   const momentum = Number(state.momentum ?? 0);
+
+  // Wave 4 — NPC ethics (#16) at the faction scale: an optional, bounded
+  // "institutional restraint" bias (computed by the caller from the value-rule
+  // corpus, behind CONCORD_VIABILITY_ETHICS) folds into the SAME additive-RNG
+  // seam as the coping-trait bias — never a new gate. Negative on hostile
+  // moves, positive on cooperative ones. Absent / flag off → 0 → today.
+  const eb = (move) => Number(opts.ethicsBias?.[move] || 0);
 
   // Sprint C / Track A1 — leader coping trait biases probabilities.
   // bias is a float in [-1, +1] that nudges the rng() comparison; positive
@@ -282,7 +289,7 @@ export function pickMove(state, peers = []) {
     const rival = peers
       .filter(p => p.stance === "expand" || p.stance === "war")
       .find(p => getRelationScore(state.faction_id, p.faction_id) >= -0.3);
-    if (rival && rng() < (0.4 + biasFor("DECLARE_WAR"))) {
+    if (rival && rng() < (0.4 + biasFor("DECLARE_WAR") + eb("DECLARE_WAR"))) {
       return {
         move: "DECLARE_WAR",
         target: rival.faction_id,
@@ -309,7 +316,7 @@ export function pickMove(state, peers = []) {
 
   // 6) Consolidate — peacetime; can pivot to alliance, expand, or isolation
   const friend = peers.find(p => getRelationScore(state.faction_id, p.faction_id) > 0.3);
-  if (friend && rng() < 0.2) {
+  if (friend && rng() < (0.2 + eb("PROPOSE_ALLIANCE"))) {
     return {
       move: "PROPOSE_ALLIANCE",
       target: friend.faction_id,
@@ -343,6 +350,24 @@ export function pickMove(state, peers = []) {
 }
 
 /**
+ * W3 — derive a human-legible cause tag for a move from its kind + the state
+ * that provoked it. Surfaced in news bodies + personal-stake headlines so a
+ * "War Declared" reads as "War Declared — retaliation, after the truce collapsed."
+ */
+function _triggerFor(move, prevMomentum, relationScore) {
+  const m = String(move || "").toUpperCase();
+  if (m === "DECLARE_WAR" || m === "RAID") {
+    return (typeof relationScore === "number" && relationScore <= -0.5) ? "retaliation" : "expansion_collision";
+  }
+  if (m === "SEEK_TRUCE") return "momentum_collapse";
+  if (m === "PROPOSE_ALLIANCE") return "shared_interest";
+  if (m === "PROCLAIM_EXPANSION") return "ambition";
+  if (m === "WITHDRAW") return prevMomentum < -0.3 ? "rout" : "overextension";
+  if (m === "FORTIFY") return "consolidation";
+  return "opportunity";
+}
+
+/**
  * Apply a picked move to the database — single transaction:
  *   - logs the move row
  *   - updates faction_strategy_state (momentum, stance, next_move_at)
@@ -354,6 +379,18 @@ export function applyMove(db, factionId, picked, peerStates) {
   const moveId = `fmv_${crypto.randomUUID()}`;
 
   const tx = db.transaction(() => {
+    // Wave 8 / Legibility W3 — thread the CAUSE into the move record. Read the
+    // prior state + the relation to the target BEFORE logging so the payload
+    // carries why this move happened (the news/personal-stake surfaces read it):
+    // previous momentum, the relation score that provoked it, and a trigger tag.
+    const cur = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
+    const prevMomentum = Number(cur?.momentum ?? 0);
+    let relationScore = null;
+    if (picked.target) {
+      try { relationScore = getRelation(db, factionId, picked.target)?.score ?? null; } catch { /* relation optional */ }
+    }
+    const trigger = _triggerFor(picked.move, prevMomentum, relationScore);
+
     db.prepare(`
       INSERT INTO faction_strategy_log
         (id, faction_id, move, target_id, summary, payload_json, occurred_at)
@@ -363,13 +400,18 @@ export function applyMove(db, factionId, picked, peerStates) {
       picked.move,
       picked.target ?? null,
       picked.summary,
-      JSON.stringify({ deltaMomentum: picked.deltaMomentum, newStance: picked.newStance ?? null }),
+      JSON.stringify({
+        deltaMomentum: picked.deltaMomentum,
+        newStance: picked.newStance ?? null,
+        previous_momentum: prevMomentum,
+        relation_score: relationScore,
+        trigger,
+      }),
       now,
     );
 
-    // Read current state, compute new momentum + stance
-    const cur = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
-    const newMomentum = Math.max(-1, Math.min(1, Number(cur?.momentum ?? 0) + Number(picked.deltaMomentum ?? 0)));
+    // Compute new momentum + stance from the state read above.
+    const newMomentum = Math.max(-1, Math.min(1, prevMomentum + Number(picked.deltaMomentum ?? 0)));
     const newStance = picked.newStance ?? cur?.stance ?? "consolidate";
 
     db.prepare(`

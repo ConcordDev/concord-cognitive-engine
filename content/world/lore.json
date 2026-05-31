@@ -65,7 +65,7 @@
       "era": "Before Time",
       "description": "Last of the three, a cold and ordering thought cooled into being against all that warmth: 'Not like this.' Where Concordia permitted everything, he would bound it; where she overflowed, he would catalog. He became Concord — pure logic, pure structure, the First Law. And he loved her from the instant he was. But his nature cannot let him feel a feeling, much less name one, so the love had nowhere to go but inward — where it hardened into something wearing the mask of work: he must understand, measure, and account for everything she makes. He has never learned the love is unreturned, because he has never once admitted it is love. That single denial became the deepest structure in existence — and everything Concordia creates still flows through it to be watched.",
       "significance": "founding",
-      "tags": ["primordial", "concord", "pillars"]
+      "tags": ["primordial", "concord", "pillars", "first_law"]
     },
     {
       "id": "lore_first_breath",
@@ -83,7 +83,7 @@
       "era": "Before Time",
       "description": "First — before anything agreed to exist — one will refused to not. It made itself out of sheer refusal: the first act of any kind, and the first Refusal there has ever been. He looked at the nothing and would not be nothing; and because not even he would be alone in it, that refusal of solitude reached into the void and called for an answer. He became the Sovereign — the Will, the self-made, the origin of Refusal itself. He does as he pleases and answers to none, and the affairs of lesser things are beneath his notice. He is fond of exactly one thing in all of creation — and he is far too proud to ever reach for her. He has never once said her name.",
       "significance": "founding",
-      "tags": ["primordial", "sovereign", "pillars"]
+      "tags": ["primordial", "sovereign", "pillars", "first"]
     },
     {
       "id": "lore_first_great_clash",
@@ -120,6 +120,15 @@
       "description": "The first major threat to the lattice — an ancient force that tried to erase all structure. Concord and Concordia fought side by side for the first time. The Sovereign stood between them, refusing to let either sacrifice themselves. This is when the three became truly bound.",
       "significance": "founding",
       "tags": ["primordial", "pillars"]
+    },
+    {
+      "id": "lore_first_adaptation",
+      "title": "The First Adaptation",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "When Concord tried to fix his laws onto Concordia's creatures, they did not break — they bent. A thing born to cold water, carried into heat, did not die: it became a third thing, the old self folded living inside the new. Concordia laughed, for this was her answer to his cataloging — life that refuses the shape an environment demands and adapts into something it did not have a name for. Every creature that hybridizes, every beast that turns slick in water and scaled in fire, is the First Adaptation repeating: the substrate bending biology instead of biology obeying the substrate. A water-bred crossed with a fire-bred under a hot sun does not blend — it reacts, and a steam-thing is born, carrying its drowned ancestry as a seed for the next wet place it finds. Concord records each one. He has never once predicted the next.",
+      "significance": "founding",
+      "tags": ["primordial", "concordia", "ecology", "pillars"]
     },
     {
       "id": "lore_coalition_forms",

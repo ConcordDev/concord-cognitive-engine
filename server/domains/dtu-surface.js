@@ -132,11 +132,11 @@ export default function registerDtuSurfaceMacros(register) {
     try {
       const hasDtus = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtus'`).get();
       if (hasDtus) {
-        const filter = excludeOwnOrigin ? `AND (dtus.source_lens IS NULL OR dtus.source_lens != ?)` : '';
+        const filter = excludeOwnOrigin ? `AND (dtus.lens_id IS NULL OR dtus.lens_id != ?)` : '';
         const args = excludeOwnOrigin ? [lensId, sinceTs, lensId, limit] : [lensId, sinceTs, limit];
         rows = db.prepare(`
           SELECT sl.dtu_id, sl.surface_kind, sl.created_at,
-                 dtus.title, dtus.source_lens, dtus.creator_id
+                 dtus.title, dtus.lens_id AS source_lens, dtus.creator_id
           FROM dtu_surface_log sl
           LEFT JOIN dtus ON dtus.id = sl.dtu_id
           WHERE sl.surfaced_in_lens = ? AND sl.created_at >= ? ${filter}
@@ -190,12 +190,12 @@ export default function registerDtuSurfaceMacros(register) {
     const maxDepth = Math.min(Math.max(Number(input.maxDepth) || 6, 1), MAX_TRAIL_DEPTH);
 
     const hasDtus = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtus'`).get();
-    const hasCitations = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='dtu_citations'`).get();
+    const hasCitations = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='royalty_lineage'`).get();
     if (!hasDtus) return { ok: false, reason: "dtus_table_missing" };
 
-    const getDtu = (id) => db.prepare(`SELECT id, title, source_lens, creator_id, kind FROM dtus WHERE id = ?`).get(id);
+    const getDtu = (id) => db.prepare(`SELECT id, title, lens_id AS source_lens, creator_id, type AS kind FROM dtus WHERE id = ?`).get(id);
     const getParents = hasCitations
-      ? db.prepare(`SELECT parent_id FROM dtu_citations WHERE child_id = ? LIMIT 5`)
+      ? db.prepare(`SELECT parent_id FROM royalty_lineage WHERE child_id = ? LIMIT 5`)
       : null;
     const surfaceCount = db.prepare(`SELECT COUNT(*) AS c FROM dtu_surface_log WHERE dtu_id = ?`);
 

@@ -31,21 +31,24 @@ function freshDb() {
     CREATE TABLE world_npcs (
       id TEXT PRIMARY KEY,
       world_id TEXT,
-      faction_id TEXT,
+      faction TEXT,
       archetype TEXT,
       level INTEGER
     );
     CREATE TABLE npc_grudges (
       npc_id TEXT,
-      event_kind TEXT,
-      created_at INTEGER
+      target_kind TEXT,
+      target_id TEXT,
+      narrative TEXT,
+      severity INTEGER,
+      event_at INTEGER
     );
     CREATE TABLE npc_schemes (
-      actor_npc_id TEXT,
-      target_npc_id TEXT,
-      outcome TEXT,
-      completed_at INTEGER,
-      world_id TEXT
+      id TEXT,
+      plotter_id TEXT,
+      target_id TEXT,
+      phase TEXT,
+      resolved_at INTEGER
     );
     CREATE TABLE character_opinions (
       from_npc_id TEXT,
@@ -143,8 +146,8 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
       .run("kin-2", "tunya", "faction-a", "guard", 8);
     db.prepare(`INSERT INTO world_npcs VALUES (?, ?, ?, ?, ?)`)
       .run("kin-3", "tunya", "faction-a", "guard", 7);
-    db.prepare(`INSERT INTO npc_grudges VALUES (?, ?, ?)`)
-      .run("victim", "killed_by_player", Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO npc_grudges (npc_id, target_kind, target_id, narrative, severity, event_at) VALUES (?, 'player', 'player', 'killed by player — the memory burns.', 8, ?)`)
+      .run("victim", Math.floor(Date.now() / 1000));
 
     const r = runNemesisCycle({ db, worldId: "tunya" });
     assert.equal(r.ok, true);
@@ -154,8 +157,9 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
   });
 
   it("scheme betrayal + soured opinion → rival relationship", () => {
-    db.prepare(`INSERT INTO npc_schemes VALUES (?, ?, ?, ?, ?)`)
-      .run("actor", "target", "betrayed", Math.floor(Date.now() / 1000), "tunya");
+    db.prepare(`INSERT INTO world_npcs (id, world_id) VALUES ('actor', 'tunya')`).run();
+    db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
+      .run("actor", "target", Math.floor(Date.now() / 1000));
     db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
       .run("actor", "target", -75);
     const r = runNemesisCycle({ db, worldId: "tunya" });
@@ -178,8 +182,8 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
   it("no kin → no edges (single victim, no surviving same-archetype)", () => {
     db.prepare(`INSERT INTO world_npcs VALUES (?, ?, ?, ?, ?)`)
       .run("victim", "tunya", "f", "guard", 5);
-    db.prepare(`INSERT INTO npc_grudges VALUES (?, ?, ?)`)
-      .run("victim", "killed_by_player", Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO npc_grudges (npc_id, target_kind, target_id, narrative, severity, event_at) VALUES (?, 'player', 'player', 'killed by player — the memory burns.', 8, ?)`)
+      .run("victim", Math.floor(Date.now() / 1000));
     const r = runNemesisCycle({ db, worldId: "tunya" });
     assert.equal(r.ok, true);
     assert.equal(r.processed, 0);
@@ -219,10 +223,11 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
 
   it("escalate de-duplicates rivalry — second betrayal escalates, doesn't double-row", () => {
     // Set up: actor betrays target twice in window.
-    db.prepare(`INSERT INTO npc_schemes VALUES (?, ?, ?, ?, ?)`)
-      .run("a", "b", "betrayed", Math.floor(Date.now() / 1000), "tunya");
-    db.prepare(`INSERT INTO npc_schemes VALUES (?, ?, ?, ?, ?)`)
-      .run("a", "b", "betrayed", Math.floor(Date.now() / 1000), "tunya");
+    db.prepare(`INSERT INTO world_npcs (id, world_id) VALUES ('a', 'tunya')`).run();
+    db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
+      .run("a", "b", Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
+      .run("a", "b", Math.floor(Date.now() / 1000));
     db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
       .run("a", "b", -75);
     runNemesisCycle({ db, worldId: "tunya" });
@@ -231,14 +236,15 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
   });
 
   it("village gossip feed surfaces escalations", () => {
-    db.prepare(`INSERT INTO npc_schemes VALUES (?, ?, ?, ?, ?)`)
-      .run("x", "y", "betrayed", Math.floor(Date.now() / 1000), "tunya");
+    db.prepare(`INSERT INTO world_npcs (id, world_id) VALUES ('x', 'tunya')`).run();
+    db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
+      .run("x", "y", Math.floor(Date.now() / 1000));
     db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
       .run("x", "y", -80);
     // Second pass escalates the same row.
     runNemesisCycle({ db, worldId: "tunya" });
-    db.prepare(`INSERT INTO npc_schemes VALUES (?, ?, ?, ?, ?)`)
-      .run("x", "y", "betrayed", Math.floor(Date.now() / 1000), "tunya");
+    db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
+      .run("x", "y", Math.floor(Date.now() / 1000));
     runNemesisCycle({ db, worldId: "tunya" });
     const feed = getVillageGossipFeed(db, "tunya", { sinceS: 0 });
     assert.ok(feed.length >= 1);

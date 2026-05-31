@@ -26,8 +26,8 @@ function setupDb() {
   const db = new Database(":memory:");
   db.exec(`
     CREATE TABLE dtus (
-      id TEXT PRIMARY KEY, kind TEXT, title TEXT, human_summary TEXT,
-      created_at INTEGER, creator_id TEXT, scope TEXT, visibility TEXT, world_id TEXT
+      id TEXT PRIMARY KEY, type TEXT, title TEXT, data TEXT,
+      created_at INTEGER, creator_id TEXT, visibility TEXT, world_id TEXT
     );
   `);
   return db;
@@ -51,7 +51,7 @@ describe("T3.2 — codex seeds as citable DTUs", () => {
     const db = setupDb();
     const minted = seedCodex(db, codex, { slug: "codex_eight_refusals" });
     assert.equal(minted, 10, `expected 10 codex DTUs, got ${minted}`);
-    const count = db.prepare(`SELECT COUNT(*) AS c FROM dtus WHERE kind = 'codex'`).get().c;
+    const count = db.prepare(`SELECT COUNT(*) AS c FROM dtus WHERE type = 'codex'`).get().c;
     assert.equal(count, 10);
   });
 
@@ -74,8 +74,8 @@ describe("T3.2 — codex seeds as citable DTUs", () => {
   it("the codex DTUs are public + global so they're citable and lens-visible", () => {
     const db = setupDb();
     seedCodex(db, codex, { slug: "codex_eight_refusals" });
-    const row = db.prepare(`SELECT scope, visibility, creator_id FROM dtus WHERE id = 'codex_eight_refusals_index'`).get();
-    assert.equal(row.scope, "global");
+    const row = db.prepare(`SELECT data, visibility, creator_id FROM dtus WHERE id = 'codex_eight_refusals_index'`).get();
+    assert.equal(JSON.parse(row.data).scope, "global");
     assert.equal(row.visibility, "public");
     assert.equal(row.creator_id, "system");
   });

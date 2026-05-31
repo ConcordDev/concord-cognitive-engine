@@ -16,6 +16,7 @@ import express from "express";
 import crypto from "node:crypto";
 import { rollLoot } from "../lib/ecosystem/loot-tables.js";
 import { composeDrops, isHybridCorpse } from "../lib/ecosystem/procedural-meat-composer.js";
+import { onLootDropped } from "../lib/gameplay-asset-bridge.js";
 import { adjust as adjustEco } from "../lib/ecosystem/score-engine.js";
 import { checkHostilityAllowed } from "../lib/concordia/neutral-zone.js";
 import { isRefused } from "../lib/refusal-field.js";
@@ -196,6 +197,19 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
           });
           tx2();
         } else { throw e; }
+      }
+
+      // N4-EVO: register each loot drop as an evolvable asset (best-effort,
+      // kill-switched). The bridge absorbs its own throws.
+      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1') {
+        for (const drop of drops) {
+          try {
+            onLootDropped(db, {
+              lootId: drop.item, killerId: userId, victimId: corpse.species_id,
+              label: drop.item_name, payload: drop.properties,
+            });
+          } catch { /* evo-asset best-effort */ }
+        }
       }
 
       res.json({ ok: true, drops });

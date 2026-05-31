@@ -3,9 +3,18 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
+import { createSimplexNoise2D } from '@/lib/world-lens/simplex-noise';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
 import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
+
+// Track 1 — coherent camera-shake noise (Eiserloh trauma model): replaces the
+// per-frame Math.random() jitter on the camera punch with seeded Simplex noise so
+// the shake reads smooth (not harsh), is deterministic, and survives slow-mo.
+// Module-scope so a single set of channels serves the scene.
+const _camShakeNX = createSimplexNoise2D(5051);
+const _camShakeNY = createSimplexNoise2D(6067);
+const _camShakeNR = createSimplexNoise2D(7079);
 
 // ── Device capability detection ────────────────────────────────────
 function detectInitialQuality(): QualityPreset {
@@ -516,6 +525,12 @@ export default function ConcordiaScene({
       }
       // Sentinel so other systems can branch on the active backend.
       (renderer as unknown as { __isWebGPU?: boolean }).__isWebGPU = useWebGPU;
+      // Track 2 — register the renderer so the KTX2/Basis texture loader can
+      // detectSupport() and decode GPU-compressed textures when present.
+      try {
+        const { registerRendererForKtx2 } = await import('@/lib/world-lens/texture-loader');
+        registerRendererForKtx2(renderer);
+      } catch { /* KTX2 optional */ }
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.pixelRatio));
       renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
       // Phase AA — mount Stats.js widget when ?perf=1 or NODE_ENV=development.
@@ -647,6 +662,28 @@ export default function ConcordiaScene({
             polishPassesRef.current.motionBlur = motionBlur;
             polishPassesRef.current.chromAb = { ...chromAb, detach: detachChromAb };
             polishPassesRef.current.lut = lut;
+
+            // Track 2 — edge-detection outline: a luminance Sobel ink pass that
+            // adds interior toon linework the inverted-hull outline can't draw.
+            // On in toon mode (where it belongs and bloom is skipped), or when
+            // window.__CONCORD_EDGE_OUTLINE__ === true. Off → PBR unchanged.
+            try {
+              const edgeOn = renderStyle === 'toon'
+                || (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__CONCORD_EDGE_OUTLINE__ === true);
+              if (edgeOn) {
+                const { createEdgeOutlinePass } = await import('@/lib/world-lens/post-edge-outline');
+                const edge = createEdgeOutlinePass(
+                  THREE as unknown as { Vector2: new (x: number, y: number) => unknown; Color: new (hex: number) => unknown },
+                  ShaderPass as unknown as new (s: unknown) => unknown,
+                  { width: canvas!.clientWidth, height: canvas!.clientHeight },
+                );
+                edge.setStrength(quality === 'ultra' ? 0.85 : 0.6);
+                composer.addPass(edge.shaderPass as unknown as InstanceType<typeof ShaderPass>);
+                polishPassesRef.current.edgeOutline = edge;
+              }
+            } catch (edgeErr) {
+              console.warn('[ConcordiaScene] Edge-outline pass unavailable:', edgeErr);
+            }
 
             // Auto-exposure does not need a ShaderPass — it samples the
             // back buffer + sets renderer.toneMappingExposure directly.
@@ -1173,11 +1210,16 @@ export default function ConcordiaScene({
           const nowMs = performance.now();
           if (nowMs < punch.until) {
             const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
-            const k = remain * remain; // ease-out
+            const k = remain * remain; // ease-out (the trauma² falloff)
             const amp = (punch.shake / 100) * k;
-            camera.position.x += (Math.random() - 0.5) * amp;
-            camera.position.y += (Math.random() - 0.5) * amp;
-            camera.position.z += (Math.random() - 0.5) * amp;
+            // Coherent Simplex noise per-axis (incl. a small roll) instead of
+            // Math.random(): smooth frame-to-frame, deterministic, slow-mo-safe.
+            const ts = nowMs * 0.02;
+            camera.position.x += _camShakeNX(ts, 0.5) * amp;
+            camera.position.y += _camShakeNY(ts, 11.5) * amp;
+            camera.position.z += _camShakeNR(ts, 23.5) * amp;
+            camera.rotation.z += _camShakeNR(ts, 37.5) * amp * 0.01; // subtle roll sells it
+
             if (punch.fov > 0) {
               const baseFov = 55;
               camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
@@ -1388,6 +1430,8 @@ export default function ConcordiaScene({
         r.setSize(w, h);
         composerRef.current?.setSize(w, h);
         ssgiPassRef.current?.setSize(w, h);
+        // Keep the edge-outline Sobel kernel sampling at the new resolution.
+        polishPassesRef.current?.edgeOutline?.setResolution?.(w, h);
       }
     }
     window.addEventListener('resize', handleResize);

@@ -100,16 +100,18 @@ function makeFakeDb() {
       });
       return { changes: 1 };
     }
-    if (sql.startsWith("UPDATE dtus SET meta_json = ?")) {
-      const [metaJson, id] = args;
+    if (sql.startsWith("UPDATE dtus SET data = ?")) {
+      const [data, id] = args;
       const row = tables.dtus.get(id);
-      if (row) row.meta_json = metaJson;
+      // The mock stores the DTU JSON blob under both keys so the canonical
+      // `data` reads AND the legacy `data AS meta_json` reads resolve.
+      if (row) { row.data = data; row.meta_json = data; }
       return { changes: row ? 1 : 0 };
     }
     if (sql.startsWith("INSERT OR IGNORE INTO dtus")) {
-      const [id, kind, title, creator_id, meta_json, skill_level] = args;
+      const [id, type, title, creator_id, data, skill_level] = args;
       if (tables.dtus.has(id)) return { changes: 0 };
-      tables.dtus.set(id, { id, kind, title, creator_id, meta_json, skill_level, total_experience: 0 });
+      tables.dtus.set(id, { id, type, kind: type, title, creator_id, data, meta_json: data, skill_level, total_experience: 0 });
       return { changes: 1 };
     }
     if (sql.startsWith("UPDATE skill_evolution_unlocks SET completed_at")) {
@@ -134,7 +136,9 @@ function makeFakeDb() {
   }
 
   function getStmt(sql, args) {
-    if (sql.startsWith("SELECT * FROM dtus WHERE id = ?")) {
+    if (sql.includes("FROM dtus WHERE id = ?")) {
+      // Covers `SELECT *`, `SELECT data AS meta_json`, `SELECT id, type AS kind …`
+      // — the mock row carries every key so any projection resolves.
       return tables.dtus.get(args[0]) || null;
     }
     if (sql.startsWith("SELECT id FROM skill_evolution_unlocks")) {

@@ -327,9 +327,9 @@ export function seedCodex(db, codex, { slug = "codex" } = {}) {
     if (!id || !title) return;
     try {
       const r = db.prepare(`
-        INSERT OR IGNORE INTO dtus (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
-        VALUES (?, ?, ?, ?, unixepoch(), 'system', 'global', 'public')
-      `).run(id, kind, title, summary || "");
+        INSERT OR IGNORE INTO dtus (id, type, title, data, created_at, creator_id, visibility)
+        VALUES (?, ?, ?, ?, unixepoch(), 'system', 'public')
+      `).run(id, kind, title, JSON.stringify({ human_summary: summary || "", scope: "global" }));
       if (r.changes > 0) {
         count++;
         if (worldId) {
@@ -892,9 +892,9 @@ export async function seedContent({ db = null } = {}) {
             const dtuId = `trivia_answer_${q.id}`;
             try {
               db.prepare(`
-                INSERT OR IGNORE INTO dtus (id, kind, title, human_summary, created_at, creator_id, scope, visibility)
-                VALUES (?, 'trivia_answer', ?, ?, unixepoch(), 'system', 'global', 'public')
-              `).run(dtuId, `Trivia: ${q.questionText.slice(0, 60)}`, q.answerHumanSummary || "");
+                INSERT OR IGNORE INTO dtus (id, type, title, data, created_at, creator_id, visibility)
+                VALUES (?, 'trivia_answer', ?, ?, unixepoch(), 'system', 'public')
+              `).run(dtuId, `Trivia: ${q.questionText.slice(0, 60)}`, JSON.stringify({ human_summary: q.answerHumanSummary || "", scope: "global" }));
             } catch { /* DTU table shape may differ — best-effort */ }
             const r = authorQuestion(db, {
               dtuId,

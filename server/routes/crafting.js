@@ -108,7 +108,7 @@ export function createCraftingRouter({ db, requireAuth }) {
       };
 
       db.prepare(`
-        INSERT INTO dtus (id, creator_id, type, name, data, skill_level)
+        INSERT INTO dtus (id, creator_id, type, title, data, skill_level)
         VALUES (?, ?, 'recipe', ?, ?, ?)
       `).run(
         recipeId,
@@ -374,7 +374,7 @@ export function createCraftingRouter({ db, requireAuth }) {
       if (!xp || xp <= 0) return res.status(400).json({ ok: false, error: "xp must be a positive number" });
 
       const world = worldId
-        ? db.prepare("SELECT world_type FROM worlds WHERE id = ?").get(worldId)
+        ? db.prepare("SELECT universe_type AS world_type FROM worlds WHERE id = ?").get(worldId)
         : null;
       const worldType = world?.world_type || 'standard';
 

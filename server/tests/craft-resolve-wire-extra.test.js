@@ -125,7 +125,7 @@ function makeSpellDb() {
       range_m REAL, stamina_cost REAL, mana_cost REAL, cooldown_s REAL, composed_at INTEGER
     );
     CREATE TABLE dtus (
-      id TEXT PRIMARY KEY, kind TEXT, title TEXT, creator_id TEXT, meta_json TEXT,
+      id TEXT PRIMARY KEY, type TEXT, title TEXT, creator_id TEXT, data TEXT,
       skill_level INTEGER, total_experience INTEGER, created_at INTEGER
     );
     CREATE TABLE player_inventory (
@@ -177,8 +177,8 @@ describe("Phase 0.4 — glyph-spells.mintSpell power-source fuel", () => {
     // both fuel items consumed
     const left = dbFuel.prepare(`SELECT COALESCE(SUM(quantity),0) n FROM player_inventory WHERE user_id=?`).get(USER).n;
     assert.equal(left, 0);
-    // provenance persisted on the recipe DTU meta
-    const meta = JSON.parse(dbFuel.prepare("SELECT meta_json FROM dtus WHERE id=?").get(fuelled.recipeId).meta_json);
+    // provenance persisted on the recipe DTU meta (real column is `data`, not `meta_json`)
+    const meta = JSON.parse(dbFuel.prepare("SELECT data FROM dtus WHERE id=?").get(fuelled.recipeId).data);
     assert.ok(meta.fuel && meta.fuel.items.length === 2);
   });
 

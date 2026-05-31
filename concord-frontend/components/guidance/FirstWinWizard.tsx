@@ -7,12 +7,24 @@
  * Auto-dismisses once all steps are complete.
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
 import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { phaseVoiceLine, ARRIVAL_LINE } from '@/lib/concordia/onboarding-voice';
+
+// Onboarding ceremony — speak a Concordia line in-world (the goddess turns to
+// the player + a fading toast carries the words) and fire a small juice beat.
+function speakConcordia(line: string, fanfare = false) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent('concordia:goddess-speaks', { detail: { targetId: 'player', line } }));
+    window.dispatchEvent(new CustomEvent('concordia:toast', { detail: { message: line, kind: fanfare ? 'milestone' : 'ambient', ttl_ms: fanfare ? 5200 : 4200 } }));
+    if (fanfare) window.dispatchEvent(new CustomEvent('concordia:soundscape-command', { detail: { action: 'triggerSFX', sfxId: 'milestone' } }));
+  } catch { /* ceremony is best-effort */ }
+}
 
 interface FirstWinStep {
   id: string;
@@ -89,10 +101,14 @@ const FIRST_CYCLE_LABELS: Record<string, string> = {
 };
 
 const DISMISSED_KEY = 'concord_first_win_dismissed';
+const ARRIVAL_KEY = 'concord_arrival_seen';
 
 function FirstWinWizard() {
   const router = useRouter();
-  const [dismissed, setDismissed] = useState(() => {
+  // Onboarding ceremony — dismissal now COLLAPSES (re-openable via a Resume
+  // pill) instead of hiding the wizard forever, so a player who closed it early
+  // can pick the First Cycle back up.
+  const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(DISMISSED_KEY) === 'true';
     }
@@ -100,9 +116,16 @@ function FirstWinWizard() {
   });
 
   const handleDismiss = () => {
-    setDismissed(true);
+    setCollapsed(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem(DISMISSED_KEY, 'true');
+    }
+  };
+
+  const handleResume = () => {
+    setCollapsed(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(DISMISSED_KEY);
     }
   };
 
@@ -157,7 +180,51 @@ function FirstWinWizard() {
     };
   })();
 
-  if (!resolved || resolved.allDone || dismissed) return null;
+  // The current (first-incomplete) step id — drives the between-phase voice hint.
+  const currentStepId = resolved
+    ? (resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1])?.id ?? null
+    : null;
+
+  // Ceremony 1 — arrival fanfare: the first time a fresh player sees the wizard
+  // with the First Cycle still ahead, Concordia welcomes them in-world (once).
+  const showable = !!resolved && !resolved.allDone;
+  useEffect(() => {
+    if (!showable) return;
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem(ARRIVAL_KEY) === 'true') return;
+    localStorage.setItem(ARRIVAL_KEY, 'true');
+    const t = setTimeout(() => speakConcordia(ARRIVAL_LINE, true), 1200);
+    return () => clearTimeout(t);
+  }, [showable]);
+
+  // Ceremony 2 — between-phase voice hints: when the active step advances to a
+  // new phase, Concordia speaks its hint in-world (cook→eat→fight→commune).
+  const lastSpokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (collapsed || !currentStepId) return;
+    if (lastSpokenRef.current === currentStepId) return;
+    const line = phaseVoiceLine(currentStepId);
+    if (!line) { lastSpokenRef.current = currentStepId; return; }
+    lastSpokenRef.current = currentStepId;
+    const t = setTimeout(() => speakConcordia(line, false), 600);
+    return () => clearTimeout(t);
+  }, [currentStepId, collapsed]);
+
+  if (!resolved || resolved.allDone) return null;
+
+  // Collapsed → a small Resume pill (re-openable), not a permanent hide.
+  if (collapsed) {
+    return (
+      <button
+        onClick={handleResume}
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-2 rounded-full bg-lattice-surface border border-neon-blue/30 shadow-lg text-xs font-medium text-neon-blue hover:bg-neon-blue/10"
+        aria-label="Resume First Cycle"
+      >
+        <Rocket className="w-3.5 h-3.5" />
+        Resume First Cycle
+      </button>
+    );
+  }
 
   const currentStep =
     resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];

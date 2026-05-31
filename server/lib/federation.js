@@ -1545,7 +1545,7 @@ export async function remotePurchase(db, { peerId, dtuId, buyerId, priceCents })
   // direct hostname for symmetry with self-hosted single-instance peers.
   let peerUrl = null;
   try {
-    const cri = db.prepare(`SELECT capabilities FROM cri_instances WHERE id = ?`).get(peerId);
+    const cri = db.prepare(`SELECT capabilities_json AS capabilities FROM cri_instances WHERE id = ?`).get(peerId);
     if (cri?.capabilities) {
       try {
         const caps = JSON.parse(cri.capabilities);

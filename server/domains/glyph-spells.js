@@ -65,8 +65,13 @@ export default function registerGlyphSpellMacros(register) {
     const { spellId, worldId = "concordia-hub", x = 0, z = 0, magnitude = 1 } = input || {};
     if (!spellId) return { ok: false, reason: "missing_spellId" };
 
+    // Schema/query-drift fix: player_glyph_spells (mig 136) has recipe_dtu_id /
+    // component_chain / element — NOT name / components_json / dtu_id. The old
+    // SELECT named three non-existent columns, so casting threw and the
+    // mint→cast core loop was severed. Use the real columns + the authoritative
+    // `element` column (component_chain stores id-strings, not {element} objects).
     const spell = db.prepare(`
-      SELECT id, user_id, name, components_json, dtu_id
+      SELECT id, user_id, recipe_dtu_id AS dtu_id, element
       FROM player_glyph_spells WHERE id = ?
     `).get(spellId);
     if (!spell) return { ok: false, reason: "spell_not_found" };
@@ -78,14 +83,9 @@ export default function registerGlyphSpellMacros(register) {
       if (!license) return { ok: false, reason: "not_owner_or_licensed" };
     }
 
-    let components;
-    try { components = JSON.parse(spell.components_json || "[]"); } catch { components = []; }
-    let element = "physical";
-    if (Array.isArray(components) && components.length) {
-      const counts = new Map();
-      for (const c of components) counts.set(c.element || "physical", (counts.get(c.element || "physical") || 0) + 1);
-      element = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
-    }
+    // The spell's element is stored authoritatively at mint time (dominant
+    // element of the composed chain), so read it directly.
+    const element = spell.element || "physical";
 
     // Cross-world potency: glyph spells are magic-domain. A wizard's
     // spell in cyber world delivers less magnitude than the same spell

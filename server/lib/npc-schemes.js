@@ -20,9 +20,12 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { recordOpinionEvent, getOpinion } from "./npc-opinions.js";
+import { npcNameFromRow } from "./npc-name.js";
 import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
+import { maybeEmitPersonalStake } from "./personal-stake.js";
+import { ethicsEnabled, npcSchemeRestraint, ETHICS_REFUSE_THRESHOLD } from "./viability/value-rule-index.js";
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -41,7 +44,7 @@ function nextTickAt(now = Math.floor(Date.now() / 1000)) {
  * Propose a scheme: deterministic gate based on plotter's stress, opinion
  * of target, and coping trait. Returns { ok, action, schemeId? }.
  */
-export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null }) {
+export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null, valueRuleIndex = null }) {
   if (!db || !plotterNpcId || !targetKind || !targetId) return { ok: false, reason: "missing_inputs" };
 
   // Don't propose against yourself.
@@ -72,6 +75,23 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
     if (!wildCard && !(stressed && hates)) {
       return { ok: false, reason: "no_motive" };
     }
+  }
+
+  // Wave 4 — NPC ethics (#16): an NPC that internalizes harm-minimization /
+  // consent / de-escalation value-rules (the latent corpus) refuses a
+  // borderline scheme a stress-only NPC would attempt. Composes AFTER the
+  // disposition gate above and never overrides `hooked` (returned earlier) or a
+  // `secret` motive (skipped). Behind CONCORD_VIABILITY_ETHICS; no index or
+  // flag off → today's behavior exactly. The refusal cites a real corpus rule.
+  if (motive !== "secret" && valueRuleIndex && ethicsEnabled()) {
+    try {
+      let archetype = null;
+      try { archetype = db.prepare("SELECT archetype FROM world_npcs WHERE id = ?").get(plotterNpcId)?.archetype || null; } catch { /* world_npcs optional */ }
+      const restraint = npcSchemeRestraint(valueRuleIndex, { id: plotterNpcId, archetype, coping_trait: stress?.coping_trait });
+      if (restraint.score >= ETHICS_REFUSE_THRESHOLD) {
+        return { ok: false, reason: "ethics_restraint", rule: restraint.citedRule };
+      }
+    } catch { /* ethics never blocks the engine on error */ }
   }
 
   // Don't open a parallel scheme of the same kind on the same target.
@@ -232,6 +252,20 @@ export function advanceScheme(db, schemeId, opts = {}) {
             outcome: nextPhase,
           });
         }
+        // Legibility W2 — route it through the player's thread if it touches a
+        // stake of theirs (grudge/foreseen/faction). Diegetic anchor = plotter pos.
+        const npc = db.prepare(`SELECT world_id, x, z FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+        if (npc?.world_id) {
+          maybeEmitPersonalStake(db, {
+            kind: "scheme",
+            worldId: npc.world_id,
+            npcIds: [sch.plotter_id, sch.target_id].filter(Boolean),
+            schemeKind: sch.kind,
+            outcome: nextPhase,
+            headline: `A ${sch.kind || "scheme"} has come to light`,
+            worldPos: (typeof npc.x === "number") ? { x: npc.x, y: 0, z: npc.z } : null,
+          }).catch(() => {});
+        }
       } catch { /* never blocks the cycle */ }
     }
   } else {
@@ -250,8 +284,9 @@ function applyResolution(db, sch, opts = {}) {
           db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`).run(sch.target_id);
         } catch { /* world_npcs may be absent */ }
         try {
-          const dec = db.prepare(`SELECT id, name, faction, archetype FROM world_npcs WHERE id = ?`).get(sch.target_id);
+          const dec = db.prepare(`SELECT id, faction, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(sch.target_id);
           if (dec) {
+            dec.name = npcNameFromRow(dec); // world_npcs has no `name` column — derive from state
             // Lazy import to avoid a circular load chain at module init.
             // Fire-and-forget by design — the resolution path doesn't need
             // to await the legacy cascade to consider the scheme complete.

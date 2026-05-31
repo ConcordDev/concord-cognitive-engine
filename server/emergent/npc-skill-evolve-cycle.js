@@ -30,7 +30,7 @@ export async function runNpcSkillEvolveCycle({ db, state: _state, tickCount: _ti
     let levelMilestoneNpcs = [];
     try {
       levelMilestoneNpcs = db.prepare(`
-        SELECT id, name, archetype, faction, level
+        SELECT id, json_extract(state, '$.name') AS name, archetype, faction, level
         FROM world_npcs
         WHERE level >= 5
           AND (is_dead IS NULL OR is_dead = 0)

@@ -148,6 +148,17 @@ registerHeartbeat("water-flow-cycle", {
   handler: ({ db } = {}) => runWaterFlowCycle({ db, io: REALTIME?.io }),
 });
 
+// Maintenance — the Homeostasis heartbeat (autonomic loop 3). Slow cadence
+// (~4h, scope global): auto-heals mechanical world pathologies (stuck schedulers)
+// and escalates value/arc ones into the Sovereign inbox (never auto-mutates value).
+// KS CONCORD_WORLD_HEALTH=0. Handler receives db from the dispatcher.
+import { runWorldHealthMonitor } from "./emergent/world-health-monitor.js";
+registerHeartbeat("world-health-monitor", {
+  frequency: 960,
+  scope: "global",
+  handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -876,6 +887,50 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
+import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
+registerHeartbeat("civic-bond-cycle", {
+  frequency: CIVIC_BOND_CYCLE_FREQUENCY,
+  scope: "world",
+  handler: runCivicBondCycle,
+});
+
+// Wave 3 — viability dynamics: V→0 feeds world-crisis (kill-switch CONCORD_VIABILITY).
+import { runViabilityCycle, VIABILITY_CYCLE_FREQUENCY } from "./emergent/viability-cycle.js";
+registerHeartbeat("viability-cycle", {
+  frequency: VIABILITY_CYCLE_FREQUENCY,
+  scope: "world",
+  handler: runViabilityCycle,
+});
+
+// Wave 5 #19 — civilization-as-control: PID feedback stabilises realm legitimacy
+// via tax_rate (kill-switch CONCORD_REALM_CONTROL).
+import { runRealmControlCycle, REALM_CONTROL_FREQUENCY } from "./emergent/realm-control-cycle.js";
+registerHeartbeat("realm-control-cycle", {
+  frequency: REALM_CONTROL_FREQUENCY,
+  scope: "world",
+  handler: runRealmControlCycle,
+});
+
+// SL4 tail — periodic prune of expired user_active_effects (cook-engine only
+// pruned on cook; an idle world leaked dead rows). Pure GC. scope:'global'.
+import { runEffectsDecayCycle, EFFECTS_DECAY_FREQUENCY } from "./emergent/effects-decay-cycle.js";
+registerHeartbeat("effects-decay-cycle", {
+  frequency: EFFECTS_DECAY_FREQUENCY,
+  scope: "global",
+  handler: runEffectsDecayCycle,
+});
+
+// WAVE JOBS — career heartbeat: active contracts run on SIM (delegate fidelity)
+// and pay wages employer→worker in sparks per pay-period (kill-switch
+// CONCORD_LIVING_CAREER). scope:'global' (user-global sparks).
+import { runCareerCycle, CAREER_CYCLE_FREQUENCY } from "./emergent/career-cycle.js";
+registerHeartbeat("career-cycle", {
+  frequency: CAREER_CYCLE_FREQUENCY,
+  scope: "global",
+  handler: runCareerCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
@@ -1344,6 +1399,7 @@ import {
   getRepairMemoryStats,
   getAllRepairPatterns,
   getRecentRepairDTUs,
+  configureRepairPersistence,
   startGuardian,
   stopGuardian,
   getGuardianStatus,
@@ -8332,6 +8388,26 @@ async function tryInitWebSockets(server) {
         }
       } catch { /* refusal-field unavailable — continue normally */ }
 
+      // SL6 — harm-to-the-young refusal in the PvP socket path. Mirrors the
+      // HTTP combat route: the Sovereign refuses harm both TO and FROM the
+      // under-matured. Live STATE already holds refusalFields, so we read it
+      // directly (no DB reload). Flag-gated + best-effort (off==today).
+      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+        try {
+          const { isRefusedFor, maturityOf } = await import("./lib/refusal-field.js");
+          const _crWorld = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
+          const _crDb = STATE?.db;
+          const defenderRefused = isRefusedFor(STATE, _crWorld, "harm_to_children_refused", { kind: "player", id: _ffTargetId, maturity: maturityOf(_crDb, "player", _ffTargetId) });
+          const attackerRefused = isRefusedFor(STATE, _crWorld, "harm_to_children_refused", { kind: "player", id: userId, maturity: maturityOf(_crDb, "player", userId) });
+          if (defenderRefused || attackerRefused) {
+            socket.emit("combat:attack:ack", {
+              ok: true, refused: true, reason: "harm_to_children_refused", damage: 0,
+            });
+            return;
+          }
+        } catch { /* refusal-field unavailable — continue normally */ }
+      }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,
@@ -10509,6 +10585,15 @@ async function runMacro(domain, name, input, ctx) {
   // publicReadDomains: domain+name allowlist for read-only macros (Gate 2 of 3)
   // CRITICAL: Every frontend macro call domain must be listed here
   const publicReadDomains = {
+    // Wave 8b — the authored cosmology is the player-facing canon (hidden_truth
+    // stripped in the lib); the codex reads it without auth.
+    lore: new Set(["list", "get", "facets", "spine"]),
+    // Wave 6 — creatures in a world are world-visible; the CreatureSystem reads
+    // them without auth (same as resource nodes).
+    creatures: new Set(["for_world", "taxonomy"]),
+    // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
+    // douse mutate and require an actor, so they're NOT here).
+    elements: new Set(["matrix"]),
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
     // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
@@ -24274,6 +24359,28 @@ registerKnowledgeTradeMacros(register);
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
 
+// Wave 8b — the authored-cosmology read surface (the codex backend). Public-read
+// (the authored lore is the player-facing canon; hidden_truth is stripped in the
+// lib). list / get / facets / spine.
+import registerLoreMacros from "./domains/lore.js";
+registerLoreMacros(register);
+
+// Wave 6 — the creature render data path (the bestiary, un-gated). Public-read;
+// serves the topology-aware descriptor the frontend CreatureSystem renders.
+import registerCreatureMacros from "./domains/creatures.js";
+registerCreatureMacros(register);
+
+// Maintenance — the operator surface for the autonomic nervous system. Reads the
+// Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
+import registerRepairMacros from "./domains/repair.js";
+registerRepairMacros(register);
+
+// WS-CHEMISTRY — the BotW combinable element verbs over the element-vs-material
+// matrix + embodied signal feedback (apply/ignite/douse compose via the existing
+// signal-propagation chemistry). matrix is public-read; apply/ignite/douse mutate.
+import registerElementMacros from "./domains/elements.js";
+registerElementMacros(register);
+
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
 // hook and the LoadFromSubstrate "Reopen recent" panel that every lens
@@ -24492,6 +24599,26 @@ void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
 // + "?" recovery button.
 import registerGuidanceWaypointMacros from "./domains/guidance-waypoint.js";
 registerGuidanceWaypointMacros(register);
+
+// News auto-composer — turns live emergent events (scheme reveals, faction wars,
+// realm decrees, dynasty successions, lattice alerts) into citable news DTUs the
+// /lenses/news surface reads. Was written + macro'd but never registered.
+import registerNewsComposeMacros from "./domains/news-compose.js";
+registerNewsComposeMacros(register);
+import registerCivicBondsMacros from "./domains/civic-bonds.js";
+registerCivicBondsMacros(register);
+import registerDailyLifeMacros from "./domains/daily-life.js";
+registerDailyLifeMacros(register);
+import registerSkillForgeMacros from "./domains/skill-forge.js";
+registerSkillForgeMacros(register);
+import registerCareerMacros from "./domains/careers.js";
+registerCareerMacros(register);
+import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
+registerHeartbeat("news-compose-cycle", {
+  frequency: 60,
+  scope: "global",
+  handler: runNewsComposeCycle,
+});
 
 // Sprint 10 — BYO API key substrate. Lets users plug their own
 // frontier-model API keys (OpenAI / Anthropic / xAI / Google) into
@@ -24826,6 +24953,16 @@ registerMountMacros(register);
 // macros become DTUs under kind='code_artifact'. See lib/code-substrate/.
 import registerCodeSubstrateMacros from "./domains/code-substrate.js";
 registerCodeSubstrateMacros(register);
+
+// Universal Move System P3/P4 — gun ballistics + movement-power surfaces (pure,
+// read-only) over lib/firearms.js + lib/movement-powers.js.
+import registerGunMacros from "./domains/guns.js";
+registerGunMacros(register);
+import registerMovementPowerMacros from "./domains/movement-powers.js";
+registerMovementPowerMacros(register);
+// Universal Move System — opt-in verified-human badge (identity surface).
+import registerIdentityMacros from "./domains/identity.js";
+registerIdentityMacros(register);
 
 // ===================== Phase 4 backend macros (close-the-gaps) =====================
 // Five macros backing the Productivity + Tools lens scaffolds shipped in
@@ -30391,7 +30528,7 @@ app.use("/api/legal", createLegalLiabilityRouter({ db }));
 const ALL_LENS_DOMAINS = [
   "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation","answers",
   "anon","app-maker","ar","art","artistry","astronomy","atlas","attention","audit","automotive","aviation","billing",
-  "bio","board","bridge","calendar","carpentry","chat","chem","code","collab","command-center","construction",
+  "bio","board","bridge","calendar","carpentry","chat","chem","civic_bonds","code","collab","command-center","construction",
   "commonsense","consulting","cooking","council","creative","creative-writing","cri","crypto","custom","daily",
   "database","debate","debug","defense","desert","diy","docs","dtus","eco","education","entity","environment",
   "disputes","electrical","emergency-services","energy","engineering",
@@ -45568,7 +45705,7 @@ app.get("/api/events/paginated", (req, res) => {
     // Source 4: Economy ledger
     if (db) {
       try {
-        const txRows = db.prepare("SELECT id, type, amount, from_user_id, to_user_id, created_at, memo FROM economy_ledger ORDER BY created_at DESC LIMIT 200").all();
+        const txRows = db.prepare("SELECT id, type, amount, from_user_id, to_user_id, created_at, metadata_json AS memo FROM economy_ledger ORDER BY created_at DESC LIMIT 200").all();
         for (const tx of txRows) {
           activities.push({
             id: tx.id, type: "economy", action: tx.type,
@@ -48929,6 +49066,28 @@ app.get("/api/avatars/:userId/scars", asyncHandler(async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// Wave 5b — public appearance read (hydration fallback for remote players whose
+// presence packet predates their join-fill, + nameplate/inspect). Mirrors the
+// scars/drift public-read pattern. Prefers a saved avatar appearance, falls back
+// to the user-level one.
+app.get("/api/avatars/:userId/appearance", asyncHandler(async (req, res) => {
+  try {
+    const uid = req.params.userId;
+    let appearance = null;
+    try {
+      const u = db.prepare(`SELECT appearance_json FROM users WHERE id = ?`).get(uid);
+      if (u?.appearance_json) appearance = JSON.parse(u.appearance_json);
+      if (!appearance) {
+        const a = db.prepare(
+          `SELECT appearance_json FROM avatars WHERE user_id = ? AND appearance_json IS NOT NULL LIMIT 1`
+        ).get(uid);
+        if (a?.appearance_json) appearance = JSON.parse(a.appearance_json);
+      }
+    } catch { /* appearance columns optional (mig 187) */ }
+    res.json({ ok: true, userId: uid, appearance });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase BB1 — festival read APIs.
 app.get("/api/festivals/active", asyncHandler(async (req, res) => {
   const { listActiveFestivals } = await import("./lib/festivals.js");
@@ -49056,7 +49215,7 @@ app.get("/api/fishing/catches/mine", requireAuth(), asyncHandler(async (req, res
   const userId = req.user?.id || req.user?.userId;
   try {
     const rows = db.prepare(`
-      SELECT id, world_id, item_id, item_name, acquired_at, meta_json
+      SELECT id, world_id, item_id, item_name, acquired_at, metadata AS meta_json
       FROM player_inventory
       WHERE user_id = ? AND item_type = 'raw_fish'
       ORDER BY acquired_at DESC LIMIT 50
@@ -52961,6 +53120,9 @@ structuredLog("info", "module_loaded", { detail: "ATS: Affect API endpoints regi
 // ═══════════════════════════════════════════════════════════════════════════════
 
 try {
+  // Maintenance A — make Repair Memory durable: learned fixes mirror to
+  // repair_knowledge so they survive a restart (guarded; no-op if the table is absent).
+  try { configureRepairPersistence(db); } catch { /* persistence optional */ }
   startGuardian();
   structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon + Guardian initialized" });
 } catch (e) {
@@ -56902,7 +57064,7 @@ app.get("/api/dreams/recent", requireAuth(), asyncHandler(async (req, res) => {
     const rows = db.prepare(`
       SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
              d.composer, d.composed_at,
-             dt.human_summary, dt.title
+             json_extract(dt.data, '$.human_summary') AS human_summary, dt.title
       FROM dreams d
       LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
       WHERE d.user_id = ?
@@ -72738,8 +72900,8 @@ register("npc", "eavesdrop", (ctx, input = {}) => {
     const rows = db.prepare(`
       SELECT c.id, c.npc_a, c.npc_b, c.composer, c.opened_at, c.last_msg_at,
              c.expires_at, c.messages_json, c.seed_context_json,
-             a.x AS ax, a.z AS az, a.name AS a_name,
-             b.x AS bx, b.z AS bz, b.name AS b_name
+             a.x AS ax, a.z AS az, json_extract(a.state, '$.name') AS a_name,
+             b.x AS bx, b.z AS bz, json_extract(b.state, '$.name') AS b_name
       FROM npc_conversations c
       LEFT JOIN world_npcs a ON a.id = c.npc_a
       LEFT JOIN world_npcs b ON b.id = c.npc_b
@@ -72764,11 +72926,11 @@ register("npc", "schedule", (ctx, input = {}) => {
   if (!npcId) return { ok: false, reason: "missing_npcId" };
   try {
     const blocks = db.prepare(`
-      SELECT block_idx, activity_kind, location_kind, start_hour, end_hour
+      SELECT block_idx, activity_kind, location_kind
       FROM npc_schedules WHERE npc_id = ? ORDER BY block_idx ASC
     `).all(npcId);
     const state = db.prepare(`
-      SELECT current_block, activity, target_x, target_z, last_advanced_at
+      SELECT current_block, activity_kind AS activity, target_x, target_z, last_signal_at AS last_advanced_at
       FROM npc_routine_state WHERE npc_id = ?
     `).get(npcId);
     return { ok: true, npcId, blocks, state: state || null };
@@ -72831,7 +72993,7 @@ register("dream", "recent_for_player", (ctx, input = {}) => {
     const rows = db.prepare(`
       SELECT d.id, d.user_id, d.world_id, d.dream_dtu_id, d.fragment_count,
              d.signature, d.composer, d.composed_at,
-             dt.title, dt.meta_json
+             dt.title, dt.data AS meta_json
       FROM dreams d
       LEFT JOIN dtus dt ON dt.id = d.dream_dtu_id
       WHERE d.user_id = ?
@@ -73065,7 +73227,7 @@ register("walker", "trade_routes", (ctx, input = {}) => {
   try {
     // Active walker journeys in this world
     const walkers = db.prepare(`
-      SELECT id, walker_id, status, from_world, to_world, dispatched_at, route, reputation
+      SELECT id, npc_id AS walker_id, status, home_world AS from_world, current_world AS to_world, dispatched_at, route_anchors AS route, reputation
       FROM concord_link_walkers
       WHERE status = 'in_transit'
       LIMIT 50
@@ -73088,10 +73250,10 @@ register("walker", "arbitrage", (ctx, input = {}) => {
     // commodities + their per-region price modulator. Higher scarcity
     // = higher price; arbitrage opp = "buy in low-scarcity region,
     // sell in high-scarcity region."
-    const where = commodityKind ? "AND commodity_kind = ?" : "";
+    const where = commodityKind ? "AND resource_kind = ?" : "";
     const args = commodityKind ? [worldId, commodityKind] : [worldId];
     const rows = db.prepare(`
-      SELECT region_id, commodity_kind, scarcity_score, computed_at
+      SELECT world_id AS region_id, resource_kind AS commodity_kind, scarcity AS scarcity_score, computed_at
       FROM regional_scarcity
       WHERE world_id = ? ${where}
       ORDER BY commodity_kind, scarcity_score DESC
@@ -73240,21 +73402,21 @@ register("reflex", "recent_proposals", (_ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const limit = Math.min(50, Math.max(1, Number(input.limit) || 20));
   try {
-    // Reflex detectors post into governance_proposals when severity ≥ high.
+    // Reflex detectors post auto-proposals via auto-proposal.js → auto_proposals
+    // (council_proposals isn't migrated, so that lib-created table is canonical).
     const rows = db.prepare(`
-      SELECT id, kind, severity, summary, body, status, created_at
-      FROM governance_proposals
-      WHERE source = 'reflex_cortex'
+      SELECT id, kind, severity, title AS summary, body, status, created_at
+      FROM auto_proposals
       ORDER BY created_at DESC LIMIT ?
     `).all(limit);
     return { ok: true, proposals: rows };
   } catch (err) {
-    // Some envs may not have governance_proposals.source column — fall back
-    // to a tag scan in the body.
+    // Fallback for builds where no reflex proposal has been posted yet
+    // (auto_proposals not yet lib-created) — narrowed to reflex-kind rows.
     try {
       const rows = db.prepare(`
-        SELECT id, kind, severity, summary, body, status, created_at
-        FROM governance_proposals
+        SELECT id, kind, severity, title AS summary, body, status, created_at
+        FROM auto_proposals
         WHERE body LIKE '%reflex%' OR kind LIKE 'reflex_%'
         ORDER BY created_at DESC LIMIT ?
       `).all(limit);
@@ -73549,29 +73711,29 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
   // grudges table records origin_event_id).
   try {
     out.grudges = db.prepare(`
-      SELECT npc_id, target_kind, target_id, severity, created_at
-      FROM npc_grudges WHERE created_at >= ? LIMIT 50
+      SELECT npc_id, target_kind, target_id, severity, event_at AS created_at
+      FROM npc_grudges WHERE event_at >= ? LIMIT 50
     `).all(since);
   } catch { out.grudges = []; }
   // Faction strategy moves.
   try {
     out.factionMoves = db.prepare(`
-      SELECT faction_id, kind, payload_json, created_at
-      FROM faction_strategy_log WHERE created_at >= ? LIMIT 50
+      SELECT faction_id, move AS kind, payload_json, occurred_at AS created_at
+      FROM faction_strategy_log WHERE occurred_at >= ? LIMIT 50
     `).all(since);
   } catch { out.factionMoves = []; }
   // Procgen regions that spawned.
   try {
     out.regionsSpawned = db.prepare(`
-      SELECT id, world_id, kind, drift_alert_signature, x, z, created_at
-      FROM procgen_regions WHERE created_at >= ? AND world_id = ? LIMIT 50
+      SELECT id, world_id, region_kind AS kind, drift_alert_signature, anchor_x AS x, anchor_z AS z, composed_at AS created_at
+      FROM procgen_regions WHERE composed_at >= ? AND world_id = ? LIMIT 50
     `).all(since, worldId);
   } catch { out.regionsSpawned = []; }
   // Lattice-born quests.
   try {
     out.latticeQuests = db.prepare(`
-      SELECT id, drift_type, quest_id, composer, created_at
-      FROM lattice_born_quests WHERE created_at >= ? LIMIT 50
+      SELECT id, drift_type, quest_id, composer, composed_at AS created_at
+      FROM lattice_born_quests WHERE composed_at >= ? LIMIT 50
     `).all(since);
   } catch { out.latticeQuests = []; }
   return { ok: true, eventId, sinceTs: since, worldId, ripples: out };
@@ -73597,7 +73759,7 @@ register("npc", "lie_probability", (ctx, input = {}) => {
     probability += Math.min(0.4, (signals.grudge || 0) / 25);
   } catch { /* no grudges table */ }
   try {
-    const stress = db.prepare(`SELECT level FROM npc_stress WHERE npc_id = ?`).get(npcId);
+    const stress = db.prepare(`SELECT stress AS level FROM npc_stress WHERE npc_id = ?`).get(npcId);
     signals.stress = stress?.level || 0;
     probability += Math.min(0.2, (signals.stress || 0) / 10);
   } catch { /* no stress table */ }
@@ -73835,8 +73997,8 @@ register("reflex", "propose_fix", async (ctx, input = {}) => {
   let proposal = null;
   try {
     proposal = db.prepare(`
-      SELECT id, kind, severity, summary, body, status, created_at
-      FROM governance_proposals WHERE id = ?
+      SELECT id, kind, severity, title AS summary, body, status, created_at
+      FROM auto_proposals WHERE id = ?
     `).get(proposalId);
   } catch { /* table optional */ }
   if (!proposal) return { ok: false, reason: "proposal_not_found" };
@@ -73940,7 +74102,7 @@ register("dream", "publish", async (ctx, input = {}) => {
 
     // Flip scope on the underlying DTU
     db.prepare(`
-      UPDATE dtus SET meta_json = json_set(coalesce(meta_json, '{}'), '$.scope', 'public')
+      UPDATE dtus SET data = json_set(coalesce(data, '{}'), '$.scope', 'public'), visibility = 'public'
       WHERE id = ?
     `).run(row.dream_dtu_id);
 
@@ -74061,7 +74223,7 @@ register("inheritance", "list_open", (_ctx, input = {}) => {
   try {
     const rows = db.prepare(`
       SELECT l.id, l.dying_npc_id, l.mentor_user_id, l.heir_slot_price_cc, l.listed_at,
-             n.name AS npc_name
+             json_extract(n.state, '$.name') AS npc_name
       FROM inheritance_market_listings l
       LEFT JOIN world_npcs n ON n.id = l.dying_npc_id
       WHERE l.status = 'open'
@@ -74081,7 +74243,7 @@ register("compression_art", "shape_for", async (_ctx, input = {}) => {
     let sourceCount = 0;
     let dominantElement = null;
     try {
-      const dtu = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(megaId);
+      const dtu = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(megaId);
       if (dtu?.meta_json) {
         const m = JSON.parse(dtu.meta_json);
         sourceCount = (m.source_dtu_ids || m.sources || []).length || 0;
@@ -74238,7 +74400,7 @@ register("observer", "compose_report", async (ctx, input = {}) => {
       observed_at: Date.now(),
     };
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'empirical_report', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Empirical Report — ${worldId}`, userId, JSON.stringify(meta));
     return { ok: true, dtuId, ripple };
@@ -74372,7 +74534,7 @@ register("sonic_glyph", "spell_to_chord", (_ctx, input = {}) => {
   let comps = components;
   if (!Array.isArray(comps) && spellId) {
     try {
-      const spell = db.prepare(`SELECT components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
+      const spell = db.prepare(`SELECT component_chain AS components_json FROM player_glyph_spells WHERE id = ?`).get(spellId);
       if (spell?.components_json) {
         try { comps = JSON.parse(spell.components_json); } catch { /* keep undefined */ }
       }
@@ -74483,7 +74645,7 @@ register("sponsorship", "list_for_user", (ctx, _input = {}) => {
   try {
     const rows = db.prepare(`
       SELECT s.id, s.npc_id, s.monthly_cc, s.dispatch_freq_hours, s.started_at, s.last_dispatch_at,
-             n.name AS npc_name
+             json_extract(n.state, '$.name') AS npc_name
       FROM npc_sponsorships s
       LEFT JOIN world_npcs n ON n.id = s.npc_id
       WHERE s.sponsor_user_id = ? AND s.status = 'active'
@@ -74935,7 +75097,7 @@ register("sub_world", "spawn_from_forge", (ctx, input = {}) => {
   // Verify the DTU is a Forge app the user owns or has license to.
   let dtu = null;
   try {
-    dtu = db.prepare(`SELECT id, kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
+    dtu = db.prepare(`SELECT id, type AS kind, creator_id FROM dtus WHERE id = ?`).get(forgeAppDtuId);
   } catch { /* dtus table may differ */ }
   if (!dtu) return { ok: false, reason: "forge_app_not_found" };
   if (dtu.kind !== "forge_app") return { ok: false, reason: "not_forge_app" };

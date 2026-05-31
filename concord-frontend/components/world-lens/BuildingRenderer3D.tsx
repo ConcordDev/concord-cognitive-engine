@@ -166,9 +166,15 @@ export default function BuildingRenderer3D({
           tavern: 'organic', archive: 'gracile', forge: 'fortified',
           market: 'gracile', tower: 'fortified',
         };
+        // WAVE WD — World Density: attach a lazy interior so the building's
+        // door can open (the decor stays invisible until setInteriorVisible is
+        // called by the in-scene reveal trigger). Flag-gated; off == today.
+        const { getClientConfigSync } = await import('@/hooks/useClientConfig');
+        const worldDensityOn = getClientConfigSync().flags.worldDensity;
         const result = createBuilding(THREE, {
           archetype: dtuArch as ProcArch,
           seed: dtu.id,
+          withInterior: worldDensityOn ? 'lazy' : false,
           factionStyle: factionVisual ? {
             primary_color: factionVisual.primary_color,
             secondary_color: factionVisual.secondary_color,
@@ -177,7 +183,9 @@ export default function BuildingRenderer3D({
           } : { architecture_style: archStyleByArch[dtuArch as ProcArch] },
         });
         result.name = `building_${dtu.id}`;
-        result.userData = { buildingId: dtu.id, dtuName: dtu.name };
+        // Merge (not overwrite) so createBuilding's archetype + _interiorMode
+        // survive — setInteriorVisible() reads them to lazy-attach the decor.
+        result.userData = { ...result.userData, buildingId: dtu.id, dtuName: dtu.name };
         result.scale.set(dtu.dimensions.width / 10, dtu.dimensions.height / 8, dtu.dimensions.depth / 8);
         return result;
       } catch (err) {

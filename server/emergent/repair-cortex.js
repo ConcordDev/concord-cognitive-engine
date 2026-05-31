@@ -37,6 +37,13 @@ import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.js";
+
+// Maintenance A — durable Repair Memory. When a db is configured, learned
+// patterns mirror to mig-030 repair_knowledge so the cortex's learning survives
+// a restart. Default null = pure in-memory (today's behaviour).
+let _persistDb = null;
+export function configureRepairPersistence(db) { _persistDb = db || null; }
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 const execAsync = promisify(execCb);
@@ -223,6 +230,7 @@ export function addToRepairMemory(errorPattern, fix) {
       });
     }
     _syncRepairMemoryToSTATE();
+    if (_persistDb) persistRepairEntry(_persistDb, key, _repairMemory.get(key));
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
 
@@ -235,6 +243,7 @@ export function recordRepairSuccess(errorPattern) {
       entry.successes++;
       entry.successRate = entry.successes / entry.occurrences;
       _syncRepairMemoryToSTATE();
+      if (_persistDb) persistRepairEntry(_persistDb, key, entry);
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -252,6 +261,7 @@ export function recordRepairFailure(errorPattern) {
         entry.deprecated = true;
       }
       _syncRepairMemoryToSTATE();
+      if (_persistDb) persistRepairEntry(_persistDb, key, entry);
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -260,7 +270,13 @@ export function lookupRepairMemory(errorPattern) {
   try {
     _ensureRepairMemory();
     const key = hashPattern(errorPattern);
-    const entry = _repairMemory.get(key);
+    let entry = _repairMemory.get(key);
+    // Maintenance A — cold-cache fallback: after a restart the in-memory map is
+    // empty; rehydrate the learned fix from repair_knowledge.
+    if (!entry && _persistDb) {
+      const loaded = loadRepairEntry(_persistDb, key);
+      if (loaded) { _repairMemory.set(key, loaded); entry = loaded; }
+    }
     if (entry && !entry.deprecated && entry.successRate > 0.5) {
       return entry.fix;
     }
@@ -516,6 +532,23 @@ const ERROR_PATTERNS = {
       { name: "add_index_signature", confidence: 0.8, describe: (m) => `Add index signature for ${m[2]}` },
       { name: "widen_to_any", confidence: 0.7, describe: (m) => `Widen ${m[1]} to any (safe fallback)` },
       { name: "add_type_assertion", confidence: 0.6, describe: (m) => `Assert as ${m[2]}` },
+    ],
+  },
+
+  // Maintenance D — the schema-drift class (the 411→0 cleanup, taught). On a
+  // "no such column" runtime error the Surgeon PROPOSES the canonical fix (an
+  // AS-aliased rename or an additive migration, derived from PRAGMA table_info)
+  // and escalates it for one-click approval — it NEVER auto-applies, because
+  // schema changes are structural. proposeOnly is the load-bearing flag.
+  schema_drift: {
+    regex: /no such column:?\s*([\w.]+)/i,
+    category: "database",
+    proposeOnly: true,
+    fixes: [
+      { name: "pragma_canonical_rename", confidence: 0.7, proposeOnly: true,
+        describe: (m) => `Drift on column '${m[1]}': propose an AS-aliased rename to the canonical column (from PRAGMA table_info) — approve to apply` },
+      { name: "additive_migration", confidence: 0.6, proposeOnly: true,
+        describe: (m) => `Drift on column '${m[1]}': propose an additive migration adding it — approve to apply` },
     ],
   },
 

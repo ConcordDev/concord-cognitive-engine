@@ -35,6 +35,21 @@ export function getTimeScale(): number {
 }
 
 /**
+ * Track 1 — the PLAYER's time scale during slow-mo. A kill/finisher slow-mo drops
+ * the WORLD to ~0.1–0.5 for cinematic weight, but the player should stay crisp
+ * (the brief: player runs 0.5–0.8 inside it) so control doesn't feel mushy. A
+ * full hit-stop (world == 0) still freezes everyone — that's the impact freeze.
+ * The player avatar/input path reads THIS; NPCs + physics read getTimeScale().
+ */
+export function getPlayerTimeScale(): number {
+  const w = getTimeScale();
+  if (w <= 0.01) return 0;   // hit-stop: freeze applies to the player too
+  if (w >= 1) return w;      // normal time
+  // Slow-mo: lift the player toward responsive — map world (0,1) → player [0.5,0.8].
+  return Math.max(0.5, Math.min(0.8, 0.5 + w * 0.6));
+}
+
+/**
  * Set the time scale. Optional durationMs auto-restores to 1.0 after the
  * window elapses. Pass undefined to leave the setting indefinite (e.g.
  * for photo mode pause).

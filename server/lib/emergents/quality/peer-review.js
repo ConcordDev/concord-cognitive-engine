@@ -15,9 +15,9 @@ export function selectReviewers(draft, db, { count = 2, excludeId = null } = {})
   if (!db) return [];
   try {
     const rows = db.prepare(`
-      SELECT id, given_name, dominant_lens, role
+      SELECT emergent_id AS id, given_name, current_focus AS dominant_lens, NULL AS role
       FROM emergent_identity
-      WHERE id != ? AND given_name IS NOT NULL
+      WHERE emergent_id != ? AND given_name IS NOT NULL
       ORDER BY RANDOM()
       LIMIT ?
     `).all(excludeId || "", count);

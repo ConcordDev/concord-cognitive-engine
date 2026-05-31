@@ -73,7 +73,7 @@ export function inviteToParty(db, partyId, fromUserId, toUserId) {
   const inviteId = _genId("inv");
   try {
     db.prepare(`
-      INSERT INTO party_invites (id, party_id, from_user_id, to_user_id, status, created_at)
+      INSERT INTO party_invites (id, party_id, invited_by, invited_id, status, created_at)
       VALUES (?, ?, ?, ?, 'pending', unixepoch())
     `).run(inviteId, partyId, fromUserId, toUserId);
     return { ok: true, inviteId };
@@ -196,12 +196,12 @@ export function listIncomingInvites(db, userId) {
   if (!db || !userId) return [];
   try {
     return db.prepare(`
-      SELECT pi.id, pi.party_id AS partyId, pi.from_user_id AS fromUser,
+      SELECT pi.id, pi.party_id AS partyId, pi.invited_by AS fromUser,
              pi.created_at AS createdAt,
              p.name AS partyName, p.party_type AS partyType
       FROM party_invites pi
       JOIN parties p ON p.id = pi.party_id
-      WHERE pi.to_user_id = ? AND pi.status = 'pending'
+      WHERE pi.invited_id = ? AND pi.status = 'pending'
         AND p.disbanded_at IS NULL
       ORDER BY pi.created_at DESC
     `).all(userId);

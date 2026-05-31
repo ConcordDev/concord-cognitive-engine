@@ -442,7 +442,7 @@ export function downloadGuard(db) {
     // Track download for analytics
     try {
       db.prepare(`
-        INSERT INTO download_log (dtu_id, user_id, downloaded_at, action)
+        INSERT INTO download_log (artifact_id, user_id, downloaded_at, action)
         VALUES (?, ?, datetime('now'), 'download')
       `).run(dtuId, userId);
     } catch { /* download_log table may not exist */ }

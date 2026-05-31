@@ -21,6 +21,7 @@
 
 import crypto from "crypto";
 import { recordEncounter, getBond } from "./creature-crossbreeding.js";
+import { markCompanionMountableForHybrid } from "./ecosystem/mount-eligibility.js";
 
 const TAME_BOND_THRESHOLD     = 100;
 const TAME_BASE_SUCCESS_RATE  = 0.25;
@@ -91,6 +92,11 @@ export function attemptTame(db, {
   } catch (e) {
     return { ok: false, reason: e.message };
   }
+
+  // Wave 7a glue #6 — if the tamed creature is a bred hybrid of a rideable
+  // body plan, flag it mount_eligible immediately (closing tame→breed→mount).
+  // Best-effort: a non-hybrid creature is a no-op.
+  try { markCompanionMountableForHybrid(db, id, creatureId); } catch { /* eligibility best-effort */ }
 
   return { ok: true, companionId: id, successProbability: probability };
 }

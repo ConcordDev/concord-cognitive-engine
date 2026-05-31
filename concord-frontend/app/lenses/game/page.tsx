@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createSimplexNoise2D } from '@/lib/world-lens/simplex-noise';
 import { LensShell } from '@/components/lens/LensShell';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
@@ -431,6 +432,12 @@ export default function GameLensPage() {
     if (!ctx) return;
 
     let frameCount = 0;
+    // Track 1 — coherent screenshake. The shake magnitude (s.screenShake) still
+    // accumulates + decays as before, but the per-frame OFFSET is now sampled from
+    // seeded Simplex noise instead of Math.random(): smooth frame-to-frame (not
+    // harsh jitter), deterministic, and survives slow-mo. (Eiserloh trauma model.)
+    const shakeNoiseX = createSimplexNoise2D(1013);
+    const shakeNoiseY = createSimplexNoise2D(2027);
     let lastTimestamp = performance.now();
     let secondAccumulator = 0;
     let spawnAccumulator = 0;
@@ -565,10 +572,13 @@ export default function GameLensPage() {
 
       // --- DRAW ---
       ctx.save();
-      // Apply screen shake
+      // Apply screen shake — coherent noise (not random), scaled by trauma² so a
+      // big combo hit reads dramatic and a small one stays subtle.
       if (s.screenShake > 0) {
-        const sx = (Math.random() - 0.5) * s.screenShake;
-        const sy = (Math.random() - 0.5) * s.screenShake;
+        const t = frameCount * 0.35;
+        const mag = (s.screenShake * s.screenShake) / 8; // trauma² feel, normalised to the 0–8 range
+        const sx = shakeNoiseX(t, 0.5) * mag;
+        const sy = shakeNoiseY(t, 11.5) * mag;
         ctx.translate(sx, sy);
       }
 

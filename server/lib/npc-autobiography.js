@@ -16,6 +16,7 @@
 // Idempotent on (npc_id, generation) via mig 161 UNIQUE.
 
 import crypto from "node:crypto";
+import { npcNameFromRow } from "./npc-name.js";
 
 const MIN_GRUDGES = 10;
 const MIN_SCHEMES = 5;
@@ -26,8 +27,8 @@ export function gatherFragments(db, npcId) {
   const out = { grudges: [], schemes: [], schedule_blocks: [], opinions: [], deaths_witnessed: [] };
   try {
     out.grudges = db.prepare(`
-      SELECT target_kind, target_id, severity, created_at
-      FROM npc_grudges WHERE npc_id = ? ORDER BY created_at ASC LIMIT 50
+      SELECT target_kind, target_id, severity, event_at AS created_at
+      FROM npc_grudges WHERE npc_id = ? ORDER BY event_at ASC LIMIT 50
     `).all(npcId);
   } catch { /* table optional */ }
   try {
@@ -45,8 +46,8 @@ export function gatherFragments(db, npcId) {
   } catch { /* optional */ }
   try {
     out.opinions = db.prepare(`
-      SELECT subject_kind, subject_id, score
-      FROM character_opinions WHERE holder_npc_id = ? LIMIT 30
+      SELECT target_kind AS subject_kind, target_id AS subject_id, score
+      FROM character_opinions WHERE npc_id = ? LIMIT 30
     `).all(npcId);
   } catch { /* optional */ }
   return out;
@@ -107,7 +108,8 @@ export async function tryComposeForNpc(db, npcId) {
 
   let npc = null;
   try {
-    npc = db.prepare(`SELECT id, name FROM world_npcs WHERE id = ?`).get(npcId);
+    npc = db.prepare(`SELECT id, archetype, npc_type, state FROM world_npcs WHERE id = ?`).get(npcId);
+    if (npc) npc.name = npcNameFromRow(npc); // world_npcs has no `name` column — derive from state
   } catch { /* world_npcs optional in minimal builds */ }
   if (!npc) return { ok: false, reason: "npc_not_found" };
 
@@ -123,7 +125,7 @@ export async function tryComposeForNpc(db, npcId) {
   };
   try {
     db.prepare(`
-      INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+      INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
       VALUES (?, 'npc_autobiography', ?, ?, ?, 1, 0, unixepoch())
     `).run(dtuId, `Life of ${npc.name || npcId}, vol. ${decision.generation}`, "system", JSON.stringify({ ...meta, body: prose }));
     db.prepare(`
@@ -139,7 +141,7 @@ export function getRecent(db, npcId, limit = 5) {
   try {
     return db.prepare(`
       SELECT a.id, a.npc_id, a.generation, a.dtu_id, a.composed_at,
-             d.title, d.meta_json
+             d.title, d.data AS meta_json
       FROM npc_autobiography_dtus a
       LEFT JOIN dtus d ON d.id = a.dtu_id
       WHERE a.npc_id = ? ORDER BY a.generation DESC LIMIT ?

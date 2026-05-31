@@ -29,7 +29,7 @@ function mkDb() {
     CREATE TABLE claim_crops (claim_id TEXT, tile_x INTEGER, tile_y INTEGER, growth_stage INTEGER, watered_at INTEGER, PRIMARY KEY (claim_id, tile_x, tile_y));
     CREATE TABLE world_resource_nodes (id TEXT PRIMARY KEY, world_id TEXT, is_depleted INTEGER DEFAULT 0);
     CREATE TABLE npc_grudges (id TEXT PRIMARY KEY, npc_id TEXT, target_kind TEXT, target_id TEXT, severity INTEGER, resolved_at INTEGER);
-    CREATE TABLE dtus (id TEXT PRIMARY KEY, kind TEXT, title TEXT, creator_id TEXT, human_summary TEXT, scope TEXT, visibility TEXT, created_at INTEGER);
+    CREATE TABLE dtus (id TEXT PRIMARY KEY, type TEXT, title TEXT, creator_id TEXT, data TEXT, visibility TEXT, created_at INTEGER);
   `);
   return db;
 }
@@ -101,8 +101,8 @@ describe("Phase 7 — saga mint", () => {
     const r = mintSaga(db, { worldId: W, userId: "u1", title: "My Saga" });
     assert.equal(r.ok, true);
     assert.equal(r.citedEntries, 1);
-    const dtu = db.prepare(`SELECT kind, creator_id FROM dtus WHERE id=?`).get(r.dtuId);
-    assert.equal(dtu.kind, "chronicle");
+    const dtu = db.prepare(`SELECT type, creator_id FROM dtus WHERE id=?`).get(r.dtuId);
+    assert.equal(dtu.type, "chronicle");
     assert.equal(dtu.creator_id, "u1");
   });
 });

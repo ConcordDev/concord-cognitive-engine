@@ -29,7 +29,8 @@ interface Zone {
 interface Pos { x: number; z: number; }
 
 declare global {
-  interface Window { __concordiaPlayerPos?: Pos; }
+  // Must match the canonical {x,y,z} declaration (lib/world-lens/vehicle-renderer.ts).
+  interface Window { __concordiaPlayerPos?: { x: number; y: number; z: number }; }
 }
 
 export function ExtractionRunHUD() {

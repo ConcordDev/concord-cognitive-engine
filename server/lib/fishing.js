@@ -176,7 +176,7 @@ export function mintFishCatch(db, { userId, worldId = "concordia-hub", fish, qua
   try {
     db.prepare(`
       INSERT INTO player_inventory
-        (id, user_id, world_id, item_type, item_id, item_name, quantity, schema_id, acquired_at, meta_json)
+        (id, user_id, world_id, item_type, item_id, item_name, quantity, schema_id, acquired_at, metadata)
       VALUES (?, ?, ?, 'raw_fish', ?, ?, 1, ?, unixepoch(), ?)
     `).run(
       id, userId, worldId, itemId,

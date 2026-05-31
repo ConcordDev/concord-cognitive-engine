@@ -271,7 +271,7 @@ export function getCodeDtuForPath(db, p) {
 export function queryCodeDtus(db, { tag, artifactKind, limit = 100 } = {}) {
   if (!db) return [];
   const rows = db.prepare(
-    `SELECT id, kind, title, content FROM dtus WHERE kind='code_artifact' LIMIT ?`,
+    `SELECT id, type AS kind, title, content FROM dtus WHERE type='code_artifact' LIMIT ?`,
   ).all(Math.min(limit, 1000));
   return rows.filter(r => {
     if (!artifactKind && !tag) return true;

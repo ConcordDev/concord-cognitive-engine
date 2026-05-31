@@ -8,6 +8,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { carriableMemories } from "./viability/loop-causality.js";
 
 // Phase E1 — balance dial env-overridable. See docs/BALANCE_DIALS.md.
 const DEFAULT_LOOP_DURATION_S = Number(process.env.CONCORD_TIME_LOOP_DURATION_S) || (22 * 60);
@@ -105,15 +106,19 @@ export function recordMemory(db, userId, opts = {}) {
   }
 }
 
-export function getMemories(db, userId, worldId) {
+export function getMemories(db, userId, worldId, currentLoop = null) {
   if (!db || !userId || !worldId) return [];
   try {
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT id, summary, memory_dtu_id, first_loop_number, recorded_at
       FROM loop_memories
       WHERE user_id = ? AND world_id = ? AND retained_across_loops = 1
       ORDER BY recorded_at ASC
     `).all(userId, worldId);
+    // N10 causality guard (additive, opt-in): when a currentLoop is supplied,
+    // drop any future-memory paradox (a memory from a loop not yet lived).
+    if (currentLoop == null) return rows;
+    return carriableMemories(rows, currentLoop);
   } catch { return []; }
 }
 

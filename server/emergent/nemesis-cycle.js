@@ -61,9 +61,11 @@ function _processGriefBonds(db, worldId, opts) {
   try {
     // Recent kill-by-player grudges (created in the last 24h).
     const cutoff = Math.floor(Date.now() / 1000) - (opts?.windowS || 24 * 60 * 60);
+    // npc_grudges (asymmetry schema) records a player kill as target_kind='player'
+    // with the eventKind baked into the narrative ("killed by player — …") + event_at.
     const grudges = db.prepare(`
       SELECT npc_id FROM npc_grudges
-      WHERE event_kind = 'killed_by_player' AND created_at >= ?
+      WHERE target_kind = 'player' AND narrative LIKE 'killed by player%' AND event_at >= ?
       LIMIT 100
     `).all(cutoff);
 
@@ -71,13 +73,13 @@ function _processGriefBonds(db, worldId, opts) {
       // Find the slain NPC's faction + family. Same-faction-and-archetype
       // is the proxy for kin until we have explicit family edges.
       const slain = db.prepare(`
-        SELECT faction_id, archetype, world_id FROM world_npcs WHERE id = ?
+        SELECT faction AS faction_id, archetype, world_id FROM world_npcs WHERE id = ?
       `).get(g.npc_id);
       if (!slain || slain.world_id !== worldId) continue;
 
       const kin = db.prepare(`
         SELECT id FROM world_npcs
-        WHERE faction_id = ? AND archetype = ? AND world_id = ? AND id != ?
+        WHERE faction = ? AND archetype = ? AND world_id = ? AND id != ?
         LIMIT 20
       `).all(slain.faction_id, slain.archetype, worldId, g.npc_id);
 
@@ -112,8 +114,9 @@ function _processSchemeBetrayals(db, worldId, opts) {
   try {
     const cutoff = Math.floor(Date.now() / 1000) - (opts?.windowS || 24 * 60 * 60);
     const rows = db.prepare(`
-      SELECT actor_npc_id, target_npc_id FROM npc_schemes
-      WHERE outcome = 'betrayed' AND completed_at >= ? AND world_id = ?
+      SELECT s.plotter_id AS actor_npc_id, s.target_id AS target_npc_id
+      FROM npc_schemes s JOIN world_npcs n ON n.id = s.plotter_id
+      WHERE s.phase IN ('exposed','complete') AND s.resolved_at >= ? AND n.world_id = ?
       LIMIT 100
     `).all(cutoff, worldId);
 

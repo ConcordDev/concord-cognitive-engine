@@ -154,7 +154,7 @@ export function claimQuestRewards(db, userId, worldId, questId) {
     'SELECT * FROM quest_rewards WHERE quest_id = ?'
   ).all(questId);
 
-  const world = db.prepare('SELECT world_type FROM worlds WHERE id = ?').get(worldId);
+  const world = db.prepare('SELECT universe_type AS world_type FROM worlds WHERE id = ?').get(worldId);
   const worldType = world?.world_type || 'standard';
 
   const granted = [];

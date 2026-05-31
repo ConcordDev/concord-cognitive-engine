@@ -24,8 +24,8 @@ function freshDb() {
     CREATE TABLE dtus (
       id TEXT PRIMARY KEY,
       title TEXT,
-      kind TEXT,
-      created_by TEXT,
+      type TEXT,
+      creator_id TEXT,
       created_at INTEGER,
       body_json TEXT
     );
@@ -63,9 +63,9 @@ describe("Phase BE1 — photo gallery", () => {
     assert.equal(s.ok, true);
     assert.ok(s.dtuId.startsWith("dtu_photo_"));
     assert.equal(listPublicPhotosInWorld(db, "tunya").length, 1);
-    const dtu = db.prepare(`SELECT kind, created_by FROM dtus WHERE id = ?`).get(s.dtuId);
-    assert.equal(dtu.kind, "photo");
-    assert.equal(dtu.created_by, "u1");
+    const dtu = db.prepare(`SELECT type, creator_id FROM dtus WHERE id = ?`).get(s.dtuId);
+    assert.equal(dtu.type, "photo");
+    assert.equal(dtu.creator_id, "u1");
   });
 
   it("share is idempotent (re-share returns alreadyShared:true)", () => {

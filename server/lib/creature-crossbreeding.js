@@ -37,6 +37,8 @@ import { generateCreature, validateCreaturePhysics, WORLD_MODIFIERS, TOPOLOGIES 
 import { evolveSkill, getSkill, createSkill, attachSkills } from "./emergent-skills.js";
 import { fuseTwoSkills, skillFusionEnabled } from "./skill-fusion.js";
 import { deriveProfileFromBlueprint, blendMaterialProfile } from "./ecosystem/material-profiles.js";
+import { isTopologyRideable } from "./ecosystem/mount-eligibility.js";
+import { resolveVariant } from "./creature-breed-alchemy.js";
 
 /**
  * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
@@ -253,6 +255,34 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
   // Inherited skills: union of parent skill sets, deduped, capped at 16.
   const inheritedSkillIds = [...new Set([...(a.skillIds ?? []), ...(b.skillIds ?? [])])].slice(0, 16);
   blueprint.skillIds = inheritedSkillIds;
+
+  // Wave 7a glue #6 — a bred hybrid of a rideable body plan (quadruped /
+  // winged-quadruped, adequate mass) is mount-eligible, closing tame→breed→mount.
+  // Stamped on the blueprint here so it persists in creature_lineage.blueprint;
+  // markCompanionMountableForHybrid reads it when the hybrid is later tamed.
+  blueprint.mountEligible = isTopologyRideable(topology, mass);
+
+  // Wave 6 / Layer 2 — breed-alchemy. Resolve the hybrid's elemental outcome from
+  // the parents' affinities + the BIRTH ENVIRONMENT (water×fire-in-heat → steam;
+  // steam×water-in-wet → brine) and stamp the genotype on the blueprint, so the
+  // look/rig/needs and viable habitats fall out of genotype × environment.
+  // KS CONCORD_BREED_ALCHEMY=0 → neutral pass-through.
+  if (process.env.CONCORD_BREED_ALCHEMY !== "0") {
+    try {
+      const affinityA = a.genotype?.affinity || a.genotype?.dominant || _skillDescriptorFromParent(a)?.element || "none";
+      const affinityB = b.genotype?.affinity || b.genotype?.dominant || _skillDescriptorFromParent(b)?.element || "none";
+      const env = { temp: environment?.temp ?? environment?.temperature, humidity: environment?.humidity };
+      const alc = resolveVariant({ affinityA, affinityB, env });
+      blueprint.genotype = {
+        dominant:  alc.dominant,
+        recessive: alc.recessive,
+        variant:   alc.variant,
+        affinity:  alc.dominant,
+        stability: alc.stability,
+      };
+      if (alc.variant) blueprint.variant = alc.variant;
+    } catch { /* breed-alchemy best-effort — neutral pass-through */ }
+  }
 
   // Stability — measure parent divergence:
   //   topology distance + world difference + mass ratio

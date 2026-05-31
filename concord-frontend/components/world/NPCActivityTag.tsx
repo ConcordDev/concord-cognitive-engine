@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useClientConfig } from '@/hooks/useClientConfig';
+import { resolveDemeanor } from '@/lib/concordia/npc-demeanor';
 
 // Theme 4 (game-feel pass): floating activity icon above each NPC head.
 //
@@ -41,7 +42,26 @@ interface NpcLite {
   name?: string;
   position: { x: number; y?: number; z: number };
   currentActivity?: string | null;
+  // WS-CONSEQUENCE — the world's memory of YOU toward this NPC (optional; when
+  // present the tag tints + shows a regard glyph so the consequence is visible
+  // before a word is spoken).
+  grudge?: number;
+  reputation?: number;
+  gratitude?: number;
+  hostile?: boolean;
+  // Track 3 — mood tells: the NPC's OWN emotional state (not player-specific).
+  // `mood` is server-derived (npc-mood.js); a tense/breaking/coping NPC shows a
+  // glyph so distress is legible before dialogue (RimWorld "show the consequence").
+  mood?: string | null;
+  coping?: string | null;
 }
+
+// mood → a small glyph + tint above the activity tag (quiet for neutral/content).
+const MOOD_TELL: Record<string, { icon: string; tint: string; label: string }> = {
+  tense:    { icon: '〰', tint: '#e0a030', label: 'Tense' },
+  breaking: { icon: '!',  tint: '#e05050', label: 'Breaking down' },
+  coping:   { icon: '☍',  tint: '#b070d0', label: 'Coping' },
+};
 
 interface NPCActivityTagProps {
   npcs: NpcLite[];
@@ -116,6 +136,12 @@ export function NPCActivityTag({ npcs, playerPosition, enabled = true }: NPCActi
         if (!pos?.visible) return null;
         const def = n.currentActivity ? ACTIVITY_ICON[n.currentActivity] : null;
         if (!def) return null;
+        // WS-CONSEQUENCE — visible regard. Only computed when the NPC carries
+        // remembered signals; neutral (or absent) leaves the tag unchanged.
+        const dem = (n.grudge != null || n.reputation != null || n.gratitude != null || n.hostile)
+          ? resolveDemeanor({ grudge: n.grudge, reputation: n.reputation, gratitude: n.gratitude, hostile: n.hostile })
+          : null;
+        const borderStyle = dem && dem.demeanor !== 'neutral' ? { borderColor: dem.tint } : undefined;
         return (
           <div
             key={n.id}
@@ -128,8 +154,18 @@ export function NPCActivityTag({ npcs, playerPosition, enabled = true }: NPCActi
               <div
                 className="px-1.5 py-0.5 bg-black/55 border border-white/15 rounded-full
                            backdrop-blur-sm shadow-md text-white/90 text-xs leading-none"
+                style={borderStyle}
               >
                 <span aria-hidden>{def.emoji}</span>
+                {dem && dem.icon && (
+                  <span aria-hidden style={{ color: dem.tint, marginLeft: 3 }} title={dem.label}>{dem.icon}</span>
+                )}
+                {n.mood && MOOD_TELL[n.mood] && (
+                  <span aria-hidden style={{ color: MOOD_TELL[n.mood].tint, marginLeft: 3 }}
+                    title={n.coping ? `${MOOD_TELL[n.mood].label}: ${n.coping}` : MOOD_TELL[n.mood].label}>
+                    {MOOD_TELL[n.mood].icon}
+                  </span>
+                )}
               </div>
               <div className="mt-0.5 text-[8px] uppercase tracking-wide text-white/50">
                 {def.label}

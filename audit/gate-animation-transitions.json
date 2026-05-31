@@ -1,0 +1,18 @@
+{
+  "generatedAt": "2026-05-31T19:02:57.959Z",
+  "states": 18,
+  "transitionEntries": 18,
+  "timedStates": 10,
+  "untimed": [
+    "idle",
+    "walk",
+    "run",
+    "build",
+    "inspect",
+    "craft",
+    "sit",
+    "wave",
+    "celebrate"
+  ],
+  "violations": []
+}

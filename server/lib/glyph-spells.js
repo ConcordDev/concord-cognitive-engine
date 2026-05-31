@@ -15,6 +15,7 @@
 import crypto from "node:crypto";
 import { add as glyphAdd, computeBase6Layer } from "./refusal-algebra/operations.js";
 import { resolveCraft } from "./craft-resolve.js";
+import { stampMoveMeta } from "./move-descriptor.js";
 
 const MIN_COMPONENTS = 2;
 const MAX_COMPONENTS = 5;
@@ -241,6 +242,10 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
   if (fuel) {
     meta.fuel = { items: fuel.items, multiplier: fuel.multiplier, affinity: fuel.affinity };
   }
+  // Universal Move System P1 — stamp the motion descriptor + native world so the
+  // client resolver animates this spell per element+archetype (not generic cast)
+  // and cross-world potency can read where it was made. Kill-switch CONCORD_MOVE_RESOLVER=0.
+  stampMoveMeta(meta, { skillKind: "spell", element: composed.element, worldId });
 
   const tx = db.transaction(() => {
     // Consume one of each owned fuel item (FIFO, world-scoped). Guarded — the
@@ -260,9 +265,15 @@ export function mintSpell(db, { userId, worldId, componentIds, name, fuelItemIds
         }
       }
     }
+    // Schema/query-drift fix (runtime-confirmed): dtus has `type` + `data`, NOT
+    // `kind`/`meta_json`. The old INSERT named non-existent columns, threw at
+    // prepare, and was SILENTLY swallowed by the catch — so minting "worked" but
+    // the recipe DTU was never created (no marketplace listing / citation /
+    // royalty, and the stamped meta_json.motion never persisted). Map to the real
+    // columns the combat+cast paths already read (`data` = the JSON meta blob).
     try {
       db.prepare(`
-        INSERT INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+        INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
         VALUES (?, 'spell_recipe', ?, ?, ?, 1, 0, unixepoch())
       `).run(recipeId, spellName, userId, JSON.stringify(meta));
     } catch { /* dtus optional */ }

@@ -523,6 +523,10 @@ const BuildingCollapseVFX = dynamic(
   () => import('@/components/world/BuildingCollapseVFX'),
   { ssr: false }
 );
+const BuildingWearLayer = dynamic(
+  () => import('@/components/world/BuildingWearLayer'),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -762,6 +766,26 @@ const CinematicCaptureBootstrap = dynamic(
 );
 const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
+  { ssr: false },
+);
+const EmergentJuiceBridge = dynamic(
+  () => import('@/components/world/EmergentJuiceBridge').then((m) => ({ default: m.EmergentJuiceBridge })),
+  { ssr: false },
+);
+const AdaptiveScoreBridge = dynamic(
+  () => import('@/components/world/AdaptiveScoreBridge').then((m) => ({ default: m.AdaptiveScoreBridge })),
+  { ssr: false },
+);
+const WorldAudioBridge = dynamic(
+  () => import('@/components/world/WorldAudioBridge').then((m) => ({ default: m.WorldAudioBridge })),
+  { ssr: false },
+);
+const SystemPrompter = dynamic(
+  () => import('@/components/world/SystemPrompter'),
+  { ssr: false },
+);
+const PersonalStakeBridge = dynamic(
+  () => import('@/components/world/PersonalStakeBridge').then((m) => ({ default: m.PersonalStakeBridge })),
   { ssr: false },
 );
 const SocialOverlay = dynamic(
@@ -1805,6 +1829,37 @@ export default function WorldLensPage() {
     return modeManager.subscribe((next) => setInputMode(next));
   }, []);
 
+  // Wave 5b — load the player's OWN saved appearance before they spawn, so they
+  // appear in-world as the character they created (not the default silhouette).
+  // Maps the saved RichAppearanceConfig palette onto the local avatar state.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'appearance', name: 'load_for_user', input: {},
+        });
+        const saved = res?.data?.result?.appearance as
+          | { skinColor?: string; hairColor?: string; clothing?: { top?: { color?: string }; bottom?: { color?: string } } }
+          | null | undefined;
+        if (cancelled || !saved) return;
+        setPlayerAvatar((prev) => ({
+          ...prev,
+          appearance: {
+            ...prev.appearance,
+            skinColor: saved.skinColor || prev.appearance.skinColor,
+            hairColor: saved.hairColor || prev.appearance.hairColor,
+            clothing: {
+              top: { ...prev.appearance.clothing.top, color: saved.clothing?.top?.color || prev.appearance.clothing.top.color },
+              bottom: { ...prev.appearance.clothing.bottom, color: saved.clothing?.bottom?.color || prev.appearance.clothing.bottom.color },
+            },
+          },
+        }));
+      } catch { /* appearance load best-effort — default silhouette stands */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Start/stop the 5-minute lens time tick whenever the player enters lens_work mode.
   useEffect(() => {
     if (inputMode === 'lens_work' && worldSocket.isConnected) {
@@ -2829,10 +2884,11 @@ export default function WorldLensPage() {
           byId.set(u.userId, {
             id: u.userId,
             name: u.displayName || u.userId.slice(0, 12),
-            // Reuse the local player's appearance config shape — the
-            // server doesn't send an avatar yet so we render a default
-            // silhouette until the profile lookup is wired.
-            appearance: playerAvatar.appearance,
+            // Wave 5b — render the character THIS player created. The server now
+            // fills the presence `avatar` field (city-presence loadPlayerState),
+            // so other players see distinct bodies. Fall back to the local shape
+            // only when the packet predates the join-fill (hydration delay).
+            appearance: (u.avatar as typeof playerAvatar.appearance) || playerAvatar.appearance,
             position: { x: u.x, y: u.y, z: u.z },
             rotation: u.rotation ?? u.direction ?? 0,
             // Coerce remote player action string into the AnimationClip
@@ -4335,6 +4391,11 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <EmergentJuiceBridge />
+          <AdaptiveScoreBridge />
+          <WorldAudioBridge />
+          <SystemPrompter />
+          <PersonalStakeBridge currentUserId={playerAvatar?.id} />
           <ComboEvolvedBridge />
           <CinematicCaptureBootstrap />
           <PerformanceOverlay />
@@ -4345,6 +4406,9 @@ export default function WorldLensPage() {
               name: n.name,
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+              // Track 3 — mood tells from the /npcs payload (server-derived npc-mood).
+              mood: (n as { mood?: string | null }).mood ?? null,
+              coping: (n as { coping?: string | null }).coping ?? null,
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
@@ -4911,6 +4975,11 @@ export default function WorldLensPage() {
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
           />
+          {/* Track 3 (legibility) — persistent diegetic building wear: keeps a
+              crack/char scar at each damaged/collapsed building (via the
+              concordia:projector-ready projector) until it's repaired, so a
+              fought-over world *stays* scarred instead of snapping pristine. */}
+          <BuildingWearLayer worldId={activeDistrict?.id || 'concordia-hub'} />
           {/* Sprint D V2 — heraldic banners at faction-controlled anchors.
               Reads faction visual data from V1's `factions.visual` macro;
               renders SVG sigils on cloth banners with windDirection sway.

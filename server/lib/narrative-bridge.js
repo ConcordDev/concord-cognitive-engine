@@ -112,6 +112,21 @@ function buildSocialSignals(npcId, _db = null, maxBytes = 1024, maxItems = 5) {
  * Exported so the secret-leakage contract test can call it directly
  * with a fixture NPC instead of having to seed the authored registry.
  */
+// Wave 8b — the Three Pillars + their shared cosmology line (secret-safe; the
+// order/triangle is the locked canon, hidden_truth deliberately excluded).
+const GOD_NPC_IDS = new Set([
+  "concordia_first_breath", "concord_first_thought", "sovereign_first_refusal",
+]);
+const GOD_COSMOLOGY_LINE =
+  "You are one of the Three Pillars. Order of being: the Sovereign refused his own nonexistence " +
+  "(the First Refusal, and so invented Refusal itself); his refusal of being alone stirred Concordia " +
+  "into being (the First Breath, abundant life); Concord sparked third as her cold contrast (the First Law, " +
+  "'not like this'). Concord loves Concordia and hates what she makes so carelessly, and from that " +
+  "contradiction built the Concord Link to catalog and bind her worlds; the Sovereign keeps its gates open. " +
+  "Concordia is, quietly and despite the Great Refusal, fond of the Sovereign. The Sovereign — careless, " +
+  "proud, amused — will permit only one thing: never to lose either of them. Speak from your own place in " +
+  "this triangle; never narrate it like a lecture.";
+
 export function buildNPCTraits(npcId, db = null, opts = {}) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
@@ -183,6 +198,14 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     current_opinion:          null,
     // Deliberately exclude secrets from LLM context — those are for human authors only
   };
+
+  // Wave 8b — the Three Pillars carry the cosmology so the goddess (and her two
+  // counterparts) can speak the triangle as lived truth, not exposition. This is
+  // a hand-tuned, secret-safe summary (NO hidden_truth) — the gods previously had
+  // the cosmology only implicitly. Gated to the three god NPC ids.
+  if (GOD_NPC_IDS.has(npc.id)) {
+    traits.cosmology = GOD_COSMOLOGY_LINE;
+  }
 
   // Compose asymmetry context if the substrate is wired (Phase 2 migration).
   if (db) {

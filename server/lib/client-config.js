@@ -15,6 +15,10 @@ function n(envKey, def) {
   return Number.isFinite(v) && v > 0 ? v : def;
 }
 
+function b(envKey) {
+  return process.env[envKey] === "1";
+}
+
 /**
  * The tunable client dials. Keys are stable contract — the frontend
  * useClientConfig hook merges these over its local DEFAULTS, so adding a key
@@ -51,6 +55,18 @@ export function getClientConfig() {
       nemesisFrameMs:     n("CONCORD_THROTTLE_NEMESIS_FRAME_MS", 80),
       dangerBandFrameMs:  n("CONCORD_THROTTLE_DANGER_BAND_FRAME_MS", 500),
       contextPromptFrameMs: n("CONCORD_THROTTLE_CONTEXT_PROMPT_FRAME_MS", 80),
+    },
+    // Kill-switch flags the client reads to gate optional surfaces. These are
+    // NOT gameplay/economy constants — they only toggle presentation wiring
+    // (e.g. WAVE WD reveals building interiors). Default off (== today).
+    flags: {
+      worldDensity: b("CONCORD_WORLD_DENSITY"),
+      expression: b("CONCORD_EXPRESSION"),
+      adaptiveScore: b("CONCORD_ADAPTIVE_SCORE"),
+      worldAudio: b("CONCORD_WORLD_AUDIO"),
+      artAtmosphere: b("CONCORD_ART_ATMOSPHERE"),
+      artUi: b("CONCORD_ART_UI"),
+      skillForge: b("CONCORD_SKILL_FORGE"),
     },
   };
 }

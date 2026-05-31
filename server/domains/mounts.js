@@ -182,6 +182,34 @@ export default function registerMountMacros(register) {
     return { ok: true, mounted: true, ...payload };
   }, { note: "rider's active mount payload (HUD bootstrap)" });
 
+  // mounts.list_for_player — Wave 7a glue #1. The AvatarSystem3D mount-spawn
+  // path calls this exact name (reads `result.active[]`), but it was never
+  // registered → the 404 was swallowed and the mount never spawned. Thin
+  // wrapper over getActiveMountPayload: returns the rider's active mount(s) in
+  // the world (0 or 1) as a back-compat superset — `mount_companion_id` +
+  // `seat_offset_json` for the legacy read, plus the species/gait/seatOffset
+  // the client needs to seat the rider at the saddle anchor (glue #2/#3).
+  register("mounts", "list_for_player", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    const payload = getActiveMountPayload(db, userId, input.worldId || "concordia-hub");
+    if (!payload || !payload.companion) return { ok: true, active: [] };
+    return {
+      ok: true,
+      active: [{
+        mount_companion_id: payload.companion.id,
+        seat_offset_json: JSON.stringify(payload.seatOffset || null),
+        seatOffset: payload.seatOffset,
+        speciesId: payload.speciesId,
+        species: payload.species,
+        gait: payload.gait,
+        companion: payload.companion,
+      }],
+    };
+  }, { note: "rider's active mount(s) for the world-scene spawn path" });
+
   // mounts.history — closed mounted_instances rows for the caller.
   register("mounts", "history", async (ctx, input = {}) => {
     const db = ctx?.db;
@@ -207,6 +235,40 @@ export default function registerMountMacros(register) {
     const recipe = { kind: "mount_gear", meta: input.recipe.meta || input.recipe };
     return validateMountGear(recipe);
   }, { note: "validate a mount_gear recipe shape pre-author" });
+
+  // mounts.craft_gear — Wave 7a glue #5. The "craft a saddle" entry point that
+  // was entirely missing: the mount_gear DTU kind was defined + validated +
+  // equippable, but NOTHING minted one (only test-seeding). This validates the
+  // recipe then mints a real `type='mount_gear'` DTU (canonical recipe-DTU shape,
+  // same as glyph-spells#mintSpell), making a saddle a player-crafted,
+  // royalty-earning, equippable, marketplace-listable artifact. KS via FF_MOUNT_GEAR.
+  register("mounts", "craft_gear", async (ctx, input = {}) => {
+    if (!getFlag("FF_MOUNT_GEAR", 1)) return { ok: false, reason: "feature_disabled" };
+    const db = ctx?.db;
+    const userId = ctx?.actor?.userId || ctx?.userId;
+    if (!db) return { ok: false, reason: "no_db" };
+    if (!userId) return { ok: false, reason: "no_user" };
+    const meta = input.meta || input.recipe || {};
+    const slot = meta.slot;
+    const slotOk = typeof MOUNT_GEAR_SLOTS?.has === "function"
+      ? MOUNT_GEAR_SLOTS.has(slot)
+      : Array.from(MOUNT_GEAR_SLOTS || []).includes(slot);
+    if (!slotOk) return { ok: false, reason: "invalid_slot" };
+    // Validate the full shape before minting — never persist an invalid recipe.
+    const v = validateMountGear({ kind: "mount_gear", meta });
+    if (!v.ok) return { ok: false, reason: "invalid_recipe", errors: v.errors };
+    const title = String(input.name || `${slot[0].toUpperCase()}${slot.slice(1)}`).slice(0, 80);
+    const id = `mg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+    try {
+      db.prepare(`
+        INSERT INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
+        VALUES (?, 'mount_gear', ?, ?, ?, 1, 0, unixepoch())
+      `).run(id, title, userId, JSON.stringify(meta));
+    } catch (err) {
+      return { ok: false, reason: err.message };
+    }
+    return { ok: true, dtuId: id, slot, title };
+  }, { note: "validate + mint a player-crafted mount_gear (saddle/bridle/barding) DTU" });
 
   // mounts.equip_gear — equip a previously-authored gear DTU into one of
   // saddle/bridle/barding slots on a mount the caller owns.

@@ -80,8 +80,8 @@ export function lockInDeduction(db, userId, crimeId, opts = {}) {
     // Persist the deduction attempt for the leaderboard / audit trail.
     try {
       db.prepare(`
-        INSERT INTO arrest_records
-          (id, world_id, crime_id, arresting_detective_id, suspect_id, suspect_type,
+        INSERT INTO trial_records
+          (id, world_id, crime_event_id, detective_id, suspect_id, suspect_type,
            charges, evidence_summary, verdict, sentence_type, sentence_data,
            processed_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
@@ -95,7 +95,7 @@ export function lockInDeduction(db, userId, crimeId, opts = {}) {
         JSON.stringify({ correctCount }),
       );
     } catch (err) {
-      logger.debug?.("detective", "arrest_record_insert_failed", { error: err?.message });
+      logger.debug?.("detective", "trial_record_insert_failed", { error: err?.message });
     }
 
     // 2-of-3 correct + matching suspect → resolve the case.
@@ -123,9 +123,9 @@ export function getDeductionsByUser(db, userId, limit = 20) {
   if (!db || !userId) return [];
   try {
     return db.prepare(`
-      SELECT id, crime_id, suspect_id, verdict, sentence_data, processed_at
-      FROM arrest_records
-      WHERE arresting_detective_id = ?
+      SELECT id, crime_event_id AS crime_id, suspect_id, verdict, sentence_data, processed_at
+      FROM trial_records
+      WHERE detective_id = ?
       ORDER BY processed_at DESC LIMIT ?
     `).all(userId, Math.max(1, Math.min(200, limit)));
   } catch { return []; }

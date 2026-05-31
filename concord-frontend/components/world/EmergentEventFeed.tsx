@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Activity, Pause, Play, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
+import { eventPriority } from '@/lib/concordia/event-digest';
 
 // Emergent simulation events the panel surfaces. These are the things the
 // world *creates on its own* — NPC death, evo-asset promotion, refusal
@@ -60,6 +61,44 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'npc:activity-batch'        as SocketEvent, channel: 'npc',     label: 'NPC activity batch' },
   { name: 'npc:economy-batch'         as SocketEvent, channel: 'economy', label: 'NPC economy batch' },
   { name: 'social:shadows-synced'     as SocketEvent, channel: 'social',  label: 'Social bridge synced' },
+  // WS-LEGIBILITY — surface the silent world-simulation events the dynamism audit
+  // flagged (verify-event-consumers.mjs). Discrete, player-facing signals only;
+  // per-frame combat/mount noise + infra channels stay excluded by design.
+  { name: 'boss:phase-enter'          as SocketEvent, channel: 'crisis',    label: 'World boss phase' },
+  { name: 'boss:state'                as SocketEvent, channel: 'crisis',    label: 'World boss state' },
+  { name: 'combat:death'              as SocketEvent, channel: 'entity',    label: 'Combatant died' },
+  { name: 'combat:hero_kill'          as SocketEvent, channel: 'world',     label: 'Hero kill' },
+  { name: 'concordia:lethal-hit'      as SocketEvent, channel: 'crisis',    label: 'Lethal hit' },
+  { name: 'house:visitor-arrived'     as SocketEvent, channel: 'social',    label: 'House visitor' },
+  { name: 'mount:hungry'              as SocketEvent, channel: 'companion', label: 'Mount hungry' },
+  { name: 'mount:loyalty-low'         as SocketEvent, channel: 'companion', label: 'Mount loyalty low' },
+  { name: 'nemesis:defeated'          as SocketEvent, channel: 'npc',       label: 'Nemesis defeated' },
+  { name: 'npc:combat-resolved'       as SocketEvent, channel: 'npc',       label: 'NPC combat resolved' },
+  { name: 'npc:level-up'              as SocketEvent, channel: 'npc',       label: 'NPC leveled up' },
+  { name: 'npc:quest-accepted'        as SocketEvent, channel: 'npc',       label: 'NPC took a quest' },
+  { name: 'npc:quest-completed'       as SocketEvent, channel: 'npc',       label: 'NPC finished a quest' },
+  { name: 'player:corpse-dropped'     as SocketEvent, channel: 'entity',    label: 'Corpse dropped' },
+  { name: 'player:corpse-recovered'   as SocketEvent, channel: 'entity',    label: 'Corpse recovered' },
+  { name: 'quest:accepted'            as SocketEvent, channel: 'self',      label: 'Quest accepted' },
+  { name: 'quest:rewards_granted'     as SocketEvent, channel: 'self',      label: 'Quest rewards' },
+  { name: 'event:reward'              as SocketEvent, channel: 'self',      label: 'Event reward' },
+  { name: 'scheme:intervened'         as SocketEvent, channel: 'npc',       label: 'Scheme intervened' },
+  { name: 'weaponise:fired'           as SocketEvent, channel: 'npc',       label: 'Secret weaponised' },
+  { name: 'skill:tier-witnessed'      as SocketEvent, channel: 'self',      label: 'Mastery tier witnessed' },
+  { name: 'stealth:detected'          as SocketEvent, channel: 'crisis',    label: 'Spotted while sneaking' },
+  { name: 'tournament:bracket-advanced' as SocketEvent, channel: 'world',   label: 'Tournament advanced' },
+  { name: 'tournament:complete'       as SocketEvent, channel: 'world',     label: 'Tournament complete' },
+  { name: 'ghost-hunt:residue-confronted' as SocketEvent, channel: 'crisis', label: 'Residue confronted' },
+  { name: 'fishing:bite'              as SocketEvent, channel: 'world',     label: 'Fish on the line' },
+  { name: 'minigame:scored'           as SocketEvent, channel: 'world',     label: 'Minigame score' },
+  { name: 'world:building-placed'     as SocketEvent, channel: 'world',     label: 'Building placed' },
+  { name: 'world:building-removed'    as SocketEvent, channel: 'world',     label: 'Building removed' },
+  { name: 'world:building-spawned'    as SocketEvent, channel: 'world',     label: 'Building spawned' },
+  { name: 'world:legendary-achievement' as SocketEvent, channel: 'world',   label: 'Legendary achievement' },
+  { name: 'world:npc-alert'           as SocketEvent, channel: 'crisis',    label: 'NPC alert' },
+  { name: 'world:player-arrived'      as SocketEvent, channel: 'entity',    label: 'Player arrived' },
+  { name: 'world:season-transition'   as SocketEvent, channel: 'weather',   label: 'Season turned' },
+  { name: 'world:weather'             as SocketEvent, channel: 'weather',   label: 'Weather shifted' },
 ];
 
 const CHANNEL_COLORS: Record<EmergentChannel, string> = {
@@ -86,6 +125,26 @@ interface FeedItem {
   channel: EmergentChannel;
   label: string;
   detail: string;
+  // Track 3 — curation: priority tier + batched-count so a burst of the same
+  // ambient kind reads as one "×N" row and critical beats sort to the top.
+  priority: 'critical' | 'major' | 'ambient';
+  count: number;
+}
+
+const FEED_BATCH_WINDOW_MS = 4000;
+const FEED_PRIORITY_RANK: Record<FeedItem['priority'], number> = { critical: 3, major: 2, ambient: 1 };
+
+/** Critical first, then most-recent; over cap, ambient drops before critical. */
+function sortFeed(items: FeedItem[]): FeedItem[] {
+  const cmp = (a: FeedItem, b: FeedItem) => {
+    const pr = FEED_PRIORITY_RANK[b.priority] - FEED_PRIORITY_RANK[a.priority];
+    return pr !== 0 ? pr : b.ts - a.ts;
+  };
+  const sorted = items.slice().sort(cmp);
+  if (sorted.length <= MAX_FEED_ITEMS) return sorted;
+  const critical = sorted.filter((i) => i.priority === 'critical');
+  const rest = sorted.filter((i) => i.priority !== 'critical').slice(0, Math.max(0, MAX_FEED_ITEMS - critical.length));
+  return [...critical, ...rest].sort(cmp);
 }
 
 function summarize(payload: unknown): string {
@@ -127,16 +186,32 @@ export function EmergentEventFeed() {
     for (const evt of TRACKED_EVENTS) {
       const off = subscribe(evt.name, (payload: unknown) => {
         if (pausedRef.current) return;
+        const now = Date.now();
+        const priority = eventPriority(evt.name, evt.channel);
         setItems((prev) => {
+          // Curation: batch a same-kind ambient/major burst within the window into
+          // one row (count++), so the feed digests instead of flooding. Critical
+          // beats never batch — each is its own line.
+          if (priority !== 'critical') {
+            const idx = prev.findIndex(
+              (it) => it.label === evt.label && it.priority !== 'critical' && now - it.ts <= FEED_BATCH_WINDOW_MS,
+            );
+            if (idx >= 0) {
+              const merged = prev.slice();
+              merged[idx] = { ...merged[idx], count: merged[idx].count + 1, ts: now, detail: summarize(payload) || merged[idx].detail };
+              return sortFeed(merged);
+            }
+          }
           const next: FeedItem = {
-            id: `${evt.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            ts: Date.now(),
+            id: `${evt.name}-${now}-${Math.random().toString(36).slice(2, 6)}`,
+            ts: now,
             channel: evt.channel,
             label: evt.label,
             detail: summarize(payload),
+            priority,
+            count: 1,
           };
-          // Newest first, capped — old entries fall off.
-          return [next, ...prev].slice(0, MAX_FEED_ITEMS);
+          return sortFeed([next, ...prev]);
         });
       });
       unsubs.push(off);
@@ -230,8 +305,11 @@ export function EmergentEventFeed() {
                     <li key={item.id} className="px-3 py-1.5">
                       <div className="flex items-baseline gap-2 text-[11px]">
                         <span className={`font-medium ${CHANNEL_COLORS[item.channel]}`}>
-                          {item.label}
+                          {item.label}{item.count > 1 ? ` ×${item.count}` : ''}
                         </span>
+                        {item.priority === 'critical' && (
+                          <span className="text-[9px] uppercase tracking-wide text-rose-400">!</span>
+                        )}
                         <span className="ml-auto text-[10px] tabular-nums text-slate-400">
                           {formatTime(item.ts)}
                         </span>

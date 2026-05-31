@@ -60,12 +60,12 @@ function findSellableRecipes(db) {
   // shape — we don't introduce a new listing schema; we just push more rows.
   return db.prepare(`
     SELECT d.id AS recipe_id, d.creator_id AS npc_id, d.title, d.skill_level,
-           d.meta_json, n.archetype, n.faction, n.level AS npc_level,
+           d.data AS meta_json, n.archetype, n.faction, n.level AS npc_level,
            n.wealth_sparks
     FROM dtus d
     JOIN world_npcs n ON n.id = d.creator_id
-    WHERE d.kind IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
-      AND d.meta_json LIKE '%"author_kind":"npc"%'
+    WHERE d.type IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
+      AND d.data LIKE '%"author_kind":"npc"%'
       AND COALESCE(n.is_dead, 0) = 0
       AND COALESCE(n.level, 1) >= ?
     LIMIT ?
@@ -177,14 +177,14 @@ function findPurchaseCandidate(db, buyer) {
   const budget = Math.floor((buyer.wealth_sparks || 0) / 4);
   const placeholders = prefs.map(() => "?").join(",");
   const candidates = db.prepare(`
-    SELECT d.id AS recipe_id, d.creator_id AS seller_id, d.meta_json,
+    SELECT d.id AS recipe_id, d.creator_id AS seller_id, d.data AS meta_json,
            n.faction AS seller_faction
     FROM dtus d
     JOIN world_npcs n ON n.id = d.creator_id
     WHERE d.creator_id != ?
       AND COALESCE(n.faction, '') != COALESCE(?, '')
-      AND d.meta_json LIKE '%"author_kind":"npc"%'
-      AND d.kind IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
+      AND d.data LIKE '%"author_kind":"npc"%'
+      AND d.type IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe')
     LIMIT 50
   `).all(buyer.id, buyer.faction);
 

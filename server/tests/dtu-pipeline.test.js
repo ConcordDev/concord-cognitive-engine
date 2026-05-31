@@ -52,22 +52,22 @@ function createMockDb() {
           db._calls.push({ sql, params });
           if (sql.includes("INSERT INTO dtus")) {
             // Detect which INSERT variant is being used based on hardcoded values in SQL
-            if (sql.includes("'mega_dtu'") && sql.includes("'MEGA'")) {
-              // compressToDMega: VALUES (?, ?, ?, ?, 'mega_dtu', ?, 'MEGA', '[]', ?, ?, ?, 'published', 1, ?, ?)
+            if (sql.includes("'mega_dtu'") && sql.includes("'mega'")) {
+              // compressToDMega: VALUES (?, ?, ?, ?, 'mega_dtu', ?, 'mega', '[]', ?, ?, ?, 'published', 1, ?, ?)
               tables.dtus.push({
                 id: params[0], creator_id: params[1], title: params[2],
                 content: params[3], content_type: "mega_dtu", lens_id: params[4],
-                tier: "MEGA", tags_json: "[]", price: params[5],
+                tier: "mega", tags_json: "[]", price: params[5],
                 creti_score: params[6], metadata_json: params[7],
                 status: "published", version: 1,
                 created_at: params[8], updated_at: params[9],
               });
-            } else if (sql.includes("'hyper_dtu'") && sql.includes("'HYPER'")) {
-              // compressToHyper: VALUES (?, ?, ?, ?, 'hyper_dtu', ?, 'HYPER', '[]', ?, ?, ?, 'published', 1, ?, ?)
+            } else if (sql.includes("'hyper_dtu'") && sql.includes("'hyper'")) {
+              // compressToHyper: VALUES (?, ?, ?, ?, 'hyper_dtu', ?, 'hyper', '[]', ?, ?, ?, 'published', 1, ?, ?)
               tables.dtus.push({
                 id: params[0], creator_id: params[1], title: params[2],
                 content: params[3], content_type: "hyper_dtu", lens_id: params[4],
-                tier: "HYPER", tags_json: "[]", price: params[5],
+                tier: "hyper", tags_json: "[]", price: params[5],
                 creti_score: params[6], metadata_json: params[7],
                 status: "published", version: 1,
                 created_at: params[8], updated_at: params[9],
@@ -121,8 +121,8 @@ function createMockDb() {
           if (sql.includes("FROM dtus WHERE id = ?") && !sql.includes("tier")) {
             return tables.dtus.find(d => d.id === params[0]) || undefined;
           }
-          if (sql.includes("FROM dtus WHERE id = ? AND tier = 'MEGA'")) {
-            return tables.dtus.find(d => d.id === params[0] && d.tier === "MEGA") || undefined;
+          if (sql.includes("FROM dtus WHERE id = ? AND tier = 'mega'")) {
+            return tables.dtus.find(d => d.id === params[0] && d.tier === "mega") || undefined;
           }
           if (sql.includes("SELECT id, title, content_type, creti_score, tier FROM dtus WHERE id")) {
             const d = tables.dtus.find(x => x.id === params[0]);
@@ -294,7 +294,7 @@ describe("dtu-pipeline: createDTU", () => {
     assert.ok(result.dtu.id.startsWith("dtu_"));
     assert.equal(result.dtu.title, "My DTU");
     assert.equal(result.dtu.status, "published");
-    assert.equal(result.dtu.tier, "REGULAR");
+    assert.equal(result.dtu.tier, "regular");
   });
 
   it("auto-upgrades to MEGA tier for large content", () => {
@@ -303,7 +303,7 @@ describe("dtu-pipeline: createDTU", () => {
       creatorId: "user1", title: "Large DTU", content: largeContent,
     });
     assert.equal(result.ok, true);
-    assert.equal(result.dtu.tier, "MEGA");
+    assert.equal(result.dtu.tier, "mega");
   });
 
   it("keeps non-REGULAR tier when tier is explicitly set", () => {
@@ -312,7 +312,7 @@ describe("dtu-pipeline: createDTU", () => {
       tier: "SHADOW",
     });
     assert.equal(result.ok, true);
-    assert.equal(result.dtu.tier, "SHADOW");
+    assert.equal(result.dtu.tier, "shadow");
   });
 
   it("handles object content (non-string)", () => {
@@ -547,7 +547,7 @@ describe("dtu-pipeline: compressToDMega", () => {
       childDtuIds: ids, lensId: "knowledge",
     });
     assert.equal(result.ok, true);
-    assert.equal(result.mega.tier, "MEGA");
+    assert.equal(result.mega.tier, "mega");
     assert.equal(result.mega.childCount, 2);
   });
 
@@ -598,12 +598,12 @@ describe("dtu-pipeline: compressToHyper", () => {
   });
 
   it("compresses mega DTUs into hyper", () => {
-    const megaIds = db._tables.dtus.filter(d => d.tier === "MEGA").map(d => d.id);
+    const megaIds = db._tables.dtus.filter(d => d.tier === "mega").map(d => d.id);
     const result = compressToHyper(db, {
       creatorId: "u1", title: "Hyper DTU", megaDtuIds: megaIds,
     });
     assert.equal(result.ok, true);
-    assert.equal(result.hyper.tier, "HYPER");
+    assert.equal(result.hyper.tier, "hyper");
     assert.equal(result.hyper.megaCount, 2);
   });
 

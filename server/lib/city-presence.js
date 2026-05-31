@@ -108,6 +108,24 @@ export function loadPlayerState(userId) {
          FROM player_world_state WHERE user_id = ?`
     ).get(userId);
     if (!row) return null;
+    // Wave 5b — fill the presence `avatar` field once per join so other players
+    // see the character THIS player created (broadcastPositions already ships
+    // `p.avatar`; it was always null). Prefer a saved avatar appearance, fall back
+    // to the user-level one. KS CONCORD_PLAYER_APPEARANCE_SYNC=0. Best-effort —
+    // mig 187 columns may be absent on minimal builds.
+    let avatar = null;
+    if (process.env.CONCORD_PLAYER_APPEARANCE_SYNC !== "0") {
+      try {
+        const u = _db.prepare(`SELECT appearance_json FROM users WHERE id = ?`).get(userId);
+        if (u?.appearance_json) avatar = JSON.parse(u.appearance_json);
+        if (!avatar) {
+          const a = _db.prepare(
+            `SELECT appearance_json FROM avatars WHERE user_id = ? AND appearance_json IS NOT NULL LIMIT 1`
+          ).get(userId);
+          if (a?.appearance_json) avatar = JSON.parse(a.appearance_json);
+        }
+      } catch { /* appearance columns optional (mig 187) */ }
+    }
     const entry = {
       cityId: row.city_id,
       districtId: row.district_id || null,
@@ -122,6 +140,7 @@ export function loadPlayerState(userId) {
       maxHealth: row.max_health,
       stamina: row.stamina,
       maxStamina: row.max_stamina,
+      avatar,
       clientState: (() => { try { return JSON.parse(row.client_state_json || "{}"); } catch { return {}; } })(),
       lastUpdate: Date.now(),
       dirty: false,
@@ -559,6 +578,12 @@ export function getUserIdsInWorld(worldId) {
     if (pos.worldId === worldId) ids.push(userId);
   }
   return ids;
+}
+
+/** All currently-present user ids (across every world). Used by global-scope
+ *  signals (e.g. faction-war personal-stake) that aren't tied to one world. */
+export function getOnlineUserIds() {
+  return [..._userPositions.keys()];
 }
 
 /**

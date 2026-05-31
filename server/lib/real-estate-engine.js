@@ -29,7 +29,7 @@ export function listForSale(db, opts) {
   const sellerUserId = String(opts?.sellerUserId || "");
   const priceCents = Math.max(0, Math.floor(Number(opts?.priceCents) || 0));
   if (!buildingId || !sellerUserId || !priceCents) return { ok: false, reason: "missing_inputs" };
-  const b = db.prepare("SELECT owner_kind, owner_id FROM world_buildings WHERE id = ?").get(buildingId);
+  const b = db.prepare("SELECT owner_type AS owner_kind, owner_id FROM world_buildings WHERE id = ?").get(buildingId);
   if (!b) return { ok: false, reason: "building_not_found" };
   if (b.owner_kind !== "player" || b.owner_id !== sellerUserId) return { ok: false, reason: "not_owner" };
   // Close any prior active listing for this building
@@ -62,12 +62,12 @@ export function delist(db, listingId, sellerUserId) {
 
 export function listActiveListings(db, opts = {}) {
   const sql = opts.worldId
-    ? `SELECT pl.*, b.world_id, b.archetype, b.pos_x, b.pos_z
+    ? `SELECT pl.*, b.world_id, b.building_type AS archetype, b.x AS pos_x, b.z AS pos_z
        FROM property_listings pl
        JOIN world_buildings b ON b.id = pl.building_id
        WHERE pl.delisted_at IS NULL AND pl.sold_at IS NULL AND b.world_id = ?
        ORDER BY pl.listed_at DESC LIMIT 200`
-    : `SELECT pl.*, b.world_id, b.archetype, b.pos_x, b.pos_z
+    : `SELECT pl.*, b.world_id, b.building_type AS archetype, b.x AS pos_x, b.z AS pos_z
        FROM property_listings pl
        JOIN world_buildings b ON b.id = pl.building_id
        WHERE pl.delisted_at IS NULL AND pl.sold_at IS NULL
@@ -105,7 +105,7 @@ export function purchaseBuilding(db, opts, wallet = {}) {
     `).run(buyerUserId, listing.price_cents, listingId);
     db.prepare(`
       UPDATE world_buildings
-         SET owner_kind = 'player', owner_id = ?, for_sale_price_cents = 0, listed_at = NULL
+         SET owner_type = 'player', owner_id = ?, for_sale_price_cents = 0, listed_at = NULL
        WHERE id = ?
     `).run(buyerUserId, listing.building_id);
   });
@@ -115,9 +115,9 @@ export function purchaseBuilding(db, opts, wallet = {}) {
 
 export function listOwnedBuildings(db, userId) {
   return db.prepare(`
-    SELECT id, world_id, archetype, pos_x, pos_z, deed_dtu_id,
+    SELECT id, world_id, building_type AS archetype, x AS pos_x, z AS pos_z, deed_dtu_id,
            monthly_rent_cents, for_sale_price_cents, listed_at
-    FROM world_buildings WHERE owner_kind = 'player' AND owner_id = ?
+    FROM world_buildings WHERE owner_type = 'player' AND owner_id = ?
     ORDER BY id DESC LIMIT 200
   `).all(userId);
 }
@@ -132,7 +132,7 @@ export function createRentalAgreement(db, opts) {
   const rentCents = Math.max(0, Math.floor(Number(opts?.rentCents) || 0));
   const periodDays = Math.max(1, Math.min(365, Math.floor(Number(opts?.periodDays) || 30)));
   if (!buildingId || !landlordUserId || !tenantId || !rentCents) return { ok: false, reason: "missing_inputs" };
-  const b = db.prepare("SELECT owner_kind, owner_id FROM world_buildings WHERE id = ?").get(buildingId);
+  const b = db.prepare("SELECT owner_type AS owner_kind, owner_id FROM world_buildings WHERE id = ?").get(buildingId);
   if (!b) return { ok: false, reason: "building_not_found" };
   if (b.owner_kind !== "player" || b.owner_id !== landlordUserId) return { ok: false, reason: "not_landlord" };
   const id = uid("rent");

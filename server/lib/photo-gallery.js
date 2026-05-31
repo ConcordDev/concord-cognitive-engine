@@ -74,7 +74,7 @@ export function sharePhoto(db, photoId, opts = {}) {
     const dtuId = `dtu_photo_${crypto.randomBytes(6).toString("hex")}`;
     try {
       db.prepare(`
-        INSERT INTO dtus (id, title, kind, created_by, created_at, body_json)
+        INSERT INTO dtus (id, title, type, creator_id, created_at, body_json)
         VALUES (?, ?, 'photo', ?, unixepoch(), ?)
       `).run(
         dtuId,

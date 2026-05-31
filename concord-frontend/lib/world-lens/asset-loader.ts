@@ -90,6 +90,16 @@ export async function loadGLTF(url: string, _THREE: typeof import("three")): Pro
         (loader as { setDRACOLoader: (d: unknown) => void }).setDRACOLoader(dracoLoader);
       }
 
+      // Optional KTX2/Basis support for GLBs with GPU-compressed textures.
+      // Uses the renderer ConcordiaScene registered; falls back gracefully.
+      try {
+        const { getKtx2LoaderForGltf } = await import("./texture-loader");
+        const ktx2 = await getKtx2LoaderForGltf(_THREE);
+        if (ktx2 && (loader as { setKTX2Loader?: (k: unknown) => void }).setKTX2Loader) {
+          (loader as { setKTX2Loader: (k: unknown) => void }).setKTX2Loader(ktx2);
+        }
+      } catch { /* ktx2 optional */ }
+
       const gltf = await new Promise<{ scene: unknown }>((resolve, reject) => {
         (loader as { load: (u: string, onLoad: (g: { scene: unknown }) => void, onProgress?: () => void, onError?: (e: unknown) => void) => void })
           .load(url, resolve, undefined, reject);

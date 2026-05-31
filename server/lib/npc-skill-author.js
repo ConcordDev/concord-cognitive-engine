@@ -148,7 +148,7 @@ export function ensureNpcAuthoredSkills(db, npc) {
 
     try {
       db.prepare(`
-        INSERT OR IGNORE INTO dtus (id, kind, title, creator_id, meta_json, skill_level, total_experience, created_at)
+        INSERT OR IGNORE INTO dtus (id, type, title, creator_id, data, skill_level, total_experience, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 0, unixepoch())
       `).run(
         recipeId,
@@ -221,7 +221,7 @@ export async function autoEvolveNpcSkills(db, npcId, ctx = {}) {
     // this means the NPC's revision cites the player's recipe as parent
     // (registered separately by the cycle caller via royalty-cascade).
     if (demonstrations.length > 0) {
-      const witnessedRecipe = db.prepare(`SELECT meta_json FROM dtus WHERE id = ?`).get(demonstrations[0].recipe_dtu_id);
+      const witnessedRecipe = db.prepare(`SELECT data AS meta_json FROM dtus WHERE id = ?`).get(demonstrations[0].recipe_dtu_id);
       try {
         const witnessedMeta = JSON.parse(witnessedRecipe?.meta_json || "{}");
         const witnessedCurrent = witnessedMeta.current_name;

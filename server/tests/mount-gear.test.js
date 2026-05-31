@@ -51,9 +51,9 @@ beforeEach(() => {
   db.exec(`
     CREATE TABLE dtus (
       id TEXT PRIMARY KEY,
-      kind TEXT NOT NULL,
+      type TEXT NOT NULL,
       creator_id TEXT,
-      meta_json TEXT
+      data TEXT
     );
   `);
   mig104.up(db);
@@ -77,7 +77,7 @@ function _seedCompanion(id, ownerId, creatureId, mountEligible = 1) {
 }
 
 function _seedGearDtu(id, meta, kind = "mount_gear") {
-  db.prepare(`INSERT INTO dtus (id, kind, creator_id, meta_json) VALUES (?, ?, 'alice', ?)`)
+  db.prepare(`INSERT INTO dtus (id, type, creator_id, data) VALUES (?, ?, 'alice', ?)`)
     .run(id, kind, JSON.stringify(meta));
 }
 

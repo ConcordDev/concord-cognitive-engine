@@ -267,6 +267,10 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
       color: augColor,
       roughness: aug.material === 'chrome' ? PBR_REFERENCE.chrome.roughness : 0.4,
       metalness: 1.0,
+      // Wave 5a polish — augments read as lit (a faint inner glow on chrome/gold),
+      // so an authored "chrome left arm" / "gold eye" looks powered, not painted.
+      emissive: new THREE.Color(augColor),
+      emissiveIntensity: aug.material === 'chrome' ? 0.18 : 0.28,
     });
     if (aug.region.includes('arm')) {
       const sign = aug.region === 'left-arm' ? -1 : 1;
@@ -277,32 +281,51 @@ export function buildEnhancedAvatar(rich: RichAppearanceConfig, opts: { isLocalP
     }
   }
 
-  /* ── Markings — single decal sphere over the chosen region ─── */
-  // (Full decal projection is a future iteration; right now we just
-  // tint a thin shell over the region so the marking is visible.)
-  for (const mark of rich.accessories.markings ?? []) {
-    if (mark.region === 'face') {
-      // No-op for now — facial blend shapes handle most face-marking dynamics.
-      continue;
-    }
-    // Procedural mark = small additive plane on the torso/arm.
-    const markMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(mark.color),
-      transparent: true,
-      opacity: 0.7,
-    });
-    const markGeom = new THREE.PlaneGeometry(p.headWidth * 0.3, p.headWidth * 0.4);
+  /* ── Markings — a tinted plane over the chosen region ───────── */
+  // Wave 5a polish — face markings now render (were a no-op), and glyph
+  // markings glow (emissive) so an authored "memory-glyph on the brow" reads
+  // as lit. headTopY is the head centre for face/scar placement.
+  const headTopY = p.legLength + p.torsoLength + p.neckLength + p.headHeight * 0.5;
+  function addMark(region: string, color: string, glow: boolean) {
+    const markMat = glow
+      ? new THREE.MeshStandardMaterial({
+          color: new THREE.Color(color),
+          emissive: new THREE.Color(color),
+          emissiveIntensity: 0.6,
+          transparent: true,
+          opacity: 0.85,
+        })
+      : new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.7 });
+    const isFace = region === 'face';
+    const markGeom = new THREE.PlaneGeometry(
+      p.headWidth * (isFace ? 0.22 : 0.3),
+      p.headWidth * (isFace ? 0.3 : 0.4),
+    );
     const markMesh = new THREE.Mesh(markGeom, markMat);
-    markMesh.position.set(0, p.legLength + p.torsoLength * 0.4, p.headDepth * 0.36);
-    if (mark.region === 'arms') {
+    if (isFace) {
+      // On the front of the head, beside the eye-line (cheek/brow).
+      markMesh.position.set(p.headWidth * 0.18, headTopY + p.headHeight * 0.08, p.headDepth * 0.46);
+    } else if (region === 'arms') {
       markMesh.position.set(p.shoulderWidth / 2, p.legLength + p.torsoLength - p.armLength * 0.4, 0);
       markMesh.rotation.y = Math.PI / 2;
-    }
-    if (mark.region === 'back') {
+    } else if (region === 'back') {
       markMesh.position.set(0, p.legLength + p.torsoLength * 0.5, -p.headDepth * 0.36);
       markMesh.rotation.y = Math.PI;
+    } else {
+      markMesh.position.set(0, p.legLength + p.torsoLength * 0.4, p.headDepth * 0.36);
     }
     group.add(markMesh);
+  }
+
+  for (const mark of rich.accessories.markings ?? []) {
+    addMark(mark.region, mark.color, mark.kind === 'glyph');
+  }
+  // Wave 5a — read facial.scars (previously ignored): a desaturated scar mark on
+  // the named body region, so an authored scar actually shows on the body.
+  for (const scar of rich.facial?.scars ?? []) {
+    const scarColor = scar.kind === 'glyph' ? '#7ad0ff' : '#5a3b34';
+    const region = scar.region === 'arm' ? 'arms' : scar.region; // facial uses 'arm', markings use 'arms'
+    addMark(region, scarColor, scar.kind === 'glyph');
   }
 
   /* ── Facial controller ─────────────────────────────────────── */

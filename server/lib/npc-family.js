@@ -17,6 +17,7 @@
 
 import crypto from 'crypto';
 import logger from '../logger.js';
+import { npcNameFromRow } from './npc-name.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -105,8 +106,9 @@ export function seedAuthoredRelationships(db, worldId, authoredNpcs = []) {
   // Build a name → id index for this world's seeded NPCs.
   const byName = new Map();
   try {
-    for (const r of db.prepare(`SELECT id, name FROM world_npcs WHERE world_id = ?`).all(worldId)) {
-      if (r.name) byName.set(String(r.name).toLowerCase(), r.id);
+    for (const r of db.prepare(`SELECT id, archetype, npc_type, state FROM world_npcs WHERE world_id = ?`).all(worldId)) {
+      const nm = npcNameFromRow(r); // world_npcs has no `name` column — derive from state
+      if (nm) byName.set(String(nm).toLowerCase(), r.id);
     }
   } catch { return { ok: false, reason: "no_world_npcs" }; }
 

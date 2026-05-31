@@ -41,10 +41,25 @@ vi.mock('@/components/media/GlobalMediaController', () => ({
   GlobalMediaController: () => null,
 }));
 
+// Selector-aware useUIStore mock. The real store composes the accessibility
+// slice (setOsReducedMotion etc.); the prior mock ignored the selector arg and
+// returned a flat { addToast }, so useAccessibilityWatcher's
+// `useUIStore((s) => s.setOsReducedMotion)` got the whole object → "not a
+// function". Apply the selector against a complete-enough state.
+const mockUiState = {
+  addToast: vi.fn(),
+  accessibility: { reducedMotion: false },
+  osReducedMotion: false,
+  setOsReducedMotion: vi.fn(),
+  setAccessibility: vi.fn(),
+  setAllAccessibility: vi.fn(),
+  resetAccessibility: vi.fn(),
+};
 vi.mock('@/store/ui', () => ({
   useUIStore: Object.assign(
-    () => ({ addToast: vi.fn() }),
-    { getState: () => ({ addToast: vi.fn() }) }
+    (selector?: (s: typeof mockUiState) => unknown) =>
+      typeof selector === 'function' ? selector(mockUiState) : mockUiState,
+    { getState: () => mockUiState, setState: vi.fn(), subscribe: vi.fn() }
   ),
 }));
 

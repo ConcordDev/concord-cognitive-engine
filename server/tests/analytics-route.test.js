@@ -140,11 +140,11 @@ describe("/api/analytics — with seeded data", () => {
         status TEXT, metadata_json TEXT, created_at TEXT DEFAULT (datetime('now'))
       );
       CREATE TABLE dtus (
-        id TEXT PRIMARY KEY, human_summary TEXT, creator_id TEXT
+        id TEXT PRIMARY KEY, data TEXT, creator_id TEXT
       );
     `);
-    db.prepare("INSERT INTO dtus (id, human_summary, creator_id) VALUES (?, ?, ?)").run("d1", "Beam A", "c1");
-    db.prepare("INSERT INTO dtus (id, human_summary, creator_id) VALUES (?, ?, ?)").run("d2", "Plate B", "c2");
+    db.prepare("INSERT INTO dtus (id, data, creator_id) VALUES (?, ?, ?)").run("d1", '{"human_summary":"Beam A"}', "c1");
+    db.prepare("INSERT INTO dtus (id, data, creator_id) VALUES (?, ?, ?)").run("d2", '{"human_summary":"Plate B"}', "c2");
     for (let i = 0; i < 5; i++) {
       db.prepare(`INSERT INTO economy_ledger (id, type, to_user_id, amount, net, status, metadata_json)
         VALUES (?, 'citation_royalty', 'c1', 1, 0.7, 'complete', ?)`)

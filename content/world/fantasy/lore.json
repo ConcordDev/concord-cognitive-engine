@@ -4,6 +4,18 @@
   "world_description": "A high-fantasy realm saturated with magic — and, of all the worlds, the one the Sovereign's hand falls lightest on and Concordia's falls heaviest. The Sundering is her vacation world, the place she slips away to when Concord's endless cataloging and the Sovereign's silence grow too much to bear. So the magic here is HER magic: raw, living, unbounded ley-line sorcery, the overflow of pure creation — not the Sovereign's Refusal, which barely surfaces here at all. What rules instead is life let off its leash: beautiful, overgrown, and a little heartbroken, exactly like the goddess who made it her own. Even its tragedies are love stories that went wrong. Two figures define its current era: Thorne Blackroot, the corrupted forest guardian who walks the line between protector and destroyer, and Lady Seraphine Voss, the vampire duchess whose patience has outlasted three royal dynasties.",
   "history": [
     {
+      "id": "fantasy_the_unwatched_realm",
+      "title": "The Unwatched Realm",
+      "type": "primordial",
+      "era": "Before The Sundering",
+      "description": "Of all the worlds Concordia breathed into being, this is the one she kept for herself. Concord's Link reaches it thinly here, his cataloging slack and far-off; the Sovereign — too proud to follow her on vacation — barely casts a shadow. So Refusal scarcely shows: no strength-nine caps, no seven-day glyphs, only life-magic running free, the way she makes things when no one is correcting her. It is the world most like its maker — abundant, emotional, hungry, beautiful — and, like her, quietly haunted: she came here to escape the triangle and found it full of love gone wrong all the same.",
+      "significance": "founding",
+      "factions_involved": [],
+      "world_id": "fantasy",
+      "known_by": [],
+      "hidden_truth": "Concordia walks this realm more often than any other. The Sundering's saturation of magic is her undiluted hand; its recurring tragedy of love-that-will-not-stop-wanting is her own theme, followed her here."
+    },
+    {
       "id": "lore_root_curse",
       "title": "The Root Curse",
       "type": "catastrophe",
@@ -160,6 +172,24 @@
       ],
       "known_by": [
         "wildwood_circle"
+      ],
+      "world_id": "fantasy"
+    },
+    {
+      "id": "fantasy_the_five_houses_and_the_throne",
+      "title": "The Five Houses and the Hollow Throne",
+      "type": "founding",
+      "era": "Year -90",
+      "description": "The realm is held by five Great Houses beneath a dragon-blooded Crown. House Voss (intrigue and inheritance) is only the most patient. House Mournhold keeps the eastern grain and the oldest grievance. House Karthal holds the iron passes and sells to whoever bleeds. House Sereth, dwindling, still owns every river-right worth having. House Ablon, newest and richest, bought its title within living memory and has never been forgiven for it. Above them sits King Aldous Ferrowyn IV, the Obsidian Crown — dragon-blooded, sickly, and twenty years on a throne he has not ruled from in ten. The Crown is weak by the Houses' careful design: a strong monarch would end the game they all profit from playing. Seraphine Voss is merely the one who plays it best.",
+      "significance": "Names the four Houses left blank (Mournhold, Karthal, Sereth, Ablon) beside House Voss, gives the Obsidian Crown a face (King Aldous Ferrowyn IV), and authors WHY the Crown stays weak — by the Houses' design, not by accident.",
+      "factions_involved": [
+        "house_voss",
+        "fantasy_obsidian_crown"
+      ],
+      "known_by": [
+        "house_voss",
+        "fantasy_obsidian_crown",
+        "fantasy_paladin_order"
       ],
       "world_id": "fantasy"
     }

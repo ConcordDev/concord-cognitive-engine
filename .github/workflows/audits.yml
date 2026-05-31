@@ -52,6 +52,84 @@ jobs:
             echo "::error::Lens wiring regressed below 234 WIRED."; exit 1
           )
 
+      - name: Move-render coverage gate
+        run: |
+          # Self-deriving gate: every move/skill/element/verb must resolve to a
+          # real anim clip + VFX + SFX (no generic fallback). Ratcheting floor on
+          # the OVERALL score — bump it as WS-RENDER slices land so coverage can
+          # only climb. Baseline at introduction: 45% (archetype 89.5 / vfx 75.7
+          # / sfx 0 — the action+move SFX vocabulary is unbound in SoundscapeEngine).
+          node scripts/verify-move-render-coverage.mjs
+          node scripts/verify-move-render-coverage.mjs --ci 100
+
+      - name: Event-consumer (legibility) gate
+        run: |
+          # Self-deriving: every realtime event the server emits should have a
+          # frontend consumer (no silent simulation). Ratcheting floor — bump as
+          # WS-LEGIBILITY slices add SocketEvent-union members + UI consumers.
+          # Baseline at introduction: 64.7% consumed.
+          node scripts/verify-event-consumers.mjs
+          node scripts/verify-event-consumers.mjs --ci 77
+
+      - name: Surface-coverage gate (every player verb fires ≥FLOOR/4 channels)
+        run: |
+          # WAVE SCAN — the closed-set polish manifest. Enumerates every player
+          # verb + emergent event + world-state change, scores each on
+          # [visual][audio][animation][legibility] by grepping the verb→response
+          # chain (file:line proof), ranks gaps by frequency×channels-missing, and
+          # floors shipped verbs. Ratcheting floor: start 1 (no silent dead verb),
+          # raise to 2 then 3 as the gap queue drains. Manifest at
+          # audit/surface-coverage.{json,md} IS the polish spec.
+          node scripts/audit/surface-coverage.mjs
+          node scripts/audit/surface-coverage.mjs --ci   # FLOOR env (default 1)
+
+      - name: Animation-transition graph gate (no pop / no T-pose)
+        run: |
+          # Static integrity of the avatar animation state machine: no orphan
+          # state, no dangling transition target, every state reachable from
+          # 'idle'. Floor 0 — graph integrity must be perfect.
+          node scripts/audit/gates/animation-transitions.mjs --ci
+
+      - name: Untuned-constant gate (BALANCE_DIALS doc↔source)
+        run: |
+          # Doc-rot is the hard signal (ratchet floor 0): a documented balance
+          # dial missing from source. The untuned-backlog (dials still at
+          # first-draft defaults) + undocumented env vars are reported, not gated
+          # — you can't gate "has been playtested" (that's the cold-watcher).
+          node scripts/audit/gates/untuned-constants.mjs --ci 0
+
+      - name: Lens-reachability gate (no orphaned lens a player can't reach)
+        run: |
+          # Every shipped app/lenses/<dir> must be reachable via the canonical
+          # lens-registry — Ctrl+K palette, sidebar, OR absorbed as a core-lens
+          # sub-tab. Ratchet floor 50 (the measured count at landing); drive it
+          # to 0 by wiring orphan lenses into the registry. Imports the registry's
+          # own helpers via tsx so the gate tracks the real nav surface.
+          node scripts/audit/gates/lens-reachability.mjs --ci
+
+      - name: Schema/query drift gate (ratchet — prevents NEW drift)
+        run: |
+          # Runs all migrations into an in-memory DB (PRAGMA = authoritative column
+          # truth) and validates db.prepare/exec column references where attribution
+          # is unambiguous (INSERT/UPDATE cols, single-table SELECTs, alias.col).
+          # The current count is a TRIAGE BACKLOG (runtime-confirm each before
+          # editing — some are migration/code or live-vs-fresh-schema mismatches,
+          # NOT all hard bugs). The --ci floor ratchets DOWN as the queue is worked;
+          # it fails the build only if NEW drift is introduced above the floor.
+          node scripts/verify-schema-drift.mjs
+          node scripts/verify-schema-drift.mjs --ci 0
+
+      - name: Render-parity gate (static appearance layer)
+        run: |
+          node scripts/verify-render-parity.mjs
+          node scripts/verify-render-parity.mjs --ci 100
+
+      - name: Economic invariants (exploit gate)
+        run: |
+          # Constitutional economy constants must not drift without governance.
+          node scripts/verify-economic-invariants.mjs
+          node scripts/verify-economic-invariants.mjs --ci
+
       - name: Macro depth grader
         run: |
           node scripts/grade-macro-depth.mjs

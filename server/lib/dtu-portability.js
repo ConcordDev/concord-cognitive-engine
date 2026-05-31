@@ -64,7 +64,7 @@ export function exportUserCorpus(db, userId, opts = {}) {
   let dtus = [];
   try {
     dtus = db.prepare(`
-      SELECT id, kind, title, creator_id, meta_json,
+      SELECT id, type AS kind, title, creator_id, data AS meta_json,
              skill_level, total_experience, created_at
       FROM dtus WHERE creator_id = ?
       ORDER BY created_at ASC LIMIT ?
@@ -236,7 +236,7 @@ export async function importEnvelope(db, envelope, opts = {}) {
       const exists = db.prepare(`SELECT id FROM dtus WHERE id = ?`).get(dtu.id);
       if (exists) { stats.skipped++; continue; }
       db.prepare(`
-        INSERT INTO dtus (id, kind, title, creator_id, meta_json,
+        INSERT INTO dtus (id, type, title, creator_id, data,
                           skill_level, total_experience, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(

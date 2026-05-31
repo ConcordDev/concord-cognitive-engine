@@ -114,8 +114,10 @@ function makeFakeDb() {
       return { changes: n };
     }
     if (sql.startsWith("INSERT INTO dtus")) {
-      const [id, kind, title, creatorId, metaJson, skillLevel, totalExp] = args;
-      tables.dtus.set(id, { id, kind, title, creator_id: creatorId, meta_json: metaJson, skill_level: skillLevel, total_experience: totalExp });
+      // Canonical column order is now (id, type, title, creator_id, data, …);
+      // store both legacy + canonical keys so any projection resolves.
+      const [id, type, title, creatorId, data, skillLevel, totalExp] = args;
+      tables.dtus.set(id, { id, type, kind: type, title, creator_id: creatorId, data, meta_json: data, skill_level: skillLevel, total_experience: totalExp });
       return { changes: 1 };
     }
     if (sql.startsWith("UPDATE mentorships")) {
@@ -136,10 +138,10 @@ function makeFakeDb() {
       tables.skill_revisions.set(id, { id, recipe_dtu_id: args[1], status: "applied", revision_num: args[2] });
       return { changes: 1 };
     }
-    if (sql.startsWith("UPDATE dtus SET meta_json")) {
+    if (sql.startsWith("UPDATE dtus SET data")) {
       const [meta, id] = args;
       const r = tables.dtus.get(id);
-      if (r) r.meta_json = meta;
+      if (r) { r.data = meta; r.meta_json = meta; }
       return { changes: r ? 1 : 0 };
     }
     if (sql.startsWith("UPDATE skill_evolution_unlocks SET completed_at")) {
@@ -179,7 +181,7 @@ function makeFakeDb() {
   }
 
   function allStmt(sql, args) {
-    if (sql.startsWith("SELECT d.id AS recipe_id, d.creator_id AS npc_id, d.title, d.skill_level, d.meta_json, n.archetype, n.faction, n.level AS npc_level, n.wealth_sparks FROM dtus d JOIN world_npcs n ON n.id = d.creator_id")) {
+    if (sql.startsWith("SELECT d.id AS recipe_id, d.creator_id AS npc_id, d.title, d.skill_level, d.data AS meta_json, n.archetype, n.faction, n.level AS npc_level, n.wealth_sparks FROM dtus d JOIN world_npcs n ON n.id = d.creator_id")) {
       const minLevel = args[0];
       const out = [];
       for (const d of tables.dtus.values()) {
@@ -204,7 +206,7 @@ function makeFakeDb() {
       out.sort((a, b) => (b.wealth_sparks || 0) - (a.wealth_sparks || 0));
       return out;
     }
-    if (sql.startsWith("SELECT d.id AS recipe_id, d.creator_id AS seller_id, d.meta_json, n.faction AS seller_faction FROM dtus d")) {
+    if (sql.startsWith("SELECT d.id AS recipe_id, d.creator_id AS seller_id, d.data AS meta_json, n.faction AS seller_faction FROM dtus d")) {
       const [buyerId, buyerFaction] = args;
       const out = [];
       for (const d of tables.dtus.values()) {

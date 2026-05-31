@@ -224,9 +224,9 @@ export function grantQuestRewards(db, userId, questId, rewards = {}) {
       const dtuId = `sig_${crypto.randomUUID().slice(0, 12)}`;
       db.prepare(`
         INSERT OR IGNORE INTO dtus (
-          id, owner_user_id, creator_id, title, kind, type,
+          id, owner_user_id, creator_id, title, type,
           body_json, tags_json, visibility, tier, data, created_at
-        ) VALUES (?, ?, ?, ?, 'signature_artifact', 'signature_artifact', ?, '[]', 'private', 'mega', ?, datetime('now'))
+        ) VALUES (?, ?, ?, ?, 'signature_artifact', ?, '[]', 'private', 'mega', ?, datetime('now'))
       `).run(
         dtuId,
         userId,

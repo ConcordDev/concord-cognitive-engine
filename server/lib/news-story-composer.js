@@ -22,7 +22,26 @@ const EVENT_SOURCES = Object.freeze([
   { kind: "realm_decree",         table: "realm_decrees",     since: 3600 * 24,     limit: 5  },
   { kind: "dynasty_succession",   table: "npc_legacies",      since: 3600 * 24 * 3, limit: 3  },
   { kind: "lattice_alert",        table: "lattice_drift_alerts", since: 3600 * 12, limit: 3  },
+  // Legibility W4 — telegraph the brewing, not just the terminal reveal. These
+  // surface escalation EARLY so a payoff (the war / the exposure) references its
+  // own foreshadowing instead of arriving from nowhere.
+  { kind: "tension_rising",       table: "faction_relations", since: 3600 * 24,     limit: 5  },
+  { kind: "evidence_mounting",    table: "npc_schemes",       since: 3600 * 24,     limit: 5  },
 ]);
+
+// Legibility W3 — human-readable cause phrases for the trigger tags the faction
+// strategy engine stamps onto each move (faction-strategy.js#_triggerFor).
+const TRIGGER_PHRASE = Object.freeze({
+  retaliation: "in retaliation",
+  expansion_collision: "as expansion turned to collision",
+  momentum_collapse: "after their momentum collapsed",
+  shared_interest: "on a shared interest",
+  ambition: "out of naked ambition",
+  rout: "in the middle of a rout",
+  overextension: "having overextended",
+  consolidation: "to consolidate",
+  opportunity: "seizing an opening",
+});
 
 const HEADLINE_TEMPLATES = {
   scheme_revealed: [
@@ -50,6 +69,16 @@ const HEADLINE_TEMPLATES = {
     "Lattice flag: {context}",
     "Concord substrate warns of {context}",
   ],
+  tension_rising: [
+    "Tensions rise between {a} and {b}",
+    "{a} masses on the {b} border",
+    "Observers warn of conflict brewing between {a} and {b}",
+  ],
+  evidence_mounting: [
+    "Whispers of a plot in {context} grow louder",
+    "Evidence mounts against a scheme in {context}",
+    "A conspiracy in {context} nears the light",
+  ],
 };
 
 function pickDeterministicTemplate(kind, signature) {
@@ -68,11 +97,12 @@ function fillTemplate(template, vars) {
 function harvestSchemeReveals(db, sinceUnix, limit) {
   const exists = tableExists(db, "npc_schemes");
   if (!exists) return [];
+  // A scheme is "revealed" when it resolves to the 'exposed' phase.
   return db.prepare(`
-    SELECT id, npc_id, scheme_kind, target_id, revealed_at
+    SELECT id, plotter_id AS npc_id, kind AS scheme_kind, target_id, resolved_at AS revealed_at
     FROM npc_schemes
-    WHERE revealed_at IS NOT NULL AND revealed_at >= ?
-    ORDER BY revealed_at DESC
+    WHERE phase = 'exposed' AND resolved_at IS NOT NULL AND resolved_at >= ?
+    ORDER BY resolved_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
     kind: "scheme_revealed",
@@ -87,27 +117,37 @@ function harvestFactionWars(db, sinceUnix, limit) {
   const exists = tableExists(db, "faction_strategy_log");
   if (!exists) return [];
   return db.prepare(`
-    SELECT id, faction_id, move_kind, target_id, executed_at
+    SELECT id, faction_id, move AS move_kind, target_id, payload_json, occurred_at AS executed_at
     FROM faction_strategy_log
-    WHERE move_kind IN ('DECLARE_WAR','RAID') AND executed_at >= ?
-    ORDER BY executed_at DESC
+    WHERE move IN ('DECLARE_WAR','RAID') AND occurred_at >= ?
+    ORDER BY occurred_at DESC
     LIMIT ?
-  `).all(sinceUnix, limit).map((r) => ({
-    kind: "faction_war_declared",
-    sourceId: r.id,
-    signature: `war:${r.id}`,
-    vars: { a: r.faction_id, b: r.target_id, move: r.move_kind, context: r.move_kind.toLowerCase() },
-    timestamp: r.executed_at,
-  }));
+  `).all(sinceUnix, limit).map((r) => {
+    // Legibility W3 — show the cause, not just the effect. Read the trigger the
+    // strategy engine stamped (retaliation / expansion_collision / …) so the
+    // story reads "War Declared — retaliation" rather than a bare move name.
+    let trigger = null;
+    try { trigger = JSON.parse(r.payload_json || "{}").trigger ?? null; } catch { /* default */ }
+    const cause = TRIGGER_PHRASE[trigger] || r.move_kind.toLowerCase().replace(/_/g, " ");
+    return {
+      kind: "faction_war_declared",
+      sourceId: r.id,
+      signature: `war:${r.id}`,
+      vars: { a: r.faction_id, b: r.target_id, move: r.move_kind, context: cause, trigger },
+      timestamp: r.executed_at,
+    };
+  });
 }
 
 function harvestRealmDecrees(db, sinceUnix, limit) {
   const exists = tableExists(db, "realm_decrees");
   if (!exists) return [];
   return db.prepare(`
-    SELECT id, realm_id, decree_kind, title, issued_at, issued_by_npc_id
+    SELECT id, kingdom_id AS realm_id, kind AS decree_kind,
+           json_extract(body_json, '$.title') AS title, issued_at,
+           issued_by_id AS issued_by_npc_id
     FROM realm_decrees
-    WHERE issued_at >= ?
+    WHERE issued_at >= ? AND issued_by_kind = 'npc'
     ORDER BY issued_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
@@ -120,13 +160,15 @@ function harvestRealmDecrees(db, sinceUnix, limit) {
 }
 
 function harvestDynastySuccessions(db, sinceUnix, limit) {
-  const exists = tableExists(db, "npc_legacies");
+  const exists = tableExists(db, "npc_legacies") && tableExists(db, "npc_inheritance_links");
   if (!exists) return [];
+  // Heir linkage lives in npc_inheritance_links; legacy death time is died_at.
   return db.prepare(`
-    SELECT id, npc_id, heir_npc_id, composed_at
-    FROM npc_legacies
-    WHERE composed_at >= ? AND heir_npc_id IS NOT NULL
-    ORDER BY composed_at DESC
+    SELECT l.id, l.npc_id, il.heir_npc_id, l.died_at AS composed_at
+    FROM npc_legacies l
+    JOIN npc_inheritance_links il ON il.deceased_npc_id = l.npc_id
+    WHERE l.died_at >= ? AND il.heir_npc_id IS NOT NULL
+    ORDER BY l.died_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
     kind: "dynasty_succession",
@@ -153,6 +195,59 @@ function harvestLatticeAlerts(db, sinceUnix, limit) {
     vars: { context: r.drift_type.replace(/_/g, " ") },
     timestamp: r.detected_at,
   }));
+}
+
+// W4 — brewing tension: a relation already in 'tension' (the pre-war state) where
+// at least one side is in an expansionist stance. Telegraphs the war BEFORE the
+// DECLARE_WAR terminal event, so the payoff references its own foreshadowing.
+function harvestBrewingTensions(db, sinceUnix, limit) {
+  if (!tableExists(db, "faction_relations") || !tableExists(db, "faction_strategy_state")) return [];
+  try {
+    return db.prepare(`
+      SELECT r.faction_a, r.faction_b, r.kind, r.updated_at
+      FROM faction_relations r
+      WHERE r.kind = 'tension' AND COALESCE(r.updated_at, 0) >= ?
+        AND EXISTS (
+          SELECT 1 FROM faction_strategy_state s
+          WHERE s.faction_id IN (r.faction_a, r.faction_b) AND s.stance = 'expand'
+        )
+      ORDER BY r.updated_at DESC
+      LIMIT ?
+    `).all(sinceUnix, limit).map((r) => ({
+      kind: "tension_rising",
+      sourceId: `${r.faction_a}:${r.faction_b}`,
+      // Signature carries the day-bucket so a sustained tension re-surfaces at most daily.
+      signature: `tension:${r.faction_a}:${r.faction_b}:${Math.floor((r.updated_at || 0) / 86400)}`,
+      vars: { a: r.faction_a, b: r.faction_b, context: `${r.faction_a} and ${r.faction_b}` },
+      timestamp: r.updated_at || Math.floor(Date.now() / 1000),
+    }));
+  } catch { return []; }
+}
+
+// W4 — mounting evidence: a still-active scheme whose discovery_pct has climbed
+// past the halfway mark. The player SEES it being uncovered, then SEES it resolve
+// (the Wave-1 npc:scheme-resolved juice). Reveal/resolution is the terminal event;
+// this is the build-up.
+function harvestSchemeEscalation(db, sinceUnix, limit) {
+  if (!tableExists(db, "npc_schemes")) return [];
+  try {
+    return db.prepare(`
+      SELECT id, kind AS scheme_kind, discovery_pct, next_tick_at
+      FROM npc_schemes
+      WHERE phase NOT IN ('exposed', 'resolved', 'abandoned')
+        AND discovery_pct >= 50 AND discovery_pct < 100
+        AND COALESCE(next_tick_at, 0) >= ?
+      ORDER BY discovery_pct DESC
+      LIMIT ?
+    `).all(sinceUnix, limit).map((r) => ({
+      kind: "evidence_mounting",
+      sourceId: r.id,
+      // Bucket by 25-pct band so a single scheme telegraphs a few times as it heats up.
+      signature: `scheme_heat:${r.id}:${Math.floor((r.discovery_pct || 0) / 25)}`,
+      vars: { context: String(r.scheme_kind || "the shadows").replace(/_/g, " ") },
+      timestamp: r.next_tick_at || Math.floor(Date.now() / 1000),
+    }));
+  } catch { return []; }
 }
 
 function tableExists(db, name) {
@@ -224,6 +319,8 @@ export function runNewsComposePass(db, options = {}) {
         case "realm_decree":         rows = harvestRealmDecrees(db, since, src.limit); break;
         case "dynasty_succession":   rows = harvestDynastySuccessions(db, since, src.limit); break;
         case "lattice_alert":        rows = harvestLatticeAlerts(db, since, src.limit); break;
+        case "tension_rising":       rows = harvestBrewingTensions(db, since, src.limit); break;
+        case "evidence_mounting":    rows = harvestSchemeEscalation(db, since, src.limit); break;
       }
     } catch {
       /* table may not exist in some test envs; skip */

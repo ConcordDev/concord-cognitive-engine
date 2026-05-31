@@ -101,7 +101,9 @@ export function createDTU(db, {
 
   // Auto-detect tier based on content size
   const sizeKb = Buffer.byteLength(typeof content === "string" ? content : JSON.stringify(content)) / 1024;
-  const effectiveTier = tier === "REGULAR" && sizeKb > DTU_TIERS.REGULAR.maxSizeKb ? "MEGA" : tier;
+  // dtus.tier CHECK constraint requires lowercase ('regular','mega','hyper','shadow');
+  // DTU_TIERS keys + the `tier` param are uppercase, so normalise for the INSERT.
+  const effectiveTier = (tier === "REGULAR" && sizeKb > DTU_TIERS.REGULAR.maxSizeKb ? "MEGA" : tier).toLowerCase();
 
   // Compute initial CRETI score
   const cretiScore = computeInitialCRETI({
@@ -358,7 +360,7 @@ export function compressToDMega(db, {
       INSERT INTO dtus (id, creator_id, title, content, content_type, lens_id,
         tier, tags_json, price, creti_score, metadata_json, status, version,
         created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'mega_dtu', ?, 'MEGA', '[]', ?, ?, ?, 'published', 1, ?, ?)
+      VALUES (?, ?, ?, ?, 'mega_dtu', ?, 'mega', '[]', ?, ?, ?, 'published', 1, ?, ?)
     `).run(megaId, creatorId, title, aggregateContent, lensId || "unknown",
       price, Math.min(avgCreti + 5, 100), JSON.stringify(metadata), now, now);
 
@@ -389,7 +391,7 @@ export function compressToDMega(db, {
   try {
     const result = doCompress();
     awardMeritCredit(db, creatorId, "mega_dtu_created", 15, { megaId, lensId });
-    return { ok: true, mega: { id: result.megaId, childCount: result.childCount, tier: "MEGA" } };
+    return { ok: true, mega: { id: result.megaId, childCount: result.childCount, tier: "mega" } };
   } catch (err) {
     return { ok: false, error: err.message };
   }
@@ -410,7 +412,7 @@ export function compressToHyper(db, {
   const doCompress = db.transaction(() => {
     // Phase 2 perf fix: batched IN-list with extra MEGA-tier filter.
     const megaMap = batchLookup(db, "dtus", "id", megaDtuIds, {
-      whereExtra: "tier = 'MEGA'",
+      whereExtra: "tier = 'mega'",
     });
     const megas = [];
     for (const megaId of megaDtuIds) {
@@ -430,7 +432,7 @@ export function compressToHyper(db, {
       INSERT INTO dtus (id, creator_id, title, content, content_type, lens_id,
         tier, tags_json, price, creti_score, metadata_json, status, version,
         created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'hyper_dtu', ?, 'HYPER', '[]', ?, ?, ?, 'published', 1, ?, ?)
+      VALUES (?, ?, ?, ?, 'hyper_dtu', ?, 'hyper', '[]', ?, ?, ?, 'published', 1, ?, ?)
     `).run(hyperId, creatorId, title, aggregateContent, lensId || "unknown",
       price, Math.min(avgCreti + 10, 100), JSON.stringify(metadata), now, now);
 
@@ -455,7 +457,7 @@ export function compressToHyper(db, {
   try {
     const result = doCompress();
     awardMeritCredit(db, creatorId, "hyper_dtu_created", 50, { hyperId, lensId });
-    return { ok: true, hyper: { id: result.hyperId, megaCount: result.megaCount, tier: "HYPER" } };
+    return { ok: true, hyper: { id: result.hyperId, megaCount: result.megaCount, tier: "hyper" } };
   } catch (err) {
     return { ok: false, error: err.message };
   }

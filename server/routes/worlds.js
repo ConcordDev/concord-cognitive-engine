@@ -4,7 +4,9 @@
 import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
+import { moodFromStress } from "../lib/npc-mood.js";
 import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
+import { npcNameFromRow } from "../lib/npc-name.js";
 import { loadWorld, listWorlds, getActiveWorldForPlayer } from "../lib/world-loader.js";
 import { travelToWorld, applyWorldRulesToPlayer } from "../lib/transit.js";
 import { spawnWorldNativeEmergent, getWorldEmergents, getCrossWorldEmergents, growAffinity } from "../lib/world-emergents.js";
@@ -14,6 +16,7 @@ import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/worl
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
+import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
 import { gainSkillXP } from "../lib/skills/skill-engine.js";
@@ -657,7 +660,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (!record) return res.json({ location: null });
 
       const npc = db.prepare(
-        "SELECT state_json FROM world_npcs WHERE id = ?"
+        "SELECT state AS state_json FROM world_npcs WHERE id = ?"
       ).get(record.npc_id);
       const state = npc ? _tryParseJSON(npc.state_json, {}) : {};
       res.json({ location: state.zone ?? null, npcId: record.npc_id, title: record.npc_title });
@@ -730,9 +733,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
                  n.grief_level, n.criminal_rep, n.is_wanted, n.schedule_phase, n.job_type,
                  n.current_hp, n.max_hp, n.bounty, n.status_effects,
                  r.activity_kind AS routine_activity_kind,
-                 r.location_kind AS routine_location_kind
+                 r.location_kind AS routine_location_kind,
+                 st.stress AS npc_stress, st.coping_trait AS npc_coping
           FROM world_npcs n
           LEFT JOIN npc_routine_state r ON r.npc_id = n.id
+          LEFT JOIN npc_stress st ON st.npc_id = n.id
           WHERE n.world_id = ? AND n.is_dead = 0
           ORDER BY n.created_at ASC
           LIMIT 200
@@ -783,6 +788,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
           maxHp:         r.max_hp        ?? 100,
           bounty:        r.bounty        ?? 0,
           statusEffects: _tryParseJSON(r.status_effects, []),
+          // Mood tells (Track 3): surface the NPC's own emotional state so the
+          // nameplate can show a coping tell (the drinker, the paranoid) — RimWorld
+          // "show the consequence" — without the player having to open dialogue.
+          // Not player-specific (that's the demeanor/grudge path).
+          stress:        r.npc_stress    ?? null,
+          coping:        r.npc_coping    || null,
+          mood:          moodFromStress(r.npc_stress, r.npc_coping),
         };
       });
 
@@ -1420,6 +1432,41 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/worlds/:worldId/crops — Wave 5c. The crop-field-renderer is written
+  // + mounted but rendered nothing because no per-world crops endpoint existed to
+  // feed it. Joins claim_crops -> land_claims (this world's active claims) and
+  // translates each crop's per-claim tile to an absolute world tile via the claim
+  // anchor (the renderer maps tile_x * 2m -> world x). Public-read (world-visible),
+  // matching the /nodes handler. KS CONCORD_CROP_RENDER=0.
+  router.get("/:worldId/crops", (req, res) => {
+    try {
+      if (process.env.CONCORD_CROP_RENDER === "0") return res.json({ ok: true, crops: [], count: 0 });
+      const { worldId } = req.params;
+      let rows = [];
+      try {
+        rows = db.prepare(`
+          SELECT cc.claim_id, cc.tile_x, cc.tile_y, cc.crop_kind, cc.growth_stage,
+                 lc.anchor_x, lc.anchor_z
+          FROM claim_crops cc
+          JOIN land_claims lc ON lc.id = cc.claim_id
+          WHERE lc.world_id = ? AND lc.status = 'active'
+          LIMIT 2000
+        `).all(worldId);
+      } catch { rows = []; /* tables may not exist on minimal builds */ }
+      // Tile is 2m; place the field at the claim anchor (renderer does tile*2 -> world).
+      const crops = rows.map((r) => ({
+        claim_id: r.claim_id,
+        tile_x: Math.round((Number(r.anchor_x) || 0) / 2) + (Number(r.tile_x) || 0),
+        tile_y: Math.round((Number(r.anchor_z) || 0) / 2) + (Number(r.tile_y) || 0),
+        crop_kind: r.crop_kind,
+        growth_stage: r.growth_stage,
+      }));
+      res.json({ ok: true, crops, count: crops.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/nodes/:nodeId/gather — player gathers from a resource node
   router.post("/:worldId/nodes/:nodeId/gather", requireAuth, async (req, res) => {
     try {
@@ -1515,7 +1562,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // Award gathering/survival XP — every gather is practice
       let skillProgress = null;
       try {
-        const world = db.prepare('SELECT world_type FROM worlds WHERE id = ?').get(worldId);
+        const world = db.prepare('SELECT universe_type AS world_type FROM worlds WHERE id = ?').get(worldId);
         const worldType = world?.world_type || 'standard';
         // Survival for ore/stone, crafting for wood/plant resources
         const node = db.prepare('SELECT node_type FROM world_resource_nodes WHERE id = ?').get(nodeId);
@@ -1870,6 +1917,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const building = db.prepare("SELECT * FROM world_buildings WHERE id = ? AND world_id = ?").get(buildingId, worldId);
       if (!building) return res.status(404).json({ ok: false, error: 'building not found' });
 
+      // WAVE WD — World Density: lazily seed the interior on first entry (Tier 2,
+      // "never empty") + mark it active (Tier 3, dormancy gate). off == today.
+      if (worldDensityEnabled()) {
+        try { ensureInterior(db, building); } catch { /* never block the view */ }
+        try { recordInteriorActivity(db, buildingId); } catch { /* noop */ }
+      }
+
       const rooms = getRoomsForBuilding(db, buildingId);
       const occupants = db.prepare(`
         SELECT id, archetype, state, grief_level, is_wanted, schedule_phase
@@ -1992,6 +2046,32 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
+      // ── SL6 — harm-to-the-young refusal gate ───────────────────────────────
+      // The Sovereign (god of Refusal who refused death) refuses harm both TO
+      // and FROM the under-matured. A divine field, not a despawn hack: an
+      // active `harm_to_children_refused` field blocks the strike (0 damage,
+      // refused ack) when EITHER the defender (NPC) OR the attacker (player) is
+      // under-matured and matches the field's scope. Lifts at coming-of-age.
+      // Flag-gated (CONCORD_CHILD_REFUSAL) + DB-backed (worlds.js has no live
+      // STATE) + best-effort, so off==today / no-field==today.
+      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+        try {
+          const { isRefusedForDb, maturityOf } = await import("../lib/refusal-field.js");
+          const defenderMaturity = maturityOf(db, "npc", npcId);
+          const attackerMaturity = maturityOf(db, "player", userId);
+          const defenderRefused = isRefusedForDb(db, worldId, "harm_to_children_refused", { kind: "npc", id: npcId, maturity: defenderMaturity });
+          const attackerRefused = isRefusedForDb(db, worldId, "harm_to_children_refused", { kind: "player", id: userId, maturity: attackerMaturity });
+          if (defenderRefused || attackerRefused) {
+            return res.status(200).json({
+              ok: true, refused: true, reason: "harm_to_children_refused", damage: 0,
+              detail: defenderRefused
+                ? "The Sovereign refuses harm to the young."
+                : "The young are refused the act of harm.",
+            });
+          }
+        } catch { /* refusal-field unavailable — combat continues normally */ }
+      }
+
       // ── Concordant Law gate ────────────────────────────────────────────────
       // Concordia-hub is the Three Above All's domain: Sovereign + Concord +
       // Concordia have decreed all combat refused inside the hub. Refusal is
@@ -2037,11 +2117,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       // ── Resolve skill DTU for attack parameters ────────────────────────────
       let skillData = {};
+      let skillLevel = 1; // the skill DTU's level — Pillar-3 cross-world potency input
       if (skillDtuId) {
-        const dtu = db.prepare("SELECT data FROM dtus WHERE id = ?").get(skillDtuId);
+        const dtu = db.prepare("SELECT data, skill_level FROM dtus WHERE id = ?").get(skillDtuId);
         if (dtu) {
           try { skillData = typeof dtu.data === 'string' ? JSON.parse(dtu.data) : dtu.data; }
           catch { /* keep empty */ }
+          skillLevel = Number(dtu.skill_level ?? 1) || 1;
         }
       }
 
@@ -2187,6 +2269,60 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* Layer 7 disabled / migration not applied — neutral pass-through */ }
 
+      // Universal Move System Pillar 3 — cross-world potency. A move sags when
+      // used outside its native world unless the skill is highly leveled. Reads
+      // skillData.nativeWorld (stamped by move-descriptor.js at mint/evolve) +
+      // the skill DTU's level. Applied AFTER the cap, like env boost. Defensive:
+      // only activates for a move with a native stamp used in a DIFFERENT world;
+      // every pre-MS-P1 move (no stamp) is a complete no-op. KS CONCORD_CROSS_WORLD_POTENCY=0.
+      try {
+        const nativeWorld = skillData?.nativeWorld ?? null;
+        if (nativeWorld && nativeWorld !== worldId && Number.isFinite(damageResult.finalDamage)) {
+          const { crossWorldPotency } = await import("../lib/cross-world-potency.js");
+          const worldRow = db.prepare("SELECT rule_modulators FROM worlds WHERE id = ?").get(worldId);
+          const potency = crossWorldPotency({
+            skillLevel,
+            skillKind: skillData?.skill_kind,
+            nativeWorldId: nativeWorld,
+            targetWorldId: worldId,
+            targetWorld: worldRow,
+          });
+          if (potency !== 1.0) {
+            damageResult.finalDamage = Math.round(damageResult.finalDamage * potency * 10) / 10;
+            damageResult.crossWorldPotency = potency;
+          }
+        }
+      } catch { /* potency disabled / no native stamp — neutral pass-through */ }
+
+      // Wave 7a glue #4 — mounted combat overlay. When the attacker is mounted
+      // (combat_actor_state.mount_state set by mount/dismount), apply the mount
+      // archetype's charge tilt (speed_factor) to finalDamage POST-CAP — the same
+      // blessed pattern as the env boost above (the cap stays a bound on RAW
+      // damage; mounted charge momentum can legitimately exceed it, clamped to the
+      // overlay's own ≤2× bound). `damageResult.mounted` rides into the response +
+      // the impact emit so the existing mounted-combat overlay UI reacts. Before
+      // this, the attack path never read mount_state → mounted damage was
+      // unmodified. KS CONCORD_MOUNT_COMBAT=0.
+      if (process.env.CONCORD_MOUNT_COMBAT !== "0") {
+        try {
+          const { readMountState, MOUNTED_MODIFIER } = await import("../lib/mount-combat-overlay.js");
+          const ms = readMountState(db, "player", userId);
+          if (ms && ms.mounted_modifier_active && Number.isFinite(damageResult.finalDamage)) {
+            const archetype = ms.archetype || "generic";
+            const mod = MOUNTED_MODIFIER[archetype] || MOUNTED_MODIFIER.generic;
+            const speedFactor = Math.max(0.5, Math.min(2.0, mod.speed_factor || 1.0));
+            if (speedFactor !== 1.0) {
+              damageResult.finalDamage = Math.round(damageResult.finalDamage * speedFactor * 10) / 10;
+            }
+            damageResult.mounted = {
+              archetype,
+              speedFactor,
+              finishers: (mod.mounted_finishers || []).slice(),
+            };
+          }
+        } catch { /* overlay disabled / mount_state column missing — neutral pass-through */ }
+      }
+
       // ── Concordia Phase 3: mass-based combat physics ───────────────────────
       // After env amplification, fold in attacker/target mass ratio clamped
       // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder
@@ -2299,14 +2435,30 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // N4-EVO: a landed hit accrues fitness on the skill/weapon's evolvable
+      // asset — fight with something enough and it refines. Best-effort +
+      // kill-switched (off → today). Never blocks combat.
+      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && skillDtuId) {
+        try {
+          const { weaponAssetIdForSkill, onCombatHit } = await import("../lib/gameplay-asset-bridge.js");
+          const wid = weaponAssetIdForSkill(db, skillDtuId);
+          if (wid) onCombatHit(db, {
+            attackerId: userId, victimId: npcId, weapon: { id: wid },
+            damage: Number(damageResult.finalDamage) || 0,
+            isCrit: Number(damageResult.executionMultiplier || 1) > 1,
+          });
+        } catch { /* evo-asset best-effort */ }
+      }
+
       // E0#3 — boss HP/phase HUD + light up the dormant boss-phase scaling.
       // The phase-state created at spawn (STATE.bossPhases) was never ticked in
       // combat, so its damage scaling was dead. If the target is a boss, tick
       // its phases on the post-damage hp and emit boss:state for the HUD.
       try {
         const bossRow = db.prepare(
-          `SELECT name, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
+          `SELECT state, archetype, npc_type, current_hp, max_hp FROM world_npcs WHERE id = ?`
         ).get(npcId);
+        if (bossRow) bossRow.name = npcNameFromRow(bossRow); // world_npcs has no `name` column — derive from state
         const bossPhases = globalThis.__CONCORD_STATE__?.bossPhases?.get?.(npcId);
         const { isBossRow, computeBossState } = await import("../lib/combat/boss-hud.js");
         if (isBossRow(bossRow, bossPhases)) {

@@ -6,6 +6,7 @@ import {
   ACTION_DESCRIPTORS,
   ACTION_VERBS,
   ACTION_ARCHETYPES,
+  MOTION_EXTRA_ARCHETYPES,
   _internal,
 } from '@/lib/concordia/action-biomechanics';
 import { juiceTriggerFor } from '@/lib/concordia/play-action';
@@ -83,6 +84,34 @@ describe('action-biomechanics — pose generation', () => {
       expect(clip.duration).toBeGreaterThan(0);
       expect(clip.tracks.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('action-biomechanics — motion-extended archetypes (firearm/flight/movement)', () => {
+  it('covers the 6 move-render archetypes the move-resolver can derive', () => {
+    expect([...MOTION_EXTRA_ARCHETYPES].sort()).toEqual(
+      ['blink', 'firearm', 'flight', 'speed_trail', 'surface_ride', 'web_swing'],
+    );
+  });
+
+  it('each builds a distinct rest→…→t=1 pose sequence (not the generic fallback)', () => {
+    const generic = JSON.stringify(buildActionPoses('manipulate_in_place', 3));
+    for (const arch of MOTION_EXTRA_ARCHETYPES) {
+      const poses = buildActionPoses(arch, 3);
+      expect(poses.length, `${arch} produced no poses`).toBeGreaterThanOrEqual(2);
+      expect(poses[0].t).toBe(0);
+      expect(poses[poses.length - 1].t).toBe(1);
+      for (let i = 1; i < poses.length; i++) expect(poses[i].t).toBeGreaterThanOrEqual(poses[i - 1].t);
+      expect(JSON.stringify(poses), `${arch} fell back to generic`).not.toBe(generic);
+    }
+  });
+
+  it('tier scales amplitude on a motion-extended archetype', () => {
+    const lo = buildActionPoses('flight', 1);
+    const hi = buildActionPoses('flight', 5);
+    const loRot = Math.abs(lo[1].bones.spine?.rot?.[0] ?? 0);
+    const hiRot = Math.abs(hi[1].bones.spine?.rot?.[0] ?? 0);
+    expect(hiRot).toBeGreaterThan(loRot);
   });
 });
 

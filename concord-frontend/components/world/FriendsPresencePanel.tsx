@@ -22,6 +22,7 @@ interface FriendPresence {
   friendshipId: string;
   displayName: string;
   activeTitle?: string | null;
+  verifiedHuman?: boolean;
   online: boolean;
   worldId?: string | null;
   cityId?: string | null;
@@ -265,6 +266,9 @@ export function FriendsPresencePanel({ myWorldId }: FriendsPresencePanelProps) {
                           <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${f.online ? 'bg-emerald-400' : 'bg-slate-500'}`} />
                           <span className="truncate text-cyan-100">
                             {f.displayName}
+                            {f.verifiedHuman && (
+                              <span className="ml-1 text-[10px] text-emerald-300" title="Verified human">✓ᴴ</span>
+                            )}
                             {f.activeTitle && (
                               <span className="ml-1 text-[10px] italic text-fuchsia-300">{f.activeTitle}</span>
                             )}

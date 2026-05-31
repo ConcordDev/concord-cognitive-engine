@@ -27,6 +27,8 @@ import {
   synthesizeIdle,
   advanceGaitPhase,
   applyGaitPose,
+  breathingChestScaleY,
+  breathPhaseFromId,
   type GaitParams,
   type BodyType,
 } from '@/lib/concordia/gait-synthesis';
@@ -45,9 +47,13 @@ import {
 import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/secondary-physics';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
+import { installMoodListener, emotionFor, biasFor } from '@/lib/concordia/mood-registry';
+import { getClientConfigSync } from '@/hooks/useClientConfig';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
+import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
+import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -735,7 +741,8 @@ export default function AvatarSystem3D({
       // window.__CONCORD_CEL_SHADE__ = false.
       try {
         if ((window as unknown as { __CONCORD_CEL_SHADE__?: boolean }).__CONCORD_CEL_SHADE__ !== false) {
-          applyCelShade(group, THREE);
+          // Share the global outline weight so crowd + hero silhouettes read alike.
+          applyCelShade(group, THREE, { outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3 });
         }
       } catch { /* cel-shade best-effort — never block mesh creation */ }
 
@@ -835,6 +842,19 @@ export default function AvatarSystem3D({
             },
           });
           const result = buildEnhancedAvatar(rich, { isLocalPlayer: opts.isLocalPlayer });
+          // Track 2 — full-toon coherence: the crowd primitive is already cel-shaded
+          // (above); enhanced hero/player avatars stay PBR by default to keep their
+          // SSS skin + wear detail. Opt INTO matching toon (so heroes share the
+          // world's outline weight + ramp) via window.__CONCORD_HERO_CEL_SHADE__ =
+          // true — the chair A/Bs full-toon before it becomes the default. Reads the
+          // global ART_STYLE outline weight so it can't drift from the crowd.
+          try {
+            if ((window as unknown as { __CONCORD_HERO_CEL_SHADE__?: boolean }).__CONCORD_HERO_CEL_SHADE__ === true) {
+              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE, {
+                outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3,
+              });
+            }
+          } catch { /* cel-shade best-effort — never block the hero build */ }
           facialControllersRef.current.set(avatarId, result.facial);
           eyeTickersRef.current.set(avatarId, result.tickEyes);
           enhancedDisposeRef.current.set(avatarId, result.dispose);
@@ -1414,10 +1434,30 @@ export default function AvatarSystem3D({
         const detail = (e as CustomEvent).detail as
           | { entityId?: string; verb?: string; tier?: number; loop?: boolean; element?: string;
               pos?: { x: number; y?: number; z: number };
+              // MS-P1 — a CREATED move carries its stamped motion descriptor
+              // (meta_json.motion) + skill identity, so it can resolve to its own
+              // animation/VFX/SFX instead of the generic 'cast'.
+              motion?: Record<string, unknown> | null; skillKind?: string; skillLevel?: number;
               descriptor?: { juiceId?: string; sfxId?: string; vfx?: string } }
           | undefined;
         const verb = detail?.verb;
         if (!verb) return;
+        // MS-P1 — resolve a created move to the canonical motion family + tier +
+        // VFX/SFX. Precedence: the stamped motion wins, else skill_kind defaults,
+        // else a safe generic — but NEVER the bare 'cast'/'arcane' silent fallback.
+        let resolvedMove: import('@/lib/concordia/move-catalog/move-types').ResolvedMove | null = null;
+        if (detail?.motion || detail?.skillKind || detail?.skillLevel != null) {
+          try {
+            const rmod = await import('@/lib/concordia/move-resolver');
+            resolvedMove = rmod.resolveMove({
+              motion: (detail.motion as never) ?? null,
+              skillKind: detail.skillKind ?? null,
+              element: detail.element ?? null,
+              skillLevel: detail.skillLevel ?? null,
+              tier: detail.tier ?? null,
+            });
+          } catch { /* resolver optional — fall through to the verb path */ }
+        }
         const entityId = detail?.entityId || playerAvatar.id;
         const mixer = mixersRef.current.get(entityId) as MixerType | undefined;
         if (!mixer) return;
@@ -1442,12 +1482,15 @@ export default function AvatarSystem3D({
           // B3 — skill-modulated motion: the element biases the effective tier so
           // a fire slash arcs bigger, ice strikes sharp/small, lightning snaps.
           const sm = await import('@/lib/concordia/skill-motion');
-          const tier = sm.effectiveTier(detail?.tier ?? 3, detail?.element);
-          const clipKey = `${verb}-t${tier}`;
+          // MS-P1 — a resolved created move carries its own (Pillar-1 level-gated)
+          // tier + motion archetype; use them so the clip + scale match the move.
+          const tier = resolvedMove?.tier ?? sm.effectiveTier(detail?.tier ?? 3, detail?.element);
+          const clipVerb = resolvedMove?.motionArchetype || verb;
+          const clipKey = `${clipVerb}-t${tier}`;
           let clip = actionClipMaps.get(clipKey);
           if (!clip) {
             const amod = await import('@/lib/concordia/action-biomechanics');
-            clip = amod.buildActionClip(verb, tier);
+            clip = amod.buildActionClip(clipVerb, tier);
             actionClipMaps.set(clipKey, clip);
           }
           const action = (mixer as unknown as import('three').AnimationMixer).clipAction(clip);
@@ -1465,8 +1508,10 @@ export default function AvatarSystem3D({
           try { ju.juice(pa.juiceTriggerFor(d?.juiceId)); } catch { /* juice optional */ }
           // B3 — element overrides the descriptor's default sfx/vfx so fire/ice/
           // lightning READ different, not just recolour.
-          const sfxId = sm.modulatedSfx(d?.sfxId, detail?.element);
-          const vfxId = sm.modulatedVfx(d?.vfx, detail?.element);
+          // MS-P1 — a resolved created move brings its own VFX/SFX (never the bare
+          // generic): prefer them, else the descriptor's element-modulated voices.
+          const sfxId = resolvedMove?.sfxId ?? sm.modulatedSfx(d?.sfxId, detail?.element);
+          const vfxId = resolvedMove?.vfx ?? sm.modulatedVfx(d?.vfx, detail?.element);
           if (sfxId) { try { ju.sfx(sfxId); } catch { /* sfx optional */ } }
           if (vfxId) {
             const pos = detail?.pos;
@@ -1769,16 +1814,68 @@ export default function AvatarSystem3D({
         const result = json?.result;
         const activeMounts = result?.active ?? [];
         if (Array.isArray(activeMounts) && activeMounts.length > 0) {
-          const active = activeMounts[0] as { mount_companion_id: string; seat_offset_json?: string };
-          // Resolve species via mounts.get_species if needed; otherwise build a default.
+          const active = activeMounts[0] as {
+            mount_companion_id: string;
+            seat_offset_json?: string;
+            seatOffset?: { x: number; y: number; z: number; yaw?: number } | null;
+            species?: { size_class?: 'small' | 'medium' | 'large' | 'huge'; display_name?: string; coat_color?: string } | null;
+          };
+          // Wave 7a glue #2 — build from the REAL species the macro now ships
+          // (not a hardcoded 'Steed'), seat-offset-aware, and FOLLOW the player
+          // instead of freezing at a static +1.2m. The mount tracks the rider's
+          // position + heading each frame and ticks its gait by actual speed.
+          // NOTE (chair-verified follow-on): the rider astride-seat pose —
+          // lifting the player onto the saddle via rider-ik.computeRiderIkTargets
+          // + rein-hand FABRIK — interacts with the locomotion ground-clamp and
+          // is tuned visually in the next slice; this slice makes the mount
+          // appear, correct, and attached (today it never spawned at all).
+          const sp = active.species || { size_class: 'medium' as const, display_name: 'Steed' };
+          const seat = active.seatOffset || { x: 0, y: 1.4, z: 0, yaw: 0 };
           const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
-          const m = createMountGroup(THREE, { species: { size_class: 'medium', display_name: 'Steed' }, coatColor: '#8b5e3c' });
+          const m = createMountGroup(THREE, { species: sp, coatColor: sp.coat_color || '#8b5e3c' });
           m.group.position.copy(playerMesh.position);
-          m.group.position.x += 1.2;
+          m.setRotation(playerMesh.rotation.y);
           avatarGroup.add(m.group);
-          // Tick the mount via the eyeTickersRef registry which the
-          // frame loop already iterates.
-          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => m.tick(dt, 1.0));
+          // Follow the rider: seat the mount horizontally under the rider via the
+          // species seat offset (inverse of computeSaddleAnchor), yaw-aligned,
+          // gait ticked by movement speed. Registered in the frame-loop ticker.
+          // Wave 7a #3 — rider astride-seat via rider-ik. computeRiderIkTargets
+          // gives the pelvis target (saddle anchor + seat offset + per-gait
+          // bounce). Applying the vertical seat fights the locomotion ground-clamp,
+          // so it's behind a default-OFF flag (chair-tunable): when enabled, the
+          // rider lifts onto the saddle with gait bounce; default leaves the mount
+          // following under the rider (already a clear win over the old 1.2m offset).
+          const seatOn = typeof window !== 'undefined'
+            && (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat === true;
+          const prev = playerMesh.position.clone();
+          let riderIk: typeof import('@/lib/concordia/mounts/rider-ik') | null = null;
+          if (seatOn) { import('@/lib/concordia/mounts/rider-ik').then((mod) => { riderIk = mod; }).catch(() => {}); }
+          let gaitPhase = 0;
+          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => {
+            const speed = prev.distanceTo(playerMesh.position) / Math.max(dt, 1e-3);
+            prev.copy(playerMesh.position);
+            const yaw = playerMesh.rotation.y;
+            const cos = Math.cos(yaw), sin = Math.sin(yaw);
+            // Mount sits under the rider's seat point.
+            const mountX = playerMesh.position.x - (seat.x * cos - seat.z * sin);
+            const mountZ = playerMesh.position.z - (seat.x * sin + seat.z * cos);
+            m.group.position.set(mountX, playerMesh.position.y, mountZ);
+            m.setRotation(yaw);
+            m.tick(dt, Math.min(speed, 6));
+            if (seatOn && riderIk) {
+              gaitPhase = (gaitPhase + dt * 1.5) % 1;
+              const gaitMode = speed > 4 ? 'gallop' : speed > 1.5 ? 'trot' : 'walk';
+              const targets = riderIk.computeRiderIkTargets(
+                { pos: { x: mountX, y: playerMesh.position.y, z: mountZ }, yaw,
+                  saddleAnchorWorld: { x: mountX, y: playerMesh.position.y, z: mountZ },
+                  reinsAnchorWorld: { x: mountX + cos * 0.6, y: playerMesh.position.y + 1.0, z: mountZ + sin * 0.6 } },
+                { x: seat.x, y: seat.y, z: seat.z, yaw: seat.yaw ?? 0 },
+                { gaitMode, speedMps: speed, gaitPhase },
+              );
+              playerMesh.position.y = targets.pelvisTarget.y;
+              playerMesh.rotation.y = targets.pelvisYaw;
+            }
+          });
           enhancedDisposeRef.current.set(`mount:${active.mount_companion_id}`, m.dispose);
         }
       } catch { /* mounts optional */ }
@@ -2052,9 +2149,17 @@ export default function AvatarSystem3D({
         // installed below.
         const now = performance.now();
         const pauseMap = hitPauseUntilRef.current;
+        // Track 1 — make slow-mo felt: scale each mixer's delta by the global
+        // time scale (kill/finisher slow-mo, photo-mode pause, cinematic shots
+        // all set it). The player stays crisp inside a world slow-mo (player
+        // scale lifts to 0.5–0.8) while NPCs ride the world scale. At ts=1 the
+        // multiply is identity, so default behaviour is byte-for-byte unchanged.
+        const worldScale = getTimeScale();
+        const playerScale = getPlayerTimeScale();
         for (const [id, mixer] of mixersRef.current.entries()) {
           const pauseUntil = pauseMap.get(id) ?? 0;
-          const effectiveDelta = pauseUntil > now ? 0 : delta;
+          const scale = id === 'player' ? playerScale : worldScale;
+          const effectiveDelta = pauseUntil > now ? 0 : delta * scale;
           (mixer as { update: (d: number) => void }).update(effectiveDelta);
         }
         // GC expired pauses lazily.
@@ -2431,10 +2536,6 @@ export default function AvatarSystem3D({
               physics.currentStamina / physics.maxStamina
             );
             applyGaitPose(idlePose, (name) => pm.getObjectByName(name) ?? undefined);
-            // Subtle chest scale breath (complements hipOffset from synthesizeIdle)
-            const chest = pm.getObjectByName('chest');
-            if (chest)
-              chest.scale.y = 1 + Math.sin(elapsed * 0.8) * 0.004 * styleCfg.idleBreathScale;
           }
           if (
             activeAnimation !== 'idle' &&
@@ -2442,6 +2543,15 @@ export default function AvatarSystem3D({
           ) {
             setActiveAnimation('idle');
           }
+        }
+
+        // Track 1 — additive breathing over ALL states: a subtle chest rise
+        // applied AFTER whichever branch (moving gait / idle) ran, so the player
+        // breathes while walking, in combat-idle, etc. — not only at true idle.
+        {
+          const pmB = playerMeshRef.current as InstanceType<typeof import('three').Group> | null;
+          const chest = pmB?.getObjectByName('chest');
+          if (chest) chest.scale.y = breathingChestScaleY(elapsed, styleCfg.idleBreathScale, isMoving);
         }
 
         // ── Secondary physics: hair chain (runs AFTER FABRIK IK) ──
@@ -2482,10 +2592,15 @@ export default function AvatarSystem3D({
               else if (!isMoving) playerFC.setEmotion('neutral', 2.0);
               playerFC.update(delta, fatigue);
             }
+            // WAVE EXPR: when expression is on, read the NPC's live mood (from the
+            // concordia:npc-mood bridge) → a real facial emotion; else the legacy
+            // hardcoded-neutral path (off == today). Listener installs once.
+            const exprOn = !!getClientConfigSync().flags?.expression;
+            if (exprOn) installMoodListener();
             for (const [npcId] of npcMeshes) {
               const fc = fcs.get(npcId);
               if (!fc) continue;
-              const emotion = resolveNPCEmotion({
+              const emotion = (exprOn && emotionFor(npcId)) || resolveNPCEmotion({
                 health: 1,
                 stamina: 1,
                 threatLevel: 0,
@@ -2500,6 +2615,7 @@ export default function AvatarSystem3D({
         }
 
         // ── NPC gait synthesis (per-NPC stride phase, style-driven) ──
+        const exprOnRef = !!getClientConfigSync().flags?.expression;
         for (const [npcId, data] of npcMeshes) {
           const npcData = npcs.find((n) => n.id === npcId);
           if (!npcData) continue;
@@ -2546,6 +2662,38 @@ export default function AvatarSystem3D({
             applyGaitPose(npcGaitPose, getMesh);
           } else {
             applyGaitPose(synthesizeIdle(elapsed, npcCfg, 1), getMesh);
+          }
+          // Track 1 — additive breathing over ALL states for NPCs too, phase-
+          // offset per id so a crowd never inhales in lockstep (kills the
+          // "frozen mannequin" read even when an NPC is standing still).
+          const chestN = getMesh('chest') as InstanceType<typeof import('three').Object3D> | undefined;
+          if (chestN) {
+            chestN.scale.y = breathingChestScaleY(
+              elapsed, npcCfg.idleBreathScale, npcSpeed > 0, breathPhaseFromId(npcId),
+            );
+          }
+
+          // WAVE EXPR — posture bias: the body shows the feeling. When expression
+          // is on, read the NPC's live mood → a bounded spine-up additive lean
+          // (grieving slumps + head-down, hostile leans forward + tense, fearful
+          // crouches). Applied additively to the gait/idle pose this frame so
+          // legs/locomotion stay procedural and physics still solves on top.
+          // Off == today (no mood → biasFor null → exactly the legacy pose).
+          if (exprOnRef) {
+            const sb = biasFor(npcId);
+            if (sb) {
+              const p = sb.posture;
+              const addPitch = (boneName: string, rad: number) => {
+                if (!rad) return;
+                const b = getMesh(boneName) as InstanceType<typeof import('three').Object3D> | undefined;
+                if (b) b.rotation.x += rad;
+              };
+              addPitch('head', p.headPitch);
+              addPitch('neck', p.neckPitch);
+              addPitch('chest', p.torsoPitch);
+              addPitch('spine', p.spinePitch);
+              addPitch('hips', p.hipDrop);
+            }
           }
         }
 

@@ -29,7 +29,7 @@ function setup() {
       user_id TEXT NOT NULL,
       subject_kind TEXT NOT NULL,
       subject_id TEXT NOT NULL,
-      anticipated_prose TEXT,
+      anticipated TEXT,
       composed_at INTEGER NOT NULL DEFAULT (unixepoch()),
       expires_at INTEGER NOT NULL DEFAULT (unixepoch() + 86400),
       realised_at INTEGER
@@ -42,13 +42,16 @@ function setup() {
     );
     CREATE TABLE lattice_born_quests (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT,
-      host_npc_id TEXT,
+      drift_alert_signature TEXT,
+      target_npc_id TEXT,
+      world_id TEXT NOT NULL,
+      realised_at INTEGER,
+      composed_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE TABLE procgen_regions (
+      drift_alert_signature TEXT,
       anchor_x REAL,
-      anchor_z REAL,
-      host_world_id TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'open',
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      anchor_z REAL
     );
   `);
   return db;
@@ -61,10 +64,10 @@ test("active quest is the highest-priority source", () => {
     .run("u1", "tunya", "Find the Sealie",
       JSON.stringify([{ id: "step1", description: "Travel north", position: { x: 100, z: 200 }, complete: false }]));
   db.prepare(`INSERT INTO world_npcs (id, world_id, x, z) VALUES (?, ?, ?, ?)`).run("voss", "tunya", 50, 60);
-  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated_prose) VALUES (?,?,?,?)`)
+  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated) VALUES (?,?,?,?)`)
     .run("u1", "npc", "voss", "you feel pulled toward Voss");
-  db.prepare(`INSERT INTO lattice_born_quests (host_world_id, anchor_x, anchor_z) VALUES (?,?,?)`)
-    .run("tunya", 999, 999);
+  db.prepare(`INSERT INTO lattice_born_quests (drift_alert_signature, world_id) VALUES (?,?)`)
+    .run("sigA", "tunya");
 
   const obj = getActiveObjective(db, "u1", "tunya");
   assert.equal(obj?.kind, "quest_step");
@@ -75,7 +78,7 @@ test("active quest is the highest-priority source", () => {
 test("premonition wins when no active quest", () => {
   const db = setup();
   db.prepare(`INSERT INTO world_npcs (id, world_id, x, z) VALUES (?, ?, ?, ?)`).run("voss", "tunya", 75, 125);
-  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated_prose) VALUES (?,?,?,?)`)
+  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated) VALUES (?,?,?,?)`)
     .run("u1", "npc", "voss", "you have a feeling about Voss");
 
   const obj = getActiveObjective(db, "u1", "tunya");
@@ -86,8 +89,10 @@ test("premonition wins when no active quest", () => {
 
 test("lattice-born quest is the third-priority fallback", () => {
   const db = setup();
-  db.prepare(`INSERT INTO lattice_born_quests (host_world_id, anchor_x, anchor_z) VALUES (?,?,?)`)
-    .run("tunya", 333, 444);
+  db.prepare(`INSERT INTO lattice_born_quests (drift_alert_signature, world_id) VALUES (?,?)`)
+    .run("sigB", "tunya");
+  db.prepare(`INSERT INTO procgen_regions (drift_alert_signature, anchor_x, anchor_z) VALUES (?,?,?)`)
+    .run("sigB", 333, 444);
 
   const obj = getActiveObjective(db, "u1", "tunya");
   assert.equal(obj?.kind, "lattice_born");

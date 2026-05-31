@@ -160,7 +160,7 @@ function _walletCredit(db, userId, amount, reason) {
     `).run(userId, amount);
     try {
       db.prepare(`
-        INSERT INTO economy_ledger (id, user_id, kind, amount_cc, ts, ref_id)
+        INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
         VALUES (?, ?, 'weekly_objective_credit', ?, unixepoch(), ?)
       `).run(`led_${crypto.randomBytes(6).toString("hex")}`, userId, amount, reason);
     } catch { /* ledger optional */ }

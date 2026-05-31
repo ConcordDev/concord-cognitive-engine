@@ -25,6 +25,8 @@ import * as THREE from 'three';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { createResourceNodeRenderer } from './resource-node-renderer';
 import { createCropFieldRenderer } from './crop-field-renderer';
+import { createCreatureRenderer } from './creature-renderer';
+import { createVehicleRenderer } from './vehicle-renderer';
 import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
 import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createAvatarAuraRenderer } from './avatar-aura-renderer';
@@ -68,6 +70,22 @@ export function attachWorldRenderers(
     apiBase: opts.apiBase,
     pollMs: opts.pollMs,
     authToken,
+    // Wave 5c — feed the (already-written, already-mounted) crop-field-renderer.
+    // Without this injected fetcher it renders nothing; the GET endpoint joins
+    // claim_crops -> land_claims and returns absolute-tile crop rows.
+    fetchCrops: async () => {
+      try {
+        const headers: Record<string, string> = { Accept: 'application/json' };
+        const token = authToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const res = await fetch(`${opts.apiBase ?? ''}/api/worlds/${opts.worldId}/crops`, { headers });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json?.crops) ? json.crops : [];
+      } catch {
+        return [];
+      }
+    },
   };
 
   const updaters: Array<{ update(delta: number, elapsed: number): void; dispose(): void }> = [];
@@ -84,6 +102,11 @@ export function attachWorldRenderers(
 
   mount(() => createResourceNodeRenderer(infrastructureGroup, dataOpts));
   mount(() => createCropFieldRenderer(infrastructureGroup, dataOpts));
+  // Wave 6 — the bestiary: topology-aware creature meshes from creature.for_world.
+  mount(() => createCreatureRenderer(infrastructureGroup, dataOpts));
+  // Wave 7b — vehicles: per-kind meshes from vehicles.list_in_world + the
+  // "V: Mount" proximity dispatch (the previously-severed discovery chain).
+  mount(() => createVehicleRenderer(infrastructureGroup, dataOpts));
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
   mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
   mount(() => createUprisingCrowdRenderer(infrastructureGroup, dataOpts));
