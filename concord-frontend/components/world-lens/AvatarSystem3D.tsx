@@ -48,6 +48,7 @@ import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blen
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
+import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -735,7 +736,8 @@ export default function AvatarSystem3D({
       // window.__CONCORD_CEL_SHADE__ = false.
       try {
         if ((window as unknown as { __CONCORD_CEL_SHADE__?: boolean }).__CONCORD_CEL_SHADE__ !== false) {
-          applyCelShade(group, THREE);
+          // Share the global outline weight so crowd + hero silhouettes read alike.
+          applyCelShade(group, THREE, { outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3 });
         }
       } catch { /* cel-shade best-effort — never block mesh creation */ }
 
@@ -835,6 +837,19 @@ export default function AvatarSystem3D({
             },
           });
           const result = buildEnhancedAvatar(rich, { isLocalPlayer: opts.isLocalPlayer });
+          // Track 2 — full-toon coherence: the crowd primitive is already cel-shaded
+          // (above); enhanced hero/player avatars stay PBR by default to keep their
+          // SSS skin + wear detail. Opt INTO matching toon (so heroes share the
+          // world's outline weight + ramp) via window.__CONCORD_HERO_CEL_SHADE__ =
+          // true — the chair A/Bs full-toon before it becomes the default. Reads the
+          // global ART_STYLE outline weight so it can't drift from the crowd.
+          try {
+            if ((window as unknown as { __CONCORD_HERO_CEL_SHADE__?: boolean }).__CONCORD_HERO_CEL_SHADE__ === true) {
+              applyCelShade(result.group as unknown as Parameters<typeof applyCelShade>[0], THREE, {
+                outlineScale: 1 + ART_STYLE.OUTLINE_WIDTH_M * 3,
+              });
+            }
+          } catch { /* cel-shade best-effort — never block the hero build */ }
           facialControllersRef.current.set(avatarId, result.facial);
           eyeTickersRef.current.set(avatarId, result.tickEyes);
           enhancedDisposeRef.current.set(avatarId, result.dispose);
