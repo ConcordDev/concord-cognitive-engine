@@ -90,9 +90,18 @@
       "title": "The First Great Clash",
       "type": "primordial",
       "era": "Before Time",
-      "description": "Concord tried to impose strict mathematical laws on all life. Concordia answered with creatures that broke them — animals that could fly before physics allowed, plants that sang, emotions that defied logic. The Sovereign created the Shadow DTU system so both visions could coexist without destroying each other.",
+      "description": "Concord tried to impose strict mathematical laws on all life. Concordia answered with creatures that broke them — animals that could fly before physics allowed, plants that sang, emotions that defied logic. He hated what she made so recklessly; he could not stop loving the one who made it. The Sovereign, amused, created the Shadow DTU system so both visions could coexist without destroying each other — less to keep the peace than because watching the two of them strain against each other entertained him.",
       "significance": "major",
       "tags": ["primordial", "pillars", "shadow_dtu"]
+    },
+    {
+      "id": "lore_the_concord_link",
+      "title": "The Concord Link",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "When Concordia's making spilled past counting — world after world, each more reckless and alive than the last — Concord could not bear for any of it to go unwatched. He told himself it was duty: nothing she made could be permitted to go unmeasured. So he reached a cold lattice of gates and conduits through every world she had created and bound them into one structure — the Concord Link — so that everything happening anywhere would flow back to him to be catalogued and understood. He named it analysis. It was obsession with the lights off: a love he will not acknowledge, routed through the only thing his nature lets him do — look, and never look away. The Link is why the worlds can reach one another at all. It is also the largest unspoken feeling in existence.",
+      "significance": "founding",
+      "tags": ["primordial", "pillars", "concord", "concord_link"]
     },
     {
       "id": "lore_day_concordia_almost_left",

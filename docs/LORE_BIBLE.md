@@ -139,7 +139,7 @@ genre is a different test of the one idea.
 | **cyber** | cognitive (uploaded minds) | can a distributed consciousness be a benevolent dictator |
 | **crime** | informational | who controls truth in the underworld |
 | **superhero** | biological (emergence) | does substrate-granted power liberate or control |
-| **fantasy** | supernatural/political | constraint by mutual deterrence (the Three Refusals) |
+| **fantasy** | supernatural/political | **Concordia's vacation world** — her unbounded life-magic, NOT Refusal (see §5.1); constraint by mutual deterrence (the Three Refusals) |
 | **sovereign-ruins** | the Refusal algebra itself | constraint gone TOTAL (the Cascade) — see §5 |
 | **lattice-crucible** | observation/contradiction (drift) | is observation itself an act |
 | **concord-link-frontier** | logistics/trust (the Handshake Protocol) | human institutions vs. autonomous systems |
@@ -190,6 +190,20 @@ gating, hard cap at 9). **The mechanic has a myth; the myth has a mechanic.**
 Vela still holds a strength-9 dome-collapse field. Preserve this weld in any
 refusal-field changes.
 
+### 5.1 Fantasy = Concordia's vacation world (why it's the "black sheep")
+
+Fantasy ("The Sundering") is the one world that does **not** run on the Refusal
+spine — and that is now **canon-intentional, not a gap.** It is **Concordia's
+vacation world**: the place she slips away to when Concord's cataloging and the
+Sovereign's silence become too much. The Sovereign's hand falls lightest here
+and hers falls heaviest, so its magic is **her** magic — raw, living, unbounded
+ley-line sorcery (the overflow of pure creation) — and **Refusal barely surfaces.**
+This is *why* fantasy reads as the most emotional/political world and why its
+cast (Seraphine, Thorne) are the strongest standalone characters anywhere: the
+world mirrors its maker. Its tragedies are love stories gone wrong — the same
+wound she carries (§1). New fantasy lore should lean into *her* register
+(life-magic, longing, overgrowth) and keep Refusal mechanics rare-to-absent.
+
 Other welds to respect:
 - **Refusal Field** = the Sovereign's signature (born "The Day Concordia Almost Left").
 - **Shadow DTU system** = the Sovereign's compromise between Concord's law and Concordia's chaos (First Great Clash).
@@ -230,11 +244,9 @@ sovereign-ruins ≈ fantasy ≈ lattice > superhero ≈ frontier (leanest).**
    Hen Orven engraving (wanted by the hub Curator), fantasy's three unnamed
    Great Houses + why the Obsidian Crown stays weak.
 
-5. **Decide fantasy's relationship to the spine.** It's the one world standing
-   apart from the Refusal metaphysics (strongest standalone cast — Seraphine is
-   the best-realized antagonist anywhere). Either retrofit (Thorne's curse as a
-   Refusal phenomenon; Seraphine's leverage as glyph/secret-based) or
-   consciously own it as the "emotional/political" pole. Make it a choice.
+5. ~~Decide fantasy's relationship to the spine.~~ **ANSWERED (2026-05): fantasy
+   is Concordia's vacation world — see §5.1.** Its standing-apart from the Refusal
+   metaphysics is now canon-intentional, not a gap.
 
 ---
 
