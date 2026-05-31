@@ -764,6 +764,10 @@ const LevelUpJuiceBridge = dynamic(
   () => import('@/components/world-lens/LevelUpJuiceBridge').then((m) => ({ default: m.LevelUpJuiceBridge })),
   { ssr: false },
 );
+const EmergentJuiceBridge = dynamic(
+  () => import('@/components/world/EmergentJuiceBridge').then((m) => ({ default: m.EmergentJuiceBridge })),
+  { ssr: false },
+);
 const SocialOverlay = dynamic(
   () => import('@/components/world-lens/SocialOverlay').then((m) => ({ default: m.SocialOverlay })),
   { ssr: false },
@@ -4335,6 +4339,7 @@ export default function WorldLensPage() {
             <></>
           </GameJuice>
           <LevelUpJuiceBridge />
+          <EmergentJuiceBridge />
           <ComboEvolvedBridge />
           <CinematicCaptureBootstrap />
           <PerformanceOverlay />
