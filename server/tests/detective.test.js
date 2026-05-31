@@ -27,9 +27,9 @@ function freshDb() {
       confidence_boost REAL DEFAULT 0.1, collected_by TEXT,
       collected_at INTEGER, decay_at INTEGER, created_at INTEGER
     );
-    CREATE TABLE arrest_records (
-      id TEXT PRIMARY KEY, world_id TEXT, crime_id TEXT,
-      arresting_detective_id TEXT, suspect_id TEXT, suspect_type TEXT,
+    CREATE TABLE trial_records (
+      id TEXT PRIMARY KEY, world_id TEXT, crime_event_id TEXT,
+      detective_id TEXT, suspect_id TEXT, suspect_type TEXT,
       charges TEXT, evidence_summary TEXT,
       verdict TEXT, sentence_type TEXT, sentence_data TEXT,
       processed_at INTEGER
