@@ -54,6 +54,7 @@
  */
 
 import type { ConcordiaThemeId } from './concordia-theme';
+import { parseAuthoredAppearance } from './appearance-parse';
 
 /* ── Body proportions ─────────────────────────────────────────────── */
 
@@ -836,8 +837,16 @@ export function generateAppearance(opts: {
   npcAppearanceText?: string | null;
   override?: Partial<RichAppearanceConfig>;
 }): RichAppearanceConfig {
-  const { id, worldId, factionId = null, archetype, themeId, heroMesh, factionVisual, override } = opts;
+  const { id, worldId, factionId = null, archetype, themeId, heroMesh, factionVisual, npcAppearanceText, override } = opts;
   const seed = _hash(`${worldId}::${factionId ?? '_'}::${id}`);
+
+  // Wave 5a — authored appearance fidelity. The macro ships the NPC's authored
+  // description (prose OR structured) as `npcAppearanceText`; parse it into a
+  // patch of palette KEYS + appendable arrays. Authored keys win below
+  // (`authored.x ?? hashSeeded`); markings/augments/scars/carry APPEND; the
+  // hash stays the fallback for everything the author didn't specify. Pure +
+  // total — an un-authored NPC yields {} → byte-identical to the prior output.
+  const authored = parseAuthoredAppearance(npcAppearanceText);
 
   const styleId = (factionId && FACTION_TO_STYLE[factionId])
     || DEFAULT_STYLE_FOR_THEME[themeId]
@@ -845,27 +854,27 @@ export function generateAppearance(opts: {
   const style = FACTION_STYLES[styleId];
 
   /* Body archetype + height */
-  const bodyArchetype = _seededPick(style.bodyBias, seed, 1);
+  const bodyArchetype = authored.bodyArchetype ?? _seededPick(style.bodyBias, seed, 1);
   const heightBand = { slim: 1.74, average: 1.75, stocky: 1.65, tall: 1.92, broad: 1.80, petite: 1.55, legend: 2.10 }[bodyArchetype];
   const heightJitter = (_seededFloat(seed, 2) - 0.5) * 0.10; // ±5cm
   const totalHeight = heightBand + heightJitter;
   const proportions = proportionsFor(bodyArchetype, totalHeight);
 
-  /* Heritage + skin */
-  const heritage = _seededPick(style.heritageBias, seed, 3);
+  /* Heritage + skin (authored heritage wins; hex resolved from the key) */
+  const heritage = authored.heritage ?? _seededPick(style.heritageBias, seed, 3);
   const skinVariants = FITZPATRICK_SKIN[heritage];
   const skinColor = _seededPick(skinVariants, seed, 4);
 
   /* Hair */
-  const hairColorKey = _seededPick(style.hairBias, seed, 5);
+  const hairColorKey = authored.hairColorKey ?? _seededPick(style.hairBias, seed, 5);
   const hairColor = _seededPick(HAIR_PALETTE[hairColorKey], seed, 6);
-  const hairStyle = _seededPick(style.hairStyles, seed, 7);
+  const hairStyle = authored.hairStyle ?? _seededPick(style.hairStyles, seed, 7);
 
   /* Eyes */
   const eyeKeys = (['brown', 'brown', 'brown', 'dark_brown', 'hazel', 'amber', 'green', 'blue', 'light_blue', 'grey'] as EyeColorKey[]);
-  const eyeColorKey = bodyArchetype === 'legend'
+  const eyeColorKey = authored.eyeColorKey ?? (bodyArchetype === 'legend'
     ? (_seededFloat(seed, 8) > 0.5 ? 'refusal_gold' : 'drift_violet')
-    : _seededPick(eyeKeys, seed, 8);
+    : _seededPick(eyeKeys, seed, 8));
   const eyeColor = EYE_PALETTE[eyeColorKey];
 
   /* Facial features */
@@ -877,16 +886,18 @@ export function generateAppearance(opts: {
       ? weatheringRoll < 0.5 ? 'weathered' : 'scarred'
       : weatheringRoll < 0.6 ? 'fresh' : weatheringRoll < 0.9 ? 'weathered' : 'sun-baked';
   const facial: FacialFeatures = {
-    jawShape:   _seededPick(['round', 'square', 'pointed', 'soft'] as const, seed, 11),
+    jawShape:   authored.facialPatch?.jawShape ?? _seededPick(['round', 'square', 'pointed', 'soft'] as const, seed, 11),
     eyeShape:   _seededPick(['almond', 'round', 'narrow', 'wide'] as const, seed, 12),
-    noseShape:  _seededPick(['straight', 'aquiline', 'broad', 'snub', 'narrow'] as const, seed, 13),
+    noseShape:  authored.facialPatch?.noseShape ?? _seededPick(['straight', 'aquiline', 'broad', 'snub', 'narrow'] as const, seed, 13),
     browWeight: _seededPick(['thin', 'medium', 'medium', 'heavy'] as const, seed, 14),
     freckles:   heritage === 'pale' || heritage === 'fair' ? _seededFloat(seed, 15) * 0.6 : 0,
-    age,
-    weathering,
-    scars: weathering === 'scarred'
-      ? [{ region: 'face', kind: 'slash' }]
-      : [],
+    age:        authored.facialPatch?.age ?? age,
+    weathering: authored.facialPatch?.weathering ?? weathering,
+    // hash-seeded scar (when weathered=scarred) + any authored scars appended.
+    scars: [
+      ...(weathering === 'scarred' ? [{ region: 'face', kind: 'slash' } as const] : []),
+      ...(authored.scars ?? []),
+    ],
   };
 
   /* Clothing — when the authoring layer supplied a faction `visual`
@@ -952,6 +963,19 @@ export function generateAppearance(opts: {
     const region = _seededPick(['left-arm', 'right-arm', 'eye'] as const, seed, 41);
     const material = _seededPick(['chrome', 'matte-black', 'gold'] as const, seed, 42);
     augments.push({ region, material });
+  }
+
+  // Append any authored markings / augments / carry (dedup), so an authored
+  // scar-glyph or chrome arm or named weapon surfaces alongside the hash-seeded
+  // accessories rather than replacing them.
+  for (const m of authored.markings ?? []) {
+    if (!markings.some((x) => x.kind === m.kind && x.region === m.region)) markings.push(m);
+  }
+  for (const a of authored.augments ?? []) {
+    if (!augments.some((x) => x.region === a.region && x.material === a.material)) augments.push(a);
+  }
+  for (const c of authored.carry ?? []) {
+    if (!carry.includes(c)) carry.unshift(c);
   }
 
   const accessories: Accessories = { jewelry, markings, carry, augments };
