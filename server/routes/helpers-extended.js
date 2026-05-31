@@ -10,6 +10,7 @@
 import { asyncHandler } from "../lib/async-handler.js";
 
 export default function registerHelpersExtendedRoutes(app, {
+  db,
   STATE,
   makeCtx,
   runMacro,
@@ -225,6 +226,14 @@ export default function registerHelpersExtendedRoutes(app, {
     progress.steps.push({ step: req.body.step, data: req.body.data, completedAt: new Date().toISOString() });
     STATE._onboardingProgress.set(userId, progress);
     saveStateDebounced();
+    // FTUE3 — record the funnel step (first-reach + elapsed) so the cold-open is
+    // measurable. Best-effort + kill-switched (off → today).
+    if (process.env.CONCORD_FTUE_TELEMETRY === "1" && (db || STATE?.db) && req.body?.step) {
+      try {
+        const { recordFunnelStep } = await import("../lib/onboarding-funnel.js");
+        recordFunnelStep(db || STATE.db, userId, String(req.body.step));
+      } catch { /* funnel telemetry best-effort */ }
+    }
     res.json({ ok: true, step: req.body.step });
   }));
 
