@@ -53,7 +53,17 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
   const map = ensureMap(state);
   const list = map.get(worldId) ?? [];
   const id = `rf_${worldId}_${kind}_${Date.now()}`;
-  const expiresAt = Date.now() + Math.max(1000, Number(opts.durationMs) || 30000);
+  // Wave 8f — the Vela/Cascade weld, completed. Sovereign-Ruins lore states every
+  // Concordian Refusal is "strength-capped at 9 AND expires unless a quorum
+  // re-records it within seven days" — the bound that keeps an unbounded Cascade
+  // from ever recurring. The strength cap is enforced below (computeFieldComposition
+  // -> Math.min(9, …)); this is the missing 7-day ceiling: a refusal's duration is
+  // capped at REFUSAL_MAX_TTL_S (default 7 days, env CONCORD_REFUSAL_TTL_S). The 30s
+  // default for ephemeral gates is unchanged — this only clamps the long tail so
+  // nothing persists past the Concordant window without re-recording.
+  const maxTtlMs = (Number(process.env.CONCORD_REFUSAL_TTL_S) || 604800) * 1000;
+  const requestedMs = Math.max(1000, Number(opts.durationMs) || 30000);
+  const expiresAt = Date.now() + Math.min(requestedMs, maxTtlMs);
   // Compute a glyph signature using the refusal-algebra so the entry
   // carries a small lore artifact AND contributes to the load-bearing
   // composite-strength calculation in computeFieldComposition().
