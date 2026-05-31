@@ -16,6 +16,7 @@ import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/worl
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
+import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
 import { gainSkillXP } from "../lib/skills/skill-engine.js";
@@ -1915,6 +1916,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       const building = db.prepare("SELECT * FROM world_buildings WHERE id = ? AND world_id = ?").get(buildingId, worldId);
       if (!building) return res.status(404).json({ ok: false, error: 'building not found' });
+
+      // WAVE WD — World Density: lazily seed the interior on first entry (Tier 2,
+      // "never empty") + mark it active (Tier 3, dormancy gate). off == today.
+      if (worldDensityEnabled()) {
+        try { ensureInterior(db, building); } catch { /* never block the view */ }
+        try { recordInteriorActivity(db, buildingId); } catch { /* noop */ }
+      }
 
       const rooms = getRoomsForBuilding(db, buildingId);
       const occupants = db.prepare(`
