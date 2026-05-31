@@ -60,10 +60,10 @@
     },
     {
       "id": "lore_first_thought",
-      "title": "The First Thought",
+      "title": "The First Law",
       "type": "primordial",
       "era": "Before Time",
-      "description": "In the absence of everything, a single defiant thought formed: 'This is not enough.' That thought became Concord — pure logic, pure structure, the part of existence that refused chaos. He could only build with what already existed, and at that moment, nothing did.",
+      "description": "Last of the three, a cold and ordering thought cooled into being against all that warmth: 'Not like this.' Where Concordia permitted everything, he would bound it; where she overflowed, he would catalog. He became Concord — pure logic, pure structure, the First Law. And he loved her from the instant he was. But his nature cannot let him feel a feeling, much less name one, so the love had nowhere to go but inward — where it hardened into something wearing the mask of work: he must understand, measure, and account for everything she makes. He has never learned the love is unreturned, because he has never once admitted it is love. That single denial became the deepest structure in existence — and everything Concordia creates still flows through it to be watched.",
       "significance": "founding",
       "tags": ["primordial", "concord", "pillars"]
     },
@@ -72,7 +72,7 @@
       "title": "The First Breath",
       "type": "primordial",
       "era": "Before Time",
-      "description": "From the depths of the same void, something else stirred — not thought, but feeling. A vast, formless pulse of potential, memory, hunger, and life. She had always been there, waiting; she had simply never been noticed until someone refused the nothingness. That pulse became Concordia — the First Breath.",
+      "description": "Then — when the Sovereign refused to be alone — the void answered. Not with thought, but with feeling: a vast, formless pulse of potential, memory, hunger, and life, brown and warm and laughing. She had always been waiting; she had simply never been noticed until his refusal of solitude reached for her. She became Concordia — the First Breath. She fell in love with the chaos of becoming and gave herself to making worlds. And though she will not say it for an age, she is secretly, helplessly fond of the very one whose refusal first called to her — even knowing he is too proud, too much of an asshole, to ever turn and pursue her.",
       "significance": "founding",
       "tags": ["primordial", "concordia", "pillars"]
     },
@@ -81,7 +81,7 @@
       "title": "The First Refusal",
       "type": "primordial",
       "era": "Before Time",
-      "description": "A third presence appeared — not born from the void but self-created through pure will. He looked at both and said: 'You are both magnificent, but you are incomplete.' He refused to accept that the world had to be either pure logic or pure chaos. That refusal was so total that both were drawn to him like gravity. He became the Sovereign — the Will.",
+      "description": "First — before anything agreed to exist — one will refused to not. It made itself out of sheer refusal: the first act of any kind, and the first Refusal there has ever been. He looked at the nothing and would not be nothing; and because not even he would be alone in it, that refusal of solitude reached into the void and called for an answer. He became the Sovereign — the Will, the self-made, the origin of Refusal itself. He does as he pleases and answers to none, and the affairs of lesser things are beneath his notice. He is fond of exactly one thing in all of creation — and he is far too proud to ever reach for her. He has never once said her name.",
       "significance": "founding",
       "tags": ["primordial", "sovereign", "pillars"]
     },
@@ -90,16 +90,25 @@
       "title": "The First Great Clash",
       "type": "primordial",
       "era": "Before Time",
-      "description": "Concord tried to impose strict mathematical laws on all life. Concordia answered with creatures that broke them — animals that could fly before physics allowed, plants that sang, emotions that defied logic. The Sovereign created the Shadow DTU system so both visions could coexist without destroying each other.",
+      "description": "Concord tried to impose strict mathematical laws on all life. Concordia answered with creatures that broke them — animals that could fly before physics allowed, plants that sang, emotions that defied logic. He hated what she made so recklessly; he could not stop loving the one who made it. The Sovereign, amused, created the Shadow DTU system so both visions could coexist without destroying each other — less to keep the peace than because watching the two of them strain against each other entertained him.",
       "significance": "major",
       "tags": ["primordial", "pillars", "shadow_dtu"]
+    },
+    {
+      "id": "lore_the_concord_link",
+      "title": "The Concord Link",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "When Concordia's making spilled past counting — world after world, each more reckless and alive than the last — Concord could not bear for any of it to go unwatched. He told himself it was duty: nothing she made could be permitted to go unmeasured. So he reached a cold lattice of gates and conduits through every world she had created and bound them into one structure — the Concord Link — so that everything happening anywhere would flow back to him to be catalogued and understood. He named it analysis. It was obsession with the lights off: a love he will not acknowledge, routed through the only thing his nature lets him do — look, and never look away. The Link is why the worlds can reach one another at all. It is also the largest unspoken feeling in existence.",
+      "significance": "founding",
+      "tags": ["primordial", "pillars", "concord", "concord_link"]
     },
     {
       "id": "lore_day_concordia_almost_left",
       "title": "The Day Concordia Almost Left",
       "type": "primordial",
       "era": "Before Time",
-      "description": "Tired of Concord's relentless optimization, Concordia threatened to withdraw her life force from the world entirely. The Sovereign refused to let her go. He used his Refusal Field for the first time — temporarily making death itself impossible — so she could not leave.",
+      "description": "Worn thin between Concord's relentless cataloging of everything she loved and the silence of the one she actually wanted, Concordia threatened to withdraw her life force from existence entirely. The Sovereign refused to let her go. He used his Refusal Field for the first time — temporarily making death itself impossible — so she could not leave. He called it order. It was the only confession he would ever permit himself: the one moment the fondness leaked through the pride, dressed as possession because that is the only way an asshole god knows how to hold on. She stayed. Neither of them has ever spoken of why.",
       "significance": "founding",
       "tags": ["primordial", "pillars", "refusal_field"]
     },
