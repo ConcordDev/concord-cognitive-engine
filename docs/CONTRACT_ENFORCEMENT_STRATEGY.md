@@ -78,7 +78,7 @@ load-bearing. Test: `tests/macro-contract.test.js`.
 5. **Ratchets**: `DEFAULT_FLOOR = 105`, deterministic, `--ci` fails on a 106th,
    writes `audit/gate-schema-drift.json`.
 
-Result: **exactly 105 real sites frozen — 43 wrong-column + 62 ghost-table —
+Result: **the 105-site cluster is now FULLY CLEARED (floor 0) — 43 wrong-column + 62 ghost-table —
 zero false positives.** Covers every enumerated finding from rounds 1–3 (#30,
 #R9–#R35, #V2/#V3/#V4, #V5–#V32) PLUS many the conservative report scans skipped
 (JOIN-bearing column refs, complex-query ghosts). The entire `no such table` /
@@ -126,5 +126,5 @@ pairs hit the fallthrough in 30 days AND aren't dead macros) rather than guessin
 ## Status
 - ✅ Gate A (arg-shape) — shipped + tested.
 - ✅ Gate B (registry validator) — shipped + tested.
-- ✅ Gate C (schema-drift gate) — shipped; prepare()-based, exactly 105 sites (43 column + 62 ghost) frozen, ratchet to 0.
+- ✅ Gate C (schema-drift gate) — shipped; prepare()-based; the full 105-site cluster driven to 0 (CI-gated against recurrence).
 - 🔮 Gate D (param schema), HTTP-routed smoke, telemetry-derived allowlist — queued.
