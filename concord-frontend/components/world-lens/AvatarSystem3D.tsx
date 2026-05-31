@@ -49,6 +49,7 @@ import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
 import { ART_STYLE } from '@/lib/world-lens/concordia-theme';
+import { getTimeScale, getPlayerTimeScale } from '@/lib/concordia/use-time-scale';
 // Phase AA2 — gait synthesis off-thread via Web Worker. Falls back to
 // inline synthesizeGait when the worker isn't ready (boot warmup) or
 // has failed (e.g. SSR / locked-down browser).
@@ -2144,9 +2145,17 @@ export default function AvatarSystem3D({
         // installed below.
         const now = performance.now();
         const pauseMap = hitPauseUntilRef.current;
+        // Track 1 — make slow-mo felt: scale each mixer's delta by the global
+        // time scale (kill/finisher slow-mo, photo-mode pause, cinematic shots
+        // all set it). The player stays crisp inside a world slow-mo (player
+        // scale lifts to 0.5–0.8) while NPCs ride the world scale. At ts=1 the
+        // multiply is identity, so default behaviour is byte-for-byte unchanged.
+        const worldScale = getTimeScale();
+        const playerScale = getPlayerTimeScale();
         for (const [id, mixer] of mixersRef.current.entries()) {
           const pauseUntil = pauseMap.get(id) ?? 0;
-          const effectiveDelta = pauseUntil > now ? 0 : delta;
+          const scale = id === 'player' ? playerScale : worldScale;
+          const effectiveDelta = pauseUntil > now ? 0 : delta * scale;
           (mixer as { update: (d: number) => void }).update(effectiveDelta);
         }
         // GC expired pauses lazily.
