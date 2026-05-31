@@ -48960,6 +48960,28 @@ app.get("/api/avatars/:userId/scars", asyncHandler(async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// Wave 5b — public appearance read (hydration fallback for remote players whose
+// presence packet predates their join-fill, + nameplate/inspect). Mirrors the
+// scars/drift public-read pattern. Prefers a saved avatar appearance, falls back
+// to the user-level one.
+app.get("/api/avatars/:userId/appearance", asyncHandler(async (req, res) => {
+  try {
+    const uid = req.params.userId;
+    let appearance = null;
+    try {
+      const u = db.prepare(`SELECT appearance_json FROM users WHERE id = ?`).get(uid);
+      if (u?.appearance_json) appearance = JSON.parse(u.appearance_json);
+      if (!appearance) {
+        const a = db.prepare(
+          `SELECT appearance_json FROM avatars WHERE user_id = ? AND appearance_json IS NOT NULL LIMIT 1`
+        ).get(uid);
+        if (a?.appearance_json) appearance = JSON.parse(a.appearance_json);
+      }
+    } catch { /* appearance columns optional (mig 187) */ }
+    res.json({ ok: true, userId: uid, appearance });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase BB1 — festival read APIs.
 app.get("/api/festivals/active", asyncHandler(async (req, res) => {
   const { listActiveFestivals } = await import("./lib/festivals.js");

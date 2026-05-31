@@ -2837,10 +2837,11 @@ export default function WorldLensPage() {
           byId.set(u.userId, {
             id: u.userId,
             name: u.displayName || u.userId.slice(0, 12),
-            // Reuse the local player's appearance config shape — the
-            // server doesn't send an avatar yet so we render a default
-            // silhouette until the profile lookup is wired.
-            appearance: playerAvatar.appearance,
+            // Wave 5b — render the character THIS player created. The server now
+            // fills the presence `avatar` field (city-presence loadPlayerState),
+            // so other players see distinct bodies. Fall back to the local shape
+            // only when the packet predates the join-fill (hydration delay).
+            appearance: (u.avatar as typeof playerAvatar.appearance) || playerAvatar.appearance,
             position: { x: u.x, y: u.y, z: u.z },
             rotation: u.rotation ?? u.direction ?? 0,
             // Coerce remote player action string into the AnimationClip
