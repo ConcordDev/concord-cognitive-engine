@@ -1,8 +1,8 @@
 # Surface Coverage Audit
 
-_Generated 2026-05-31T18:35:10.022Z · FLOOR=2_
+_Generated 2026-05-31T18:41:25.868Z · FLOOR=1_
 
-**127 surfaces** · **20 shipped player-verbs** · **floor violations (score<2): 1** (target 0)
+**127 surfaces** · **20 shipped player-verbs** · **floor violations (score<1): 0** (target 0)
 
 Score distribution: 0/4→27 · 1/4→65 · 2/4→12 · 3/4→18 · 4/4→5
 
@@ -41,9 +41,9 @@ Score distribution: 0/4→27 · 1/4→65 · 2/4→12 · 3/4→18 · 4/4→5
 | 29 | `message:saved` | socket_event | 0/4 | 8 | visual, audio, animation, legibility |
 | 30 | `message:unsaved` | socket_event | 0/4 | 8 | visual, audio, animation, legibility |
 
-## Floor violations (shipped verbs scoring < 2/4)
+## Floor violations (shipped verbs scoring < 1/4)
 
-- `fishing:caught` (1/4)
+_none — floor satisfied_
 
 ## Full manifest (4-channel scores + file:line proof)
 

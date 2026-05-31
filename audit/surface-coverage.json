@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-31T18:35:10.022Z",
-  "floor": 2,
+  "generatedAt": "2026-05-31T18:41:25.868Z",
+  "floor": 1,
   "totals": {
     "items": 127,
     "shippedVerbs": 20,
-    "floorViolations": 1,
+    "floorViolations": 0,
     "byScore": [
       {
         "score": 0,
