@@ -382,6 +382,46 @@ export const CANON_WORLD_THEMES: ConcordiaThemeId[] = [
 
 export const DEFAULT_THEME_ID: ConcordiaThemeId = 'neon-punk';
 
+// ── Art-direction constants (the locked thesis: coherence > fidelity) ──────────
+// Stylized sets its own standard; the load-bearing discipline is that EVERY asset
+// shares the same language — one outline weight, one ramp-band count, one
+// grounded↔cartoon dial — across all 9 worlds, differing only by PALETTE +
+// SATURATION per world. These are the single source of truth the cel-shade +
+// outline render passes read, so nothing drifts per-component. See
+// docs/ART_STYLE_GUIDE.md for the full rules.
+export const ART_STYLE = Object.freeze({
+  /** Inverted-hull / edge-outline thickness in metres (one weight for everything). */
+  OUTLINE_WIDTH_M: 0.018,
+  /** Toon ramp band count — every toonGradient is sampled at exactly this many steps. */
+  RAMP_BANDS: 3,
+  /** 0 = fully cartoon (flat, high-key), 1 = fully grounded (PBR-ish). BotW sits ~0.45. */
+  GROUNDED_DIAL: 0.45,
+  /** Outline darkness (multiplier on the shadow band) — shared so silhouettes read alike. */
+  OUTLINE_DARKEN: 0.35,
+});
+
+// Per-world saturation philosophy (multiplier applied to base albedo/lighting).
+// Neon worlds push past 1.0; noir/ruin worlds pull below. This is what lets
+// "same rules, different palette" read as 9 distinct moods without 9 art styles.
+export const WORLD_SATURATION: Record<ConcordiaThemeId, number> = {
+  'concordia-hub': 1.0,
+  tunya: 1.05,
+  cyber: 1.35,
+  crime: 0.62,
+  fantasy: 1.12,
+  superhero: 1.25,
+  'sovereign-ruins': 0.8,
+  'lattice-crucible': 1.15,
+  'concord-link-frontier': 0.95,
+  // legacy / alias theme ids fall back to 1.0 via saturationForWorld().
+} as Record<ConcordiaThemeId, number>;
+
+/** Saturation multiplier for a world (defaults to 1.0 for un-tabled themes). */
+export function saturationForWorld(worldId: string | null | undefined): number {
+  const id = themeForWorldId(worldId);
+  return WORLD_SATURATION[id] ?? 1.0;
+}
+
 // ── T3.3 — per-world silhouette resolvers ───────────────────────────────────
 
 type BuildingStyle = NonNullable<ConcordiaTheme['buildingStyle']>;
