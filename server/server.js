@@ -24541,6 +24541,8 @@ registerGuidanceWaypointMacros(register);
 // /lenses/news surface reads. Was written + macro'd but never registered.
 import registerNewsComposeMacros from "./domains/news-compose.js";
 registerNewsComposeMacros(register);
+import registerCivicBondsMacros from "./domains/civic-bonds.js";
+registerCivicBondsMacros(register);
 import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
 registerHeartbeat("news-compose-cycle", {
   frequency: 60,
