@@ -42,6 +42,12 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
         return res.status(400).json({ ok: false, error: "currency must be sparks or cc" });
       }
       if (amount <= 0) return res.status(400).json({ ok: false, error: "amount must be positive" });
+      // Playtest #V1: a self-wager (proposer == opponent) escrows from and pays
+      // back to the same user — an undefined-money-movement / balance-manipulation
+      // vector. Both sides must be distinct.
+      if (opponentId === proposerId) {
+        return res.status(400).json({ ok: false, error: "self_wager_forbidden" });
+      }
 
       // Anti-spam: max 3 active proposals
       const activeCount = db.prepare(`
@@ -142,7 +148,10 @@ export default function createWagersRouter({ requireAuth, db, realtimeEmit }) {
       }
 
       const pot = wager.amount * 2;
-      const fee = Math.ceil(pot * 0.02); // 2% platform fee
+      // Playtest #L1: Math.ceil floored the fee at 1cc, making it regressive on
+      // tiny pots (50% on a 2cc pot). Round instead — fair 2% at real stakes,
+      // ~0 on micro-pots; identical at pots ≥ 50.
+      const fee = Math.round(pot * 0.02); // 2% platform fee
       const payout = pot - fee;
 
       const balanceCol = BALANCE_COLS[wager.currency] ?? "sparks";

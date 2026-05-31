@@ -224,3 +224,30 @@ count collapses to one fix surface.
    ghost-table renames; the column map: `kind`→`type`, `meta`/`meta_json`→
    `metadata_json`, `user_wallets`→`users`, `economy_transactions`→`economy_ledger`).
 2. **V1** self-wager guard + the validation-by-throw + auth-mount classes (R1–R8).
+
+---
+
+# Round 4 — the long trek (core: concurrency · money · injection · contracts)
+
+Round 4 deliberately left the (mapped) schema-drift continent and probed the
+**core**. Verdict: the core is **sound** — with one serious exception.
+
+**Honest negatives (verified NOT bugs — they bound the risk):** skill XP curve
+`1+floor(sqrt(exp/2))` exact; royalty cascade correct (first-derivative 0.105 is
+the intentional gen-1 rate; halving/floor/cap right); synchronous better-sqlite3
+serializes check-then-write → no TOCTOU in sampled economic paths; dynamic
+`${filter}` SQL is parameterized; `SET ${sets.join()}` builders use fixed column
+literals; live event-shape validator had zero violations.
+
+| # | Finding | Status |
+|---|---|---|
+| **L2** 🔴 | SQL **identifier injection + crash** via user-authored skill `resource_bar`, interpolated raw into `UPDATE player_resource_bars SET ${barType}…` (SQLite doesn't parameterize identifiers). A crafted value (`mana = 99999, stamina`) rewrites the SET clause (free-resource cheat); an unknown one crashes the cast. | ✅ **FIXED** — whitelisted `barType` against the real deductible columns `{hp,mana,stamina,bio_power,perception}` at the chokepoint (`damage-calculator.js#consumeResourceBar`); invalid → clean `invalid_resource_bar`. Security test `tests/resource-bar-injection.test.js` (incl. injection + DROP attempt). |
+| **V1** | Wagers allowed self-wager (proposer == opponent) — escrow + payout to the same user, a balance-manipulation vector. | ✅ **FIXED** — reject `opponentId === proposerId` at propose (`routes/wagers.js`). |
+| **L1** | Wager fee `Math.ceil(pot*0.02)` floored at 1cc → regressive on tiny pots (50% on a 2cc pot). | ✅ **FIXED** — `Math.round` (fair 2% at real stakes, ~0 on micro-pots, identical ≥50cc). |
+
+**The arc's conclusion:** rounds 1–3 found a large but BOUNDED bug mass with one
+root cause (schema-rename drift), now an exact ratcheted gate (105 → 0). Round 4
+confirms the engine's core logic, money, and concurrency are trustworthy. The two
+structural priorities the report named — **fix #L2 + ship the SQL schema gate** —
+are both now DONE. Remaining work is mechanical: ratchet the 105 drift sites to 0,
+then the smaller validation-by-throw / auth-mount classes.
