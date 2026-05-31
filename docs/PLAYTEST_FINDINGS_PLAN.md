@@ -33,7 +33,7 @@ become visible/benign in one stroke.
 | **3/25** | Unknown macro → LLM fallthrough, HTTP 200, `"fetch failed"`. | Return `{ok:false, error:"unknown_macro", domain, name}` with a non-200 for unknown/validation-fail/not-found at the `/api/lens/run` dispatcher. The high-leverage systemic fix. |
 | **27** | A dead-macro call hangs ~96s on LLM backoff (DoS-adjacent). | Resolved by #3 (fail fast before the brain call). |
 | **11** | ~36 ghost-fleet macros (`agents.*`, `quest.*`, `religion.*`, `research.*`, `city.*`, …) log "loaded" but aren't in `MACROS` at dispatch → every action LLM-fallthroughs. **HIGH.** | Run the report's probe: `globalThis.__CARTOGRAPHER__.MACROS.has('agents')` at steady state. Likely `initGhostFleet().catch()` registers in async microtasks landing after a consumer snapshots/rebuilds the per-domain Map. Make ghost-fleet registration synchronous (or await it before serving). |
-| **2** | `domains/minigames.js#registerMinigameMacros` exported but never imported by `server.js` → `fishing.resolve_cast`, `karaoke.resolve_performance`, `mahjong.resolve_hand`, `photography.resolve_shot`, `minigames.constants` all unregistered. | Import + invoke `registerMinigameMacros(register)` at boot (verified absent via grep). One-line wire + a behavior-smoke assertion. |
+| **2** | `domains/minigames.js#registerMinigameMacros` exported but never imported by `server.js` → `fishing.resolve_cast`, `karaoke.resolve_performance`, `mahjong.resolve_hand`, `photography.resolve_shot`, `minigames.constants` all unregistered. | ✅ **FIXED** — imported + invoked `registerMinigameMacros(register)` at boot (`server.js`, after `registerElementMacros`). Test in `tests/playtest-fixes.test.js`. |
 
 ---
 
@@ -41,8 +41,8 @@ become visible/benign in one stroke.
 
 | # | Finding | Status / fix |
 |---|---|---|
-| **30** | `glyph_spells.cast` license check queries `dtu_citations` for `creator_id/parent_id/kind` — **none exist** (table is `dtu_id, citation_count, …`) → casting a licensed spell hard-throws `no such column`. | Point the license check at a real grant ledger (purchased-license / consent table) or the citation table's actual shape. Add a non-owner-cast test. Verified at `domains/glyph-spells.js:80`. |
-| **31** | `POST /api/vehicles/spawn` defaults `world="concordia"` (canonical is `"concordia-hub"`) and reads `world/type`, ignoring platform-standard `worldId/vehicleType` → orphaned, world-invisible vehicles. | Default to `concordia-hub`; accept `worldId`/`vehicleType` aliases. Verified at `routes/vehicles.js:50`. |
+| **30** | `glyph_spells.cast` license check queries `dtu_citations` for `creator_id/parent_id/kind` — **none exist** (table is `dtu_id, citation_count, …`) → casting a licensed spell hard-throws `no such column`. | 🟡 **CRASH-GUARDED** — wrapped the query so a non-owner cast returns a clean `not_owner_or_licensed` instead of a 500 (test in `playtest-fixes.test.js`). **Proper fix still pending:** the genuine "did this user purchase a license" check needs a real grant ledger (consent/marketplace-purchase), not the citation-aggregate table. |
+| **31** | `POST /api/vehicles/spawn` defaults `world="concordia"` (canonical is `"concordia-hub"`) and reads `world/type`, ignoring platform-standard `worldId/vehicleType` → orphaned, world-invisible vehicles. | ✅ **FIXED** — default `concordia-hub`; accept `worldId`/`vehicleType` aliases (`routes/vehicles.js`). |
 | **1** | `/dialogue/respond` has no deterministic fallback — LLM-off returns the flat `"<name> responds to your choice."` (POLISH_AUDIT T1.1 opener fix didn't cover the respond path). | Route `respond` through `npc-dialogue-fallback.js#composeDeterministicDialogue` before the LLM, same as the opener. `routes/worlds.js:1236`. |
 
 ---
@@ -79,7 +79,7 @@ become visible/benign in one stroke.
 |---|---|---|
 | **21** | `/api/combat/frame-data/:skillId` returns `no_skill` for every default skill (no DTU-derived seed data) + 404/body contract mix. | Seed default frame-data for the core moves, or derive a deterministic default; align status/body. |
 | **22** | Leaderboards expose only sparks/skills/crafts/nemesis — no combat/wealth/global. | Add the missing categories; 400 list for unknown. |
-| **6** | `creatures.taxonomy` reads camelCase `speciesId` while the codebase uses `species_id`. | Accept `species_id` (alias) for intra-domain consistency. |
+| **6** | `creatures.taxonomy` reads camelCase `speciesId` while the codebase uses `species_id`. | ✅ **FIXED** — accepts `species_id` (and legacy `speciesId`); test in `playtest-fixes.test.js`. |
 
 ---
 

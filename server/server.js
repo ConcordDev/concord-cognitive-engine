@@ -24382,6 +24382,12 @@ registerRepairMacros(register);
 import registerElementMacros from "./domains/elements.js";
 registerElementMacros(register);
 
+// Minigame resolvers (fishing/karaoke/mahjong/photography + minigames.constants).
+// The domain file was exported but never imported, so the macro bus couldn't
+// reach the real resolvers in lib/minigame-resolvers.js (playtest finding #2).
+import registerMinigameMacros from "./domains/minigames.js";
+registerMinigameMacros(register);
+
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
 // hook and the LoadFromSubstrate "Reopen recent" panel that every lens

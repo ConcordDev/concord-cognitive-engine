@@ -47,7 +47,13 @@ export default function createVehiclesRouter({ requireAuth, db }) {
     try {
       const userId = _userId(req);
       if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
-      const { type = "car", world = "concordia", pose = null } = req.body || {};
+      // Default to the canonical hub id and accept the platform-standard
+      // worldId/vehicleType aliases, so a vehicle isn't orphaned into the
+      // non-existent world "concordia" (playtest finding #31).
+      const body = req.body || {};
+      const type = body.type || body.vehicleType || "car";
+      const world = body.world || body.worldId || "concordia-hub";
+      const pose = body.pose || null;
       const r = spawnVehicle(db, { ownerId: userId, world, type, pose });
       if (!r.ok) return res.status(400).json(r);
       res.status(201).json(r);

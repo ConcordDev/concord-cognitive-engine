@@ -87,7 +87,10 @@ export default function registerCreatureMacros(register) {
   }, { note: "live creatures in a world with taxonomy + genotype (CreatureSystem render feed)" });
 
   register("creatures", "taxonomy", async (_ctx, input = {}) => {
-    if (!input.speciesId) return { ok: false, reason: "missing_species_id" };
-    return { ok: true, taxonomy: taxonomyForSpecies(input.speciesId) };
+    // Accept the codebase-standard snake_case species_id as well as the legacy
+    // camelCase speciesId (playtest finding #6 — intra-domain consistency).
+    const speciesId = input.species_id || input.speciesId;
+    if (!speciesId) return { ok: false, reason: "missing_species_id" };
+    return { ok: true, taxonomy: taxonomyForSpecies(speciesId) };
   }, { note: "taxonomy record (clade/topology/diet) for a species id" });
 }
