@@ -114,6 +114,18 @@ export function runEnvironmentSensor({ db, state: _state, tickCount: _tickCount 
       const ambientLux = 2000;
       const light = ambientLux + (peakLux - ambientLux) * dayF;
 
+      // Persist the live day-night clock + a derived weather onto the world so
+      // the DB is the canonical source other systems (and the embodied sensor's
+      // weather_state/time_of_day read) can query. Guarded for pre-303 builds.
+      try {
+        const hourOfDay = (secondsOfDay / 3600) % 24;
+        const todLabel = hourOfDay < 5 || hourOfDay >= 21 ? "night"
+          : hourOfDay < 8 ? "dawn" : hourOfDay < 18 ? "day" : "dusk";
+        const weatherState = humidity >= 80 ? "rain" : airQuality < 0.6 ? "smog" : "clear";
+        db.prepare(`UPDATE worlds SET time_of_day_s = ?, time_of_day = ?, weather_state = ? WHERE id = ?`)
+          .run(secondsOfDay, todLabel, weatherState, worldId);
+      } catch { /* worlds day/night columns absent on minimal builds */ }
+
       // Per-channel one-row baseline. Each replaces the prior sensor reading
       // because signalsForWorld recency-weights the absolute reads.
       const channels = [
