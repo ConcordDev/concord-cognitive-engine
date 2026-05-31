@@ -10512,6 +10512,9 @@ async function runMacro(domain, name, input, ctx) {
     // Wave 8b — the authored cosmology is the player-facing canon (hidden_truth
     // stripped in the lib); the codex reads it without auth.
     lore: new Set(["list", "get", "facets", "spine"]),
+    // Wave 6 — creatures in a world are world-visible; the CreatureSystem reads
+    // them without auth (same as resource nodes).
+    creatures: new Set(["for_world", "taxonomy"]),
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
     // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
@@ -24282,6 +24285,11 @@ registerBeatsMacros(register);
 // lib). list / get / facets / spine.
 import registerLoreMacros from "./domains/lore.js";
 registerLoreMacros(register);
+
+// Wave 6 — the creature render data path (the bestiary, un-gated). Public-read;
+// serves the topology-aware descriptor the frontend CreatureSystem renders.
+import registerCreatureMacros from "./domains/creatures.js";
+registerCreatureMacros(register);
 
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
