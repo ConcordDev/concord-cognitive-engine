@@ -523,6 +523,10 @@ const BuildingCollapseVFX = dynamic(
   () => import('@/components/world/BuildingCollapseVFX'),
   { ssr: false }
 );
+const BuildingWearLayer = dynamic(
+  () => import('@/components/world/BuildingWearLayer'),
+  { ssr: false }
+);
 const LockOnController = dynamic(
   () =>
     import('@/components/world-lens/LockOnController').then((m) => ({
@@ -4961,6 +4965,11 @@ export default function WorldLensPage() {
             worldId={activeDistrict?.id || 'concordia-hub'}
             getCamera={() => null}
           />
+          {/* Track 3 (legibility) — persistent diegetic building wear: keeps a
+              crack/char scar at each damaged/collapsed building (via the
+              concordia:projector-ready projector) until it's repaired, so a
+              fought-over world *stays* scarred instead of snapping pristine. */}
+          <BuildingWearLayer worldId={activeDistrict?.id || 'concordia-hub'} />
           {/* Sprint D V2 — heraldic banners at faction-controlled anchors.
               Reads faction visual data from V1's `factions.visual` macro;
               renders SVG sigils on cloth banners with windDirection sway.
