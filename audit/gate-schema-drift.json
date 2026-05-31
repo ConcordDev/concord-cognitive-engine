@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-31T22:37:33.472Z",
+  "generatedAt": "2026-05-31T22:41:42.077Z",
   "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 62,
-  "violationCount": 62,
+  "floor": 59,
+  "violationCount": 59,
   "violations": [
     {
       "file": "server/domains/crisis.js",
@@ -396,27 +396,6 @@
       "line": 74,
       "kind": "ghost_table",
       "table": "player_position",
-      "column": null
-    },
-    {
-      "file": "server/routes/disputes.js",
-      "line": 62,
-      "kind": "ghost_table",
-      "table": "ledger",
-      "column": null
-    },
-    {
-      "file": "server/routes/social-engagement.js",
-      "line": 321,
-      "kind": "ghost_table",
-      "table": "economy_transactions",
-      "column": null
-    },
-    {
-      "file": "server/routes/social-engagement.js",
-      "line": 354,
-      "kind": "ghost_table",
-      "table": "economy_transactions",
       "column": null
     },
     {
