@@ -257,6 +257,36 @@ export function synthesizeIdle(
   };
 }
 
+/**
+ * Track 1 — additive breathing over ALL states. Returns the chest bone's
+ * scale.y for this frame: a subtle rise/fall that rides on top of whatever pose
+ * (walk, run, combat-idle, true idle) the gait/idle synthesis already applied,
+ * so a standing guard, a walking merchant, and a combat-ready fighter all
+ * visibly breathe — not just the dedicated idle state. Pure + total.
+ *
+ *   idle/standing → slow + deep (rest breathing)
+ *   moving        → faster + shallower (exertion)
+ *
+ * phaseOffset desynchronises a crowd so NPCs don't all inhale on the same frame.
+ */
+export function breathingChestScaleY(
+  elapsed: number,
+  idleBreathScale: number,
+  moving: boolean,
+  phaseOffset = 0,
+): number {
+  const rate = moving ? 1.6 : 0.8;                       // breaths/sec proxy
+  const amp = (moving ? 0.0025 : 0.004) * idleBreathScale; // shallower under exertion
+  return 1 + Math.sin(elapsed * rate + phaseOffset) * amp;
+}
+
+/** Deterministic per-entity breathing phase (0..2π) so a crowd breathes out of sync. */
+export function breathPhaseFromId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 100000;
+  return (h / 100000) * Math.PI * 2;
+}
+
 // ── Pose blending ─────────────────────────────────────────────────────────────
 
 function _lerpEuler(a: THREE.Euler, b: THREE.Euler, t: number): THREE.Euler {

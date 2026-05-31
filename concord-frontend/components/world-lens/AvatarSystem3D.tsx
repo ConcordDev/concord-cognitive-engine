@@ -27,6 +27,8 @@ import {
   synthesizeIdle,
   advanceGaitPhase,
   applyGaitPose,
+  breathingChestScaleY,
+  breathPhaseFromId,
   type GaitParams,
   type BodyType,
 } from '@/lib/concordia/gait-synthesis';
@@ -2532,10 +2534,6 @@ export default function AvatarSystem3D({
               physics.currentStamina / physics.maxStamina
             );
             applyGaitPose(idlePose, (name) => pm.getObjectByName(name) ?? undefined);
-            // Subtle chest scale breath (complements hipOffset from synthesizeIdle)
-            const chest = pm.getObjectByName('chest');
-            if (chest)
-              chest.scale.y = 1 + Math.sin(elapsed * 0.8) * 0.004 * styleCfg.idleBreathScale;
           }
           if (
             activeAnimation !== 'idle' &&
@@ -2543,6 +2541,15 @@ export default function AvatarSystem3D({
           ) {
             setActiveAnimation('idle');
           }
+        }
+
+        // Track 1 — additive breathing over ALL states: a subtle chest rise
+        // applied AFTER whichever branch (moving gait / idle) ran, so the player
+        // breathes while walking, in combat-idle, etc. — not only at true idle.
+        {
+          const pmB = playerMeshRef.current as InstanceType<typeof import('three').Group> | null;
+          const chest = pmB?.getObjectByName('chest');
+          if (chest) chest.scale.y = breathingChestScaleY(elapsed, styleCfg.idleBreathScale, isMoving);
         }
 
         // ── Secondary physics: hair chain (runs AFTER FABRIK IK) ──
@@ -2647,6 +2654,15 @@ export default function AvatarSystem3D({
             applyGaitPose(npcGaitPose, getMesh);
           } else {
             applyGaitPose(synthesizeIdle(elapsed, npcCfg, 1), getMesh);
+          }
+          // Track 1 — additive breathing over ALL states for NPCs too, phase-
+          // offset per id so a crowd never inhales in lockstep (kills the
+          // "frozen mannequin" read even when an NPC is standing still).
+          const chestN = getMesh('chest') as InstanceType<typeof import('three').Object3D> | undefined;
+          if (chestN) {
+            chestN.scale.y = breathingChestScaleY(
+              elapsed, npcCfg.idleBreathScale, npcSpeed > 0, breathPhaseFromId(npcId),
+            );
           }
         }
 
