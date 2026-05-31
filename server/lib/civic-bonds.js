@@ -19,6 +19,8 @@
 import crypto from "crypto";
 import { debitSparks, creditSparks } from "./sparks-service.js";
 import { makeConstraintSet, isFeasible } from "./viability/index.js";
+import { adjustTreasury } from "./kingdoms.js";
+import { proposeDecree } from "./kingdom-decrees.js";
 
 export const MAX_SINGLE_ENTITY_RATIO = 0.05;     // 5% cap per entity per bond
 export const DEFAULT_SPILLOVER_RATE = 0.05;
@@ -27,6 +29,7 @@ export const DEFAULT_QUORUM = 1000;
 export const DEFAULT_FUNDING_GATE = 1.10;        // 110% pre-funding gate
 export const RETURN_RATE_MAX = 0.005;            // capped return (restricted pool only)
 export const ADMIN_RESERVE_RATE = 0.15;          // admin reserve ceiling fraction
+export const IN_HOUSE_COST_FACTOR = 0.85;        // DPW: in-house crews beat contractor markup
 
 export function civicBondsEnabled() {
   return process.env.CONCORD_CIVIC_BONDS === "1";
@@ -203,9 +206,24 @@ export function fundBond(db, id, actorId) {
     return { ok: true };
   });
   try { tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
-  // NOTE: opening the pre-funded construction decree + crediting realm treasury
-  // is the connective-chain slice (Wave 0 item 5); fundBond leaves the bond 'active'.
-  return { ok: true, status: "active" };
+
+  // Connective chain — open the PRE-FUNDED construction decree (best-effort; the
+  // bond paid for it, so we record the decree marker without routing through the
+  // normal -300 treasury debit). Capital is delivered to the realm at completion.
+  let decreeId = null;
+  if (bond.realm_id) {
+    try {
+      const dec = proposeDecree(db, bond.realm_id, {
+        kind: "construction",
+        body: { civic_bond_id: id, pre_funded: true, labor_source: bond.labor_source },
+        issuedByKind: "player",
+        issuedById: bond.proposer_id || actorId || null,
+      });
+      decreeId = dec?.decree?.id || dec?.id || null;
+      if (decreeId) db.prepare(`UPDATE civic_bonds SET decree_id=? WHERE id=?`).run(decreeId, String(id));
+    } catch { /* decree is best-effort; realm may not exist */ }
+  }
+  return { ok: true, status: "active", decreeId };
 }
 
 export function completeMilestone(db, id, idx) {
@@ -232,9 +250,19 @@ export function completeBond(db, id) {
       }
       db.prepare(`UPDATE civic_bond_pledges SET status='delivered' WHERE id=?`).run(p.id);
     }
-    // Capital (target) is consumed by the build; the leftover above target+returns
-    // is restricted spillover that seeds the next project.
-    const residue = Math.max(0, bond.current_pledged - bond.target_amount - returnsTotal);
+    // DPW (item 8): in-house crews cost less than a contractor's marked-up bid,
+    // so the build consumes less than target → more under-budget residue.
+    const inHouseFactor = Number(process.env.CONCORD_CIVIC_INHOUSE_FACTOR ?? IN_HOUSE_COST_FACTOR);
+    const effectiveCost = bond.labor_source === "in_house"
+      ? Math.floor(bond.target_amount * inHouseFactor)
+      : bond.target_amount;
+    // The delivered capital lands in the realm treasury — the realm's first real
+    // INFLOW (the whole point: realms collect, not just drain).
+    if (bond.realm_id) {
+      try { adjustTreasury(db, bond.realm_id, effectiveCost); } catch { /* realm optional */ }
+    }
+    // Leftover above the build cost + returns is restricted spillover → next project.
+    const residue = Math.max(0, bond.current_pledged - effectiveCost - returnsTotal);
     if (residue > 0) {
       db.prepare(`
         INSERT INTO civic_spillover_funds (scope, world_id, amount) VALUES (?,?,?)
@@ -242,7 +270,7 @@ export function completeBond(db, id) {
       `).run(bond.scope, bond.world_id, residue, residue);
     }
     db.prepare(`UPDATE civic_bonds SET status='completed', completed_at=? WHERE id=?`).run(now(), String(id));
-    return { ok: true, returnsPaid: returnsTotal, spillover: residue };
+    return { ok: true, returnsPaid: returnsTotal, spillover: residue, deliveredToTreasury: bond.realm_id ? effectiveCost : 0 };
   });
   try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
 }
