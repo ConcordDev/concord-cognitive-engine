@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Activity, Pause, Play, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { subscribe, type SocketEvent } from '@/lib/realtime/socket';
+import { eventPriority } from '@/lib/concordia/event-digest';
 
 // Emergent simulation events the panel surfaces. These are the things the
 // world *creates on its own* — NPC death, evo-asset promotion, refusal
@@ -124,6 +125,26 @@ interface FeedItem {
   channel: EmergentChannel;
   label: string;
   detail: string;
+  // Track 3 — curation: priority tier + batched-count so a burst of the same
+  // ambient kind reads as one "×N" row and critical beats sort to the top.
+  priority: 'critical' | 'major' | 'ambient';
+  count: number;
+}
+
+const FEED_BATCH_WINDOW_MS = 4000;
+const FEED_PRIORITY_RANK: Record<FeedItem['priority'], number> = { critical: 3, major: 2, ambient: 1 };
+
+/** Critical first, then most-recent; over cap, ambient drops before critical. */
+function sortFeed(items: FeedItem[]): FeedItem[] {
+  const cmp = (a: FeedItem, b: FeedItem) => {
+    const pr = FEED_PRIORITY_RANK[b.priority] - FEED_PRIORITY_RANK[a.priority];
+    return pr !== 0 ? pr : b.ts - a.ts;
+  };
+  const sorted = items.slice().sort(cmp);
+  if (sorted.length <= MAX_FEED_ITEMS) return sorted;
+  const critical = sorted.filter((i) => i.priority === 'critical');
+  const rest = sorted.filter((i) => i.priority !== 'critical').slice(0, Math.max(0, MAX_FEED_ITEMS - critical.length));
+  return [...critical, ...rest].sort(cmp);
 }
 
 function summarize(payload: unknown): string {
@@ -165,16 +186,32 @@ export function EmergentEventFeed() {
     for (const evt of TRACKED_EVENTS) {
       const off = subscribe(evt.name, (payload: unknown) => {
         if (pausedRef.current) return;
+        const now = Date.now();
+        const priority = eventPriority(evt.name, evt.channel);
         setItems((prev) => {
+          // Curation: batch a same-kind ambient/major burst within the window into
+          // one row (count++), so the feed digests instead of flooding. Critical
+          // beats never batch — each is its own line.
+          if (priority !== 'critical') {
+            const idx = prev.findIndex(
+              (it) => it.label === evt.label && it.priority !== 'critical' && now - it.ts <= FEED_BATCH_WINDOW_MS,
+            );
+            if (idx >= 0) {
+              const merged = prev.slice();
+              merged[idx] = { ...merged[idx], count: merged[idx].count + 1, ts: now, detail: summarize(payload) || merged[idx].detail };
+              return sortFeed(merged);
+            }
+          }
           const next: FeedItem = {
-            id: `${evt.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            ts: Date.now(),
+            id: `${evt.name}-${now}-${Math.random().toString(36).slice(2, 6)}`,
+            ts: now,
             channel: evt.channel,
             label: evt.label,
             detail: summarize(payload),
+            priority,
+            count: 1,
           };
-          // Newest first, capped — old entries fall off.
-          return [next, ...prev].slice(0, MAX_FEED_ITEMS);
+          return sortFeed([next, ...prev]);
         });
       });
       unsubs.push(off);
@@ -268,8 +305,11 @@ export function EmergentEventFeed() {
                     <li key={item.id} className="px-3 py-1.5">
                       <div className="flex items-baseline gap-2 text-[11px]">
                         <span className={`font-medium ${CHANNEL_COLORS[item.channel]}`}>
-                          {item.label}
+                          {item.label}{item.count > 1 ? ` ×${item.count}` : ''}
                         </span>
+                        {item.priority === 'critical' && (
+                          <span className="text-[9px] uppercase tracking-wide text-rose-400">!</span>
+                        )}
                         <span className="ml-auto text-[10px] tabular-nums text-slate-400">
                           {formatTime(item.ts)}
                         </span>
