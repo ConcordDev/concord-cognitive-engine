@@ -29,6 +29,10 @@ const FIELD_KINDS = Object.freeze({
   numbers_refused:    { label: "Numbers are refused", glyphHint: "inversion" },
   dome_collapse:      { label: "The arena is refused", glyphHint: "shrinking" },
   win_refused:        { label: "Victory is refused", glyphHint: "eternal" },
+  // SL6 — the Sovereign (god of Refusal who refused death) refuses harm TO and
+  // FROM the under-matured. A visible divine field, not a despawn hack; lifts at
+  // adulthood (the coming-of-age beat). Targeted via opts.appliesTo + isRefusedFor.
+  harm_to_children_refused: { label: "Harm to the young is refused", glyphHint: "cradle" },
 });
 
 /** state.refusalFields : Map<worldId, Array<{ id, kind, expiresAt, reason, glyph }>> */
@@ -90,6 +94,9 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
     reason: String(opts.reason || ""),
     glyphHint: FIELD_KINDS[kind].glyphHint,
     glyph,
+    // SL6 — optional scoping (e.g. { maturity: ["infant","child","adolescent"] }).
+    // null = applies to everyone (back-compat: every existing field is unscoped).
+    appliesTo: opts.appliesTo || null,
   };
   list.push(entry);
   map.set(worldId, list);
@@ -100,13 +107,14 @@ export function applyTemporaryRefusal(state, worldId, kind, opts = {}) {
   if (state.db) {
     try {
       state.db.prepare(`
-        INSERT INTO refusal_fields (id, world_id, kind, reason, glyph_hint, glyph_json, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO refusal_fields (id, world_id, kind, reason, glyph_hint, glyph_json, expires_at, applies_to_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         entry.id, worldId, entry.kind, entry.reason,
         entry.glyphHint ?? null,
         entry.glyph != null ? JSON.stringify(entry.glyph) : null,
         Math.floor(entry.expiresAt / 1000),
+        entry.appliesTo != null ? JSON.stringify(entry.appliesTo) : null,
       );
     } catch { /* persistence best-effort — table may not exist on minimal builds */ }
   }
@@ -143,7 +151,7 @@ export function loadPersistedRefusalFields(state) {
   let rows;
   try {
     rows = state.db.prepare(`
-      SELECT id, world_id, kind, reason, glyph_hint, glyph_json, expires_at
+      SELECT id, world_id, kind, reason, glyph_hint, glyph_json, expires_at, applies_to_json
       FROM refusal_fields WHERE expires_at > unixepoch()
     `).all();
   } catch { return { ok: false, reason: "table_missing" }; }
@@ -152,6 +160,8 @@ export function loadPersistedRefusalFields(state) {
   for (const row of rows) {
     let glyph = null;
     try { glyph = row.glyph_json ? JSON.parse(row.glyph_json) : null; } catch { /* ignore */ }
+    let appliesTo = null;
+    try { appliesTo = row.applies_to_json ? JSON.parse(row.applies_to_json) : null; } catch { /* ignore */ }
     const list = map.get(row.world_id) ?? [];
     list.push({
       id: row.id,
@@ -160,6 +170,7 @@ export function loadPersistedRefusalFields(state) {
       reason: row.reason ?? "",
       glyphHint: row.glyph_hint ?? null,
       glyph,
+      appliesTo,
     });
     map.set(row.world_id, list);
   }
@@ -183,6 +194,51 @@ export function activeFields(state, worldId) {
  */
 export function isRefused(state, worldId, kind) {
   return activeFields(state, worldId).some((e) => e.kind === kind);
+}
+
+const CHILD_MATURITIES = Object.freeze(["infant", "child", "adolescent"]);
+
+/** Does a field entry's appliesTo scope match this target? null scope = everyone. */
+function _matchesAppliesTo(entry, target) {
+  const scope = entry.appliesTo;
+  if (!scope) return true; // unscoped → applies to all
+  if (Array.isArray(scope.maturity)) {
+    return target && target.maturity != null && scope.maturity.includes(target.maturity);
+  }
+  return true;
+}
+
+/**
+ * SL6 — scoped refusal gate: is `kind` refused for THIS target right now? True
+ * iff an active field of `kind` exists AND (it's unscoped OR the target matches
+ * its scope). `target = { kind:'player'|'npc', id, maturity? }`. Callers pass the
+ * defender AND the attacker through this so the young can neither be harmed nor
+ * harm. Back-compat: with no scoped fields this is exactly isRefused per-entity.
+ */
+export function isRefusedFor(state, worldId, kind, target = {}) {
+  return activeFields(state, worldId).some((e) => e.kind === kind && _matchesAppliesTo(e, target));
+}
+
+/**
+ * Resolve an entity's maturity tier. Players/children read player_children.maturity
+ * (a regular adult avatar with no child row → 'adult'). NPCs default 'adult'
+ * unless an authored age tier is supplied. Best-effort; never throws.
+ * @returns {'infant'|'child'|'adolescent'|'adult'}
+ */
+export function maturityOf(db, entityKind, entityId) {
+  if (!db || !entityId) return "adult";
+  try {
+    if (entityKind === "player" || entityKind === "child" || entityKind === "player_child") {
+      const row = db.prepare("SELECT maturity FROM player_children WHERE id = ?").get(entityId);
+      if (row && row.maturity) return row.maturity;
+    }
+  } catch { /* table optional */ }
+  return "adult";
+}
+
+/** Is a maturity tier considered "under-matured" (the SL6 protected class)? */
+export function isUnderMatured(maturity) {
+  return CHILD_MATURITIES.includes(String(maturity));
 }
 
 /**
