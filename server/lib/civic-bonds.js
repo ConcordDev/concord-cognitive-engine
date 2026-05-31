@@ -19,7 +19,7 @@
 import crypto from "crypto";
 import { debitSparks, creditSparks } from "./sparks-service.js";
 import { makeConstraintSet, isFeasible } from "./viability/index.js";
-import { adjustTreasury } from "./kingdoms.js";
+import { adjustTreasury, adjustLegitimacy } from "./kingdoms.js";
 import { proposeDecree } from "./kingdom-decrees.js";
 
 export const MAX_SINGLE_ENTITY_RATIO = 0.05;     // 5% cap per entity per bond
@@ -293,6 +293,44 @@ export function failBond(db, id, reason = "failed") {
     }
     db.prepare(`UPDATE civic_bonds SET status='failed' WHERE id=?`).run(String(id));
     return { ok: true, refunded };
+  });
+  try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+}
+
+// ── The corruption duality (item 7) ─────────────────────────────────────────
+//
+// The lawful baseline never touches escrow until completion. A ruler MAY defy
+// that and raid the restricted pool into the treasury — and that's the drama,
+// wired into the systems that already punish it: legitimacy collapses and the
+// ruler accrues refusal_debt (and the seized pledges are never refunded). Honest
+// rulers compound legitimacy; corrupt ones blow up — no scripting, real systems.
+export const CIVIC_RAID_LEGITIMACY_HIT = 15;
+export const CIVIC_RAID_REFUSAL_DEBT = 0.1;
+
+export function raidBondEscrow(db, bondId, rulerId) {
+  const bond = db.prepare(`SELECT * FROM civic_bonds WHERE id=?`).get(String(bondId));
+  if (!bond) return { ok: false, reason: "bond_not_found" };
+  if (["completed", "failed", "cancelled"].includes(bond.status)) return { ok: false, reason: "terminal" };
+  const loot = bond.current_pledged;
+  if (loot <= 0) return { ok: false, reason: "nothing_to_raid" };
+
+  const tx = db.transaction(() => {
+    // The corrupt act: divert the restricted escrow into the treasury.
+    if (bond.realm_id) { try { adjustTreasury(db, bond.realm_id, loot); } catch { /* realm optional */ } }
+    // Pledges are SEIZED — left escrowed on a cancelled bond, never refunded.
+    db.prepare(`UPDATE civic_bonds SET status='cancelled' WHERE id=?`).run(String(bondId));
+    // The world punishes it: legitimacy collapse + the ruler's refusal_debt rises.
+    let legitimacy = null;
+    if (bond.realm_id) {
+      try { legitimacy = adjustLegitimacy(db, bond.realm_id, -CIVIC_RAID_LEGITIMACY_HIT, "civic_bond_raid")?.legitimacy ?? null; } catch { /* realm optional */ }
+    }
+    if (rulerId) {
+      try {
+        db.prepare(`UPDATE player_world_metrics SET refusal_debt = MAX(0, MIN(1, refusal_debt + ?)), updated_at = unixepoch() WHERE user_id = ? AND world_id = ?`)
+          .run(CIVIC_RAID_REFUSAL_DEBT, String(rulerId), bond.world_id);
+      } catch { /* metrics row optional */ }
+    }
+    return { ok: true, looted: loot, legitimacy, corrupt: true };
   });
   try { return tx(); } catch (e) { return { ok: false, reason: String(e?.message || e) }; }
 }

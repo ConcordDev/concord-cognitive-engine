@@ -11,7 +11,7 @@
 import {
   civicBondsEnabled, createBond, getBond, listBonds, openBondForVoting, voteBond,
   checkQuorum, pledgeToBond, unpledge, fundBond, completeMilestone, completeBond,
-  failBond, getSpillover,
+  failBond, getSpillover, raidBondEscrow,
 } from "../lib/civic-bonds.js";
 
 function gate(ctx) {
@@ -105,4 +105,12 @@ export default function registerCivicBondsMacros(register) {
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
     return failBond(ctx.db, input.bondId, input.reason);
   }, { note: "fail the bond: refund unspent escrow" });
+
+  // The corrupt option — raid the restricted escrow into the treasury. Lawful
+  // rulers never call this; doing so collapses legitimacy + raises refusal_debt.
+  register("civic_bonds", "raid", async (ctx, input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    return raidBondEscrow(ctx.db, input.bondId, uid);
+  }, { note: "CORRUPT: divert escrow to treasury (legitimacy + refusal_debt fallout)" });
 }
