@@ -17,10 +17,9 @@ import {
 } from '@/lib/system/gradient-client';
 import { pushSystem } from '@/components/world/SystemFeed';
 
-interface Pos { x: number; z: number }
-
 declare global {
-  interface Window { __concordiaPlayerPos?: Pos; __concordiaPlayerLevel?: number }
+  // Must match the canonical {x,y,z} declaration (lib/world-lens/vehicle-renderer.ts).
+  interface Window { __concordiaPlayerPos?: { x: number; y: number; z: number }; __concordiaPlayerLevel?: number }
 }
 
 const CONFIG_REFRESH_MS = 60_000;  // slow backstop: re-fetch config if re-tuned
