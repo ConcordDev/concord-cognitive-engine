@@ -24591,6 +24591,8 @@ import registerDailyLifeMacros from "./domains/daily-life.js";
 registerDailyLifeMacros(register);
 import registerSkillForgeMacros from "./domains/skill-forge.js";
 registerSkillForgeMacros(register);
+import registerCareerMacros from "./domains/careers.js";
+registerCareerMacros(register);
 import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
 registerHeartbeat("news-compose-cycle", {
   frequency: 60,
