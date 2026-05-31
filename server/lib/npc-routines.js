@@ -47,6 +47,18 @@ const ACTIVITY_SIGNALS = {
     { channel: "sonic_os.ambient_db",               value: 8,    ttlSeconds: 240 },
     { channel: "thermal_os.ambient_temp",           value: 0.3,  ttlSeconds: 600 },
   ],
+  // Wave 7c — service-economy work-blocks (mechanic / stable-hand). A mechanic at
+  // a workbench emits wrench-noise + structural stress; a stable-hand emits the
+  // warm, low-noise signature of tending animals. These let an NPC routine carry
+  // a repair/stable block so the emergent service roles surface in the world.
+  repair: [
+    { channel: "sonic_os.ambient_db",                value: 10,   ttlSeconds: 240 },
+    { channel: "tactile_force_os.structural_stress", value: 0.04, ttlSeconds: 300 },
+  ],
+  stable: [
+    { channel: "chemical_os.air_quality",            value: -0.05, ttlSeconds: 300 },
+    { channel: "thermal_os.ambient_temp",            value: 0.2,   ttlSeconds: 600 },
+  ],
   gather: [
     { channel: "sonic_os.ambient_db",       value: 3,     ttlSeconds: 180 },
     { channel: "chemical_os.air_quality",   value: -0.05, ttlSeconds: 300 },
