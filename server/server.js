@@ -921,6 +921,16 @@ registerHeartbeat("effects-decay-cycle", {
   handler: runEffectsDecayCycle,
 });
 
+// WAVE JOBS — career heartbeat: active contracts run on SIM (delegate fidelity)
+// and pay wages employer→worker in sparks per pay-period (kill-switch
+// CONCORD_LIVING_CAREER). scope:'global' (user-global sparks).
+import { runCareerCycle, CAREER_CYCLE_FREQUENCY } from "./emergent/career-cycle.js";
+registerHeartbeat("career-cycle", {
+  frequency: CAREER_CYCLE_FREQUENCY,
+  scope: "global",
+  handler: runCareerCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
