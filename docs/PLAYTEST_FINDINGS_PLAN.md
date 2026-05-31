@@ -1,0 +1,96 @@
+# Playtest Findings Plan — Vael's Expedition (2026-05-31)
+
+Folds the 30 genuine findings (32 reported, #4/#5 self-retracted) into a
+prioritized, code-verified fix plan. Spot-checks all confirmed the report against
+the working tree — it's credible; treat each finding as real unless re-audit says
+otherwise. Tiers are by blast radius, not report order.
+
+**Systemic root (read first):** several findings share ONE masking mechanism —
+`/api/lens/run` dispatches `LENS_ACTIONS → MACROS → LLM-fallthrough`, and an
+unknown `(domain,name)` falls through to the utility brain, returning **HTTP 200**
+`{ok:true, result:{ok:false, output:"fetch failed", source:"utility-brain"}}`.
+That turns "macro not wired" (#2, #11) into a fake transient LLM outage (#3),
+which then **hangs ~96s** on LLM backoff (#27) and reports 200 for failures (#25).
+**Fix #3 first** (return `unknown_macro`, fail fast, non-200) and #2/#11/#27/#25
+become visible/benign in one stroke.
+
+---
+
+## P0 — silent data loss / headline substrate broken
+
+| # | Finding | Status / fix |
+|---|---|---|
+| **19/20** | `runMacro(ctx,"dtu","cluster"/"gapPromote",…)` passes `ctx` as `domain` (sig is `(domain,name,input,ctx)`) → DTU MEGA→HYPER self-consolidation never runs; circular-JSON throw (#15). | ✅ **FIXED this commit** — both calls reordered at `server.js:21085`/`:25420`; matches the correct sibling at `:33181`. Syntax-verified; runtime-verify on next boot. |
+| **15/16** | `dtu.gapPromote` throws "circular structure to JSON" (#15) and the Chicken2 valence guard THROWS `c2_guard_reject` instead of returning `{ok:false}` and skipping (#16). | #15 is downstream of #19/#20 (the circular `ctx` was the payload) — re-verify after the reorder. #16: make the Chicken2 guard return a structured skip, not throw, so one "harm"-scored DTU can't abort the whole pass. Contract test on the guard. |
+| **32** | `dtu.create` returns `{ok:true, dtu:{id}}` but the row never lands in `STATE.dtus`/SQLite — immediate `dtu.get` says "not found". **SEVERE** — the substrate's headline "create a thought" verb silently loses data. | Investigate the ~410-line create path for an early/caught return before the `STATE.dtus.set`/persist step (cf. #16 guard-throw). Add an e2e test: create → get → assert persisted. **Highest-priority investigation.** |
+
+---
+
+## P1 — whole macro surfaces dead, masked as LLM outage
+
+| # | Finding | Status / fix |
+|---|---|---|
+| **3/25** | Unknown macro → LLM fallthrough, HTTP 200, `"fetch failed"`. | Return `{ok:false, error:"unknown_macro", domain, name}` with a non-200 for unknown/validation-fail/not-found at the `/api/lens/run` dispatcher. The high-leverage systemic fix. |
+| **27** | A dead-macro call hangs ~96s on LLM backoff (DoS-adjacent). | Resolved by #3 (fail fast before the brain call). |
+| **11** | ~36 ghost-fleet macros (`agents.*`, `quest.*`, `religion.*`, `research.*`, `city.*`, …) log "loaded" but aren't in `MACROS` at dispatch → every action LLM-fallthroughs. **HIGH.** | Run the report's probe: `globalThis.__CARTOGRAPHER__.MACROS.has('agents')` at steady state. Likely `initGhostFleet().catch()` registers in async microtasks landing after a consumer snapshots/rebuilds the per-domain Map. Make ghost-fleet registration synchronous (or await it before serving). |
+| **2** | `domains/minigames.js#registerMinigameMacros` exported but never imported by `server.js` → `fishing.resolve_cast`, `karaoke.resolve_performance`, `mahjong.resolve_hand`, `photography.resolve_shot`, `minigames.constants` all unregistered. | Import + invoke `registerMinigameMacros(register)` at boot (verified absent via grep). One-line wire + a behavior-smoke assertion. |
+
+---
+
+## P1 — hard crashes / wrong-world on real user paths
+
+| # | Finding | Status / fix |
+|---|---|---|
+| **30** | `glyph_spells.cast` license check queries `dtu_citations` for `creator_id/parent_id/kind` — **none exist** (table is `dtu_id, citation_count, …`) → casting a licensed spell hard-throws `no such column`. | Point the license check at a real grant ledger (purchased-license / consent table) or the citation table's actual shape. Add a non-owner-cast test. Verified at `domains/glyph-spells.js:80`. |
+| **31** | `POST /api/vehicles/spawn` defaults `world="concordia"` (canonical is `"concordia-hub"`) and reads `world/type`, ignoring platform-standard `worldId/vehicleType` → orphaned, world-invisible vehicles. | Default to `concordia-hub`; accept `worldId`/`vehicleType` aliases. Verified at `routes/vehicles.js:50`. |
+| **1** | `/dialogue/respond` has no deterministic fallback — LLM-off returns the flat `"<name> responds to your choice."` (POLISH_AUDIT T1.1 opener fix didn't cover the respond path). | Route `respond` through `npc-dialogue-fallback.js#composeDeterministicDialogue` before the LLM, same as the opener. `routes/worlds.js:1236`. |
+
+---
+
+## P2 — invariant / correctness
+
+| # | Finding | Fix |
+|---|---|---|
+| **12** | `glyph_spells.cast` of a FIRE spell in `concordia-hub` succeeds + writes thermal feedback into the no-violence hub (combat route 403s, spell-cast doesn't). | Apply the `world-zones.js` sanctuary/no-combat gate to the spell-cast macro (the same check the combat route uses). |
+| **13** | Pillar-3 cross-world potency unimplemented for spells: `mintSpell` never stamps `native_world`; native cast returns 0.85 not 1.0. | Stamp `native_world` at mint; pass spell origin into `effectivenessMultiplier`. |
+| **14** | `effectivenessMultiplier` reads `rule_modulators.skill_affinity[domain]`, but worlds define `skill_effectiveness_rules`/`skill_resistance` → magic world (1.5×) nerfs magic to 0.70. | Read the real `skill_effectiveness_rules.<domain>.multiplier` + `skill_resistance` keys; fall back to neutral only when absent. |
+| **23/24** | `/api/reasoning/run` rejects `mode=constraint_check` (breaks the DC7 DriftAlertToast flow) and advertises UPPERCASE modes but validates lowercase; returns 200 on validation fail. | Add `constraint_check` to allowed modes (it's the documented HLR bridge mode); normalize case; 400 on invalid. |
+| **29** | DTU injection detector fires 100% false-positive (71/71 with `patterns:[]`) → quarantines legitimate internal autogen DTUs (`system.dream`, `system.evolution`). | Treat an empty matched-patterns set as CLEAN; only quarantine on ≥1 real match. |
+| **17** | Duplicate macro registrations `chat.summary`, `ingest.queue` — second silently shadows first (order-dependent). | De-dup the registrations; keep one canonical each. |
+
+---
+
+## P2 — boot / runtime health
+
+| # | Finding | Fix |
+|---|---|---|
+| **7** | Seed-pack loader: `Cannot read properties of null (reading 'slice')`. | Null-guard the loader input. |
+| **8** | `breakthrough_clusters` heartbeat: "clusters is not iterable" (zero work every cycle). | Guard the iterated value (`Array.isArray` / default `[]`) in the breakthrough-pass path. |
+| **9** | `[REPAIR] Lattice audit error: object is not iterable`. | Same class as #8 — guard the repair-cortex lattice audit iterable. |
+| **10** | `achievement-engine catalog_persist_failed` ×4 at boot. | Investigate the 4 failing catalog entries (schema/constraint); persist or skip cleanly. |
+| **18** | `/api/feeds` 503 `feed_manager_not_initialized` for every caller. | Initialize the feed manager empty on boot (don't refuse reads when external RSS 403s). |
+| **26/28** | 6.25s event-loop stall at boot (2001-DTU bootstrap sync block) → root `/` 43s during boot. | Chunk/defer the bootstrap-ingestion store migration off the main sync path (yield to the loop). |
+
+---
+
+## P3 — contract / polish
+
+| # | Finding | Fix |
+|---|---|---|
+| **21** | `/api/combat/frame-data/:skillId` returns `no_skill` for every default skill (no DTU-derived seed data) + 404/body contract mix. | Seed default frame-data for the core moves, or derive a deterministic default; align status/body. |
+| **22** | Leaderboards expose only sparks/skills/crafts/nemesis — no combat/wealth/global. | Add the missing categories; 400 list for unknown. |
+| **6** | `creatures.taxonomy` reads camelCase `speciesId` while the codebase uses `species_id`. | Accept `species_id` (alias) for intra-domain consistency. |
+
+---
+
+## Recommended execution order (headless-first)
+1. **#3** systemic fail-fast (unblocks/benigns #2, #11, #25, #27) + **#2** minigames import — high leverage, small.
+2. **#32** dtu.create persistence investigation (SEVERE) + **#16** Chicken2-guard skip-not-throw; re-verify #15 after the ✅ #19/#20 reorder.
+3. **#30/#31/#1** the hard-crash / wrong-world / dialogue-cliff user paths.
+4. **#29/#23/#12/#13/#14/#17** invariant + correctness.
+5. **#7/#8/#9/#10/#18** boot-health guards; **#26/#28** the boot sync-stall.
+6. **#21/#22/#6** contract polish.
+
+Each fix ships with a contract/e2e test and the same kill-switch-where-risky
+discipline. Most are server-side and headless-verifiable; the boot-timing ones
+(#26/#28) and `#11`'s steady-state probe want a local boot to confirm.

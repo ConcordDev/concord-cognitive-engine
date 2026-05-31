@@ -21081,8 +21081,9 @@ register("dtu", "gapPromote", async (ctx, input) => {
     return simpleHash(tags.slice(0, 30).join("|") + "|" + cluster.map(d=>d.id).slice(0,10).join("|"));
   };
 
-  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion)
-  const clustersRes = await runMacro(ctx, "dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) });
+  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
+  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
+  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) }, ctx);
   if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
   const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
 
@@ -25415,9 +25416,10 @@ ClusterSig: ${p.clusterSig}`,
   }
 
   
-  // Gap promotion: periodically synthesize stable clusters into MEGA DTUs
+  // Gap promotion: periodically synthesize stable clusters into MEGA DTUs.
+  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
   try {
-    await runMacro(ctx, "dtu", "gapPromote", { minCluster: 6, maxPromotions: 1, dryRun: false });
+    await runMacro("dtu", "gapPromote", { minCluster: 6, maxPromotions: 1, dryRun: false }, ctx);
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
 return { ok:true, simulation:true, createdCandidates: created.length, created, matured };
