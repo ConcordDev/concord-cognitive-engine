@@ -1,18 +1,11 @@
 {
-  "generatedAt": "2026-05-31T22:43:41.909Z",
-  "tablesModelled": 672,
-  "migrationsApplied": 313,
+  "generatedAt": "2026-05-31T22:56:45.979Z",
+  "tablesModelled": 690,
+  "migrationsApplied": 314,
   "sourceFiles": 1668,
-  "floor": 53,
-  "violationCount": 53,
+  "floor": 23,
+  "violationCount": 23,
   "violations": [
-    {
-      "file": "server/domains/crisis.js",
-      "line": 184,
-      "kind": "ghost_table",
-      "table": "user_skills",
-      "column": null
-    },
     {
       "file": "server/domains/ghost-hunt.js",
       "line": 118,
@@ -35,73 +28,10 @@
       "column": "creator_id"
     },
     {
-      "file": "server/domains/goddess.js",
-      "line": 350,
-      "kind": "ghost_table",
-      "table": "world_events",
-      "column": null
-    },
-    {
-      "file": "server/domains/messaging.js",
-      "line": 13,
-      "kind": "ghost_table",
-      "table": "messaging_adapters",
-      "column": null
-    },
-    {
-      "file": "server/domains/messaging.js",
-      "line": 32,
-      "kind": "ghost_table",
-      "table": "messaging_adapters",
-      "column": null
-    },
-    {
-      "file": "server/domains/messaging.js",
-      "line": 49,
-      "kind": "ghost_table",
-      "table": "messaging_adapters",
-      "column": null
-    },
-    {
-      "file": "server/domains/messaging.js",
-      "line": 64,
-      "kind": "ghost_table",
-      "table": "messaging_adapters",
-      "column": null
-    },
-    {
-      "file": "server/domains/messaging.js",
-      "line": 65,
-      "kind": "ghost_table",
-      "table": "messaging_adapters",
-      "column": null
-    },
-    {
-      "file": "server/domains/nemesis.js",
-      "line": 92,
-      "kind": "ghost_table",
-      "table": "authored_npcs",
-      "column": null
-    },
-    {
       "file": "server/domains/patterns.js",
       "line": 14,
       "kind": "ghost_table",
       "table": "drift_alerts",
-      "column": null
-    },
-    {
-      "file": "server/domains/patterns.js",
-      "line": 20,
-      "kind": "ghost_table",
-      "table": "cross_domain_breakthroughs",
-      "column": null
-    },
-    {
-      "file": "server/domains/patterns.js",
-      "line": 26,
-      "kind": "ghost_table",
-      "table": "cnet_federation_pulse",
       "column": null
     },
     {
@@ -119,13 +49,6 @@
       "column": "metadata_json"
     },
     {
-      "file": "server/economy/global-gates.js",
-      "line": 128,
-      "kind": "ghost_table",
-      "table": "economy_balances",
-      "column": null
-    },
-    {
       "file": "server/emergent/npc-perception-snapshot.js",
       "line": 53,
       "kind": "ghost_table",
@@ -137,13 +60,6 @@
       "line": 71,
       "kind": "ghost_table",
       "table": "city_presence",
-      "column": null
-    },
-    {
-      "file": "server/emergent/npc-perception-snapshot.js",
-      "line": 84,
-      "kind": "ghost_table",
-      "table": "authored_npcs",
       "column": null
     },
     {
@@ -162,20 +78,6 @@
     },
     {
       "file": "server/lib/account-lifecycle.js",
-      "line": 331,
-      "kind": "ghost_table",
-      "table": "direct_messages",
-      "column": null
-    },
-    {
-      "file": "server/lib/account-lifecycle.js",
-      "line": 338,
-      "kind": "ghost_table",
-      "table": "social_posts",
-      "column": null
-    },
-    {
-      "file": "server/lib/account-lifecycle.js",
       "line": 398,
       "kind": "ghost_table",
       "table": "citations",
@@ -186,13 +88,6 @@
       "line": 74,
       "kind": "ghost_table",
       "table": "lenses",
-      "column": null
-    },
-    {
-      "file": "server/lib/chronicle/chronicle.js",
-      "line": 68,
-      "kind": "ghost_table",
-      "table": "world_events",
       "column": null
     },
     {
@@ -224,13 +119,6 @@
       "column": "user_id"
     },
     {
-      "file": "server/lib/cross-world-feed.js",
-      "line": 108,
-      "kind": "ghost_table",
-      "table": "world_events",
-      "column": null
-    },
-    {
       "file": "server/lib/dtu-portability.js",
       "line": 77,
       "kind": "column",
@@ -245,39 +133,11 @@
       "column": "buyer_id"
     },
     {
-      "file": "server/lib/embodied/forward-sim.js",
-      "line": 188,
-      "kind": "ghost_table",
-      "table": "quest_progress",
-      "column": null
-    },
-    {
-      "file": "server/lib/embodied/forward-sim.js",
-      "line": 214,
-      "kind": "ghost_table",
-      "table": "faction_members",
-      "column": null
-    },
-    {
       "file": "server/lib/emergents/quality/deterministic-gates.js",
       "line": 39,
       "kind": "column",
       "table": null,
       "column": "content_hash"
-    },
-    {
-      "file": "server/lib/governance/auto-proposal.js",
-      "line": 101,
-      "kind": "ghost_table",
-      "table": "council_proposals",
-      "column": null
-    },
-    {
-      "file": "server/lib/guidance-waypoint.js",
-      "line": 26,
-      "kind": "ghost_table",
-      "table": "quest_state",
-      "column": null
     },
     {
       "file": "server/lib/kingdoms.js",
@@ -291,76 +151,6 @@
       "line": 185,
       "kind": "ghost_table",
       "table": "lattice_drift_alerts",
-      "column": null
-    },
-    {
-      "file": "server/lib/npc-legacy.js",
-      "line": 95,
-      "kind": "ghost_table",
-      "table": "npc_relations",
-      "column": null
-    },
-    {
-      "file": "server/lib/npc-simulator.js",
-      "line": 668,
-      "kind": "ghost_table",
-      "table": "world_events",
-      "column": null
-    },
-    {
-      "file": "server/lib/spouse-reactivity.js",
-      "line": 58,
-      "kind": "ghost_table",
-      "table": "npc_relations",
-      "column": null
-    },
-    {
-      "file": "server/lib/tutorial-first-cycle.js",
-      "line": 71,
-      "kind": "ghost_table",
-      "table": "quest_progress",
-      "column": null
-    },
-    {
-      "file": "server/lib/uprising.js",
-      "line": 76,
-      "kind": "ghost_table",
-      "table": "world_events",
-      "column": null
-    },
-    {
-      "file": "server/lib/vassalage.js",
-      "line": 160,
-      "kind": "ghost_table",
-      "table": "world_events",
-      "column": null
-    },
-    {
-      "file": "server/lib/world-emergents.js",
-      "line": 55,
-      "kind": "ghost_table",
-      "table": "emergents",
-      "column": null
-    },
-    {
-      "file": "server/routes/analytics.js",
-      "line": 81,
-      "kind": "ghost_table",
-      "table": "user_reputation",
-      "column": null
-    },
-    {
-      "file": "server/routes/analytics.js",
-      "line": 105,
-      "kind": "ghost_table",
-      "table": "user_login_streak",
-      "column": null
-    },
-    {
-      "file": "server/routes/anomalies.js",
-      "line": 74,
-      "kind": "ghost_table",
-      "table": "player_position",
       "column": null
     },
     {
