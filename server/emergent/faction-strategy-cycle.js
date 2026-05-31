@@ -17,6 +17,7 @@
 
 import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
+import { ethicsEnabled, getSharedValueRuleIndex, factionMoveBias } from "../lib/viability/value-rule-index.js";
 import { getAuthoredFaction } from "../lib/content-seeder.js";
 import { resolveFactionClash } from "../lib/faction-strength.js";
 import { maybeEmitPersonalStake } from "../lib/personal-stake.js";
@@ -76,6 +77,10 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
     allStates = [];
   }
 
+  // Wave 4 — institutional restraint: build the value-rule index once per pass
+  // (memoized), only when the flag is on + the corpus is loaded. Off → no bias.
+  const valueRuleIndex = (ethicsEnabled() && _state?.dtus) ? getSharedValueRuleIndex(_state.dtus) : null;
+
   let advanced = 0;
   const moves = [];
   for (const f of pending) {
@@ -84,7 +89,8 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
       // Sprint C / A1 — leader coping trait biases the roll. Trait stays
       // separate from persisted state so it doesn't leak into the move log.
       const stateWithBias = { ...f, coping_trait: resolveLeaderCopingTrait(db, f.faction_id) };
-      const picked = pickMove(stateWithBias, peers);
+      const ethicsBias = valueRuleIndex ? factionMoveBias(valueRuleIndex, f.faction_id) : null;
+      const picked = pickMove(stateWithBias, peers, ethicsBias ? { ethicsBias } : {});
       const applied = applyMove(db, f.faction_id, picked, allStates);
       if (applied) {
         advanced++;

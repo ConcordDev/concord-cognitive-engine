@@ -136,6 +136,23 @@ export function selectRules(index, ctxTags = [], k = 5) {
     .map((x) => x.rule);
 }
 
+/**
+ * factionMoveBias — the faction-scale analogue of npcSchemeRestraint: a bounded
+ * per-faction "institutional restraint" bias map for pickMove's additive-RNG
+ * seam. Hawkish factions (low deterministic restraint) get ~0; dovish ones bias
+ * DECLARE_WAR/RAID down and PROPOSE_ALLIANCE/SEEK_TRUCE up. No restraint rules in
+ * the corpus → all zeros (today's behavior).
+ *
+ * @returns {{ DECLARE_WAR:number, RAID:number, PROPOSE_ALLIANCE:number, SEEK_TRUCE:number }}
+ */
+export function factionMoveBias(index, factionId, weight = 1.0) {
+  const zero = { DECLARE_WAR: 0, RAID: 0, PROPOSE_ALLIANCE: 0, SEEK_TRUCE: 0 };
+  if (!index || index.restraintCount === 0) return zero;
+  const restraint = clamp01(0.25 + (hashFloat(`${factionId || ""}:faction`) - 0.5) * 0.9); // ~[0,0.7], faction-stable
+  const mag = Math.min(0.35, restraint * 0.5) * weight;
+  return { DECLARE_WAR: -mag, RAID: -mag, PROPOSE_ALLIANCE: +mag, SEEK_TRUCE: +mag };
+}
+
 const HOSTILE_CHOICES = new Set(["scheme", "raid", "declare_war", "assassinate", "blackmail", "attack", "betray"]);
 const COOP_CHOICES = new Set(["truce", "alliance", "tribute", "aid", "help", "propose_alliance", "seek_truce", "rebuild", "consolidate"]);
 

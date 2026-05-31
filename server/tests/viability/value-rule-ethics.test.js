@@ -14,9 +14,11 @@ import {
   npcSchemeRestraint,
   selectRules,
   ruleBias,
+  factionMoveBias,
   ETHICS_REFUSE_THRESHOLD,
 } from "../../lib/viability/value-rule-index.js";
 import { proposeScheme } from "../../lib/npc-schemes.js";
+import { pickMove } from "../../lib/embodied/faction-strategy.js";
 
 // A tiny grounded corpus slice: 3 restraint rules + 1 epistemic + 1 non-rule.
 const CORPUS = [
@@ -70,6 +72,30 @@ describe("ruleBias + selectRules", () => {
   it("selectRules ranks by tag-word overlap", () => {
     const hits = selectRules(idx, ["consent", "boundary"], 3);
     assert.ok(hits.some((r) => r.id === "r2"));
+  });
+});
+
+describe("faction pickMove ethics seam", () => {
+  const idx = buildValueRuleIndex(CORPUS);
+
+  it("factionMoveBias is signed + bounded; zero with no restraint corpus", () => {
+    const b = factionMoveBias(idx, "f1");
+    assert.ok(b.DECLARE_WAR <= 0 && b.PROPOSE_ALLIANCE >= 0);
+    assert.ok(Math.abs(b.DECLARE_WAR) <= 0.35);
+    assert.deepEqual(factionMoveBias(buildValueRuleIndex([]), "f1"), { DECLARE_WAR: 0, RAID: 0, PROPOSE_ALLIANCE: 0, SEEK_TRUCE: 0 });
+  });
+
+  it("a strong dovish bias removes DECLARE_WAR that baseline would pick (same seeds)", () => {
+    const peers = [{ faction_id: "rivalF", stance: "expand" }];
+    let baselineWars = 0, dovishWars = 0;
+    for (let i = 0; i < 40; i++) {
+      const state = { faction_id: `fac_${i}`, phase: "p", stance: "expand", momentum: 0.2 };
+      if (pickMove(state, peers).move === "DECLARE_WAR") baselineWars++;
+      // dovish: -1.0 makes (0.4 + (-1.0)) negative → rng() < negative never true
+      if (pickMove(state, peers, { ethicsBias: { DECLARE_WAR: -1.0 } }).move === "DECLARE_WAR") dovishWars++;
+    }
+    assert.ok(baselineWars > 0, "baseline declares war for some seeds");
+    assert.equal(dovishWars, 0, "a fully dovish bias declares no war");
   });
 });
 

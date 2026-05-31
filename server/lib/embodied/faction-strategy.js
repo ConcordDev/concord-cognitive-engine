@@ -189,10 +189,17 @@ export function seedFactionStrategyState(db, factions) {
  *
  * @returns {{ move: string, summary: string, target?: string, deltaMomentum: number, newStance?: string, newKind?: string, newScore?: number }}
  */
-export function pickMove(state, peers = []) {
+export function pickMove(state, peers = [], opts = {}) {
   const rng = _rng(state.faction_id + ":" + state.phase);
   const stance = state.stance ?? "consolidate";
   const momentum = Number(state.momentum ?? 0);
+
+  // Wave 4 — NPC ethics (#16) at the faction scale: an optional, bounded
+  // "institutional restraint" bias (computed by the caller from the value-rule
+  // corpus, behind CONCORD_VIABILITY_ETHICS) folds into the SAME additive-RNG
+  // seam as the coping-trait bias — never a new gate. Negative on hostile
+  // moves, positive on cooperative ones. Absent / flag off → 0 → today.
+  const eb = (move) => Number(opts.ethicsBias?.[move] || 0);
 
   // Sprint C / Track A1 — leader coping trait biases probabilities.
   // bias is a float in [-1, +1] that nudges the rng() comparison; positive
@@ -282,7 +289,7 @@ export function pickMove(state, peers = []) {
     const rival = peers
       .filter(p => p.stance === "expand" || p.stance === "war")
       .find(p => getRelationScore(state.faction_id, p.faction_id) >= -0.3);
-    if (rival && rng() < (0.4 + biasFor("DECLARE_WAR"))) {
+    if (rival && rng() < (0.4 + biasFor("DECLARE_WAR") + eb("DECLARE_WAR"))) {
       return {
         move: "DECLARE_WAR",
         target: rival.faction_id,
@@ -309,7 +316,7 @@ export function pickMove(state, peers = []) {
 
   // 6) Consolidate — peacetime; can pivot to alliance, expand, or isolation
   const friend = peers.find(p => getRelationScore(state.faction_id, p.faction_id) > 0.3);
-  if (friend && rng() < 0.2) {
+  if (friend && rng() < (0.2 + eb("PROPOSE_ALLIANCE"))) {
     return {
       move: "PROPOSE_ALLIANCE",
       target: friend.faction_id,
