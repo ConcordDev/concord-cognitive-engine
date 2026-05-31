@@ -1794,19 +1794,42 @@ export default function AvatarSystem3D({
           // Follow the rider: seat the mount horizontally under the rider via the
           // species seat offset (inverse of computeSaddleAnchor), yaw-aligned,
           // gait ticked by movement speed. Registered in the frame-loop ticker.
+          // Wave 7a #3 — rider astride-seat via rider-ik. computeRiderIkTargets
+          // gives the pelvis target (saddle anchor + seat offset + per-gait
+          // bounce). Applying the vertical seat fights the locomotion ground-clamp,
+          // so it's behind a default-OFF flag (chair-tunable): when enabled, the
+          // rider lifts onto the saddle with gait bounce; default leaves the mount
+          // following under the rider (already a clear win over the old 1.2m offset).
+          const seatOn = typeof window !== 'undefined'
+            && (window as unknown as { __concordMountRiderSeat?: boolean }).__concordMountRiderSeat === true;
           const prev = playerMesh.position.clone();
+          let riderIk: typeof import('@/lib/concordia/mounts/rider-ik') | null = null;
+          if (seatOn) { import('@/lib/concordia/mounts/rider-ik').then((mod) => { riderIk = mod; }).catch(() => {}); }
+          let gaitPhase = 0;
           eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => {
             const speed = prev.distanceTo(playerMesh.position) / Math.max(dt, 1e-3);
             prev.copy(playerMesh.position);
             const yaw = playerMesh.rotation.y;
             const cos = Math.cos(yaw), sin = Math.sin(yaw);
-            m.group.position.set(
-              playerMesh.position.x - (seat.x * cos - seat.z * sin),
-              playerMesh.position.y,
-              playerMesh.position.z - (seat.x * sin + seat.z * cos),
-            );
+            // Mount sits under the rider's seat point.
+            const mountX = playerMesh.position.x - (seat.x * cos - seat.z * sin);
+            const mountZ = playerMesh.position.z - (seat.x * sin + seat.z * cos);
+            m.group.position.set(mountX, playerMesh.position.y, mountZ);
             m.setRotation(yaw);
             m.tick(dt, Math.min(speed, 6));
+            if (seatOn && riderIk) {
+              gaitPhase = (gaitPhase + dt * 1.5) % 1;
+              const gaitMode = speed > 4 ? 'gallop' : speed > 1.5 ? 'trot' : 'walk';
+              const targets = riderIk.computeRiderIkTargets(
+                { pos: { x: mountX, y: playerMesh.position.y, z: mountZ }, yaw,
+                  saddleAnchorWorld: { x: mountX, y: playerMesh.position.y, z: mountZ },
+                  reinsAnchorWorld: { x: mountX + cos * 0.6, y: playerMesh.position.y + 1.0, z: mountZ + sin * 0.6 } },
+                { x: seat.x, y: seat.y, z: seat.z, yaw: seat.yaw ?? 0 },
+                { gaitMode, speedMps: speed, gaitPhase },
+              );
+              playerMesh.position.y = targets.pelvisTarget.y;
+              playerMesh.rotation.y = targets.pelvisYaw;
+            }
           });
           enhancedDisposeRef.current.set(`mount:${active.mount_companion_id}`, m.dispose);
         }
