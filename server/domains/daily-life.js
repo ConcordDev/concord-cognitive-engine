@@ -10,6 +10,7 @@
 
 import { performDailyVerb, getCooldown, SOCIAL_VERB_TUNING } from "../lib/social/daily-life.js";
 import { giveGift } from "../lib/gifting.js";
+import { spendSlots, canAfford, slotsUsed, currentDayIdx, dayState } from "../lib/day-clock.js";
 
 function enabled() { return process.env.CONCORD_SOCIAL_LIFE === "1"; }
 function gate(ctx) {
@@ -24,13 +25,23 @@ export default function registerDailyLifeMacros(register) {
     register("daily_life", verb, async (ctx, input = {}) => {
       const g = gate(ctx); if (g) return g;
       const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
-      return performDailyVerb(ctx.db, {
+      // Day-clock: every life verb costs a finite daily slot (the viability cone
+      // over time). Check affordability FIRST (block a full day); only spend a
+      // slot on a SUCCESSFUL beat — a cooldown'd/failed verb wastes nothing.
+      const day = currentDayIdx();
+      if (!canAfford(verb, slotsUsed(ctx.db, uid, day))) return { ok: false, reason: "day_full", daySlotsRemaining: 0 };
+      const res = await performDailyVerb(ctx.db, {
         userId: uid, verb,
         partnerKind: input.partnerKind || "npc",
         partnerId: input.partnerId,
         worldId: input.worldId || "concordia-hub",
       });
-    }, { note: `slice-of-life: ${verb}` });
+      if (res && res.ok) {
+        const slot = spendSlots(ctx.db, uid, day, verb);
+        return { ...res, daySlotsRemaining: slot.remaining };
+      }
+      return res; // verb failed (cooldown, etc.) — no slot consumed
+    }, { note: `slice-of-life: ${verb} (costs a day-clock slot)` });
   }
 
   register("daily_life", "gift", async (ctx, input = {}) => {
@@ -54,4 +65,10 @@ export default function registerDailyLifeMacros(register) {
     }
     return { ok: true, log: rows, cooldowns };
   }, { note: "slice-of-life: recent beats + cooldowns (read)" });
+
+  register("daily_life", "day", async (ctx, _input = {}) => {
+    const g = gate(ctx); if (g) return g;
+    const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
+    return { ok: true, ...dayState(ctx.db, uid, currentDayIdx()) };
+  }, { note: "slice-of-life: today's slot budget + allocation (read)" });
 }

@@ -10,6 +10,10 @@
 
 export const SLOTS_PER_DAY = () => Math.max(1, Number(process.env.CONCORD_DAY_SLOTS) || 6);
 
+// The current Concordia day index — real-days, matching the season clock
+// (seasons.js uses floor(now/86400000)). Each real day a player's budget resets.
+export function currentDayIdx(now = Date.now()) { return Math.floor(now / 86400000); }
+
 // Canonical verb costs (slots). Tunable later; a work shift is the heavy commit.
 export const VERB_COST = Object.freeze({
   work_shift: 3, hang_out: 1, share_meal: 1, go_drinking: 2, court: 1, gift: 1,
