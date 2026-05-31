@@ -1,304 +1,745 @@
 {
-  "generatedAt": "2026-05-31T21:56:25.294Z",
-  "tablesModelled": 623,
+  "generatedAt": "2026-05-31T22:08:11.584Z",
+  "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 49,
-  "violationCount": 49,
+  "floor": 105,
+  "violationCount": 105,
   "violations": [
     {
       "file": "server/domains/chronicle.js",
       "line": 42,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "kind"
+    },
+    {
+      "file": "server/domains/crisis.js",
+      "line": 184,
+      "kind": "ghost_table",
+      "table": "user_skills",
+      "column": null
     },
     {
       "file": "server/domains/dx.js",
       "line": 265,
-      "table": "economy_ledger",
+      "kind": "column",
+      "table": null,
       "column": "user_id"
     },
     {
       "file": "server/domains/faction-strategy.js",
-      "line": 77,
-      "table": "faction_strategy_log",
+      "line": 30,
+      "kind": "column",
+      "table": null,
       "column": "created_at"
     },
     {
+      "file": "server/domains/faction-strategy.js",
+      "line": 77,
+      "kind": "column",
+      "table": null,
+      "column": "created_at"
+    },
+    {
+      "file": "server/domains/ghost-hunt.js",
+      "line": 118,
+      "kind": "ghost_table",
+      "table": "drift_alerts",
+      "column": null
+    },
+    {
+      "file": "server/domains/ghost-hunt.js",
+      "line": 139,
+      "kind": "ghost_table",
+      "table": "drift_alerts",
+      "column": null
+    },
+    {
       "file": "server/domains/glyph-spells.js",
       "line": 88,
-      "table": "dtu_citations",
+      "kind": "column",
+      "table": null,
       "column": "creator_id"
     },
     {
-      "file": "server/domains/glyph-spells.js",
-      "line": 88,
-      "table": "dtu_citations",
-      "column": "parent_id"
+      "file": "server/domains/goddess.js",
+      "line": 350,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
     },
     {
-      "file": "server/domains/glyph-spells.js",
-      "line": 88,
-      "table": "dtu_citations",
-      "column": "kind"
+      "file": "server/domains/messaging.js",
+      "line": 13,
+      "kind": "ghost_table",
+      "table": "messaging_adapters",
+      "column": null
+    },
+    {
+      "file": "server/domains/messaging.js",
+      "line": 32,
+      "kind": "ghost_table",
+      "table": "messaging_adapters",
+      "column": null
+    },
+    {
+      "file": "server/domains/messaging.js",
+      "line": 49,
+      "kind": "ghost_table",
+      "table": "messaging_adapters",
+      "column": null
+    },
+    {
+      "file": "server/domains/messaging.js",
+      "line": 64,
+      "kind": "ghost_table",
+      "table": "messaging_adapters",
+      "column": null
+    },
+    {
+      "file": "server/domains/messaging.js",
+      "line": 65,
+      "kind": "ghost_table",
+      "table": "messaging_adapters",
+      "column": null
+    },
+    {
+      "file": "server/domains/nemesis.js",
+      "line": 92,
+      "kind": "ghost_table",
+      "table": "authored_npcs",
+      "column": null
+    },
+    {
+      "file": "server/domains/patterns.js",
+      "line": 14,
+      "kind": "ghost_table",
+      "table": "drift_alerts",
+      "column": null
+    },
+    {
+      "file": "server/domains/patterns.js",
+      "line": 20,
+      "kind": "ghost_table",
+      "table": "cross_domain_breakthroughs",
+      "column": null
+    },
+    {
+      "file": "server/domains/patterns.js",
+      "line": 26,
+      "kind": "ghost_table",
+      "table": "cnet_federation_pulse",
+      "column": null
     },
     {
       "file": "server/economy/chargeback-handler.js",
       "line": 73,
-      "table": "purchases",
+      "kind": "column",
+      "table": null,
       "column": "stripe_payment_intent_id"
     },
     {
       "file": "server/economy/chargeback-handler.js",
       "line": 82,
-      "table": "purchases",
+      "kind": "column",
+      "table": null,
       "column": "metadata_json"
+    },
+    {
+      "file": "server/economy/global-gates.js",
+      "line": 128,
+      "kind": "ghost_table",
+      "table": "economy_balances",
+      "column": null
     },
     {
       "file": "server/emergent/mount-behavior-cycle.js",
       "line": 61,
-      "table": "world_resource_nodes",
+      "kind": "column",
+      "table": null,
       "column": "kind"
     },
     {
       "file": "server/emergent/nemesis-cycle.js",
       "line": 124,
-      "table": "character_opinions",
+      "kind": "column",
+      "table": null,
       "column": "from_npc_id"
     },
     {
-      "file": "server/emergent/nemesis-cycle.js",
-      "line": 124,
-      "table": "character_opinions",
-      "column": "to_npc_id"
+      "file": "server/emergent/npc-perception-snapshot.js",
+      "line": 53,
+      "kind": "ghost_table",
+      "table": "city_presence",
+      "column": null
+    },
+    {
+      "file": "server/emergent/npc-perception-snapshot.js",
+      "line": 71,
+      "kind": "ghost_table",
+      "table": "city_presence",
+      "column": null
+    },
+    {
+      "file": "server/emergent/npc-perception-snapshot.js",
+      "line": 84,
+      "kind": "ghost_table",
+      "table": "authored_npcs",
+      "column": null
+    },
+    {
+      "file": "server/emergent/npc-perception-snapshot.js",
+      "line": 92,
+      "kind": "ghost_table",
+      "table": "npcs",
+      "column": null
     },
     {
       "file": "server/emergent/npc-vs-npc-combat-cycle.js",
       "line": 100,
-      "table": "npc_grudges",
-      "column": "owner_npc_id"
-    },
-    {
-      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
-      "line": 100,
-      "table": "npc_grudges",
-      "column": "target_npc_id"
-    },
-    {
-      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
-      "line": 101,
-      "table": "npc_grudges",
+      "kind": "column",
+      "table": null,
       "column": "owner_npc_id"
     },
     {
       "file": "server/emergent/npc-vs-npc-combat-cycle.js",
       "line": 101,
-      "table": "npc_grudges",
-      "column": "target_npc_id"
+      "kind": "column",
+      "table": null,
+      "column": "owner_npc_id"
+    },
+    {
+      "file": "server/emergent/personal-beat-scheduler.js",
+      "line": 46,
+      "kind": "column",
+      "table": null,
+      "column": "entered_at"
+    },
+    {
+      "file": "server/emergent/procgen-settlement-cycle.js",
+      "line": 34,
+      "kind": "ghost_table",
+      "table": "city_presence",
+      "column": null
+    },
+    {
+      "file": "server/emergent/world-population-cycle.js",
+      "line": 259,
+      "kind": "column",
+      "table": null,
+      "column": "id"
+    },
+    {
+      "file": "server/lib/account-lifecycle.js",
+      "line": 331,
+      "kind": "ghost_table",
+      "table": "direct_messages",
+      "column": null
+    },
+    {
+      "file": "server/lib/account-lifecycle.js",
+      "line": 338,
+      "kind": "ghost_table",
+      "table": "social_posts",
+      "column": null
+    },
+    {
+      "file": "server/lib/account-lifecycle.js",
+      "line": 398,
+      "kind": "ghost_table",
+      "table": "citations",
+      "column": null
+    },
+    {
+      "file": "server/lib/achievement-engine.js",
+      "line": 286,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
     },
     {
       "file": "server/lib/archetype-needs.js",
       "line": 48,
-      "table": "economy_flows",
+      "kind": "column",
+      "table": null,
       "column": "faction"
     },
     {
       "file": "server/lib/archetype-needs.js",
-      "line": 48,
-      "table": "economy_flows",
-      "column": "ts"
-    },
-    {
-      "file": "server/lib/archetype-needs.js",
       "line": 63,
-      "table": "npc_conversations",
+      "kind": "column",
+      "table": null,
       "column": "started_at"
     },
     {
       "file": "server/lib/archetype-needs.js",
       "line": 76,
-      "table": "npc_schemes",
+      "kind": "column",
+      "table": null,
       "column": "world_id"
     },
     {
-      "file": "server/lib/archetype-needs.js",
-      "line": 76,
-      "table": "npc_schemes",
-      "column": "status"
+      "file": "server/lib/auctions.js",
+      "line": 261,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/auctions.js",
+      "line": 264,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/auctions.js",
+      "line": 280,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/audit/provenance.js",
+      "line": 74,
+      "kind": "ghost_table",
+      "table": "lenses",
+      "column": null
+    },
+    {
+      "file": "server/lib/chronicle/chronicle.js",
+      "line": 68,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
     },
     {
       "file": "server/lib/chronicle/chronicle.js",
       "line": 105,
-      "table": "realm_citizens",
+      "kind": "column",
+      "table": null,
       "column": "realm_id"
     },
     {
       "file": "server/lib/code-substrate/code-dtu-emitter.js",
       "line": 255,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "kind"
+    },
+    {
+      "file": "server/lib/combat/match-chronicle.js",
+      "line": 66,
+      "kind": "ghost_table",
+      "table": "combat_flow",
+      "column": null
     },
     {
       "file": "server/lib/creator-dashboard.js",
       "line": 233,
-      "table": "economy_ledger",
+      "kind": "column",
+      "table": null,
       "column": "user_id"
     },
     {
       "file": "server/lib/creator-dashboard.js",
       "line": 241,
+      "kind": "column",
       "table": "economy_ledger",
       "column": "user_id"
     },
     {
       "file": "server/lib/creator-dashboard.js",
       "line": 252,
-      "table": "economy_ledger",
+      "kind": "column",
+      "table": null,
       "column": "user_id"
     },
     {
       "file": "server/lib/creator-dashboard.js",
       "line": 264,
+      "kind": "column",
       "table": "economy_ledger",
       "column": "user_id"
     },
     {
       "file": "server/lib/cross-world-economy.js",
+      "line": 81,
+      "kind": "column",
+      "table": null,
+      "column": "meta_json"
+    },
+    {
+      "file": "server/lib/cross-world-economy.js",
       "line": 97,
-      "table": "economy_flows",
+      "kind": "column",
+      "table": null,
       "column": "created_at"
     },
     {
+      "file": "server/lib/cross-world-feed.js",
+      "line": 108,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
+    },
+    {
+      "file": "server/lib/cross-world-schemes.js",
+      "line": 266,
+      "kind": "column",
+      "table": null,
+      "column": "world_id"
+    },
+    {
       "file": "server/lib/dtu-portability.js",
       "line": 77,
-      "table": "dtu_citations",
+      "kind": "column",
+      "table": null,
       "column": "creator_id"
     },
     {
       "file": "server/lib/dtu-portability.js",
-      "line": 77,
-      "table": "dtu_citations",
-      "column": "parent_creator_id"
-    },
-    {
-      "file": "server/lib/dtu-portability.js",
       "line": 88,
-      "table": "economy_ledger",
+      "kind": "column",
+      "table": null,
       "column": "buyer_id"
     },
     {
-      "file": "server/lib/dtu-portability.js",
-      "line": 88,
-      "table": "economy_ledger",
-      "column": "seller_id"
+      "file": "server/lib/embodied/forward-sim.js",
+      "line": 188,
+      "kind": "ghost_table",
+      "table": "quest_progress",
+      "column": null
     },
     {
-      "file": "server/lib/dtu-portability.js",
-      "line": 88,
-      "table": "economy_ledger",
-      "column": "creator_id"
+      "file": "server/lib/embodied/forward-sim.js",
+      "line": 214,
+      "kind": "ghost_table",
+      "table": "faction_members",
+      "column": null
+    },
+    {
+      "file": "server/lib/embodied/weaponise-triggers.js",
+      "line": 106,
+      "kind": "column",
+      "table": null,
+      "column": "name"
     },
     {
       "file": "server/lib/emergents/quality/deterministic-gates.js",
       "line": 39,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "content_hash"
+    },
+    {
+      "file": "server/lib/governance/auto-proposal.js",
+      "line": 101,
+      "kind": "ghost_table",
+      "table": "council_proposals",
+      "column": null
+    },
+    {
+      "file": "server/lib/guidance-waypoint.js",
+      "line": 26,
+      "kind": "ghost_table",
+      "table": "quest_state",
+      "column": null
     },
     {
       "file": "server/lib/kingdoms.js",
       "line": 45,
-      "table": "procgen_regions",
+      "kind": "column",
+      "table": null,
       "column": "faction_id"
+    },
+    {
+      "file": "server/lib/news-story-composer.js",
+      "line": 185,
+      "kind": "ghost_table",
+      "table": "lattice_drift_alerts",
+      "column": null
     },
     {
       "file": "server/lib/npc-gear.js",
       "line": 202,
-      "table": "dtus",
-      "column": "owner_type"
+      "kind": "column",
+      "table": null,
+      "column": "metadata"
+    },
+    {
+      "file": "server/lib/npc-legacy.js",
+      "line": 95,
+      "kind": "ghost_table",
+      "table": "npc_relations",
+      "column": null
     },
     {
       "file": "server/lib/npc-legacy.js",
       "line": 227,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "kind"
+    },
+    {
+      "file": "server/lib/npc-relations.js",
+      "line": 155,
+      "kind": "column",
+      "table": null,
+      "column": "location"
+    },
+    {
+      "file": "server/lib/npc-simulator.js",
+      "line": 668,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
     },
     {
       "file": "server/lib/npc-skill-author.js",
       "line": 131,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "kind"
-    },
-    {
-      "file": "server/lib/npc-skill-author.js",
-      "line": 131,
-      "table": "dtus",
-      "column": "meta_json"
     },
     {
       "file": "server/lib/npc-skill-author.js",
       "line": 293,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "meta_json"
     },
     {
-      "file": "server/lib/skill-effectiveness.js",
-      "line": 143,
-      "table": "dtus",
-      "column": "lineage"
+      "file": "server/lib/plague-event.js",
+      "line": 73,
+      "kind": "ghost_table",
+      "table": "refusal_field",
+      "column": null
     },
     {
-      "file": "server/lib/skill-interaction.js",
-      "line": 147,
-      "table": "dtus",
-      "column": "lineage"
+      "file": "server/lib/plague-event.js",
+      "line": 88,
+      "kind": "ghost_table",
+      "table": "refusal_field",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-corpse.js",
+      "line": 48,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-corpse.js",
+      "line": 84,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-corpse.js",
+      "line": 155,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-mail.js",
+      "line": 299,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-mail.js",
+      "line": 302,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/player-mail.js",
+      "line": 318,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/spouse-reactivity.js",
+      "line": 58,
+      "kind": "ghost_table",
+      "table": "npc_relations",
+      "column": null
     },
     {
       "file": "server/lib/stealth-perception.js",
       "line": 110,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "owner_id"
     },
     {
-      "file": "server/lib/stealth-perception.js",
-      "line": 110,
-      "table": "dtus",
-      "column": "owner_type"
+      "file": "server/lib/tutorial-first-cycle.js",
+      "line": 71,
+      "kind": "ghost_table",
+      "table": "quest_progress",
+      "column": null
+    },
+    {
+      "file": "server/lib/uprising.js",
+      "line": 76,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
+    },
+    {
+      "file": "server/lib/vassalage.js",
+      "line": 160,
+      "kind": "ghost_table",
+      "table": "world_events",
+      "column": null
+    },
+    {
+      "file": "server/lib/weekly-objectives.js",
+      "line": 157,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/world-buildings-repair.js",
+      "line": 37,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/world-buildings-repair.js",
+      "line": 40,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
+    },
+    {
+      "file": "server/lib/world-emergents.js",
+      "line": 55,
+      "kind": "ghost_table",
+      "table": "emergents",
+      "column": null
+    },
+    {
+      "file": "server/lib/world-health.js",
+      "line": 33,
+      "kind": "ghost_table",
+      "table": "user_wallets",
+      "column": null
     },
     {
       "file": "server/routes/analytics.js",
       "line": 72,
-      "table": "world_buildings",
+      "kind": "column",
+      "table": null,
       "column": "created_by"
+    },
+    {
+      "file": "server/routes/analytics.js",
+      "line": 81,
+      "kind": "ghost_table",
+      "table": "user_reputation",
+      "column": null
+    },
+    {
+      "file": "server/routes/analytics.js",
+      "line": 105,
+      "kind": "ghost_table",
+      "table": "user_login_streak",
+      "column": null
+    },
+    {
+      "file": "server/routes/anomalies.js",
+      "line": 74,
+      "kind": "ghost_table",
+      "table": "player_position",
+      "column": null
+    },
+    {
+      "file": "server/routes/disputes.js",
+      "line": 62,
+      "kind": "ghost_table",
+      "table": "ledger",
+      "column": null
     },
     {
       "file": "server/routes/lens-portals.js",
       "line": 87,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "domain"
     },
     {
       "file": "server/routes/player-inventory.js",
       "line": 136,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "owner_id"
     },
     {
-      "file": "server/routes/player-inventory.js",
-      "line": 136,
-      "table": "dtus",
-      "column": "owner_type"
+      "file": "server/routes/social-engagement.js",
+      "line": 321,
+      "kind": "ghost_table",
+      "table": "economy_transactions",
+      "column": null
+    },
+    {
+      "file": "server/routes/social-engagement.js",
+      "line": 354,
+      "kind": "ghost_table",
+      "table": "economy_transactions",
+      "column": null
     },
     {
       "file": "server/routes/worlds.js",
       "line": 599,
-      "table": "dtus",
+      "kind": "column",
+      "table": null,
       "column": "meta"
     },
     {
       "file": "server/server.js",
-      "line": 74906,
-      "table": "skill_revisions",
+      "line": 50448,
+      "kind": "column",
+      "table": null,
+      "column": "entered_at"
+    },
+    {
+      "file": "server/server.js",
+      "line": 50475,
+      "kind": "ghost_table",
+      "table": "creature_swim_depth",
+      "column": null
+    },
+    {
+      "file": "server/server.js",
+      "line": 73098,
+      "kind": "ghost_table",
+      "table": "city_presence",
+      "column": null
+    },
+    {
+      "file": "server/server.js",
+      "line": 74889,
+      "kind": "column",
+      "table": null,
       "column": "npc_id"
+    },
+    {
+      "file": "server/server.js",
+      "line": 74906,
+      "kind": "column",
+      "table": null,
+      "column": "author_user_id"
     }
   ]
 }

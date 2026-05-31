@@ -178,6 +178,49 @@ A **mount-arg audit gate** (assert routers that declare a `requireAuth`/manager
 param are mounted with one) would catch the #R4/#R6/#R8 class — a Gate-B sibling.
 
 ## Round-2 execution order
-1. **Build Gate C** (schema-drift scanner) → fix the ~26-item cluster to floor 0.
+1. ✅ **Gate C built** (schema-drift gate) — enumerates the cluster; ratchet to 0.
 2. **R1/R2/R3/R5/R7** validation-by-throw → the `try/catch→{ok:false}` wrapper.
 3. **R4/R6/R8** auth/null mount bugs → fix + a mount-arg audit gate.
+
+---
+
+# Round 3 — Vael's Expedition III (30+ more) + the exact-count gate
+
+**The decisive outcome: the SQL-drift class is no longer an estimate — it's an
+exact, enumerated CI number.** Gate C now `prepare()`s every static statement
+against the live in-memory schema (the playtester's prescribed gate), surfacing
+**exactly 105 sites — 43 wrong-column + 62 ghost-table — zero false positives**,
+including the JOIN/multi-table/complex-query sites the conservative report scans
+skipped. Run `node scripts/audit/gates/schema-drift.mjs --list` for the live work
+queue; ratchet the floor (105) to 0.
+
+## R3 schema-drift (folded into the Gate-C count)
+- **Ghost-table** (#V5–#V32): tables that exist nowhere — renamed singular→plural
+  (`refusal_field`→`refusal_fields`, `combat_flow`→`combat_flows`), or store-moved
+  (`user_wallets`→`users`, `economy_transactions`→`economy_ledger`, `citations`→
+  `dtu_citations`, `npc_relations`→`npc_nemesis`, `world_events`→`world_events_log`).
+  `user_wallets` alone is **14 broken sites** across auctions/achievements/corpse/
+  mail/weekly-objectives/repair/world-health (#V5–#V11). All in the gate's list.
+- **Column-drift** (#V2/#V3/#V4): `world_visits ✗ entered_at` (dive-state + dream
+  engine, #V2), `realm_decrees ✗ world_id` (sabotage scheme no-op, #V3),
+  `procedural_npcs ✗ id` (backstory lost, #V4) — all now caught by the prepare() pass.
+
+## R3 non-SQL findings
+| # | Finding | Fix |
+|---|---|---|
+| **V1** | Wagers allow self-wager (no `opponentId !== proposerId` check) — escrow + payout with both sides = balance-manipulation vector. `routes/wagers.js:36`. | Reject `opponentId === proposerId`. Cheap economy-logic fix; add a test. |
+
+## The meta-finding (rounds 2+3), confirmed
+One root cause — the schema was renamed/consolidated over time and a swath of code
+still references old names; nothing dry-ran the SQL, so every one shipped (most
+swallowed by try/catch → silent degrade, not crash). **Gate C is the structural
+answer**: it surfaces the entire class at once and blocks the next one from
+merging. The engine itself is sound (frontend type-checks clean, economy resists
+the exploits, reads don't 500, privacy + damage caps hold) — the big-sounding
+count collapses to one fix surface.
+
+## Round-3 execution order
+1. **Ratchet Gate C to 0** — work the 105-site list (mostly `dtus`/`economy_ledger`/
+   ghost-table renames; the column map: `kind`→`type`, `meta`/`meta_json`→
+   `metadata_json`, `user_wallets`→`users`, `economy_transactions`→`economy_ledger`).
+2. **V1** self-wager guard + the validation-by-throw + auth-mount classes (R1–R8).

@@ -50,33 +50,41 @@ registry violations` — instead of surfacing to a player as a masked "LLM
 unavailable". Ratchet `EXPECTED_BUS_DOMAINS` UP as more domains are confirmed
 load-bearing. Test: `tests/macro-contract.test.js`.
 
-## Gate C — schema-vs-query scanner ✅ SHIPPED (highest bug-yield)
+## Gate C — schema-vs-query gate ✅ SHIPPED (highest bug-yield)
 
-Round-2's Wave 13 proved the column-drift class is **mechanically gateable** — it
-is NOT the "types can't cheaply catch this" case I first assumed.
-`scripts/audit/gates/schema-drift.mjs`:
+`scripts/audit/gates/schema-drift.mjs`. The playtester's prescribed gate, built:
+*"prepare() every statement against the live schema."* It turns the
+~80–180-bug *estimate* into an **exact CI count** and covers BOTH the column-drift
+(round-2) and ghost-table (round-3) classes in one pass.
 
-1. **Derives the REAL schema** by running every migration's `up(db)` on an
-   in-memory `better-sqlite3` and `PRAGMA table_info`-ing the result (313/313
-   apply cleanly). This is the playtester's actual method — and crucially it
-   captures columns added via JS helpers (`addNpcCol(...)`), which a static SQL
-   parse misses (that under-modelling caused thousands of false positives in the
-   first cut: `world_npcs ✗ level`, etc.).
-2. **Scans `db.prepare(\`…\`)` SQL** across `server/**/*.js`.
-3. **High-precision shapes only** (near-zero FP): `INSERT INTO t (cols…)`,
-   `UPDATE t SET col=…`, and **single-table** `SELECT/DELETE … WHERE col …` (any
-   JOIN or `(SELECT …)` subquery is skipped — that's where alias ambiguity, hence
-   FPs, live). String literals are stripped; interpolated columns (`SET ${c}=`)
-   and the forge-template generators (they emit SQL for the *generated* app, not
-   Concord's DB) are excluded.
-4. **Ratchets** like `lens-reachability`: `DEFAULT_FLOOR = 49` (the measured
-   pre-existing drift), `--ci` fails on a 50th, writes `audit/gate-schema-drift.json`.
+1. **Builds the live schema in memory**: runs every migration's `up(db)` on an
+   in-memory `better-sqlite3` (313/313 apply), then execs every non-interpolated
+   `CREATE TABLE` from production source so **lazily-created** tables exist too.
+   This is what makes it trustworthy — a static SQL parse under-models
+   helper-added columns (`addNpcCol(...)`) and lazy tables, which caused thousands
+   of false positives in the first cut (`world_npcs ✗ level`).
+2. **PRIMARY check — `db.prepare(sql)` against that schema** for every
+   non-interpolated `db.prepare(\`…\`)`. SQLite's own parser surfaces *every*
+   `no such table` / `no such column` site, **including JOIN / multi-table /
+   subquery queries** the conservative regex skips. Errors other than
+   table/column (syntax from partial extraction) are ignored → no false positives.
+3. **Fallback for interpolated SQL** (can't `prepare()`): the conservative regex
+   ghost-table + high-precision column checks.
+4. **Honest suppressions**: `schema_migrations` (runner-created), the forge
+   template generators (emit SQL for the *generated* app), and
+   `creative_artifact_listings` (optional v2 probed-with-v1-fallback — the
+   playtester verified + excluded it). Test-only `CREATE TABLE`s are NOT counted,
+   so `user_wallets`/`city_presence` (created only in tests) stay ghosts.
+5. **Ratchets**: `DEFAULT_FLOOR = 105`, deterministic, `--ci` fails on a 106th,
+   writes `audit/gate-schema-drift.json`.
 
-Result: **49 real violations frozen** — every one of #30 + #R9–#R35 plus extras
-the report didn't enumerate (`npc-gear dtus✗owner_type`, `lens-portals dtus✗domain`,
-`npc-skill-author dtus✗kind/meta_json`). Zero false positives in the final set.
-The whole `no such column` runtime-crash class is now caught at audit time; drive
-the floor to 0 as the column refs are corrected (tracked in the playtest plan).
+Result: **exactly 105 real sites frozen — 43 wrong-column + 62 ghost-table —
+zero false positives.** Covers every enumerated finding from rounds 1–3 (#30,
+#R9–#R35, #V2/#V3/#V4, #V5–#V32) PLUS many the conservative report scans skipped
+(JOIN-bearing column refs, complex-query ghosts). The entire `no such table` /
+`no such column` runtime-crash class — the user's estimated ~70% of all remaining
+bugs — is now an exact, ratcheted number caught at audit time, and the next one
+can't merge. Drive the floor to 0 (work queue in the playtest plan).
 
 ## Gate D — per-macro param schema 🔮 FUTURE (opt-in, additive)
 
@@ -118,5 +126,5 @@ pairs hit the fallthrough in 30 days AND aren't dead macros) rather than guessin
 ## Status
 - ✅ Gate A (arg-shape) — shipped + tested.
 - ✅ Gate B (registry validator) — shipped + tested.
-- ✅ Gate C (schema-drift scanner) — shipped; 49 real drifts frozen, ratchet to 0.
+- ✅ Gate C (schema-drift gate) — shipped; prepare()-based, exactly 105 sites (43 column + 62 ghost) frozen, ratchet to 0.
 - 🔮 Gate D (param schema), HTTP-routed smoke, telemetry-derived allowlist — queued.

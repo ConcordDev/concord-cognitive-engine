@@ -34,10 +34,11 @@ const ROOT = path.resolve(__dirname, "../../..");
 const SERVER = path.join(ROOT, "server");
 const MIGRATIONS = path.join(SERVER, "migrations");
 
-// The measured pre-existing drift count (Vael's Expedition #30 + #R9–#R35 + a
-// few extras). RATCHET DOWN as each column ref is corrected; the goal is 0. New
-// drift beyond this floor fails --ci. Override with --floor=N.
-const DEFAULT_FLOOR = 49;
+// The measured pre-existing drift (Vael's Expedition I–III). The gate prepare()s
+// every static query against the live in-memory schema, so this IS the exact
+// count of ghost-table + wrong-column sites — not an estimate. RATCHET DOWN as
+// each is fixed; the goal is 0. New drift beyond the floor fails --ci.
+const DEFAULT_FLOOR = 105;
 const floorArg = process.argv.find((a) => a.startsWith("--floor="));
 let FLOOR = floorArg ? parseInt(floorArg.split("=")[1], 10) : DEFAULT_FLOOR;
 const CI = process.argv.includes("--ci");
@@ -101,7 +102,12 @@ async function buildSchema() {
                 // out of the model → those tables are skipped, never false-flagged
     }
   }
-  const schema = new Map(); // table -> Set(columns)
+  return { db, applied, failed };
+}
+
+// PRAGMA the in-memory DB into a { table -> Set(columns) } model.
+function readSchema(db) {
+  const schema = new Map();
   const tables = db.prepare(
     "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
   ).all();
@@ -109,8 +115,6 @@ async function buildSchema() {
     const cols = db.prepare(`PRAGMA table_info(${JSON.stringify(name)})`).all();
     schema.set(name, new Set(cols.map((c) => c.name)));
   }
-  db.close();
-  schema._meta = { applied, failed, tables: schema.size };
   return schema;
 }
 
@@ -132,23 +136,29 @@ function sourceFiles(dir, out = []) {
 }
 
 // Extract the SQL string literal(s) passed to db.prepare( … ). Handles backtick,
-// single, and double quotes. Returns array of { sql, index }.
+// single, and double quotes. Returns { raw, sql, interpolated, index }:
+//   raw          — the literal SQL (only valid when not interpolated)
+//   sql          — ${…} collapsed to a neutral token (for the regex fallback)
+//   interpolated — had a ${…} → can't be statically prepare()'d
 function extractPreparedSql(src) {
   const out = [];
   const re = /\.prepare\(\s*([`'"])/g;
   let m;
   while ((m = re.exec(src))) {
     const quote = m[1];
-    let i = re.lastIndex, sql = "";
+    let i = re.lastIndex, raw = "";
     for (; i < src.length; i++) {
       const ch = src[i];
-      if (ch === "\\") { sql += ch + (src[i + 1] || ""); i++; continue; }
+      if (ch === "\\") { raw += ch + (src[i + 1] || ""); i++; continue; }
       if (ch === quote) break;
-      sql += ch;
+      raw += ch;
     }
-    // collapse template ${…} interpolations to a neutral token
-    sql = sql.replace(/\$\{[^}]*\}/g, " _ ");
-    out.push({ sql, index: m.index });
+    const interpolated = /\$\{/.test(raw);
+    const sql = raw.replace(/\$\{[^}]*\}/g, " _ ");
+    // unescape the JS-string escapes so SQLite sees real newlines/quotes
+    const unescaped = raw.replace(/\\([\\'"`nrt])/g, (_, c) =>
+      c === "n" ? "\n" : c === "r" ? "\r" : c === "t" ? "\t" : c);
+    out.push({ raw: unescaped, sql, interpolated, index: m.index });
   }
   return out;
 }
@@ -237,46 +247,172 @@ function analyzeQuery(sql, schema) {
 
 // ── run ──────────────────────────────────────────────────────────────────────
 
-const schema = await buildSchema();
-if (schema === null) {
+// Table-valued functions / pseudo-tables that aren't real tables.
+const TABLE_FN = new Set(["json_each", "json_tree", "generate_series"]);
+// Real tables created by the migration RUNNER (not a migration's up()), so they
+// aren't in the migrated schema model but exist at runtime.
+const RUNTIME_TABLES = new Set(["schema_migrations"]);
+
+// Extract every real table referenced (FROM/JOIN/INTO/UPDATE/DELETE-FROM) plus
+// the CTE names declared by a leading WITH (so they aren't mistaken for tables).
+function extractTableRefs(sql) {
+  const flat = normalize(sql);
+  const ctes = new Set();
+  if (/^\s*WITH\b/i.test(flat)) {
+    // name AS ( … )  or  name (col, col) AS ( … )  — recursive & multi-CTE
+    const cteRe = /(?:\bWITH\b(?:\s+RECURSIVE)?|,)\s+([a-zA-Z_]\w*)\s*(?:\([^)]*\))?\s+AS\s*\(/gi;
+    let c;
+    while ((c = cteRe.exec(flat))) ctes.add(c[1].toLowerCase());
+  }
+  const tables = [];
+  const tableRe = /\b(?:FROM|JOIN|INTO|UPDATE)\s+[`"']?([a-zA-Z_]\w*)[`"']?(\s*\()?/gi;
+  let m;
+  while ((m = tableRe.exec(flat))) {
+    const t = m[1];
+    if (m[2]) continue;                       // table-valued function: name(
+    if (t === "_" || /^sqlite_/i.test(t)) continue;
+    if (SQL_KEYWORDS.has(t.toLowerCase())) continue; // e.g. "DO UPDATE SET" → SET
+    if (TABLE_FN.has(t.toLowerCase()) || RUNTIME_TABLES.has(t.toLowerCase())) continue;
+    tables.push(t);
+  }
+  return { tables, ctes };
+}
+
+// Exec every non-interpolated CREATE TABLE found in PRODUCTION source onto the
+// migrated DB, so lazily/runtime-created tables exist when we prepare() queries
+// against them (otherwise they'd false-flag as ghosts). FK off → cross-refs fine.
+function execSourceCreates(db, files) {
+  let created = 0;
+  const names = new Set();
+  for (const file of files) {
+    const src = fs.readFileSync(file, "utf8");
+    const re = /CREATE\s+(?:TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?([a-zA-Z_]\w*)[`"']?\s*\(/gi;
+    let m;
+    while ((m = re.exec(src))) {
+      names.add(m[1].toLowerCase());
+      const start = m.index;
+      let i = re.lastIndex - 1, depth = 0;
+      for (; i < src.length; i++) {
+        if (src[i] === "(") depth++;
+        else if (src[i] === ")") { depth--; if (depth === 0) { i++; break; } }
+      }
+      let stmt = src.slice(start, i);
+      if (/\$\{/.test(stmt)) continue; // interpolated — can't exec; name still known
+      stmt = stmt
+        .replace(/\\([\\'"`nrt])/g, (_, c) => (c === "n" ? "\n" : c === "r" ? "\r" : c === "t" ? "\t" : c))
+        .replace(/^CREATE\s+(?:TEMP(?:ORARY)?\s+)?TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?/i, "CREATE TABLE IF NOT EXISTS ");
+      try { db.exec(stmt + ";"); created++; }
+      catch { /* a create that can't run in isolation just stays absent */ }
+    }
+  }
+  return { created, names };
+}
+
+// prepare() a static query against the live schema — SQLite's own parser surfaces
+// EVERY ghost-table / wrong-column site (incl. JOINs/multi-table the regex skips).
+function preparedViolations(db, rawSql, knownTables) {
+  try { db.prepare(rawSql); return []; }
+  catch (e) {
+    const msg = String(e?.message || "");
+    let m;
+    if ((m = msg.match(/no such table:\s*([a-zA-Z_]\w*)/i))) {
+      const t = m[1];
+      if (knownTables.has(t.toLowerCase()) || /^sqlite_/i.test(t)) return [];
+      return [{ kind: "ghost_table", table: t, column: null }];
+    }
+    if ((m = msg.match(/no such column:\s*([a-zA-Z_][\w.]*)/i))) {
+      const ref = m[1];
+      const column = ref.includes(".") ? ref.split(".").pop() : ref;
+      const table = ref.includes(".") ? ref.split(".")[0] : null;
+      return [{ kind: "column", table, column }];
+    }
+    return []; // syntax / no-such-function from partial extraction — not our class
+  }
+}
+
+const built = await buildSchema();
+if (built === null) {
   console.log("[schema-drift] SKIP — better-sqlite3 unavailable; gate runs locally + in server-installed jobs.");
   process.exit(0);
 }
+const { db, applied, failed } = built;
 const files = sourceFiles(SERVER);
+
+// Pull lazy/runtime CREATE TABLEs into the DB; collect their names too (for the
+// ones whose CREATE is interpolated and couldn't be exec'd). Test-only creates
+// are excluded (sourceFiles skips tests/), so user_wallets/city_presence/
+// quest_state (created only in tests) stay ghosts.
+const { names: sourceCreateNames } = execSourceCreates(db, files);
+const schema = readSchema(db);
+schema._meta = { applied, failed };
+const knownTables = new Set([...schema.keys()].map((t) => t.toLowerCase()));
+for (const n of sourceCreateNames) knownTables.add(n);
+// Real-but-not-in-a-migration tables, suppressed honestly:
+//  - schema_migrations: created by the migration RUNNER, not a migration up().
+//  - creative_artifact_listings: an optional "v2" table the marketplace probes
+//    and falls back to v1 when absent — the playtester verified + excluded it.
+for (const n of ["schema_migrations", "creative_artifact_listings"]) knownTables.add(n);
+
 const violations = [];
 
 for (const file of files) {
   const src = fs.readFileSync(file, "utf8");
   if (!src.includes(".prepare(")) continue;
-  for (const { sql, index } of extractPreparedSql(src)) {
+  const rel = path.relative(ROOT, file);
+  for (const { raw, sql, interpolated, index } of extractPreparedSql(src)) {
     if (!RW_KEYWORD.test(sql)) continue;
+    const line = lineForIndex(src, index);
+
+    if (!interpolated) {
+      // PRIMARY PATH — let SQLite validate the whole statement.
+      for (const v of preparedViolations(db, raw, knownTables)) {
+        const key = `${rel}:${v.column}:${v.table}`;
+        if (FP_EXCLUDE.has(key)) continue;
+        violations.push({ file: rel, line, ...v });
+      }
+      continue;
+    }
+
+    // FALLBACK for interpolated SQL (can't prepare) — the conservative regex
+    // ghost-table + high-precision column checks.
+    try {
+      const { tables, ctes } = extractTableRefs(sql);
+      for (const t of tables) {
+        const lt = t.toLowerCase();
+        if (ctes.has(lt) || knownTables.has(lt)) continue;
+        if (FP_EXCLUDE.has(`${rel}:${t}`)) continue;
+        violations.push({ file: rel, line, kind: "ghost_table", table: t, column: null });
+      }
+    } catch { /* skip */ }
     let found;
     try { found = analyzeQuery(sql, schema); } catch { found = []; }
     for (const v of found) {
-      if (v.column === "_") continue; // interpolated column name (`SET ${col}=…`) — not a literal ref
-      const rel = path.relative(ROOT, file);
-      const key = `${rel}:${v.column}:${v.table}`;
-      if (FP_EXCLUDE.has(key)) continue;
-      violations.push({ file: rel, line: lineForIndex(src, index), ...v });
+      if (v.column === "_") continue;
+      if (FP_EXCLUDE.has(`${rel}:${v.column}:${v.table}`)) continue;
+      violations.push({ file: rel, line, kind: "column", ...v });
     }
   }
 }
 
-// de-dupe identical (file,line,table,column)
+// de-dupe identical (file,line,kind,table,column)
 const seen = new Set();
 const unique = violations.filter((v) => {
-  const k = `${v.file}:${v.line}:${v.table}:${v.column}`;
+  const k = `${v.file}:${v.line}:${v.kind}:${v.table}:${v.column}`;
   if (seen.has(k)) return false;
   seen.add(k);
   return true;
 });
 
+const ghosts = unique.filter((v) => v.kind === "ghost_table");
+const columns = unique.filter((v) => v.kind === "column");
 const meta = schema._meta || {};
 console.log(`[schema-drift] ${schema.size} tables (migrations: ${meta.applied} applied, ${meta.failed} skipped), ${files.length} source files scanned`);
-console.log(`[schema-drift] violations: ${unique.length} (floor ${FLOOR})`);
+console.log(`[schema-drift] violations: ${unique.length} (floor ${FLOOR}) — ${columns.length} column-drift, ${ghosts.length} ghost-table`);
 if (LIST || unique.length) {
-  for (const v of unique.slice(0, 80)) {
-    console.log(`   ✗ ${v.file}:${v.line} — ${v.table} ✗ ${v.column}`);
+  for (const v of unique.slice(0, 120)) {
+    console.log(v.kind === "ghost_table"
+      ? `   ✗ ${v.file}:${v.line} — ghost table: ${v.table}`
+      : `   ✗ ${v.file}:${v.line} — ${v.table} ✗ ${v.column}`);
   }
 }
 
