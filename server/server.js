@@ -24302,6 +24302,11 @@ registerLoreMacros(register);
 import registerCreatureMacros from "./domains/creatures.js";
 registerCreatureMacros(register);
 
+// Maintenance — the operator surface for the autonomic nervous system. Reads the
+// Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
+import registerRepairMacros from "./domains/repair.js";
+registerRepairMacros(register);
+
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
 // hook and the LoadFromSubstrate "Reopen recent" panel that every lens

@@ -2865,6 +2865,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['vehicle', 'horse', 'cart', 'glider', 'mount', 'spawn', 'carriage'],
   },
   {
+    id: 'repair-telemetry',
+    name: 'Repair Telemetry',
+    icon: Activity,
+    description: 'The autonomic nervous system — what the world healed + the escalation inbox',
+    category: 'specialized',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/repair-telemetry',
+    order: 364,
+    keywords: ['repair', 'telemetry', 'health', 'autonomic', 'escalation', 'maintenance', 'ops', 'homeostasis'],
+  },
+  {
     id: 'codex',
     name: 'Codex',
     icon: BookOpen,
