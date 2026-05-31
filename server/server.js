@@ -11961,8 +11961,12 @@ register("goals", "propose", (ctx, input = {}) => {
 
   const goal = result.goal;
   ctx.state.goals.registry.set(goal.id, goal);
+  // Guard the proposal queue + stats — uninitialised on a fresh ctx threw
+  // "reading 'push' of undefined" (playtest #R1). Init lazily, never crash.
+  if (!ctx.state.queues) ctx.state.queues = {};
+  if (!ctx.state.queues.goalProposals) ctx.state.queues.goalProposals = [];
   ctx.state.queues.goalProposals.push({ id: goal.id, createdAt: goal.createdAt });
-  ctx.state.goals.stats.proposed++;
+  if (ctx.state.goals.stats) ctx.state.goals.stats.proposed++;
 
   saveStateDebounced();
   return { ok: true, goal: { id: goal.id, title: goal.title, type: goal.type, state: goal.state } };
@@ -16588,7 +16592,7 @@ async function initGhostFleet() {
     const reality = await import("./emergent/reality-explorer.js");
     GHOST_FLEET_STATUS.modules["reality-explorer"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("explore", "run", (_ctx, input = {}) => reality.exploreAdjacent(input.constraints, input.domain));
+    register("explore", "run", (_ctx, input = {}) => reality.exploreAdjacent(input.constraints || {}, input.domain));
     register("explore", "history", (_ctx, input = {}) => reality.getExplorationHistory(input.limit));
     register("explore", "save", (_ctx, input = {}) => reality.saveExploration(input.id));
 
@@ -28333,7 +28337,9 @@ register("persona", "create", (ctx, input={}) => {
 
 register("skill", "create", (ctx, input={}) => {
   const title = String(input.title||"");
-  if (!title) throw new Error("title required");
+  // Validation returns a structured error, never throws (playtest #R2 —
+  // a throw surfaces as macro_uncaught_throw / a 500 instead of {ok:false}).
+  if (!title) return { ok: false, error: "title_required" };
   const id = uid("skill");
   const skill = { id, title, trigger: input.trigger||"", procedure: input.procedure||"", checks: input.checks||"", createdAt: nowISO(), updatedAt: nowISO(), level: 1 };
   // store as DTU for portability
@@ -30554,7 +30560,7 @@ app.use("/api/creative-marketplace", createCreativeMarketplaceRouter({ db, detec
 
 // ===== CONCORD FILM STUDIOS =====
 import createFilmStudioRouter from "./routes/film-studio.js";
-app.use("/api/film-studio", createFilmStudioRouter({ db }));
+app.use("/api/film-studio", createFilmStudioRouter({ db, requireAuth }));
 
 // ===== LENS & CULTURE SYSTEM =====
 import createLensCultureRouter from "./routes/lens-culture.js";
@@ -30562,7 +30568,7 @@ app.use("/api/lens-culture", createLensCultureRouter({ db }));
 import createDTUFormatRouter from "./routes/dtu-format.js";
 app.use("/api/dtu-format", createDTUFormatRouter({ db }));
 import createAPIBillingRouter from "./routes/api-billing.js";
-app.use("/api/billing", createAPIBillingRouter({ db }));
+app.use("/api/billing", createAPIBillingRouter({ db, requireAuth }));
 import createStorageRouter from "./routes/storage.js";
 app.use("/api/storage", createStorageRouter({ db }));
 import createLensComplianceRouter from "./routes/lens-compliance.js";

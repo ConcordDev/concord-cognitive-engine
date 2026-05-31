@@ -30,6 +30,15 @@ import { canAccessMediaDTU } from "../lib/media-dtu.js";
 export default function createCDNRouter({ cdnManager, urlSigner, STATE }) {
   const router = Router();
 
+  // CDN may be unconfigured (mounted with cdnManager: null) — every handler
+  // below dereferences cdnManager, so without this a single request crashes on a
+  // null deref and the error falls through to the chat catch-all (playtest #R8).
+  // Fail cleanly with 503 instead.
+  if (!cdnManager) {
+    router.use((_req, res) => res.status(503).json({ ok: false, error: "cdn_not_configured" }));
+    return router;
+  }
+
   // ── Helper: check admin role ──────────────────────────────────────
 
   function requireAdmin(req) {

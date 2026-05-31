@@ -108,6 +108,10 @@ export default function createEvoAssetRouter({ requireAuth, db }) {
         assetId = row?.id;
       }
       if (!assetId) return res.status(404).json({ ok: false, error: "asset_not_found" });
+      // A present-but-invalid id flowed into recordInteraction → FK throw → 500
+      // (playtest #R5). Validate existence first so it's a clean 404.
+      const _exists = db.prepare(`SELECT 1 FROM evo_assets WHERE id = ?`).get(assetId);
+      if (!_exists) return res.status(404).json({ ok: false, error: "asset_not_found" });
       recordInteraction(db, assetId,
         { kind: "user", id: userId },
         String(action || "interact").slice(0, 64),
