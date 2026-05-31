@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-31T22:28:25.384Z",
+  "generatedAt": "2026-05-31T22:32:28.270Z",
   "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 89,
-  "violationCount": 89,
+  "floor": 76,
+  "violationCount": 76,
   "violations": [
     {
       "file": "server/domains/crisis.js",
@@ -224,13 +224,6 @@
       "column": null
     },
     {
-      "file": "server/lib/achievement-engine.js",
-      "line": 286,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
       "file": "server/lib/archetype-needs.js",
       "line": 48,
       "kind": "column",
@@ -250,27 +243,6 @@
       "kind": "column",
       "table": null,
       "column": "world_id"
-    },
-    {
-      "file": "server/lib/auctions.js",
-      "line": 261,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/auctions.js",
-      "line": 264,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/auctions.js",
-      "line": 280,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
     },
     {
       "file": "server/lib/audit/provenance.js",
@@ -441,48 +413,6 @@
       "column": null
     },
     {
-      "file": "server/lib/player-corpse.js",
-      "line": 48,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/player-corpse.js",
-      "line": 84,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/player-corpse.js",
-      "line": 155,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/player-mail.js",
-      "line": 299,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/player-mail.js",
-      "line": 302,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/player-mail.js",
-      "line": 318,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
       "file": "server/lib/spouse-reactivity.js",
       "line": 58,
       "kind": "ghost_table",
@@ -511,20 +441,6 @@
       "column": null
     },
     {
-      "file": "server/lib/weekly-objectives.js",
-      "line": 157,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
-      "file": "server/lib/world-buildings-repair.js",
-      "line": 37,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
       "file": "server/lib/world-buildings-repair.js",
       "line": 40,
       "kind": "ghost_table",
@@ -536,13 +452,6 @@
       "line": 55,
       "kind": "ghost_table",
       "table": "emergents",
-      "column": null
-    },
-    {
-      "file": "server/lib/world-health.js",
-      "line": 33,
-      "kind": "ghost_table",
-      "table": "user_wallets",
       "column": null
     },
     {

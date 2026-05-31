@@ -38,7 +38,7 @@ const MIGRATIONS = path.join(SERVER, "migrations");
 // every static query against the live in-memory schema, so this IS the exact
 // count of ghost-table + wrong-column sites — not an estimate. RATCHET DOWN as
 // each is fixed; the goal is 0. New drift beyond the floor fails --ci.
-const DEFAULT_FLOOR = 89;
+const DEFAULT_FLOOR = 76;
 const floorArg = process.argv.find((a) => a.startsWith("--floor="));
 let FLOOR = floorArg ? parseInt(floorArg.split("=")[1], 10) : DEFAULT_FLOOR;
 const CI = process.argv.includes("--ci");

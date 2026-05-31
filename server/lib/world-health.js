@@ -30,7 +30,7 @@ export function detectPathologies(db, nowS = Math.floor(Date.now() / 1000)) {
   // ── economy: negative wallet balances (value corruption — ESCALATE) ──
   if (tableExists(db, "user_wallets")) {
     try {
-      for (const r of db.prepare(`SELECT user_id, balance FROM user_wallets WHERE balance < 0 LIMIT 50`).all()) {
+      for (const r of db.prepare(`SELECT id AS user_id, concordia_credits AS balance FROM users WHERE concordia_credits < 0 LIMIT 50`).all()) {
         out.push({ pathology: "negative_balance", category: "economy", subjectId: r.user_id, detail: { balance: r.balance } });
       }
     } catch { /* schema variant */ }

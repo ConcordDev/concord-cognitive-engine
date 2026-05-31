@@ -155,9 +155,8 @@ function _walletCredit(db, userId, amount, reason) {
   if (!Number.isFinite(amount) || amount <= 0) return;
   try {
     db.prepare(`
-      INSERT INTO user_wallets (user_id, balance) VALUES (?, ?)
-      ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
-    `).run(userId, amount);
+      UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?
+    `).run(amount, userId);
     try {
       db.prepare(`
         INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)

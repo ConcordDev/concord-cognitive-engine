@@ -258,10 +258,10 @@ function _getAuction(db, auctionId) {
 function _walletDebit(db, userId, amount, reason) {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: true };
   try {
-    const row = db.prepare(`SELECT balance FROM user_wallets WHERE user_id = ?`).get(userId);
+    const row = db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id = ?`).get(userId);
     const balance = Number(row?.balance) || 0;
     if (balance < amount) return { ok: false, error: "insufficient_funds" };
-    db.prepare(`UPDATE user_wallets SET balance = balance - ? WHERE user_id = ?`).run(amount, userId);
+    db.prepare(`UPDATE users SET concordia_credits = concordia_credits - ? WHERE id = ?`).run(amount, userId);
     try {
       db.prepare(`
         INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
@@ -278,9 +278,8 @@ function _walletCredit(db, userId, amount, reason) {
   if (!Number.isFinite(amount) || amount <= 0) return;
   try {
     db.prepare(`
-      INSERT INTO user_wallets (user_id, balance) VALUES (?, ?)
-      ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
-    `).run(userId, amount);
+      UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?
+    `).run(amount, userId);
     try {
       db.prepare(`
         INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
