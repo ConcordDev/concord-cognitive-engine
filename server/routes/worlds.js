@@ -1421,6 +1421,41 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/worlds/:worldId/crops — Wave 5c. The crop-field-renderer is written
+  // + mounted but rendered nothing because no per-world crops endpoint existed to
+  // feed it. Joins claim_crops -> land_claims (this world's active claims) and
+  // translates each crop's per-claim tile to an absolute world tile via the claim
+  // anchor (the renderer maps tile_x * 2m -> world x). Public-read (world-visible),
+  // matching the /nodes handler. KS CONCORD_CROP_RENDER=0.
+  router.get("/:worldId/crops", (req, res) => {
+    try {
+      if (process.env.CONCORD_CROP_RENDER === "0") return res.json({ ok: true, crops: [], count: 0 });
+      const { worldId } = req.params;
+      let rows = [];
+      try {
+        rows = db.prepare(`
+          SELECT cc.claim_id, cc.tile_x, cc.tile_y, cc.crop_kind, cc.growth_stage,
+                 lc.anchor_x, lc.anchor_z
+          FROM claim_crops cc
+          JOIN land_claims lc ON lc.id = cc.claim_id
+          WHERE lc.world_id = ? AND lc.status = 'active'
+          LIMIT 2000
+        `).all(worldId);
+      } catch { rows = []; /* tables may not exist on minimal builds */ }
+      // Tile is 2m; place the field at the claim anchor (renderer does tile*2 -> world).
+      const crops = rows.map((r) => ({
+        claim_id: r.claim_id,
+        tile_x: Math.round((Number(r.anchor_x) || 0) / 2) + (Number(r.tile_x) || 0),
+        tile_y: Math.round((Number(r.anchor_z) || 0) / 2) + (Number(r.tile_y) || 0),
+        crop_kind: r.crop_kind,
+        growth_stage: r.growth_stage,
+      }));
+      res.json({ ok: true, crops, count: crops.length });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // POST /api/worlds/:worldId/nodes/:nodeId/gather — player gathers from a resource node
   router.post("/:worldId/nodes/:nodeId/gather", requireAuth, async (req, res) => {
     try {

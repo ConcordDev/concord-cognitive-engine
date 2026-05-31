@@ -68,6 +68,22 @@ export function attachWorldRenderers(
     apiBase: opts.apiBase,
     pollMs: opts.pollMs,
     authToken,
+    // Wave 5c — feed the (already-written, already-mounted) crop-field-renderer.
+    // Without this injected fetcher it renders nothing; the GET endpoint joins
+    // claim_crops -> land_claims and returns absolute-tile crop rows.
+    fetchCrops: async () => {
+      try {
+        const headers: Record<string, string> = { Accept: 'application/json' };
+        const token = authToken();
+        if (token) headers.Authorization = `Bearer ${token}`;
+        const res = await fetch(`${opts.apiBase ?? ''}/api/worlds/${opts.worldId}/crops`, { headers });
+        if (!res.ok) return [];
+        const json = await res.json();
+        return Array.isArray(json?.crops) ? json.crops : [];
+      } catch {
+        return [];
+      }
+    },
   };
 
   const updaters: Array<{ update(delta: number, elapsed: number): void; dispose(): void }> = [];
