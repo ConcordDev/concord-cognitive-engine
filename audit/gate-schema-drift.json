@@ -1,0 +1,304 @@
+{
+  "generatedAt": "2026-05-31T21:56:25.294Z",
+  "tablesModelled": 623,
+  "migrationsApplied": 313,
+  "sourceFiles": 1668,
+  "floor": 49,
+  "violationCount": 49,
+  "violations": [
+    {
+      "file": "server/domains/chronicle.js",
+      "line": 42,
+      "table": "dtus",
+      "column": "kind"
+    },
+    {
+      "file": "server/domains/dx.js",
+      "line": 265,
+      "table": "economy_ledger",
+      "column": "user_id"
+    },
+    {
+      "file": "server/domains/faction-strategy.js",
+      "line": 77,
+      "table": "faction_strategy_log",
+      "column": "created_at"
+    },
+    {
+      "file": "server/domains/glyph-spells.js",
+      "line": 88,
+      "table": "dtu_citations",
+      "column": "creator_id"
+    },
+    {
+      "file": "server/domains/glyph-spells.js",
+      "line": 88,
+      "table": "dtu_citations",
+      "column": "parent_id"
+    },
+    {
+      "file": "server/domains/glyph-spells.js",
+      "line": 88,
+      "table": "dtu_citations",
+      "column": "kind"
+    },
+    {
+      "file": "server/economy/chargeback-handler.js",
+      "line": 73,
+      "table": "purchases",
+      "column": "stripe_payment_intent_id"
+    },
+    {
+      "file": "server/economy/chargeback-handler.js",
+      "line": 82,
+      "table": "purchases",
+      "column": "metadata_json"
+    },
+    {
+      "file": "server/emergent/mount-behavior-cycle.js",
+      "line": 61,
+      "table": "world_resource_nodes",
+      "column": "kind"
+    },
+    {
+      "file": "server/emergent/nemesis-cycle.js",
+      "line": 124,
+      "table": "character_opinions",
+      "column": "from_npc_id"
+    },
+    {
+      "file": "server/emergent/nemesis-cycle.js",
+      "line": 124,
+      "table": "character_opinions",
+      "column": "to_npc_id"
+    },
+    {
+      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
+      "line": 100,
+      "table": "npc_grudges",
+      "column": "owner_npc_id"
+    },
+    {
+      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
+      "line": 100,
+      "table": "npc_grudges",
+      "column": "target_npc_id"
+    },
+    {
+      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
+      "line": 101,
+      "table": "npc_grudges",
+      "column": "owner_npc_id"
+    },
+    {
+      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
+      "line": 101,
+      "table": "npc_grudges",
+      "column": "target_npc_id"
+    },
+    {
+      "file": "server/lib/archetype-needs.js",
+      "line": 48,
+      "table": "economy_flows",
+      "column": "faction"
+    },
+    {
+      "file": "server/lib/archetype-needs.js",
+      "line": 48,
+      "table": "economy_flows",
+      "column": "ts"
+    },
+    {
+      "file": "server/lib/archetype-needs.js",
+      "line": 63,
+      "table": "npc_conversations",
+      "column": "started_at"
+    },
+    {
+      "file": "server/lib/archetype-needs.js",
+      "line": 76,
+      "table": "npc_schemes",
+      "column": "world_id"
+    },
+    {
+      "file": "server/lib/archetype-needs.js",
+      "line": 76,
+      "table": "npc_schemes",
+      "column": "status"
+    },
+    {
+      "file": "server/lib/chronicle/chronicle.js",
+      "line": 105,
+      "table": "realm_citizens",
+      "column": "realm_id"
+    },
+    {
+      "file": "server/lib/code-substrate/code-dtu-emitter.js",
+      "line": 255,
+      "table": "dtus",
+      "column": "kind"
+    },
+    {
+      "file": "server/lib/creator-dashboard.js",
+      "line": 233,
+      "table": "economy_ledger",
+      "column": "user_id"
+    },
+    {
+      "file": "server/lib/creator-dashboard.js",
+      "line": 241,
+      "table": "economy_ledger",
+      "column": "user_id"
+    },
+    {
+      "file": "server/lib/creator-dashboard.js",
+      "line": 252,
+      "table": "economy_ledger",
+      "column": "user_id"
+    },
+    {
+      "file": "server/lib/creator-dashboard.js",
+      "line": 264,
+      "table": "economy_ledger",
+      "column": "user_id"
+    },
+    {
+      "file": "server/lib/cross-world-economy.js",
+      "line": 97,
+      "table": "economy_flows",
+      "column": "created_at"
+    },
+    {
+      "file": "server/lib/dtu-portability.js",
+      "line": 77,
+      "table": "dtu_citations",
+      "column": "creator_id"
+    },
+    {
+      "file": "server/lib/dtu-portability.js",
+      "line": 77,
+      "table": "dtu_citations",
+      "column": "parent_creator_id"
+    },
+    {
+      "file": "server/lib/dtu-portability.js",
+      "line": 88,
+      "table": "economy_ledger",
+      "column": "buyer_id"
+    },
+    {
+      "file": "server/lib/dtu-portability.js",
+      "line": 88,
+      "table": "economy_ledger",
+      "column": "seller_id"
+    },
+    {
+      "file": "server/lib/dtu-portability.js",
+      "line": 88,
+      "table": "economy_ledger",
+      "column": "creator_id"
+    },
+    {
+      "file": "server/lib/emergents/quality/deterministic-gates.js",
+      "line": 39,
+      "table": "dtus",
+      "column": "content_hash"
+    },
+    {
+      "file": "server/lib/kingdoms.js",
+      "line": 45,
+      "table": "procgen_regions",
+      "column": "faction_id"
+    },
+    {
+      "file": "server/lib/npc-gear.js",
+      "line": 202,
+      "table": "dtus",
+      "column": "owner_type"
+    },
+    {
+      "file": "server/lib/npc-legacy.js",
+      "line": 227,
+      "table": "dtus",
+      "column": "kind"
+    },
+    {
+      "file": "server/lib/npc-skill-author.js",
+      "line": 131,
+      "table": "dtus",
+      "column": "kind"
+    },
+    {
+      "file": "server/lib/npc-skill-author.js",
+      "line": 131,
+      "table": "dtus",
+      "column": "meta_json"
+    },
+    {
+      "file": "server/lib/npc-skill-author.js",
+      "line": 293,
+      "table": "dtus",
+      "column": "meta_json"
+    },
+    {
+      "file": "server/lib/skill-effectiveness.js",
+      "line": 143,
+      "table": "dtus",
+      "column": "lineage"
+    },
+    {
+      "file": "server/lib/skill-interaction.js",
+      "line": 147,
+      "table": "dtus",
+      "column": "lineage"
+    },
+    {
+      "file": "server/lib/stealth-perception.js",
+      "line": 110,
+      "table": "dtus",
+      "column": "owner_id"
+    },
+    {
+      "file": "server/lib/stealth-perception.js",
+      "line": 110,
+      "table": "dtus",
+      "column": "owner_type"
+    },
+    {
+      "file": "server/routes/analytics.js",
+      "line": 72,
+      "table": "world_buildings",
+      "column": "created_by"
+    },
+    {
+      "file": "server/routes/lens-portals.js",
+      "line": 87,
+      "table": "dtus",
+      "column": "domain"
+    },
+    {
+      "file": "server/routes/player-inventory.js",
+      "line": 136,
+      "table": "dtus",
+      "column": "owner_id"
+    },
+    {
+      "file": "server/routes/player-inventory.js",
+      "line": 136,
+      "table": "dtus",
+      "column": "owner_type"
+    },
+    {
+      "file": "server/routes/worlds.js",
+      "line": 599,
+      "table": "dtus",
+      "column": "meta"
+    },
+    {
+      "file": "server/server.js",
+      "line": 74906,
+      "table": "skill_revisions",
+      "column": "npc_id"
+    }
+  ]
+}

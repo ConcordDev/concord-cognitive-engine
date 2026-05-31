@@ -50,33 +50,33 @@ registry violations` — instead of surfacing to a player as a masked "LLM
 unavailable". Ratchet `EXPECTED_BUS_DOMAINS` UP as more domains are confirmed
 load-bearing. Test: `tests/macro-contract.test.js`.
 
-## Gate C — schema-vs-query static scanner 🔜 NEXT (highest bug-yield)
+## Gate C — schema-vs-query scanner ✅ SHIPPED (highest bug-yield)
 
 Round-2's Wave 13 proved the column-drift class is **mechanically gateable** — it
-is NOT the "types can't cheaply catch this" case I first assumed. The playtester's
-own method is the gate spec:
+is NOT the "types can't cheaply catch this" case I first assumed.
+`scripts/audit/gates/schema-drift.mjs`:
 
-> PRAGMA `table_info` for every live table → scan every `db.prepare(...)` query →
-> flag column refs absent from the target table. Strip subqueries to avoid FP;
-> exclude forge-template + Postgres paths.
+1. **Derives the REAL schema** by running every migration's `up(db)` on an
+   in-memory `better-sqlite3` and `PRAGMA table_info`-ing the result (313/313
+   apply cleanly). This is the playtester's actual method — and crucially it
+   captures columns added via JS helpers (`addNpcCol(...)`), which a static SQL
+   parse misses (that under-modelling caused thousands of false positives in the
+   first cut: `world_npcs ✗ level`, etc.).
+2. **Scans `db.prepare(\`…\`)` SQL** across `server/**/*.js`.
+3. **High-precision shapes only** (near-zero FP): `INSERT INTO t (cols…)`,
+   `UPDATE t SET col=…`, and **single-table** `SELECT/DELETE … WHERE col …` (any
+   JOIN or `(SELECT …)` subquery is skipped — that's where alias ambiguity, hence
+   FPs, live). String literals are stripped; interpolated columns (`SET ${c}=`)
+   and the forge-template generators (they emit SQL for the *generated* app, not
+   Concord's DB) are excluded.
+4. **Ratchets** like `lens-reachability`: `DEFAULT_FLOOR = 49` (the measured
+   pre-existing drift), `--ci` fails on a 50th, writes `audit/gate-schema-drift.json`.
 
-Headless build plan (`scripts/audit/gates/schema-drift.mjs`):
-1. **Derive the schema model statically** from `server/migrations/*.js` —
-   accumulate `CREATE TABLE` columns + `ALTER TABLE … ADD COLUMN` (the migrations
-   ARE the source of truth; no live DB / boot needed).
-2. **Scan `db.prepare(\`…\`)` template literals** across `server/**/*.js`.
-3. **High-precision cases first (near-zero FP):** `INSERT INTO t (cols…)` column
-   lists and `UPDATE t SET col=…` clauses name columns of `t` directly — no join
-   ambiguity. Then **single-table `SELECT/WHERE`** (skip any query with a JOIN or
-   multiple `FROM` tables, where alias ambiguity lives).
-4. **Flag** each column ref absent from the target table's model; **ratchet**
-   like `lens-reachability` (FLOOR = current count, drive to 0).
-5. Exclusions the report used: subquery columns, Postgres/forge-template paths,
-   and a documented false-positive list (e.g. `lib/secrets.js:219` — a
-   `secret_discoveries` subquery column, not `secrets`).
-
-This single gate would have caught **#30 + #R9–#R35** (~26 findings) and stops the
-entire class recurring. It is the next thing to build.
+Result: **49 real violations frozen** — every one of #30 + #R9–#R35 plus extras
+the report didn't enumerate (`npc-gear dtus✗owner_type`, `lens-portals dtus✗domain`,
+`npc-skill-author dtus✗kind/meta_json`). Zero false positives in the final set.
+The whole `no such column` runtime-crash class is now caught at audit time; drive
+the floor to 0 as the column refs are corrected (tracked in the playtest plan).
 
 ## Gate D — per-macro param schema 🔮 FUTURE (opt-in, additive)
 
@@ -118,5 +118,5 @@ pairs hit the fallthrough in 30 days AND aren't dead macros) rather than guessin
 ## Status
 - ✅ Gate A (arg-shape) — shipped + tested.
 - ✅ Gate B (registry validator) — shipped + tested.
-- 🔜 Gate C (schema-drift scanner) — next; catches the ~26-bug column-drift cluster.
+- ✅ Gate C (schema-drift scanner) — shipped; 49 real drifts frozen, ratchet to 0.
 - 🔮 Gate D (param schema), HTTP-routed smoke, telemetry-derived allowlist — queued.
