@@ -41,6 +41,7 @@ import express from "express";
 import cors from "cors";
 import crypto from "crypto";
 import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -55388,10 +55389,7 @@ app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(asy
 app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
   let logMod;
   try { logMod = await import("./logger.js"); } catch { return res.status(500).end(); }
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+  startSSE(res);
 
   const buf = logMod.getBuffer();
   let lastIndex = buf.length;

@@ -4,6 +4,7 @@
  */
 import { asyncHandler } from "../lib/async-handler.js";
 import logger from '../logger.js';
+import { startSSE } from "../lib/sse.js";
 import { buildWorkingContext } from '../lib/chat/working-context.js';
 import { needsWindowCompression, compressRollingWindow } from '../lib/conversation-memory.js';
 import { attachConfidence } from '../lib/confidence-attacher.js';
@@ -61,12 +62,7 @@ export default function registerChatRoutes(app, {
         enforceEthosInvariant("chat_stream");
         if (!STATE.__chicken3?.streamingEnabled) wantsStream = false; // Fall through to non-streaming response
 
-        res.set({
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive"
-        });
-        res.flushHeaders?.();
+        startSSE(res);
 
         const sse = (event, data) => {
           try {
@@ -221,12 +217,7 @@ export default function registerChatRoutes(app, {
       req._concordMode = req.body.mode || "chat";
       const ctx = makeCtx(req);
 
-      res.set({
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive"
-      });
-      res.flushHeaders?.();
+      startSSE(res);
 
       const out = await runMacro("chat","respond", req.body, ctx);
       kernelTick({ type: "USER_MSG", meta: { path: req.path, stream: true }, signals: { benefit: out?.ok?0.2:0, error: out?.ok?0:0.2 } });

@@ -13,6 +13,7 @@
 import { randomUUID } from "crypto";
 import fs from "fs";
 import logger from './logger.js';
+import { startSSE } from './lib/sse.js';
 
 function uid(prefix = "") {
   return prefix ? `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}` : randomUUID().replace(/-/g, "").slice(0, 20);
@@ -109,13 +110,7 @@ export function registerGuidanceEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   app.get("/api/events/stream", (req, res) => {
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
+    startSSE(res);
     res.write("data: {\"type\":\"connected\"}\n\n");
     sseClients.add(res);
 

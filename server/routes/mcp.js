@@ -19,6 +19,7 @@
 
 import crypto from "crypto";
 import { asyncHandler } from "../lib/async-handler.js";
+import { startSSE } from "../lib/sse.js";
 import { createMCPServer } from "../lib/mcp-server.js";
 import { MCPClient } from "../lib/mcp-client.js";
 import { validateSafeFetchUrl } from "../lib/ssrf-guard.js";
@@ -437,13 +438,8 @@ export default function createMCPRouter({
     // ── SSE Streaming Endpoint ──────────────────────────────────────────
 
     app.get("/api/mcp/sse", (req, res) => {
-      // Set SSE headers
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no", // Disable nginx buffering
-      });
+      // SSE headers + heartbeat (proxy-chain hardening).
+      startSSE(res);
 
       // Send initial connection event
       res.write(`data: ${JSON.stringify({
