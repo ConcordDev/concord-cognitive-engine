@@ -24551,6 +24551,8 @@ import registerNewsComposeMacros from "./domains/news-compose.js";
 registerNewsComposeMacros(register);
 import registerCivicBondsMacros from "./domains/civic-bonds.js";
 registerCivicBondsMacros(register);
+import registerDailyLifeMacros from "./domains/daily-life.js";
+registerDailyLifeMacros(register);
 import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
 registerHeartbeat("news-compose-cycle", {
   frequency: 60,
