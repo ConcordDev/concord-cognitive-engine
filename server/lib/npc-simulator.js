@@ -27,6 +27,7 @@ import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } fr
 import { broadcastOpinionEvent } from "./npc-relations.js";
 import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
 import { resolveAggro, temperamentEnabled } from "./npc-temperament.js";
+import { targetRung, stepRung, isEngaged, barkFor } from "./temperament-ladder.js";
 import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -173,11 +174,33 @@ function updateNPCCombatAI(npc, worldId, db) {
       helpCalled: false,
       alertedAt: 0,
       _lastAttack: 0,
+      rung: 'neutral',
     });
   }
 
-  const cs  = _npcCombatState.get(npc.id);
-  const now = Date.now();
+  const cs        = _npcCombatState.get(npc.id);
+  const now       = Date.now();
+  const prevState = cs.state;
+
+  // Temperament ladder (Phase 2) — graded intent rung + escalation barks. Off by
+  // default (CONCORD_TEMPERAMENT); when off, cs.rung is untouched and the attack
+  // path below behaves exactly as before. The climb forces a THREATENING (final
+  // warning) tick before HOSTILE, so an NPC always warns before it strikes.
+  if (temperamentEnabled()) {
+    const tgt = targetRung({
+      effectiveAggro,
+      nearestDist,
+      alertRadius:   profile.alertRadius,
+      pursuitRadius: profile.pursuitRadius,
+      melee:         profile.melee,
+    });
+    const prevRung = cs.rung || 'neutral';
+    const stepped  = stepRung(prevRung, tgt);
+    cs.rung = stepped.rung;
+    if (stepped.transition === 'up' && stepped.rung !== prevRung) {
+      _emitBark(npc, worldId, stepped.rung, barkFor(stepped.rung, archetype));
+    }
+  }
 
   // ── State machine transitions ──────────────────────────────────────────────
 
@@ -241,8 +264,11 @@ function updateNPCCombatAI(npc, worldId, db) {
       // Target moved out of range — pursue again
       cs.state = 'pursuing';
     } else {
-      // Attack! Rate-limited to once per NPC_ATTACK_COOLDOWN_MS
-      if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS) {
+      // Attack! Rate-limited to once per NPC_ATTACK_COOLDOWN_MS.
+      // Temperament: hold fire until the NPC has climbed to HOSTILE — the
+      // THREATENING final-warning tick must pass first. Off => attack now.
+      if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS
+          && (!temperamentEnabled() || isEngaged(cs.rung))) {
         cs._lastAttack = now;
         _performNPCAttack(npc, nearestPlayer, worldId, db, archetype);
       }
@@ -264,6 +290,32 @@ function updateNPCCombatAI(npc, worldId, db) {
       _moveToward(npc, cs.startPosition, db, worldId);
     }
   }
+
+  // Temperament: announce the break when the NPC first retreats (HP collapse) —
+  // the FLEEING rung of the ladder. One bark on the transition into retreating.
+  if (temperamentEnabled() && cs.state === 'retreating' && prevState !== 'retreating') {
+    _emitBark(npc, worldId, 'fleeing', barkFor('fleeing', archetype));
+  }
+}
+
+/**
+ * Emit a world:npc-bark socket event — the legibility channel for the graded
+ * escalation ladder. Externalizes the NPC's intent (the F.E.A.R. lesson): one
+ * bark per rung transition so the player can read the decision, not be
+ * tripwired. A blank text (monsters, civilian HOSTILE) still emits the rung so
+ * the audio/snarl layer can voice it. Never throws.
+ */
+function _emitBark(npc, worldId, rung, text) {
+  try {
+    const io = globalThis._concordREALTIME?.io;
+    io?.to(`world:${worldId}`).emit('world:npc-bark', {
+      worldId,
+      npcId:    npc.id,
+      position: npc.location,
+      rung,
+      text:     text || '',
+    });
+  } catch { /* non-fatal */ }
 }
 
 /**

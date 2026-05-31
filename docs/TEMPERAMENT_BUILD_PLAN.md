@@ -53,14 +53,23 @@ tests; dials documented in `docs/BALANCE_DIALS.md`.
 
 ## Phase order (each = kill-switch off by default + contract test + 0 regressions)
 
-1. **Keystone — `npc-temperament.js` + `disposition()`** *(this slice).* Reads the
+1. **Keystone — `npc-temperament.js` + `disposition()`** ✅ *shipped.* Reads the
    dormant emotional/social state and modulates `effectiveAggro` in
    `npc-simulator.js`. Off == archetype-only. The headline payoff: a *radicalized /
    severely-grudging* pacifist (farmer, base aggro 0.0) can finally raise a hand;
-   a hook the target holds over the NPC stays its emotional escalation.
-2. **Graded escalation FSM + barks + de-escalation verbs** (Part 2). Replaces the
-   binary FSM; every rung transition emits a bark (F.E.A.R. lesson — verified) to
-   `EmergentEventFeed`; holster/yield/leave-zone walk it back down.
+   a hook the target holds over the NPC stays its emotional escalation. Test:
+   `tests/npc-temperament.test.js` (20/20).
+2. **Graded escalation ladder + barks + de-escalation verbs** (Part 2). ✅ *shipped.*
+   `server/lib/temperament-ladder.js` layers the intent ladder
+   (NEUTRAL→WARY→WARNING→THREATENING→HOSTILE +FLEEING) on the movement FSM:
+   `targetRung` = min(disposition cap, proximity cap); `stepRung` forces a
+   THREATENING (final-warning) tick before HOSTILE so an NPC always warns before
+   it strikes; the attack path is gated on `isEngaged(rung)`; every up-transition
+   emits a `world:npc-bark` socket event (F.E.A.R. legibility — verified);
+   `applyDeescalation` maps holster/yield/comply/pay to rung drops (route wire in a
+   later slice). Off by default. Test: `tests/temperament-ladder.test.js` (11 suites).
+   *Follow-on:* frontend `world:npc-bark` subscription in `EmergentEventFeed` +
+   the player-verb route for `applyDeescalation` (both browser-side, deferred).
 3. **Two-meter authority** (Part 4). Add HEAT meter; wire `guardTick` to graded
    disposition + arrest gate (offer arrest at THREATENING, resist = flip to hostile).
 4. **Proportionality table + surrender/arrest state machine + betray timer** (Part 3,
