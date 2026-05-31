@@ -119,6 +119,16 @@ jobs:
           node scripts/verify-schema-drift.mjs
           node scripts/verify-schema-drift.mjs --ci 0
 
+      - name: Schema-drift gate L0 (prepare()-everything — ghost tables + JOINs)
+        run: |
+          # The comprehensive L0 gate (Function Assurance spec): runs every
+          # migration into an in-memory DB, execs lazy CREATE TABLEs, then
+          # db.prepare()s EVERY non-interpolated query against the live schema —
+          # so SQLite's own parser surfaces every no-such-table / no-such-column
+          # site, including JOIN / multi-table / subquery queries the
+          # high-confidence gate above skips. Floor 0 — fails on ANY new drift.
+          node scripts/audit/gates/schema-drift.mjs --ci
+
       - name: Render-parity gate (static appearance layer)
         run: |
           node scripts/verify-render-parity.mjs
