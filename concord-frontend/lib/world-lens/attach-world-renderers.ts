@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { createResourceNodeRenderer } from './resource-node-renderer';
 import { createCropFieldRenderer } from './crop-field-renderer';
+import { createCreatureRenderer } from './creature-renderer';
 import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
 import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createAvatarAuraRenderer } from './avatar-aura-renderer';
@@ -100,6 +101,8 @@ export function attachWorldRenderers(
 
   mount(() => createResourceNodeRenderer(infrastructureGroup, dataOpts));
   mount(() => createCropFieldRenderer(infrastructureGroup, dataOpts));
+  // Wave 6 — the bestiary: topology-aware creature meshes from creature.for_world.
+  mount(() => createCreatureRenderer(infrastructureGroup, dataOpts));
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
   mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
   mount(() => createUprisingCrowdRenderer(infrastructureGroup, dataOpts));
