@@ -772,6 +772,10 @@ const EmergentJuiceBridge = dynamic(
   () => import('@/components/world/EmergentJuiceBridge').then((m) => ({ default: m.EmergentJuiceBridge })),
   { ssr: false },
 );
+const AdaptiveScoreBridge = dynamic(
+  () => import('@/components/world/AdaptiveScoreBridge').then((m) => ({ default: m.AdaptiveScoreBridge })),
+  { ssr: false },
+);
 const SystemPrompter = dynamic(
   () => import('@/components/world/SystemPrompter'),
   { ssr: false },
@@ -4384,6 +4388,7 @@ export default function WorldLensPage() {
           </GameJuice>
           <LevelUpJuiceBridge />
           <EmergentJuiceBridge />
+          <AdaptiveScoreBridge />
           <SystemPrompter />
           <PersonalStakeBridge currentUserId={playerAvatar?.id} />
           <ComboEvolvedBridge />
