@@ -40,6 +40,7 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { 
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -10506,6 +10507,25 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
 });
 
 async function runMacro(domain, name, input, ctx) {
+  // Gate A — arg-shape guard (docs/CONTRACT_ENFORCEMENT_STRATEGY.md). The
+  // signature is (domain, name, input, ctx); the #1 recurring bug is calling it
+  // runMacro(ctx, "dtu", "cluster", …) so an object lands as `domain` and gets
+  // dispatched/JSON-walked as garbage (playtest #19/#20 broke DTU consolidation).
+  // One string check at the chokepoint retires the whole class: loud in dev,
+  // clean structured error in prod.
+  {
+    const _argCheck = checkMacroArgs(domain, name);
+    if (!_argCheck.ok) {
+      logger.error("macro-contract", "runMacro arg-shape violation", {
+        reason: _argCheck.reason, gotDomain: typeof domain, gotName: typeof name,
+      });
+      if (process.env.NODE_ENV !== "production") {
+        throw new TypeError(`[macro-contract] runMacro arg-order bug: ${_argCheck.reason} — signature is (domain, name, input, ctx)`);
+      }
+      return { ok: false, error: "macro_contract_violation", reason: _argCheck.reason };
+    }
+  }
+
   // Macro telemetry — single Map.set, ~50ns hot-path cost. Resolves the
   // dispatcher-reach mystery: macros that never fire in 30 days are
   // genuinely dead even when the static parse can't tell.
@@ -16681,9 +16701,29 @@ async function initGhostFleet() {
 // runtime-introspect doesn't wait ~52s for staggered module loads.
 if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
   setTimeout(() => {
-    initGhostFleet().catch(err => {
-      structuredLog("error", "ghost_fleet_init_error", { error: err.message });
-    });
+    initGhostFleet()
+      .then(() => {
+        // Gate B — steady-state registry validator (docs/CONTRACT_ENFORCEMENT_
+        // STRATEGY.md). Runs AFTER ghost-fleet's async registrations land, so a
+        // bus domain that never registered (the #2 never-imported / #11 async-
+        // race classes) is logged loudly here instead of surfacing to a player
+        // as a masked "LLM unavailable".
+        try {
+          const rep = validateRegistry(MACROS);
+          if (!rep.ok) {
+            logger.error("macro-contract", "steady-state registry violations", {
+              count: rep.violations.length, violations: rep.violations.slice(0, 20),
+            });
+          } else {
+            structuredLog("info", "macro_registry_validated", { domains: rep.domains, macros: rep.macros });
+          }
+        } catch (e) {
+          logger.error("macro-contract", "registry validation failed", { error: e?.message });
+        }
+      })
+      .catch(err => {
+        structuredLog("error", "ghost_fleet_init_error", { error: err.message });
+      });
   }, 225_000);
 }
 

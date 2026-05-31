@@ -1,9 +1,16 @@
-# Playtest Findings Plan — Vael's Expedition (2026-05-31)
+# Playtest Findings Plan — Vael's Expedition I & II (2026-05-31)
 
-Folds the 30 genuine findings (32 reported, #4/#5 self-retracted) into a
-prioritized, code-verified fix plan. Spot-checks all confirmed the report against
-the working tree — it's credible; treat each finding as real unless re-audit says
-otherwise. Tiers are by blast radius, not report order.
+Folds Round 1 (30 genuine of 32; #4/#5 self-retracted) and **Round 2 (30 more,
+distinct)** into a prioritized, code-verified fix plan. Spot-checks confirmed both
+rounds against the working tree — credible; treat each as real unless re-audit
+says otherwise. Tiers are by blast radius, not report order.
+
+**Round 2's headline (Wave 13): the column-drift class is mechanically gateable.**
+~26 findings (#30 + #R9–#R35) are `db.prepare` queries referencing columns the
+live table lacks → `no such column` at runtime. The playtester's method (PRAGMA
+all tables × scan every query) IS the spec for **Gate C** in
+`docs/CONTRACT_ENFORCEMENT_STRATEGY.md` — one static gate retires the whole class.
+This is the single highest-yield thing to build next.
 
 **Systemic root (read first):** several findings share ONE masking mechanism —
 `/api/lens/run` dispatches `LENS_ACTIONS → MACROS → LLM-fallthrough`, and an
@@ -94,3 +101,80 @@ become visible/benign in one stroke.
 Each fix ships with a contract/e2e test and the same kill-switch-where-risky
 discipline. Most are server-side and headless-verifiable; the boot-timing ones
 (#26/#28) and `#11`'s steady-state probe want a local boot to confirm.
+
+---
+
+# Round 2 — Vael's Expedition II (30 more, distinct)
+
+## R-P0/P1 — schema-drift cluster (the Gate-C class)
+
+~26 `db.prepare` queries reference columns the live table doesn't have → each
+throws `no such column` when its path runs. **Do NOT hand-fix one at a time** —
+build **Gate C** (`scripts/audit/gates/schema-drift.mjs`, see
+`docs/CONTRACT_ENFORCEMENT_STRATEGY.md`), which derives the schema from the
+migrations and flags every offender at once, then ratchet the fixes to 0. The
+`dtus` table is the hottest offender (it has `type`/`metadata_json`/`data`, NOT
+`kind`/`meta`/`meta_json`/`lineage`/`owner_id`/`content_hash`).
+
+| # | File:line | Table ✗ column(s) | Notes |
+|---|---|---|---|
+| **R9** | `lib/skill-effectiveness.js:144` | `dtus ✗ lineage` | cross-world skill adaptation mint |
+| **R10** | `routes/worlds.js:600` | `dtus ✗ meta` | skill prestige `UPDATE … SET meta` |
+| **R11** | `server.js:74859` | `skill_revisions ✗ npc_id` | |
+| **R12** | `domains/chronicle.js:42` | `dtus ✗ kind` | (has `type`) |
+| **R13** | `domains/dx.js:266` | `economy_ledger ✗ user_id` | (has from/to_user_id) |
+| **R14** | `domains/faction-strategy.js:79` | `faction_strategy_log ✗ created_at` | |
+| **R15** | `lib/archetype-needs.js:49` | `economy_flows ✗ faction, ts` | |
+| **R16** | `lib/archetype-needs.js:64` | `npc_conversations ✗ started_at` | |
+| **R17** | `lib/archetype-needs.js:77` | `npc_schemes ✗ world_id, status` | |
+| **R18** | `lib/chronicle/chronicle.js:105` | `realm_citizens ✗ realm_id` | |
+| **R19** | `lib/code-substrate/code-dtu-emitter.js:256` | `dtus ✗ kind` | |
+| **R20** | `lib/creator-dashboard.js:235/243/254/266` | `economy_ledger ✗ user_id` | creator $ dashboard broken |
+| **R21** | `lib/cross-world-economy.js:98` | `economy_flows ✗ created_at` | |
+| **R22** | `lib/dtu-portability.js:78` | `dtu_citations ✗ creator_id, parent_creator_id` | |
+| **R23** | `lib/dtu-portability.js:89` | `economy_ledger ✗ buyer_id, seller_id, creator_id` | DTU export economics |
+| **R24** | `lib/emergents/quality/deterministic-gates.js:39` | `dtus ✗ content_hash` | |
+| **R25** | `lib/kingdoms.js:45` | `procgen_regions ✗ faction_id` | |
+| **R26** | `lib/npc-skill-author.js:294` | `dtus ✗ meta_json` | |
+| **R27** | `lib/stealth-perception.js:111` | `dtus ✗ owner_id, owner_type` | |
+| **R28** | `routes/analytics.js:72` | `world_buildings ✗ created_by` | |
+| **R29** | `routes/player-inventory.js:137` | `dtus ✗ owner_id` | |
+| **R30** | `economy/chargeback-handler.js:74/83` | `purchases ✗ stripe_payment_intent_id, metadata_json` | Stripe chargebacks |
+| **R31** | `emergent/forward-sim-cycle.js:32` | `player_inventory ✗ recorded_at` | |
+| **R32** | `emergent/nemesis-cycle.js:125` | `character_opinions ✗ from_npc_id, to_npc_id` | hand-verified; NEMESIS heartbeat |
+| **R33** | `emergent/npc-vs-npc-combat-cycle.js:100-101` | `npc_grudges ✗ owner_npc_id, target_npc_id` | hand-verified |
+| **R34** | `lib/npc-legacy.js:228` | `dtus ✗ kind` | hand-verified; recipe inheritance |
+| **R35** | `emergent/mount-behavior-cycle.js:62` | `world_resource_nodes ✗ kind` (has node_type) | hand-verified |
+
+*(Excluded false positive, honestly reported: `lib/secrets.js:219` — the `user_id`
+belongs to a `secret_discoveries` subquery, not `secrets`. Gate C must replicate
+this subquery-stripping to stay trustworthy.)*
+
+## R-P1 — uncaught throws (validation-by-throw)
+
+| # | Finding | Fix |
+|---|---|---|
+| **R1** | `goals.propose` throws `…reading 'push'` — pushes to an uninitialised goals store. | Initialise the store / guard before push; return structured error. |
+| **R2** | `skill.create` raises "title required" as `macro_uncaught_throw`. | `return {ok:false,error}` instead of `throw` (validation-by-throw). |
+| **R3** | `explore.run` throws `Cannot convert undefined or null to object` — `Object.keys` before guarding. | Guard the input shape before `Object.keys/entries`. |
+| **R5** | `/api/evo-asset/interaction` 500s on a present-but-invalid `assetId` (only null guarded). | Validate the id → 404, don't let `recordInteraction` throw into a 500. |
+| **R7** | `/api/world/workstations/start` 500 — destructures `districtId` of `undefined`. | Guard the nested object before destructuring. |
+
+These share the **validation-by-throw** anti-pattern — a `runMacro`/route-level
+`try/catch → {ok:false}` wrapper (the Chicken2 #16 fix shape) handles the class.
+
+## R-P1 — auth-mount bugs (whole features dead)
+
+| # | Finding | Fix |
+|---|---|---|
+| **R4** | `/api/film-studio` mounted without `requireAuth` → the router's auth shim 401s EVERY route. **Whole feature dead.** `server.js:30508`. | Pass `requireAuth` into `createFilmStudioRouter`. |
+| **R6** | `/api/billing/*` write paths same class — `createAPIBillingRouter` mounted without `requireAuth` → `auth_not_configured` 401 on every write. `server.js:30516`. | Pass `requireAuth`. Audit the shared shim's other mounts (storage/lens-culture/legal/dtu-format/lens-compliance). |
+| **R8** | `/api/cdn/purge-all` crashes on `cdnManager: null` (mounted null) + the error surfaces as an LLM chat reply (fell through to catch-all). | Guard null `cdnManager`; don't let CDN routes reach the chat fallthrough. |
+
+A **mount-arg audit gate** (assert routers that declare a `requireAuth`/manager
+param are mounted with one) would catch the #R4/#R6/#R8 class — a Gate-B sibling.
+
+## Round-2 execution order
+1. **Build Gate C** (schema-drift scanner) → fix the ~26-item cluster to floor 0.
+2. **R1/R2/R3/R5/R7** validation-by-throw → the `try/catch→{ok:false}` wrapper.
+3. **R4/R6/R8** auth/null mount bugs → fix + a mount-arg audit gate.
