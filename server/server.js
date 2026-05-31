@@ -30466,7 +30466,7 @@ app.use("/api/legal", createLegalLiabilityRouter({ db }));
 const ALL_LENS_DOMAINS = [
   "accounting","admin","affect","agents","agriculture","all","alliance","analytics","animation","answers",
   "anon","app-maker","ar","art","artistry","astronomy","atlas","attention","audit","automotive","aviation","billing",
-  "bio","board","bridge","calendar","carpentry","chat","chem","code","collab","command-center","construction",
+  "bio","board","bridge","calendar","carpentry","chat","chem","civic_bonds","code","collab","command-center","construction",
   "commonsense","consulting","cooking","council","creative","creative-writing","cri","crypto","custom","daily",
   "database","debate","debug","defense","desert","diy","docs","dtus","eco","education","entity","environment",
   "disputes","electrical","emergency-services","energy","engineering",

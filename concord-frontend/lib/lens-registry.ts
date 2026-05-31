@@ -2912,6 +2912,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 99,
     keywords: ['hlr', 'reasoning', 'trace', 'deductive', 'inductive', 'abductive', 'adversarial', 'temporal', 'counterfactual'],
   },
+  {
+    id: 'civic-bonds',
+    name: 'Civic Bonds',
+    icon: Landmark,
+    description: 'Voluntary micro-bonds — fund your realm’s projects (sparks), 110% pre-funding gate, public ledger',
+    category: 'governance',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/civic-bonds',
+    order: 14,
+    keywords: ['civic', 'bond', 'microbond', 'fund', 'pledge', 'treasury', 'realm', 'infrastructure', 'sparks', 'ledger'],
+  },
 ];
 
 /** Category display configuration */
