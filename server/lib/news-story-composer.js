@@ -22,6 +22,11 @@ const EVENT_SOURCES = Object.freeze([
   { kind: "realm_decree",         table: "realm_decrees",     since: 3600 * 24,     limit: 5  },
   { kind: "dynasty_succession",   table: "npc_legacies",      since: 3600 * 24 * 3, limit: 3  },
   { kind: "lattice_alert",        table: "lattice_drift_alerts", since: 3600 * 12, limit: 3  },
+  // Legibility W4 — telegraph the brewing, not just the terminal reveal. These
+  // surface escalation EARLY so a payoff (the war / the exposure) references its
+  // own foreshadowing instead of arriving from nowhere.
+  { kind: "tension_rising",       table: "faction_relations", since: 3600 * 24,     limit: 5  },
+  { kind: "evidence_mounting",    table: "npc_schemes",       since: 3600 * 24,     limit: 5  },
 ]);
 
 // Legibility W3 — human-readable cause phrases for the trigger tags the faction
@@ -63,6 +68,16 @@ const HEADLINE_TEMPLATES = {
     "Substrate strain detected: {context}",
     "Lattice flag: {context}",
     "Concord substrate warns of {context}",
+  ],
+  tension_rising: [
+    "Tensions rise between {a} and {b}",
+    "{a} masses on the {b} border",
+    "Observers warn of conflict brewing between {a} and {b}",
+  ],
+  evidence_mounting: [
+    "Whispers of a plot in {context} grow louder",
+    "Evidence mounts against a scheme in {context}",
+    "A conspiracy in {context} nears the light",
   ],
 };
 
@@ -182,6 +197,59 @@ function harvestLatticeAlerts(db, sinceUnix, limit) {
   }));
 }
 
+// W4 — brewing tension: a relation already in 'tension' (the pre-war state) where
+// at least one side is in an expansionist stance. Telegraphs the war BEFORE the
+// DECLARE_WAR terminal event, so the payoff references its own foreshadowing.
+function harvestBrewingTensions(db, sinceUnix, limit) {
+  if (!tableExists(db, "faction_relations") || !tableExists(db, "faction_strategy_state")) return [];
+  try {
+    return db.prepare(`
+      SELECT r.faction_a, r.faction_b, r.kind, r.updated_at
+      FROM faction_relations r
+      WHERE r.kind = 'tension' AND COALESCE(r.updated_at, 0) >= ?
+        AND EXISTS (
+          SELECT 1 FROM faction_strategy_state s
+          WHERE s.faction_id IN (r.faction_a, r.faction_b) AND s.stance = 'expand'
+        )
+      ORDER BY r.updated_at DESC
+      LIMIT ?
+    `).all(sinceUnix, limit).map((r) => ({
+      kind: "tension_rising",
+      sourceId: `${r.faction_a}:${r.faction_b}`,
+      // Signature carries the day-bucket so a sustained tension re-surfaces at most daily.
+      signature: `tension:${r.faction_a}:${r.faction_b}:${Math.floor((r.updated_at || 0) / 86400)}`,
+      vars: { a: r.faction_a, b: r.faction_b, context: `${r.faction_a} and ${r.faction_b}` },
+      timestamp: r.updated_at || Math.floor(Date.now() / 1000),
+    }));
+  } catch { return []; }
+}
+
+// W4 — mounting evidence: a still-active scheme whose discovery_pct has climbed
+// past the halfway mark. The player SEES it being uncovered, then SEES it resolve
+// (the Wave-1 npc:scheme-resolved juice). Reveal/resolution is the terminal event;
+// this is the build-up.
+function harvestSchemeEscalation(db, sinceUnix, limit) {
+  if (!tableExists(db, "npc_schemes")) return [];
+  try {
+    return db.prepare(`
+      SELECT id, kind AS scheme_kind, discovery_pct, next_tick_at
+      FROM npc_schemes
+      WHERE phase NOT IN ('exposed', 'resolved', 'abandoned')
+        AND discovery_pct >= 50 AND discovery_pct < 100
+        AND COALESCE(next_tick_at, 0) >= ?
+      ORDER BY discovery_pct DESC
+      LIMIT ?
+    `).all(sinceUnix, limit).map((r) => ({
+      kind: "evidence_mounting",
+      sourceId: r.id,
+      // Bucket by 25-pct band so a single scheme telegraphs a few times as it heats up.
+      signature: `scheme_heat:${r.id}:${Math.floor((r.discovery_pct || 0) / 25)}`,
+      vars: { context: String(r.scheme_kind || "the shadows").replace(/_/g, " ") },
+      timestamp: r.next_tick_at || Math.floor(Date.now() / 1000),
+    }));
+  } catch { return []; }
+}
+
 function tableExists(db, name) {
   const r = db.prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name);
   return !!r;
@@ -251,6 +319,8 @@ export function runNewsComposePass(db, options = {}) {
         case "realm_decree":         rows = harvestRealmDecrees(db, since, src.limit); break;
         case "dynasty_succession":   rows = harvestDynastySuccessions(db, since, src.limit); break;
         case "lattice_alert":        rows = harvestLatticeAlerts(db, since, src.limit); break;
+        case "tension_rising":       rows = harvestBrewingTensions(db, since, src.limit); break;
+        case "evidence_mounting":    rows = harvestSchemeEscalation(db, since, src.limit); break;
       }
     } catch {
       /* table may not exist in some test envs; skip */
