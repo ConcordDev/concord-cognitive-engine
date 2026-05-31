@@ -49,7 +49,19 @@ interface NpcLite {
   reputation?: number;
   gratitude?: number;
   hostile?: boolean;
+  // Track 3 — mood tells: the NPC's OWN emotional state (not player-specific).
+  // `mood` is server-derived (npc-mood.js); a tense/breaking/coping NPC shows a
+  // glyph so distress is legible before dialogue (RimWorld "show the consequence").
+  mood?: string | null;
+  coping?: string | null;
 }
+
+// mood → a small glyph + tint above the activity tag (quiet for neutral/content).
+const MOOD_TELL: Record<string, { icon: string; tint: string; label: string }> = {
+  tense:    { icon: '〰', tint: '#e0a030', label: 'Tense' },
+  breaking: { icon: '!',  tint: '#e05050', label: 'Breaking down' },
+  coping:   { icon: '☍',  tint: '#b070d0', label: 'Coping' },
+};
 
 interface NPCActivityTagProps {
   npcs: NpcLite[];
@@ -147,6 +159,12 @@ export function NPCActivityTag({ npcs, playerPosition, enabled = true }: NPCActi
                 <span aria-hidden>{def.emoji}</span>
                 {dem && dem.icon && (
                   <span aria-hidden style={{ color: dem.tint, marginLeft: 3 }} title={dem.label}>{dem.icon}</span>
+                )}
+                {n.mood && MOOD_TELL[n.mood] && (
+                  <span aria-hidden style={{ color: MOOD_TELL[n.mood].tint, marginLeft: 3 }}
+                    title={n.coping ? `${MOOD_TELL[n.mood].label}: ${n.coping}` : MOOD_TELL[n.mood].label}>
+                    {MOOD_TELL[n.mood].icon}
+                  </span>
                 )}
               </div>
               <div className="mt-0.5 text-[8px] uppercase tracking-wide text-white/50">

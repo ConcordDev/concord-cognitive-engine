@@ -4,6 +4,7 @@
 import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
+import { moodFromStress } from "../lib/npc-mood.js";
 import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
 import { npcNameFromRow } from "../lib/npc-name.js";
 import { loadWorld, listWorlds, getActiveWorldForPlayer } from "../lib/world-loader.js";
@@ -731,9 +732,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
                  n.grief_level, n.criminal_rep, n.is_wanted, n.schedule_phase, n.job_type,
                  n.current_hp, n.max_hp, n.bounty, n.status_effects,
                  r.activity_kind AS routine_activity_kind,
-                 r.location_kind AS routine_location_kind
+                 r.location_kind AS routine_location_kind,
+                 st.stress AS npc_stress, st.coping_trait AS npc_coping
           FROM world_npcs n
           LEFT JOIN npc_routine_state r ON r.npc_id = n.id
+          LEFT JOIN npc_stress st ON st.npc_id = n.id
           WHERE n.world_id = ? AND n.is_dead = 0
           ORDER BY n.created_at ASC
           LIMIT 200
@@ -784,6 +787,13 @@ export default function createWorldsRouter({ requireAuth, db }) {
           maxHp:         r.max_hp        ?? 100,
           bounty:        r.bounty        ?? 0,
           statusEffects: _tryParseJSON(r.status_effects, []),
+          // Mood tells (Track 3): surface the NPC's own emotional state so the
+          // nameplate can show a coping tell (the drinker, the paranoid) — RimWorld
+          // "show the consequence" — without the player having to open dialogue.
+          // Not player-specific (that's the demeanor/grudge path).
+          stress:        r.npc_stress    ?? null,
+          coping:        r.npc_coping    || null,
+          mood:          moodFromStress(r.npc_stress, r.npc_coping),
         };
       });
 

@@ -4392,6 +4392,9 @@ export default function WorldLensPage() {
               name: n.name,
               currentActivity: (n as { currentActivity?: string | null }).currentActivity ?? null,
               position: { x: n.position.x, y: 0, z: (n.position as { z?: number }).z ?? 0 },
+              // Track 3 — mood tells from the /npcs payload (server-derived npc-mood).
+              mood: (n as { mood?: string | null }).mood ?? null,
+              coping: (n as { coping?: string | null }).coping ?? null,
             }))}
             playerPosition={{ x: playerAvatar.position.x, z: playerAvatar.position.z }}
           />
