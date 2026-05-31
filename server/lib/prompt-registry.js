@@ -574,7 +574,8 @@ Player Relationship: ${playerRelationship}
 Quest Context: ${questContext.questTitle || "none"} (step ${questContext.currentStep || 0})${
   npcTraits.persistent_grudge ? `\nPersistent grudge (color the tone; never recite it verbatim): ${npcTraits.persistent_grudge}` : ""}${
   npcTraits.current_preoccupation ? `\nCurrent preoccupation: ${npcTraits.current_preoccupation}` : ""}${
-  npcTraits.desire_for_this_player ? `\nWhat you quietly want from this player (surface only if it fits): ${npcTraits.desire_for_this_player}` : ""}
+  npcTraits.desire_for_this_player ? `\nWhat you quietly want from this player (surface only if it fits): ${npcTraits.desire_for_this_player}` : ""}${
+  npcTraits.cosmology ? `\nThe cosmology you embody (speak it as lived truth when it fits, never as an exposition dump): ${npcTraits.cosmology}` : ""}
 ${policyLine}
 Output this exact JSON structure:
 {

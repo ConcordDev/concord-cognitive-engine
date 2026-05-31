@@ -10509,6 +10509,9 @@ async function runMacro(domain, name, input, ctx) {
   // publicReadDomains: domain+name allowlist for read-only macros (Gate 2 of 3)
   // CRITICAL: Every frontend macro call domain must be listed here
   const publicReadDomains = {
+    // Wave 8b — the authored cosmology is the player-facing canon (hidden_truth
+    // stripped in the lib); the codex reads it without auth.
+    lore: new Set(["list", "get", "facets", "spine"]),
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
     // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
@@ -24273,6 +24276,12 @@ registerKnowledgeTradeMacros(register);
 // inserts beats; these macros let the player surface and resolve them.
 import registerBeatsMacros from "./domains/beats.js";
 registerBeatsMacros(register);
+
+// Wave 8b — the authored-cosmology read surface (the codex backend). Public-read
+// (the authored lore is the player-facing canon; hidden_truth is stripped in the
+// lib). list / get / facets / spine.
+import registerLoreMacros from "./domains/lore.js";
+registerLoreMacros(register);
 
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft

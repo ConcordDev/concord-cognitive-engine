@@ -2865,6 +2865,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['vehicle', 'horse', 'cart', 'glider', 'mount', 'spawn', 'carriage'],
   },
   {
+    id: 'codex',
+    name: 'Codex',
+    icon: BookOpen,
+    description: 'The cosmology & canon — Three Pillars, the Concord Link, every world’s history',
+    category: 'knowledge',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/codex',
+    order: 363,
+    keywords: ['codex', 'lore', 'cosmology', 'canon', 'pillars', 'concord', 'concordia', 'sovereign', 'history', 'myth'],
+  },
+  {
     id: 'reasoning-traces',
     name: 'HLR Traces',
     icon: Brain,
