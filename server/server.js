@@ -912,6 +912,15 @@ registerHeartbeat("realm-control-cycle", {
   handler: runRealmControlCycle,
 });
 
+// SL4 tail — periodic prune of expired user_active_effects (cook-engine only
+// pruned on cook; an idle world leaked dead rows). Pure GC. scope:'global'.
+import { runEffectsDecayCycle, EFFECTS_DECAY_FREQUENCY } from "./emergent/effects-decay-cycle.js";
+registerHeartbeat("effects-decay-cycle", {
+  frequency: EFFECTS_DECAY_FREQUENCY,
+  scope: "global",
+  handler: runEffectsDecayCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
