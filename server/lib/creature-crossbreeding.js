@@ -37,6 +37,7 @@ import { generateCreature, validateCreaturePhysics, WORLD_MODIFIERS, TOPOLOGIES 
 import { evolveSkill, getSkill, createSkill, attachSkills } from "./emergent-skills.js";
 import { fuseTwoSkills, skillFusionEnabled } from "./skill-fusion.js";
 import { deriveProfileFromBlueprint, blendMaterialProfile } from "./ecosystem/material-profiles.js";
+import { isTopologyRideable } from "./ecosystem/mount-eligibility.js";
 
 /**
  * WS4: derive a normalized skill descriptor { name, element, maxDamage, rangeM }
@@ -253,6 +254,12 @@ export function generateHybrid(db, { a, b, environment = null, generation = 1 })
   // Inherited skills: union of parent skill sets, deduped, capped at 16.
   const inheritedSkillIds = [...new Set([...(a.skillIds ?? []), ...(b.skillIds ?? [])])].slice(0, 16);
   blueprint.skillIds = inheritedSkillIds;
+
+  // Wave 7a glue #6 — a bred hybrid of a rideable body plan (quadruped /
+  // winged-quadruped, adequate mass) is mount-eligible, closing tame→breed→mount.
+  // Stamped on the blueprint here so it persists in creature_lineage.blueprint;
+  // markCompanionMountableForHybrid reads it when the hybrid is later tamed.
+  blueprint.mountEligible = isTopologyRideable(topology, mass);
 
   // Stability — measure parent divergence:
   //   topology distance + world difference + mass ratio

@@ -2215,6 +2215,35 @@ export default function createWorldsRouter({ requireAuth, db }) {
         }
       } catch { /* potency disabled / no native stamp — neutral pass-through */ }
 
+      // Wave 7a glue #4 — mounted combat overlay. When the attacker is mounted
+      // (combat_actor_state.mount_state set by mount/dismount), apply the mount
+      // archetype's charge tilt (speed_factor) to finalDamage POST-CAP — the same
+      // blessed pattern as the env boost above (the cap stays a bound on RAW
+      // damage; mounted charge momentum can legitimately exceed it, clamped to the
+      // overlay's own ≤2× bound). `damageResult.mounted` rides into the response +
+      // the impact emit so the existing mounted-combat overlay UI reacts. Before
+      // this, the attack path never read mount_state → mounted damage was
+      // unmodified. KS CONCORD_MOUNT_COMBAT=0.
+      if (process.env.CONCORD_MOUNT_COMBAT !== "0") {
+        try {
+          const { readMountState, MOUNTED_MODIFIER } = await import("../lib/mount-combat-overlay.js");
+          const ms = readMountState(db, "player", userId);
+          if (ms && ms.mounted_modifier_active && Number.isFinite(damageResult.finalDamage)) {
+            const archetype = ms.archetype || "generic";
+            const mod = MOUNTED_MODIFIER[archetype] || MOUNTED_MODIFIER.generic;
+            const speedFactor = Math.max(0.5, Math.min(2.0, mod.speed_factor || 1.0));
+            if (speedFactor !== 1.0) {
+              damageResult.finalDamage = Math.round(damageResult.finalDamage * speedFactor * 10) / 10;
+            }
+            damageResult.mounted = {
+              archetype,
+              speedFactor,
+              finishers: (mod.mounted_finishers || []).slice(),
+            };
+          }
+        } catch { /* overlay disabled / mount_state column missing — neutral pass-through */ }
+      }
+
       // ── Concordia Phase 3: mass-based combat physics ───────────────────────
       // After env amplification, fold in attacker/target mass ratio clamped
       // to [0.7, 1.4]. A 6'5" Sanguire striking a 5' Medici lands harder

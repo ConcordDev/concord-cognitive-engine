@@ -1769,16 +1769,45 @@ export default function AvatarSystem3D({
         const result = json?.result;
         const activeMounts = result?.active ?? [];
         if (Array.isArray(activeMounts) && activeMounts.length > 0) {
-          const active = activeMounts[0] as { mount_companion_id: string; seat_offset_json?: string };
-          // Resolve species via mounts.get_species if needed; otherwise build a default.
+          const active = activeMounts[0] as {
+            mount_companion_id: string;
+            seat_offset_json?: string;
+            seatOffset?: { x: number; y: number; z: number; yaw?: number } | null;
+            species?: { size_class?: 'small' | 'medium' | 'large' | 'huge'; display_name?: string; coat_color?: string } | null;
+          };
+          // Wave 7a glue #2 — build from the REAL species the macro now ships
+          // (not a hardcoded 'Steed'), seat-offset-aware, and FOLLOW the player
+          // instead of freezing at a static +1.2m. The mount tracks the rider's
+          // position + heading each frame and ticks its gait by actual speed.
+          // NOTE (chair-verified follow-on): the rider astride-seat pose —
+          // lifting the player onto the saddle via rider-ik.computeRiderIkTargets
+          // + rein-hand FABRIK — interacts with the locomotion ground-clamp and
+          // is tuned visually in the next slice; this slice makes the mount
+          // appear, correct, and attached (today it never spawned at all).
+          const sp = active.species || { size_class: 'medium' as const, display_name: 'Steed' };
+          const seat = active.seatOffset || { x: 0, y: 1.4, z: 0, yaw: 0 };
           const { createMountGroup } = await import('@/components/concordia/mounts/MountAvatar3D');
-          const m = createMountGroup(THREE, { species: { size_class: 'medium', display_name: 'Steed' }, coatColor: '#8b5e3c' });
+          const m = createMountGroup(THREE, { species: sp, coatColor: sp.coat_color || '#8b5e3c' });
           m.group.position.copy(playerMesh.position);
-          m.group.position.x += 1.2;
+          m.setRotation(playerMesh.rotation.y);
           avatarGroup.add(m.group);
-          // Tick the mount via the eyeTickersRef registry which the
-          // frame loop already iterates.
-          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => m.tick(dt, 1.0));
+          // Follow the rider: seat the mount horizontally under the rider via the
+          // species seat offset (inverse of computeSaddleAnchor), yaw-aligned,
+          // gait ticked by movement speed. Registered in the frame-loop ticker.
+          const prev = playerMesh.position.clone();
+          eyeTickersRef.current.set(`mount:${active.mount_companion_id}`, (dt) => {
+            const speed = prev.distanceTo(playerMesh.position) / Math.max(dt, 1e-3);
+            prev.copy(playerMesh.position);
+            const yaw = playerMesh.rotation.y;
+            const cos = Math.cos(yaw), sin = Math.sin(yaw);
+            m.group.position.set(
+              playerMesh.position.x - (seat.x * cos - seat.z * sin),
+              playerMesh.position.y,
+              playerMesh.position.z - (seat.x * sin + seat.z * cos),
+            );
+            m.setRotation(yaw);
+            m.tick(dt, Math.min(speed, 6));
+          });
           enhancedDisposeRef.current.set(`mount:${active.mount_companion_id}`, m.dispose);
         }
       } catch { /* mounts optional */ }
