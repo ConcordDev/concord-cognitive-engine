@@ -29,7 +29,7 @@ function setup() {
       user_id TEXT NOT NULL,
       subject_kind TEXT NOT NULL,
       subject_id TEXT NOT NULL,
-      anticipated_prose TEXT,
+      anticipated TEXT,
       composed_at INTEGER NOT NULL DEFAULT (unixepoch()),
       expires_at INTEGER NOT NULL DEFAULT (unixepoch() + 86400),
       realised_at INTEGER
@@ -64,7 +64,7 @@ test("active quest is the highest-priority source", () => {
     .run("u1", "tunya", "Find the Sealie",
       JSON.stringify([{ id: "step1", description: "Travel north", position: { x: 100, z: 200 }, complete: false }]));
   db.prepare(`INSERT INTO world_npcs (id, world_id, x, z) VALUES (?, ?, ?, ?)`).run("voss", "tunya", 50, 60);
-  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated_prose) VALUES (?,?,?,?)`)
+  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated) VALUES (?,?,?,?)`)
     .run("u1", "npc", "voss", "you feel pulled toward Voss");
   db.prepare(`INSERT INTO lattice_born_quests (drift_alert_signature, world_id) VALUES (?,?)`)
     .run("sigA", "tunya");
@@ -78,7 +78,7 @@ test("active quest is the highest-priority source", () => {
 test("premonition wins when no active quest", () => {
   const db = setup();
   db.prepare(`INSERT INTO world_npcs (id, world_id, x, z) VALUES (?, ?, ?, ?)`).run("voss", "tunya", 75, 125);
-  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated_prose) VALUES (?,?,?,?)`)
+  db.prepare(`INSERT INTO forward_predictions (user_id, subject_kind, subject_id, anticipated) VALUES (?,?,?,?)`)
     .run("u1", "npc", "voss", "you have a feeling about Voss");
 
   const obj = getActiveObjective(db, "u1", "tunya");

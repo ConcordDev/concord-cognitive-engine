@@ -105,18 +105,13 @@ export function getSkillTreeForActor(db, actorKind, actorId) {
   // real migration-126 schema keys revisions by recipe_dtu_id + author_kind/
   // author_id (skill_kind, not a catalog skill), which does not map cleanly to
   // the catalog lattice — so we skip it there rather than throw.
-  if (tableExists(db, "skill_revisions") && columnExists(db, "skill_revisions", "skill_id")) {
-    const hasMastery = columnExists(db, "skill_revisions", "mastery_score");
-    const masterySel = hasMastery ? "MAX(mastery_score)" : "0";
-    const rows = actorKind === "player"
-      ? db.prepare(`
-          SELECT skill_id, MAX(revision_num) AS latest_rev, ${masterySel} AS best_mastery
-          FROM skill_revisions WHERE owner_user_id = ? GROUP BY skill_id
-        `).all(actorId)
-      : db.prepare(`
-          SELECT skill_id, MAX(revision_num) AS latest_rev, ${masterySel} AS best_mastery
-          FROM skill_revisions WHERE npc_id = ? GROUP BY skill_id
-        `).all(actorId);
+  // skill_revisions keys a skill by its recipe_dtu_id; the author (player|npc) is
+  // (author_kind, author_id). Revision count is the level proxy; no mastery column.
+  if (tableExists(db, "skill_revisions")) {
+    const rows = db.prepare(`
+      SELECT recipe_dtu_id AS skill_id, MAX(revision_num) AS latest_rev, 0 AS best_mastery
+      FROM skill_revisions WHERE author_kind = ? AND author_id = ? GROUP BY recipe_dtu_id
+    `).all(actorKind, actorId);
     for (const r of rows) {
       const prev = skills[r.skill_id];
       skills[r.skill_id] = {
@@ -133,8 +128,8 @@ export function getSkillTreeForActor(db, actorKind, actorId) {
   // npc_skill_acquisitions (mentorship-driven)
   if (tableExists(db, "npc_skill_acquisitions") && actorKind === "npc") {
     const rows = db.prepare(`
-      SELECT skill_id, MAX(level) AS level FROM npc_skill_acquisitions
-      WHERE npc_id = ? GROUP BY skill_id
+      SELECT recipe_dtu_id AS skill_id, COUNT(*) AS level FROM npc_skill_acquisitions
+      WHERE buyer_npc_id = ? GROUP BY recipe_dtu_id
     `).all(actorId);
     for (const r of rows) {
       if (!skills[r.skill_id]) {

@@ -125,9 +125,8 @@ function patchDtuMeta(db, dtuId, patch) {
     if (cols.has("data")) {
       db.prepare(`UPDATE dtus SET data = ? WHERE id = ?`).run(JSON.stringify(merged), dtuId);
     }
-    if (patch.scope && cols.has("scope")) {
-      db.prepare(`UPDATE dtus SET scope = ? WHERE id = ?`).run(patch.scope, dtuId);
-    }
+    // (scope is folded into the data blob above; dtus has no scope column —
+    // the public/private projection below uses the real visibility column.)
     if (patch.scope && cols.has("visibility")) {
       db.prepare(`UPDATE dtus SET visibility = ? WHERE id = ?`)
         .run(patch.scope === "public" ? "marketplace" : "private", dtuId);

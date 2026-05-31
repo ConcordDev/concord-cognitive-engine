@@ -81,7 +81,7 @@ jobs:
           # NOT all hard bugs). The --ci floor ratchets DOWN as the queue is worked;
           # it fails the build only if NEW drift is introduced above the floor.
           node scripts/verify-schema-drift.mjs
-          node scripts/verify-schema-drift.mjs --ci 26
+          node scripts/verify-schema-drift.mjs --ci 15
 
       - name: Render-parity gate (static appearance layer)
         run: |

@@ -16,7 +16,7 @@ const REPAIR_COST_RATE = 0.4;
 export function repairBuilding(db, userId, buildingId, { fraction = 0.3 } = {}) {
   if (!db || !userId || !buildingId) return { ok: false, reason: "missing_inputs" };
   const b = db.prepare(`
-    SELECT id, owner_user_id, kingdom_id, state, health_pct, build_cost
+    SELECT id, owner_id AS owner_user_id, kingdom_id, state, health_pct, build_cost
     FROM world_buildings WHERE id = ?
   `).get(buildingId);
   if (!b) return { ok: false, reason: "building_not_found" };

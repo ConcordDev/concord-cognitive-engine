@@ -53,7 +53,7 @@ export function getActiveObjective(db, userId, worldId) {
   // Forward-sim premonition — second-tier, only if no quest active.
   try {
     const row = db.prepare(`
-      SELECT id, subject_kind, subject_id, anticipated_prose
+      SELECT id, subject_kind, subject_id, anticipated AS anticipated_prose
       FROM forward_predictions
       WHERE user_id = ?
         AND realised_at IS NULL
