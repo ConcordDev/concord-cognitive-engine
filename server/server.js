@@ -1355,6 +1355,7 @@ import {
   getRepairMemoryStats,
   getAllRepairPatterns,
   getRecentRepairDTUs,
+  configureRepairPersistence,
   startGuardian,
   stopGuardian,
   getGuardianStatus,
@@ -53038,6 +53039,9 @@ structuredLog("info", "module_loaded", { detail: "ATS: Affect API endpoints regi
 // ═══════════════════════════════════════════════════════════════════════════════
 
 try {
+  // Maintenance A — make Repair Memory durable: learned fixes mirror to
+  // repair_knowledge so they survive a restart (guarded; no-op if the table is absent).
+  try { configureRepairPersistence(db); } catch { /* persistence optional */ }
   startGuardian();
   structuredLog("info", "module_loaded", { detail: "Repair Cortex: Prophet + Surgeon + Guardian initialized" });
 } catch (e) {

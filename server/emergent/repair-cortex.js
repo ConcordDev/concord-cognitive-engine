@@ -37,6 +37,13 @@ import path from "path";
 import logger from '../logger.js';
 import { queues, PRIORITIES } from '../requestQueue.js';
 import { LruMap, LruSet } from "../lib/lru-map.js";
+import { persistRepairEntry, loadRepairEntry } from "../lib/repair-memory-store.js";
+
+// Maintenance A — durable Repair Memory. When a db is configured, learned
+// patterns mirror to mig-030 repair_knowledge so the cortex's learning survives
+// a restart. Default null = pure in-memory (today's behaviour).
+let _persistDb = null;
+export function configureRepairPersistence(db) { _persistDb = db || null; }
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 
 const execAsync = promisify(execCb);
@@ -223,6 +230,7 @@ export function addToRepairMemory(errorPattern, fix) {
       });
     }
     _syncRepairMemoryToSTATE();
+    if (_persistDb) persistRepairEntry(_persistDb, key, _repairMemory.get(key));
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
 
@@ -235,6 +243,7 @@ export function recordRepairSuccess(errorPattern) {
       entry.successes++;
       entry.successRate = entry.successes / entry.occurrences;
       _syncRepairMemoryToSTATE();
+      if (_persistDb) persistRepairEntry(_persistDb, key, entry);
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -252,6 +261,7 @@ export function recordRepairFailure(errorPattern) {
         entry.deprecated = true;
       }
       _syncRepairMemoryToSTATE();
+      if (_persistDb) persistRepairEntry(_persistDb, key, entry);
     }
   } catch (_e) { logger.debug('emergent:repair-cortex', 'silent', { error: _e?.message }); }
 }
@@ -260,7 +270,13 @@ export function lookupRepairMemory(errorPattern) {
   try {
     _ensureRepairMemory();
     const key = hashPattern(errorPattern);
-    const entry = _repairMemory.get(key);
+    let entry = _repairMemory.get(key);
+    // Maintenance A — cold-cache fallback: after a restart the in-memory map is
+    // empty; rehydrate the learned fix from repair_knowledge.
+    if (!entry && _persistDb) {
+      const loaded = loadRepairEntry(_persistDb, key);
+      if (loaded) { _repairMemory.set(key, loaded); entry = loaded; }
+    }
     if (entry && !entry.deprecated && entry.successRate > 0.5) {
       return entry.fix;
     }
