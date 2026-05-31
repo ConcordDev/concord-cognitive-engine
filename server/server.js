@@ -148,6 +148,17 @@ registerHeartbeat("water-flow-cycle", {
   handler: ({ db } = {}) => runWaterFlowCycle({ db, io: REALTIME?.io }),
 });
 
+// Maintenance — the Homeostasis heartbeat (autonomic loop 3). Slow cadence
+// (~4h, scope global): auto-heals mechanical world pathologies (stuck schedulers)
+// and escalates value/arc ones into the Sovereign inbox (never auto-mutates value).
+// KS CONCORD_WORLD_HEALTH=0. Handler receives db from the dispatcher.
+import { runWorldHealthMonitor } from "./emergent/world-health-monitor.js";
+registerHeartbeat("world-health-monitor", {
+  frequency: 960,
+  scope: "global",
+  handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";

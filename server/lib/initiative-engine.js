@@ -28,6 +28,9 @@ const TRIGGER_TYPES = Object.freeze([
   "world_event",
   "reflective_followup",
   "morning_context",
+  // Maintenance — the autonomic cortex escalates a value/arc pathology it will
+  // NOT auto-heal into the Sovereign's inbox (world-health-monitor).
+  "system_repair_escalation",
 ]);
 
 const PRIORITY_LEVELS = Object.freeze(["low", "normal", "high", "urgent"]);
@@ -52,6 +55,7 @@ const TRIGGER_PRIORITY_WEIGHTS = Object.freeze({
   world_event: 0.9,
   reflective_followup: 0.5,
   morning_context: 0.4,
+  system_repair_escalation: 0.85,
 });
 
 /** Minimum gap in milliseconds between initiatives (4 hours) */
