@@ -24,6 +24,9 @@ export interface ClientConfig {
     courtshipFrameMs: number; footprintFrameMs: number;
     npcActivityFrameMs: number; nemesisFrameMs: number; dangerBandFrameMs: number; contextPromptFrameMs: number;
   };
+  flags: {
+    worldDensity: boolean;
+  };
 }
 
 export const CLIENT_CONFIG_DEFAULTS: ClientConfig = {
@@ -38,6 +41,9 @@ export const CLIENT_CONFIG_DEFAULTS: ClientConfig = {
     courtshipFrameMs: 100, footprintFrameMs: 200,
     npcActivityFrameMs: 80, nemesisFrameMs: 80, dangerBandFrameMs: 500, contextPromptFrameMs: 80,
   },
+  flags: {
+    worldDensity: false,
+  },
 };
 
 // Module-level cache so every component shares one fetch.
@@ -50,6 +56,7 @@ function deepMerge(base: ClientConfig, over: Partial<ClientConfig> | null | unde
   return {
     poll: { ...base.poll, ...(over.poll || {}) },
     throttle: { ...base.throttle, ...(over.throttle || {}) },
+    flags: { ...base.flags, ...(over.flags || {}) },
   };
 }
 
@@ -67,6 +74,17 @@ async function fetchConfig(): Promise<ClientConfig> {
     return _cached;
   })();
   return _inflight;
+}
+
+/**
+ * Synchronous accessor for non-hook contexts (e.g. the Three.js building
+ * renderer, which runs outside React). Returns the last-fetched config or the
+ * baked defaults. Kicks off the fetch if it hasn't happened yet so a later
+ * read picks up the live values.
+ */
+export function getClientConfigSync(): ClientConfig {
+  if (!_cached && !_inflight) { try { fetchConfig(); } catch { /* noop */ } }
+  return _cached || CLIENT_CONFIG_DEFAULTS;
 }
 
 /** Returns the merged client config, defaults-first then live values after fetch. */

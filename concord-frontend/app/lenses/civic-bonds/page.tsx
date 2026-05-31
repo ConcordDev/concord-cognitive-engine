@@ -47,7 +47,7 @@ export default function CivicBondsLens() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await lensRun<{ ok: boolean; reason?: string; bonds?: Bond[] }>('civic_bonds', 'list', { worldId });
+      const r = (await lensRun<{ ok: boolean; reason?: string; bonds?: Bond[] }>('civic_bonds', 'list', { worldId })).data.result;
       if (r?.reason === 'disabled') { setDisabled(true); setBonds([]); }
       else { setDisabled(false); setBonds(r?.bonds || []); }
     } catch { setNote('Failed to load bonds.'); }
@@ -59,7 +59,7 @@ export default function CivicBondsLens() {
   const act = useCallback(async (action: string, input: Record<string, unknown>) => {
     setNote(null);
     try {
-      const r = await lensRun<{ ok: boolean; reason?: string }>('civic_bonds', action, input);
+      const r = (await lensRun<{ ok: boolean; reason?: string }>('civic_bonds', action, input)).data.result;
       if (!r?.ok) setNote(`${action}: ${r?.reason || 'failed'}`);
       else setNote(`${action} ✓`);
       await refresh();
