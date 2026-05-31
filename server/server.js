@@ -895,6 +895,14 @@ registerHeartbeat("civic-bond-cycle", {
   handler: runCivicBondCycle,
 });
 
+// Wave 3 — viability dynamics: V→0 feeds world-crisis (kill-switch CONCORD_VIABILITY).
+import { runViabilityCycle, VIABILITY_CYCLE_FREQUENCY } from "./emergent/viability-cycle.js";
+registerHeartbeat("viability-cycle", {
+  frequency: VIABILITY_CYCLE_FREQUENCY,
+  scope: "world",
+  handler: runViabilityCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
