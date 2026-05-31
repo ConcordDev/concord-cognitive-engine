@@ -74887,9 +74887,9 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
     // Get revision counts per NPC over the last N hours.
     const cutoff = Math.floor(Date.now() / 1000) - (Number(windowHours) * 3600);
     const rows = db.prepare(`
-      SELECT npc_id, COUNT(*) AS rev_count
-      FROM skill_revisions WHERE created_at >= ?
-      GROUP BY npc_id
+      SELECT author_id AS npc_id, COUNT(*) AS rev_count
+      FROM skill_revisions WHERE created_at >= ? AND author_kind = 'npc'
+      GROUP BY author_id
     `).all(cutoff).filter((r) => r.npc_id);
     if (rows.length === 0) return { ok: true, scanned: 0, alerts: [] };
     const counts = rows.map(r => r.rev_count);
@@ -74904,9 +74904,9 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
         let mentor = null;
         try {
           const m = db.prepare(`
-            SELECT author_user_id, COUNT(*) AS n FROM skill_revisions
-            WHERE npc_id = ? AND created_at >= ?
-            GROUP BY author_user_id ORDER BY n DESC LIMIT 1
+            SELECT author_id AS author_user_id, COUNT(*) AS n FROM skill_revisions
+            WHERE author_id = ? AND created_at >= ?
+            GROUP BY author_id ORDER BY n DESC LIMIT 1
           `).get(r.npc_id, cutoff);
           mentor = m?.author_user_id || null;
         } catch { /* skill_revisions schema may differ */ }

@@ -264,7 +264,7 @@ export default function registerDxMacros(register, STATE) {
     try {
       const row = db.prepare(`
         SELECT COUNT(*) AS c FROM economy_ledger
-         WHERE user_id = ? AND type = 'debit' AND amount > 0
+         WHERE from_user_id = ? AND type = 'debit' AND amount > 0
       `).get(userId);
       firstDebit = (row?.c ?? 0) > 0;
     } catch { /* schema may differ across envs */ }

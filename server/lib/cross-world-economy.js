@@ -81,8 +81,8 @@ export function recomputeWorldEconomyState(db, worldId) {
     npcStats = db.prepare(`
       SELECT
         COUNT(*) AS pop,
-        COALESCE(AVG(json_extract(meta_json, '$.starting_sparks')), 0) AS avg_sparks,
-        COALESCE(SUM(json_extract(meta_json, '$.starting_sparks')), 0) AS total_sparks
+        COALESCE(AVG(wealth_sparks), 0) AS avg_sparks,
+        COALESCE(SUM(wealth_sparks), 0) AS total_sparks
       FROM world_npcs
       WHERE world_id = ?
     `).get(worldId);
@@ -96,7 +96,7 @@ export function recomputeWorldEconomyState(db, worldId) {
   try {
     flowCount = db.prepare(`
       SELECT COUNT(*) AS c FROM economy_flows
-      WHERE world_id = ? AND created_at > unixepoch() - 86400
+      WHERE world_id = ? AND occurred_at > unixepoch() - 86400
     `).get(worldId)?.c || 0;
   } catch {
     flowCount = 0;

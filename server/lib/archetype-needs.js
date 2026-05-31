@@ -45,10 +45,12 @@ export function getArchetypeNeeds(db, worldId, factionId) {
 
   // 2. Economy flow → traders + scholars in demand.
   try {
+    // economy_flows is npc-keyed (no faction column) with occurred_at; count
+    // world-wide recent economic flow as the demand proxy.
     const r = db.prepare(`
       SELECT COUNT(*) AS n FROM economy_flows
-      WHERE world_id = ? AND faction = ? AND ts >= ?
-    `).get(worldId, factionId, since);
+      WHERE world_id = ? AND occurred_at >= ?
+    `).get(worldId, since);
     const flows = Number(r?.n) || 0;
     if (flows > 30) {
       needs.trader  += 2;
@@ -62,7 +64,7 @@ export function getArchetypeNeeds(db, worldId, factionId) {
   try {
     const r = db.prepare(`
       SELECT COUNT(*) AS n FROM npc_conversations
-      WHERE world_id = ? AND started_at >= ?
+      WHERE world_id = ? AND opened_at >= ?
     `).get(worldId, since);
     const conv = Number(r?.n) || 0;
     if (conv > 15) {
@@ -73,10 +75,12 @@ export function getArchetypeNeeds(db, worldId, factionId) {
 
   // 4. Active schemes → hunters + scholars.
   try {
+    // npc_schemes isn't world-scoped and uses resolved_at (no status column);
+    // an unresolved scheme is "active".
     const r = db.prepare(`
       SELECT COUNT(*) AS n FROM npc_schemes
-      WHERE world_id = ? AND status = 'active'
-    `).get(worldId);
+      WHERE resolved_at IS NULL
+    `).get();
     const schemes = Number(r?.n) || 0;
     if (schemes > 8) {
       needs.hunter  += 2;

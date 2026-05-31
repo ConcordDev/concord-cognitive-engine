@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-31T22:32:28.270Z",
+  "generatedAt": "2026-05-31T22:37:33.472Z",
   "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 76,
-  "violationCount": 76,
+  "floor": 62,
+  "violationCount": 62,
   "violations": [
     {
       "file": "server/domains/crisis.js",
@@ -12,13 +12,6 @@
       "kind": "ghost_table",
       "table": "user_skills",
       "column": null
-    },
-    {
-      "file": "server/domains/dx.js",
-      "line": 265,
-      "kind": "column",
-      "table": null,
-      "column": "user_id"
     },
     {
       "file": "server/domains/ghost-hunt.js",
@@ -133,13 +126,6 @@
       "column": null
     },
     {
-      "file": "server/emergent/nemesis-cycle.js",
-      "line": 124,
-      "kind": "column",
-      "table": null,
-      "column": "from_npc_id"
-    },
-    {
       "file": "server/emergent/npc-perception-snapshot.js",
       "line": 53,
       "kind": "ghost_table",
@@ -168,20 +154,6 @@
       "column": null
     },
     {
-      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
-      "line": 100,
-      "kind": "column",
-      "table": null,
-      "column": "owner_npc_id"
-    },
-    {
-      "file": "server/emergent/npc-vs-npc-combat-cycle.js",
-      "line": 101,
-      "kind": "column",
-      "table": null,
-      "column": "owner_npc_id"
-    },
-    {
       "file": "server/emergent/personal-beat-scheduler.js",
       "line": 46,
       "kind": "column",
@@ -194,13 +166,6 @@
       "kind": "ghost_table",
       "table": "city_presence",
       "column": null
-    },
-    {
-      "file": "server/emergent/world-population-cycle.js",
-      "line": 259,
-      "kind": "column",
-      "table": null,
-      "column": "id"
     },
     {
       "file": "server/lib/account-lifecycle.js",
@@ -222,27 +187,6 @@
       "kind": "ghost_table",
       "table": "citations",
       "column": null
-    },
-    {
-      "file": "server/lib/archetype-needs.js",
-      "line": 48,
-      "kind": "column",
-      "table": null,
-      "column": "faction"
-    },
-    {
-      "file": "server/lib/archetype-needs.js",
-      "line": 63,
-      "kind": "column",
-      "table": null,
-      "column": "started_at"
-    },
-    {
-      "file": "server/lib/archetype-needs.js",
-      "line": 76,
-      "kind": "column",
-      "table": null,
-      "column": "world_id"
     },
     {
       "file": "server/lib/audit/provenance.js",
@@ -294,32 +238,11 @@
       "column": "user_id"
     },
     {
-      "file": "server/lib/cross-world-economy.js",
-      "line": 81,
-      "kind": "column",
-      "table": null,
-      "column": "meta_json"
-    },
-    {
-      "file": "server/lib/cross-world-economy.js",
-      "line": 97,
-      "kind": "column",
-      "table": null,
-      "column": "created_at"
-    },
-    {
       "file": "server/lib/cross-world-feed.js",
       "line": 108,
       "kind": "ghost_table",
       "table": "world_events",
       "column": null
-    },
-    {
-      "file": "server/lib/cross-world-schemes.js",
-      "line": 266,
-      "kind": "column",
-      "table": null,
-      "column": "world_id"
     },
     {
       "file": "server/lib/dtu-portability.js",
@@ -348,13 +271,6 @@
       "kind": "ghost_table",
       "table": "faction_members",
       "column": null
-    },
-    {
-      "file": "server/lib/embodied/weaponise-triggers.js",
-      "line": 106,
-      "kind": "column",
-      "table": null,
-      "column": "name"
     },
     {
       "file": "server/lib/emergents/quality/deterministic-gates.js",
@@ -523,20 +439,6 @@
       "kind": "ghost_table",
       "table": "city_presence",
       "column": null
-    },
-    {
-      "file": "server/server.js",
-      "line": 74889,
-      "kind": "column",
-      "table": null,
-      "column": "npc_id"
-    },
-    {
-      "file": "server/server.js",
-      "line": 74906,
-      "kind": "column",
-      "table": null,
-      "column": "author_user_id"
     }
   ]
 }

@@ -263,8 +263,8 @@ export function applyCrossWorldResolution(db, sch, _opts = {}) {
     }
     case "sabotage_decree": {
       try {
-        db.prepare(`UPDATE realm_decrees SET effect_state = 'sabotaged' WHERE id = ? AND world_id = ?`)
-          .run(sch.target_id, sch.target_world_id);
+        db.prepare(`UPDATE realm_decrees SET effect_state = 'sabotaged' WHERE id = ?`)
+          .run(sch.target_id);
       } catch { /* realm_decrees may not have world_id in this test setup */ }
       recordConsequence(db, sch.id, sch.target_world_id, "opinion_shift",
         "kingdom", sch.target_id, `decree ${sch.target_id} sabotaged from ${sch.plotter_world_id}`);
