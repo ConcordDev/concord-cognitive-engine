@@ -525,6 +525,12 @@ export default function ConcordiaScene({
       }
       // Sentinel so other systems can branch on the active backend.
       (renderer as unknown as { __isWebGPU?: boolean }).__isWebGPU = useWebGPU;
+      // Track 2 — register the renderer so the KTX2/Basis texture loader can
+      // detectSupport() and decode GPU-compressed textures when present.
+      try {
+        const { registerRendererForKtx2 } = await import('@/lib/world-lens/texture-loader');
+        registerRendererForKtx2(renderer);
+      } catch { /* KTX2 optional */ }
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, settings.pixelRatio));
       renderer.setSize(canvas!.clientWidth, canvas!.clientHeight);
       // Phase AA — mount Stats.js widget when ?perf=1 or NODE_ENV=development.

@@ -36,6 +36,7 @@
 
 import type * as THREE_NS from 'three';
 import type { PBRTextureSet, ProceduralKind } from './procedural-texture';
+import { loadTexture } from './texture-loader';
 
 const AUTHORED_CACHE = new Map<string, Promise<Partial<PBRTextureSet>>>();
 const LENS_DTU_CACHE = new Map<string, Promise<Partial<PBRTextureSet>>>();
@@ -46,18 +47,9 @@ async function tryLoad(
   THREE: typeof THREE_NS,
   url: string,
 ): Promise<THREE_NS.Texture | null> {
-  return new Promise((resolve) => {
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      url,
-      (tex) => {
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        resolve(tex);
-      },
-      undefined,
-      () => resolve(null),
-    );
-  });
+  // Routes .ktx2 through the KTX2/Basis loader (mipmapped, anisotropic) and
+  // PNG/JPG through TextureLoader — identical to the prior path for raster.
+  return loadTexture(THREE, url);
 }
 
 /**
@@ -100,15 +92,8 @@ async function loadLensDtu(
       } catch {
         return null;
       }
-      return new Promise((resolve) => {
-        const loader = new THREE.TextureLoader();
-        loader.load(
-          assetUrl as string,
-          (tex) => { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; resolve(tex); },
-          undefined,
-          () => resolve(null),
-        );
-      });
+      // KTX2-aware: an authored DTU served as .ktx2 decodes GPU-compressed.
+      return loadTexture(THREE, assetUrl as string);
     };
     const [albedo, normal, roughness, ao] = await Promise.all([
       resolveOne('color'),
