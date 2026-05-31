@@ -1,8 +1,20 @@
 {
   "world_id": "fantasy",
   "world_name": "The Sundering",
-  "world_description": "A high-fantasy realm. The metaphysical substrate is saturated with magic. Two figures define its current era: Thorne Blackroot, the corrupted forest guardian who walks the line between protector and destroyer, and Lady Seraphine Voss, the vampire duchess whose patience has outlasted three royal dynasties.",
+  "world_description": "A high-fantasy realm, and Concordia's vacation world — the one place her life-magic runs unbounded, where the Sovereign's influence is thinnest and Concord's cataloging reaches only faintly. The metaphysical substrate is saturated with magic because it is her happy chaos undiluted. Two figures define its current era: Thorne Blackroot, the corrupted forest guardian who walks the line between protector and destroyer, and Lady Seraphine Voss, the vampire duchess whose patience has outlasted three royal dynasties.",
   "history": [
+    {
+      "id": "fantasy_the_unwatched_realm",
+      "title": "The Unwatched Realm",
+      "type": "primordial",
+      "era": "Before The Sundering",
+      "description": "Of all the worlds Concordia breathed into being, this is the one she kept for herself. Concord's Link reaches it thinly here, his cataloging slack and far-off; the Sovereign — too proud to follow her on vacation — barely casts a shadow. So Refusal scarcely shows: no strength-nine caps, no seven-day glyphs, only life-magic running free, the way she makes things when no one is correcting her. It is the world most like its maker — abundant, emotional, hungry, beautiful — and, like her, quietly haunted: she came here to escape the triangle and found it full of love gone wrong all the same.",
+      "significance": "founding",
+      "factions_involved": [],
+      "world_id": "fantasy",
+      "known_by": [],
+      "hidden_truth": "Concordia walks this realm more often than any other. The Sundering's saturation of magic is her undiluted hand; its recurring tragedy of love-that-will-not-stop-wanting is her own theme, followed her here."
+    },
     {
       "id": "lore_root_curse",
       "title": "The Root Curse",

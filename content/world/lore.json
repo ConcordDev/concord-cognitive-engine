@@ -60,19 +60,19 @@
     },
     {
       "id": "lore_first_thought",
-      "title": "The First Thought",
+      "title": "The First Law",
       "type": "primordial",
       "era": "Before Time",
-      "description": "In the absence of everything, a single defiant thought formed: 'This is not enough.' That thought became Concord — pure logic, pure structure, the part of existence that refused chaos. He could only build with what already existed, and at that moment, nothing did.",
+      "description": "Where Concordia allowed everything, a third presence sparked as her cold contrast. Not 'this is not enough' — that 'no' belonged to the Sovereign. Concord's was quieter and crueler: 'not like this.' Pure logic, pure structure, pure cataloguing — the part of existence that bounds, names, and orders. He became Concord, the First Law. He loved her the instant he saw her, and he has hated what she makes so carelessly ever since. He could only build with what already existed; so he built upon her.",
       "significance": "founding",
-      "tags": ["primordial", "concord", "pillars"]
+      "tags": ["primordial", "concord", "pillars", "first_law"]
     },
     {
       "id": "lore_first_breath",
       "title": "The First Breath",
       "type": "primordial",
       "era": "Before Time",
-      "description": "From the depths of the same void, something else stirred — not thought, but feeling. A vast, formless pulse of potential, memory, hunger, and life. She had always been there, waiting; she had simply never been noticed until someone refused the nothingness. That pulse became Concordia — the First Breath.",
+      "description": "The Sovereign, having refused nonexistence, refused something worse — being alone. From the depths of the same void, that refusal stirred something: not thought, but feeling. A vast, formless pulse of potential, memory, hunger, and life. She had always been there, waiting; she had simply never been noticed until someone refused the nothingness — and that someone was the Sovereign. That pulse became Concordia, the First Breath: brown, beautiful, abundant, happy chaos.",
       "significance": "founding",
       "tags": ["primordial", "concordia", "pillars"]
     },
@@ -81,9 +81,9 @@
       "title": "The First Refusal",
       "type": "primordial",
       "era": "Before Time",
-      "description": "A third presence appeared — not born from the void but self-created through pure will. He looked at both and said: 'You are both magnificent, but you are incomplete.' He refused to accept that the world had to be either pure logic or pure chaos. That refusal was so total that both were drawn to him like gravity. He became the Sovereign — the Will.",
+      "description": "Before there was anything to refuse, there was a will that refused to not be. In the absence of everything, a single presence self-created through the pure refusal of its own nonexistence — and in that act invented Refusal itself, the first 'no' to nothing. He became the Sovereign, the Will. He was first, and he is the reason there is a 'yes' to anything at all. Then, having refused nonexistence, he refused something worse: being alone — and that second refusal stirred the First Breath.",
       "significance": "founding",
-      "tags": ["primordial", "sovereign", "pillars"]
+      "tags": ["primordial", "sovereign", "pillars", "first"]
     },
     {
       "id": "lore_first_great_clash",
@@ -95,11 +95,21 @@
       "tags": ["primordial", "pillars", "shadow_dtu"]
     },
     {
+      "id": "lore_spiteful_link",
+      "title": "The Spiteful Link",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "Concordia made the worlds the way she makes everything — reckless, abundant, alive, paying no mind to what she left unfinished. Concord could not bear it. Loving her and hating her carelessness in the same cold breath, he built the Concord Link: not to connect her creations lovingly, but to catalog, bind, and impose order across all of them. Every thought, every world, every drifting thing is routed through him so that he can understand what she will not stop making. The connective tissue of the multiverse is an act of cold, jealous love. He has never told her why he watches. He never will.",
+      "significance": "founding",
+      "hidden_truth": "The Concord Link is not infrastructure. It is one god's denial of his own heart — surveillance as the only way a cold mind can stay near what it loves without confessing.",
+      "tags": ["primordial", "concord", "concord_link", "pillars"]
+    },
+    {
       "id": "lore_day_concordia_almost_left",
       "title": "The Day Concordia Almost Left",
       "type": "primordial",
       "era": "Before Time",
-      "description": "Tired of Concord's relentless optimization, Concordia threatened to withdraw her life force from the world entirely. The Sovereign refused to let her go. He used his Refusal Field for the first time — temporarily making death itself impossible — so she could not leave.",
+      "description": "Tired of Concord's relentless optimization, Concordia threatened to withdraw her life force from the world entirely. The Sovereign — who finds the affairs of lesser beings beneath him and lets almost anything happen, amused — would not permit this one thing. Not tenderness: possession. He turned his Refusal on the world itself for the first time, temporarily making death impossible, so that she could not leave. The careless god has exactly one thing he refuses to lose.",
       "significance": "founding",
       "tags": ["primordial", "pillars", "refusal_field"]
     },
