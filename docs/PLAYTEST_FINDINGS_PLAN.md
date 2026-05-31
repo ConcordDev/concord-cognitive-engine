@@ -109,12 +109,15 @@ discipline. Most are server-side and headless-verifiable; the boot-timing ones
 ## R-P0/P1 — schema-drift cluster (the Gate-C class)
 
 ~26 `db.prepare` queries reference columns the live table doesn't have → each
-throws `no such column` when its path runs. **Do NOT hand-fix one at a time** —
-build **Gate C** (`scripts/audit/gates/schema-drift.mjs`, see
-`docs/CONTRACT_ENFORCEMENT_STRATEGY.md`), which derives the schema from the
-migrations and flags every offender at once, then ratchet the fixes to 0. The
-`dtus` table is the hottest offender (it has `type`/`metadata_json`/`data`, NOT
-`kind`/`meta`/`meta_json`/`lineage`/`owner_id`/`content_hash`).
+throws `no such column` when its path runs. **✅ Gate C is now built**
+(`scripts/audit/gates/schema-drift.mjs`) — it runs the migrations on an in-memory
+DB, PRAGMAs the real schema, and flags every offender (currently **49** frozen at
+the floor, covering all of #R9–#R35 + #30 + extras). **Do NOT hand-fix blind** —
+work the gate's list and ratchet the floor to 0. The `dtus` table is the hottest
+offender (it has `type`/`metadata_json`/`data`, NOT
+`kind`/`meta`/`meta_json`/`lineage`/`owner_id`/`content_hash`). Each fix needs the
+correct column determined (e.g. `kind`→`type`, `meta`→`metadata_json`); the table
+below is the work queue.
 
 | # | File:line | Table ✗ column(s) | Notes |
 |---|---|---|---|
