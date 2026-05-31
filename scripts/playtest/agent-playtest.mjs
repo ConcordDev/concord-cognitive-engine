@@ -91,8 +91,14 @@ async function driverFor() {
 
 (async () => {
   let report;
-  try { report = await runJourneys(KEYSTONE_JOURNEYS, () => driverFor()); }
-  catch (e) {
+  try {
+    // Register ONCE and reuse the driver across journeys. runJourneys calls the
+    // factory per journey; registering per journey bursts /api/auth/register and
+    // trips its per-IP rate-limit (so journeys 2+ get no token and falsely fail).
+    // One synthetic player running all journeys is also the realistic shape.
+    const sharedDriver = await driverFor();
+    report = await runJourneys(KEYSTONE_JOURNEYS, () => sharedDriver);
+  } catch (e) {
     console.error(`[agent-playtest] could not reach server at ${BASE}: ${e?.message || e}`);
     process.exit(ci ? 1 : 0);
     return;
