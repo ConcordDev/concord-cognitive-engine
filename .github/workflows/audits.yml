@@ -71,6 +71,18 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 77
 
+      - name: Surface-coverage gate (every player verb fires ≥FLOOR/4 channels)
+        run: |
+          # WAVE SCAN — the closed-set polish manifest. Enumerates every player
+          # verb + emergent event + world-state change, scores each on
+          # [visual][audio][animation][legibility] by grepping the verb→response
+          # chain (file:line proof), ranks gaps by frequency×channels-missing, and
+          # floors shipped verbs. Ratcheting floor: start 1 (no silent dead verb),
+          # raise to 2 then 3 as the gap queue drains. Manifest at
+          # audit/surface-coverage.{json,md} IS the polish spec.
+          node scripts/audit/surface-coverage.mjs
+          node scripts/audit/surface-coverage.mjs --ci   # FLOOR env (default 1)
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column
