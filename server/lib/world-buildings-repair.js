@@ -37,7 +37,7 @@ export function repairBuilding(db, userId, buildingId, { fraction = 0.3 } = {}) 
     const w = db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id = ?`).get(userId);
     if (w && (w.balance ?? 0) < cost) return { ok: false, reason: "insufficient_funds", cost };
     if (w) {
-      db.prepare(`UPDATE user_wallets SET balance = balance - ? WHERE user_id = ?`).run(cost, userId);
+      db.prepare(`UPDATE users SET concordia_credits = concordia_credits - ? WHERE id = ?`).run(cost, userId);
     }
   } catch { /* user_wallets optional */ }
 

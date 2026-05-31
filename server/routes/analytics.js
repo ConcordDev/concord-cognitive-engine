@@ -69,7 +69,7 @@ function _personalStats(db, userId) {
 
   // Build count: world_buildings rows authored by user.
   const buildCount = _safe(
-    () => db.prepare(`SELECT COUNT(*) AS c FROM world_buildings WHERE created_by = ?`).get(userId)?.c ?? 0,
+    () => db.prepare(`SELECT COUNT(*) AS c FROM world_buildings WHERE spawned_by_user_id = ?`).get(userId)?.c ?? 0,
     0,
   );
 

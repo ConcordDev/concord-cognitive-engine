@@ -50449,7 +50449,7 @@ app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, re
       SELECT world_id, is_swimming, swim_depth, last_position
       FROM world_visits
       WHERE user_id = ? AND departed_at IS NULL
-      ORDER BY entered_at DESC LIMIT 1
+      ORDER BY arrived_at DESC LIMIT 1
     `).get(userId);
 
     if (!visit || !visit.is_swimming) {

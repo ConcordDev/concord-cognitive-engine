@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-05-31T22:41:42.077Z",
+  "generatedAt": "2026-05-31T22:43:41.909Z",
   "tablesModelled": 672,
   "migrationsApplied": 313,
   "sourceFiles": 1668,
-  "floor": 59,
-  "violationCount": 59,
+  "floor": 53,
+  "violationCount": 53,
   "violations": [
     {
       "file": "server/domains/crisis.js",
@@ -154,13 +154,6 @@
       "column": null
     },
     {
-      "file": "server/emergent/personal-beat-scheduler.js",
-      "line": 46,
-      "kind": "column",
-      "table": null,
-      "column": "entered_at"
-    },
-    {
       "file": "server/emergent/procgen-settlement-cycle.js",
       "line": 34,
       "kind": "ghost_table",
@@ -201,13 +194,6 @@
       "kind": "ghost_table",
       "table": "world_events",
       "column": null
-    },
-    {
-      "file": "server/lib/combat/match-chronicle.js",
-      "line": 66,
-      "kind": "column",
-      "table": null,
-      "column": "recorded_at"
     },
     {
       "file": "server/lib/creator-dashboard.js",
@@ -315,13 +301,6 @@
       "column": null
     },
     {
-      "file": "server/lib/npc-relations.js",
-      "line": 155,
-      "kind": "column",
-      "table": null,
-      "column": "location"
-    },
-    {
       "file": "server/lib/npc-simulator.js",
       "line": 668,
       "kind": "ghost_table",
@@ -357,25 +336,11 @@
       "column": null
     },
     {
-      "file": "server/lib/world-buildings-repair.js",
-      "line": 40,
-      "kind": "ghost_table",
-      "table": "user_wallets",
-      "column": null
-    },
-    {
       "file": "server/lib/world-emergents.js",
       "line": 55,
       "kind": "ghost_table",
       "table": "emergents",
       "column": null
-    },
-    {
-      "file": "server/routes/analytics.js",
-      "line": 72,
-      "kind": "column",
-      "table": null,
-      "column": "created_by"
     },
     {
       "file": "server/routes/analytics.js",
@@ -397,13 +362,6 @@
       "kind": "ghost_table",
       "table": "player_position",
       "column": null
-    },
-    {
-      "file": "server/server.js",
-      "line": 50448,
-      "kind": "column",
-      "table": null,
-      "column": "entered_at"
     },
     {
       "file": "server/server.js",
