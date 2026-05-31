@@ -13,6 +13,7 @@ const MAX_CYCLES = Number(process.env.CONCORD_CODE_PUZZLE_MAX_CYCLES) || 10_000;
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { puzzleHardness } from "./complexity/hardness.js";
 
 export function authorPuzzle(db, opts = {}) {
   if (!db) return { ok: false, error: "missing_db" };
@@ -233,7 +234,15 @@ export function getPuzzle(db, puzzleId) {
       FROM programming_puzzles WHERE id = ?
     `).get(puzzleId);
     if (!p) return null;
-    return { ...p, test_cases: JSON.parse(p.test_cases_json) };
+    const test_cases = JSON.parse(p.test_cases_json);
+    // Wave 5 #31 — derive a principled difficulty from the puzzle's structure
+    // (code puzzles carry no authored difficulty label). Additive field.
+    const difficulty = puzzleHardness({
+      optimalCycles: p.optimal_cycles,
+      optimalSize: p.optimal_size,
+      testCases: Array.isArray(test_cases) ? test_cases.length : 0,
+    });
+    return { ...p, test_cases, difficulty };
   } catch { return null; }
 }
 
