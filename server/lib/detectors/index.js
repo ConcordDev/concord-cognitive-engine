@@ -33,6 +33,7 @@ import { runHistoricalTrendDetector } from "./historical-trend-detector.js";
 import { runPredictiveGrowthDetector } from "./predictive-growth-detector.js";
 import { runArchitecturalHubDetector } from "./architectural-hub-detector.js";
 import { runConcordiaSubstrateDetector } from "./concordia-substrate-detector.js";
+import { runMaintenanceGatesDetector } from "./maintenance-gates-detector.js";
 import { runFakeDataDetector } from "./fake-data-detector.js";
 import { runResourceLeakDetector } from "./resource-leak-detector.js";
 import { runEnvConfigDriftDetector } from "./env-config-drift-detector.js";
@@ -185,6 +186,14 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "Finds unused macros, dead routes, orphaned tables, ghost modules.",
   run: runStaleCodeDetector,
+});
+registerDetector({
+  id: "maintenance-gates",
+  label: "MaintenanceGates",
+  consumers: ["code-quality", "repair-cortex"],
+  dataNeeds: ["spawn"],
+  description: "Runs the schema-drift + economic-invariant gates; a failure is a build-blocking critical (Prophet/per-commit only).",
+  run: runMaintenanceGatesDetector,
 });
 registerDetector({
   id: "invariant-guardian",

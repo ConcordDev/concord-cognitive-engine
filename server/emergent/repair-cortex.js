@@ -535,6 +535,23 @@ const ERROR_PATTERNS = {
     ],
   },
 
+  // Maintenance D — the schema-drift class (the 411→0 cleanup, taught). On a
+  // "no such column" runtime error the Surgeon PROPOSES the canonical fix (an
+  // AS-aliased rename or an additive migration, derived from PRAGMA table_info)
+  // and escalates it for one-click approval — it NEVER auto-applies, because
+  // schema changes are structural. proposeOnly is the load-bearing flag.
+  schema_drift: {
+    regex: /no such column:?\s*([\w.]+)/i,
+    category: "database",
+    proposeOnly: true,
+    fixes: [
+      { name: "pragma_canonical_rename", confidence: 0.7, proposeOnly: true,
+        describe: (m) => `Drift on column '${m[1]}': propose an AS-aliased rename to the canonical column (from PRAGMA table_info) — approve to apply` },
+      { name: "additive_migration", confidence: 0.6, proposeOnly: true,
+        describe: (m) => `Drift on column '${m[1]}': propose an additive migration adding it — approve to apply` },
+    ],
+  },
+
   ts_property_missing: {
     regex: /Property '(.+)' does not exist on type '(.+)'/,
     category: "typescript",
