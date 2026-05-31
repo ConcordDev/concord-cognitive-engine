@@ -83,6 +83,13 @@ jobs:
           node scripts/audit/surface-coverage.mjs
           node scripts/audit/surface-coverage.mjs --ci   # FLOOR env (default 1)
 
+      - name: Animation-transition graph gate (no pop / no T-pose)
+        run: |
+          # Static integrity of the avatar animation state machine: no orphan
+          # state, no dangling transition target, every state reachable from
+          # 'idle'. Floor 0 — graph integrity must be perfect.
+          node scripts/audit/gates/animation-transitions.mjs --ci
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column
