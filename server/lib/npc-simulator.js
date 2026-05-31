@@ -26,6 +26,7 @@ import { detectiveTick, guardTick } from "./world-crime.js";
 import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
 import { broadcastOpinionEvent } from "./npc-relations.js";
 import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
+import { resolveAggro, temperamentEnabled } from "./npc-temperament.js";
 import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -104,7 +105,7 @@ function updateNPCCombatAI(npc, worldId, db) {
   if (!npc || !npc.location) return;
 
   const archetype = npc.archetype || 'default';
-  const profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
+  let   profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
 
   // Fetch NPC DB row for HP / is_wanted / criminal_rep
   let npcRow;
@@ -119,13 +120,39 @@ function updateNPCCombatAI(npc, worldId, db) {
   const hpRatio    = (npcRow.current_hp ?? 100) / Math.max(1, npcRow.max_hp ?? 100);
   const isWanted   = !!npcRow.is_wanted;
 
+  // Get player positions + nearest player once (reused by flee logic + FSM below).
+  const players = _getPlayerPositions(db, worldId);
+  let nearestPlayer = null;
+  let nearestDist   = Infinity;
+  for (const p of players) {
+    const d = _dist2d(npc.location, p);
+    if (d < nearestDist) {
+      nearestDist   = d;
+      nearestPlayer = p;
+    }
+  }
+
   // Wanted NPCs are always maximally aggressive
-  const effectiveAggro = isWanted ? 0.9 : profile.aggro;
+  let effectiveAggro = isWanted ? 0.9 : profile.aggro;
+
+  // Temperament gate (Phase 1) — modulate aggro by the NPC's emotional/social
+  // state toward the nearest player, and grant a pacifist the capacity to engage
+  // when emotion carries it into hostility. Off by default (CONCORD_TEMPERAMENT);
+  // when off, effectiveAggro + profile stay exactly the archetype values above.
+  if (temperamentEnabled() && nearestPlayer) {
+    try {
+      const r = resolveAggro(
+        db, npc, { kind: 'player', id: nearestPlayer.userId },
+        profile.aggro, isWanted, profile
+      );
+      effectiveAggro = r.effectiveAggro;
+      profile        = r.profile;
+    } catch { /* non-fatal: keep archetype aggro */ }
+  }
 
   // Non-aggro NPCs (farmer, merchant) — never attack, may flee (handled separately)
   if (effectiveAggro === 0.0 && !isWanted) {
     // Non-aggro flee logic: if a player is very close, path away
-    const players = _getPlayerPositions(db, worldId);
     for (const player of players) {
       const d = _dist2d(npc.location, player);
       if (d < profile.alertRadius) {
@@ -149,22 +176,7 @@ function updateNPCCombatAI(npc, worldId, db) {
     });
   }
 
-  const cs = _npcCombatState.get(npc.id);
-
-  // Get player positions for this world
-  const players = _getPlayerPositions(db, worldId);
-
-  // Find nearest player
-  let nearestPlayer = null;
-  let nearestDist   = Infinity;
-  for (const p of players) {
-    const d = _dist2d(npc.location, p);
-    if (d < nearestDist) {
-      nearestDist   = d;
-      nearestPlayer = p;
-    }
-  }
-
+  const cs  = _npcCombatState.get(npc.id);
   const now = Date.now();
 
   // ── State machine transitions ──────────────────────────────────────────────
