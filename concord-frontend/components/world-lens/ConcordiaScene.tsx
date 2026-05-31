@@ -657,6 +657,28 @@ export default function ConcordiaScene({
             polishPassesRef.current.chromAb = { ...chromAb, detach: detachChromAb };
             polishPassesRef.current.lut = lut;
 
+            // Track 2 — edge-detection outline: a luminance Sobel ink pass that
+            // adds interior toon linework the inverted-hull outline can't draw.
+            // On in toon mode (where it belongs and bloom is skipped), or when
+            // window.__CONCORD_EDGE_OUTLINE__ === true. Off → PBR unchanged.
+            try {
+              const edgeOn = renderStyle === 'toon'
+                || (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__CONCORD_EDGE_OUTLINE__ === true);
+              if (edgeOn) {
+                const { createEdgeOutlinePass } = await import('@/lib/world-lens/post-edge-outline');
+                const edge = createEdgeOutlinePass(
+                  THREE as unknown as { Vector2: new (x: number, y: number) => unknown; Color: new (hex: number) => unknown },
+                  ShaderPass as unknown as new (s: unknown) => unknown,
+                  { width: canvas!.clientWidth, height: canvas!.clientHeight },
+                );
+                edge.setStrength(quality === 'ultra' ? 0.85 : 0.6);
+                composer.addPass(edge.shaderPass as unknown as InstanceType<typeof ShaderPass>);
+                polishPassesRef.current.edgeOutline = edge;
+              }
+            } catch (edgeErr) {
+              console.warn('[ConcordiaScene] Edge-outline pass unavailable:', edgeErr);
+            }
+
             // Auto-exposure does not need a ShaderPass — it samples the
             // back buffer + sets renderer.toneMappingExposure directly.
             try {
@@ -1402,6 +1424,8 @@ export default function ConcordiaScene({
         r.setSize(w, h);
         composerRef.current?.setSize(w, h);
         ssgiPassRef.current?.setSize(w, h);
+        // Keep the edge-outline Sobel kernel sampling at the new resolution.
+        polishPassesRef.current?.edgeOutline?.setResolution?.(w, h);
       }
     }
     window.addEventListener('resize', handleResize);
