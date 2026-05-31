@@ -242,6 +242,25 @@ export function isUnderMatured(maturity) {
 }
 
 /**
+ * SL6 — DB-backed scoped refusal gate for callers that hold a `db` handle but
+ * not the live in-memory STATE (e.g. the HTTP combat route in routes/worlds.js,
+ * where the `globalThis.__CONCORD_STATE__` side-channel is unreliable for
+ * refusal fields). Loads the persisted, non-expired fields fresh from
+ * `refusal_fields` into an ephemeral state, then applies the same scoped match.
+ * Best-effort; returns false if the table is missing or anything throws —
+ * so off==today when no scoped field has been cast.
+ */
+export function isRefusedForDb(db, worldId, kind, target = {}) {
+  if (!db || !worldId) return false;
+  try {
+    const tmp = { db };
+    const loaded = loadPersistedRefusalFields(tmp);
+    if (!loaded?.ok) return false;
+    return isRefusedFor(tmp, worldId, kind, target);
+  } catch { return false; }
+}
+
+/**
  * Compose all active field glyphs into a single composite signature using
  * the base-6 refusal algebra. Returns a numeric strength score derived from
  * the composed glyph, plus the underlying glyph object for HUD/dialogue use.

@@ -13,6 +13,7 @@ import {
   applyTemporaryRefusal,
   isRefused,
   isRefusedFor,
+  isRefusedForDb,
   maturityOf,
   isUnderMatured,
   loadPersistedRefusalFields,
@@ -71,5 +72,16 @@ describe("persistence of scoped fields", () => {
     db.prepare("INSERT INTO player_children (id, parent_user_id, other_parent_kind, name, maturity) VALUES ('c1','u1','npc','Sprout','child')").run();
     assert.equal(maturityOf(db, "child", "c1"), "child");
     assert.equal(maturityOf(db, "player", "nobody"), "adult");
+  });
+
+  it("isRefusedForDb loads fresh from the table (the combat-route gate)", () => {
+    // No in-memory state — only what the combat route in worlds.js has: a db.
+    applyTemporaryRefusal({ db }, "w", KIND, { durationMs: 600000, appliesTo: CHILD_SCOPE });
+    assert.equal(isRefusedForDb(db, "w", KIND, { kind: "npc", id: "n1", maturity: "child" }), true);
+    assert.equal(isRefusedForDb(db, "w", KIND, { kind: "player", id: "p1", maturity: "adult" }), false);
+    // no field in a different world → not refused (off==today)
+    assert.equal(isRefusedForDb(db, "other-world", KIND, { maturity: "child" }), false);
+    // null db → best-effort false (never throws)
+    assert.equal(isRefusedForDb(null, "w", KIND, { maturity: "child" }), false);
   });
 });

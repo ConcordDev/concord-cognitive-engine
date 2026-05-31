@@ -8388,6 +8388,26 @@ async function tryInitWebSockets(server) {
         }
       } catch { /* refusal-field unavailable — continue normally */ }
 
+      // SL6 — harm-to-the-young refusal in the PvP socket path. Mirrors the
+      // HTTP combat route: the Sovereign refuses harm both TO and FROM the
+      // under-matured. Live STATE already holds refusalFields, so we read it
+      // directly (no DB reload). Flag-gated + best-effort (off==today).
+      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+        try {
+          const { isRefusedFor, maturityOf } = await import("./lib/refusal-field.js");
+          const _crWorld = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
+          const _crDb = STATE?.db;
+          const defenderRefused = isRefusedFor(STATE, _crWorld, "harm_to_children_refused", { kind: "player", id: _ffTargetId, maturity: maturityOf(_crDb, "player", _ffTargetId) });
+          const attackerRefused = isRefusedFor(STATE, _crWorld, "harm_to_children_refused", { kind: "player", id: userId, maturity: maturityOf(_crDb, "player", userId) });
+          if (defenderRefused || attackerRefused) {
+            socket.emit("combat:attack:ack", {
+              ok: true, refused: true, reason: "harm_to_children_refused", damage: 0,
+            });
+            return;
+          }
+        } catch { /* refusal-field unavailable — continue normally */ }
+      }
+
       const result = cityPresence.applyAttack({
         attackerId: userId,
         targetId: _ffTargetId,

@@ -2046,6 +2046,32 @@ export default function createWorldsRouter({ requireAuth, db }) {
 
       if (!npcId) return res.status(400).json({ ok: false, error: "npcId required" });
 
+      // ── SL6 — harm-to-the-young refusal gate ───────────────────────────────
+      // The Sovereign (god of Refusal who refused death) refuses harm both TO
+      // and FROM the under-matured. A divine field, not a despawn hack: an
+      // active `harm_to_children_refused` field blocks the strike (0 damage,
+      // refused ack) when EITHER the defender (NPC) OR the attacker (player) is
+      // under-matured and matches the field's scope. Lifts at coming-of-age.
+      // Flag-gated (CONCORD_CHILD_REFUSAL) + DB-backed (worlds.js has no live
+      // STATE) + best-effort, so off==today / no-field==today.
+      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+        try {
+          const { isRefusedForDb, maturityOf } = await import("../lib/refusal-field.js");
+          const defenderMaturity = maturityOf(db, "npc", npcId);
+          const attackerMaturity = maturityOf(db, "player", userId);
+          const defenderRefused = isRefusedForDb(db, worldId, "harm_to_children_refused", { kind: "npc", id: npcId, maturity: defenderMaturity });
+          const attackerRefused = isRefusedForDb(db, worldId, "harm_to_children_refused", { kind: "player", id: userId, maturity: attackerMaturity });
+          if (defenderRefused || attackerRefused) {
+            return res.status(200).json({
+              ok: true, refused: true, reason: "harm_to_children_refused", damage: 0,
+              detail: defenderRefused
+                ? "The Sovereign refuses harm to the young."
+                : "The young are refused the act of harm.",
+            });
+          }
+        } catch { /* refusal-field unavailable — combat continues normally */ }
+      }
+
       // ── Concordant Law gate ────────────────────────────────────────────────
       // Concordia-hub is the Three Above All's domain: Sovereign + Concord +
       // Concordia have decreed all combat refused inside the hub. Refusal is
