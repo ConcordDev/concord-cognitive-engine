@@ -251,3 +251,30 @@ confirms the engine's core logic, money, and concurrency are trustworthy. The tw
 structural priorities the report named — **fix #L2 + ship the SQL schema gate** —
 are both now DONE. Remaining work is mechanical: ratchet the 105 drift sites to 0,
 then the smaller validation-by-throw / auth-mount classes.
+
+---
+
+# Rounds 5–6 — authorization · content integrity · frontend · schema source-of-truth
+
+**Honest negatives (verified sound):** authorization boundaries hold
+(publicReadPaths expose only catalogs/telemetry; sensitive routes 401; `/api/dtus`
+leaks 0 private; allowlist prefixes don't bypass route auth); **all 313 migrations
+apply cleanly on a fresh empty DB** (schema v314) — which RE-CONFIRMS the ghost
+tables are genuinely never created (Gate C's basis is correct), `tsc --noEmit` = 0
+errors, ESLint = warnings-only.
+
+| # | Finding | Disposition |
+|---|---|---|
+| **F1** 🔧 | ~24–50 tables exist ONLY as runtime `CREATE TABLE IF NOT EXISTS` in feature code, not in any migration (`agents`, `agent_logs`, `agent_tasks`, `social_groups`+`social_*`, `spell_cast_log`, `world_forecasts`, `route_studio_*`, `forge_generations`, `embedding_cache`, `reserves_*`, `knowledge_genomes`, `communes`, `whiteboards`, …). Fresh-install **read-before-create** hazard: a read before the creating path runs crashes `no such table`. `agents` is lazy AND its macros are dead (#11) → `/lenses/agents` doubly broken on a fresh box. | **New structural item.** Fix: a boot-time `ensureRuntimeTables()` that runs all these CREATEs at startup (or migrate them), making the schema deterministic. Note: Gate C already treats them as *known* (it scans source CREATEs), so they're correctly NOT flagged as ghosts — this is a *fresh-install ordering* fix, not a drift fix. |
+| **S1** | ~99 NPCs set `faction:"<id>"` for ids never defined in any `factions.json` (verge_rangers, seven_spokes_inn, akeia, ruined_court, …) — `content-seeder validateNpc` only type-checks, so faction-strategy/reputation/role-dialogue lookups resolve null. | Add the faction records OR extend `validateNpc` to flag dangling refs (a content-census-gate sibling). Soft — degrades, doesn't crash. |
+| **S2** | doc drift — `narrative-walk` is now NO-BACKEND-CALL (verified: no api/macro call) but CLAUDE.md lists only `ux-suite` as by-design. | One-line CLAUDE.md fix: 2 by-design NO-BACKEND-CALL lenses now. |
+| **S3** | "WIRED" (verifier) overstates "works": `/lenses/quests`, `/lenses/agents`, `/lenses/research`, … render a shell but their primary reads silently fail — gated entirely by #11 (ghost-fleet dead macros) + the #V ghost-table crashes. The lens layer is structurally complete; runtime correctness rides on the backend fixes already tracked. | No new work — resolved transitively by fixing #11 + the schema-drift floor to 0. |
+| **F2** ⚠ | risk class — unguarded API response sub-field access (`result.X.Y.map()`) could white-screen a lens on a partial/soft-fail macro response. 143 static candidates, guard-heavy, **not claimable without a browser**. | Browser smoke-test in CI (blocked here: no chromium egress). Flagged as a RISK CLASS, not N bugs. |
+| **F3** | cosmetic — `useEffect` missing-dep warnings (PartyCombatHUD, ContextPromptLayer, …); a missing-dep on a POLL_MS const can cause stale-closure polling. | Lint cleanup pass; ties into the untuned-constants cluster. |
+
+**Synthesis (rounds 1–6):** everything converges on the SAME small root-cause set
+— schema-rename drift (Gate C, ratcheting to 0) + the ghost-fleet registration gap
+(#11, Gate B logs it) + one injection (#L2, fixed) + the fresh-install lazy-table
+ordering (#F1, new). Frontend is structurally healthy (tsc/lint clean); its one
+unmeasured axis (browser runtime, #F2) is sandbox-blocked, not unhealthy. **Breadth,
+not depth** — a big finding count over a sound core.
