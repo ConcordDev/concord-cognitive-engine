@@ -11105,9 +11105,13 @@ async function runMacro(domain, name, input, ctx) {
         (_c2founderOverrideAllowed(ctx) && (ctx?.reqMeta?.override === true || input?.override === true));
       _c2log("c2.guard", "inLatticeReality evaluated", { domain, name, ok: c2.ok, severity: c2.severity, reason: c2.reason, allowOverride });
       if (!allowOverride) {
-        const err = new Error(`c2_guard_reject:${c2.reason}`);
-        err.meta = { c2 };
-        throw err;
+        // A Chicken2 guard rejection is a NORMAL outcome (a candidate scored
+        // harmful), not an exception. Return a structured rejection so a single
+        // guard-blocked DTU skips cleanly instead of throwing out of the whole
+        // pass (playtest #16 — one "harm"-scored DTU aborted the entire
+        // gapPromote consolidation). Callers see {ok:false}; the route surfaces a
+        // clean 200-with-ok:false instead of a 500.
+        return { ok: false, error: "c2_guard_reject", reason: c2.reason, severity: c2.severity, blocked: true };
       }
     }
   }
