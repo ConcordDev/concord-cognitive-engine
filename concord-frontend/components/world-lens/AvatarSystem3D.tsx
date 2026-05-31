@@ -47,7 +47,7 @@ import {
 import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/secondary-physics';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
-import { installMoodListener, emotionFor } from '@/lib/concordia/mood-registry';
+import { installMoodListener, emotionFor, biasFor } from '@/lib/concordia/mood-registry';
 import { getClientConfigSync } from '@/hooks/useClientConfig';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
@@ -2615,6 +2615,7 @@ export default function AvatarSystem3D({
         }
 
         // ── NPC gait synthesis (per-NPC stride phase, style-driven) ──
+        const exprOnRef = !!getClientConfigSync().flags?.expression;
         for (const [npcId, data] of npcMeshes) {
           const npcData = npcs.find((n) => n.id === npcId);
           if (!npcData) continue;
@@ -2670,6 +2671,29 @@ export default function AvatarSystem3D({
             chestN.scale.y = breathingChestScaleY(
               elapsed, npcCfg.idleBreathScale, npcSpeed > 0, breathPhaseFromId(npcId),
             );
+          }
+
+          // WAVE EXPR — posture bias: the body shows the feeling. When expression
+          // is on, read the NPC's live mood → a bounded spine-up additive lean
+          // (grieving slumps + head-down, hostile leans forward + tense, fearful
+          // crouches). Applied additively to the gait/idle pose this frame so
+          // legs/locomotion stay procedural and physics still solves on top.
+          // Off == today (no mood → biasFor null → exactly the legacy pose).
+          if (exprOnRef) {
+            const sb = biasFor(npcId);
+            if (sb) {
+              const p = sb.posture;
+              const addPitch = (boneName: string, rad: number) => {
+                if (!rad) return;
+                const b = getMesh(boneName) as InstanceType<typeof import('three').Object3D> | undefined;
+                if (b) b.rotation.x += rad;
+              };
+              addPitch('head', p.headPitch);
+              addPitch('neck', p.neckPitch);
+              addPitch('chest', p.torsoPitch);
+              addPitch('spine', p.spinePitch);
+              addPitch('hips', p.hipDrop);
+            }
           }
         }
 
