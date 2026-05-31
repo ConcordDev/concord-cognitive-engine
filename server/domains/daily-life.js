@@ -11,8 +11,10 @@
 import { performDailyVerb, getCooldown, SOCIAL_VERB_TUNING } from "../lib/social/daily-life.js";
 import { giveGift } from "../lib/gifting.js";
 import { spendSlots, canAfford, slotsUsed, currentDayIdx, dayState } from "../lib/day-clock.js";
+import { gatherAttendees, GATHERING_KINDS } from "../lib/social-gatherings.js";
 
 function enabled() { return process.env.CONCORD_SOCIAL_LIFE === "1"; }
+function socialEventsEnabled() { return process.env.CONCORD_SOCIAL_EVENTS === "1"; }
 function gate(ctx) {
   if (!enabled()) return { ok: false, reason: "disabled" };
   if (!ctx?.db) return { ok: false, reason: "no_db" };
@@ -71,4 +73,21 @@ export default function registerDailyLifeMacros(register) {
     const uid = authed(ctx); if (!uid) return { ok: false, reason: "auth_required" };
     return { ok: true, ...dayState(ctx.db, uid, currentDayIdx()) };
   }, { note: "slice-of-life: today's slot budget + allocation (read)" });
+
+  // SL5 — social gathering composer. Pulls the live relationship web (courtship,
+  // family, grudges) into an attendee list + beats for a wedding / funeral /
+  // festival. Read-only (composes the beats; the caller fires grief separately
+  // when triggersGrief). Behind CONCORD_SOCIAL_EVENTS.
+  register("daily_life", "gather", async (ctx, input = {}) => {
+    if (!socialEventsEnabled()) return { ok: false, reason: "disabled" };
+    if (!ctx?.db) return { ok: false, reason: "no_db" };
+    const uid = authed(ctx);
+    const kind = GATHERING_KINDS.includes(input.kind) ? input.kind : "festival";
+    // Default the focal to the calling player; allow an explicit NPC/player focal.
+    const focalKind = input.focalKind === "npc" ? "npc" : (input.focalKind === "player" ? "player" : (uid ? "player" : "npc"));
+    const focalId = input.focalId || (focalKind === "player" ? uid : null);
+    if (!focalId) return { ok: false, reason: "focal_required" };
+    const composed = gatherAttendees(ctx.db, { kind, focalKind, focalId });
+    return { ok: true, ...composed };
+  }, { note: "slice-of-life: compose a wedding/funeral/festival from live relations (read)" });
 }

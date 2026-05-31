@@ -71,3 +71,83 @@ export function composeGathering(cfg = {}) {
 
   return { kind, attendees: unique, beats, triggersGrief };
 }
+
+/** Best-effort NPC display name from world_npcs.state JSON, fallback to id. */
+function _npcName(db, npcId) {
+  if (!db || !npcId) return String(npcId || "an unknown");
+  try {
+    const row = db.prepare("SELECT state FROM world_npcs WHERE id = ?").get(npcId);
+    if (row && row.state) {
+      const st = typeof row.state === "string" ? JSON.parse(row.state) : row.state;
+      if (st && st.name) return String(st.name);
+    }
+  } catch { /* state optional / unparseable */ }
+  return String(npcId);
+}
+
+/**
+ * SL5 — the thin db-reader that fetches the LIVE relationship web for a focal
+ * entity and composes the gathering. Pure composeGathering does the shaping;
+ * this resolves who attends from the real tables (npc_relationships,
+ * player_courtship, npc_grudges). Best-effort + table-optional so it degrades
+ * to a sparse-but-valid gathering rather than throwing. Behind
+ * CONCORD_SOCIAL_EVENTS at the caller.
+ *
+ * @param {object} db
+ * @param {object} cfg  { kind, focalKind:'npc'|'player', focalId }
+ * @returns the composeGathering result (+ resolved focalId/focalKind echoed)
+ */
+export function gatherAttendees(db, cfg = {}) {
+  const kind = GATHERING_KINDS.includes(cfg.kind) ? cfg.kind : "festival";
+  const focalKind = cfg.focalKind === "player" ? "player" : "npc";
+  const focalId = String(cfg.focalId || "");
+  const partners = [];
+  const family = [];
+  const friends = [];
+  const grudgeHolders = [];
+  let focalName = focalId || "Someone";
+
+  if (db && focalId) {
+    if (focalKind === "npc") {
+      focalName = _npcName(db, focalId);
+      try {
+        const rels = db.prepare(
+          "SELECT related_id, rel_type, strength FROM npc_relationships WHERE npc_id = ?",
+        ).all(focalId);
+        for (const r of rels) {
+          const nm = _npcName(db, r.related_id);
+          if (r.rel_type === "spouse") partners.push(nm);
+          else if (r.rel_type === "parent" || r.rel_type === "child" || r.rel_type === "sibling") family.push(nm);
+          else if (r.rel_type === "friend" && Number(r.strength ?? 1) >= 0.5) friends.push(nm);
+        }
+      } catch { /* relationship graph optional */ }
+      try {
+        const holders = db.prepare(
+          "SELECT DISTINCT npc_id FROM npc_grudges WHERE target_kind = 'npc' AND target_id = ? AND resolved_at IS NULL ORDER BY severity DESC LIMIT 5",
+        ).all(focalId);
+        for (const h of holders) grudgeHolders.push(_npcName(db, h.npc_id));
+      } catch { /* grudges optional */ }
+    } else {
+      // player focal — resolve username + active courtship partners + grudge-holders
+      try {
+        const u = db.prepare("SELECT username FROM users WHERE id = ?").get(focalId);
+        if (u && u.username) focalName = String(u.username);
+      } catch { /* users optional */ }
+      try {
+        const ps = db.prepare(
+          "SELECT partner_kind, partner_id, status FROM player_courtship WHERE player_user_id = ? AND status IN ('courting','engaged','married')",
+        ).all(focalId);
+        for (const p of ps) partners.push(p.partner_kind === "npc" ? _npcName(db, p.partner_id) : String(p.partner_id));
+      } catch { /* courtship optional */ }
+      try {
+        const holders = db.prepare(
+          "SELECT DISTINCT npc_id FROM npc_grudges WHERE target_kind = 'player' AND target_id = ? AND resolved_at IS NULL ORDER BY severity DESC LIMIT 5",
+        ).all(focalId);
+        for (const h of holders) grudgeHolders.push(_npcName(db, h.npc_id));
+      } catch { /* grudges optional */ }
+    }
+  }
+
+  const composed = composeGathering({ kind, focalName, partners, family, friends, grudgeHolders });
+  return { ...composed, focalKind, focalId };
+}
