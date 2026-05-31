@@ -87,7 +87,12 @@ const fmtTime = (epochSec: number) => {
 
 export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<'inbox' | 'compose' | 'anchors' | 'walkers'>('inbox');
+  const [tab, setTab] = useState<'inbox' | 'compose' | 'anchors' | 'walkers' | 'forge'>('inbox');
+  // WAVE L1 — Forge tab: a dead-simple skill on-ramp through the Link.
+  const [forgeElement, setForgeElement] = useState('fire');
+  const [forgeIntent, setForgeIntent] = useState('bolt');
+  const [forgeName, setForgeName] = useState('');
+  const [forgeResult, setForgeResult] = useState<string | null>(null);
   const [inbox, setInbox] = useState<InboxMessage[]>([]);
   const [unread, setUnread] = useState(0);
   const [currentWorld, setCurrentWorld] = useState('concordia');
@@ -292,11 +297,25 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
     }
   }, [composeReceiver, composeBody, currentWorld, composeDest, composeType, composeEncryption, composeWeight]);
 
+  const doForge = useCallback(async () => {
+    setForgeResult('Forging…');
+    try {
+      const res = await fetch('/api/lens/run', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: 'skill_forge', name: 'quick', input: { element: forgeElement, intent: forgeIntent, name: forgeName || undefined } }),
+      });
+      const json = await res.json();
+      const r = json?.data?.result ?? json?.result ?? json;
+      setForgeResult(r?.ok ? `✦ Forged "${forgeName || `${forgeElement} ${forgeIntent}`}" — ready to use in combat.` : `Forge failed: ${r?.reason || 'error'}`);
+    } catch { setForgeResult('Forge failed.'); }
+  }, [forgeElement, forgeIntent, forgeName]);
+
   const tabs = useMemo(() => ([
     { id: 'inbox' as const, label: 'Inbox', badge: unread },
     { id: 'compose' as const, label: 'Compose' },
     { id: 'anchors' as const, label: 'Anchors' },
     { id: 'walkers' as const, label: 'Walkers' },
+    { id: 'forge' as const, label: 'Forge' },
   ]), [unread]);
 
   if (!open) {
@@ -561,6 +580,62 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
                 </p>
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'forge' && (
+          <div className="space-y-3">
+            <p className="mb-1 text-[10px] uppercase tracking-wider text-cyan-400">
+              Forge a power through the Link
+            </p>
+            <p className="mb-2 text-[10px] text-slate-400">
+              Pick an element and a shape, name it, and the Link weaves you a usable
+              power. It works in combat immediately — no materials, no menus. Power
+              users can still open the advanced Glyph composer.
+            </p>
+            <label className="block text-[10px] uppercase tracking-wider text-slate-400">
+              Element
+              <select
+                value={forgeElement}
+                onChange={(e) => setForgeElement(e.target.value)}
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100"
+              >
+                {['fire', 'ice', 'water', 'lightning', 'bio', 'energy', 'physical', 'psychic', 'refusal'].map((el) => (
+                  <option key={el} value={el}>{el}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase tracking-wider text-slate-400">
+              Shape
+              <select
+                value={forgeIntent}
+                onChange={(e) => setForgeIntent(e.target.value)}
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100"
+              >
+                {['strike', 'bolt', 'ward', 'dash'].map((it) => (
+                  <option key={it} value={it}>{it}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[10px] uppercase tracking-wider text-slate-400">
+              Name <span className="text-slate-500">(optional)</span>
+              <input
+                value={forgeName}
+                onChange={(e) => setForgeName(e.target.value)}
+                placeholder={`${forgeElement} ${forgeIntent}`}
+                className="mt-1 w-full rounded border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs text-slate-100 placeholder:text-slate-600"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void doForge()}
+              className="w-full rounded border border-cyan-500/50 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20"
+            >
+              Forge
+            </button>
+            {forgeResult && (
+              <p className="text-[11px] text-slate-200">{forgeResult}</p>
+            )}
           </div>
         )}
       </div>
