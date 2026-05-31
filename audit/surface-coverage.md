@@ -1,6 +1,6 @@
 # Surface Coverage Audit
 
-_Generated 2026-05-31T19:02:41.011Z · FLOOR=1_
+_Generated 2026-05-31T20:10:04.608Z · FLOOR=1_
 
 **127 surfaces** · **20 shipped player-verbs** · **floor violations (score<1): 0** (target 0)
 
@@ -50,13 +50,13 @@ _none — floor satisfied_
 | surface | v | a | an | leg | proof |
 |---|---|---|---|---|---|
 | `player:move` | ⬜ | ✅ | ✅ | ▫ | a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:61 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:26 |
-| `combat:stagger` | ✅ | ✅ | ✅ | ⬜ | v:concord-frontend/components/world/AdaptiveMusicBridge.tsx:200 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:129 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:89 |
+| `combat:stagger` | ✅ | ✅ | ✅ | ⬜ | v:concord-frontend/components/world/AdaptiveMusicBridge.tsx:200 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:129 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:91 |
 | `combat:dodge` | ✅ | ✅ | ✅ | ⬜ | v:concord-frontend/components/world/CombatVFXBridge.tsx:186 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:124 · a:concord-frontend/components/world-lens/AnimationManager.tsx:22 |
 | `combat:block` | ✅ | ✅ | ✅ | ⬜ | v:concord-frontend/components/chat/MessageRenderer.tsx:91 · a:concord-frontend/components/meditation/SoundscapePlayer.tsx:252 · a:concord-frontend/components/world-lens/AnimationManager.tsx:21 |
 | `fishing:caught` | ⬜ | ⬜ | ⬜ | ✅ | l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `fishing:cast` | ⬜ | ✅ | ✅ | ✅ | a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:197 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:568 · l:concord-frontend/components/world/EmergentEventFeed.tsx:37 |
-| `world:building-state` | ✅ | ✅ | ▫ | ⬜ | v:concord-frontend/components/world/BuildingCollapseVFX.tsx:6 · a:concord-frontend/lib/concordia/world-audio.ts:45 |
-| `social:ping` | ✅ | ✅ | ▫ | ⬜ | v:concord-frontend/components/world/DamageBillboard.tsx:32 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:233 |
+| `fishing:cast` | ⬜ | ✅ | ✅ | ✅ | a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:197 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:570 · l:concord-frontend/components/world/EmergentEventFeed.tsx:37 |
+| `world:building-state` | ✅ | ✅ | ▫ | ⬜ | v:concord-frontend/components/world/BuildingCollapseVFX.tsx:6 · a:concord-frontend/components/world/WorldAudioBridge.tsx:18 |
+| `social:ping` | ✅ | ✅ | ▫ | ⬜ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:7 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:233 |
 | `combat:miss` | ⬜ | ⬜ | ⬜ | ⬜ | — |
 | `combat:dodge:ack` | ⬜ | ⬜ | ⬜ | ⬜ | — |
 | `combat:block:ack` | ⬜ | ⬜ | ⬜ | ⬜ | — |
@@ -155,19 +155,19 @@ _none — floor satisfied_
 | `dream:composed` | ✅ | ⬜ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:90 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
 | `prediction:realised` | ✅ | ⬜ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:86 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
 | `combat:chain` | ✅ | ⬜ | ⬜ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:162 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `npc:activity-batch` | ⬜ | ⬜ | ✅ | ✅ | a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:1538 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `kingdom:founded` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:66 · a:concord-frontend/lib/concordia/adaptive-score.ts:38 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `kingdom:fallen` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:70 · a:concord-frontend/lib/concordia/adaptive-score.ts:40 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `world:crisis` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:46 · a:concord-frontend/lib/concordia/adaptive-score.ts:30 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `world:crisis-resolved` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:50 · a:concord-frontend/lib/concordia/adaptive-score.ts:35 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `faction:war-declared` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:35 · a:concord-frontend/lib/concordia/adaptive-score.ts:28 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `faction:alliance-formed` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:40 · a:concord-frontend/lib/concordia/adaptive-score.ts:36 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `npc:scheme-resolved` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:82 · a:concord-frontend/lib/concordia/adaptive-score.ts:42 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
-| `refusal:compound-threshold` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/EmergentJuiceBridge.tsx:61 · a:concord-frontend/lib/concordia/adaptive-score.ts:32 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `npc:activity-batch` | ⬜ | ⬜ | ✅ | ✅ | a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:1540 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `kingdom:founded` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:23 · a:concord-frontend/lib/concordia/adaptive-score.ts:38 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `kingdom:fallen` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:24 · a:concord-frontend/lib/concordia/adaptive-score.ts:40 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `world:crisis` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:20 · a:concord-frontend/lib/concordia/adaptive-score.ts:30 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `world:crisis-resolved` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:21 · a:concord-frontend/lib/concordia/adaptive-score.ts:35 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `faction:war-declared` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:19 · a:concord-frontend/lib/concordia/adaptive-score.ts:28 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `faction:alliance-formed` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:22 · a:concord-frontend/lib/concordia/adaptive-score.ts:36 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `npc:scheme-resolved` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:25 · a:concord-frontend/lib/concordia/adaptive-score.ts:42 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
+| `refusal:compound-threshold` | ✅ | ✅ | ⬜ | ✅ | v:concord-frontend/components/world/AdaptiveScoreBridge.tsx:26 · a:concord-frontend/lib/concordia/adaptive-score.ts:32 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
 | `world:season-transition` | ✅ | ⬜ | ▫ | ✅ | v:concord-frontend/components/world-lens/SkyWeatherRenderer.tsx:18 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
 | `combat:attack` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:175 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:128 · a:concord-frontend/components/world-lens/AnimationManager.tsx:309 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
-| `combat:hit` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/AdaptiveMusicBridge.tsx:197 · a:concord-frontend/lib/concordia/world-audio.ts:51 · a:concord-frontend/components/world-lens/AnimationManager.tsx:309 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
-| `combat:impact` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:175 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:128 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:1308 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
+| `combat:hit` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/AdaptiveMusicBridge.tsx:197 · a:concord-frontend/components/world/WorldAudioBridge.tsx:18 · a:concord-frontend/components/world-lens/AnimationManager.tsx:309 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
+| `combat:impact` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:175 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:128 · a:concord-frontend/components/world-lens/AvatarSystem3D.tsx:1310 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
 | `combat:kick` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:175 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:128 · a:concord-frontend/components/world-lens/AnimationManager.tsx:309 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |
 | `minigame:scored` | ✅ | ✅ | ▫ | ✅ | v:concord-frontend/components/world/DamageBillboard.tsx:8 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:197 · l:concord-frontend/components/world/EmergentEventFeed.tsx (feed) |
 | `combat:grab` | ✅ | ✅ | ✅ | ✅ | v:concord-frontend/components/world/CombatVFXBridge.tsx:175 · a:concord-frontend/components/world-lens/SoundscapeEngine.tsx:128 · a:concord-frontend/components/world-lens/AnimationManager.tsx:309 · l:concord-frontend/components/world/DamageBillboard.tsx:55 |

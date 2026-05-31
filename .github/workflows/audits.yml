@@ -98,6 +98,15 @@ jobs:
           # — you can't gate "has been playtested" (that's the cold-watcher).
           node scripts/audit/gates/untuned-constants.mjs --ci 0
 
+      - name: Lens-reachability gate (no orphaned lens a player can't reach)
+        run: |
+          # Every shipped app/lenses/<dir> must be reachable via the canonical
+          # lens-registry — Ctrl+K palette, sidebar, OR absorbed as a core-lens
+          # sub-tab. Ratchet floor 50 (the measured count at landing); drive it
+          # to 0 by wiring orphan lenses into the registry. Imports the registry's
+          # own helpers via tsx so the gate tracks the real nav surface.
+          node scripts/audit/gates/lens-reachability.mjs --ci
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column

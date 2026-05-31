@@ -9,7 +9,8 @@
     "verify:schema-drift": "node scripts/verify-schema-drift.mjs",
     "audit:surface": "node scripts/audit/surface-coverage.mjs",
     "audit:anim-transitions": "node scripts/audit/gates/animation-transitions.mjs",
-    "audit:untuned": "node scripts/audit/gates/untuned-constants.mjs"
+    "audit:untuned": "node scripts/audit/gates/untuned-constants.mjs",
+    "audit:reachability": "node scripts/audit/gates/lens-reachability.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
