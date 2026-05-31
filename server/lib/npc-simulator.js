@@ -28,6 +28,7 @@ import { broadcastOpinionEvent } from "./npc-relations.js";
 import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
 import { resolveAggro, temperamentEnabled } from "./npc-temperament.js";
 import { targetRung, stepRung, isEngaged, barkFor } from "./temperament-ladder.js";
+import { bountyTier, arrestOffer, wantedLevelFor } from "./authority-heat.js";
 import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ function updateNPCCombatAI(npc, worldId, db) {
     try {
       const r = resolveAggro(
         db, npc, { kind: 'player', id: nearestPlayer.userId },
-        profile.aggro, isWanted, profile
+        profile.aggro, isWanted, profile, { worldId }
       );
       effectiveAggro = r.effectiveAggro;
       profile        = r.profile;
@@ -198,7 +199,18 @@ function updateNPCCombatAI(npc, worldId, db) {
     const stepped  = stepRung(prevRung, tgt);
     cs.rung = stepped.rung;
     if (stepped.transition === 'up' && stepped.rung !== prevRung) {
-      _emitBark(npc, worldId, stepped.rung, barkFor(stepped.rung, archetype));
+      // At THREATENING, an authority NPC offers arrest to a wanted target
+      // instead of just warning (Part 4 arrest gate). null for everyone else.
+      let arrest = null;
+      if (stepped.rung === 'threatening'
+          && (archetype === 'guard' || archetype === 'soldier')
+          && nearestPlayer) {
+        try {
+          const tier = bountyTier(wantedLevelFor(db, worldId, nearestPlayer.userId));
+          arrest = arrestOffer('threatening', tier);
+        } catch { /* law table absent */ }
+      }
+      _emitBark(npc, worldId, stepped.rung, barkFor(stepped.rung, archetype), arrest);
     }
   }
 
@@ -305,7 +317,7 @@ function updateNPCCombatAI(npc, worldId, db) {
  * tripwired. A blank text (monsters, civilian HOSTILE) still emits the rung so
  * the audio/snarl layer can voice it. Never throws.
  */
-function _emitBark(npc, worldId, rung, text) {
+function _emitBark(npc, worldId, rung, text, arrest = null) {
   try {
     const io = globalThis._concordREALTIME?.io;
     io?.to(`world:${worldId}`).emit('world:npc-bark', {
@@ -314,6 +326,7 @@ function _emitBark(npc, worldId, rung, text) {
       position: npc.location,
       rung,
       text:     text || '',
+      arrest:   arrest || null,
     });
   } catch { /* non-fatal */ }
 }

@@ -70,8 +70,19 @@ tests; dials documented in `docs/BALANCE_DIALS.md`.
    later slice). Off by default. Test: `tests/temperament-ladder.test.js` (11 suites).
    *Follow-on:* frontend `world:npc-bark` subscription in `EmergentEventFeed` +
    the player-verb route for `applyDeescalation` (both browser-side, deferred).
-3. **Two-meter authority** (Part 4). Add HEAT meter; wire `guardTick` to graded
-   disposition + arrest gate (offer arrest at THREATENING, resist = flip to hostile).
+3. **Two-meter authority** (Part 4). ✅ *shipped.* `server/lib/authority-heat.js`:
+   the SLOW meter already existed (`law.js` `player_wanted.wanted_level` 0–5); this
+   adds the FAST **HEAT** meter (in-memory, time-decaying, `addHeat`/`getHeat`),
+   the named `bountyTier` (clean/wanted/notorious/fugitive), the `suspicionState`
+   FSM (idle/suspicious/search/alert), `responderTier` (local/elite/army), and the
+   `arrestOffer`/`resolveArrestResponse` gate (offer at THREATENING, fugitive =
+   kill-on-sight, resist = flip to hostile, comply = jail). Wired into the
+   disposition gate as an `authorityTerm` (guards/soldiers now read a target's
+   crime — "guards finally read crime") and into the ladder bark (a wanted target
+   at THREATENING gets an arrest offer on `world:npc-bark`). Tests:
+   `tests/authority-heat.test.js` + authority case in `npc-temperament.test.js`.
+   *Follow-on:* the heat-FILL perception wire (crime-witnessed → `addHeat`) lands
+   with Part 4's witness chain; the arrest-dialogue route is browser-side.
 4. **Proportionality table + surrender/arrest state machine + betray timer** (Part 3,
    mig 315). Force↔resistance ceiling re-eval per tick (mirrors `_validateDamageCap`);
    morale/surrender check (RoN-verified: non-lethal does morale damage, flash forces

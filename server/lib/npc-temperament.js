@@ -17,6 +17,7 @@
 import { getStress } from "./npc-stress.js";
 import { getRelation } from "./embodied/faction-strategy.js";
 import { blocksHostileAction } from "./hooks.js";
+import { authorityPressure } from "./authority-heat.js";
 
 // ── kill-switch ──────────────────────────────────────────────────────────────
 export function temperamentEnabled() {
@@ -35,7 +36,11 @@ const W = {
   opinion: num("CONCORD_TEMP_W_OPINION", 0.5),
   faction: num("CONCORD_TEMP_W_FACTION", 0.5),
   emotion: num("CONCORD_TEMP_W_EMOTION", 0.5),
+  authority: num("CONCORD_TEMP_W_AUTHORITY", 0.7),
 };
+
+// Archetypes that enforce the law — the authority term only applies to these.
+const AUTHORITY_ARCHETYPES = new Set(["guard", "soldier"]);
 // Severe grudge / radicalization lift an *emotional floor* — the one path by
 // which a pacifist archetype (farmer aggro 0.0) can be carried into hostility.
 const GRUDGE_FLOOR_SEVERITY = num("CONCORD_TEMP_GRUDGE_FLOOR_SEVERITY", 8);
@@ -163,6 +168,18 @@ export function disposition(db, npc, target, opts = {}) {
       if (row.radicalized) floor = Math.max(floor, RADICALIZED_FLOOR);
     }
   } catch { /* column/table absent */ }
+
+  // authority term — a guard/soldier reads the target's two-meter crime state
+  // (slow wanted scalar + fast heat). This is "guards finally read crime."
+  try {
+    if (opts.worldId && tKind === "player" && AUTHORITY_ARCHETYPES.has(npc.archetype)) {
+      const pressure = authorityPressure(db, opts.worldId, tId);
+      if (pressure > 0) {
+        terms.authority = W.authority * pressure;
+        mod += terms.authority;
+      }
+    }
+  } catch { /* law table absent */ }
 
   // CK3 hook the TARGET holds over the NPC — stays its hand (emotional escalation)
   try {

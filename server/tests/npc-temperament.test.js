@@ -62,6 +62,10 @@ function setupDb() {
       target_kind TEXT, target_id TEXT, strength TEXT,
       spent_at INTEGER, expires_at INTEGER, uses_left INTEGER DEFAULT 1
     );
+    CREATE TABLE player_wanted (
+      user_id TEXT, world_id TEXT, wanted_level INTEGER, notoriety INTEGER,
+      PRIMARY KEY (user_id, world_id)
+    );
   `);
   db.prepare(`INSERT INTO world_npcs (id, grief_level, radicalized) VALUES (?, 0, 0)`).run("npc1");
   return db;
@@ -179,6 +183,17 @@ describe("disposition term reads", () => {
       .run("iron_wardens", "verdant_veil", -1, "war"); // sorted pair i < v
     const enemy = disposition(db, NPC, { kind: "npc", id: "npc2" }, { targetFaction: "iron_wardens" });
     assert.ok(enemy.mod > 0);
+  });
+
+  it("a guard reads the target's wanted level (authority term); a civilian NPC does not", () => {
+    db.prepare(`INSERT INTO player_wanted (user_id, world_id, wanted_level) VALUES (?,?,?)`)
+      .run("userA", "w1", 5);
+    const GUARD = { id: "npc1", faction: "iron_wardens", archetype: "guard" };
+    assert.ok(disposition(db, GUARD, PLAYER, { worldId: "w1" }).mod > 0, "guard escalates on bounty");
+    // no archetype (civilian) → no authority term even with a worldId
+    assert.equal(disposition(db, NPC, PLAYER, { worldId: "w1" }).mod, 0);
+    // a guard with no worldId can't read crime → no term
+    assert.equal(disposition(db, GUARD, PLAYER).mod, 0);
   });
 
   it("a strong hook the target holds over the NPC sets hookCapped", () => {

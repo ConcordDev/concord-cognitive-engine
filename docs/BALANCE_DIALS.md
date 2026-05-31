@@ -351,5 +351,12 @@ archetype-only behaviour (byte-identical). See `docs/TEMPERAMENT_BUILD_PLAN.md`.
 | `CONCORD_TEMP_GRUDGE_FLOOR` | `0.45` | The floor a severe grudge lifts a pacifist to. |
 | `CONCORD_TEMP_RADICALIZED_FLOOR` | `0.7` | The floor a radicalized NPC is lifted to (the grieving-kin payoff). |
 | `CONCORD_TEMP_ENGAGE_THRESHOLD` | `0.4` | Effective-aggro above which an inert archetype (pursuit/melee 0) is granted the capacity to engage. |
+| `CONCORD_TEMP_W_AUTHORITY` | `0.7` | Weight of a target's two-meter crime state (wanted + heat) on a guard/soldier's modifier (Phase 3). |
 
 These are first-draft; pin from observed play in a future pass.
+
+**Authority HEAT (`server/lib/authority-heat.js`, Phase 3):** the fast suspicion
+meter (in-memory). `CONCORD_HEAT_DECAY_PER_SEC` (`2` → ~50s full cool),
+`CONCORD_HEAT_SUSPICIOUS` (`25`), `CONCORD_HEAT_SEARCH` (`55`),
+`CONCORD_HEAT_ALERT` (`80`) — the suspicion-FSM thresholds (idle/suspicious/
+search/alert). First-draft; pin from observed play.
