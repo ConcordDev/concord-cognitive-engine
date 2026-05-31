@@ -325,6 +325,19 @@ export const ACTION_DESCRIPTORS: Record<string, ActionDescriptor> = {
   climb:   { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [220, 0, 200], loop: 'climb', juiceId: 'soft', sfxId: 'scrape' },
   vault:   { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [140, 120, 140], juiceId: 'whoosh', sfxId: 'vault' },
   mantle:  { archetype: 'locomotion_modal', leadingLimb: 'both_arms', phases: [180, 160, 180], juiceId: 'soft', sfxId: 'vault' },
+  // WS-BREADTH — genuinely-absent COMBINABLE verbs (immersive-sim / social-stealth
+  // breadth). Each reuses an existing archetype + a resolvable sfx so it auto-joins
+  // the move-render gate. These give the player non-combat ways to solve a room
+  // (distract a guard, disguise past one, bribe/persuade/intimidate an NPC, set a
+  // trap, eavesdrop on a scheme, throw an object).
+  throw:     { archetype: 'thrust', leadingLimb: 'right_arm', phases: [120, 80, 160], juiceId: 'whoosh', sfxId: 'dash', vfx: 'dust' },
+  distract:  { archetype: 'thrust', leadingLimb: 'right_arm', phases: [140, 100, 160], juiceId: 'soft', sfxId: 'greet' },
+  disguise:  { archetype: 'manipulate_in_place', leadingLimb: 'both_arms', phases: [200, 180, 220], juiceId: 'soft', sfxId: 'cloth', vfx: 'sparkle' },
+  persuade:  { archetype: 'social_gesture', leadingLimb: 'right_arm', phases: [220, 180, 220], juiceId: 'soft', sfxId: 'greet' },
+  intimidate:{ archetype: 'social_gesture', leadingLimb: 'both_arms', phases: [180, 140, 200], juiceId: 'soft', sfxId: 'greet' },
+  bribe:     { archetype: 'manipulate_in_place', leadingLimb: 'right_arm', phases: [160, 120, 180], juiceId: 'coin', sfxId: 'coins' },
+  set_trap:  { archetype: 'lean_reach', leadingLimb: 'both_arms', phases: [220, 200, 200], juiceId: 'tech_tick', sfxId: 'pick' },
+  eavesdrop: { archetype: 'lean_reach', leadingLimb: 'head', phases: [200, 240, 200], loop: 'lean', juiceId: 'soft', sfxId: 'cloth' },
 };
 
 // Category fallback so NO verb is ever silent.
@@ -340,7 +353,7 @@ const GENERIC: ActionDescriptor = { archetype: 'manipulate_in_place', leadingLim
 function categoryOf(verb: string): keyof typeof CATEGORY_FALLBACK {
   const v = verb.toLowerCase();
   if (/farm|build|mine|log|fish|mill|cook|gather|dig|till|plant|water|harvest|forage|chop|construct|forge|craft|repair|smith|haul|saw|scythe|sweep/.test(v)) return 'labor';
-  if (/talk|greet|wave|court|mentor|trade|applaud|converse|intimidate|hire|inspect|emote/.test(v)) return 'social';
+  if (/talk|greet|wave|court|mentor|trade|applaud|converse|intimidate|hire|inspect|emote|persuade|bribe|distract|disguise|eavesdrop/.test(v)) return 'social';
   if (/sign|photo|claim|commune|cast|spell|glyph|sing|answer|breed|hack|lockpick|pickpocket/.test(v)) return 'world';
   return 'craft';
 }
