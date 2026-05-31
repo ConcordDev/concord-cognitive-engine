@@ -73087,7 +73087,7 @@ register("walker", "trade_routes", (ctx, input = {}) => {
   try {
     // Active walker journeys in this world
     const walkers = db.prepare(`
-      SELECT id, walker_id, status, from_world, to_world, dispatched_at, route, reputation
+      SELECT id, npc_id AS walker_id, status, home_world AS from_world, current_world AS to_world, dispatched_at, route_anchors AS route, reputation
       FROM concord_link_walkers
       WHERE status = 'in_transit'
       LIMIT 50

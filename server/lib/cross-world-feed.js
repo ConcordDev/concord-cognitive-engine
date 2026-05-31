@@ -67,10 +67,10 @@ export function getCrossWorldFeed(db, opts = {}) {
   // Faction war activity.
   try {
     const rows = db.prepare(`
-      SELECT faction_id, action, target_id, world_id, ts
+      SELECT faction_id, move AS action, target_id, NULL AS world_id, occurred_at AS ts
       FROM faction_strategy_log
-      WHERE ts >= ? AND action IN ('DECLARE_WAR', 'SEEK_TRUCE', 'PROPOSE_ALLIANCE', 'RAID')
-      ORDER BY ts DESC LIMIT 50
+      WHERE occurred_at >= ? AND move IN ('DECLARE_WAR', 'SEEK_TRUCE', 'PROPOSE_ALLIANCE', 'RAID')
+      ORDER BY occurred_at DESC LIMIT 50
     `).all(since);
     for (const r of rows) {
       const kind = r.action === "DECLARE_WAR" ? "faction-war:started"
@@ -88,7 +88,7 @@ export function getCrossWorldFeed(db, opts = {}) {
   // NPC legacy events (death of authored characters).
   try {
     const rows = db.prepare(`
-      SELECT npc_id, world_id, died_at, cause, last_words
+      SELECT npc_id, world_id, died_at, cause_of_death AS cause, last_words
       FROM npc_legacies
       WHERE died_at >= ?
       ORDER BY died_at DESC LIMIT 30

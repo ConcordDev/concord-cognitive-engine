@@ -114,8 +114,9 @@ function _processSchemeBetrayals(db, worldId, opts) {
   try {
     const cutoff = Math.floor(Date.now() / 1000) - (opts?.windowS || 24 * 60 * 60);
     const rows = db.prepare(`
-      SELECT actor_npc_id, target_npc_id FROM npc_schemes
-      WHERE outcome = 'betrayed' AND completed_at >= ? AND world_id = ?
+      SELECT s.plotter_id AS actor_npc_id, s.target_id AS target_npc_id
+      FROM npc_schemes s JOIN world_npcs n ON n.id = s.plotter_id
+      WHERE s.phase IN ('exposed','complete') AND s.resolved_at >= ? AND n.world_id = ?
       LIMIT 100
     `).all(cutoff, worldId);
 
