@@ -120,3 +120,29 @@ function clamp(v: number, lo: number, hi: number): number {
 export function emptyPose(): VehiclePose {
   return { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, vx: 0, vy: 0, vz: 0 };
 }
+
+/**
+ * Wave 7b — the driver-loop primitive. Wraps the (previously dead-code) pure
+ * stepVehicle kinematics into a stateful controller the input layer drives and
+ * the renderer reads: `setInputs` from the keyboard, `tick(dt)` to integrate,
+ * `getPose()` for the mesh, `syncTo(fn)` to push pose to the server
+ * (world-vehicles.moveVehicle) on a throttle. The live keyboard binding +
+ * mounted-state gating is the chair-tuned integration; this is the engine.
+ */
+export interface VehicleController {
+  setInputs(i: Partial<VehicleInputs>): void;
+  tick(dt: number): VehiclePose;
+  getPose(): VehiclePose;
+  reset(pose?: Partial<VehiclePose>): void;
+}
+
+export function createVehicleController(type: VehicleType, start?: Partial<VehiclePose>): VehicleController {
+  let pose: VehiclePose = { ...emptyPose(), ...start };
+  let inputs: VehicleInputs = { throttle: 0, steer: 0, pitch: 0, brake: false };
+  return {
+    setInputs(i) { inputs = { ...inputs, ...i }; },
+    tick(dt) { pose = stepVehicle(type, pose, inputs, dt); return pose; },
+    getPose() { return pose; },
+    reset(p) { pose = { ...emptyPose(), ...p }; },
+  };
+}
