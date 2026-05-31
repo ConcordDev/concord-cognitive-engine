@@ -25,12 +25,14 @@ is rendered with `result.recipe` guarded but `ingredients` not). A partial/soft-
 missing the field would white-screen the lens. The right detector is a browser smoke-test in CI, not
 static regex. Authoritative substitute below: `next build`.
 
-## Wave 22 — `next build` (authoritative frontend compile, the no-browser substitute)
-Status at writing: build cleared the **lint phase with WARNINGS ONLY** (no errors) — the only flags
-were `react-hooks/exhaustive-deps` missing-dep warnings (e.g. PartyCombatHUD `TICK_MS`,
-ContextPromptLayer `FRAME_THROTTLE_MS`). It then entered the (slow) optimize/compile phase; no compile
-errors observed before cutoff. Combined with the earlier clean `tsc --noEmit` (0 errors) + clean
-ESLint, the frontend **type-checks and lints clean** — the page-level code is structurally healthy.
+## Wave 22 — `next build` (CORRECTION: TIMED OUT, inconclusive)
+HONEST CORRECTION: the full `next build` did NOT finish — it hit the 8-minute (`timeout 480`) cap
+during the optimize phase (`BUILD_DONE exit=124` = timeout). It cleared the **lint phase with WARNINGS
+ONLY** (no errors: only `react-hooks/exhaustive-deps`), but it never reached "Compiled successfully"
+or "Failed to compile". So the production-build verdict is **INCONCLUSIVE in this sandbox** (build too
+slow to finish in the window) — I cannot claim it passes. The CONFIRMED clean signals are narrower:
+`tsc --noEmit` = 0 errors, and ESLint = warnings-only. To get a definitive build verdict, re-run with
+a longer timeout outside the sandbox.
 
 **#F3 (cosmetic) — a handful of `useEffect` missing-dependency warnings** (PartyCombatHUD,
 ContextPromptLayer, …). Non-fatal, but missing-dep on a poll/throttle constant can cause stale-closure
