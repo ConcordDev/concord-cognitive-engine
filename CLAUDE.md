@@ -12,7 +12,7 @@ Concord Cognitive Engine is a cognitive operating system — a knowledge platfor
 - 235 real lenses scanned (236 dirs minus 1 non-lens utility dir).
 - **231 WIRED** (98%) — page or imported child component calls a registered macro / known REST route / generic lens hook.
 - **0 PARTIAL** post-Phase-Z (previously 3): the `feed` + `social` lenses now resolve through a Z4 POST alias on `/api/connective-tissue/search`; the `personas` lens now alias-resolves through a `register("personas", ...)` loop in `server.js` + 5 Z4 action stubs (`get`, `stats`, `versions`, `publish`, `install`).
-- **1 NO-BACKEND-CALL** by design: `ux-suite` is a navigation directory page that links to where each absorbed UX component genuinely mounts — no API surface of its own.
+- **2 NO-BACKEND-CALL** by design (per `scripts/verify-lens-backends.mjs`): `ux-suite` is a navigation directory page that links to where each absorbed UX component genuinely mounts; `narrative-walk` is a self-contained authored-narrative reader — neither has an API surface of its own.
 
 The earlier "0 broken / 0 SCAFFOLD" claim in this file relied on a verifier that under-detected (3 regex bugs: no TS-generic match, no child-component recursion, no `api.get`/`apiClient` recognition). After fixing the verifier, the three real broken connections above showed up.
 
