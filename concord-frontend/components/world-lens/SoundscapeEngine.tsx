@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { resumeAudioContext } from '../../lib/audio/unlock';
 import { api as apiClient } from '../../lib/api/client';
 import { tensionStemParams, ghostStepParams, ghostStepWorldPos, type TensionBand } from '../../lib/audio/horror-tension';
+import { recolorChord, modeForIntensity, type MusicMode } from '../../lib/concordia/music-mode';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -44,6 +45,12 @@ interface SoundscapeAPI {
   setMusicDistrict: (district: string) => void;
   /** Duck the procedural music during combat. 0 = no duck, 1 = full duck (35% volume). */
   setMusicCombatIntensity: (intensity: number) => void;
+  /**
+   * Track 1 — recolor the procedural score's quality: 'minor' darkens on
+   * low-HP/boss tension, 'major' brightens on victory, 'neutral' restores the
+   * authored voicing. Optional holdMs reverts to the combat-implied mode after.
+   */
+  setMusicMode: (mode: MusicMode, holdMs?: number) => void;
   /**
    * Set master ambient gain. 0 = silent, 1 = full. Smoothly ramps over ~150ms.
    * Used by the embodied sonic-pulse channel to briefly accent loud events
@@ -340,6 +347,7 @@ const SoundscapeContext = createContext<SoundscapeAPI>({
   stopMusicTrack: () => {},
   setMusicDistrict: () => {},
   setMusicCombatIntensity: () => {},
+  setMusicMode: () => {},
   setAmbientVolume: () => {},
   setHorrorTension: () => {},
 });
@@ -960,6 +968,7 @@ export default function SoundscapeEngine({
   // ── Procedural ambient music ────────────────────────────────────────────────
   const musicLayerRef    = useRef<MusicLayer | null>(null);
   const musicCombatRef   = useRef<number>(0);  // 0..1 duck intensity
+  const musicModeRef     = useRef<MusicMode>('neutral');  // Track 1 — adaptive mode recolor
   const musicCurrentDistrictRef = useRef<DistrictName | null>(null);
 
   function buildMusicLayer(ctx: AudioContext, master: GainNode, district: DistrictName): MusicLayer | null {
@@ -995,7 +1004,12 @@ export default function SoundscapeEngine({
     // Schedule one chord swell — fades in over 1s, holds, fades out before next
     const playChord = () => {
       const t = ctx.currentTime;
-      const chord = profile.chordsRel[layer.chordIdx % profile.chordsRel.length];
+      // Track 1 — adaptive music: recolor the authored voicing toward the
+      // current mode (minor on tension, major on victory). 'neutral' is identity.
+      const chord = recolorChord(
+        profile.chordsRel[layer.chordIdx % profile.chordsRel.length],
+        musicModeRef.current,
+      );
       for (const semi of chord) {
         const osc = ctx.createOscillator();
         osc.type = profile.voiceType;
@@ -1096,6 +1110,9 @@ export default function SoundscapeEngine({
   const setMusicCombatIntensity = useCallback((intensity: number) => {
     const clamped = Math.max(0, Math.min(1, intensity));
     musicCombatRef.current = clamped;
+    // Track 1 — adaptive mode: rising danger darkens the score to minor; calm
+    // returns to the authored voicing. Victory is set explicitly via setMusicMode.
+    musicModeRef.current = modeForIntensity(clamped);
     const ctx = audioCtxRef.current;
     const layer = musicLayerRef.current;
     if (!ctx || !layer || ctx.state === 'closed') return;
@@ -1104,6 +1121,18 @@ export default function SoundscapeEngine({
     try {
       layer.busGain.gain.linearRampToValueAtTime(target, ctx.currentTime + (clamped > 0 ? 0.25 : 1.5));
     } catch { /* ok */ }
+  }, []);
+
+  // Track 1 — explicit mode override (e.g. a victory sting brightens to major
+  // for a few chord cycles). The next chord cycle picks it up; no teardown.
+  const setMusicMode = useCallback((mode: MusicMode, holdMs?: number) => {
+    musicModeRef.current = mode;
+    if (holdMs && holdMs > 0) {
+      setTimeout(() => {
+        // Revert to whatever the live combat intensity implies, not a hard neutral.
+        musicModeRef.current = modeForIntensity(musicCombatRef.current);
+      }, holdMs);
+    }
   }, []);
 
   const setAmbientVolume = useCallback((level: number) => {
@@ -1187,14 +1216,14 @@ export default function SoundscapeEngine({
   const api: SoundscapeAPI = {
     setDistrict, setTimeOfDay, setInterior, setWeather,
     triggerSFX, playSpatialSFX, playMusicTrack, stopMusicTrack,
-    setMusicDistrict, setMusicCombatIntensity, setAmbientVolume, setHorrorTension,
+    setMusicDistrict, setMusicCombatIntensity, setMusicMode, setAmbientVolume, setHorrorTension,
   };
 
   // Allow any sibling or parent component to call SoundscapeEngine APIs via
   // window events — avoids requiring everything to live inside this provider.
   useEffect(() => {
     const handler = (e: Event) => {
-      const { action, district, time, interior, weather, intensity, sfxId, position, volume } =
+      const { action, district, time, interior, weather, intensity, sfxId, position, volume, mode, holdMs } =
         (e as CustomEvent).detail ?? {};
       if (action === 'setDistrict' && district) setDistrict(district);
       else if (action === 'setTimeOfDay' && time) setTimeOfDay(time);
@@ -1207,6 +1236,7 @@ export default function SoundscapeEngine({
       // Polish: per-district procedural music with crossfade + combat duck
       else if (action === 'setMusicDistrict' && district) setMusicDistrict(district);
       else if (action === 'setMusicCombatIntensity' && typeof intensity === 'number') setMusicCombatIntensity(intensity);
+      else if (action === 'setMusicMode' && (mode === 'minor' || mode === 'major' || mode === 'neutral')) setMusicMode(mode, typeof holdMs === 'number' ? holdMs : undefined);
       else if (action === 'setAmbientVolume' && typeof volume === 'number') setAmbientVolume(volume);
     };
     window.addEventListener('concordia:soundscape-command', handler);
@@ -1317,7 +1347,7 @@ export default function SoundscapeEngine({
       if (duckExpireTimer) clearTimeout(duckExpireTimer);
       if (pulseRestoreTimer) clearTimeout(pulseRestoreTimer);
     };
-  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity, setAmbientVolume, setHorrorTension]);
+  }, [setDistrict, setTimeOfDay, setInterior, setWeather, triggerSFX, playSpatialSFX, setMusicDistrict, setMusicCombatIntensity, setMusicMode, setAmbientVolume, setHorrorTension]);
 
   return (
     <SoundscapeContext.Provider value={api}>
