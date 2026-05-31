@@ -47,6 +47,8 @@ import {
 import { SecondaryPhysicsManager, buildHairChain } from '@/lib/concordia/secondary-physics';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
 import { FacialController, resolveNPCEmotion } from '@/lib/concordia/facial-blend-shapes';
+import { installMoodListener, emotionFor } from '@/lib/concordia/mood-registry';
+import { getClientConfigSync } from '@/hooks/useClientConfig';
 import { physicsWorld } from '@/lib/world-lens/physics-world';
 import { accelToward } from '@/lib/world-lens/jump-forgiveness';
 import { applyCelShade } from '@/lib/world-lens/cel-shade';
@@ -2590,10 +2592,15 @@ export default function AvatarSystem3D({
               else if (!isMoving) playerFC.setEmotion('neutral', 2.0);
               playerFC.update(delta, fatigue);
             }
+            // WAVE EXPR: when expression is on, read the NPC's live mood (from the
+            // concordia:npc-mood bridge) → a real facial emotion; else the legacy
+            // hardcoded-neutral path (off == today). Listener installs once.
+            const exprOn = !!getClientConfigSync().flags?.expression;
+            if (exprOn) installMoodListener();
             for (const [npcId] of npcMeshes) {
               const fc = fcs.get(npcId);
               if (!fc) continue;
-              const emotion = resolveNPCEmotion({
+              const emotion = (exprOn && emotionFor(npcId)) || resolveNPCEmotion({
                 health: 1,
                 stamina: 1,
                 threatLevel: 0,

@@ -26,6 +26,12 @@ export interface ClientConfig {
   };
   flags: {
     worldDensity: boolean;
+    expression?: boolean;
+    adaptiveScore?: boolean;
+    worldAudio?: boolean;
+    artAtmosphere?: boolean;
+    artUi?: boolean;
+    skillForge?: boolean;
   };
 }
 

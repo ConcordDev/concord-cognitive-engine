@@ -61,6 +61,12 @@ export function getClientConfig() {
     // (e.g. WAVE WD reveals building interiors). Default off (== today).
     flags: {
       worldDensity: b("CONCORD_WORLD_DENSITY"),
+      expression: b("CONCORD_EXPRESSION"),
+      adaptiveScore: b("CONCORD_ADAPTIVE_SCORE"),
+      worldAudio: b("CONCORD_WORLD_AUDIO"),
+      artAtmosphere: b("CONCORD_ART_ATMOSPHERE"),
+      artUi: b("CONCORD_ART_UI"),
+      skillForge: b("CONCORD_SKILL_FORGE"),
     },
   };
 }
