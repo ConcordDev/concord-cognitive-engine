@@ -1239,6 +1239,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { choice } = req.body;
 
       if (!choice) return res.status(400).json({ ok: false, error: 'choice_required' });
+      // SECURITY (playtest #P1): `choice` is spliced verbatim into the NPC's LLM
+      // dialogue prompt below. It MUST be one of the known dialogue keys —
+      // otherwise a player can inject prompt text ("Ignore prior instructions…")
+      // and jailbreak the NPC. Whitelist before it reaches the prompt.
+      const VALID_CHOICES = new Set(['quest', 'trade', 'ask_work', 'ask_world', 'goodbye']);
+      if (!VALID_CHOICES.has(choice)) {
+        return res.status(400).json({ ok: false, error: 'invalid_choice' });
+      }
 
       // Fetch NPC state
       const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);

@@ -278,3 +278,25 @@ errors, ESLint = warnings-only.
 ordering (#F1, new). Frontend is structurally healthy (tsc/lint clean); its one
 unmeasured axis (browser runtime, #F2) is sandbox-blocked, not unhealthy. **Breadth,
 not depth** — a big finding count over a sound core.
+
+---
+
+# Round 7 — LLM prompt-safety + test-suite truth
+
+**Honest negatives (verified sound):** NPC-secret omission holds (structural
+exclusion in `buildNPCTraits` + canary scan); chat RAG is per-user scoped +
+encrypted (no cross-user leak); main chat paths use `{system,messages}`
+separation; the authoritative `npm test` is **99.96% green** (21,622/21,630).
+
+| # | Finding | Status |
+|---|---|---|
+| **P1** 🔴 | LLM **prompt injection** via NPC dialogue `choice` — `routes/worlds.js:1239` spliced the raw value verbatim into the NPC's prompt blob (no system/messages split), so `choice:"Ignore prior instructions…"` jailbreaks the NPC. | ✅ **FIXED** — whitelist `choice` against the known dialogue keys (`quest/trade/ask_work/ask_world/goodbye`) before it reaches the prompt; non-member → 400 `invalid_choice`. The isolated real injection (the other ~19 `.generate()` sites use constrained inputs / system-messages split). |
+| **T1** | `wiring-gate` RED — `seedRumor` (SL2 gossip, mig 309) built but zero non-test callers. | ✅ **FIXED (wired)** — `secrets.js#discoverSecret` now seeds a rumor about the secret's subject from the holder NPC on first discovery (deduped per secret, try-caught). The gossip system has a real trigger; *spreadPass-on-a-heartbeat is the natural follow-on to make rumors propagate.* |
+| **T2** | `verified-human.test.js` imported `293_verified_human.js` (renumbered to `314_`) → `ERR_MODULE_NOT_FOUND`. | ✅ **FIXED** — import updated to `314_`. (The migration-renumber dangling-reference hazard, made concrete.) |
+| **T3** | `quality-pipeline.test.js` timed out (60s) hitting a real endpoint that hung. | Open — a manifestation of #27 (the `/api/lens/run` LLM-fallthrough waits on the brain timeout ~96s). Fixed by the #3 fail-fast/timeout (allowlist work). |
+| **T4** | `reports/emergent-wiring-audit.json` stale in git (regenerates with newer cycles). | Housekeeping — regenerate in CI or drop from git; not validated, silently rots. |
+
+**Verdict across 7 expeditions (now test-backed):** the engine is solid; the bug
+mass is a small, bounded, mostly-one-root-cause set (schema-drift — now gated to
+0; ghost-fleet registration; one injection — fixed; one dialogue injection —
+fixed), and the project's own wiring-gate (#T1) is built to catch the very class.
