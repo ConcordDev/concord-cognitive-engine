@@ -26,6 +26,7 @@ import { getInjectedJwt } from '@/lib/auth-bridge';
 import { createResourceNodeRenderer } from './resource-node-renderer';
 import { createCropFieldRenderer } from './crop-field-renderer';
 import { createCreatureRenderer } from './creature-renderer';
+import { createVehicleRenderer } from './vehicle-renderer';
 import { createClaimBoundaryRenderer } from './claim-boundary-renderer';
 import { createConstructionProgressRenderer } from './construction-progress-renderer';
 import { createAvatarAuraRenderer } from './avatar-aura-renderer';
@@ -103,6 +104,9 @@ export function attachWorldRenderers(
   mount(() => createCropFieldRenderer(infrastructureGroup, dataOpts));
   // Wave 6 — the bestiary: topology-aware creature meshes from creature.for_world.
   mount(() => createCreatureRenderer(infrastructureGroup, dataOpts));
+  // Wave 7b — vehicles: per-kind meshes from vehicles.list_in_world + the
+  // "V: Mount" proximity dispatch (the previously-severed discovery chain).
+  mount(() => createVehicleRenderer(infrastructureGroup, dataOpts));
   mount(() => createClaimBoundaryRenderer(infrastructureGroup, dataOpts));
   mount(() => createConstructionProgressRenderer(infrastructureGroup, dataOpts));
   mount(() => createUprisingCrowdRenderer(infrastructureGroup, dataOpts));

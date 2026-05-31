@@ -70,9 +70,12 @@ export function getVehicle(db, vehicleId) {
 export function listVehiclesInWorld(db, worldId, { kind = null } = {}) {
   if (!db || !worldId) return [];
   try {
+    // Wave 7b — include pos_y + heading so the in-world VehicleRenderer can place
+    // + orient each vehicle (was pos_x/pos_z only).
+    const cols = `id, world_id, kind, owner_kind, capacity, fare_cc, pos_x, pos_y, pos_z, heading`;
     const stmt = kind
-      ? db.prepare(`SELECT id, world_id, kind, owner_kind, capacity, fare_cc, pos_x, pos_z FROM world_vehicles WHERE world_id = ? AND kind = ? LIMIT 200`)
-      : db.prepare(`SELECT id, world_id, kind, owner_kind, capacity, fare_cc, pos_x, pos_z FROM world_vehicles WHERE world_id = ? LIMIT 200`);
+      ? db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? AND kind = ? LIMIT 200`)
+      : db.prepare(`SELECT ${cols} FROM world_vehicles WHERE world_id = ? LIMIT 200`);
     return kind ? stmt.all(worldId, kind) : stmt.all(worldId);
   } catch {
     return [];
