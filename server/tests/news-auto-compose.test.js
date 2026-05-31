@@ -47,6 +47,7 @@ beforeEach(() => {
       faction_id TEXT NOT NULL,
       move TEXT NOT NULL,
       target_id TEXT,
+      payload_json TEXT NOT NULL DEFAULT '{}',
       occurred_at INTEGER NOT NULL
     );
     CREATE TABLE realm_decrees (

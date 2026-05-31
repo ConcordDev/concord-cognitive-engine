@@ -343,6 +343,24 @@ export function pickMove(state, peers = []) {
 }
 
 /**
+ * W3 — derive a human-legible cause tag for a move from its kind + the state
+ * that provoked it. Surfaced in news bodies + personal-stake headlines so a
+ * "War Declared" reads as "War Declared — retaliation, after the truce collapsed."
+ */
+function _triggerFor(move, prevMomentum, relationScore) {
+  const m = String(move || "").toUpperCase();
+  if (m === "DECLARE_WAR" || m === "RAID") {
+    return (typeof relationScore === "number" && relationScore <= -0.5) ? "retaliation" : "expansion_collision";
+  }
+  if (m === "SEEK_TRUCE") return "momentum_collapse";
+  if (m === "PROPOSE_ALLIANCE") return "shared_interest";
+  if (m === "PROCLAIM_EXPANSION") return "ambition";
+  if (m === "WITHDRAW") return prevMomentum < -0.3 ? "rout" : "overextension";
+  if (m === "FORTIFY") return "consolidation";
+  return "opportunity";
+}
+
+/**
  * Apply a picked move to the database — single transaction:
  *   - logs the move row
  *   - updates faction_strategy_state (momentum, stance, next_move_at)
@@ -354,6 +372,18 @@ export function applyMove(db, factionId, picked, peerStates) {
   const moveId = `fmv_${crypto.randomUUID()}`;
 
   const tx = db.transaction(() => {
+    // Wave 8 / Legibility W3 — thread the CAUSE into the move record. Read the
+    // prior state + the relation to the target BEFORE logging so the payload
+    // carries why this move happened (the news/personal-stake surfaces read it):
+    // previous momentum, the relation score that provoked it, and a trigger tag.
+    const cur = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
+    const prevMomentum = Number(cur?.momentum ?? 0);
+    let relationScore = null;
+    if (picked.target) {
+      try { relationScore = getRelation(db, factionId, picked.target)?.score ?? null; } catch { /* relation optional */ }
+    }
+    const trigger = _triggerFor(picked.move, prevMomentum, relationScore);
+
     db.prepare(`
       INSERT INTO faction_strategy_log
         (id, faction_id, move, target_id, summary, payload_json, occurred_at)
@@ -363,13 +393,18 @@ export function applyMove(db, factionId, picked, peerStates) {
       picked.move,
       picked.target ?? null,
       picked.summary,
-      JSON.stringify({ deltaMomentum: picked.deltaMomentum, newStance: picked.newStance ?? null }),
+      JSON.stringify({
+        deltaMomentum: picked.deltaMomentum,
+        newStance: picked.newStance ?? null,
+        previous_momentum: prevMomentum,
+        relation_score: relationScore,
+        trigger,
+      }),
       now,
     );
 
-    // Read current state, compute new momentum + stance
-    const cur = db.prepare(`SELECT * FROM faction_strategy_state WHERE faction_id = ?`).get(factionId);
-    const newMomentum = Math.max(-1, Math.min(1, Number(cur?.momentum ?? 0) + Number(picked.deltaMomentum ?? 0)));
+    // Compute new momentum + stance from the state read above.
+    const newMomentum = Math.max(-1, Math.min(1, prevMomentum + Number(picked.deltaMomentum ?? 0)));
     const newStance = picked.newStance ?? cur?.stance ?? "consolidate";
 
     db.prepare(`

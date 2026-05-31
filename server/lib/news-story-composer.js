@@ -24,6 +24,20 @@ const EVENT_SOURCES = Object.freeze([
   { kind: "lattice_alert",        table: "lattice_drift_alerts", since: 3600 * 12, limit: 3  },
 ]);
 
+// Legibility W3 — human-readable cause phrases for the trigger tags the faction
+// strategy engine stamps onto each move (faction-strategy.js#_triggerFor).
+const TRIGGER_PHRASE = Object.freeze({
+  retaliation: "in retaliation",
+  expansion_collision: "as expansion turned to collision",
+  momentum_collapse: "after their momentum collapsed",
+  shared_interest: "on a shared interest",
+  ambition: "out of naked ambition",
+  rout: "in the middle of a rout",
+  overextension: "having overextended",
+  consolidation: "to consolidate",
+  opportunity: "seizing an opening",
+});
+
 const HEADLINE_TEMPLATES = {
   scheme_revealed: [
     "Scheme uncovered in {context}",
@@ -88,18 +102,26 @@ function harvestFactionWars(db, sinceUnix, limit) {
   const exists = tableExists(db, "faction_strategy_log");
   if (!exists) return [];
   return db.prepare(`
-    SELECT id, faction_id, move AS move_kind, target_id, occurred_at AS executed_at
+    SELECT id, faction_id, move AS move_kind, target_id, payload_json, occurred_at AS executed_at
     FROM faction_strategy_log
     WHERE move IN ('DECLARE_WAR','RAID') AND occurred_at >= ?
     ORDER BY occurred_at DESC
     LIMIT ?
-  `).all(sinceUnix, limit).map((r) => ({
-    kind: "faction_war_declared",
-    sourceId: r.id,
-    signature: `war:${r.id}`,
-    vars: { a: r.faction_id, b: r.target_id, move: r.move_kind, context: r.move_kind.toLowerCase() },
-    timestamp: r.executed_at,
-  }));
+  `).all(sinceUnix, limit).map((r) => {
+    // Legibility W3 — show the cause, not just the effect. Read the trigger the
+    // strategy engine stamped (retaliation / expansion_collision / …) so the
+    // story reads "War Declared — retaliation" rather than a bare move name.
+    let trigger = null;
+    try { trigger = JSON.parse(r.payload_json || "{}").trigger ?? null; } catch { /* default */ }
+    const cause = TRIGGER_PHRASE[trigger] || r.move_kind.toLowerCase().replace(/_/g, " ");
+    return {
+      kind: "faction_war_declared",
+      sourceId: r.id,
+      signature: `war:${r.id}`,
+      vars: { a: r.faction_id, b: r.target_id, move: r.move_kind, context: cause, trigger },
+      timestamp: r.executed_at,
+    };
+  });
 }
 
 function harvestRealmDecrees(db, sinceUnix, limit) {
