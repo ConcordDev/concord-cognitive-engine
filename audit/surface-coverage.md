@@ -1,6 +1,6 @@
 # Surface Coverage Audit
 
-_Generated 2026-05-31T18:41:25.868Z · FLOOR=1_
+_Generated 2026-05-31T19:02:41.011Z · FLOOR=1_
 
 **127 surfaces** · **20 shipped player-verbs** · **floor violations (score<1): 0** (target 0)
 

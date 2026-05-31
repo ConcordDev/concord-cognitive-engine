@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-05-31T18:41:26.249Z",
+  "generatedAt": "2026-05-31T19:02:58.217Z",
   "totals": {
     "documented": 102,
-    "inSource": 400,
+    "inSource": 401,
     "tuned": 3,
     "untuned": 99,
     "docRot": 0,
-    "undocumented": 299
+    "undocumented": 300
   },
   "docRot": [],
   "untuned": [
@@ -360,6 +360,7 @@
     "CONCORD_SIM_MAX_JOBS",
     "CONCORD_SKILL_EVOLUTION",
     "CONCORD_SKILL_EVOLUTION_LLM",
+    "CONCORD_SKILL_FORGE",
     "CONCORD_SKIRMISH_INTERVAL_S",
     "CONCORD_SOCIAL_BRIDGE_BATCH",
     "CONCORD_SOCIAL_LIFE",
