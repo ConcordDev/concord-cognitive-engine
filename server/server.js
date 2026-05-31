@@ -73262,21 +73262,21 @@ register("reflex", "recent_proposals", (_ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const limit = Math.min(50, Math.max(1, Number(input.limit) || 20));
   try {
-    // Reflex detectors post into governance_proposals when severity ≥ high.
+    // Reflex detectors post auto-proposals via auto-proposal.js → auto_proposals
+    // (council_proposals isn't migrated, so that lib-created table is canonical).
     const rows = db.prepare(`
-      SELECT id, kind, severity, summary, body, status, created_at
-      FROM governance_proposals
-      WHERE source = 'reflex_cortex'
+      SELECT id, kind, severity, title AS summary, body, status, created_at
+      FROM auto_proposals
       ORDER BY created_at DESC LIMIT ?
     `).all(limit);
     return { ok: true, proposals: rows };
   } catch (err) {
-    // Some envs may not have governance_proposals.source column — fall back
-    // to a tag scan in the body.
+    // Fallback for builds where no reflex proposal has been posted yet
+    // (auto_proposals not yet lib-created) — narrowed to reflex-kind rows.
     try {
       const rows = db.prepare(`
-        SELECT id, kind, severity, summary, body, status, created_at
-        FROM governance_proposals
+        SELECT id, kind, severity, title AS summary, body, status, created_at
+        FROM auto_proposals
         WHERE body LIKE '%reflex%' OR kind LIKE 'reflex_%'
         ORDER BY created_at DESC LIMIT ?
       `).all(limit);
@@ -73857,8 +73857,8 @@ register("reflex", "propose_fix", async (ctx, input = {}) => {
   let proposal = null;
   try {
     proposal = db.prepare(`
-      SELECT id, kind, severity, summary, body, status, created_at
-      FROM governance_proposals WHERE id = ?
+      SELECT id, kind, severity, title AS summary, body, status, created_at
+      FROM auto_proposals WHERE id = ?
     `).get(proposalId);
   } catch { /* table optional */ }
   if (!proposal) return { ok: false, reason: "proposal_not_found" };
