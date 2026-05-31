@@ -2877,6 +2877,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     keywords: ['repair', 'telemetry', 'health', 'autonomic', 'escalation', 'maintenance', 'ops', 'homeostasis'],
   },
   {
+    id: 'move-builder',
+    name: 'Move Builder',
+    icon: Zap,
+    description: 'Compose a move — element + kind + a diminishing-returns budget — preview how it animates, mint it',
+    category: 'specialized',
+    showInSidebar: true,
+    showInCommandPalette: true,
+    path: '/lenses/move-builder',
+    order: 365,
+    keywords: ['move', 'builder', 'skill', 'spell', 'create', 'mint', 'system', 'ability'],
+  },
+  {
     id: 'codex',
     name: 'Codex',
     icon: BookOpen,
