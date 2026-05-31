@@ -77,20 +77,11 @@ export default function registerGlyphSpellMacros(register) {
     if (!spell) return { ok: false, reason: "spell_not_found" };
     if (spell.user_id !== userId) {
       // Playtest finding #30: the prior license check queried dtu_citations for
-      // creator_id/parent_id/kind — none of which exist on that table — so a
-      // non-owner cast hard-threw `no such column: creator_id` (a 500 on a real
-      // user path). Guard it to a clean rejection. NOTE: this only stops the
-      // crash; the genuine "did this user purchase a license for the spell DTU"
-      // check still needs a real grant ledger (consent/marketplace-purchase),
-      // tracked in docs/PLAYTEST_FINDINGS_PLAN.md (#30, proper fix pending).
-      let licensed = false;
-      try {
-        licensed = !!db.prepare(`
-          SELECT 1 FROM dtu_citations
-          WHERE creator_id = ? AND parent_id = ? AND kind = 'license'
-        `).get(userId, spell.dtu_id);
-      } catch { licensed = false; }
-      if (!licensed) return { ok: false, reason: "not_owner_or_licensed" };
+      // creator_id/parent_id/kind — none of which exist on that table. There is
+      // no spell-license grant ledger yet, so only the owner can cast. When a
+      // real consent/marketplace-purchase grant model lands, gate it here.
+      // Tracked in docs/PLAYTEST_FINDINGS_PLAN.md (#30).
+      return { ok: false, reason: "not_owner_or_licensed" };
     }
 
     // The spell's element is stored authoritatively at mint time (dominant

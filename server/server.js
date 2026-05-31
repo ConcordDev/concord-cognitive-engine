@@ -50473,10 +50473,10 @@ app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, re
     } catch { /* malformed */ }
     try {
       sonar = db.prepare(`
-        SELECT id, species_id AS speciesId, current_depth AS depth,
+        SELECT id, species_id AS speciesId, y AS depth,
                x, z
-        FROM creature_swim_depth
-        WHERE world_id = ? AND ABS(current_depth - ?) < 8
+        FROM world_npcs
+        WHERE world_id = ? AND ABS(y - ?) < 8 AND species_id IS NOT NULL
         LIMIT 8
       `).all(visit.world_id, visit.swim_depth).map(r => ({
         id: r.id,
@@ -73096,7 +73096,8 @@ register("embodied", "signals_for_player", async (ctx, input = {}) => {
     // combat-reach validator uses, so HUD readings match the
     // server-side ground truth.
     const pos = db.prepare(`
-      SELECT x, z FROM city_presence WHERE user_id = ? AND world_id = ?
+      SELECT json_extract(last_position, '$.x') AS x, json_extract(last_position, '$.z') AS z
+      FROM world_visits WHERE user_id = ? AND world_id = ? AND departed_at IS NULL
     `).get(userId, worldId);
     const sigMod = await import("./lib/embodied/signals.js");
     const signals = sigMod.signalsForWorld(db, worldId, pos ? { x: pos.x, z: pos.z } : null);

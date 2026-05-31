@@ -229,20 +229,21 @@ export function computeWithdrawalEligibility(db, userId) {
   if (!userId) return { ok: false, error: "user_id_required" };
   const HOLD_HOURS = 48;
   try {
-    // Total wallet balance via economy_ledger.
+    // Total balance via economy_ledger (double-sided: credits land as `net` to
+    // to_user_id, debits as `amount` from from_user_id — the canonical
+    // economy/balances.js#getBalance model; economy_ledger has no `user_id`).
     const balRow = db.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS bal
-       FROM economy_ledger
-       WHERE user_id = ?`
-    ).get(userId);
+      `SELECT COALESCE((SELECT SUM(net) FROM economy_ledger WHERE to_user_id = ? AND status = 'complete'), 0)
+            - COALESCE((SELECT SUM(amount) FROM economy_ledger WHERE from_user_id = ? AND status = 'complete'), 0) AS bal`
+    ).get(userId, userId);
     const balance = Number(balRow?.bal || 0);
 
     // Credits older than HOLD_HOURS are eligible to withdraw.
     const eligibleRow = db.prepare(
-      `SELECT COALESCE(SUM(amount), 0) AS bal
+      `SELECT COALESCE(SUM(net), 0) AS bal
        FROM economy_ledger
-       WHERE user_id = ?
-         AND amount > 0
+       WHERE to_user_id = ?
+         AND status = 'complete'
          AND created_at <= datetime('now', '-${HOLD_HOURS} hours')`
     ).get(userId);
     const eligibleCredits = Number(eligibleRow?.bal || 0);
@@ -252,7 +253,7 @@ export function computeWithdrawalEligibility(db, userId) {
     const debitsRow = db.prepare(
       `SELECT COALESCE(SUM(amount), 0) AS bal
        FROM economy_ledger
-       WHERE user_id = ? AND amount < 0`
+       WHERE from_user_id = ? AND status = 'complete'`
     ).get(userId);
     const debits = Math.abs(Number(debitsRow?.bal || 0));
     const eligibleAmount = Math.max(0, eligibleCredits - debits);
@@ -264,8 +265,8 @@ export function computeWithdrawalEligibility(db, userId) {
       const nextRow = db.prepare(
         `SELECT created_at AS ts
          FROM economy_ledger
-         WHERE user_id = ?
-           AND amount > 0
+         WHERE to_user_id = ?
+           AND status = 'complete'
            AND created_at > datetime('now', '-${HOLD_HOURS} hours')
          ORDER BY created_at ASC
          LIMIT 1`

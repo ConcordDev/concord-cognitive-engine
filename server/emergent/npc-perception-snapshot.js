@@ -51,8 +51,7 @@ export async function runNpcPerceptionSnapshot({ db }) {
   let worlds = [];
   try {
     worlds = db.prepare(`
-      SELECT DISTINCT world_id FROM city_presence
-      WHERE last_seen_at >= unixepoch() - 300
+      SELECT DISTINCT world_id FROM world_visits WHERE departed_at IS NULL
     `).all().map(r => r.world_id).filter(Boolean);
   } catch {
     // city_presence may not exist in some test builds — fall back to
@@ -69,8 +68,11 @@ export async function runNpcPerceptionSnapshot({ db }) {
     let players = [];
     try {
       players = db.prepare(`
-        SELECT user_id, x, z FROM city_presence
-        WHERE world_id = ? AND last_seen_at >= unixepoch() - 300
+        SELECT user_id,
+               json_extract(last_position, '$.x') AS x,
+               json_extract(last_position, '$.z') AS z
+        FROM world_visits
+        WHERE world_id = ? AND departed_at IS NULL
       `).all(worldId);
     } catch { /* table may be absent in minimal builds */ }
 
@@ -87,10 +89,10 @@ export async function runNpcPerceptionSnapshot({ db }) {
         LIMIT ?
       `).all(worldId, MAX_NPCS_PER_PASS);
     } catch {
-      // Fallback: try a generic npcs table if authored_npcs is absent.
+      // Fallback: the live world_npcs table (faction column, real x/z).
       try {
         npcs = db.prepare(`
-          SELECT id, faction_id, NULL AS x, NULL AS z FROM npcs WHERE world_id = ? LIMIT ?
+          SELECT id, faction AS faction_id, x, z FROM world_npcs WHERE world_id = ? LIMIT ?
         `).all(worldId, MAX_NPCS_PER_PASS);
       } catch { /* no npc table — skip world */ }
     }
