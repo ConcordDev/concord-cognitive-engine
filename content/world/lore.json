@@ -123,6 +123,15 @@
       "tags": ["primordial", "pillars"]
     },
     {
+      "id": "lore_first_adaptation",
+      "title": "The First Adaptation",
+      "type": "primordial",
+      "era": "Before Time",
+      "description": "When Concord tried to fix his laws onto Concordia's creatures, they did not break — they bent. A thing born to cold water, carried into heat, did not die: it became a third thing, the old self folded living inside the new. Concordia laughed, for this was her answer to his cataloging — life that refuses the shape an environment demands and adapts into something it did not have a name for. Every creature that hybridizes, every beast that turns slick in water and scaled in fire, is the First Adaptation repeating: the substrate bending biology instead of biology obeying the substrate. A water-bred crossed with a fire-bred under a hot sun does not blend — it reacts, and a steam-thing is born, carrying its drowned ancestry as a seed for the next wet place it finds. Concord records each one. He has never once predicted the next.",
+      "significance": "founding",
+      "tags": ["primordial", "concordia", "ecology", "pillars"]
+    },
+    {
       "id": "lore_coalition_forms",
       "title": "The Coalition Forms",
       "type": "great_refusal",

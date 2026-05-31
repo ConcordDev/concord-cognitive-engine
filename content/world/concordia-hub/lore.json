@@ -127,6 +127,16 @@
       "description": "Ranger Kiren Owl has tracked a creature whose print matches nothing in the catalogue. Stablemaster Orin Rede has independent evidence of an unknown rider exhausting horses past explanation. Courier Kel Sandren has noticed a portal opening off-schedule. Three observations. No one has yet connected them.",
       "significance": "A three-clue chain (Kiren + Orin + Kel) the player can connect — the hub's authored investigation seed.",
       "factions_involved": []
+    },
+    {
+      "id": "hub_sealed_voss_genealogy",
+      "title": "The Sealed Voss Genealogy",
+      "type": "mystery",
+      "era": "Year 91",
+      "description": "In the deepest vault of the hub archive sits a genealogy no Curator will open without the Three's leave: the Voss line, and it does not behave like a bloodline should. It branches into worlds that never touched — Lady Seraphine Voss who outlasts dynasties in the fantasy realm; Voss Dren and Emer Voss in the lattice, the latter named for a 'First Crossing'; Commander Aldric Voss who authorised the Purge here; Elias the Enforcer in the superhero world; Iniko the demoted detective in crime; the 'cousin' Mama Delgado writes to each year. The sealed record claims a single ancestor common to all of them — one who, it says, 'walked the Link before it existed.' Half the archive calls that impossible. The other half notes that the only beings who predate the Link are the Three. The hub openly debates whether the Voss are a family at all, or a pattern the Link keeps re-printing across worlds.",
+      "significance": "The keystone of the cross-world meta-conflict — ties Seraphine / Voss Dren / Aldric / Elias / Iniko to one sealed ancestor. Intentionally left debatable in-world: an investigation thread, not a settled fact.",
+      "hidden_truth": "The common ancestor walked the Concord Link before Concord built it — which means they walked it when it was only Concordia's wild creation and the Sovereign's refusal to be alone. What the Voss inherit is not blood but proximity to the Link itself.",
+      "factions_involved": []
     }
   ]
 }

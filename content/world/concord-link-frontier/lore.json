@@ -172,6 +172,21 @@
         "frontier_militia"
       ],
       "world_id": "concord-link-frontier"
+    },
+    {
+      "id": "frontier_lore_the_parcel_resurfaces",
+      "title": "The Parcel Resurfaces",
+      "type": "mystery",
+      "era": "Year 91",
+      "description": "The lost Concordia-to-Sovereign parcel surfaced — not at either end, but as a Handshake echo: Link Post Alpha logged the same parcel-hash being requested for delivery a second time, from a portal that opened off-schedule and answered to no post. Whoever holds it can speak to the Link without a post's leave. Kestra now believes the parcel never failed to arrive; it was taken in transit, inside the Link itself, by someone who can walk it untracked. The manifest line the couriers will not read aloud names the addressee only as 'V.' Dorvik has stopped insisting he is innocent and started asking who else can open a door the Handshake did not.",
+      "significance": "Advances the Lost Parcel from a flat mystery to an active thread, welding it to the off-schedule portal anomaly + the cross-world Voss ('V.') genealogy + the hub's off-schedule-portal clue. A next-step for the player, not a closed case.",
+      "factions_involved": [
+        "frontier_militia"
+      ],
+      "known_by": [
+        "frontier_militia"
+      ],
+      "world_id": "concord-link-frontier"
     }
   ]
 }
