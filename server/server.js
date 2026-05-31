@@ -24589,6 +24589,8 @@ import registerCivicBondsMacros from "./domains/civic-bonds.js";
 registerCivicBondsMacros(register);
 import registerDailyLifeMacros from "./domains/daily-life.js";
 registerDailyLifeMacros(register);
+import registerSkillForgeMacros from "./domains/skill-forge.js";
+registerSkillForgeMacros(register);
 import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
 registerHeartbeat("news-compose-cycle", {
   frequency: 60,
