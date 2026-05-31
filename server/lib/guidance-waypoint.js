@@ -78,14 +78,16 @@ export function getActiveObjective(db, userId, worldId) {
 
   // Lattice-born quest — drift-spawned, last priority.
   try {
+    // lattice_born_quests is world-scoped (not user-scoped); 'open' = not yet
+    // realised; the anchor position lives in procgen_regions keyed by signature.
     const row = db.prepare(`
-      SELECT id, host_npc_id, anchor_x, anchor_z, host_world_id, status
-      FROM lattice_born_quests
-      WHERE user_id IS NULL OR user_id = ?
-      AND status = 'open'
-      AND host_world_id = ?
-      ORDER BY created_at DESC LIMIT 1
-    `).get(userId, worldId);
+      SELECT q.id, q.target_npc_id AS host_npc_id,
+             COALESCE(r.anchor_x, 0) AS anchor_x, COALESCE(r.anchor_z, 0) AS anchor_z
+      FROM lattice_born_quests q
+      LEFT JOIN procgen_regions r ON r.drift_alert_signature = q.drift_alert_signature
+      WHERE q.world_id = ? AND q.realised_at IS NULL
+      ORDER BY q.composed_at DESC LIMIT 1
+    `).get(worldId);
     if (row) {
       return {
         kind: "lattice_born",

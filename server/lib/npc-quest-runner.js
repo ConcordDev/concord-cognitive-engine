@@ -73,7 +73,7 @@ export function listOpenAcceptable(db, limit = 20) {
   // Fallback: just the lattice_born_quests table.
   try {
     return db.prepare(`
-      SELECT q.id, q.title, q.host_npc_id, q.signature
+      SELECT q.id, q.drift_type AS title, q.target_npc_id AS host_npc_id, q.drift_alert_signature AS signature
         FROM lattice_born_quests q
         LEFT JOIN npc_active_quests a ON a.quest_id = q.id AND a.status IN ('active','completed')
        WHERE a.id IS NULL

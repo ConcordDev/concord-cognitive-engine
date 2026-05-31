@@ -73578,8 +73578,8 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
   // Faction strategy moves.
   try {
     out.factionMoves = db.prepare(`
-      SELECT faction_id, kind, payload_json, created_at
-      FROM faction_strategy_log WHERE created_at >= ? LIMIT 50
+      SELECT faction_id, move AS kind, payload_json, occurred_at AS created_at
+      FROM faction_strategy_log WHERE occurred_at >= ? LIMIT 50
     `).all(since);
   } catch { out.factionMoves = []; }
   // Procgen regions that spawned.
@@ -73592,8 +73592,8 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
   // Lattice-born quests.
   try {
     out.latticeQuests = db.prepare(`
-      SELECT id, drift_type, quest_id, composer, created_at
-      FROM lattice_born_quests WHERE created_at >= ? LIMIT 50
+      SELECT id, drift_type, quest_id, composer, composed_at AS created_at
+      FROM lattice_born_quests WHERE composed_at >= ? LIMIT 50
     `).all(since);
   } catch { out.latticeQuests = []; }
   return { ok: true, eventId, sinceTs: since, worldId, ripples: out };
