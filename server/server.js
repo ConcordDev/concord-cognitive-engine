@@ -10527,6 +10527,9 @@ async function runMacro(domain, name, input, ctx) {
     // Wave 6 — creatures in a world are world-visible; the CreatureSystem reads
     // them without auth (same as resource nodes).
     creatures: new Set(["for_world", "taxonomy"]),
+    // WS-CHEMISTRY — the reaction matrix is a read-only reference (apply/ignite/
+    // douse mutate and require an actor, so they're NOT here).
+    elements: new Set(["matrix"]),
     emergent: new Set(["status", "get", "list", "schema", "patterns", "reputation", "scope.metrics", "bridge.heartbeatTick"]),
     dtu: new Set(["list", "get", "search", "recent", "stats", "count", "export", "paginated", "create", "update", "delete", "bulkCreate", "promote"]),
     // Phase 1 (UX completeness sprint) — per-lens auto-save drafts.
@@ -24307,6 +24310,12 @@ registerCreatureMacros(register);
 // Homeostasis ledger + escalation inbox + Repair Memory stats. Operator-scoped.
 import registerRepairMacros from "./domains/repair.js";
 registerRepairMacros(register);
+
+// WS-CHEMISTRY — the BotW combinable element verbs over the element-vs-material
+// matrix + embodied signal feedback (apply/ignite/douse compose via the existing
+// signal-propagation chemistry). matrix is public-read; apply/ignite/douse mutate.
+import registerElementMacros from "./domains/elements.js";
+registerElementMacros(register);
 
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
