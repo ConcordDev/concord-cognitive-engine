@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import { mergeDamage, dmgLabel, type DmgEntry } from '@/lib/concordia/damage-stack';
 
 // Theme 5 (game-feel pass): world-anchored damage numbers.
 //
@@ -28,7 +29,13 @@ interface BillboardEntry {
   kind: 'hit' | 'crit' | 'block' | 'dodge' | 'kill';
   bornAt: number;
   ttlMs: number;
+  count: number; // hits coalesced into this entry (Track 1 grouping)
 }
+
+// Group same-spot numeric hits within this window/radius into a running tally so
+// a combo reads as one climbing "+42 ×5" instead of a flurry of overlapping glyphs.
+const GROUP_MS = 1500;
+const GROUP_RADIUS_M = 1.5;
 
 type Projection = { x: number; y: number; visible: boolean };
 type Projector = (world: { x: number; y: number; z: number }) => Projection | null;
@@ -69,19 +76,45 @@ export function DamageBillboard() {
       };
       if (!detail?.position || detail.value === undefined) return;
       const id = (detail.id as string) ?? `dmg_${++counter}`;
+      const pos = {
+        x: Number(detail.position.x ?? 0),
+        y: Number(detail.position.y ?? 0),
+        z: Number(detail.position.z ?? 0),
+      };
       const entry: BillboardEntry = {
         id,
-        position: {
-          x: Number(detail.position.x ?? 0),
-          y: Number(detail.position.y ?? 0),
-          z: Number(detail.position.z ?? 0),
-        },
+        position: pos,
         value: String(detail.value),
         kind: (detail.kind as BillboardEntry['kind']) ?? 'hit',
         bornAt: performance.now(),
         ttlMs: Number(detail.ttlMs ?? 1200),
+        count: 1,
       };
-      setEntries((prev) => [...prev, entry].slice(-32)); // hard cap to keep DOM bounded
+      setEntries((prev) => {
+        // Run the pure grouping core over a flat DmgEntry view, then reconcile
+        // back to the billboard shape (preserving each entry's ttl/position).
+        const flat: DmgEntry[] = prev.map((e) => ({
+          id: e.id, x: e.position.x, y: e.position.y, z: e.position.z,
+          value: e.value, kind: e.kind, bornAt: e.bornAt, count: e.count,
+        }));
+        const merged = mergeDamage(flat, {
+          id: entry.id, x: pos.x, y: pos.y, z: pos.z,
+          value: entry.value, kind: entry.kind, bornAt: entry.bornAt,
+        }, { groupMs: GROUP_MS, radiusM: GROUP_RADIUS_M, max: 32 });
+        const byId = new Map(prev.map((e) => [e.id, e]));
+        return merged.map((d): BillboardEntry => {
+          const existing = byId.get(d.id);
+          return {
+            id: d.id,
+            position: { x: d.x, y: d.y, z: d.z },
+            value: d.value,
+            kind: d.kind,
+            bornAt: d.bornAt,
+            ttlMs: existing ? existing.ttlMs : entry.ttlMs,
+            count: d.count,
+          };
+        });
+      });
     }
     window.addEventListener('concordia:damage-billboard', onSpawn);
     return () => window.removeEventListener('concordia:damage-billboard', onSpawn);
@@ -149,7 +182,7 @@ export function DamageBillboard() {
               fontSize: e.kind === 'crit' || e.kind === 'kill' ? '1.5rem' : '1.1rem',
             }}
           >
-            {e.value}
+            {dmgLabel({ id: e.id, x: e.position.x, y: e.position.y, z: e.position.z, value: e.value, kind: e.kind, bornAt: e.bornAt, count: e.count })}
           </div>
         );
       })}
