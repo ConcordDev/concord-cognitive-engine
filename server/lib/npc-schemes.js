@@ -24,6 +24,7 @@ import { npcNameFromRow } from "./npc-name.js";
 import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
+import { maybeEmitPersonalStake } from "./personal-stake.js";
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -232,6 +233,20 @@ export function advanceScheme(db, schemeId, opts = {}) {
             kind: sch.kind,
             outcome: nextPhase,
           });
+        }
+        // Legibility W2 — route it through the player's thread if it touches a
+        // stake of theirs (grudge/foreseen/faction). Diegetic anchor = plotter pos.
+        const npc = db.prepare(`SELECT world_id, x, z FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
+        if (npc?.world_id) {
+          maybeEmitPersonalStake(db, {
+            kind: "scheme",
+            worldId: npc.world_id,
+            npcIds: [sch.plotter_id, sch.target_id].filter(Boolean),
+            schemeKind: sch.kind,
+            outcome: nextPhase,
+            headline: `A ${sch.kind || "scheme"} has come to light`,
+            worldPos: (typeof npc.x === "number") ? { x: npc.x, y: 0, z: npc.z } : null,
+          }).catch(() => {});
         }
       } catch { /* never blocks the cycle */ }
     }
