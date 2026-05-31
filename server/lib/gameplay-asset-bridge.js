@@ -159,6 +159,29 @@ export function onCombatHit(db, { attackerId, victimId, weapon, damage, isCrit }
   });
 }
 
+/**
+ * Resolve (idempotently registering if absent) the evo-asset id for the skill/
+ * weapon a combat hit was made WITH, so the combat call site can pass a real
+ * asset id to onCombatHit. registerAsset dedups on (source, source_id), so the
+ * first hit with a never-before-seen skill makes it an evolvable asset and
+ * every subsequent hit accrues fitness toward refinement. Returns null on any
+ * failure (combat is never blocked by the evo-asset layer).
+ */
+export function weaponAssetIdForSkill(db, skillId) {
+  if (!db || !skillId) return null;
+  return _safe(() => {
+    const sourceId = `skill:${skillId}`;
+    const r = registerAsset(db, {
+      kind: ASSET_KIND.SKILL,
+      source: "concordia",
+      sourceId,
+      localPath: _gameplayPath(ASSET_KIND.SKILL, sourceId),
+      qualityLevel: 0,
+    });
+    return r?.id ?? null;
+  });
+}
+
 /* ── Skill events ─────────────────────────────────────────────────── */
 
 export function onSkillAuthored(db, { skill, origin }) {

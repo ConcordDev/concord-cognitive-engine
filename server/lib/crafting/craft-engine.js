@@ -14,6 +14,7 @@ import {
 } from '../skills/skill-engine.js';
 import { validateDesign, estimateStats } from './recipe-validator.js';
 import { resolveCraft } from '../craft-resolve.js';
+import { onPlayerCraft } from '../gameplay-asset-bridge.js';
 
 // ── Living Society P0 — resource-grounded quality ────────────────────────────────
 //
@@ -283,6 +284,19 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
     if (resolved.failed) out.failed = true;
     if (debuffApplied) out.debuff = debuffApplied;
   }
+
+  // N4-EVO: register the crafted item as an evolvable asset so it can refine
+  // through use. Best-effort + kill-switched (off → today). The bridge absorbs
+  // its own throws; the extra guard keeps a crafting bug impossible.
+  if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && resultDtu?.id) {
+    try {
+      onPlayerCraft(db, {
+        userId, recipeId, itemId: resultDtu.id,
+        quality: Math.max(0, Math.min(10, Math.round((out.qualityMultiplier ?? 1) * 2))),
+      });
+    } catch { /* evo-asset best-effort */ }
+  }
+
   return out;
 }
 

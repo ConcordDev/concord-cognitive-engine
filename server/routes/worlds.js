@@ -2401,6 +2401,21 @@ export default function createWorldsRouter({ requireAuth, db }) {
         bar_cost: barCost,
       });
 
+      // N4-EVO: a landed hit accrues fitness on the skill/weapon's evolvable
+      // asset — fight with something enough and it refines. Best-effort +
+      // kill-switched (off → today). Never blocks combat.
+      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && skillDtuId) {
+        try {
+          const { weaponAssetIdForSkill, onCombatHit } = await import("../lib/gameplay-asset-bridge.js");
+          const wid = weaponAssetIdForSkill(db, skillDtuId);
+          if (wid) onCombatHit(db, {
+            attackerId: userId, victimId: npcId, weapon: { id: wid },
+            damage: Number(damageResult.finalDamage) || 0,
+            isCrit: Number(damageResult.executionMultiplier || 1) > 1,
+          });
+        } catch { /* evo-asset best-effort */ }
+      }
+
       // E0#3 — boss HP/phase HUD + light up the dormant boss-phase scaling.
       // The phase-state created at spawn (STATE.bossPhases) was never ticked in
       // combat, so its damage scaling was dead. If the target is a boss, tick
