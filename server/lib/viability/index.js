@@ -10,3 +10,4 @@ export { makeConstraintSet, normalizeState } from "./constraint-set.js";
 export { slack, slacks, isFeasible } from "./feasibility.js";
 export { viabilityIndex, nearestBinding, viabilityReport } from "./viability-index.js";
 export { stepDynamics, willExit, inViabilityKernel } from "./dynamics.js";
+export { equilibriumTemp, steppedClimate, tippingPoints } from "./climate-energy-budget.js";
