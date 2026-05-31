@@ -37,31 +37,36 @@ beforeEach(() => {
     );
     CREATE TABLE npc_schemes (
       id TEXT PRIMARY KEY,
-      npc_id TEXT NOT NULL,
-      scheme_kind TEXT NOT NULL,
-      target_id TEXT,
-      revealed_at INTEGER
+      plotter_kind TEXT, plotter_id TEXT,
+      target_kind TEXT, target_id TEXT,
+      kind TEXT, phase TEXT,
+      resolved_at INTEGER
     );
     CREATE TABLE faction_strategy_log (
       id TEXT PRIMARY KEY,
       faction_id TEXT NOT NULL,
-      move_kind TEXT NOT NULL,
+      move TEXT NOT NULL,
       target_id TEXT,
-      executed_at INTEGER NOT NULL
+      occurred_at INTEGER NOT NULL
     );
     CREATE TABLE realm_decrees (
       id TEXT PRIMARY KEY,
-      realm_id TEXT NOT NULL,
-      decree_kind TEXT NOT NULL,
-      title TEXT,
-      issued_by_npc_id TEXT,
+      kingdom_id TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      body_json TEXT,
+      issued_by_kind TEXT, issued_by_id TEXT,
       issued_at INTEGER NOT NULL
     );
     CREATE TABLE npc_legacies (
       id TEXT PRIMARY KEY,
       npc_id TEXT NOT NULL,
-      heir_npc_id TEXT,
-      composed_at INTEGER NOT NULL
+      world_id TEXT,
+      died_at INTEGER NOT NULL
+    );
+    CREATE TABLE npc_inheritance_links (
+      id TEXT PRIMARY KEY,
+      deceased_npc_id TEXT NOT NULL,
+      heir_npc_id TEXT
     );
   `);
 });
@@ -98,10 +103,11 @@ describe("news-story-composer", () => {
 
   it("runNewsComposePass harvests from every available source", () => {
     const now = Math.floor(Date.now() / 1000);
-    db.prepare("INSERT INTO npc_schemes (id, npc_id, scheme_kind, revealed_at) VALUES ('sc1','npc1','heist',?)").run(now - 100);
-    db.prepare("INSERT INTO faction_strategy_log (id, faction_id, move_kind, target_id, executed_at) VALUES ('fw1','fA','DECLARE_WAR','fB',?)").run(now - 50);
-    db.prepare("INSERT INTO realm_decrees (id, realm_id, decree_kind, title, issued_at) VALUES ('rd1','r1','tax','New Levy',?)").run(now - 30);
-    db.prepare("INSERT INTO npc_legacies (id, npc_id, heir_npc_id, composed_at) VALUES ('lg1','npc_old','npc_young',?)").run(now - 20);
+    db.prepare("INSERT INTO npc_schemes (id, plotter_kind, plotter_id, kind, phase, resolved_at) VALUES ('sc1','npc','npc1','heist','exposed',?)").run(now - 100);
+    db.prepare("INSERT INTO faction_strategy_log (id, faction_id, move, target_id, occurred_at) VALUES ('fw1','fA','DECLARE_WAR','fB',?)").run(now - 50);
+    db.prepare("INSERT INTO realm_decrees (id, kingdom_id, kind, body_json, issued_by_kind, issued_by_id, issued_at) VALUES ('rd1','r1','tax_change','{\"title\":\"New Levy\"}','npc','npc_x',?)").run(now - 30);
+    db.prepare("INSERT INTO npc_legacies (id, npc_id, died_at) VALUES ('lg1','npc_old',?)").run(now - 20);
+    db.prepare("INSERT INTO npc_inheritance_links (id, deceased_npc_id, heir_npc_id) VALUES ('il1','npc_old','npc_young')").run();
 
     const r = runNewsComposePass(db);
     assert.equal(r.ok, true);
@@ -113,8 +119,8 @@ describe("news-story-composer", () => {
 
   it("listRecentStories filters by kind", () => {
     const now = Math.floor(Date.now() / 1000);
-    db.prepare("INSERT INTO npc_schemes (id, npc_id, scheme_kind, revealed_at) VALUES ('sc1','npc1','heist',?)").run(now);
-    db.prepare("INSERT INTO faction_strategy_log (id, faction_id, move_kind, target_id, executed_at) VALUES ('fw1','fA','DECLARE_WAR','fB',?)").run(now);
+    db.prepare("INSERT INTO npc_schemes (id, plotter_kind, plotter_id, kind, phase, resolved_at) VALUES ('sc1','npc','npc1','heist','exposed',?)").run(now);
+    db.prepare("INSERT INTO faction_strategy_log (id, faction_id, move, target_id, occurred_at) VALUES ('fw1','fA','DECLARE_WAR','fB',?)").run(now);
     runNewsComposePass(db);
     const schemeOnly = listRecentStories(db, { kind: "scheme_revealed" });
     assert.equal(schemeOnly.length, 1);
@@ -125,7 +131,7 @@ describe("news-story-composer", () => {
   it("compose skips stale events outside the source window", () => {
     const now = Math.floor(Date.now() / 1000);
     // realm_decree window is 24h; place this decree 3 days ago
-    db.prepare("INSERT INTO realm_decrees (id, realm_id, decree_kind, title, issued_at) VALUES ('rd_old','r','tax','Old Levy',?)").run(now - 3600 * 24 * 3);
+    db.prepare("INSERT INTO realm_decrees (id, kingdom_id, kind, body_json, issued_by_kind, issued_by_id, issued_at) VALUES ('rd_old','r','tax_change','{\"title\":\"Old Levy\"}','npc','npc_x',?)").run(now - 3600 * 24 * 3);
     const r = runNewsComposePass(db);
     assert.equal(r.harvested, 0);
     assert.equal(r.composed, 0);
@@ -143,7 +149,7 @@ describe("news-story-composer", () => {
 describe("news domain macros", () => {
   it("auto_compose macro returns summary", async () => {
     const now = Math.floor(Date.now() / 1000);
-    db.prepare("INSERT INTO npc_schemes (id, npc_id, scheme_kind, revealed_at) VALUES ('sc1','npc1','heist',?)").run(now);
+    db.prepare("INSERT INTO npc_schemes (id, plotter_kind, plotter_id, kind, phase, resolved_at) VALUES ('sc1','npc','npc1','heist','exposed',?)").run(now);
     const r = await call("auto_compose", ctx());
     assert.equal(r.ok, true);
     assert.equal(r.composed, 1);

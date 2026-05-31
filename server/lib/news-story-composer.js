@@ -68,11 +68,12 @@ function fillTemplate(template, vars) {
 function harvestSchemeReveals(db, sinceUnix, limit) {
   const exists = tableExists(db, "npc_schemes");
   if (!exists) return [];
+  // A scheme is "revealed" when it resolves to the 'exposed' phase.
   return db.prepare(`
-    SELECT id, npc_id, scheme_kind, target_id, revealed_at
+    SELECT id, plotter_id AS npc_id, kind AS scheme_kind, target_id, resolved_at AS revealed_at
     FROM npc_schemes
-    WHERE revealed_at IS NOT NULL AND revealed_at >= ?
-    ORDER BY revealed_at DESC
+    WHERE phase = 'exposed' AND resolved_at IS NOT NULL AND resolved_at >= ?
+    ORDER BY resolved_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
     kind: "scheme_revealed",
@@ -87,10 +88,10 @@ function harvestFactionWars(db, sinceUnix, limit) {
   const exists = tableExists(db, "faction_strategy_log");
   if (!exists) return [];
   return db.prepare(`
-    SELECT id, faction_id, move_kind, target_id, executed_at
+    SELECT id, faction_id, move AS move_kind, target_id, occurred_at AS executed_at
     FROM faction_strategy_log
-    WHERE move_kind IN ('DECLARE_WAR','RAID') AND executed_at >= ?
-    ORDER BY executed_at DESC
+    WHERE move IN ('DECLARE_WAR','RAID') AND occurred_at >= ?
+    ORDER BY occurred_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
     kind: "faction_war_declared",
@@ -105,9 +106,11 @@ function harvestRealmDecrees(db, sinceUnix, limit) {
   const exists = tableExists(db, "realm_decrees");
   if (!exists) return [];
   return db.prepare(`
-    SELECT id, realm_id, decree_kind, title, issued_at, issued_by_npc_id
+    SELECT id, kingdom_id AS realm_id, kind AS decree_kind,
+           json_extract(body_json, '$.title') AS title, issued_at,
+           issued_by_id AS issued_by_npc_id
     FROM realm_decrees
-    WHERE issued_at >= ?
+    WHERE issued_at >= ? AND issued_by_kind = 'npc'
     ORDER BY issued_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
@@ -120,13 +123,15 @@ function harvestRealmDecrees(db, sinceUnix, limit) {
 }
 
 function harvestDynastySuccessions(db, sinceUnix, limit) {
-  const exists = tableExists(db, "npc_legacies");
+  const exists = tableExists(db, "npc_legacies") && tableExists(db, "npc_inheritance_links");
   if (!exists) return [];
+  // Heir linkage lives in npc_inheritance_links; legacy death time is died_at.
   return db.prepare(`
-    SELECT id, npc_id, heir_npc_id, composed_at
-    FROM npc_legacies
-    WHERE composed_at >= ? AND heir_npc_id IS NOT NULL
-    ORDER BY composed_at DESC
+    SELECT l.id, l.npc_id, il.heir_npc_id, l.died_at AS composed_at
+    FROM npc_legacies l
+    JOIN npc_inheritance_links il ON il.deceased_npc_id = l.npc_id
+    WHERE l.died_at >= ? AND il.heir_npc_id IS NOT NULL
+    ORDER BY l.died_at DESC
     LIMIT ?
   `).all(sinceUnix, limit).map((r) => ({
     kind: "dynasty_succession",

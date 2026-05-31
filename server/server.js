@@ -24493,6 +24493,18 @@ void _timelinePrune; // exposed for future heartbeat-driven TTL sweep
 import registerGuidanceWaypointMacros from "./domains/guidance-waypoint.js";
 registerGuidanceWaypointMacros(register);
 
+// News auto-composer — turns live emergent events (scheme reveals, faction wars,
+// realm decrees, dynasty successions, lattice alerts) into citable news DTUs the
+// /lenses/news surface reads. Was written + macro'd but never registered.
+import registerNewsComposeMacros from "./domains/news-compose.js";
+registerNewsComposeMacros(register);
+import { runNewsComposeCycle } from "./emergent/news-compose-cycle.js";
+registerHeartbeat("news-compose-cycle", {
+  frequency: 60,
+  scope: "global",
+  handler: runNewsComposeCycle,
+});
+
 // Sprint 10 — BYO API key substrate. Lets users plug their own
 // frontier-model API keys (OpenAI / Anthropic / xAI / Google) into
 // per-brain slots and route inference there instead of the default
