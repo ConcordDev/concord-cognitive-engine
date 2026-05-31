@@ -19,6 +19,7 @@ import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
 import { getAuthoredFaction } from "../lib/content-seeder.js";
 import { resolveFactionClash } from "../lib/faction-strength.js";
+import { maybeEmitPersonalStake } from "../lib/personal-stake.js";
 
 // WS5: structural strength decides wars/raids. Kill-switch CONCORD_FACTION_STRENGTH=0.
 function factionStrengthEnabled() { return process.env.CONCORD_FACTION_STRENGTH !== "0"; }
@@ -88,6 +89,17 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
       if (applied) {
         advanced++;
         const entry = { factionId: f.faction_id, move: applied.move, target: applied.target };
+        // Legibility W2b — route a war move through any online player whose thread
+        // it pulls on ("the faction you backed is on the move"). Global (factions
+        // aren't per-world) → scans all online players. Best-effort, never blocks.
+        if (applied.move === "DECLARE_WAR" || applied.move === "RAID") {
+          maybeEmitPersonalStake(db, {
+            kind: "faction_war",
+            factionId: f.faction_id,
+            targetFactionId: applied.target ?? null,
+            headline: `${f.faction_id} ${applied.move === "RAID" ? "raids" : "declares war on"}${applied.target ? ` ${applied.target}` : ""}`,
+          }).catch(() => {});
+        }
         // WS5: a RAID or DECLARE_WAR is now decided by structural strength
         // (leaders + trained members + realm setup). The stronger faction gains
         // momentum, the weaker loses it, and a hot-event fires for the feed.

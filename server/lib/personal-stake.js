@@ -84,16 +84,23 @@ export function scoreStake(db, event, userId, worldId) {
  * @returns {number} how many stake events fired
  */
 export async function maybeEmitPersonalStake(db, event, emitFn = globalThis._concordRealtimeEmit) {
-  if (typeof emitFn !== "function" || !db || !event?.worldId) return 0;
-  let userIds = [];
+  if (typeof emitFn !== "function" || !db || !event) return 0;
+  // World-scoped events (schemes) scan that world; global events (faction wars —
+  // factions aren't per-world) scan all online players, scoring each against
+  // their OWN current world's reputation.
+  let candidates = []; // [{ userId, worldId }]
   try {
     const cp = await import("./city-presence.js");
-    userIds = cp.getUserIdsInWorld?.(event.worldId) || [];
+    if (event.worldId) {
+      candidates = (cp.getUserIdsInWorld?.(event.worldId) || []).map((u) => ({ userId: u, worldId: event.worldId }));
+    } else {
+      candidates = (cp.getOnlineUserIds?.() || []).map((u) => ({ userId: u, worldId: cp.getUserPosition?.(u)?.worldId || "concordia-hub" }));
+    }
   } catch { return 0; }
   let fired = 0;
-  for (const userId of userIds) {
+  for (const { userId, worldId } of candidates) {
     try {
-      const s = scoreStake(db, event, userId, event.worldId);
+      const s = scoreStake(db, event, userId, worldId);
       if (s) {
         emitFn("world:personal-stake", {
           forUserId: userId,

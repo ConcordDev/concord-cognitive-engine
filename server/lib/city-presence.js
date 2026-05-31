@@ -561,6 +561,12 @@ export function getUserIdsInWorld(worldId) {
   return ids;
 }
 
+/** All currently-present user ids (across every world). Used by global-scope
+ *  signals (e.g. faction-war personal-stake) that aren't tied to one world. */
+export function getOnlineUserIds() {
+  return [..._userPositions.keys()];
+}
+
 /**
  * Return all players within a single 50m spatial cell in a world.
  * Used by signal-propagation and combat fan-out so 200 concurrent users
