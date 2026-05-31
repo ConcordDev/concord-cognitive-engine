@@ -18,6 +18,9 @@
 import logger from "../logger.js";
 import { pickMove, applyMove } from "../lib/embodied/faction-strategy.js";
 import { ethicsEnabled, getSharedValueRuleIndex, factionMoveBias } from "../lib/viability/value-rule-index.js";
+import { collapseCascadeEnabled, cascadeCollapse } from "../lib/viability/collapse-cascade.js";
+
+const CASCADE_DRAG = 0.2; // bounded momentum drag applied to a contagion-collapsed faction
 import { getAuthoredFaction } from "../lib/content-seeder.js";
 import { resolveFactionClash } from "../lib/faction-strength.js";
 import { maybeEmitPersonalStake } from "../lib/personal-stake.js";
@@ -141,5 +144,36 @@ export async function runFactionStrategyCycle({ db, io, state: _state, tickCount
     }
   }
 
-  return { ok: true, advanced, total: pending.length, moves };
+  // Wave 5 #22 — collapse cascade: after this pass's moves settle, an
+  // over-extended faction whose allies/patrons have fallen is dragged toward
+  // collapse too (the domino). Read fresh momenta (moves just changed them),
+  // run the pure cascade, and apply a bounded momentum drag to each
+  // contagion-collapsed faction + emit a feed event. Behind
+  // CONCORD_COLLAPSE_CASCADE; flag off → this whole block is skipped (today).
+  let cascade = null;
+  if (collapseCascadeEnabled()) {
+    try {
+      const fresh = db.prepare(`SELECT faction_id, momentum FROM faction_strategy_state`).all();
+      let relations = [];
+      try { relations = db.prepare(`SELECT faction_a, faction_b, kind FROM faction_relations`).all(); } catch { /* relations optional */ }
+      const result = cascadeCollapse(fresh, relations);
+      for (const fid of result.cascaded) {
+        nudgeMomentum(db, fid, -CASCADE_DRAG);
+      }
+      if (result.cascaded.length > 0) {
+        try {
+          io?.emit?.("faction:collapse-cascade", {
+            seeds: result.seeds,
+            cascaded: result.cascaded,
+            systemicRiskClusterSize: result.systemicRiskClusterSize,
+          });
+        } catch { /* emit best-effort */ }
+      }
+      cascade = { cascaded: result.cascaded.length, systemicRiskClusterSize: result.systemicRiskClusterSize };
+    } catch (err) {
+      try { logger.warn("faction-strategy-cycle", "cascade_failed", { error: err?.message }); } catch { /* ignore */ }
+    }
+  }
+
+  return { ok: true, advanced, total: pending.length, moves, ...(cascade ? { cascade } : {}) };
 }
