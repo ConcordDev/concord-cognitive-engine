@@ -8,7 +8,8 @@
     "verify:render-parity": "node scripts/verify-render-parity.mjs",
     "verify:schema-drift": "node scripts/verify-schema-drift.mjs",
     "audit:surface": "node scripts/audit/surface-coverage.mjs",
-    "audit:anim-transitions": "node scripts/audit/gates/animation-transitions.mjs"
+    "audit:anim-transitions": "node scripts/audit/gates/animation-transitions.mjs",
+    "audit:untuned": "node scripts/audit/gates/untuned-constants.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

@@ -90,6 +90,14 @@ jobs:
           # 'idle'. Floor 0 — graph integrity must be perfect.
           node scripts/audit/gates/animation-transitions.mjs --ci
 
+      - name: Untuned-constant gate (BALANCE_DIALS doc↔source)
+        run: |
+          # Doc-rot is the hard signal (ratchet floor 0): a documented balance
+          # dial missing from source. The untuned-backlog (dials still at
+          # first-draft defaults) + undocumented env vars are reported, not gated
+          # — you can't gate "has been playtested" (that's the cold-watcher).
+          node scripts/audit/gates/untuned-constants.mjs --ci 0
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column
