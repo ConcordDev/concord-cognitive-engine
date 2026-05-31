@@ -75,8 +75,15 @@ async function driverFor() {
     },
     events() { return sink.events(); },
     async tick(n = 1) {
-      // No force-tick endpoint. Hydrology advances on demand via terrain.flow_tick;
-      // for NPC/heartbeat liveness, wait real ticks (server interval ~60s, capped).
+      // Two tick modes. Hydrology advances on demand via terrain.flow_tick (instant).
+      // NPC/creature liveness only advances on the real heartbeat (governor 15s,
+      // NPC routine ~75s, creature flock ~60s), so the world-alive journey needs
+      // REAL elapsed time — set CONCORD_PLAYTEST_REALTIME_TICK=1 for it.
+      if (process.env.CONCORD_PLAYTEST_REALTIME_TICK === "1") {
+        const ms = Math.min(n * 15000, Number(process.env.CONCORD_PLAYTEST_MAX_WAIT_MS) || 150000);
+        await new Promise((res) => setTimeout(res, ms));
+        return;
+      }
       let advanced = false;
       try {
         const r = await api("POST", "/api/lens/run", { domain: "terrain", name: "flow_tick", input: { worldId: WORLD, steps: n } }, token);
@@ -97,7 +104,16 @@ async function driverFor() {
     // trips its per-IP rate-limit (so journeys 2+ get no token and falsely fail).
     // One synthetic player running all journeys is also the realistic shape.
     const sharedDriver = await driverFor();
-    report = await runJourneys(KEYSTONE_JOURNEYS, () => sharedDriver);
+    // Run one journey at a time when CONCORD_PLAYTEST_ONLY=<journey.id> is set
+    // (deliberate, examined-per-journey runs), else all keystones.
+    const only = process.env.CONCORD_PLAYTEST_ONLY;
+    const journeys = only ? KEYSTONE_JOURNEYS.filter((j) => j.id === only) : KEYSTONE_JOURNEYS;
+    if (only && journeys.length === 0) {
+      console.error(`[agent-playtest] no journey with id="${only}" (have: ${KEYSTONE_JOURNEYS.map((j) => j.id).join(", ")})`);
+      process.exit(ci ? 1 : 0);
+      return;
+    }
+    report = await runJourneys(journeys, () => sharedDriver);
   } catch (e) {
     console.error(`[agent-playtest] could not reach server at ${BASE}: ${e?.message || e}`);
     process.exit(ci ? 1 : 0);
