@@ -903,6 +903,15 @@ registerHeartbeat("viability-cycle", {
   handler: runViabilityCycle,
 });
 
+// Wave 5 #19 — civilization-as-control: PID feedback stabilises realm legitimacy
+// via tax_rate (kill-switch CONCORD_REALM_CONTROL).
+import { runRealmControlCycle, REALM_CONTROL_FREQUENCY } from "./emergent/realm-control-cycle.js";
+registerHeartbeat("realm-control-cycle", {
+  frequency: REALM_CONTROL_FREQUENCY,
+  scope: "world",
+  handler: runRealmControlCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
