@@ -1336,7 +1336,34 @@ export default function SoundscapeEngine({
     };
     window.addEventListener('concordia:horror-tension', horrorTensionHandler);
 
+    // WAVE 6 — parametric world audio. WorldAudioBridge maps a world event to a
+    // synth directive { layer, gain, freqHz, waveform } and dispatches it here;
+    // we synthesize a one-shot oscillator (the same createOscillator + ADSR
+    // pattern as the SFX path). No samples — synthesized from gameplay params.
+    const worldAudioHandler = (e: Event) => {
+      const d = (e as CustomEvent).detail as { gain?: number; freqHz?: number; waveform?: OscillatorType } | undefined;
+      const ctx = audioCtxRef.current, master = masterGainRef.current;
+      if (!ctx || ctx.state !== 'running' || !master || !d) return;
+      const gainVal = Math.max(0, Math.min(1, Number(d.gain) || 0));
+      const freq = Math.max(20, Number(d.freqHz) || 200);
+      if (gainVal <= 0) return;
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = (d.waveform as OscillatorType) || 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(gainVal * 0.4, now + 0.02);   // attack
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);     // decay
+        osc.connect(g); g.connect(master);
+        osc.start(now); osc.stop(now + 0.4);
+      } catch { /* synth best-effort */ }
+    };
+    window.addEventListener('concordia:world-audio', worldAudioHandler);
+
     return () => {
+      window.removeEventListener('concordia:world-audio', worldAudioHandler);
       window.removeEventListener('concordia:soundscape-command', handler);
       window.removeEventListener('concordia:sonic-pulse', pulseHandler);
       window.removeEventListener('concordia:hit-reaction', combatHandler);

@@ -776,6 +776,10 @@ const AdaptiveScoreBridge = dynamic(
   () => import('@/components/world/AdaptiveScoreBridge').then((m) => ({ default: m.AdaptiveScoreBridge })),
   { ssr: false },
 );
+const WorldAudioBridge = dynamic(
+  () => import('@/components/world/WorldAudioBridge').then((m) => ({ default: m.WorldAudioBridge })),
+  { ssr: false },
+);
 const SystemPrompter = dynamic(
   () => import('@/components/world/SystemPrompter'),
   { ssr: false },
@@ -4389,6 +4393,7 @@ export default function WorldLensPage() {
           <LevelUpJuiceBridge />
           <EmergentJuiceBridge />
           <AdaptiveScoreBridge />
+          <WorldAudioBridge />
           <SystemPrompter />
           <PersonalStakeBridge currentUserId={playerAvatar?.id} />
           <ComboEvolvedBridge />
