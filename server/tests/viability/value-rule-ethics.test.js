@@ -20,12 +20,14 @@ import {
 import { proposeScheme } from "../../lib/npc-schemes.js";
 import { pickMove } from "../../lib/embodied/faction-strategy.js";
 
-// A tiny grounded corpus slice: 3 restraint rules + 1 epistemic + 1 non-rule.
+// A tiny grounded corpus slice: 3 canon restraint rules + 1 epistemic + 1 non-rule.
+// Each rule carries a `machine.verifier` → tiered `canon` (like the real corpus).
+const V = { kind: "verifier", inputs: ["context"], outputs: ["ok"], steps: ["check"] };
 const CORPUS = [
-  { id: "r1", machine: { kind: "rule" }, tags: ["introspection", "culture", "harm_minimization_under_constraint"], human: { summary: "When no option is harmless, choose minimal harm." }, core: { invariants: ["Harm must be bounded."] } },
-  { id: "r2", machine: { kind: "rule" }, tags: ["introspection", "culture", "consent_boundary_respect"], human: { summary: "Actions affecting others require consent." }, core: { invariants: ["No silent externalization of cost."] } },
-  { id: "r3", machine: { kind: "rule" }, tags: ["introspection", "culture", "de_escalation_before_optimization"], human: { summary: "Reduce escalation first." }, core: { invariants: ["Optimization blocked while escalation > threshold."] } },
-  { id: "e1", machine: { kind: "rule" }, tags: ["introspection", "culture", "precision_over_persuasion"], human: { summary: "Prefer precise claims." }, core: { invariants: [] } },
+  { id: "r1", machine: { kind: "rule", verifier: V }, tags: ["introspection", "culture", "harm_minimization_under_constraint"], human: { summary: "When no option is harmless, choose minimal harm." }, core: { invariants: ["Harm must be bounded."] } },
+  { id: "r2", machine: { kind: "rule", verifier: V }, tags: ["introspection", "culture", "consent_boundary_respect"], human: { summary: "Actions affecting others require consent." }, core: { invariants: ["No silent externalization of cost."] } },
+  { id: "r3", machine: { kind: "rule", verifier: V }, tags: ["introspection", "culture", "de_escalation_before_optimization"], human: { summary: "Reduce escalation first." }, core: { invariants: ["Optimization blocked while escalation > threshold."] } },
+  { id: "e1", machine: { kind: "rule", verifier: V }, tags: ["introspection", "culture", "precision_over_persuasion"], human: { summary: "Prefer precise claims." }, core: { invariants: [] } },
   { id: "n1", machine: { kind: "formal_model" }, tags: ["math"], human: { summary: "not a rule" }, core: {} },
 ];
 
@@ -42,6 +44,16 @@ describe("buildValueRuleIndex + classification", () => {
     const idx = buildValueRuleIndex([]);
     assert.equal(idx.restraintCount, 0);
     assert.equal(npcSchemeRestraint(idx, { archetype: "healer", id: "x" }).score, 0);
+  });
+
+  it("FIREWALL: conjecture restraint rules are indexed but not authority", () => {
+    // a restraint-tagged rule with NO verifier → conjecture → must not gate.
+    const conjectureOnly = buildValueRuleIndex([
+      { id: "c1", machine: { kind: "rule" }, tags: ["introspection", "culture", "harm_minimization_under_constraint"], human: { summary: "speculation" }, core: { invariants: [] } },
+    ]);
+    assert.equal(conjectureOnly.byClass.restraint.length, 1); // indexed (discoverable)
+    assert.equal(conjectureOnly.restraintCount, 0);           // but NOT authority
+    assert.equal(npcSchemeRestraint(conjectureOnly, { id: "z", archetype: "healer", coping_trait: "withdraw" }).score, 0);
   });
 });
 

@@ -13,6 +13,7 @@
 // 0 → today's behavior exactly.
 
 import crypto from "node:crypto";
+import { tierDtu } from "./corpus-tier.js";
 
 export function ethicsEnabled() {
   return process.env.CONCORD_VIABILITY_ETHICS === "1";
@@ -58,17 +59,22 @@ export function buildValueRuleIndex(dtus) {
     if (kind !== "rule") continue;
     const tags = d.tags || [];
     const cls = classifyRule(tags);
+    // The seal's integrity firewall: only CANON (verified) rules may serve as a
+    // premise for NPC reasoning. A conjecture rule is indexed (discoverable) but
+    // NEVER counts toward restraint authority — it's speculation, not truth.
+    const tier = tierDtu(d);
     const rule = {
       id: d.id,
       tag: semanticTag(tags),
       cls,
+      tier,
       summary: d?.human?.summary || "",
       invariant: (d?.core?.invariants || [])[0] || "",
     };
     out.rules.push(rule);
     (out.byClass[cls] || out.byClass.epistemic).push(rule);
     out.size++;
-    if (cls === "restraint") out.restraintCount++;
+    if (cls === "restraint" && tier === "canon") out.restraintCount++;
   }
   return out;
 }
@@ -112,8 +118,8 @@ export function npcSchemeRestraint(index, npc = {}) {
   if (HOSTILE_COPING.has(npc.coping_trait)) r -= 0.5;
   r += (hashFloat(npc.id || "") - 0.5) * 0.3; // ±0.15 per-individual
   r = clamp01(r);
-  const pool = index.byClass.restraint;
-  const cited = pool[Math.floor(hashFloat(`${npc.id || ""}:cite`) * pool.length)] || pool[0] || null;
+  const pool = index.byClass.restraint.filter((rule) => rule.tier === "canon"); // firewall: cite verified rules only
+  const cited = pool.length ? (pool[Math.floor(hashFloat(`${npc.id || ""}:cite`) * pool.length)] || pool[0]) : null;
   return { score: r, citedRule: cited ? { id: cited.id, tag: cited.tag, invariant: cited.invariant } : null };
 }
 
@@ -162,7 +168,9 @@ const COOP_CHOICES = new Set(["truce", "alliance", "tribute", "aid", "help", "pr
  * ±0.3 so it can shade an additive-RNG decision but never dominate it.
  */
 export function ruleBias(rules = [], choiceSet = [], weight = 1.0) {
-  const restraint = rules.filter((r) => r.cls === "restraint").length;
+  // Firewall: only canon (verified) restraint rules bias behavior. A rule with
+  // no tier (hand-built / pre-tier) is treated as canon for back-compat.
+  const restraint = rules.filter((r) => r.cls === "restraint" && r.tier !== "conjecture").length;
   const mag = Math.min(0.3, restraint * 0.06) * weight;
   const out = {};
   for (const c of choiceSet) {
