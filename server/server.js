@@ -37957,9 +37957,30 @@ app.post("/api/lens/run", async (req, res) => {
       const result = await runMacro(domain, action, rest, ctx);
       return res.json({ ok: true, result });
     }
-    // AI-powered catch-all: route unregistered domain actions to utility brain
-    const aiResult = await utilityCall(action, domain, rest);
-    return res.json({ ok: true, result: { ok: aiResult.ok, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
+    // AI-powered catch-all: route unregistered domain actions to the utility
+    // brain (the intentional freeform path). Two hardenings (playtest #3/#25/#27):
+    //  - bound it with a hard timeout so a dead macro can't hang the worker ~96s
+    //    on brain backoff (#27, the slow_request / quality-pipeline hang #T3);
+    //  - on brain failure (e.g. Ollama down, or a never-registered ghost-fleet
+    //    macro #11), return an HONEST `unknown_macro` non-200 instead of a 200
+    //    masking it as a transient "fetch failed" success (#3/#25). When the
+    //    brain genuinely answers, freeform still returns 200 with the output.
+    const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
+    let aiResult, _catchallTimer;
+    try {
+      aiResult = await Promise.race([
+        utilityCall(action, domain, rest),
+        new Promise((_, rej) => { _catchallTimer = setTimeout(() => rej(new Error("catchall_timeout")), CATCHALL_TIMEOUT_MS); }),
+      ]);
+    } catch {
+      return res.status(504).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro; brain catch-all timed out" });
+    } finally {
+      clearTimeout(_catchallTimer);
+    }
+    if (!aiResult?.ok) {
+      return res.status(502).json({ ok: false, error: "unknown_macro", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
+    }
+    return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
