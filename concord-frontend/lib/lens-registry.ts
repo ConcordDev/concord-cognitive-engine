@@ -2924,6 +2924,18 @@ export const LENS_REGISTRY: LensEntry[] = [
     order: 14,
     keywords: ['civic', 'bond', 'microbond', 'fund', 'pledge', 'treasury', 'realm', 'infrastructure', 'sparks', 'ledger'],
   },
+  {
+    id: 'careers',
+    name: 'Careers',
+    icon: Briefcase,
+    description: 'Jobs = sports = one career system — pick a profession, play a shift (skill drives pay + XP), negotiate contracts (sparks)',
+    category: 'economy',
+    showInSidebar: false,
+    showInCommandPalette: true,
+    path: '/lenses/careers',
+    order: 15,
+    keywords: ['career', 'job', 'profession', 'work', 'shift', 'wage', 'sport', 'athlete', 'contract', 'promotion', 'sparks'],
+  },
 ];
 
 /** Category display configuration */
