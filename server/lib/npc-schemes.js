@@ -25,6 +25,7 @@ import { getStress, bumpStress } from "./npc-stress.js";
 import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
 import { maybeEmitPersonalStake } from "./personal-stake.js";
+import { ethicsEnabled, npcSchemeRestraint, ETHICS_REFUSE_THRESHOLD } from "./viability/value-rule-index.js";
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -43,7 +44,7 @@ function nextTickAt(now = Math.floor(Date.now() / 1000)) {
  * Propose a scheme: deterministic gate based on plotter's stress, opinion
  * of target, and coping trait. Returns { ok, action, schemeId? }.
  */
-export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null }) {
+export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = null, motive = null, valueRuleIndex = null }) {
   if (!db || !plotterNpcId || !targetKind || !targetId) return { ok: false, reason: "missing_inputs" };
 
   // Don't propose against yourself.
@@ -74,6 +75,23 @@ export function proposeScheme(db, { plotterNpcId, targetKind, targetId, kind = n
     if (!wildCard && !(stressed && hates)) {
       return { ok: false, reason: "no_motive" };
     }
+  }
+
+  // Wave 4 — NPC ethics (#16): an NPC that internalizes harm-minimization /
+  // consent / de-escalation value-rules (the latent corpus) refuses a
+  // borderline scheme a stress-only NPC would attempt. Composes AFTER the
+  // disposition gate above and never overrides `hooked` (returned earlier) or a
+  // `secret` motive (skipped). Behind CONCORD_VIABILITY_ETHICS; no index or
+  // flag off → today's behavior exactly. The refusal cites a real corpus rule.
+  if (motive !== "secret" && valueRuleIndex && ethicsEnabled()) {
+    try {
+      let archetype = null;
+      try { archetype = db.prepare("SELECT archetype FROM world_npcs WHERE id = ?").get(plotterNpcId)?.archetype || null; } catch { /* world_npcs optional */ }
+      const restraint = npcSchemeRestraint(valueRuleIndex, { id: plotterNpcId, archetype, coping_trait: stress?.coping_trait });
+      if (restraint.score >= ETHICS_REFUSE_THRESHOLD) {
+        return { ok: false, reason: "ethics_restraint", rule: restraint.citedRule };
+      }
+    } catch { /* ethics never blocks the engine on error */ }
   }
 
   // Don't open a parallel scheme of the same kind on the same target.

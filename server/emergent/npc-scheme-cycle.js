@@ -12,6 +12,7 @@
 
 import logger from "../logger.js";
 import { advanceScheme, proposeScheme } from "../lib/npc-schemes.js";
+import { ethicsEnabled, getSharedValueRuleIndex } from "../lib/viability/value-rule-index.js";
 
 const MAX_PER_PASS = 60;
 const MAX_PROPOSE_PER_PASS = 8;
@@ -21,6 +22,11 @@ export async function runNpcSchemeCycle({ db, state: _state, tickCount: _t } = {
   if (!db) return { ok: false, reason: "no_db" };
 
   const stats = { ok: true, advanced: 0, transitioned: 0, proposed: 0, exposed: 0, completed: 0 };
+
+  // Wave 4 — build the value-rule index once per pass (memoized) so charity-laden
+  // NPCs refuse borderline schemes. Only when CONCORD_VIABILITY_ETHICS is on and
+  // the corpus is loaded; otherwise null → proposeScheme behaves exactly as today.
+  const valueRuleIndex = (ethicsEnabled() && _state?.dtus) ? getSharedValueRuleIndex(_state.dtus) : null;
 
   // 1) Advance phase for ready schemes.
   let pending = [];
@@ -71,6 +77,7 @@ export async function runNpcSchemeCycle({ db, state: _state, tickCount: _t } = {
         plotterNpcId: p.npc_id,
         targetKind: target.target_kind,
         targetId: target.target_id,
+        valueRuleIndex,
       });
       if (r?.action === "proposed") stats.proposed++;
     } catch { /* noop */ }
