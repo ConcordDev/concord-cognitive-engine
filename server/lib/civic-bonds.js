@@ -273,3 +273,27 @@ export function getSpillover(db, scope, worldId) {
   const r = db.prepare(`SELECT amount FROM civic_spillover_funds WHERE scope=? AND world_id=?`).get(String(scope), String(worldId));
   return Number(r?.amount || 0);
 }
+
+// ── Heartbeat sweep — the policy's auto-pause safeguard ──────────────────────
+//
+// A drive that's been collecting past its funding deadline and still hasn't
+// cleared the 110% gate is paused (participation collapse / overdue funding).
+// Paused bonds stop accepting pledges; pledgers can still unpledge their escrow.
+// Pure-ish (single UPDATE); returns the count. nowSec/deadline injectable for tests.
+export function sweepStalledBonds(db, { nowSec = Math.floor(Date.now() / 1000), fundingDeadlineS } = {}) {
+  if (!db) return { ok: false, reason: "no_db" };
+  const deadline = Number(fundingDeadlineS ?? process.env.CONCORD_CIVIC_BOND_FUNDING_DEADLINE_S ?? 604800); // 7d
+  let stalled = [];
+  try {
+    stalled = db.prepare(`
+      SELECT id FROM civic_bonds
+      WHERE status = 'funding'
+        AND created_at < ?
+        AND current_pledged < target_amount * funding_gate_pct
+    `).all(nowSec - deadline).map((r) => r.id);
+  } catch { return { ok: true, paused: 0, reason: "no_table" }; }
+  for (const id of stalled) {
+    db.prepare(`UPDATE civic_bonds SET status='paused' WHERE id=? AND status='funding'`).run(id);
+  }
+  return { ok: true, paused: stalled.length, ids: stalled };
+}

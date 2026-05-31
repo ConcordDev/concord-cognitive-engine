@@ -887,6 +887,14 @@ registerHeartbeat("land-claims-cycle", {
   handler: runLandClaimsCycle,
 });
 
+// Civic Capital — auto-pause stalled bond drives (kill-switch CONCORD_CIVIC_BONDS).
+import { runCivicBondCycle, CIVIC_BOND_CYCLE_FREQUENCY } from "./emergent/civic-bond-cycle.js";
+registerHeartbeat("civic-bond-cycle", {
+  frequency: CIVIC_BOND_CYCLE_FREQUENCY,
+  scope: "world",
+  handler: runCivicBondCycle,
+});
+
 // Phase AB: Nemesis NPC↔NPC graph. Every 40 ticks (~10 min) per active
 // world scans for grief-bonds (kin of slain NPC), scheme betrayals
 // (npc_schemes outcome='betrayed' + character_opinions < -50), and
