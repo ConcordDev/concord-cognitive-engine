@@ -1813,6 +1813,37 @@ export default function WorldLensPage() {
     return modeManager.subscribe((next) => setInputMode(next));
   }, []);
 
+  // Wave 5b — load the player's OWN saved appearance before they spawn, so they
+  // appear in-world as the character they created (not the default silhouette).
+  // Maps the saved RichAppearanceConfig palette onto the local avatar state.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'appearance', name: 'load_for_user', input: {},
+        });
+        const saved = res?.data?.result?.appearance as
+          | { skinColor?: string; hairColor?: string; clothing?: { top?: { color?: string }; bottom?: { color?: string } } }
+          | null | undefined;
+        if (cancelled || !saved) return;
+        setPlayerAvatar((prev) => ({
+          ...prev,
+          appearance: {
+            ...prev.appearance,
+            skinColor: saved.skinColor || prev.appearance.skinColor,
+            hairColor: saved.hairColor || prev.appearance.hairColor,
+            clothing: {
+              top: { ...prev.appearance.clothing.top, color: saved.clothing?.top?.color || prev.appearance.clothing.top.color },
+              bottom: { ...prev.appearance.clothing.bottom, color: saved.clothing?.bottom?.color || prev.appearance.clothing.bottom.color },
+            },
+          },
+        }));
+      } catch { /* appearance load best-effort — default silhouette stands */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Start/stop the 5-minute lens time tick whenever the player enters lens_work mode.
   useEffect(() => {
     if (inputMode === 'lens_work' && worldSocket.isConnected) {
