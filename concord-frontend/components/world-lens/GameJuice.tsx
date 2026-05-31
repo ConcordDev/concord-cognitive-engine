@@ -4,6 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { useSoundscape } from './SoundscapeEngine';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
+import { knockbackForTrigger } from '@/lib/concordia/knockback-feel';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -178,13 +179,16 @@ export default function GameJuice({ children, enabled = true, intensity: initial
           const dx = opts.position.x - opts.sourcePosition.x;
           const dz = opts.position.z - opts.sourcePosition.z;
           const mag = Math.hypot(dx, dz) || 1;
-          const m = trigger === 'combat-kill' ? 6 : (trigger === 'combat-crit' ? 5 : 4);
-          window.dispatchEvent(new CustomEvent('concordia:knockback', {
+          // T-feel parity: derive magnitude from the SAME severity→knockback table
+          // the NPC path uses (impact-feel.js), so an equal strike knocks back the
+          // same regardless of target type. (Was a separate 4/5/6 heuristic.)
+          const m = knockbackForTrigger(trigger, isHeavy);
+          if (m > 0) window.dispatchEvent(new CustomEvent('concordia:knockback', {
             detail: {
               entityId: opts.targetId,
               direction: { x: dx / mag, z: dz / mag },
               magnitude: m,
-              durationMs: trigger === 'combat-kill' ? 320 : 220,
+              durationMs: trigger === 'combat-kill' ? 340 : 220,
             },
           }));
         }
