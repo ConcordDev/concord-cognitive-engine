@@ -36,6 +36,7 @@
 //     application-side filtering. Our queries respect decay_at.
 
 import crypto from "node:crypto";
+import { classifyBiome } from "../viability/biome.js";
 
 export const CELL_SIZE = 50;
 export const RECENCY_HALF_LIFE_S = 180; // 3-min half-life
@@ -132,6 +133,7 @@ export function recordSignal(db, opts) {
 export function signalsForWorld(db, worldId, location = null) {
   const out = { ...DEFAULTS, hasData: false, weatherKind: "clear" };
   _attachAliases(out);
+  try { out.biome = classifyBiome(out).biome; } catch { out.biome = "barren"; } // #24 — always-present label (recomputed on the data path)
   if (!db || !worldId) return out;
 
   const now = Math.floor(Date.now() / 1000);
@@ -200,6 +202,11 @@ export function signalsForWorld(db, worldId, location = null) {
   else if (out.light > 80000 && out.humidity < 50) out.weatherKind = "sunny";
   else if (out.airQuality < 0.6) out.weatherKind = "smog";
   else out.weatherKind = "clear";
+
+  // Wave 5 #24 — procedural biome: label the bundle with the best-fitting
+  // survival cone (additive; existing consumers read specific fields). Cheap
+  // (7 cone evals), best-effort.
+  try { out.biome = classifyBiome(out).biome; } catch { /* additive label only */ }
 
   return out;
 }
