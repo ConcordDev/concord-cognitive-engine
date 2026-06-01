@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
+import { isOnboardingComplete } from '@/lib/onboarding-state';
 import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { phaseVoiceLine, ARRIVAL_LINE } from '@/lib/concordia/onboarding-voice';
@@ -110,7 +111,11 @@ function FirstWinWizard() {
   // can pick the First Cycle back up.
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem(DISMISSED_KEY) === 'true';
+      if (localStorage.getItem(DISMISSED_KEY) === 'true') return true;
+      // First-run sequencing: start collapsed while the welcome wizard is still
+      // pending, so the First-Win panel doesn't stack on top of it. Once the
+      // tour is done it shows normally.
+      if (!isOnboardingComplete()) return true;
     }
     return false;
   });
@@ -191,6 +196,9 @@ function FirstWinWizard() {
   useEffect(() => {
     if (!showable) return;
     if (typeof window === 'undefined') return;
+    // First-run sequencing: hold the arrival fanfare until the welcome wizard is
+    // done, so it doesn't fire on top of it (the pileup fix).
+    if (!isOnboardingComplete()) return;
     if (localStorage.getItem(ARRIVAL_KEY) === 'true') return;
     localStorage.setItem(ARRIVAL_KEY, 'true');
     const t = setTimeout(() => speakConcordia(ARRIVAL_LINE, true), 1200);
