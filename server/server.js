@@ -816,6 +816,11 @@ registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBeha
 import { runCaptureCycle } from "./emergent/capture-cycle.js";
 registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
 
+// Sere managed parity — the Tessera funds both sides so the war never resolves
+// (CONCORD_TESSERA_PARITY=0 to disable; only ever acts on world_id='sere').
+import { runTesseraParity } from "./emergent/tessera-parity-cycle.js";
+registerHeartbeat("tessera-parity", { frequency: 120, handler: runTesseraParity, scope: "global" });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
