@@ -708,6 +708,8 @@ const AnimationManager = dynamic(() => import('@/components/world-lens/Animation
 });
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
 const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
+// Concord Link Summon shell (B2) — self-gates on CONCORD_LINK_SYSTEM + open; inert by default.
+const LinkShell = dynamic(() => import('@/components/world/concord-link/LinkShell').then(m => m.LinkShell), { ssr: false });
 const CorpseMarkerOverlay = dynamic(() => import('@/components/concordia/HUD/CorpseMarkerOverlay'), { ssr: false });
 const RefusalFieldBanner = dynamic(() => import('@/components/concordia/HUD/RefusalFieldBanner'), { ssr: false });
 const EcosystemMetricsBadge = dynamic(() => import('@/components/concordia/HUD/EcosystemMetricsBadge'), { ssr: false });
@@ -5949,6 +5951,7 @@ export default function WorldLensPage() {
             />
           )}
           {/* Impact feedback — floating damage numbers + screen shake */}
+          <LinkShell />
           <ImpactFeedback />
           <ActiveEffectsBar />
           <CorpseMarkerOverlay worldId="concordia-hub" toolTier={1} />

@@ -67,6 +67,7 @@ export function getClientConfig() {
       artAtmosphere: b("CONCORD_ART_ATMOSPHERE"),
       artUi: b("CONCORD_ART_UI"),
       skillForge: b("CONCORD_SKILL_FORGE"),
+      concordLinkSystem: b("CONCORD_LINK_SYSTEM"),
     },
   };
 }
