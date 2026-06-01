@@ -17,7 +17,14 @@
     "cross_world_hook": "Emberwick and the cyber-world arbiter both believe they hold the only key that keeps the system from collapse; across the Link they reassure each other, two prisoners convinced they are the wardens.",
     "dialogue_style": "technical_reassuring",
     "needs": { "esteem": 0.8, "safety": 0.6, "self_actualization": 0.4 },
-    "daily_schedule": "the_vault_by_day_the_lectern_by_evening",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_clearing_spire_governors_floor","activity":"rises in silence, fits the charter-pin like a wedding ring, rehearses the day's measured baritone","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_clearing_spire_issuance_vault","activity":"adjusts the schedule of issuance to prevailing conditions; the realms that go hungry can find no sentence to be angry at","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_governors_dining_room","activity":"lunches alone with three centuries of charter precedent, certain he is the only thing between Sere and chaos","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_charter_renewal_chamber","activity":"renews the temporary charter so smoothly the assembly never notices it voted to","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_spire_lectern_hall","activity":"removes the half-moon spectacles to deliver bad news as candor from the lectern","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"the_governors_private_study","activity":"writes the private renewal ledger recording every 'until conditions stabilize' that would end him","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_clearing_spire_governors_floor",
     "job": "issuer_of_the_mark",
     "apparel": "the_charter_pin",
@@ -25,7 +32,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["the_mark"],
     "inventory": ["three_centuries_of_temporary"],
-    "starting_sparks": 0
+    "starting_sparks": 14000
   },
   {
     "id": "settlements_master_corwin_vane",
@@ -45,7 +52,14 @@
     "cross_world_hook": "Vane and the lattice-world reconciler compare the elegance of a balanced book across the Link, neither willing to ask what the numbers cost the people who are them.",
     "dialogue_style": "cold_procedural",
     "needs": { "safety": 0.7, "esteem": 0.3 },
-    "daily_schedule": "the_settlement_floor_never_closes",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[4,7],"location":"the_clearing_spire_lower_vaults","activity":"arrives before the floor wakes; opens the day's columns in spire-gray silence","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_settlement_floor","activity":"reconciles the accounts of two armies the night before they kill each other's sons, asking nothing of what the columns are for","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_vault_canteen","activity":"eats without opinion at a gray table behind a gray door, a man you forget while looking at him","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_border_mirror_ledger_desk","activity":"reconciles Dovrane's and Keshar's statements and sees the same Verge crate-numbers on both — and files it nowhere","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"the_settlement_floor","activity":"keeps the column straight long after the others have gone; settling is his job, not seeing","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,4],"location":"a_cot_in_the_lower_vaults","activity":"sleeps well because the accounts balanced, both halves resting on one desk","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_clearing_spire_lower_vaults",
     "job": "settlement_clerk",
     "apparel": "spire_gray",
@@ -53,7 +67,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["settlement"],
     "inventory": ["both_halves_on_one_desk"],
-    "starting_sparks": 0
+    "starting_sparks": 2200
   },
   {
     "id": "doorkeeper_isolde_marr",
@@ -73,7 +87,14 @@
     "cross_world_hook": "Isolde and the hub urchin Brackish both survive by knowing which doors open for whom; she finds the child's frankness across the Link unbearable and cannot stop listening to it.",
     "dialogue_style": "polite_immovable",
     "needs": { "safety": 0.8, "belonging": 0.3, "esteem": 0.5 },
-    "daily_schedule": "the_lobby_from_first_bell_to_last",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_doorkeepers_alcove","activity":"fits the ring of keys that open nothing visible and takes her post before the first bell","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_spire_windowless_lobby","activity":"stands so still petitioners mistake her for furniture, then turns away kings with a small genuine smile","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_lobby_reception_desk","activity":"receives the day's delegations; the Spire is not presently receiving","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_inner_corridor_thresholds","activity":"decides which doors open for whom; the bottleneck every account that settles above the realms must pass","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"the_petition_book_lectern","activity":"records the last petitioners until the last bell, never repeating what she overhears","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"her_alcove_off_the_lobby","activity":"adds to the private list of the turned away — including three delegations who died of unrelated causes within a season","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_doorkeepers_alcove",
     "job": "doorkeeper",
     "apparel": "the_ring_of_keys",
@@ -81,7 +102,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["access"],
     "inventory": ["a_list_of_the_turned_away"],
-    "starting_sparks": 0
+    "starting_sparks": 2500
   },
   {
     "id": "agronomist_brann_holloway",
@@ -101,7 +122,14 @@
     "cross_world_hook": "The seed-mother of Tunya saves her own grain as a matter of faith; Brann cannot comprehend a harvest no one owns, and the Link argument leaves him watering his secret jar a little more often.",
     "dialogue_style": "wholesome_corporate",
     "needs": { "esteem": 0.6, "belonging": 0.6, "self_actualization": 0.5 },
-    "daily_schedule": "the_test_fields_by_dawn_the_renewal_desk_by_dusk",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"the_hollowford_test_fields","activity":"walks the rows at first light, sunburnt neck and dirt under the nails, reading yield-per-acre he genuinely loves","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_seed_distribution_yard","activity":"hands out the sample-case of golden seed like alms, never mentioning it is sterile by design","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_estate_dining_hall","activity":"tells the founding myth of his famine-ending grandfather to whoever will listen","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_hollowford_renewal_desk","activity":"signs provinces onto annual renewals, certain proprietary seed is generosity made permanent","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"dusk","phase_hours":[18,21],"location":"the_estate_greenhouse","activity":"waters his plants and tends the trials, the soft conviction of a man certain he is the hero","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"his_study_with_the_locked_drawer","activity":"opens the locked drawer and waters a jar of the old wild grain his grandfather kept, not knowing why","need_addressed":"belonging","interactable_by_player":false}
+    ],
     "home": "the_hollowford_estate",
     "job": "agronomist",
     "apparel": "the_single_stalk_pin",
@@ -109,7 +137,7 @@
     "resources_consumed": ["the_mark", "seed"],
     "resources_produced": ["sterile_seed", "annual_liens"],
     "inventory": ["a_jar_of_old_wild_grain"],
-    "starting_sparks": 0
+    "starting_sparks": 6000
   },
   {
     "id": "renewal_officer_mira_sett",
@@ -129,7 +157,14 @@
     "cross_world_hook": "The crime-world collector and Mira both knock on the doors of the desperate; he envies that her clipboard is legal, she envies that his cruelty is honest about itself.",
     "dialogue_style": "compassionate_then_contractual",
     "needs": { "safety": 0.5, "belonging": 0.6, "esteem": 0.4 },
-    "daily_schedule": "the_drowned_provinces_by_boat_the_office_by_lamplight",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"a_rented_room_above_a_flooded_market","activity":"wakes early in a damp room, pulls on the mud-lined coat, dreads the route ahead","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_drowned_provinces_by_boat","activity":"poles between flooded holdings with a clipboard and a smile that no longer reaches her eyes","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"a_delta_household_doorstep","activity":"reminds a province that signed for abundance that abundance is annual; presses the paid-or-lien stamp","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,18],"location":"a_second_drowned_ward","activity":"watches the same delta sign a third time and starve a second; stops doing the arithmetic out loud","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_renewal_office_by_lamplight","activity":"files the day's defaults — and quietly 'loses' one or two contracts, buying a province one more season","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"her_rented_room","activity":"hides the drawer of contracts she never filed; lies awake at the symmetry with the province she left","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_rented_room_above_a_flooded_market",
     "job": "renewal_officer",
     "apparel": "the_mud_lined_coat",
@@ -137,7 +172,7 @@
     "resources_consumed": ["the_mark"],
     "resources_produced": ["liens", "defaults"],
     "inventory": ["a_drawer_of_contracts_she_never_filed"],
-    "starting_sparks": 0
+    "starting_sparks": 900
   },
   {
     "id": "patron_aldermere_julian",
@@ -157,7 +192,14 @@
     "cross_world_hook": "Julian and the fantasy-world's abdicated king correspond across the Link about heirs who see too clearly; each counsels patience to the other and neither can take his own advice.",
     "dialogue_style": "warm_and_unhurried",
     "needs": { "esteem": 0.7, "belonging": 0.6, "safety": 0.5 },
-    "daily_schedule": "the_counting_house_by_day_the_long_table_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_aldermere_seat_private_chambers","activity":"dresses beneath four hundred years of patriarch portraits, fastening the balance-with-no-pans crest he reveres","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_aldermere_counting_house","activity":"presides over the clearing seat, the sacred neutrality, the bank both armies bank with","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_house_long_table","activity":"dines with his daughter Lysandra and notices, again, that she no longer meets his eye","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_patriarchs_audience_room","activity":"receives both sides of a war as a virtue he calls peace, having never once weighed the names","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_house_library","activity":"reads the House's own history, the parts he has allowed to survive, and avoids the chapter on the Exodus","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"a_strongroom_behind_the_portraits","activity":"keeps the buried Exodus ledger that proves the House cleared the funds that launched the arks","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_aldermere_seat",
     "job": "patriarch_clearing_seat",
     "apparel": "the_crest_he_reveres",
@@ -165,7 +207,7 @@
     "resources_consumed": ["the_mark"],
     "resources_produced": ["the_mark", "neutrality"],
     "inventory": ["the_buried_exodus_ledger"],
-    "starting_sparks": 0
+    "starting_sparks": 13000
   },
   {
     "id": "clearing_clerk_ode_finch",
@@ -185,7 +227,14 @@
     "cross_world_hook": "The cyber-world auditor and Ode both catch the errors no one wants caught; across the Link they swap crossed-out entries like fishermen comparing the ones that got away.",
     "dialogue_style": "precise_and_kindly",
     "needs": { "belonging": 0.5, "esteem": 0.4, "safety": 0.6 },
-    "daily_schedule": "the_clerks_desk_dawn_to_dusk",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"a_clerks_room_behind_the_counting_house","activity":"rises and fits the green eyeshade and wire-mended spectacles; a tidy man starting a tidy day","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_aldermere_clearing_desk","activity":"closes the columns on forty years of war financing, never able to say who won a single war","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_clerks_common_room","activity":"takes a modest meal among juniors, the most replaceable man in the House and kind because of it","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_clearing_floor","activity":"catches an entry that won't close honestly and crosses it out, calling it his mistake","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"his_desk_after_hours","activity":"files the day's crossed-out 'mistakes' into a private box — decades of where the Tessera moved money","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"his_room_behind_the_counting_house","activity":"sleeps content, not knowing he taught the heir Lysandra her first ledger-hand","need_addressed":"belonging","interactable_by_player":false}
+    ],
     "home": "a_clerks_room_behind_the_counting_house",
     "job": "clearing_clerk",
     "apparel": "the_green_eyeshade",
@@ -193,7 +242,7 @@
     "resources_consumed": ["the_mark"],
     "resources_produced": ["the_mark"],
     "inventory": ["forty_years_of_anomalies"],
-    "starting_sparks": 0
+    "starting_sparks": 600
   },
   {
     "id": "verge_quartermaster_sela_korr",
@@ -213,7 +262,14 @@
     "cross_world_hook": "Sela and the crime-world's smuggler-mover respect each other's logistics across the Link the way only two people who can move anything anywhere ever can; neither asks what's in the crates.",
     "dialogue_style": "blunt_efficient",
     "needs": { "esteem": 0.6, "safety": 0.5, "self_actualization": 0.5 },
-    "daily_schedule": "the_loading_yards_by_day_the_routing_room_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[4,6],"location":"a_quartermasters_billet_in_the_furnace_belt","activity":"wakes in coveralls she never bothered to change out of, soot in the creases, manifest-board already strapped on","need_addressed":"self_actualization","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[6,12],"location":"the_furnace_belt_loading_yards","activity":"routes crates of rifles to either side of the front before lunch, balanced demand, no inconvenient endings","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_yard_foremans_canteen","activity":"eats fast among the dock crews, the only Verge officer who looks like she's touched the product","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_dual_supply_depot","activity":"bills both fronts before supper, finding Sarn's flag-pin theater embarrassing","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_routing_room","activity":"keeps the master routing tables that prove crate 7-Mirror and 7-Mirror-prime left one furnace the same day","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,4],"location":"her_billet","activity":"locks away the proof both crates came from one furnace, finding the whole thing tedious and a little obscene","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_quartermasters_billet_in_the_furnace_belt",
     "job": "quartermaster",
     "apparel": "the_soot_creased_coveralls",
@@ -221,7 +277,7 @@
     "resources_consumed": ["the_mark", "tech_parts"],
     "resources_produced": ["ordnance", "calibrated_threat"],
     "inventory": ["proof_both_crates_came_from_one_furnace"],
-    "starting_sparks": 0
+    "starting_sparks": 4500
   },
   {
     "id": "verge_lobbyist_pol_renfield",
@@ -241,7 +297,14 @@
     "cross_world_hook": "Pol and the superhero-world's spin doctor trade techniques across the Link for turning a small true thing into a large false fear; they are the only two people who admire each other's work without illusion.",
     "dialogue_style": "patriotic_then_invoiced",
     "needs": { "esteem": 0.8, "safety": 0.4 },
-    "daily_schedule": "the_assembly_lobbies_by_day_the_long_lunches_by_evening",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"a_townhouse_near_the_assembly","activity":"dresses in an expensive plainness that costs more than a uniform; reviews who needs frightening today","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_assembly_lobbies","activity":"works the corridors, amplifying the smallest true thing until it fills the chamber as a danger","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"a_reserved_lunch_table","activity":"hosts a long generous lunch, a smile calibrated to the seniority of whoever receives it","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,18],"location":"the_threat_assessment_office","activity":"writes the 'independent' assessments that the ministers he funds will cite as proof","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"a_private_dining_club","activity":"buys the votes he predicts, having never once been wrong about which way a chamber will go","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"the_townhouse_study","activity":"keeps the threat-assessment that predates by a season the incident it assesses — Sere's closest thing to a confession","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_townhouse_near_the_assembly",
     "job": "lobbyist",
     "apparel": "expensive_plainness",
@@ -249,7 +312,7 @@
     "resources_consumed": ["the_mark"],
     "resources_produced": ["fear", "war_budgets"],
     "inventory": ["a_draft_that_predates_its_incident"],
-    "starting_sparks": 0
+    "starting_sparks": 10000
   },
   {
     "id": "curtain_ridiculer_vesna_dorl",
@@ -269,7 +332,14 @@
     "cross_world_hook": "Vesna and the cyber-world feed-curator both bury truth in noise for a living; across the Link they confess, only to each other, the pieces they wish they hadn't killed.",
     "dialogue_style": "polite_redaction",
     "needs": { "esteem": 0.6, "self_actualization": 0.7, "safety": 0.4 },
-    "daily_schedule": "the_page_closes_at_midnight_the_drawer_opens_after",
+    "daily_schedule": [
+      {"phase":"morning","phase_hours":[8,12],"location":"a_flat_above_the_print_house","activity":"wakes late, red pencil behind one ear, and reads the week's true pamphlets she will turn into jokes","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"the_sensible_page_editorial_room","activity":"lays a proof that the Border Mirror is manufactured beside a horoscope and a man who married a goose","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,19],"location":"the_print_house_floor","activity":"decides what the city will laugh at by morning, very good at her job and very tired of it","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[19,23],"location":"the_copy_desk","activity":"slips one true sentence into each ridiculing piece where only a patient reader would find it","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[23,2],"location":"her_flat_after_the_page_closes","activity":"opens the private drawer of killed exposés and re-reads the truths she buried beside the goose-marriage","need_addressed":"self_actualization","interactable_by_player":false},
+      {"phase":"pre_dawn","phase_hours":[2,8],"location":"her_flat_above_the_print_house","activity":"sleeps badly with the drawer of killed exposés at her bedside","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_flat_above_the_print_house",
     "job": "ridiculer",
     "apparel": "the_red_pencil",
@@ -277,7 +347,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["ridicule", "redactions"],
     "inventory": ["one_true_sentence_per_mockery"],
-    "starting_sparks": 0
+    "starting_sparks": 3000
   },
   {
     "id": "curtain_field_agent_renn_sable",
@@ -297,7 +367,14 @@
     "cross_world_hook": "Renn and the crime-world lookout both sit watching doors for a living; across the Link they discover they have flagged the same kind of person — the one who has just understood — and neither can say why it troubles them now.",
     "dialogue_style": "quiet_observant",
     "needs": { "safety": 0.7, "esteem": 0.3, "belonging": 0.4 },
-    "daily_schedule": "the_tea_houses_by_day_the_filing_room_by_night",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[6,8],"location":"a_watchers_room_with_a_view_of_the_market","activity":"dresses in deliberate ordinariness, the most forgettable man in any room, and chooses the day's tea-house","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[8,12],"location":"a_lower_market_tea_house","activity":"sits with a cold tea and a newspaper he is not reading, cataloguing who reads what and who connects which two facts","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"a_public_reading_room","activity":"watches for the moment a person starts to understand, before they know it themselves","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,18],"location":"the_market_arcades","activity":"tails a synthesist at a distance; has forgotten how to read for pleasure","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_curtain_filing_room","activity":"writes the day's reports — but holds back the one on Lysandra Aldermere, whose face he watched change","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,6],"location":"his_watchers_room","activity":"keeps the unfiled report and the growing list of who has begun to understand","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_watchers_room_with_a_view_of_the_market",
     "job": "field_classifier",
     "apparel": "deliberate_ordinariness",
@@ -305,7 +382,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["surveillance"],
     "inventory": ["a_list_of_who_has_begun_to_understand"],
-    "starting_sparks": 0
+    "starting_sparks": 1800
   },
   {
     "id": "mercy_fund_director_aurel_pace",
@@ -325,7 +402,14 @@
     "cross_world_hook": "Aurel and the sovereign world's Almoner argue charity across the Link — the Almoner gives and keeps nothing; Aurel cannot believe the Almoner's people don't simply collapse, and the Almoner cannot believe Aurel calls a lien mercy.",
     "dialogue_style": "compassionate_then_contractual",
     "needs": { "esteem": 0.7, "safety": 0.6, "self_actualization": 0.4 },
-    "daily_schedule": "the_forecast_room_by_day_the_drafting_table_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_fund_headquarters_marble_floor","activity":"arrives before the staff, fits the soft suit, and reads the night's weather and harvest forecasts","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_forecast_room","activity":"studies which provinces will flood next season and times the relief to maximum gratitude, minimum bargaining power","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_directors_dining_room","activity":"takes a quiet meal, believing sincerely a managed dependency is kinder than an unmanaged collapse","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_drafting_table","activity":"drafts the relief packages and their conditions before the rain falls, calling it preparedness","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"the_forecast_board_chamber","activity":"pairs each coming crisis with its drafted package; notes some 'forecasts' are too accurate to be weather","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"a_private_office_off_the_marble_floor","activity":"locks away the forecast-board, the keystone linking Fund, Tally House, and Verge into one machine","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_fund_headquarters_marble_floor",
     "job": "relief_director",
     "apparel": "the_soft_suit",
@@ -333,7 +417,7 @@
     "resources_consumed": ["the_mark"],
     "resources_produced": ["liens", "scheduled_rescue"],
     "inventory": ["forecasts_too_accurate_to_be_weather"],
-    "starting_sparks": 0
+    "starting_sparks": 12000
   },
   {
     "id": "tessera_holder_marda_voss",
@@ -353,7 +437,14 @@
     "cross_world_hook": "Marda and the cyber-world fixer recognize the same hollow at the center of their respective machines across the Link, and the recognition is the loneliest thing either has ever felt.",
     "dialogue_style": "warm_and_unhurried",
     "needs": { "safety": 0.9, "esteem": 0.3, "self_actualization": 0.5 },
-    "daily_schedule": "the_havens_by_day_the_terrace_by_evening",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[6,9],"location":"the_settled_isles_seaside_villa","activity":"wakes in linen to sea-light, the most relaxed wealthy person on Sere, untroubled by where the wealth is","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[9,12],"location":"the_offshore_haven_counting_room","activity":"manages the quiet isles where Marks rest untaxed and unaccountable, with real professionalism and discretion","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"the_villa_veranda","activity":"lunches with discreet clients, performing a service she would be horrified to hear called villainy","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,18],"location":"the_shelter_ledgers_study","activity":"shelters Marks flawlessly and, lately, tries to find someone to ask whether they should stop","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_isle_terrace","activity":"watches the sea and turns over the half-tile from her drawer of pearls, never explained even to herself","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,6],"location":"the_villa_bedchamber","activity":"sleeps poorly with the proof there is no one to ask, the loneliest discovery she has made","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_settled_isles",
     "job": "offshore_holder",
     "apparel": "sea_light_linen",
@@ -361,7 +452,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["recognition", "sheltered_marks"],
     "inventory": ["the_proof_there_is_no_one_to_ask"],
-    "starting_sparks": 0
+    "starting_sparks": 15000
   },
   {
     "id": "dovrane_general_torin_vael",
@@ -381,7 +472,14 @@
     "cross_world_hook": "Torin and the fantasy-world border-knight hold opposite ends of unwinnable frontiers; across the Link they discover they have each been fighting a war their own leaders profit from prolonging, and the silence after that exchange lasts days.",
     "dialogue_style": "proud_wounded",
     "needs": { "belonging": 0.7, "esteem": 0.6, "safety": 0.4 },
-    "daily_schedule": "the_line_by_day_the_old_maps_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[4,6],"location":"the_dovrane_command_post","activity":"wakes before the watch-change, the broken-twin-knot at his collar, his old wound aching in the cold","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[6,12],"location":"the_contested_passes_front_line","activity":"holds the line against Keshar with thirty years of hard competence, fair to his men","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_field_mess","activity":"eats bread with his soldiers and scans the treeline out of habit even over the meal","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_prisoner_holding_post","activity":"interrogates captured Keshar soldiers who fight for the same reasons in mirror image, the symmetry eating at him","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_command_tent_map_table","activity":"studies the captured Keshar manifest listing Dovrane crate-numbers — Verge ordnance, the same lot, sold to both","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,4],"location":"his_quarters_at_the_command_post","activity":"keeps the proof both armies shopped at one store; fights on because stopping feels like betraying the dead","need_addressed":"belonging","interactable_by_player":false}
+    ],
     "home": "the_dovrane_command_post",
     "job": "general",
     "apparel": "the_broken_twin_knot_collar",
@@ -389,7 +487,7 @@
     "resources_consumed": ["bread", "ballistic_ammo"],
     "resources_produced": ["the_held_line"],
     "inventory": ["proof_both_armies_shopped_at_one_store"],
-    "starting_sparks": 0
+    "starting_sparks": 2800
   },
   {
     "id": "dovrane_seedkeeper_nell_aro",
@@ -409,7 +507,14 @@
     "cross_world_hook": "Nell and Tunya's seed-mother are, functionally, the same woman in two worlds — both keep the grain no one owns. Across the Link they trade planting-lore as if they had been neighbors all their lives, and in a sense they have.",
     "dialogue_style": "blunt_weathered",
     "needs": { "physiological": 0.6, "belonging": 0.7, "safety": 0.5 },
-    "daily_schedule": "the_fields_by_dawn_the_buried_jars_by_dusk",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"a_breadland_farmstead_yard","activity":"rises with the light, ties on the washed-soft kerchief, and reads the weather over the delta","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_breadland_fields","activity":"works the old self-sowing Dovrane grain with a planting stick, unimpressed by abundance that comes with a bill","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_farmstead_kitchen","activity":"bakes bread from grain she owns, having fed her village through two famines on it","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"a_neighbours_planting_row","activity":"quietly shares seed with half the province that now comes to her at planting","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"dusk","phase_hours":[18,21],"location":"a_hidden_field_edge","activity":"checks the clay jars buried where the renewal officers don't dig — a living seed-library in clay","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"the_farmstead","activity":"looks at a Hollowford contract the way she'd look at a snake, and burns the lamp low","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_breadland_farmstead",
     "job": "seedkeeper",
     "apparel": "the_washed_soft_kerchief",
@@ -417,7 +522,7 @@
     "resources_consumed": ["water", "open_seed"],
     "resources_produced": ["open_seed", "bread"],
     "inventory": ["a_living_seed_library_in_clay"],
-    "starting_sparks": 3
+    "starting_sparks": 120
   },
   {
     "id": "keshar_foreman_dahl_revik",
@@ -437,7 +542,14 @@
     "cross_world_hook": "Dahl and the cyber-world machinist both make the best thing in their world and both watch it lose to something subsidized to undercut them; across the Link they recognize the same invisible hand and curse it in two dialects.",
     "dialogue_style": "patient_guarded",
     "needs": { "esteem": 0.7, "safety": 0.6, "belonging": 0.5 },
-    "daily_schedule": "the_furnaces_by_day_the_thinning_order_book_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[4,6],"location":"a_foremans_house_above_the_forges","activity":"wakes to bank the night-fires, burn-scarred forearms aching, the leather apron already on","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[6,12],"location":"the_eastern_furnaces","activity":"reads heat by color and works the best workshop-steel on Sere, master tongs in hand","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_forge_yard","activity":"shares a plain meal with apprentices and carries himself like a master though treated lately like a debtor","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_workshop_floor","activity":"watches good orders dry up for no reason he can name, proud and slowly made afraid","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_foremans_accounts_room","activity":"tracks his lost customers and finds they all switched to one combine undercutting at an impossible loss","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,4],"location":"his_house_above_the_forges","activity":"keeps the figures proving someone pays to lose money to starve Keshar's forges, not yet knowing it is the Tessera","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_foremans_house_above_the_forges",
     "job": "foreman",
     "apparel": "the_three_apprentice_apron",
@@ -445,7 +557,7 @@
     "resources_consumed": ["lampfuel", "tech_parts"],
     "resources_produced": ["workshop_steel"],
     "inventory": ["proof_someone_pays_to_lose_money"],
-    "starting_sparks": 0
+    "starting_sparks": 1500
   },
   {
     "id": "keshar_widow_sora_pell",
@@ -465,7 +577,14 @@
     "cross_world_hook": "Sora and Old Seam of the hub both ration scarcity into survival and both have noticed the scarcity is arranged; across the Link the old radical and the careful widow find they are reading the same chart from opposite ends of a life.",
     "dialogue_style": "warm_tired_unhurried",
     "needs": { "physiological": 0.8, "safety": 0.6, "belonging": 0.7 },
-    "daily_schedule": "the_market_at_dawn_the_tally_stick_at_night",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"a_two_room_house_in_the_lower_market","activity":"rises in a widow's plain wrap, measures the day's grain and fuel in cups, stands very straight","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_lower_market_stalls","activity":"buys what the tripled prices allow and goes without the rest, precise rather than bitter","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,15],"location":"her_two_room_kitchen","activity":"feeds two sons who will be called to the passes next, half-cup by half-cup","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[15,18],"location":"the_market_square","activity":"listens for news of the passes and notices the prices rose the week before the fighting, not after","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"her_doorway_by_the_tally_stick","activity":"adds notches to a tally-stick with too many already, counting the distance between the war's story and her table","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,5],"location":"the_house_back_room","activity":"keeps the cup-ledger pairing every price rise to every incident — the Border Mirror seen from the kitchen","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_two_room_house_in_the_lower_market",
     "job": "household_rationer",
     "apparel": "the_widows_plain_wrap",
@@ -473,7 +592,7 @@
     "resources_consumed": ["the_mark", "bread"],
     "resources_produced": ["endurance"],
     "inventory": ["proof_the_prices_rise_before_the_fighting"],
-    "starting_sparks": 2
+    "starting_sparks": 80
   },
   {
     "id": "open_table_engineer_kesh_oran",
@@ -493,7 +612,14 @@
     "cross_world_hook": "Kesh and the ark-wright of Tunya are the same impulse a generation apart — when the ledger can't take root on the ground, it becomes the ark above the atmosphere. Across the Link the ark-wright shows Kesh the future of his own work, and Kesh shows the ark-wright where it began.",
     "dialogue_style": "earnest_grieving_unbroken",
     "needs": { "self_actualization": 0.9, "belonging": 0.6, "safety": 0.3 },
-    "daily_schedule": "the_workshop_by_day_the_open_ledger_by_night",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"the_unbound_provinces_workshop","activity":"pushes the soot-smudged goggles up and lights the bench-lamp, fingers already stained with three metals","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_redundancy_core_bench","activity":"solders and tests and breaks and rebuilds the open ledger's self-replicating core","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_open_table_common_room","activity":"eats with Esha and the coalition, anxious as a parent about the most important thing in the world","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_field_test_yard","activity":"runs the ledger against the failure modes that beheaded the last three Refusals he studied","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_redundancy_core_bench","activity":"hardens the design so killing Esha cannot kill the work, carrying that knowledge like a stone","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"the_workshop_loft","activity":"guards a design that survives its maker's death, and corresponds with Tunya's ark-wright by the Link","need_addressed":"belonging","interactable_by_player":false}
+    ],
     "home": "the_unbound_provinces_workshop",
     "job": "engineer",
     "apparel": "the_soot_smudged_goggles",
@@ -501,7 +627,7 @@
     "resources_consumed": ["tech_parts", "the_open_ledger"],
     "resources_produced": ["the_open_ledger"],
     "inventory": ["a_design_that_survives_its_makers_death"],
-    "starting_sparks": 0
+    "starting_sparks": 700
   },
   {
     "id": "open_table_courier_wynne_tal",
@@ -521,7 +647,14 @@
     "cross_world_hook": "Wynne and the crime-world runner both carry what cannot be written down through cities that want to read it; across the Link they swap evasion-craft, and Wynne is quietly startled to learn the same techniques serve a racket and a refusal equally well.",
     "dialogue_style": "calm_quick",
     "needs": { "self_actualization": 0.8, "safety": 0.3, "belonging": 0.7 },
-    "daily_schedule": "the_roads_by_night_the_safe_houses_by_day",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[3,6],"location":"a_curtain_blind_back_road","activity":"slips the last leg of a night run on routes the Curtain hasn't mapped, satchel false-bottom intact","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[6,10],"location":"an_open_table_safe_house","activity":"sleeps the morning off in a forgettable bolt-hole, dispatches delivered, body recovering","need_addressed":"physiological","interactable_by_player":false},
+      {"phase":"midday","phase_hours":[10,14],"location":"a_quiet_safe_house_kitchen","activity":"eats and memorizes the next handoff, calm under the constant low risk of the quiet job offer","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"a_cell_meeting_room","activity":"takes new messages from Esha, Kesh, and Nell's seed-network for the night's circuit","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_provinces_road_edge","activity":"checks the Link's secondary access routes learned through curtain-archive leaks, then sets out","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,3],"location":"the_unmapped_roads","activity":"runs dispatches between a dozen unbound provinces, carrying the only complete map of the cells in memory","need_addressed":"self_actualization","interactable_by_player":false}
+    ],
     "home": "no_fixed_home_a_circuit_of_safe_houses",
     "job": "courier",
     "apparel": "the_forgettable_traveling_clothes",
@@ -529,7 +662,7 @@
     "resources_consumed": ["bread"],
     "resources_produced": ["dispatches", "the_open_ledger"],
     "inventory": ["the_only_complete_map_of_the_cells"],
-    "starting_sparks": 0
+    "starting_sparks": 300
   },
   {
     "id": "ark_engineer_sefa_lund",
@@ -549,7 +682,14 @@
     "cross_world_hook": "Sefa is the near end of the umbilical Tunya's ark-wright is the far end of — same arks, same terminals, eight centuries and one launch apart. When their Link connection stabilizes, each is the proof the other's life's work succeeded; it is the most hopeful conversation possible on a world this worn.",
     "dialogue_style": "steady_unbearable",
     "needs": { "self_actualization": 0.95, "safety": 0.2, "belonging": 0.6 },
-    "daily_schedule": "the_cradle_by_day_the_manifests_by_night",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[5,8],"location":"the_first_launch_cradle","activity":"arrives before the crews, burn-scarred from rocket-test fires, eyes drifting to the sky","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_cradle_assembly_gantry","activity":"builds the thing that becomes the Exodus — seven arks — with terrible steadiness, slide-rule worn smooth","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_cradle_crew_canteen","activity":"eats among the wrights she once apprenticed beside, the forearm blueprint tattoo so it cannot be redacted","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_umbilical_terminal_room","activity":"tests the terminals that boot the same archives on both ends, not yet knowing the far end has a name","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_manifest_office","activity":"works the boarding manifests — the list of who is saved and the heavier list of who is refused a berth","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"a_bunk_in_the_cradle","activity":"cannot finish the second list; has not asked why House Aldermere offered to clear the launch funds","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_first_launch_cradle",
     "job": "ark_wright",
     "apparel": "the_blueprint_tattoo",
@@ -557,7 +697,7 @@
     "resources_consumed": ["tech_parts", "lampfuel"],
     "resources_produced": ["the_arks"],
     "inventory": ["the_list_of_who_is_refused_a_berth"],
-    "starting_sparks": 0
+    "starting_sparks": 1000
   },
   {
     "id": "black_tithe_pumper_oren_dask",
@@ -577,7 +717,14 @@
     "cross_world_hook": "Oren and the cyber-world grid-worker both run the infrastructure their whole world depends on and are paid least of anyone who touches it; across the Link they arrive, separately, at the same dangerous arithmetic and realize they are not the only ones doing it.",
     "dialogue_style": "blunt_weathered",
     "needs": { "esteem": 0.6, "physiological": 0.5, "belonging": 0.7 },
-    "daily_schedule": "the_pumps_by_shift_the_crew_meetings_after",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[4,6],"location":"a_pumpers_row_house_in_the_furnace_belt","activity":"wakes black to the elbows that no scrubbing reaches, fits the respirator, takes up the brass whistle","need_addressed":"physiological","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[6,12],"location":"the_black_tithe_pumps","activity":"works the pumps that light every lamp on Sere, the only authority his crew answers to","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_pumphouse_mess","activity":"eats bread with his crew and works out, slow and furious, that burners pay a hundred times his wage","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_furnace_district_pump_lines","activity":"runs the shift extracting the fuel the whole world cannot do without, paid in Marks he did not price","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"a_crew_meeting_in_a_back_shed","activity":"tests pricing the Black Tithe in the open ledger instead of the Mark, set by those who pump it","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,4],"location":"his_row_house","activity":"keeps the figures for the one district that priced its own fuel — the day the Mark's foundation cracks","need_addressed":"belonging","interactable_by_player":false}
+    ],
     "home": "a_pumpers_row_house_in_the_furnace_belt",
     "job": "pump_master",
     "apparel": "the_respirator_scar",
@@ -585,7 +732,7 @@
     "resources_consumed": ["bread"],
     "resources_produced": ["lampfuel", "the_open_ledger"],
     "inventory": ["the_district_that_priced_its_own_fuel"],
-    "starting_sparks": 0
+    "starting_sparks": 400
   },
   {
     "id": "assembly_speaker_dane_orrin",
@@ -605,7 +752,14 @@
     "cross_world_hook": "Dane and the superhero-world senator both preside over chambers they slowly realize they do not steer; across the Link they confess the specific loneliness of holding a gavel that decides nothing, and wonder aloud, for the first time, whether one originated motion could matter.",
     "dialogue_style": "measured_captured",
     "needs": { "esteem": 0.8, "self_actualization": 0.5, "safety": 0.4 },
-    "daily_schedule": "the_assembly_floor_by_day_the_doubt_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_speakers_residence","activity":"dons the speaker's robes and reviews the order of business he is told he wrote but did not","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_old_assembly_floor","activity":"presides in measured cadence, allowing to the floor only motions already cleared upstream of him","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_speakers_antechamber","activity":"receives delegations and is reliably reasonable, arriving at the conclusion the order book drew","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_assembly_committee_rooms","activity":"chairs the war-budget and charter-renewal votes, the human face of manufactured consent","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"the_speakers_study","activity":"notices every 'independent' assessment traces to Verge and every 'emergency' renewal to the Tally House","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"the_residence_library","activity":"sits hollowed by the doubt, weighing the unwritten motion — the first he might ever originate himself","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_speakers_residence",
     "job": "assembly_speaker",
     "apparel": "the_speakers_robes",
@@ -613,7 +767,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["manufactured_consent"],
     "inventory": ["the_unwritten_motion"],
-    "starting_sparks": 0
+    "starting_sparks": 9000
   },
   {
     "id": "investigator_brhelp_sennett",
@@ -633,7 +787,14 @@
     "cross_world_hook": "Brell and the lattice-world drift-witness both catalogue connections no one wants connected; across the Link they finish each other's reconstructions, two obsessive minds discovering that the patterns they each chased alone are halves of one larger shape.",
     "dialogue_style": "rapid_connecting",
     "needs": { "self_actualization": 0.9, "safety": 0.3, "belonging": 0.5 },
-    "daily_schedule": "the_pinned_wall_at_all_hours",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[3,7],"location":"a_back_room_full_of_pinned_papers","activity":"works the pinned wall at an hour no watcher expects, finding the fourth document that links three","need_addressed":"self_actualization","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"public_record_offices","activity":"reads public documents whole, the mistake the Curtain trains its people never to make, mended spectacles on","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"a_quiet_reading_room","activity":"eats bread over a cold tea, each pocket of his coat holding a different thread of evidence","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_open_table_research_corner","activity":"meets a research partner to compare reconstructions, holding more of the chain in his head than thought possible","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,23],"location":"the_pinned_wall","activity":"connects Border Mirror to Tally House to Mercy Fund to Tessera recognition, unable to stop","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[23,3],"location":"the_back_room","activity":"sleeps little, two-thirds of the whole chain assembled and the Curtain's one failure mode made flesh","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_back_room_full_of_pinned_papers",
     "job": "synthesist",
     "apparel": "the_coat_of_many_pockets",
@@ -641,7 +802,7 @@
     "resources_consumed": ["recognition", "bread"],
     "resources_produced": ["the_unredacted_record"],
     "inventory": ["two_thirds_of_the_whole_chain"],
-    "starting_sparks": 0
+    "starting_sparks": 250
   },
   {
     "id": "tally_house_pageturner_imo_reck",
@@ -661,7 +822,14 @@
     "cross_world_hook": "Imo and the cyber-world grid-worker both run a central mechanism their world depends on and were never told what it really is; across the Link they compare the plaques above their stations and laugh, then stop laughing.",
     "dialogue_style": "technical_reassuring",
     "needs": { "safety": 0.6, "esteem": 0.4, "self_actualization": 0.5 },
-    "daily_schedule": "the_issuance_floor_by_shift_the_private_tally_after",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[6,8],"location":"a_clerks_room_in_the_tally_house","activity":"rises with ink-cuffs and the brass issuance-floor key on its chain, the slight stoop of twenty years","need_addressed":"safety","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[8,12],"location":"the_tally_house_issuance_floor","activity":"turns the great wheel that issues the Mark beneath a plaque that reads 'A Mark is issued upon issuance'","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_clerks_common_room","activity":"takes a plain meal, only recently kept awake by the suspicion the wheel is attached to nothing","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_issuance_floor","activity":"administers the central trick — the Mark made from nothing — and has begun to read the plaque again","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"her_clerks_desk","activity":"keeps a private tally of the days issuance was 'adjusted' the season before a war or a flood","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,6],"location":"a_room_in_the_tally_house","activity":"hides the wheel caught turning too fast — the central trick caught in the act by the hand that turns it","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_clerks_room_in_the_tally_house",
     "job": "issuance_keeper",
     "apparel": "the_brass_floor_key",
@@ -669,7 +837,7 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["the_mark"],
     "inventory": ["the_wheel_caught_turning_too_fast"],
-    "starting_sparks": 0
+    "starting_sparks": 1600
   },
   {
     "id": "drowned_provinces_elder_vael_morrow",
@@ -689,7 +857,14 @@
     "cross_world_hook": "Vael and the sovereign world's Almoner both keep the memory of what charity meant before it learned to own; across the Link the old elder and the Almoner mourn, in two worlds, the same stolen word.",
     "dialogue_style": "gentle_insistent",
     "needs": { "belonging": 0.8, "self_actualization": 0.5, "physiological": 0.6 },
-    "daily_schedule": "the_porch_by_day_telling_the_before",
+    "daily_schedule": [
+      {"phase":"dawn","phase_hours":[6,9],"location":"a_porch_that_is_an_island_at_high_water","activity":"wakes in the green-seamed coat gone soft with damp and watches the water creep at the porch's edge","need_addressed":"physiological","interactable_by_player":true},
+      {"phase":"morning","phase_hours":[9,12],"location":"the_drowned_ward_lanes","activity":"poles the flooded lanes greeting the young of the wards who call him grandfather","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"a_neighbour's_raised_kitchen","activity":"shares bread and tells of the wards before the Mercy Fund's boats, the living memory the Curtain wants forgotten","need_addressed":"belonging","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"his_porch","activity":"tells the same true story past every ridicule, leaning on a walking-stick cut from a drowned orchard's last tree","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,21],"location":"under_the_porch_boards","activity":"checks the oilcloth holding the original ward-deeds the floods keep trying to take","need_addressed":"safety","interactable_by_player":true},
+      {"phase":"night","phase_hours":[21,6],"location":"the_porch_room","activity":"sleeps above the rising water with the deeds the Curtain buried — proof the wards were owned before the rescue","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "a_porch_that_is_an_island_at_high_water",
     "job": "keeper_of_the_before",
     "apparel": "the_green_seamed_coat",
@@ -697,7 +872,7 @@
     "resources_consumed": ["bread"],
     "resources_produced": ["memory"],
     "inventory": ["the_deeds_the_curtain_buried"],
-    "starting_sparks": 1
+    "starting_sparks": 60
   },
   {
     "id": "spire_immunity_counsel_thea_grell",
@@ -717,7 +892,14 @@
     "cross_world_hook": "Thea and the cyber-world arbiter both maintain the rules that keep their systems immune from consequence; across the Link they trade, warily, the question neither will answer at home — what happens to the keeper when the lock she guards is finally picked?",
     "dialogue_style": "cold_procedural",
     "needs": { "esteem": 0.7, "safety": 0.6, "self_actualization": 0.5 },
-    "daily_schedule": "the_charter_chamber_by_day_the_marginalia_by_night",
+    "daily_schedule": [
+      {"phase":"pre_dawn","phase_hours":[5,7],"location":"the_clearing_spire_counsels_chambers","activity":"rises in a severe plainness, a brief already under one arm, and frames the day's argument in clauses","need_addressed":"esteem","interactable_by_player":false},
+      {"phase":"morning","phase_hours":[7,12],"location":"the_immunity_charter_chamber","activity":"drafts the charter's renewals and defends the Spire's untouchability against every realm that tries to revoke it","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"midday","phase_hours":[12,14],"location":"the_counsels_dining_room","activity":"takes a precise meal, exhausted that her greatest triumphs are all the prevention of accountability","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"afternoon","phase_hours":[14,18],"location":"the_assembly_revocation_court","activity":"beats back a realm's revocation petition, not having lost an argument in a decade","need_addressed":"esteem","interactable_by_player":true},
+      {"phase":"evening","phase_hours":[18,22],"location":"her_private_study","activity":"works the only annotated copy of the charter, patching the precise legal seam where the lock is weakest","need_addressed":"self_actualization","interactable_by_player":true},
+      {"phase":"night","phase_hours":[22,5],"location":"the_counsels_quarters","activity":"keeps the annotated charter whose marginalia she alone can read, disturbed that the petitioners died of unrelated causes","need_addressed":"safety","interactable_by_player":false}
+    ],
     "home": "the_clearing_spire_counsels_chambers",
     "job": "immunity_counsel",
     "apparel": "the_severe_plainness",
@@ -725,6 +907,6 @@
     "resources_consumed": ["recognition"],
     "resources_produced": ["immunity"],
     "inventory": ["the_seam_where_the_lock_is_weakest"],
-    "starting_sparks": 0
+    "starting_sparks": 8000
   }
 ]
