@@ -71780,6 +71780,102 @@ const LENS_DOMAIN_KEYWORDS = {
 
   // Healthcare (distinct from health — clinical systems)
   healthcare: ["hospital", "patient", "treatment", "prescription", "surgery", "nurse", "clinic", "pharmacy"],
+
+  // ── Coverage expansion: the ingestion classifier knew ~30 domains, leaving
+  // ~220 lenses unfed. These map the science / domain / professional / trades /
+  // creative lenses to discriminating keywords so the 2-hour sync + web ingest
+  // files OpenStax / live-API / CommonCrawl DTUs into every lens, not just 30.
+  // Keys are real app/lenses/<slug> dirs.
+
+  // Formal science + the standout thin-on-deep cluster
+  chem: ["chemistry", "molecule", "reaction", "compound", "bond", "catalyst", "oxidation", "stoichiometry", "organic chemistry", "periodic"],
+  astronomy: ["astronomy", "galaxy", "nebula", "telescope", "planet", "orbit", "cosmology", "supernova", "exoplanet", "celestial"],
+  quantum: ["quantum", "qubit", "superposition", "entanglement", "wavefunction", "schrodinger", "decoherence", "quantum computing"],
+  robotics: ["robot", "actuator", "kinematics", "control theory", "pid", "lqr", "kalman", "servo", "manipulator", "slam", "feedback control"],
+  ml: ["machine learning", "neural network", "gradient descent", "dataset", "reinforcement learning", "classifier", "overfitting", "backpropagation", "model training"],
+  neuro: ["neuroscience", "neuron", "synapse", "cortex", "axon", "neurotransmitter", "action potential", "brain region", "neural circuit"],
+  geology: ["geology", "rock", "mineral", "tectonic", "sediment", "volcano", "earthquake", "stratigraphy", "erosion", "fossil"],
+  materials: ["material", "alloy", "polymer", "composite", "crystal lattice", "tensile", "metallurgy", "semiconductor", "nanomaterial"],
+  energy: ["energy", "renewable", "solar", "battery", "grid", "turbine", "nuclear", "photovoltaic", "power generation", "fuel cell"],
+  space: ["spacecraft", "rocket", "satellite", "orbit", "propulsion", "launch", "aerospace", "mission", "payload", "reentry"],
+  ocean: ["ocean", "marine", "tide", "current", "coral", "deep sea", "salinity", "oceanograph", "plankton"],
+
+  // Health / wellbeing family
+  pharmacy: ["pharmacology", "drug", "dose", "pharmacokinetic", "pharmacodynamic", "medication", "half-life", "interaction", "prescription", "therapeutic index"],
+  "mental-health": ["mental health", "anxiety", "depression", "therapy", "cbt", "psychiatric", "wellbeing", "trauma", "counseling"],
+  wellness: ["wellness", "self-care", "mindfulness", "recovery", "holistic", "lifestyle", "stress relief"],
+  fitness: ["fitness", "workout", "exercise", "strength", "cardio", "training", "muscle", "endurance", "reps", "mobility"],
+  meditation: ["meditation", "breathwork", "mindfulness", "calm", "focus", "zen", "contemplation"],
+  veterinary: ["veterinary", "animal health", "vet", "livestock health", "canine", "feline", "zoonotic"],
+
+  // Food / land / extraction
+  cooking: ["cooking", "recipe", "culinary", "ingredient", "bake", "saute", "maillard", "flavor", "fermentation", "cuisine"],
+  food: ["food", "nutrition", "diet", "meal", "calorie", "macronutrient", "ingredient", "produce"],
+  agriculture: ["agriculture", "crop", "farm", "soil", "harvest", "irrigation", "livestock", "yield", "cultivation", "pesticide"],
+  forestry: ["forestry", "timber", "woodland", "silviculture", "reforestation", "logging", "canopy"],
+  fishing: ["fishing", "angling", "bait", "tackle", "catch", "fishery", "trawl", "lure"],
+  mining: ["mining", "ore", "extraction", "mineral deposit", "quarry", "drilling", "excavation", "smelting"],
+
+  // Creative breadth
+  fashion: ["fashion", "garment", "textile", "couture", "apparel", "design", "runway", "tailoring", "fabric"],
+  photography: ["photography", "camera", "exposure", "aperture", "shutter", "lens", "composition", "lighting", "darkroom"],
+  "film-studios": ["film", "cinema", "screenplay", "director", "editing", "cinematography", "scene", "production"],
+  poetry: ["poetry", "poem", "verse", "stanza", "meter", "rhyme", "metaphor", "sonnet"],
+  "creative-writing": ["fiction", "narrative", "character", "plot", "prose", "storytelling", "manuscript", "novel"],
+  "game-design": ["game design", "mechanic", "level design", "playtest", "balance", "gameplay loop", "progression system"],
+  podcast: ["podcast", "episode", "audio show", "interview", "broadcast", "segment"],
+
+  // Engineering trades + transport
+  aviation: ["aviation", "aircraft", "pilot", "flight", "aerodynamic", "airspace", "avionics", "runway", "lift", "thrust"],
+  automotive: ["automotive", "engine", "vehicle", "transmission", "chassis", "horsepower", "drivetrain", "combustion"],
+  logistics: ["logistics", "shipping", "warehouse", "freight", "distribution", "fulfillment", "route optimization"],
+  supplychain: ["supply chain", "procurement", "inventory", "supplier", "lead time", "just-in-time", "sourcing"],
+  manufacturing: ["manufacturing", "assembly", "factory", "production line", "cnc", "tooling", "fabrication", "lean"],
+  construction: ["construction", "building", "concrete", "scaffold", "blueprint", "contractor", "structural", "foundation"],
+  carpentry: ["carpentry", "woodworking", "joinery", "lumber", "framing", "cabinetry", "miter"],
+  electrical: ["electrical", "wiring", "circuit", "voltage", "breaker", "conduit", "amperage", "grounding"],
+  plumbing: ["plumbing", "pipe", "valve", "drain", "fixture", "water supply", "fitting", "sewer"],
+  hvac: ["hvac", "heating", "ventilation", "air conditioning", "ductwork", "refrigerant", "thermostat", "airflow"],
+  welding: ["welding", "weld", "mig", "tig", "arc", "filler metal", "fabrication", "bead"],
+  masonry: ["masonry", "brick", "mortar", "stone", "block", "trowel", "grout"],
+  landscaping: ["landscaping", "garden", "lawn", "horticulture", "irrigation", "shrub", "hardscape"],
+  "home-improvement": ["home improvement", "renovation", "remodel", "drywall", "fixture", "diy home"],
+
+  // Professional / business
+  accounting: ["accounting", "ledger", "debit", "credit", "balance sheet", "depreciation", "audit", "bookkeeping", "tax"],
+  marketing: ["marketing", "campaign", "brand", "conversion", "funnel", "seo", "audience", "engagement", "advertising"],
+  consulting: ["consulting", "advisory", "engagement", "deliverable", "stakeholder", "strategy", "client"],
+  hr: ["human resources", "recruiting", "onboarding", "payroll", "benefits", "performance review", "hiring"],
+  careers: ["career", "resume", "job", "interview", "promotion", "skill development", "professional growth"],
+  insurance: ["insurance", "premium", "policy", "claim", "underwriting", "deductible", "coverage", "actuarial"],
+  retail: ["retail", "store", "merchandising", "point of sale", "inventory", "customer", "checkout"],
+  crypto: ["crypto", "blockchain", "wallet", "token", "defi", "smart contract", "ledger", "mining reward", "staking"],
+  staking: ["staking", "validator", "yield", "delegation", "reward rate", "lockup", "consensus"],
+
+  // Humanities / social science
+  linguistics: ["linguistics", "syntax", "phoneme", "morphology", "semantics", "grammar", "language", "etymology"],
+  philosophy: ["philosophy", "epistemology", "metaphysics", "ontology", "ethics", "logic", "phenomenology", "dialectic"],
+  ethics: ["ethics", "moral", "virtue", "consequentialism", "deontolog", "fairness", "justice", "dilemma"],
+  education: ["education", "pedagogy", "curriculum", "learning", "teaching", "classroom", "assessment", "literacy"],
+  psyops: ["influence", "persuasion", "propaganda", "perception", "psychological operation", "disinformation"],
+  economics: ["economics", "supply", "demand", "inflation", "gdp", "elasticity", "monetary", "market equilibrium", "incentive"],
+
+  // Civic / safety
+  law: ["law", "statute", "legal", "court", "contract", "litigation", "jurisdiction", "precedent", "liability"],
+  "law-enforcement": ["law enforcement", "police", "patrol", "arrest", "investigation", "crime", "evidence", "warrant"],
+  security: ["security", "threat", "vulnerability", "encryption", "firewall", "intrusion", "exploit", "authentication"],
+  defense: ["defense", "tactical", "perimeter", "deterrence", "fortification", "countermeasure", "logistics support"],
+  "crisis-ops": ["crisis", "incident", "emergency response", "evacuation", "disaster", "triage", "coordination"],
+  "emergency-services": ["emergency", "ambulance", "firefighter", "rescue", "first responder", "dispatch", "911"],
+  detective: ["detective", "clue", "suspect", "deduction", "evidence", "investigation", "motive", "alibi"],
+
+  // Lifestyle / misc
+  sports: ["sport", "athlete", "match", "league", "tournament", "score", "team", "championship", "training"],
+  travel: ["travel", "destination", "itinerary", "flight", "lodging", "tourism", "trip", "passport"],
+  pets: ["pet", "dog", "cat", "grooming", "breed", "companion animal", "pet care"],
+  parenting: ["parenting", "child", "infant", "toddler", "discipline", "development", "family"],
+  "urban-planning": ["urban planning", "zoning", "city", "transit", "infrastructure", "density", "land use", "walkability"],
+  telecommunications: ["telecommunications", "network", "bandwidth", "5g", "fiber", "signal", "spectrum", "latency"],
 };
 
 /**
