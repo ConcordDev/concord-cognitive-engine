@@ -18,6 +18,7 @@ import { observeWebVitals } from '@/lib/perf';
 import { connectSocket, disconnectSocket } from '@/lib/realtime/socket';
 import { api } from '@/lib/api/client';
 import { useUIStore } from '@/store/ui';
+import { reportClientError } from '@/hooks/useBugContext';
 import AccessibilityDOMApplier from '@/components/accessibility/AccessibilityDOMApplier';
 
 /**
@@ -102,8 +103,37 @@ export function Providers({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // E4 — global client-error reporters. React error boundaries only catch
+  // render-time throws; these catch the rest: uncaught runtime errors,
+  // resource-load failures (img/script/css — only window 'error' sees these),
+  // and unhandled promise rejections. Reports funnel through /api/client-error
+  // → bug-triage. Best-effort + throttled inside reportClientError.
+  useEffect(() => {
+    const onError = (e: ErrorEvent) => {
+      const isResource = !e.error && !!(e.target && (e.target as HTMLElement).tagName);
+      reportClientError({
+        kind: isResource ? 'resource_load' : 'uncaught_throw',
+        error: e.error,
+        message: e.message || (isResource ? `resource failed: ${(e.target as HTMLElement)?.tagName}` : ''),
+      });
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      reportClientError({ kind: 'unhandled_rejection', error: e.reason, message: String(e.reason?.message ?? e.reason ?? '') });
+    };
+    window.addEventListener('error', onError, true); // capture phase to see resource errors
+    window.addEventListener('unhandledrejection', onRejection);
+    return () => {
+      window.removeEventListener('error', onError, true);
+      window.removeEventListener('unhandledrejection', onRejection);
+    };
+  }, []);
+
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+      onError={(error, info) =>
+        reportClientError({ kind: 'uncaught_throw', error, componentStack: info?.componentStack ?? undefined })
+      }
+    >
       {/*
         MotionConfig with reducedMotion="user" — framer-motion respects
         the OS-level prefers-reduced-motion media query for every motion

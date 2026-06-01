@@ -1321,6 +1321,7 @@ import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
 import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
+import { ingestClientError } from "./lib/client-error-intake.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
 
@@ -6951,6 +6952,17 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // E4 — client-error intake telemetry. Uncaught throws / unhandled rejections /
+    // resource-load failures / hydration breaks reported by the frontend to
+    // POST /api/client-error, classified by bug-triage (E3). Critical/Major spikes
+    // page via error-alerting; this counter feeds the ConcordClientErrorSpike alert.
+    METRICS.counters.clientError = new prom.Counter({
+      name: "concord_client_error_total",
+      help: "Client-side errors reported via /api/client-error, by kind + severity",
+      labelNames: ["kind", "severity"],
+      registers: [METRICS.registry]
+    });
+
     // Heartbeat liveness — incremented every governorTick. If the rate of
     // this counter drops to 0 the heartbeat has died and every emergent
     // system is silently frozen. The Prometheus alert rule
@@ -7102,7 +7114,7 @@ function metricsMiddleware(req, res, next) {
 setInterval(() => {
   // Report real DTU count (excluding shadow/repair/system DTUs) to Prometheus
   if (METRICS.gauges.dtuCount) {
-    const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+    const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
     let _realCount = 0;
     for (const d of STATE.dtus.values()) { if (!EXCLUDED_KINDS.has(d.machine?.kind) && d.tier !== "shadow") _realCount++; }
     METRICS.gauges.dtuCount.set(_realCount);
@@ -21029,7 +21041,7 @@ register("dtu", "list", (ctx, input) => {
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
-  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
   let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
 
   // ── Scope Hierarchy Enforcement ──────────────────────────────────
@@ -25284,7 +25296,7 @@ register("system", "status", (_ctx, _input) => {
   try {
   // Real DTU count: exclude shadow, repair, system-internal, and audit DTUs
   // Users should see how much REAL content exists, not number-padded counts
-  const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+  const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
   const EXCLUDED_SOURCES = new Set(["repair-cortex", "shadow-promoter", "ghost-fleet"]);
   let realDtuCount = 0;
   for (const dtu of STATE.dtus.values()) {
@@ -31870,6 +31882,28 @@ app.get("/api/world/perf-telemetry", (_req, res) => {
     p90Fps: fps[Math.floor(fps.length * 0.9)],
     recent: s.slice(-30),
   });
+});
+
+// E4 — client-error intake. Public-write (Gate-1 POST bypass already whitelists
+// the path in authMiddleware), rate-limited per-IP (50/min), kill-switched
+// (CONCORD_CLIENT_ERROR_INTAKE=0). The frontend useBugContext hook posts uncaught
+// throws / unhandled rejections / resource-load failures / hydration breaks /
+// feedback bug-reports here; ingestClientError sanitises + classifies (E3) +
+// counts + mints a kind='client_error' DTU + pages Critical. Best-effort identify
+// (req.user may be unset for anon errors). 204 when the kill-switch is off.
+app.post("/api/client-error", perEndpointRateLimit("write.client-error"), express.json({ limit: "16kb" }), async (req, res) => {
+  try {
+    const r = await ingestClientError({
+      body: { ...(req.body || {}), userId: req.user?.id || null, ua: req.body?.ua || req.headers["user-agent"] },
+      incCounter: (kind, severity) => { try { METRICS.counters.clientError?.inc({ kind, severity }); } catch { /* best-effort */ } },
+      mintDtu: (record) => runMacro("dtu", "create", record, makeCtx(req)),
+      alert: async (payload) => { try { const { sendAlert } = await import("./lib/error-alerting.js"); await sendAlert(payload); } catch { /* alerting optional */ } },
+    });
+    if (r?.disabled) return res.status(204).end();
+    res.json(r);
+  } catch {
+    res.status(400).json({ ok: false, error: "invalid_payload" });
+  }
 });
 
 // Procedural creature spawn — POST a description, get a physics-validated
