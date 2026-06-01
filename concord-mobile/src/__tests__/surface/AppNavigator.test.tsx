@@ -92,6 +92,26 @@ jest.mock('@react-navigation/native', () => {
 });
 
 describe('AppNavigator', () => {
+  // The mocked Stack.Screen renders each registered screen component so
+  // nested navigators (MainTabs) are exercised. That mounts the real tab
+  // and HUD screens, some of which kick off async data fetches on mount.
+  // Stub global.fetch so those never hit a real socket (ECONNREFUSED) and
+  // bleed an unhandled rejection ("fetch failed") into an unrelated test.
+  const realFetch = global.fetch;
+  beforeAll(() => {
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        text: () => Promise.resolve(''),
+      } as Response),
+    ) as unknown as typeof fetch;
+  });
+  afterAll(() => {
+    global.fetch = realFetch;
+  });
+
   beforeEach(() => {
     registeredTabScreens.length = 0;
     registeredStackScreens.length = 0;
@@ -123,6 +143,22 @@ describe('AppNavigator', () => {
       'Atlas',
       'Settings',
       'BuyCoins',
+      // Phase Z9 — Phase D sidebar lenses
+      'Courtship',
+      'Fishing',
+      'Creatures',
+      'Garage',
+      'ReasoningTraces',
+      // Phase G4.3 — WebView HUD wrappers
+      'DreamReader',
+      'StrategicWarBanner',
+      'ForwardPredictions',
+      'NPCSchemeOverhear',
+      'LFGBoard',
+      'BrawlMatchmaking',
+      'Spectator',
+      'EmergentEventFeed',
+      'PersonalBeat',
     ];
     for (const stackScreen of expectedStacks) {
       expect(registeredStackScreens).toContain(stackScreen);
@@ -134,9 +170,14 @@ describe('AppNavigator', () => {
     expect(registeredTabScreens).toHaveLength(5);
   });
 
-  it('registers exactly 4 stack screens', () => {
+  it('registers exactly 18 stack screens', () => {
     render(<AppNavigator />);
-    expect(registeredStackScreens).toHaveLength(4);
+    // Main, Atlas, Settings, BuyCoins (4 core) + Courtship, Fishing,
+    // Creatures, Garage, ReasoningTraces (5 Phase Z9 lenses) + DreamReader,
+    // StrategicWarBanner, ForwardPredictions, NPCSchemeOverhear, LFGBoard,
+    // BrawlMatchmaking, Spectator, EmergentEventFeed, PersonalBeat (9
+    // Phase G4.3 HUD wrappers) = 18.
+    expect(registeredStackScreens).toHaveLength(18);
   });
 
   it('does not register duplicate screen names in tabs', () => {
@@ -169,12 +210,28 @@ describe('AppNavigator', () => {
       Main: true,
       Atlas: true,
       Settings: true,
+      BuyCoins: true,
       LensDetail: true,
       DTUDetail: true,
       PeerDetail: true,
       TransactionDetail: true,
-      BuyCoins: true,
+      // Phase Z9 — Phase D sidebar lenses
+      Courtship: true,
+      Fishing: true,
+      Creatures: true,
+      Garage: true,
+      ReasoningTraces: true,
+      // Phase G4.3 — WebView HUD wrappers
+      DreamReader: true,
+      StrategicWarBanner: true,
+      ForwardPredictions: true,
+      NPCSchemeOverhear: true,
+      LFGBoard: true,
+      BrawlMatchmaking: true,
+      Spectator: true,
+      EmergentEventFeed: true,
+      PersonalBeat: true,
     };
-    expect(Object.keys(stackKeys)).toHaveLength(8);
+    expect(Object.keys(stackKeys)).toHaveLength(22);
   });
 });
