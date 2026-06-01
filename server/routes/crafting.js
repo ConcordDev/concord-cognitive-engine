@@ -164,6 +164,25 @@ export function createCraftingRouter({ db, requireAuth }) {
     }
   });
 
+  // ── POST /api/crafting/refine — refine a material one step up its chain ─────
+  // body: { itemId, worldId, buildingId? } (G2 refining chains). Higher tiers need
+  // a better station; backfire ruins the melt (mats lost + minor debuff).
+  router.post("/refine", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { itemId, fromItemId, worldId, buildingId } = req.body;
+      const from = itemId || fromItemId;
+      if (!from)    return res.status(400).json({ ok: false, error: "itemId required" });
+      if (!worldId) return res.status(400).json({ ok: false, error: "worldId required" });
+      const { refine } = await import("../lib/refining.js");
+      const result = refine(db, userId, worldId, from, { buildingId });
+      if (!result.ok) return res.status(422).json(result);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // ── GET /api/crafting/recipes — list player's recipe DTUs ────────────────
   router.get("/recipes", requireAuth, (req, res) => {
     try {
