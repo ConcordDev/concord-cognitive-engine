@@ -1,0 +1,26 @@
+{
+  "pack": "economics",
+  "description": "Economics grounding for the economics/markets lens — micro, macro, and game-theoretic principles.",
+  "entries": [
+    { "id": "grounding_econ_supply_demand", "kind": "knowledge", "lens": "economics", "title": "Supply, demand & equilibrium", "tags": ["economics", "supply-demand", "price", "market"],
+      "summary": "Price emerges where the quantity buyers demand (falling with price) meets the quantity sellers supply (rising with price). Shifts in either curve move the equilibrium; a binding price ceiling/floor creates shortage/surplus. This single model is the workhorse of microeconomics and of any in-game market." },
+    { "id": "grounding_econ_elasticity", "kind": "knowledge", "lens": "economics", "title": "Elasticity", "tags": ["economics", "elasticity", "demand", "pricing"],
+      "summary": "Elasticity measures responsiveness: price elasticity of demand = %ΔQ / %ΔP. Elastic goods (luxuries, many substitutes) lose lots of sales when priced up; inelastic goods (necessities, addictions) don't. It dictates pricing strategy and who bears a tax — the more inelastic side pays more of it." },
+    { "id": "grounding_econ_opportunity_cost", "kind": "knowledge", "lens": "economics", "title": "Opportunity cost & comparative advantage", "tags": ["economics", "opportunity-cost", "trade", "specialization"],
+      "summary": "The true cost of a choice is the best alternative forgone. Comparative advantage (lower opportunity cost, not absolute skill) is why two parties both gain from specializing and trading even if one is better at everything — the foundational argument for trade and division of labor." },
+    { "id": "grounding_econ_marginal", "kind": "knowledge", "lens": "economics", "title": "Marginal analysis", "tags": ["economics", "marginal", "optimization", "decision"],
+      "summary": "Rational decisions weigh marginal benefit against marginal cost, not totals; you do more of an activity until MB = MC. Sunk costs are irrelevant (already spent). This calculus-at-the-margin underlies firm output decisions, consumer choice, and most of optimization-flavored economics." },
+    { "id": "grounding_econ_gdp_inflation", "kind": "knowledge", "lens": "economics", "title": "GDP, inflation & unemployment", "tags": ["economics", "macro", "gdp", "inflation"],
+      "summary": "GDP measures an economy's output; real GDP strips out inflation. Inflation is a sustained rise in the price level (eroding purchasing power); unemployment is idle labor. The macro policy goal is steady growth with low, stable inflation and full employment — and the Phillips curve captures the short-run inflation/unemployment tension." },
+    { "id": "grounding_econ_money_policy", "kind": "knowledge", "lens": "economics", "title": "Money, central banks & interest rates", "tags": ["economics", "monetary-policy", "interest-rate", "central-bank"],
+      "summary": "Central banks steer the economy mainly via the interest rate: cutting rates cheapens borrowing to stimulate; raising them cools inflation. Money supply, credit creation by banks, and expectations transmit policy. Too much money chasing too few goods is the classic inflation mechanism." },
+    { "id": "grounding_econ_externalities", "kind": "knowledge", "lens": "economics", "title": "Externalities & public goods", "tags": ["economics", "externality", "market-failure", "public-goods"],
+      "summary": "Markets misprice effects on third parties: negative externalities (pollution) are overproduced, positive ones (vaccination, education) underproduced. Public goods (non-rival, non-excludable — like a lighthouse) are under-supplied because of free-riding. These market failures are the standard economic justification for taxes, subsidies, and regulation." },
+    { "id": "grounding_econ_game_theory", "kind": "knowledge", "lens": "economics", "title": "Game theory & the Nash equilibrium", "tags": ["economics", "game-theory", "nash", "incentives"],
+      "summary": "Game theory studies strategic interaction. A Nash equilibrium is a state where no player can gain by unilaterally changing strategy. The prisoner's dilemma shows how individually rational choices yield a collectively worse outcome — the analytic core of competition, collusion, auctions, and mechanism design." },
+    { "id": "grounding_econ_incentives", "kind": "knowledge", "lens": "economics", "title": "Incentives & moral hazard", "tags": ["economics", "incentives", "moral-hazard", "information"],
+      "summary": "People respond to incentives, often in unintended ways (the cobra effect). Asymmetric information breeds moral hazard (insured parties take more risk) and adverse selection (only the high-risk buy insurance). Designing incentives that align private and social interest is much of applied economics and policy." },
+    { "id": "grounding_econ_diminishing", "kind": "knowledge", "lens": "economics", "title": "Diminishing returns & economies of scale", "tags": ["economics", "returns", "scale", "production"],
+      "summary": "Adding more of one input to fixed others eventually yields smaller gains (diminishing marginal returns). Yet scaling all inputs can lower per-unit cost (economies of scale) up to a point, beyond which coordination costs bring diseconomies. Together they shape firm size and the cost curves behind supply." }
+  ]
+}
