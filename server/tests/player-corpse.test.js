@@ -32,15 +32,15 @@ import { up as up148 } from "../migrations/151_player_corpses.js";
 function setupDb(initialBalance = 0) {
   const db = new Database(":memory:");
   up148(db);
-  // Minimal user_wallets shim for the wallet debit/credit path.
+  // Concord Coin balances live in users.concordia_credits (migration 045).
   db.exec(`
-    CREATE TABLE user_wallets (
-      user_id       TEXT PRIMARY KEY,
-      concord_coins INTEGER DEFAULT 0
+    CREATE TABLE users (
+      id                TEXT PRIMARY KEY,
+      concordia_credits REAL DEFAULT 0
     );
   `);
   if (initialBalance > 0) {
-    db.prepare(`INSERT INTO user_wallets (user_id, concord_coins) VALUES (?, ?)`)
+    db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`)
       .run("u1", initialBalance);
   }
   return db;
@@ -82,12 +82,12 @@ describe("dropCorpseOnDeath", () => {
       position: { x: 0, z: 0 },
     });
     assert.equal(r.coinsLost, Math.min(COIN_LOSS_MAX, Math.floor(2000 * COIN_LOSS_FRACTION)));
-    const w = db.prepare(`SELECT concord_coins FROM user_wallets WHERE user_id='u1'`).get();
+    const w = db.prepare(`SELECT concordia_credits AS concord_coins FROM users WHERE id='u1'`).get();
     assert.equal(w.concord_coins, 2000 - r.coinsLost);
   });
 
   it("hard-caps loss at COIN_LOSS_MAX even with huge balance", () => {
-    db.prepare(`UPDATE user_wallets SET concord_coins = 1000000 WHERE user_id='u1'`).run();
+    db.prepare(`UPDATE users SET concordia_credits = 1000000 WHERE id='u1'`).run();
     const r = dropCorpseOnDeath(db, {
       userId: "u1", worldId: "w1", position: { x: 0, z: 0 },
     });
@@ -147,13 +147,13 @@ describe("activeCorpsesFor + recoverCorpse", () => {
       userId: "u1", worldId: "w1", position: { x: 10, z: 10 },
     });
     const lostCoins = r.coinsLost;
-    const before = db.prepare(`SELECT concord_coins FROM user_wallets WHERE user_id='u1'`).get();
+    const before = db.prepare(`SELECT concordia_credits AS concord_coins FROM users WHERE id='u1'`).get();
     const rec = recoverCorpse(db, {
       userId: "u1", corpseId: r.corpse.id, position: { x: 10, z: 10 },
     });
     assert.equal(rec.ok, true);
     assert.equal(rec.coinsReturned, lostCoins);
-    const after = db.prepare(`SELECT concord_coins FROM user_wallets WHERE user_id='u1'`).get();
+    const after = db.prepare(`SELECT concordia_credits AS concord_coins FROM users WHERE id='u1'`).get();
     assert.equal(after.concord_coins, before.concord_coins + lostCoins);
   });
 

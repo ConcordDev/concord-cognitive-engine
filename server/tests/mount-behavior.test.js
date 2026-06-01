@@ -47,7 +47,7 @@ function fresh() {
     CREATE TABLE IF NOT EXISTS world_resource_nodes (
       id TEXT PRIMARY KEY,
       world_id TEXT NOT NULL,
-      kind TEXT,
+      node_type TEXT,
       x REAL,
       z REAL
     );
@@ -96,7 +96,7 @@ describe("Phase U mount-behavior-cycle", () => {
     const db = fresh();
     db.prepare(`INSERT INTO player_companions (id, owner_id, creature_id, name, world_id, mount_eligible, deployed, mount_state, pos_x, pos_z, behavior_state) VALUES (?, ?, ?, ?, ?, 1, 0, '{"hunger":80}', 0, 0, 'wandering')`)
       .run('m3', 'u1', 'crt3', 'Black', 'concordia-hub');
-    db.prepare(`INSERT INTO world_resource_nodes (id, world_id, kind, x, z) VALUES (?, ?, ?, ?, ?)`)
+    db.prepare(`INSERT INTO world_resource_nodes (id, world_id, node_type, x, z) VALUES (?, ?, ?, ?, ?)`)
       .run('food1', 'concordia-hub', 'herb', 5, 5);
     const r = await runMountBehaviorCycle({ db });
     assert.equal(r.processed, 1);

@@ -55,23 +55,24 @@ function memDb() {
       if (m) { m.status = "expired"; return { changes: 1 }; }
       return { changes: 0 };
     }
-    if (n.startsWith("SELECT balance FROM user_wallets")) {
+    // Wallet primitives now read users.concordia_credits + log to reward_ledger.
+    if (n.startsWith("SELECT concordia_credits AS balance FROM users")) {
       const w = t.wallets.get(args[0]);
-      return w ? { balance: w } : null;
+      return w !== undefined ? { balance: w } : null;
     }
-    if (n.startsWith("UPDATE user_wallets SET balance = balance - ?")) {
+    if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits - ?")) {
       const [amount, userId] = args;
       const cur = t.wallets.get(userId) || 0;
       t.wallets.set(userId, cur - amount);
       return { changes: 1 };
     }
-    if (n.startsWith("INSERT INTO user_wallets")) {
-      const [userId, amount] = args;
+    if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits + ?")) {
+      const [amount, userId] = args;
       t.wallets.set(userId, (t.wallets.get(userId) || 0) + amount);
       return { changes: 1 };
     }
-    if (n.startsWith("INSERT INTO economy_ledger")) {
-      t.ledger.push({ id: args[0], userId: args[1], kind: args[2], amount: args[3], ts: args[4], ref: args[5] });
+    if (n.startsWith("INSERT INTO reward_ledger")) {
+      t.ledger.push({ id: args[0], userId: args[1], amount: args[2], ref: args[3] });
       return { changes: 1 };
     }
     if (n.startsWith("UPDATE dtus SET created_by")) {
@@ -116,7 +117,7 @@ function memDb() {
   }
   function _get(sql, args) {
     const n = _trim(sql);
-    if (n.startsWith("SELECT balance FROM user_wallets")) {
+    if (n.startsWith("SELECT concordia_credits AS balance FROM users")) {
       const w = t.wallets.get(args[0]);
       return w !== undefined ? { balance: w } : null;
     }

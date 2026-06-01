@@ -34,12 +34,11 @@ beforeEach(() => {
   // heartbeat's queries. We don't run real migrations here; we
   // create only what's needed for the contract.
   db.exec(`
-    CREATE TABLE city_presence (
+    CREATE TABLE world_visits (
       user_id TEXT NOT NULL,
       world_id TEXT NOT NULL,
-      x REAL,
-      z REAL,
-      last_seen_at INTEGER NOT NULL DEFAULT (unixepoch())
+      last_position TEXT,
+      departed_at INTEGER
     );
     CREATE TABLE authored_npcs (
       id TEXT PRIMARY KEY,
@@ -103,8 +102,10 @@ afterEach(() => {
 });
 
 function seedPlayer(userId, worldId, x, z) {
-  db.prepare(`INSERT INTO city_presence (user_id, world_id, x, z) VALUES (?, ?, ?, ?)`)
-    .run(userId, worldId, x, z);
+  // Active players (with positions) come from world_visits.last_position (JSON),
+  // departed_at NULL = currently online.
+  db.prepare(`INSERT INTO world_visits (user_id, world_id, last_position, departed_at) VALUES (?, ?, ?, NULL)`)
+    .run(userId, worldId, JSON.stringify({ x, z }));
 }
 function seedNpc(npcId, worldId, factionId, x, z) {
   db.prepare(`INSERT INTO authored_npcs (id, world_id, faction_id, x, z) VALUES (?, ?, ?, ?, ?)`)

@@ -25,7 +25,12 @@ import {
 function freshDb() {
   const db = new Database(":memory:");
   up272(db);
-  db.exec(`CREATE TABLE user_wallets (user_id TEXT PRIMARY KEY, balance REAL NOT NULL DEFAULT 0)`);
+  // CC lives in users.concordia_credits (mig 045); rewards log to reward_ledger (mig 296).
+  db.exec(`
+    CREATE TABLE users (id TEXT PRIMARY KEY, concordia_credits REAL NOT NULL DEFAULT 0);
+    CREATE TABLE reward_ledger (id TEXT PRIMARY KEY, user_id TEXT, kind TEXT, amount_cc REAL, ts INTEGER, ref_id TEXT);
+  `);
+  db.prepare(`INSERT INTO users (id, concordia_credits) VALUES ('u1', 0)`).run();
   return db;
 }
 
@@ -71,11 +76,11 @@ describe("D2 — weekly objectives", () => {
     const c1 = claimObjectiveReward(db, "u1", "weekly_trader", WEEK_A);
     assert.equal(c1.ok, true);
     assert.equal(c1.rewardCc, trader.rewardCc);
-    assert.equal(db.prepare(`SELECT balance FROM user_wallets WHERE user_id='u1'`).get().balance, trader.rewardCc);
+    assert.equal(db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id='u1'`).get().balance, trader.rewardCc);
     // second claim is rejected
     assert.equal(claimObjectiveReward(db, "u1", "weekly_trader", WEEK_A).reason, "already_claimed");
     // balance unchanged
-    assert.equal(db.prepare(`SELECT balance FROM user_wallets WHERE user_id='u1'`).get().balance, trader.rewardCc);
+    assert.equal(db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id='u1'`).get().balance, trader.rewardCc);
     db.close();
   });
 

@@ -44,7 +44,8 @@ describe("PROFILES table", () => {
     assert.match(PROFILES["32gb"].subconscious.model, /qwen.*:7b/);
     assert.match(PROFILES["32gb"].utility.model, /qwen.*:3b/);
     assert.match(PROFILES["32gb"].repair.model, /qwen.*:1\.5b/);
-    assert.match(PROFILES["32gb"].multimodal.model, /llava.*13b/);
+    // Vision swapped llava:13b → Qwen2.5-VL (Apache-2.0) — see CLAUDE.md / docs/LICENSING.md.
+    assert.match(PROFILES["32gb"].multimodal.model, /qwen.*vl.*7b/);
     assert.equal(PROFILES["32gb"].utility.maxConcurrent, 16);
   });
 
