@@ -376,6 +376,7 @@ const ConcordiaHUD = {
   ContextPrompt: dynamic(() => import('@/components/world/concordia-hud/ContextPromptLayer').then((m) => ({ default: m.ContextPromptLayer })), { ssr: false }),
   CommandPalette: dynamic(() => import('@/components/world/concordia-hud/CommandPalette').then((m) => ({ default: m.CommandPalette })), { ssr: false }),
   ActionWheel: dynamic(() => import('@/components/world/concordia-hud/ActionWheel').then((m) => ({ default: m.ActionWheel })), { ssr: false }),
+  SkillWheel: dynamic(() => import('@/components/world/concordia-hud/SkillWheelMount'), { ssr: false }),
   PanelHost: dynamic(() => import('@/components/world/concordia-hud/PanelHost').then((m) => ({ default: m.PanelHost })), { ssr: false }),
   InteractionSink: dynamic(() => import('@/components/world/concordia-hud/WorldInteractionSink').then((m) => ({ default: m.WorldInteractionSink })), { ssr: false }),
   AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
@@ -412,6 +413,7 @@ const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorld
 const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypointBeacon'), { ssr: false });
 const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBeacons'), { ssr: false });
 const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterLayer'), { ssr: false });
+const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -4872,7 +4874,9 @@ export default function WorldLensPage() {
           <ConcordiaHUD.ContextPrompt />
           <ConcordiaHUD.CommandPalette />
           <ConcordiaHUD.ActionWheel variant="quick_panel" />
-          <ConcordiaHUD.ActionWheel variant="skill" />
+          {/* Skill wheel wired to the player's REAL learned skills (each spoke
+              fires the canonical concordia:spell-cast — flick-to-cast). */}
+          <ConcordiaHUD.SkillWheel />
           <ConcordiaHUD.ActionWheel variant="tool" />
           <ConcordiaHUD.PanelHost />
           <ConcordiaHUD.InteractionSink />
@@ -4934,6 +4938,9 @@ export default function WorldLensPage() {
           {/* SR4/Crackdown data-cluster loop: floating power-orbs you walk into,
               upgrading traversal/combat powers by exploring the 3D world. */}
           <PowerClusterLayer worldId={activeDistrict.id} />
+          {/* Link-scan: on-demand (V) Glance-tier scanner revealing the Layer-7
+              embodied-signal substrate the player stands in. */}
+          <LinkScanOverlay worldId={activeDistrict.id} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
