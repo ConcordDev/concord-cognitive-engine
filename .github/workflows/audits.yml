@@ -71,6 +71,14 @@ jobs:
           node scripts/verify-event-consumers.mjs
           node scripts/verify-event-consumers.mjs --ci 77
 
+      - name: Orphaned-event gate (no dead UI wiring)
+        run: |
+          # Fails if a CustomEvent is dispatched but nothing listens (a button
+          # that looks functional but silently does nothing). Ratchet: known
+          # intentional orphans live in the script's ALLOWLIST; any NEW orphan
+          # fails CI. Fix the wire or allowlist with a reason.
+          node scripts/check-orphaned-events.mjs
+
       - name: Surface-coverage gate (every player verb fires ≥FLOOR/4 channels)
         run: |
           # WAVE SCAN — the closed-set polish manifest. Enumerates every player
