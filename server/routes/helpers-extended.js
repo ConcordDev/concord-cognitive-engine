@@ -244,6 +244,29 @@ export default function registerHelpersExtendedRoutes(app, {
     res.json({ ok: true, reset: true });
   }));
 
+  // F1 — cold-watcher: fun-funnel health (stall / abandon / convert) + the
+  // tool-vs-network split, read-only operator surface. Kill-switched by the same
+  // CONCORD_FTUE_TELEMETRY flag as the funnel recorder (off → 204, no compute).
+  app.get("/api/onboarding/cold-watch", requireAuth(), asyncHandler(async (req, res) => {
+    if (process.env.CONCORD_FTUE_TELEMETRY !== "1") return res.status(204).end();
+    const database = db || STATE?.db;
+    if (!database) return res.json({ ok: false, reason: "no_db" });
+    try {
+      const { coldWatchReport } = await import("../lib/cold-watcher.js");
+      // Acquisition source isn't on the funnel table; resolve best-effort from
+      // world_invites (network) else 'tool'. Cheap per-user lookup, guarded.
+      const sourceFor = (uid) => {
+        try {
+          const r = database.prepare(`SELECT 1 FROM world_invites WHERE invitee_id=? LIMIT 1`).get(String(uid));
+          return r ? "network" : "tool";
+        } catch { return "unknown"; }
+      };
+      res.json(coldWatchReport(database, { sourceFor }));
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
   // ─── PHYSICS ────────────────────────────────────────────────────────
 
   app.get("/api/physics/status", (req, res) => {
