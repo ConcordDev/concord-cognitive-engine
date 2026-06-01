@@ -28,10 +28,10 @@ export function CookieConsent() {
 
   if (!visible) return null;
 
+  // Compact bottom-LEFT card (was a full-width centered z-200 bar that collided
+  // with the bottom-right coachmark/First-Win cluster + sat above onboarding
+  // modals). Lower z so modals layer above it.
   return (
-    {/* Compact bottom-LEFT card (was a full-width centered z-200 bar that
-        collided with the bottom-right coachmark/First-Win cluster + sat above
-        onboarding modals). Lower z so modals layer above it. */}
     <div className="fixed bottom-4 left-4 z-[60] w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom">
       <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
         <div className="flex flex-col gap-3">
