@@ -12,6 +12,7 @@
 // which the war can finally truce.
 
 import crypto from "node:crypto";
+import { setRelation } from "./embodied/faction-strategy.js";
 
 const TRUCE_THRESHOLD = -0.6;       // faction-strategy seeks truce at/below this
 const PARITY_ENGAGE = -0.45;        // when a funded faction sags past this...
@@ -107,6 +108,20 @@ export function clampParity(db, worldId = "sere") {
     }
   }
   return { ok: true, clamped };
+}
+
+/**
+ * The main-arc payoff: heal the Dovrane–Keshar Twin Pact. Cuts the Tessera's
+ * managed-parity funding (so the war can finally seek truce — the clamp stops)
+ * AND flips the faction relation toward truce. After this, clampParity no longer
+ * tops the belligerents up, and the Open Table can reach critical mass. Idempotent.
+ */
+export function healTwinPact(db, { worldId = "sere" } = {}) {
+  const cut = endFunding(db, { worldId, warFactionA: "dovrane", warFactionB: "keshar" });
+  let relation = null;
+  try { relation = setRelation(db, "dovrane", "keshar", { kind: "truce", score: 0.3 }); }
+  catch { /* faction relations optional */ }
+  return { ok: true, fundingCut: cut.ended || 0, relation: relation ? "truce" : null };
 }
 
 export const _testing = { TRUCE_THRESHOLD, PARITY_ENGAGE, PARITY_FLOOR };
