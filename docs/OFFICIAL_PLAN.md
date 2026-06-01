@@ -183,6 +183,7 @@ This file is the **master map**. The full per-spec detail and the verbatim resea
 | `docs/USERBUG_TAXONOMY.md` | The ranked 10-category user-bug taxonomy (SaaS + MMO), Concordia's exposure ranking with the audit finding that previews each, the intake/observability table, the complementary-halves diagram. |
 | `docs/BEYOND_CORRECTNESS.md` | The five frontiers (Judgment/Liveness/People/Economics/Distribution), the human-vs-engineering line, the instrumentation map. |
 | `docs/COLD_START_STRATEGY.md` | Cold-start (atomic networks, tool-first), retention (the MMO clock), solo-liveops survival, the synthesis (why the architecture pre-solves the traps). |
+| `docs/DEVELOPER_PLATFORM_GTM.md` | Developer-platform go-to-market — PLG motion, pricing (the royalty-cascade-for-developers differentiator), the MCP-registry distribution wedge, the dev-ecosystem cold-start, sequencing; **+ a 2026-06-01 codebase+web claim audit** (premise mostly true; DTU protocol is `"1.0"` not "1.0.0", "4 client SDKs" is really 2). **A post-flagship-scale track — build toward, don't pivot to.** |
 | `docs/TEMPERAMENT_BUILD_PLAN.md` | Track B1 Temperament P4–P7 build detail. |
 | `docs/CONCORD_LINK_BUILD_PLAN.md` | Track B2 Concord Link 8-phase build detail. |
 | `docs/FUNCTION_ASSURANCE.md` | The six-gate (L0–L5) verification method. |
