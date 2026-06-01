@@ -53,6 +53,9 @@ const EXCEPTIONS = {
   "png-js": "MIT upstream — package.json omits the license field.",
   "khroma": "MIT upstream — package.json omits the license field.",
   "webgl-constants": "MIT upstream — package.json omits the license field.",
+  "@mapbox/jsonlint-lines-primitives": "MIT upstream (mapbox/jsonlint fork; maplibre-gl dep) — license field omitted.",
+  "@segment/loosely-validate-event": "MIT (LICENSE file present; segment) — license field omitted.",
+  "@wix-pilot/detox": "MIT upstream (wix-incubator/pilot; mobile detox) — license field omitted.",
   // Build-time-only dev tooling (not shipped in any bundle):
   "@sentry/cli": "FSL-1.1-MIT — build-time CLI only, not shipped; converts to MIT after 2y.",
   "@sentry/cli-linux-x64": "FSL-1.1-MIT — build-time CLI binary only, not shipped.",

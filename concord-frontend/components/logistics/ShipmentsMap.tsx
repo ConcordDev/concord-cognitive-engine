@@ -1,20 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { OSM_STYLE, toLngLat, esc } from '@/lib/maplibre/osm';
 
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// Swapped off react-leaflet (Hippocratic-2.1) → MapLibre GL (BSD-3). Props unchanged.
 
 interface ShipmentRoute {
   id: string;
@@ -85,6 +76,74 @@ export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: 
     return { ...s, originCoords: o || undefined, destCoords: d || undefined };
   }).filter(r => r.originCoords && r.destCoords), [shipments]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  useEffect(() => {
+    if (!mounted || !containerRef.current || routes.length === 0) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: OSM_STYLE,
+      center: toLngLat([39.8, -98.5]),
+      zoom: 4,
+      attributionControl: { compact: true },
+    });
+    mapRef.current = map;
+
+    const draw = () => {
+      const features = routes.map((r) => ({
+        type: 'Feature' as const,
+        properties: {
+          color: STATUS_COLOUR[r.status] || '#22d3ee',
+          dashed: r.status === 'delivered' ? 0 : 1,
+        },
+        geometry: {
+          type: 'LineString' as const,
+          coordinates: [
+            [r.originCoords![1], r.originCoords![0]],
+            [r.destCoords![1], r.destCoords![0]],
+          ],
+        },
+      }));
+      const data = { type: 'FeatureCollection' as const, features };
+      if (map.getSource('routes')) {
+        (map.getSource('routes') as maplibregl.GeoJSONSource).setData(data);
+      } else {
+        map.addSource('routes', { type: 'geojson', data });
+        // solid leg (delivered) + dashed leg (in-flight), filtered by the `dashed` prop
+        map.addLayer({
+          id: 'routes-solid', type: 'line', source: 'routes', filter: ['==', ['get', 'dashed'], 0],
+          paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.7 },
+        });
+        map.addLayer({
+          id: 'routes-dashed', type: 'line', source: 'routes', filter: ['==', ['get', 'dashed'], 1],
+          paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.7, 'line-dasharray': [3, 3] },
+        });
+      }
+      markersRef.current.forEach((mk) => mk.remove());
+      markersRef.current = [];
+      for (const r of routes) {
+        const oPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
+          `<div style="font-weight:600">${esc(r.trackingNumber)}</div>` +
+            `<div style="font-size:11px">From: ${esc(r.origin)}</div>` +
+            `<div style="font-size:10px;color:#666">Status: ${esc(r.status.replace(/_/g, ' '))}</div>`,
+        );
+        const dPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
+          `<div style="font-weight:600">${esc(r.trackingNumber)}</div>` +
+            `<div style="font-size:11px">To: ${esc(r.destination)}</div>` +
+            `<div style="font-size:10px;color:#666">Mode: ${esc(r.mode)}</div>`,
+        );
+        markersRef.current.push(new maplibregl.Marker().setLngLat([r.originCoords![1], r.originCoords![0]]).setPopup(oPopup).addTo(map));
+        markersRef.current.push(new maplibregl.Marker().setLngLat([r.destCoords![1], r.destCoords![0]]).setPopup(dPopup).addTo(map));
+      }
+    };
+
+    if (map.isStyleLoaded()) draw(); else map.once('load', draw);
+    return () => { map.remove(); mapRef.current = null; markersRef.current = []; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, routes]);
+
   if (!mounted) return <div className={className} style={{ background: 'rgba(34, 211, 238, 0.05)' }} />;
 
   if (routes.length === 0) {
@@ -97,28 +156,7 @@ export function ShipmentsMap({ shipments, className }: { shipments: Array<{ id: 
 
   return (
     <div className={className} style={{ overflow: 'hidden' }}>
-      <MapContainer center={[39.8, -98.5]} zoom={4} style={{ height: '100%', width: '100%' }}>
-        <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {routes.map(r => (
-          <React.Fragment key={r.id}>
-            <Marker position={r.originCoords!}>
-              <Popup>
-                <div style={{ fontWeight: 600 }}>{r.trackingNumber}</div>
-                <div style={{ fontSize: 11 }}>From: {r.origin}</div>
-                <div style={{ fontSize: 10, color: '#666' }}>Status: {r.status.replace(/_/g, ' ')}</div>
-              </Popup>
-            </Marker>
-            <Marker position={r.destCoords!}>
-              <Popup>
-                <div style={{ fontWeight: 600 }}>{r.trackingNumber}</div>
-                <div style={{ fontSize: 11 }}>To: {r.destination}</div>
-                <div style={{ fontSize: 10, color: '#666' }}>Mode: {r.mode}</div>
-              </Popup>
-            </Marker>
-            <Polyline positions={[r.originCoords!, r.destCoords!]} pathOptions={{ color: STATUS_COLOUR[r.status] || '#22d3ee', weight: 2, dashArray: r.status === 'delivered' ? undefined : '6 6', opacity: 0.7 }} />
-          </React.Fragment>
-        ))}
-      </MapContainer>
+      <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
     </div>
   );
 }

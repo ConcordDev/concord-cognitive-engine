@@ -129,6 +129,15 @@ jobs:
           # high-confidence gate above skips. Floor 0 — fails on ANY new drift.
           node scripts/audit/gates/schema-drift.mjs --ci
 
+      - name: License gate (no AGPL/GPL/SSPL/CC-BY-NC/Hippocratic/undeclared dep can merge)
+        run: |
+          # Track G4 — walks the installed dep trees (server + frontend, + mobile when
+          # installed) and fails on any disallowed-license dependency vs the permissive
+          # allowlist, with a documented EXCEPTIONS map (ffmpeg-static separate-process,
+          # sharp dynamic-link, the undeclared-MIT set). Floor 0 — see docs/LICENSING.md.
+          (cd concord-frontend && npm ci --no-audit --no-fund) || true
+          node scripts/audit/gates/license-scan.mjs --ci
+
       - name: Render-parity gate (static appearance layer)
         run: |
           node scripts/verify-render-parity.mjs

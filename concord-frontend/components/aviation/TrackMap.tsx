@@ -1,17 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { OSM_STYLE, toLngLat, esc } from '@/lib/maplibre/osm';
 
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// Swapped off react-leaflet (Hippocratic-2.1) → MapLibre GL (BSD-3). Props unchanged.
 
 interface Track {
   id: string; tail: string; from: string | null; to: string | null;
@@ -26,6 +20,71 @@ export function TrackMap({ tracks, className }: { tracks: Track[]; className?: s
 
   const tracksWithPoints = useMemo(() => tracks.filter(t => t.points && t.points.length > 0), [tracks]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+
+  const center: [number, number] | null = useMemo(() => {
+    const allPoints = tracksWithPoints.flatMap(t => t.points);
+    if (allPoints.length === 0) return null;
+    return [
+      allPoints.reduce((s, p) => s + p.lat, 0) / allPoints.length,
+      allPoints.reduce((s, p) => s + p.lng, 0) / allPoints.length,
+    ];
+  }, [tracksWithPoints]);
+
+  useEffect(() => {
+    if (!mounted || !containerRef.current || !center) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: OSM_STYLE,
+      center: toLngLat(center),
+      zoom: 8,
+      attributionControl: { compact: true },
+    });
+    mapRef.current = map;
+
+    const draw = () => {
+      const features = tracksWithPoints.map((t) => ({
+        type: 'Feature' as const,
+        properties: { color: t.endedAt ? '#34d399' : '#fbbf24' },
+        geometry: { type: 'LineString' as const, coordinates: t.points.map((p) => [p.lng, p.lat]) },
+      }));
+      const data = { type: 'FeatureCollection' as const, features };
+      if (map.getSource('tracks')) {
+        (map.getSource('tracks') as maplibregl.GeoJSONSource).setData(data);
+      } else {
+        map.addSource('tracks', { type: 'geojson', data });
+        map.addLayer({
+          id: 'tracks-line', type: 'line', source: 'tracks',
+          paint: { 'line-color': ['get', 'color'], 'line-width': 2.5, 'line-opacity': 0.85 },
+        });
+      }
+      markersRef.current.forEach((mk) => mk.remove());
+      markersRef.current = [];
+      for (const t of tracksWithPoints) {
+        const startPt = t.points[0];
+        const endPt = t.points[t.points.length - 1];
+        const startPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
+          `<div style="font-weight:600">Start · ${esc(t.tail)}</div>` +
+            `<div style="font-size:11px">${esc(t.from || 'unknown')}</div>` +
+            `<div style="font-size:10px;color:#666">${esc(new Date(t.startedAt).toLocaleString())}</div>`,
+        );
+        const endPopup = new maplibregl.Popup({ offset: 24 }).setHTML(
+          `<div style="font-weight:600">${t.endedAt ? 'End' : 'Last position'} · ${esc(t.tail)}</div>` +
+            `<div style="font-size:11px">${esc(t.to || 'unknown')}</div>` +
+            `<div style="font-size:10px;color:#666">${esc(t.totalDistanceNm.toFixed(1))} nm · max ${esc(t.maxAltitudeFt)} ft</div>`,
+        );
+        markersRef.current.push(new maplibregl.Marker().setLngLat([startPt.lng, startPt.lat]).setPopup(startPopup).addTo(map));
+        markersRef.current.push(new maplibregl.Marker().setLngLat([endPt.lng, endPt.lat]).setPopup(endPopup).addTo(map));
+      }
+    };
+
+    if (map.isStyleLoaded()) draw(); else map.once('load', draw);
+    return () => { map.remove(); mapRef.current = null; markersRef.current = []; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, center, tracksWithPoints]);
+
   if (!mounted) return <div className={className} style={{ background: 'rgba(34, 211, 238, 0.05)' }} />;
   if (tracksWithPoints.length === 0) {
     return (
@@ -35,42 +94,9 @@ export function TrackMap({ tracks, className }: { tracks: Track[]; className?: s
     );
   }
 
-  const allPoints = tracksWithPoints.flatMap(t => t.points);
-  const center: [number, number] = [
-    allPoints.reduce((s, p) => s + p.lat, 0) / allPoints.length,
-    allPoints.reduce((s, p) => s + p.lng, 0) / allPoints.length,
-  ];
-
   return (
     <div className={className} style={{ overflow: 'hidden' }}>
-      <MapContainer center={center} zoom={8} style={{ height: '100%', width: '100%' }}>
-        <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {tracksWithPoints.map(t => {
-          const path = t.points.map(p => [p.lat, p.lng] as [number, number]);
-          const startPt = t.points[0];
-          const endPt = t.points[t.points.length - 1];
-          const colour = t.endedAt ? '#34d399' : '#fbbf24';
-          return (
-            <React.Fragment key={t.id}>
-              <Polyline positions={path} pathOptions={{ color: colour, weight: 2.5, opacity: 0.85 }} />
-              <Marker position={[startPt.lat, startPt.lng]}>
-                <Popup>
-                  <div style={{ fontWeight: 600 }}>Start · {t.tail}</div>
-                  <div style={{ fontSize: 11 }}>{t.from || 'unknown'}</div>
-                  <div style={{ fontSize: 10, color: '#666' }}>{new Date(t.startedAt).toLocaleString()}</div>
-                </Popup>
-              </Marker>
-              <Marker position={[endPt.lat, endPt.lng]}>
-                <Popup>
-                  <div style={{ fontWeight: 600 }}>{t.endedAt ? 'End' : 'Last position'} · {t.tail}</div>
-                  <div style={{ fontSize: 11 }}>{t.to || 'unknown'}</div>
-                  <div style={{ fontSize: 10, color: '#666' }}>{t.totalDistanceNm.toFixed(1)} nm · max {t.maxAltitudeFt} ft</div>
-                </Popup>
-              </Marker>
-            </React.Fragment>
-          );
-        })}
-      </MapContainer>
+      <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
     </div>
   );
 }
