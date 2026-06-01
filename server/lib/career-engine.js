@@ -33,7 +33,7 @@ export function promotionReady(state = {}, trackId, tier, opts = {}) {
     skill: (Number(state.skillLevel) || 0) >= info.skillGate,
     dailyTask: !!state.dailyTaskDone,
     performance: clamp01(state.performanceScore) >= perfThreshold,
-    reputation: (Number(state.reputation) ?? 0) >= repThreshold,
+    reputation: Number(state.reputation ?? 0) >= repThreshold,
   };
   const ready = gates.skill && gates.dailyTask && gates.performance && gates.reputation && tier < MAX_TIER;
   return { ready, gates, nextTier: ready ? tier + 1 : tier };

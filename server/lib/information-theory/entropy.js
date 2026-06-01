@@ -69,15 +69,15 @@ export function mutualInformation(joint) {
   if (total <= 0) return 0;
   const px = new Array(rows).fill(0);
   const py = new Array(cols).fill(0);
-  for (let x = 0; x < rows; x++) for (let y = 0; y < cols; y++) {
+  for (let x = 0; x < rows; x++) {for (let y = 0; y < cols; y++) {
     const p = Math.max(0, joint[x][y]) / total;
     px[x] += p; py[y] += p;
-  }
+  }}
   let mi = 0;
-  for (let x = 0; x < rows; x++) for (let y = 0; y < cols; y++) {
+  for (let x = 0; x < rows; x++) {for (let y = 0; y < cols; y++) {
     const pxy = Math.max(0, joint[x][y]) / total;
     if (pxy > 0 && px[x] > 0 && py[y] > 0) mi += pxy * log2(pxy / (px[x] * py[y]));
-  }
+  }}
   return Math.max(0, mi);
 }
 

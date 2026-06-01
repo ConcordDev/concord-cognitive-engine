@@ -93,7 +93,7 @@ function makeMockRes() {
   return res;
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 
 /**
  * SSE incremental-stream + heartbeat check.

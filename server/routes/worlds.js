@@ -2519,11 +2519,11 @@ export default function createWorldsRouter({ requireAuth, db }) {
         try {
           const { weaponAssetIdForSkill, onCombatHit } = await import("../lib/gameplay-asset-bridge.js");
           const wid = weaponAssetIdForSkill(db, skillDtuId);
-          if (wid) onCombatHit(db, {
+          if (wid) {onCombatHit(db, {
             attackerId: userId, victimId: npcId, weapon: { id: wid },
             damage: Number(damageResult.finalDamage) || 0,
             isCrit: Number(damageResult.executionMultiplier || 1) > 1,
-          });
+          });}
         } catch { /* evo-asset best-effort */ }
       }
 

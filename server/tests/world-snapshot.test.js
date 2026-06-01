@@ -30,7 +30,7 @@ test("restore is exact + idempotent after destructive mutation", () => {
   db.prepare("INSERT INTO world_buildings VALUES ('garbage','tunya','x',0.1)").run();
   const r1 = restoreWorld(db, snap);
   assert.equal(r1.ok, true);
-  let rows = db.prepare("SELECT id,health_pct FROM world_buildings WHERE world_id='tunya' ORDER BY id").all();
+  const rows = db.prepare("SELECT id,health_pct FROM world_buildings WHERE world_id='tunya' ORDER BY id").all();
   assert.deepEqual(rows, [{ id: "b1", health_pct: 1.0 }, { id: "b2", health_pct: 0.5 }]);
   // Idempotent: restoring again yields the same state.
   restoreWorld(db, snap);

@@ -45,14 +45,14 @@ export function resolveCollectiveFace(db, kind, id) {
       return r?.holder_id ? { kind: "npc", id: r.holder_id, via: "elected_leader" } : null;
     }, null);
     // 2) else the faction's highest-level / leader-flagged NPC.
-    if (!face) face = safe(() => {
+    if (!face) {face = safe(() => {
       const cols = db.prepare(`PRAGMA table_info(world_npcs)`).all().map((c) => c.name);
       const fcol = cols.includes("faction_id") ? "faction_id" : cols.includes("faction") ? "faction" : null;
       if (!fcol) return null;
       const order = cols.includes("level") ? "level DESC" : "rowid ASC";
       const r = db.prepare(`SELECT id FROM world_npcs WHERE ${fcol}=? AND (is_dead IS NULL OR is_dead=0) ORDER BY ${order} LIMIT 1`).get(cid);
       return r?.id ? { kind: "npc", id: r.id, via: "ranking_member" } : null;
-    }, null);
+    }, null);}
     return { kind: k, id: cid, face, collective: true };
   }
 

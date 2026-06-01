@@ -31,7 +31,7 @@ export const RUNGS = Object.freeze([
 ]);
 
 const RUNG_IDX = Object.freeze(
-  RUNGS.reduce((m, r, i) => ((m[r] = i), m), {})
+  RUNGS.reduce((m, r, i) => { m[r] = i; return m; }, {})
 );
 
 function idx(rung) {

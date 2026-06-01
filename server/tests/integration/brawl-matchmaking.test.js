@@ -89,9 +89,9 @@ describe("Phase E7 — brawl matchmaking queue", () => {
   it("popPair pairs the two oldest queuers (FIFO)", async () => {
     joinQueue("first");
     // Tiny delay to ensure joinedAt differs.
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => { setTimeout(r, 5); });
     joinQueue("second");
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => { setTimeout(r, 5); });
     joinQueue("third");
     const pair = popPair();
     assert.equal(pair.paired.a, "first");

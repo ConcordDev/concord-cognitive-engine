@@ -39,12 +39,12 @@ describe("startSSE", () => {
   it("emits a heartbeat comment on the configured interval, then stops on close", async () => {
     const res = mockRes();
     startSSE(res, { heartbeatMs: 10 });
-    await new Promise((r) => setTimeout(r, 35));
+    await new Promise((r) => { setTimeout(r, 35); });
     const beats = res.writes.filter((w) => w === ":keepalive\n\n").length;
     assert.ok(beats >= 2, `expected heartbeats, got ${beats}`);
     res._fire("close"); // client disconnects → heartbeat must stop
     const after = res.writes.length;
-    await new Promise((r) => setTimeout(r, 25));
+    await new Promise((r) => { setTimeout(r, 25); });
     assert.equal(res.writes.length, after, "heartbeat kept firing after close");
   });
 
@@ -53,7 +53,7 @@ describe("startSSE", () => {
     const stop = startSSE(res, { heartbeatMs: 10 });
     stop();
     const n = res.writes.length;
-    await new Promise((r) => setTimeout(r, 30));
+    await new Promise((r) => { setTimeout(r, 30); });
     assert.equal(res.writes.length, n);
   });
 
