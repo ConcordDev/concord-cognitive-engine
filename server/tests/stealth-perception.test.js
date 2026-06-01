@@ -150,3 +150,50 @@ describe("backstab perception margin constant", () => {
     assert.ok(BACKSTAB_PERCEPTION_MARGIN < 100);
   });
 });
+
+// "step zero" fix — assertCanBackstab now reads skills from the authoritative
+// player_skill_levels table. The prior query hit dtus (owner_user_id/type/tags_json)
+// which skill rows aren't keyed by, so it silently returned 0 for everyone.
+describe("assertCanBackstab reads real skill levels (player_skill_levels)", () => {
+  let Database, runMigrations, assertCanBackstab;
+  const mkDb = async () => {
+    ({ default: Database } = await import("better-sqlite3"));
+    ({ runMigrations } = await import("../migrate.js"));
+    ({ assertCanBackstab } = await import("../lib/stealth-perception.js"));
+    const d = new Database(":memory:");
+    d.pragma("foreign_keys=OFF");
+    await runMigrations(d);
+    return d;
+  };
+  const addSkill = (d, user, type, level) =>
+    d.prepare(`INSERT INTO player_skill_levels (id,user_id,skill_type,native_world_type,level,xp,xp_to_next)
+               VALUES (?,?,?,?,?,0,100)`).run(`${user}_${type}`, user, type, "concordia-hub", level);
+
+  it("a high-perception victim breaks the backstab", async () => {
+    const d = await mkDb();
+    addSkill(d, "attacker", "stealth", 50);
+    addSkill(d, "victim", "perception", 90);
+    const r = assertCanBackstab(d, "attacker", "victim");
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "perception_breaks_stealth");
+    assert.equal(r.attackerStealth, 50);
+    assert.equal(r.victimPerception, 90);
+  });
+
+  it("an oblivious victim allows the backstab", async () => {
+    const d = await mkDb();
+    addSkill(d, "attacker", "stealth", 50);
+    const r = assertCanBackstab(d, "attacker", "nobody");
+    assert.equal(r.ok, true);
+    assert.equal(r.victimPerception, 0);
+  });
+
+  it("observation OR perception — whichever is higher — gates it", async () => {
+    const d = await mkDb();
+    addSkill(d, "attacker", "stealth", 50);
+    addSkill(d, "victim", "observation", 80);
+    const r = assertCanBackstab(d, "attacker", "victim");
+    assert.equal(r.ok, false);
+    assert.equal(r.victimPerception, 80);
+  });
+});
