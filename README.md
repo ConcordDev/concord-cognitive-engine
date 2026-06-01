@@ -4,7 +4,7 @@
 
 232 domain lenses. Five parallel AI brains. A self-compressing knowledge substrate. A creator economy with perpetual royalties. A seven-layer mesh network that works without internet. A 3D civilization simulator with a 13-layer embodied substrate. Constitutional governance enforced in code. Security intelligence with collective immunity.
 
-**1.36 million+ lines of code. One developer.**
+**over 2 million+ lines of code. One developer.**
 
 **Live at [concord-os.org](https://concord-os.org)**
 
