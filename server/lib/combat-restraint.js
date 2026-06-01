@@ -193,4 +193,22 @@ export function applyCombatHit(db, npc, { damage = 0, nonLethal = false, flashed
   return { combatState, morale, surrendered, force };
 }
 
+/**
+ * Outcome gate for the kill path: a target that is hors de combat (surrendered /
+ * arrested / downed) cannot be executed. Off (CONCORD_TEMPERAMENT unset) → never
+ * spares (binary combat preserved). Safe to wire ahead of the morale-accrual path
+ * — nothing reaches those states until accrual is enabled, so it's a correct
+ * no-op until then and active the moment surrender becomes reachable.
+ *
+ * @returns {{spare:boolean, combatState?:string, reason?:string}}
+ */
+export function shouldSpareExecution(db, npcId) {
+  if (!temperamentEnabled()) return { spare: false };
+  const { combatState } = getCombatState(db, npcId);
+  if (combatState === "surrendered" || combatState === "arrested" || combatState === "downed") {
+    return { spare: true, combatState, reason: "hors_de_combat" };
+  }
+  return { spare: false, combatState };
+}
+
 export default applyCombatHit;

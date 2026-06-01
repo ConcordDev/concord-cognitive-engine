@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import Database from "better-sqlite3";
 import {
   legitimateCeiling, assessForce, updateMorale, shouldSurrender, canBetray,
-  nextCombatState, getCombatState, setCombatState, applyCombatHit, COMBAT_STATES,
+  nextCombatState, getCombatState, setCombatState, applyCombatHit, shouldSpareExecution, COMBAT_STATES,
 } from "../lib/combat-restraint.js";
 
 function withTemp(on, fn) {
@@ -124,4 +124,18 @@ test("applyCombatHit: lethal blow on an already-surrendered NPC is flagged exces
 
 test("COMBAT_STATES includes the P5 downed band", () => {
   assert.ok(COMBAT_STATES.includes("downed"));
+});
+
+test("shouldSpareExecution: off → never spares; on → spares the hors-de-combat", () => {
+  const db = db0();
+  db.prepare(`INSERT INTO world_npcs (id, combat_state) VALUES ('fighter','active'),('quit','surrendered'),('down','downed')`).run();
+  withTemp(false, () => {
+    assert.equal(shouldSpareExecution(db, "quit").spare, false, "off preserves binary combat");
+  });
+  withTemp(true, () => {
+    assert.equal(shouldSpareExecution(db, "fighter").spare, false, "a fighting NPC is killable");
+    assert.equal(shouldSpareExecution(db, "quit").spare, true, "a surrendered NPC is spared");
+    assert.equal(shouldSpareExecution(db, "down").spare, true, "a downed NPC is spared");
+    assert.equal(shouldSpareExecution(db, "quit").reason, "hors_de_combat");
+  });
 });

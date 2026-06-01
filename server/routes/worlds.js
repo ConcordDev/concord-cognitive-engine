@@ -881,6 +881,23 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const killerId = req.user?.id || req.body?.killerId;
       const combatLog = req.body?.combatLog || null;
 
+      // Temperament P4 — a target that has surrendered / been downed or arrested
+      // is hors de combat and cannot be executed. Gated by CONCORD_TEMPERAMENT
+      // (off → never spares; binary combat preserved). Records the lethal attempt
+      // as an excessive-force legitimacy event for the P6 rubric.
+      try {
+        const { shouldSpareExecution } = await import("../lib/combat-restraint.js");
+        const spare = shouldSpareExecution(db, npcId);
+        if (spare.spare) {
+          try {
+            const { recordLegitimacyEvent } = await import("../lib/legitimacy.js");
+            recordLegitimacyEvent(db, { worldId, actorId: killerId, npcId, kind: "execute_hors_de_combat", combatState: spare.combatState });
+          } catch { /* legitimacy ledger optional until P6 */ }
+          req.app.locals.io?.to(`world:${worldId}`).emit("world:npc-spared", { npcId, worldId, reason: spare.reason, combatState: spare.combatState });
+          return res.json({ ok: true, died: false, spared: true, reason: spare.reason, combatState: spare.combatState });
+        }
+      } catch { /* restraint gate best-effort — never blocks a normal kill */ }
+
       // Import consequence handler lazily
       const { triggerNPCDeath } = await import("../lib/npc-consequences.js");
       const { onNPCKilledPlayer, onPlayerKilledNemesis, recordCombatMemory } = await import("../lib/nemesis.js");
