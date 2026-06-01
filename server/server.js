@@ -161,6 +161,20 @@ registerHeartbeat("world-health-monitor", {
   handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
 });
 
+// DTU→lens routing sweep. Stamps lens_id on any DTU still 'unknown' (new gameplay
+// rows from any create path) so each lens keeps pulling its own grounding without
+// touching every insert site. Boot backfill (content-seeder) does the bulk; this
+// keeps it current. Idempotent + kill-switched (CONCORD_DTU_ROUTING=0 → no-op).
+registerHeartbeat("dtu-lens-routing-sweep", {
+  frequency: 120,
+  scope: "global",
+  handler: async ({ db } = {}) => {
+    if (!db || process.env.CONCORD_DTU_ROUTING === "0") return { ok: true, skipped: true };
+    try { const { backfillLensIds } = await import("./lib/dtu-lens-routing.js"); return backfillLensIds(db, { limit: 1000 }); }
+    catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+  },
+});
+
 // E2 — economy-anomaly cycle. Rolls world-health detectPathologies (negative_balance /
 // dupe_citation) + the wash-trade history into concord_econ_anomaly_total and pages
 // Critical kinds via bug-triage → error-alerting. Observe-only (never mutates ledgers).

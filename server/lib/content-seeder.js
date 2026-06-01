@@ -962,6 +962,18 @@ export async function seedContent({ db = null } = {}) {
     logger.warn("content_seeder", "dangling_faction_audit_failed", { err: err?.message });
   }
 
+  // DTU→lens routing: stamp lens_id on any DTU still 'unknown' (seeds + prior
+  // gameplay rows) so each lens pulls its own grounding instead of the flat pool.
+  // Idempotent + kill-switched (CONCORD_DTU_ROUTING=0 → no-op).
+  if (db) {
+    try {
+      const { backfillLensIds } = await import("./dtu-lens-routing.js");
+      const r = backfillLensIds(db);
+      results.dtuLensStamped = r.stamped || 0;
+      logger.info("content_seeder", "dtu_lens_routing_backfill", { scanned: r.scanned, stamped: r.stamped, byLens: r.byLens });
+    } catch (err) { logger.warn("content_seeder", "dtu_lens_routing_failed", { err: err?.message }); }
+  }
+
   _seeded = true;
 
   logger.info(

@@ -39,12 +39,25 @@ export function searchDtus(db, query, opts = {}) {
   const params = [];
 
   // Always: title or meta contains the query.
-  where.push(`(d.title LIKE ? ESCAPE '\\\\' OR d.meta_json LIKE ? ESCAPE '\\\\')`);
+  // NOTE: the real column is `data` (aliased to meta_json in the SELECT); SQLite
+  // can't resolve a SELECT alias in WHERE, so referencing d.meta_json here threw
+  // "no such column" on every call — searchDtus/discovery.search were silently
+  // dead. Use the real column.
+  where.push(`(d.title LIKE ? ESCAPE '\\' OR d.data LIKE ? ESCAPE '\\')`);
   params.push(likePattern, likePattern);
 
   if (opts.kind) {
     where.push(`d.type = ?`);
     params.push(opts.kind);
+  }
+
+  // DTU→lens routing: when a lens (lensHint) is supplied, filter to that lens's
+  // own grounding instead of the flat pool. Falls back to flat when the lens
+  // owns nothing yet (so an unrouted corpus still searches). 2026 RAG best-
+  // practice: metadata-filter (lens) before the text LIKE.
+  if (opts.lens && process.env.CONCORD_DTU_ROUTING !== "0") {
+    where.push(`d.lens_id = ?`);
+    params.push(String(opts.lens));
   }
 
   if (opts.creatorId) {
@@ -57,10 +70,10 @@ export function searchDtus(db, query, opts = {}) {
   // We use a meta_json LIKE check as a coarse filter; a true privacy
   // gate happens at the macro layer via publicReadDomains.
   if (requesterId) {
-    where.push(`(d.creator_id = ? OR d.meta_json NOT LIKE '%"scope":"personal"%')`);
+    where.push(`(d.creator_id = ? OR d.data NOT LIKE '%"scope":"personal"%')`);
     params.push(requesterId);
   } else {
-    where.push(`d.meta_json NOT LIKE '%"scope":"personal"%'`);
+    where.push(`d.data NOT LIKE '%"scope":"personal"%'`);
   }
 
   let rows = [];
