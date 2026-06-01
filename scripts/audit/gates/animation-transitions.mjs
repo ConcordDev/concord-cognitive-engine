@@ -18,6 +18,13 @@ const SRC = path.join(ROOT, "concord-frontend/components/world-lens/AnimationMan
 const CI = process.argv.includes("--ci");
 const ROOT_STATE = "idle";
 
+// AnimationManager.tsx was retired in the combat-polish refactor (live anim path
+// is now the baked biomechanics clip map). No state machine -> nothing to check.
+if (!fs.existsSync(SRC)) {
+  console.log("animation-transitions: AnimationManager.tsx not present (state machine retired) - graph check skipped.");
+  process.exit(0);
+}
+
 const text = fs.readFileSync(SRC, "utf8");
 
 // 1) the AvatarAnimation union

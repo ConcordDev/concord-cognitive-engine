@@ -13,7 +13,7 @@ function freshDb() {
   db.exec(`
     CREATE TABLE player_inventory (id TEXT PRIMARY KEY, user_id TEXT, item_type TEXT, item_id TEXT, item_name TEXT, quantity INTEGER, quality TEXT, acquired_at INTEGER);
     CREATE TABLE world_buildings (id TEXT PRIMARY KEY, world_id TEXT, building_type TEXT, health_pct REAL DEFAULT 1.0);
-    CREATE TABLE user_active_effects (id TEXT PRIMARY KEY, user_id TEXT, effect_id TEXT, magnitude REAL, expires_at INTEGER, source TEXT);
+    CREATE TABLE user_active_effects (id TEXT PRIMARY KEY, user_id TEXT, effect_id TEXT, kind TEXT NOT NULL, magnitude REAL, source_dtu_id TEXT, expires_at INTEGER);
   `);
   upEnch(db);
   db.prepare("INSERT INTO world_buildings VALUES ('ench1','sere','enchanter',1.0)").run();

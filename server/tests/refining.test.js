@@ -12,7 +12,7 @@ function freshDb() {
   db.exec(`
     CREATE TABLE player_inventory (id TEXT PRIMARY KEY, user_id TEXT, item_type TEXT, item_id TEXT, item_name TEXT, quantity INTEGER, quality TEXT, acquired_at INTEGER);
     CREATE TABLE world_buildings (id TEXT PRIMARY KEY, world_id TEXT, building_type TEXT, health_pct REAL DEFAULT 1.0);
-    CREATE TABLE user_active_effects (id TEXT PRIMARY KEY, user_id TEXT, effect_id TEXT, magnitude REAL, expires_at INTEGER, source TEXT);
+    CREATE TABLE user_active_effects (id TEXT PRIMARY KEY, user_id TEXT, effect_id TEXT, kind TEXT NOT NULL, magnitude REAL, source_dtu_id TEXT, expires_at INTEGER);
   `);
   db.prepare("INSERT INTO world_buildings VALUES ('forge1','sere','forge',1.0)").run();
   db.prepare("INSERT INTO world_buildings VALUES ('fab1','sere','factory_workbench',1.0)").run();
@@ -90,7 +90,7 @@ describe("refining (G2)", () => {
     assert.equal(qty(db, "iron_ore"), 0, "mats consumed by the ruined melt");
     assert.equal(qty(db, "iron_ingot"), 0, "nothing made");
     assert.ok(r.debuff?.effect_id, "a minor debuff is applied");
-    assert.equal(db.prepare("SELECT COUNT(*) n FROM user_active_effects WHERE source='refine_backfire'").get().n, 1);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM user_active_effects WHERE user_id='u1' AND kind='debuff'").get().n, 1);
     delete process.env.CONCORD_CRAFT_RESOLVE;
   });
 });

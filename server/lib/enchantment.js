@@ -89,7 +89,7 @@ export function enchant(db, userId, worldId, { itemId, gemItemId, essenceItemId,
         try {
           const d = resolved.debuff;
           const durS = Math.max(1, Math.floor((d.durationMs ?? 60000) / 1000));
-          db.prepare(`INSERT INTO user_active_effects (id, user_id, effect_id, magnitude, expires_at, source) VALUES (?, ?, ?, ?, ?, 'enchant_backfire')`)
+          db.prepare(`INSERT INTO user_active_effects (id, user_id, effect_id, kind, magnitude, source_dtu_id, expires_at) VALUES (?, ?, ?, 'debuff', ?, NULL, ?)`)
             .run(crypto.randomUUID(), userId, d.effect_id, d.magnitude, Math.floor(Date.now() / 1000) + durS);
         } catch { /* effects optional */ }
       }
