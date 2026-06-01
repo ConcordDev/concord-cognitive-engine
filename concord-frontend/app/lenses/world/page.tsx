@@ -411,6 +411,7 @@ const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ss
 const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorldPotencyHUD'), { ssr: false });
 const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypointBeacon'), { ssr: false });
 const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBeacons'), { ssr: false });
+const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterLayer'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -4930,6 +4931,9 @@ export default function WorldLensPage() {
           {/* Diegetic 3D: "what's happening now" as in-world beacons you can see
               + walk toward (augments the 2D DistrictActivityFeed). */}
           <WorldEventBeacons worldId={activeDistrict.id} />
+          {/* SR4/Crackdown data-cluster loop: floating power-orbs you walk into,
+              upgrading traversal/combat powers by exploring the 3D world. */}
+          <PowerClusterLayer worldId={activeDistrict.id} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />

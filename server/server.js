@@ -25007,6 +25007,9 @@ registerAppearanceMacros(register);
 import registerMarkersMacros from "./domains/markers.js";
 registerMarkersMacros(register);
 
+import registerPowerClusterMacros from "./domains/power-clusters.js";
+registerPowerClusterMacros(register);
+
 // Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
 import registerPatternsMacros from "./domains/patterns.js";
 registerPatternsMacros(register);
