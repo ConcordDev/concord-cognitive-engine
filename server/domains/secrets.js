@@ -12,6 +12,7 @@ import {
   weaponiseSecret,
   rollSurveillance,
   listDiscoveredForUser,
+  listWorldCatalog,
 } from "../lib/secrets.js";
 import { generateHookFromSecretDiscovery, getHooksHeldBy } from "../lib/hooks.js";
 
@@ -34,6 +35,27 @@ export default function registerSecretsMacros(register) {
       }),
     };
   }, { note: "list player's discovered secrets" });
+
+  /**
+   * secrets.world_catalog — the Curtain's seeable surface: every secret held in a
+   * world, body REDACTED until the caller has declassified it. Powers the Curtain
+   * dossier overlay. input: { worldId, limit? }
+   */
+  register("secrets", "world_catalog", async (ctx, input = {}) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, reason: "no_db" };
+    const userId = input.userId || ctx?.actor?.userId || null;
+    const entries = listWorldCatalog(db, input.worldId || "sere", userId, {
+      limit: Math.min(Math.max(Number(input.limit) || 200, 1), 500),
+    });
+    return {
+      ok: true,
+      worldId: input.worldId || "sere",
+      total: entries.length,
+      declassified: entries.filter((e) => e.discovered).length,
+      entries,
+    };
+  }, { note: "Curtain catalog — world secrets, redacted until the player declassifies them" });
 
   /**
    * secrets.discover — explicit discovery (used by quest scripting).

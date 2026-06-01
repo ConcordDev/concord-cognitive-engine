@@ -25,6 +25,20 @@ describe('Sere satire frame banner', () => {
   });
 });
 
+describe('Curtain dossier', () => {
+  const src = read('components/world/CurtainDossier.tsx');
+  it('reads the redacted world catalog macro', () => {
+    expect(src).toMatch(/lensRun\('secrets', 'world_catalog'/);
+  });
+  it('renders [REDACTED] until declassified, body when discovered', () => {
+    expect(src).toMatch(/REDACTED — classified by the Curtain/);
+    expect(src).toMatch(/e\.discovered \?/);
+  });
+  it('is mounted in the world lens', () => {
+    expect(read('app/lenses/world/page.tsx')).toMatch(/<CurtainDossier worldId=/);
+  });
+});
+
 describe('Ledger lens', () => {
   const src = read('app/lenses/ledger/page.tsx');
   it('reads the anomalies macro (the flows the Curtain hides)', () => {
