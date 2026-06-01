@@ -62,10 +62,13 @@ export function getSocket(): Socket {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('[Socket] Connection error:', error.message);
-      // If authentication failed, the error message will indicate this
+      // Expected/transient during reconnection, when offline, or in a dev
+      // cross-port setup where the WS can't reach the backend — log at debug so
+      // it doesn't spam console.error and read as "the backend keeps erroring".
       if (error.message === 'Authentication required') {
         console.warn('[Socket] Authentication required - please log in');
+      } else {
+        console.debug('[Socket] Connection error (will retry):', error.message);
       }
     });
 

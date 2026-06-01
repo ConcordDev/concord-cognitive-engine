@@ -11,6 +11,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
+import { isOnboardingComplete } from '@/lib/onboarding-state';
 import { Rocket, CheckCircle, Circle, ArrowRight, X, Brain, Package, Globe, ChefHat, Heart, Swords, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { phaseVoiceLine, ARRIVAL_LINE } from '@/lib/concordia/onboarding-voice';
@@ -108,12 +109,10 @@ function FirstWinWizard() {
   // Onboarding ceremony — dismissal now COLLAPSES (re-openable via a Resume
   // pill) instead of hiding the wizard forever, so a player who closed it early
   // can pick the First Cycle back up.
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(DISMISSED_KEY) === 'true';
-    }
-    return false;
-  });
+  // Default to the compact "Resume First Cycle" pill, NOT the full panel — the
+  // expanded card covered too much of the lens. It opens on demand (or once the
+  // player explicitly resumes); the pill keeps it discoverable without blocking.
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleDismiss = () => {
     setCollapsed(true);
@@ -191,6 +190,9 @@ function FirstWinWizard() {
   useEffect(() => {
     if (!showable) return;
     if (typeof window === 'undefined') return;
+    // First-run sequencing: hold the arrival fanfare until the welcome wizard is
+    // done, so it doesn't fire on top of it (the pileup fix).
+    if (!isOnboardingComplete()) return;
     if (localStorage.getItem(ARRIVAL_KEY) === 'true') return;
     localStorage.setItem(ARRIVAL_KEY, 'true');
     const t = setTimeout(() => speakConcordia(ARRIVAL_LINE, true), 1200);
@@ -230,7 +232,7 @@ function FirstWinWizard() {
     resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 bg-lattice-surface border border-neon-blue/30 rounded-lg shadow-lg overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto bg-lattice-surface/95 backdrop-blur border border-neon-blue/30 rounded-xl shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-neon-blue/10 border-b border-neon-blue/20">
         <span className="text-sm font-medium text-neon-blue flex items-center gap-1.5">

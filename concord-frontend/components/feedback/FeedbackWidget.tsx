@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useUIStore } from '@/store/ui';
+import { reportClientError } from '@/hooks/useBugContext';
 
 interface FeedbackWidgetProps {
   targetType: "dtu" | "lens" | "entity" | "system";
@@ -44,6 +45,12 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
         }),
       });
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      // E4 — a user-filed bug report is a first-class client-error source: funnel
+      // it through the same intake (bug-triage → count → page) with auto-context,
+      // alongside the existing feedback record. Other feedback types stay as-is.
+      if (feedbackType === "bug_report") {
+        reportClientError({ kind: "feedback", message: description, lensId: targetType === "lens" ? targetId : undefined });
+      }
       setSubmitted("detailed");
       setExpanded(false);
       setDescription("");

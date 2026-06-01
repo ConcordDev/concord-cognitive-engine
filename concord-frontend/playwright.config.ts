@@ -69,7 +69,26 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // WebGL in headless Chromium: the default ('--use-gl=swiftshader' alone or
+        // none) fails to create a WebGL2 context, so Three.js never mounts a
+        // <canvas> and the world-lens 3D can't be screenshot-tested. The reliable
+        // headless combo (verified: yields "WebGL 2.0 (OpenGL ES 3.0 Chromium)") is
+        // ANGLE-over-SwiftShader. Refs: createit.com headless-chrome-webgl +
+        // michelkraemer.com enable-gpu-headless. Swap to --use-gl=angle/egl +
+        // xvfb on a GPU runner for hardware accel.
+        launchOptions: {
+          args: [
+            '--use-angle=swiftshader',
+            '--use-gl=angle',
+            '--enable-unsafe-swiftshader',
+            '--ignore-gpu-blocklist',
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+          ],
+        },
+      },
     },
     {
       name: 'firefox',

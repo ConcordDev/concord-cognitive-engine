@@ -1,0 +1,51 @@
+name: synthetic-journey
+
+# E6 / Track C-L5 — synthetic-journey + SSE post-deploy drift probe.
+#
+# Two checks (see server/lib/synthetic-journey-probe.js):
+#   1. the authored first-cycle journey still reaches `complete` (journey-break
+#      regression guard), and
+#   2. the SSE transport streams incrementally with heartbeats (SSE-buffering
+#      drift guard).
+#
+# Self-contained by default (no live server). To run the SSE check LIVE against
+# a deployed instance post-deploy, set the PROBE_BASE_URL repo/environment
+# variable (e.g. https://concord-os.org) — then the cron doubles as the L5
+# synthetic prod-monitor that alerts via the deployed Grafana.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # 04:27 UTC daily — staggered off the synthetic-playtest (04:13) + audits.
+    - cron: '27 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  synthetic-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'server/package-lock.json'
+
+      - name: Install server dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Contract test (probe checks)
+        working-directory: ./server
+        run: node --test tests/synthetic-journey-probe.test.js
+
+      - name: Run probe
+        working-directory: ./server
+        # PROBE_BASE_URL (repo variable) flips this to LIVE mode post-deploy.
+        env:
+          PROBE_BASE_URL: ${{ vars.PROBE_BASE_URL }}
+        run: node scripts/synthetic-journey-probe.mjs

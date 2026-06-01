@@ -98,6 +98,20 @@ jobs:
           # — you can't gate "has been playtested" (that's the cold-watcher).
           node scripts/audit/gates/untuned-constants.mjs --ci 0
 
+      - name: Temperament legitimacy-rubric gate (Graham 3-factor)
+        run: |
+          # Pins the use-of-force verdict math (P6). A regression that silently
+          # legalises excessive/unlawful force fails CI. Floor 0 — the rubric is
+          # the constitutional core the restraint + kill-route gate lean on.
+          node scripts/audit/gates/legitimacy-rubric.mjs --ci
+
+      - name: Temperament restraint-wire gate (kill path spares the hors-de-combat)
+        run: |
+          # Static check that the kill route still gates on shouldSpareExecution
+          # before triggerNPCDeath (P4/P5), so a refactor can't quietly re-open the
+          # execute-the-surrendered path. Floor 0.
+          node scripts/audit/gates/restraint-wire.mjs --ci
+
       - name: Lens-reachability gate (no orphaned lens a player can't reach)
         run: |
           # Every shipped app/lenses/<dir> must be reachable via the canonical

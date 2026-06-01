@@ -271,6 +271,32 @@
     @apply backdrop-blur-md bg-white/5;
   }
 
+  /* ── Cosmic glass chrome (2026 dark-glassmorphism: translucent layers +
+     gradient fringe + soft glow = depth/hierarchy without opaque walls).
+     Brand palette echoes the logo: iridescent violet→cyan→teal. ── */
+  .glass-panel {
+    background: linear-gradient(160deg, rgba(34,211,238,0.05), rgba(167,139,250,0.04) 60%, rgba(13,13,20,0.6));
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+    border: 1px solid rgba(196,181,253,0.12);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  /* Iridescent hairline top-border for chrome edges (sidebar/topbar). */
+  .brand-edge {
+    border-image: linear-gradient(90deg, #22d3ee, #a78bfa 50%, transparent) 1;
+  }
+  /* Iridescent gradient text — the wordmark / brand accents. */
+  .text-iridescent {
+    background: linear-gradient(92deg, #67e8f9, #c4b5fd 45%, #22d3ee);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Soft brand glow for the active/selected nav + the logo mark. */
+  .brand-glow {
+    box-shadow: 0 0 0 1px rgba(196,181,253,0.18), 0 0 18px rgba(34,211,238,0.18);
+  }
+
   /* No Scrollbar */
   .no-scrollbar {
     -ms-overflow-style: none;

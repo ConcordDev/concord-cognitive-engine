@@ -14,11 +14,12 @@ export default function registerDiscoveryMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     return searchDtus(db, input.query, {
       kind: input.kind,
+      lens: input.lens || input.lensHint || null,
       creatorId: input.creatorId,
       limit: input.limit,
       requesterId: ctx?.actor?.userId || null,
     });
-  }, { note: "search DTUs across all lenses" });
+  }, { note: "search DTUs across all lenses (pass lens/lensHint to scope to a lens's own grounding)" });
 
   register("discovery", "facets", async (ctx, _input = {}) => {
     const db = ctx?.db;

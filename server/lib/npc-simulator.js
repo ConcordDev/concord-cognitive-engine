@@ -21,6 +21,8 @@ import { getSpawnConfig, pickEnemyArchetype } from "./npc-archetypes.js";
 import { accumulateWealth, evaluateGearUpgrade, seedStarterGear, leaderEnsuresFactionGear, updateUserGearCeiling, enforceGearCeiling } from "./npc-gear.js";
 import { decayGrief, attemptCrossbreed } from "./npc-family.js";
 import { tickRecruitment } from "./npc-spawning.js";
+import { shouldAssist } from "./temperament-spread.js";
+import { combatRuleFor } from "./world-zones.js";
 import { npcGatherFromNode, respawnExpiredNodes } from "./world-gathering.js";
 import { detectiveTick, guardTick } from "./world-crime.js";
 import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
@@ -357,6 +359,13 @@ function _callForHelp(npc, worldId, db) {
       if (!nearbyLoc) continue;
       const d = _dist2d(npc.location, nearbyLoc);
       if (d <= HELP_RADIUS) {
+        // Temperament P7 — assistance-gate: only an ally answers (and never a
+        // child/non-combatant or someone in a sanctuary). Off (CONCORD_TEMPERAMENT
+        // unset) → shouldAssist returns true for everyone, i.e. today's
+        // indiscriminate alert, byte-identical.
+        try {
+          if (!shouldAssist(db, { callerId: npc.id, responderId: nearby.id, worldId, responderLoc: { x: nearbyLoc.x, z: nearbyLoc.z }, combatRuleFor }).assist) continue;
+        } catch { /* gate best-effort — fall through to legacy alert */ }
         // If this nearby NPC doesn't have combat state yet, set it to alerted
         if (!_npcCombatState.has(nearby.id)) {
           _npcCombatState.set(nearby.id, {

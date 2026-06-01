@@ -68,7 +68,9 @@ interface EventItem {
 }
 
 function SystemGuidePanel() {
-  const [collapsed, setCollapsed] = useState(false);
+  // Default collapsed to a single bulb on the right edge — the full-height rail
+  // (alongside the First-Win card) cluttered the lens. Expands on demand.
+  const [collapsed, setCollapsed] = useState(true);
 
   const { data: health } = useQuery<HealthData>({
     queryKey: ['system-health'],

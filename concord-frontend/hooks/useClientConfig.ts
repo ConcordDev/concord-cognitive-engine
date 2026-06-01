@@ -32,6 +32,7 @@ export interface ClientConfig {
     artAtmosphere?: boolean;
     artUi?: boolean;
     skillForge?: boolean;
+    concordLinkSystem?: boolean;
   };
 }
 

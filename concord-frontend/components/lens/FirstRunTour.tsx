@@ -21,6 +21,7 @@
 import { useEffect, useLayoutEffect, useState, useRef } from 'react';
 import { Sparkles, ChevronRight, X } from 'lucide-react';
 import { getLensManifest } from '@/lib/lenses/manifest';
+import { isOnboardingComplete } from '@/lib/onboarding-state';
 import { cn } from '@/lib/utils';
 
 const STORAGE_PREFIX = 'concord:first-run-tour:';
@@ -65,8 +66,18 @@ export function FirstRunTour({ lensId, force = false, onComplete }: FirstRunTour
   useEffect(() => {
     if (!guide || !Array.isArray(guide.steps) || guide.steps.length === 0) return;
     if (!force && readCompleted(lensId)) return;
-    // Wait a beat so the lens has finished rendering and selectors resolve.
-    const t = setTimeout(() => setActive(true), 600);
+    // First-run sequencing: don't stack this coachmark on top of the welcome
+    // wizard. Hold until the welcome tour is dismissed/completed (it fires on a
+    // later visit once onboarding is done). `force` still bypasses.
+    if (!force && !isOnboardingComplete()) return;
+    // Don't stack on top of any open modal/dialog (e.g. a lens's own tutorial
+    // like the World "Move around" cinematic) — wait a beat and only fire once
+    // the surface is clear, so we never pile coachmark + modal + cookie at once.
+    const t = setTimeout(() => {
+      if (!force && typeof document !== 'undefined' &&
+          document.querySelector('[role="dialog"],[aria-modal="true"]')) return;
+      setActive(true);
+    }, 900);
     return () => clearTimeout(t);
   }, [guide, lensId, force]);
 

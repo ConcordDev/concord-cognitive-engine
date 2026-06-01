@@ -244,6 +244,68 @@ export default function registerHelpersExtendedRoutes(app, {
     res.json({ ok: true, reset: true });
   }));
 
+  // F1 — cold-watcher: fun-funnel health (stall / abandon / convert) + the
+  // tool-vs-network split, read-only operator surface. Kill-switched by the same
+  // CONCORD_FTUE_TELEMETRY flag as the funnel recorder (off → 204, no compute).
+  app.get("/api/onboarding/cold-watch", requireAuth(), asyncHandler(async (req, res) => {
+    if (process.env.CONCORD_FTUE_TELEMETRY !== "1") return res.status(204).end();
+    const database = db || STATE?.db;
+    if (!database) return res.json({ ok: false, reason: "no_db" });
+    try {
+      const { coldWatchReport } = await import("../lib/cold-watcher.js");
+      // Acquisition source isn't on the funnel table; resolve best-effort from
+      // world_invites (network) else 'tool'. Cheap per-user lookup, guarded.
+      const sourceFor = (uid) => {
+        try {
+          const r = database.prepare(`SELECT 1 FROM world_invites WHERE to_user_id=? LIMIT 1`).get(String(uid));
+          return r ? "network" : "tool";
+        } catch { return "unknown"; }
+      };
+      res.json(coldWatchReport(database, { sourceFor }));
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
+  // F4 — royalty-cascade solvency / unit-econ panel (read-only, public). Proves
+  // the constitutional split holds at any cascade depth: ancestors ≤ 30%, seller
+  // keeps ≥ 64.54%. Pure sim, no DB, no economy mutation.
+  app.get("/api/economy/royalty-solvency", asyncHandler(async (_req, res) => {
+    try {
+      const { royaltySolvencyReport, simulateCascadeSolvency } = await import("../lib/royalty-solvency.js");
+      res.json({ ok: true, report: royaltySolvencyReport(), examples: [1, 3, 10, 50].map((d) => simulateCascadeSolvency({ depth: d })) });
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
+  // F5 — referral / distribution instrumentation (viral K-factor) from
+  // world_invites. Read-only, observe-only.
+  app.get("/api/distribution/referral", asyncHandler(async (_req, res) => {
+    const database = db || STATE?.db;
+    if (!database) return res.json({ ok: false, reason: "no_db" });
+    try {
+      const { referralReport } = await import("../lib/referral-metrics.js");
+      res.json(referralReport(database));
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
+  // F2 (backend) — substrate liveness: one operator read composing gravity
+  // (records living here / creator) + funnel (F1) + distribution K (F5) +
+  // economy solvency (F4). The "is real data accumulating + are people retained"
+  // snapshot. Auth-gated, observe-only.
+  app.get("/api/admin/liveness", requireAuth(), asyncHandler(async (_req, res) => {
+    const database = db || STATE?.db;
+    try {
+      const { livenessReport } = await import("../lib/liveness-report.js");
+      res.json(livenessReport(database));
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
   // ─── PHYSICS ────────────────────────────────────────────────────────
 
   app.get("/api/physics/status", (req, res) => {

@@ -161,6 +161,20 @@ registerHeartbeat("world-health-monitor", {
   handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
 });
 
+// DTU→lens routing sweep. Stamps lens_id on any DTU still 'unknown' (new gameplay
+// rows from any create path) so each lens keeps pulling its own grounding without
+// touching every insert site. Boot backfill (content-seeder) does the bulk; this
+// keeps it current. Idempotent + kill-switched (CONCORD_DTU_ROUTING=0 → no-op).
+registerHeartbeat("dtu-lens-routing-sweep", {
+  frequency: 120,
+  scope: "global",
+  handler: async ({ db } = {}) => {
+    if (!db || process.env.CONCORD_DTU_ROUTING === "0") return { ok: true, skipped: true };
+    try { const { backfillLensIds } = await import("./lib/dtu-lens-routing.js"); return backfillLensIds(db, { limit: 1000 }); }
+    catch (e) { return { ok: false, reason: String(e?.message || e) }; }
+  },
+});
+
 // E2 — economy-anomaly cycle. Rolls world-health detectPathologies (negative_balance /
 // dupe_citation) + the wash-trade history into concord_econ_anomaly_total and pages
 // Critical kinds via bug-triage → error-alerting. Observe-only (never mutates ledgers).
@@ -1321,6 +1335,7 @@ import createAuditRouter from "./routes/audit.js";
 import createMCPRouter from "./routes/mcp.js";
 import { QualiaEngine, hooks as qualiaHooks } from "./existential/index.js";
 import { rateLimitMiddleware as perEndpointRateLimit } from "./rateLimit.js";
+import { ingestClientError } from "./lib/client-error-intake.js";
 import { detectVulnerability, chooseDeliveryMode, hookVulnerability, assessAndAdapt } from "./emergent/vulnerability-engine.js";
 import { runCouncilVoices, getAllVoices as getAllCouncilVoices } from "./emergent/council-voices.js";
 
@@ -6951,6 +6966,17 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // E4 — client-error intake telemetry. Uncaught throws / unhandled rejections /
+    // resource-load failures / hydration breaks reported by the frontend to
+    // POST /api/client-error, classified by bug-triage (E3). Critical/Major spikes
+    // page via error-alerting; this counter feeds the ConcordClientErrorSpike alert.
+    METRICS.counters.clientError = new prom.Counter({
+      name: "concord_client_error_total",
+      help: "Client-side errors reported via /api/client-error, by kind + severity",
+      labelNames: ["kind", "severity"],
+      registers: [METRICS.registry]
+    });
+
     // Heartbeat liveness — incremented every governorTick. If the rate of
     // this counter drops to 0 the heartbeat has died and every emergent
     // system is silently frozen. The Prometheus alert rule
@@ -7102,7 +7128,7 @@ function metricsMiddleware(req, res, next) {
 setInterval(() => {
   // Report real DTU count (excluding shadow/repair/system DTUs) to Prometheus
   if (METRICS.gauges.dtuCount) {
-    const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+    const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
     let _realCount = 0;
     for (const d of STATE.dtus.values()) { if (!EXCLUDED_KINDS.has(d.machine?.kind) && d.tier !== "shadow") _realCount++; }
     METRICS.gauges.dtuCount.set(_realCount);
@@ -21029,7 +21055,7 @@ register("dtu", "list", (ctx, input) => {
 
   // Filter out shadow/repair/system DTUs - internal, not real user content.
   // Pass viewer ID so private/user-scoped uploads by other users are hidden.
-  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+  const INTERNAL_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
   let items = userVisibleDTUs(userId).filter(d => !isShadowDTU(d) && !INTERNAL_KINDS.has(d.machine?.kind) && d.tier !== "shadow");
 
   // ── Scope Hierarchy Enforcement ──────────────────────────────────
@@ -25284,7 +25310,7 @@ register("system", "status", (_ctx, _input) => {
   try {
   // Real DTU count: exclude shadow, repair, system-internal, and audit DTUs
   // Users should see how much REAL content exists, not number-padded counts
-  const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu"]);
+  const EXCLUDED_KINDS = new Set(["shadow", "pattern_shadow", "repair_record", "royalty_record", "session_context", "linguistic_map", "audit_trail", "system_metric", "repair_dtu", "client_error"]);
   const EXCLUDED_SOURCES = new Set(["repair-cortex", "shadow-promoter", "ghost-fleet"]);
   let realDtuCount = 0;
   for (const dtu of STATE.dtus.values()) {
@@ -31872,6 +31898,28 @@ app.get("/api/world/perf-telemetry", (_req, res) => {
   });
 });
 
+// E4 — client-error intake. Public-write (Gate-1 POST bypass already whitelists
+// the path in authMiddleware), rate-limited per-IP (50/min), kill-switched
+// (CONCORD_CLIENT_ERROR_INTAKE=0). The frontend useBugContext hook posts uncaught
+// throws / unhandled rejections / resource-load failures / hydration breaks /
+// feedback bug-reports here; ingestClientError sanitises + classifies (E3) +
+// counts + mints a kind='client_error' DTU + pages Critical. Best-effort identify
+// (req.user may be unset for anon errors). 204 when the kill-switch is off.
+app.post("/api/client-error", perEndpointRateLimit("write.client-error"), express.json({ limit: "16kb" }), async (req, res) => {
+  try {
+    const r = await ingestClientError({
+      body: { ...(req.body || {}), userId: req.user?.id || null, ua: req.body?.ua || req.headers["user-agent"] },
+      incCounter: (kind, severity) => { try { METRICS.counters.clientError?.inc({ kind, severity }); } catch { /* best-effort */ } },
+      mintDtu: (record) => runMacro("dtu", "create", record, makeCtx(req)),
+      alert: async (payload) => { try { const { sendAlert } = await import("./lib/error-alerting.js"); await sendAlert(payload); } catch { /* alerting optional */ } },
+    });
+    if (r?.disabled) return res.status(204).end();
+    res.json(r);
+  } catch {
+    res.status(400).json({ ok: false, error: "invalid_payload" });
+  }
+});
+
 // Procedural creature spawn — POST a description, get a physics-validated
 // blueprint with attached skills. Caller renders the blueprint via the
 // frontend creature loader.
@@ -38059,12 +38107,19 @@ app.post("/api/lens/run", async (req, res) => {
         new Promise((_, rej) => { _catchallTimer = setTimeout(() => rej(new Error("catchall_timeout")), CATCHALL_TIMEOUT_MS); }),
       ]);
     } catch {
-      return res.status(504).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro; brain catch-all timed out" });
+      // Honest failure, but NON-retryable: a 504 here is in the axios client's
+      // RETRY_STATUS_CODES {502,503,504} → it retry-storms a dead macro and reads
+      // as "the backend is disconnecting / issues". Return 200 {ok:false,reason}
+      // so the lens degrades to a clean unavailable state (esp. when the brain is
+      // down — the known no-RunPod env condition) without a retry storm.
+      return res.status(200).json({ ok: false, error: "unknown_macro", reason: "brain_catchall_timeout", domain, action, detail: "no registered macro; brain catch-all timed out" });
     } finally {
       clearTimeout(_catchallTimer);
     }
     if (!aiResult?.ok) {
-      return res.status(502).json({ ok: false, error: "unknown_macro", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
+      // Same: brain unavailable (Ollama down) or unregistered macro → honest but
+      // non-retryable so it doesn't storm or trip backend-health/"issues".
+      return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
@@ -49718,6 +49773,28 @@ app.get("/api/npc/:npcId/hooks", requireAuth(), asyncHandler(async (req, res) =>
     const userId = req.user?.id || req.user?.userId;
     const summary = getHookSummaryForTrait(db, req.params.npcId, userId);
     res.json({ ok: true, hooks: summary });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Full political dossier — the single window onto an NPC's whole political life
+// (active schemes, viewer-discovered secrets, stress, opinion-of-you, faction,
+// hooks, lineage). Powers the NPCTraitInspector dossier + the Concord Link
+// political view. Read-only, viewer-scoped; never leaks undiscovered secrets.
+app.get("/api/npc/:npcId/dossier", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { buildDossier } = await import("./lib/npc-dossier.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json(buildDossier(db, req.params.npcId, userId));
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
+// Concord Link L3 Realm Overview — the political web zoom-out: faction-relations
+// graph + stances/momentum + recent moves. Optional ?factionId= focuses one
+// faction's neighbourhood. Read-only; pairs with the per-NPC dossier.
+app.get("/api/realm/overview", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { buildRealmOverview } = await import("./lib/realm-overview.js");
+    res.json(buildRealmOverview(db, { factionId: req.query.factionId || null, limit: req.query.limit }));
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
@@ -71725,6 +71802,102 @@ const LENS_DOMAIN_KEYWORDS = {
 
   // Healthcare (distinct from health — clinical systems)
   healthcare: ["hospital", "patient", "treatment", "prescription", "surgery", "nurse", "clinic", "pharmacy"],
+
+  // ── Coverage expansion: the ingestion classifier knew ~30 domains, leaving
+  // ~220 lenses unfed. These map the science / domain / professional / trades /
+  // creative lenses to discriminating keywords so the 2-hour sync + web ingest
+  // files OpenStax / live-API / CommonCrawl DTUs into every lens, not just 30.
+  // Keys are real app/lenses/<slug> dirs.
+
+  // Formal science + the standout thin-on-deep cluster
+  chem: ["chemistry", "molecule", "reaction", "compound", "bond", "catalyst", "oxidation", "stoichiometry", "organic chemistry", "periodic"],
+  astronomy: ["astronomy", "galaxy", "nebula", "telescope", "planet", "orbit", "cosmology", "supernova", "exoplanet", "celestial"],
+  quantum: ["quantum", "qubit", "superposition", "entanglement", "wavefunction", "schrodinger", "decoherence", "quantum computing"],
+  robotics: ["robot", "actuator", "kinematics", "control theory", "pid", "lqr", "kalman", "servo", "manipulator", "slam", "feedback control"],
+  ml: ["machine learning", "neural network", "gradient descent", "dataset", "reinforcement learning", "classifier", "overfitting", "backpropagation", "model training"],
+  neuro: ["neuroscience", "neuron", "synapse", "cortex", "axon", "neurotransmitter", "action potential", "brain region", "neural circuit"],
+  geology: ["geology", "rock", "mineral", "tectonic", "sediment", "volcano", "earthquake", "stratigraphy", "erosion", "fossil"],
+  materials: ["material", "alloy", "polymer", "composite", "crystal lattice", "tensile", "metallurgy", "semiconductor", "nanomaterial"],
+  energy: ["energy", "renewable", "solar", "battery", "grid", "turbine", "nuclear", "photovoltaic", "power generation", "fuel cell"],
+  space: ["spacecraft", "rocket", "satellite", "orbit", "propulsion", "launch", "aerospace", "mission", "payload", "reentry"],
+  ocean: ["ocean", "marine", "tide", "current", "coral", "deep sea", "salinity", "oceanograph", "plankton"],
+
+  // Health / wellbeing family
+  pharmacy: ["pharmacology", "drug", "dose", "pharmacokinetic", "pharmacodynamic", "medication", "half-life", "interaction", "prescription", "therapeutic index"],
+  "mental-health": ["mental health", "anxiety", "depression", "therapy", "cbt", "psychiatric", "wellbeing", "trauma", "counseling"],
+  wellness: ["wellness", "self-care", "mindfulness", "recovery", "holistic", "lifestyle", "stress relief"],
+  fitness: ["fitness", "workout", "exercise", "strength", "cardio", "training", "muscle", "endurance", "reps", "mobility"],
+  meditation: ["meditation", "breathwork", "mindfulness", "calm", "focus", "zen", "contemplation"],
+  veterinary: ["veterinary", "animal health", "vet", "livestock health", "canine", "feline", "zoonotic"],
+
+  // Food / land / extraction
+  cooking: ["cooking", "recipe", "culinary", "ingredient", "bake", "saute", "maillard", "flavor", "fermentation", "cuisine"],
+  food: ["food", "nutrition", "diet", "meal", "calorie", "macronutrient", "ingredient", "produce"],
+  agriculture: ["agriculture", "crop", "farm", "soil", "harvest", "irrigation", "livestock", "yield", "cultivation", "pesticide"],
+  forestry: ["forestry", "timber", "woodland", "silviculture", "reforestation", "logging", "canopy"],
+  fishing: ["fishing", "angling", "bait", "tackle", "catch", "fishery", "trawl", "lure"],
+  mining: ["mining", "ore", "extraction", "mineral deposit", "quarry", "drilling", "excavation", "smelting"],
+
+  // Creative breadth
+  fashion: ["fashion", "garment", "textile", "couture", "apparel", "design", "runway", "tailoring", "fabric"],
+  photography: ["photography", "camera", "exposure", "aperture", "shutter", "lens", "composition", "lighting", "darkroom"],
+  "film-studios": ["film", "cinema", "screenplay", "director", "editing", "cinematography", "scene", "production"],
+  poetry: ["poetry", "poem", "verse", "stanza", "meter", "rhyme", "metaphor", "sonnet"],
+  "creative-writing": ["fiction", "narrative", "character", "plot", "prose", "storytelling", "manuscript", "novel"],
+  "game-design": ["game design", "mechanic", "level design", "playtest", "balance", "gameplay loop", "progression system"],
+  podcast: ["podcast", "episode", "audio show", "interview", "broadcast", "segment"],
+
+  // Engineering trades + transport
+  aviation: ["aviation", "aircraft", "pilot", "flight", "aerodynamic", "airspace", "avionics", "runway", "lift", "thrust"],
+  automotive: ["automotive", "engine", "vehicle", "transmission", "chassis", "horsepower", "drivetrain", "combustion"],
+  logistics: ["logistics", "shipping", "warehouse", "freight", "distribution", "fulfillment", "route optimization"],
+  supplychain: ["supply chain", "procurement", "inventory", "supplier", "lead time", "just-in-time", "sourcing"],
+  manufacturing: ["manufacturing", "assembly", "factory", "production line", "cnc", "tooling", "fabrication", "lean"],
+  construction: ["construction", "building", "concrete", "scaffold", "blueprint", "contractor", "structural", "foundation"],
+  carpentry: ["carpentry", "woodworking", "joinery", "lumber", "framing", "cabinetry", "miter"],
+  electrical: ["electrical", "wiring", "circuit", "voltage", "breaker", "conduit", "amperage", "grounding"],
+  plumbing: ["plumbing", "pipe", "valve", "drain", "fixture", "water supply", "fitting", "sewer"],
+  hvac: ["hvac", "heating", "ventilation", "air conditioning", "ductwork", "refrigerant", "thermostat", "airflow"],
+  welding: ["welding", "weld", "mig", "tig", "arc", "filler metal", "fabrication", "bead"],
+  masonry: ["masonry", "brick", "mortar", "stone", "block", "trowel", "grout"],
+  landscaping: ["landscaping", "garden", "lawn", "horticulture", "irrigation", "shrub", "hardscape"],
+  "home-improvement": ["home improvement", "renovation", "remodel", "drywall", "fixture", "diy home"],
+
+  // Professional / business
+  accounting: ["accounting", "ledger", "debit", "credit", "balance sheet", "depreciation", "audit", "bookkeeping", "tax"],
+  marketing: ["marketing", "campaign", "brand", "conversion", "funnel", "seo", "audience", "engagement", "advertising"],
+  consulting: ["consulting", "advisory", "engagement", "deliverable", "stakeholder", "strategy", "client"],
+  hr: ["human resources", "recruiting", "onboarding", "payroll", "benefits", "performance review", "hiring"],
+  careers: ["career", "resume", "job", "interview", "promotion", "skill development", "professional growth"],
+  insurance: ["insurance", "premium", "policy", "claim", "underwriting", "deductible", "coverage", "actuarial"],
+  retail: ["retail", "store", "merchandising", "point of sale", "inventory", "customer", "checkout"],
+  crypto: ["crypto", "blockchain", "wallet", "token", "defi", "smart contract", "ledger", "mining reward", "staking"],
+  staking: ["staking", "validator", "yield", "delegation", "reward rate", "lockup", "consensus"],
+
+  // Humanities / social science
+  linguistics: ["linguistics", "syntax", "phoneme", "morphology", "semantics", "grammar", "language", "etymology"],
+  philosophy: ["philosophy", "epistemology", "metaphysics", "ontology", "ethics", "logic", "phenomenology", "dialectic"],
+  ethics: ["ethics", "moral", "virtue", "consequentialism", "deontolog", "fairness", "justice", "dilemma"],
+  education: ["education", "pedagogy", "curriculum", "learning", "teaching", "classroom", "assessment", "literacy"],
+  psyops: ["influence", "persuasion", "propaganda", "perception", "psychological operation", "disinformation"],
+  economics: ["economics", "supply", "demand", "inflation", "gdp", "elasticity", "monetary", "market equilibrium", "incentive"],
+
+  // Civic / safety
+  law: ["law", "statute", "legal", "court", "contract", "litigation", "jurisdiction", "precedent", "liability"],
+  "law-enforcement": ["law enforcement", "police", "patrol", "arrest", "investigation", "crime", "evidence", "warrant"],
+  security: ["security", "threat", "vulnerability", "encryption", "firewall", "intrusion", "exploit", "authentication"],
+  defense: ["defense", "tactical", "perimeter", "deterrence", "fortification", "countermeasure", "logistics support"],
+  "crisis-ops": ["crisis", "incident", "emergency response", "evacuation", "disaster", "triage", "coordination"],
+  "emergency-services": ["emergency", "ambulance", "firefighter", "rescue", "first responder", "dispatch", "911"],
+  detective: ["detective", "clue", "suspect", "deduction", "evidence", "investigation", "motive", "alibi"],
+
+  // Lifestyle / misc
+  sports: ["sport", "athlete", "match", "league", "tournament", "score", "team", "championship", "training"],
+  travel: ["travel", "destination", "itinerary", "flight", "lodging", "tourism", "trip", "passport"],
+  pets: ["pet", "dog", "cat", "grooming", "breed", "companion animal", "pet care"],
+  parenting: ["parenting", "child", "infant", "toddler", "discipline", "development", "family"],
+  "urban-planning": ["urban planning", "zoning", "city", "transit", "infrastructure", "density", "land use", "walkability"],
+  telecommunications: ["telecommunications", "network", "bandwidth", "5g", "fiber", "signal", "spectrum", "latency"],
 };
 
 /**

@@ -160,3 +160,16 @@ groups:
         annotations:
           summary: "Combat reject rate elevated (possible desync or exploit attempt)"
           description: "Server-side combat anti-cheat is rejecting >1 attack/s sustained for 10m. Check for client desync (position drift) or an exploit probe; inspect combat_reach_rejected / combat_damage_rejected log lines."
+
+      # E4 — client-error intake. A spike of Critical/Major client errors means a
+      # white-screen / hydration / uncaught-throw class shipped (a bad deploy) or
+      # a security/data-loss-flagged report arrived. Critical also pages directly
+      # via error-alerting; this catches sustained elevation across the fleet.
+      - alert: ConcordClientErrorSpike
+        expr: sum(rate(concord_client_error_total{severity=~"critical|major"}[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Client-error rate elevated (possible bad deploy / white-screen class)"
+          description: "Frontend is reporting >0.2 critical|major client errors/s sustained for 5m via /api/client-error. Likely a hydration/white-screen/uncaught-throw regression from a recent deploy, or a security/data-loss-flagged report. Inspect kind='client_error' DTUs (audit.query) and recent frontend releases."

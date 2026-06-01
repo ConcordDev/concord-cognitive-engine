@@ -27,7 +27,7 @@ export const ROUTE = Object.freeze({
 // runtime forms that mean a player lost work or money.
 const CRITICAL_KINDS = new Set([
   "data_loss", "dtu_loss", "save_loss", "progression_loss",
-  "exploit", "dupe", "wash_trade", "negative_balance", "balance_overflow",
+  "exploit", "dupe", "wash_trade", "collusion_ring", "negative_balance", "balance_overflow",
   "security", "access_control", "idor", "privilege_escalation", "secret_leak",
   "economy_anomaly",
 ]);

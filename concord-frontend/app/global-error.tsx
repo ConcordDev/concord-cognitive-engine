@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { reportClientError } from '@/hooks/useBugContext';
 
 export default function GlobalError({
   error,
@@ -9,6 +11,13 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  // E4 — global-error renders OUTSIDE Providers (it catches errors in the root
+  // layout itself), so the window listeners there never fire for it. Report
+  // here directly. This is the white-screen class — the highest-value signal.
+  useEffect(() => {
+    reportClientError({ kind: 'white_screen', error, message: error?.message || `global-error${error?.digest ? ` (${error.digest})` : ''}` });
+  }, [error]);
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#0a0a0f] flex items-center justify-center px-4">
