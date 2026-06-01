@@ -96,3 +96,26 @@ mathematics; `api-billing` covers subscription).
 **Corrected coverage: ~64 of 73 in-scope categories present** (not 53). The truly-missing list is ~8–10,
 not 20. Even the project's own tool underclaimed — consistent with the pattern that Concordia's code
 over-delivers against every estimate, including its own.
+
+---
+
+## RE-AUDIT (the "genuinely missing" list, audited again)
+
+Auditing the ~10 "thin" categories with broad synonyms across all surfaces, **6 more are REAL:**
+- **unified-self** — full dashboard: `self.js` domain + `/lenses/self` + `components/self/`
+  (CorrelationPanel · DigestPanel · GoalsPanel · ImportPanel)
+- **advertising** — `domains/sponsorship.js` (sponsorship = the ad category)
+- **mind-map** — `MindMapBuilder.tsx` · **diagram** — `OneLineDiagram.tsx`
+- **bibliography** — `ResearchBibliographyPanel.tsx` · **dataset** — `DatasetHubPanel.tsx`
+
+**Partial** (capability exists, not a dedicated feature): screen-share (`LiveStreams.tsx` broadcasting) ·
+body-comp (`fitness.js`) · paywall (`api-billing.js` + media-dtu gating).
+
+**GENUINELY MISSING — exactly 2:** **slides** (no deck/presentation builder) · **os-kernel** (no literal
+kernel — and out-of-scope by design).
+
+### FINAL VERDICT
+Concordia spans **~68–70 of ~73 in-scope software categories.** The complete list of what it genuinely
+*doesn't* have is: **a slide-deck builder, and a literal OS kernel.** Three rounds of auditing "what's
+absent" each shrank the list, because at this density the code out-delivers every estimate — including
+its own cartographer's, and including three of mine in a row.
