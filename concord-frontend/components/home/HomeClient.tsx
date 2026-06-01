@@ -510,7 +510,10 @@ function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         <MetricCard
           label="My DTUs"
-          value={statusLoading ? '...' : (scopeMetrics?.localCount ?? dtuCount)}
+          // Personal locker = the user's LOCAL-scoped count. Never fall back to
+          // the global dtuCount — a new user who declined global sync has 0
+          // personal DTUs, not the whole substrate's count (scoping bug).
+          value={scopeMetrics ? (scopeMetrics.localCount ?? 0) : '...'}
           icon={<Zap className="w-5 h-5" />}
           color="blue"
         />
