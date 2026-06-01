@@ -49788,6 +49788,16 @@ app.get("/api/npc/:npcId/dossier", requireAuth(), asyncHandler(async (req, res) 
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// Concord Link L3 Realm Overview — the political web zoom-out: faction-relations
+// graph + stances/momentum + recent moves. Optional ?factionId= focuses one
+// faction's neighbourhood. Read-only; pairs with the per-NPC dossier.
+app.get("/api/realm/overview", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { buildRealmOverview } = await import("./lib/realm-overview.js");
+    res.json(buildRealmOverview(db, { factionId: req.query.factionId || null, limit: req.query.limit }));
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase CC4 — factory automation (claim-bounded).
 app.post("/api/factory/place", requireAuth(), asyncHandler(async (req, res) => {
   const { placeEntity } = await import("./lib/factory.js");
