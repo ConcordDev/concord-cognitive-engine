@@ -12,6 +12,8 @@
 // empty, never throws), viewer-scoped (secrets must be DISCOVERED by the viewer;
 // NPC secret contents never leak — only the fact a discovered secret exists).
 
+import { resolveCollectiveFace } from "./collective-face.js";
+
 function safe(fn, fallback) { try { return fn(); } catch { return fallback; } }
 
 /**
@@ -31,10 +33,17 @@ export function buildDossier(db, npcId, viewerId = null) {
        FROM npc_schemes
       WHERE (plotter_id = ? OR target_id = ?) AND status = 'active'
       ORDER BY rowid DESC LIMIT 20`
-  ).all(id, id).map((s) => ({
-    ...s,
-    role: s.plotter_id === id ? "plotter" : "target",
-  })), []);
+  ).all(id, id).map((s) => {
+    const role = s.plotter_id === id ? "plotter" : "target";
+    // Resolve the OTHER party to a confrontable person: if it's a faction/kingdom
+    // (correctly not walkable) surface its embodied leader as the face.
+    const cpKind = role === "plotter" ? s.target_kind : s.plotter_kind;
+    const cpId = role === "plotter" ? s.target_id : s.plotter_id;
+    const counterpartyFace = (cpKind === "faction" || cpKind === "kingdom" || cpKind === "realm")
+      ? safe(() => resolveCollectiveFace(db, cpKind, cpId), null)
+      : { kind: cpKind, id: cpId, face: { kind: cpKind, id: cpId, via: "self" }, collective: false };
+    return { ...s, role, counterpartyFace };
+  }), []);
 
   // Secrets about this NPC that the VIEWER has discovered (fact + severity only —
   // never the secret's contents to the LLM/UI per the NPC-secret invariant).
