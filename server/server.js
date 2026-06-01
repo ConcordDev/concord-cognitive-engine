@@ -38107,12 +38107,19 @@ app.post("/api/lens/run", async (req, res) => {
         new Promise((_, rej) => { _catchallTimer = setTimeout(() => rej(new Error("catchall_timeout")), CATCHALL_TIMEOUT_MS); }),
       ]);
     } catch {
-      return res.status(504).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro; brain catch-all timed out" });
+      // Honest failure, but NON-retryable: a 504 here is in the axios client's
+      // RETRY_STATUS_CODES {502,503,504} → it retry-storms a dead macro and reads
+      // as "the backend is disconnecting / issues". Return 200 {ok:false,reason}
+      // so the lens degrades to a clean unavailable state (esp. when the brain is
+      // down — the known no-RunPod env condition) without a retry storm.
+      return res.status(200).json({ ok: false, error: "unknown_macro", reason: "brain_catchall_timeout", domain, action, detail: "no registered macro; brain catch-all timed out" });
     } finally {
       clearTimeout(_catchallTimer);
     }
     if (!aiResult?.ok) {
-      return res.status(502).json({ ok: false, error: "unknown_macro", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
+      // Same: brain unavailable (Ollama down) or unregistered macro → honest but
+      // non-retryable so it doesn't storm or trip backend-health/"issues".
+      return res.status(200).json({ ok: false, error: "unknown_macro", reason: "macro_unavailable", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
     }
     return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
