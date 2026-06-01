@@ -171,5 +171,22 @@ cd server && node --test tests/glyph-spells-license-cast.test.js \
   tests/stealth-perception.test.js
 ```
 
-The four framing docs (Bethesda / High-on-Life / ARK / stealth) and the cold-start/retention/
-solo-liveops research live in §3 + the build-plan docs; trust the code first.
+---
+
+## 6. Companion docs — the full detail + research (all on main)
+
+This file is the **master map**. The full per-spec detail and the verbatim research live here:
+
+| Doc | Holds |
+|---|---|
+| `docs/DESIGN_NORTH_STAR.md` | The four framing lessons in full — **Bethesda** (curiosity/pause/emergence-safeguard+invisibility/compass), **High-on-Life** (movement fluidity + the prediction tax), **ARK** (earned relationships, generative+economic, the two guardrails), **proper MMO stealth** (information-control, the per-cell light/sound keystone, the netcode crux). |
+| `docs/USERBUG_TAXONOMY.md` | The ranked 10-category user-bug taxonomy (SaaS + MMO), Concordia's exposure ranking with the audit finding that previews each, the intake/observability table, the complementary-halves diagram. |
+| `docs/BEYOND_CORRECTNESS.md` | The five frontiers (Judgment/Liveness/People/Economics/Distribution), the human-vs-engineering line, the instrumentation map. |
+| `docs/COLD_START_STRATEGY.md` | Cold-start (atomic networks, tool-first), retention (the MMO clock), solo-liveops survival, the synthesis (why the architecture pre-solves the traps). |
+| `docs/TEMPERAMENT_BUILD_PLAN.md` | Track B1 Temperament P4–P7 build detail. |
+| `docs/CONCORD_LINK_BUILD_PLAN.md` | Track B2 Concord Link 8-phase build detail. |
+| `docs/FUNCTION_ASSURANCE.md` | The six-gate (L0–L5) verification method. |
+| `docs/SHIP_READINESS.md` · `docs/SSE_STREAMING.md` · `docs/CONTRACT_ENFORCEMENT_STRATEGY.md` · `docs/PLAYTEST_FINDINGS_PLAN.md` | Ship-readiness manifest, SSE hardening, contract gates A/B/C, the seven-expedition playtest findings. |
+| `docs/DATA_PROVENANCE.md` · `docs/LICENSING.md` | Track G — ingestion/training/PII + the dependency/model license pass. |
+
+Trust the code over any doc, including these. This is the map; the tree is the territory.
