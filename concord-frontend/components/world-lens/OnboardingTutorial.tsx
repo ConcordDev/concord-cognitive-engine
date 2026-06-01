@@ -186,7 +186,7 @@ export default function OnboardingTutorial({ onComplete, onDismiss }: Onboarding
   }, [tutorial?.highlightTarget]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div role="dialog" aria-modal="true" aria-label="World Lens tutorial" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className={`${panel} w-full max-w-md p-6`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
