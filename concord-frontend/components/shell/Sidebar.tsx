@@ -117,9 +117,10 @@ export function Sidebar() {
         {/* Logo */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-transparent bg-gradient-to-r from-neon-blue/20 via-neon-purple/10 to-transparent bg-[length:100%_1px] bg-bottom bg-no-repeat">
           <Link href="/" className="flex items-center gap-2" aria-label="Go to dashboard">
-            <span className="text-2xl" aria-hidden="true">&#x1f9e0;</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-cosmic.svg" alt="" aria-hidden="true" width={28} height={28} className="rounded-full brand-glow" />
             {showLabel && (
-              <span className="font-bold text-gradient-neon">Concord</span>
+              <span className="font-display font-bold text-iridescent tracking-[0.18em] text-sm">CONCORD</span>
             )}
           </Link>
 

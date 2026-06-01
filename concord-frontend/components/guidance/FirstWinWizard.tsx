@@ -109,16 +109,10 @@ function FirstWinWizard() {
   // Onboarding ceremony — dismissal now COLLAPSES (re-openable via a Resume
   // pill) instead of hiding the wizard forever, so a player who closed it early
   // can pick the First Cycle back up.
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      if (localStorage.getItem(DISMISSED_KEY) === 'true') return true;
-      // First-run sequencing: start collapsed while the welcome wizard is still
-      // pending, so the First-Win panel doesn't stack on top of it. Once the
-      // tour is done it shows normally.
-      if (!isOnboardingComplete()) return true;
-    }
-    return false;
-  });
+  // Default to the compact "Resume First Cycle" pill, NOT the full panel — the
+  // expanded card covered too much of the lens. It opens on demand (or once the
+  // player explicitly resumes); the pill keeps it discoverable without blocking.
+  const [collapsed, setCollapsed] = useState(true);
 
   const handleDismiss = () => {
     setCollapsed(true);
@@ -238,7 +232,7 @@ function FirstWinWizard() {
     resolved.steps.find((s) => !s.completed) || resolved.steps[resolved.steps.length - 1];
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-80 bg-lattice-surface border border-neon-blue/30 rounded-lg shadow-lg overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] max-h-[70vh] overflow-y-auto bg-lattice-surface/95 backdrop-blur border border-neon-blue/30 rounded-xl shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-neon-blue/10 border-b border-neon-blue/20">
         <span className="text-sm font-medium text-neon-blue flex items-center gap-1.5">

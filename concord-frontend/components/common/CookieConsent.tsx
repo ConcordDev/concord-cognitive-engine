@@ -29,9 +29,12 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-[200] p-4 animate-in slide-in-from-bottom">
-      <div className="mx-auto max-w-2xl rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+    {/* Compact bottom-LEFT card (was a full-width centered z-200 bar that
+        collided with the bottom-right coachmark/First-Win cluster + sat above
+        onboarding modals). Lower z so modals layer above it. */}
+    <div className="fixed bottom-4 left-4 z-[60] w-[22rem] max-w-[calc(100vw-2rem)] animate-in slide-in-from-bottom">
+      <div className="rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-lg p-4 shadow-2xl">
+        <div className="flex flex-col gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-sm text-white/80 font-medium">Cookie Notice</p>
             <p className="text-xs text-white/50 mt-1">
