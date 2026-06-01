@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   X, TrendingUp, Award, Star, Coins, ChevronRight,
   Lock, Unlock, Trophy, Users, Building2, Cpu, Zap,
@@ -136,11 +136,39 @@ const DEMO_UNLOCKS: UnlockInfo[] = [
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function ProgressionPanel({
-  profile = DEMO_PROFILE,
-  milestones = DEMO_MILESTONES,
-  unlocks = DEMO_UNLOCKS,
+  profile: profileProp,
+  milestones: milestonesProp,
+  unlocks: unlocksProp,
   onClose,
 }: ProgressionPanelProps) {
+  // Real progression from progression.creator_summary (citations/royalties/
+  // domains/badges/unlocks/milestones from live data). DEMO_* is now only a
+  // fallback for when the caller passes nothing AND the fetch yields nothing.
+  const [profile, setProfile] = useState<ProfileProgression>(profileProp ?? DEMO_PROFILE);
+  const [milestones, setMilestones] = useState<Milestone[]>(milestonesProp ?? DEMO_MILESTONES);
+  const [unlocks, setUnlocks] = useState<UnlockInfo[]>(unlocksProp ?? DEMO_UNLOCKS);
+  useEffect(() => {
+    if (profileProp) return; // caller supplied data — respect it
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('/api/lens/run', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain: 'progression', name: 'creator_summary', input: {} }),
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        const payload = (j.result ?? j) as { ok?: boolean; profile?: ProfileProgression; milestones?: Milestone[]; unlocks?: UnlockInfo[] };
+        if (cancelled || !payload?.ok || !payload.profile) return;
+        setProfile(payload.profile);
+        if (Array.isArray(payload.milestones)) setMilestones(payload.milestones);
+        if (Array.isArray(payload.unlocks)) setUnlocks(payload.unlocks);
+      } catch { /* keep demo fallback */ }
+    })();
+    return () => { cancelled = true; };
+  }, [profileProp]);
+
   const [activeTab, setActiveTab] = useState<'domains' | 'badges' | 'unlocks'>('domains');
   const [expandedDomain, setExpandedDomain] = useState<ReputationDomain | null>(null);
 
