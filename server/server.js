@@ -8478,7 +8478,7 @@ async function tryInitWebSockets(server) {
       // HTTP combat route: the Sovereign refuses harm both TO and FROM the
       // under-matured. Live STATE already holds refusalFields, so we read it
       // directly (no DB reload). Flag-gated + best-effort (off==today).
-      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+      if (process.env.CONCORD_CHILD_REFUSAL !== "0") {
         try {
           const { isRefusedFor, maturityOf } = await import("./lib/refusal-field.js");
           const _crWorld = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";

@@ -128,7 +128,8 @@ describe("scheme-ethics parity (the headline)", () => {
   });
   afterEach(() => { delete process.env.CONCORD_VIABILITY_ETHICS; try { db.close(); } catch { /* noop */ } });
 
-  it("OFF (default): a charity-laden NPC still schemes — off == today", () => {
+  it("OFF (kill-switch =0): a charity-laden NPC still schemes", () => {
+    process.env.CONCORD_VIABILITY_ETHICS = "0";
     seedNpc("npc_healer", "healer", "withdraw");
     const r = proposeScheme(db, { plotterNpcId: "npc_healer", targetKind: "npc", targetId: "npc_target", valueRuleIndex: idx });
     assert.equal(r.ok, true);

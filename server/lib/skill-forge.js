@@ -10,7 +10,7 @@
 
 import { seedDefaultGlyphLibrary, mintSpell } from "./glyph-spells.js";
 
-export function skillForgeEnabled() { return process.env.CONCORD_SKILL_FORGE === "1"; }
+export function skillForgeEnabled() { return process.env.CONCORD_SKILL_FORGE !== "0"; }
 
 // element → its primary starter glyph (seeded DEFAULT_GLYPH_LIBRARY ids).
 const ELEMENT_GLYPH = {

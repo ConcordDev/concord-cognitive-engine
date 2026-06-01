@@ -13,7 +13,7 @@ export const REPUTATION_CEIL = 100;
 
 const SCOPE_COL = { faction: "faction", world: "world_id", district: "home_district" };
 
-export function reputationEnabled() { return process.env.CONCORD_REPUTATION === "1"; }
+export function reputationEnabled() { return process.env.CONCORD_REPUTATION !== "0"; }
 
 /**
  * Recompute + persist a player's standing in a scope. standing =

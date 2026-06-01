@@ -18,7 +18,7 @@ import { factionViability, FACTION_COLLAPSE_MOMENTUM } from "./adapters/scalar-v
 import { giantComponentSize } from "../network/graph.js";
 
 export function collapseCascadeEnabled() {
-  return process.env.CONCORD_COLLAPSE_CASCADE === "1";
+  return process.env.CONCORD_COLLAPSE_CASCADE !== "0";
 }
 
 /** Brittleness 0..1 (1 = at the collapse boundary). The complement of viability. */

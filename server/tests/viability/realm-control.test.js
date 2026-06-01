@@ -62,7 +62,8 @@ describe("realm-control-cycle heartbeat (gated)", () => {
 
   const realm = () => db.prepare("SELECT legitimacy, tax_rate FROM realms WHERE id='r1'").get();
 
-  it("OFF (default): writes nothing", async () => {
+  it("OFF (kill-switch =0): writes nothing", async () => {
+    process.env.CONCORD_REALM_CONTROL = "0";
     const r = await runRealmControlCycle({ db });
     assert.equal(r.reason, "disabled");
     assert.equal(realm().legitimacy, 25);

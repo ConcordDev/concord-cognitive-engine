@@ -12,7 +12,7 @@
 import { pidStep } from "../control/pid.js";
 
 export function realmControlEnabled() {
-  return process.env.CONCORD_REALM_CONTROL === "1";
+  return process.env.CONCORD_REALM_CONTROL !== "0";
 }
 
 export const LEGITIMACY_SETPOINT = 60;          // the viable target

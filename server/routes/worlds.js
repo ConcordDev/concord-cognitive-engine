@@ -2080,7 +2080,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // under-matured and matches the field's scope. Lifts at coming-of-age.
       // Flag-gated (CONCORD_CHILD_REFUSAL) + DB-backed (worlds.js has no live
       // STATE) + best-effort, so off==today / no-field==today.
-      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+      if (process.env.CONCORD_CHILD_REFUSAL !== "0") {
         try {
           const { isRefusedForDb, maturityOf } = await import("../lib/refusal-field.js");
           const defenderMaturity = maturityOf(db, "npc", npcId);
@@ -2466,7 +2466,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       // N4-EVO: a landed hit accrues fitness on the skill/weapon's evolvable
       // asset — fight with something enough and it refines. Best-effort +
       // kill-switched (off → today). Never blocks combat.
-      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && skillDtuId) {
+      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY !== '0' && skillDtuId) {
         try {
           const { weaponAssetIdForSkill, onCombatHit } = await import("../lib/gameplay-asset-bridge.js");
           const wid = weaponAssetIdForSkill(db, skillDtuId);

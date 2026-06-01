@@ -51,7 +51,8 @@ describe("viability-cycle heartbeat contract", () => {
   beforeEach(async () => { db = new Database(":memory:"); await runMigrations(db); _testing.reset(); });
   afterEach(() => { delete process.env.CONCORD_VIABILITY; try { db.close(); } catch { /* noop */ } });
 
-  it("no-ops when the kill-switch is off", async () => {
+  it("no-ops when the kill-switch is off (=0)", async () => {
+    process.env.CONCORD_VIABILITY = "0";
     const r = await runViabilityCycle({ db });
     assert.equal(r.reason, "disabled");
   });

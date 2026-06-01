@@ -71,7 +71,7 @@ export function scoreEncounter({ crimeSeverity = 0, immediateThreat = 0, activeR
  * CONCORD_TEMPERAMENT is on; the table is optional).
  */
 export function recordLegitimacyEvent(db, { worldId, actorId, npcId, kind, verdict, score, factors, combatState } = {}) {
-  if (process.env.CONCORD_TEMPERAMENT !== "1") return { ok: false, reason: "disabled" };
+  if (process.env.CONCORD_TEMPERAMENT === "0") return { ok: false, reason: "disabled" };
   if (!db || !kind) return { ok: false, reason: "missing_inputs" };
   try {
     let v = verdict, s = score, f = factors;

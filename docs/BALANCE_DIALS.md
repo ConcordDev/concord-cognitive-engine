@@ -335,13 +335,13 @@ first-draft. Walk these in a future balance pass; pin from observed play.
 ## Temperament engine — Phase 1 (kill-switch + dials)
 
 `server/lib/npc-temperament.js`. The disposition gate that modulates archetype
-aggression by the NPC's dormant emotional/social state. **Off by default** — when
-`CONCORD_TEMPERAMENT` is unset/`0`, NPC hostility is exactly today's
-archetype-only behaviour (byte-identical). See `docs/TEMPERAMENT_BUILD_PLAN.md`.
+aggression by the NPC's dormant emotional/social state. **On by default** — set
+`CONCORD_TEMPERAMENT=0` to fall back to today's archetype-only behaviour
+(byte-identical). See `docs/TEMPERAMENT_BUILD_PLAN.md`.
 
 | Env | Default | Effect |
 |---|---|---|
-| `CONCORD_TEMPERAMENT` | off | `1`/`true` → emotional/social state modulates `effectiveAggro` in `npc-simulator.js`. |
+| `CONCORD_TEMPERAMENT` | **on** (`=0` disables) | emotional/social state modulates `effectiveAggro` in `npc-simulator.js`. |
 | `CONCORD_TEMP_W_STRESS` | `0.4` | Weight of normalised stress on the aggro modifier. |
 | `CONCORD_TEMP_W_GRUDGE` | `0.6` | Weight of grudge severity (1–10) on the modifier. |
 | `CONCORD_TEMP_W_OPINION` | `0.5` | Weight of opinion (−100..+100); hatred raises aggro, admiration lowers it. |

@@ -30,7 +30,8 @@ describe("career-cycle pay loop", () => {
   });
   afterEach(() => { delete process.env.CONCORD_LIVING_CAREER; try { db.close(); } catch { /* noop */ } });
 
-  it("no-ops when the kill-switch is off (off == today)", async () => {
+  it("no-ops when the kill-switch is off (=0)", async () => {
+    process.env.CONCORD_LIVING_CAREER = "0";
     activeContract(db);
     const r = await runCareerCycle({ db });
     assert.equal(r.reason, "disabled");

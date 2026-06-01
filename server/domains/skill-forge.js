@@ -10,7 +10,7 @@
 
 import { quickForge, ELEMENTS, INTENTS } from "../lib/skill-forge.js";
 
-function enabled() { return process.env.CONCORD_SKILL_FORGE === "1"; }
+function enabled() { return process.env.CONCORD_SKILL_FORGE !== "0"; }
 function authed(ctx) { const u = ctx?.actor?.userId; return u ? String(u) : null; }
 
 export default function registerSkillForgeMacros(register) {

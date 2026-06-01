@@ -82,7 +82,8 @@ describe("faction-cycle collapse drag (gated)", () => {
 
   const momentumOf = (id) => db.prepare("SELECT momentum FROM faction_strategy_state WHERE faction_id = ?").get(id).momentum;
 
-  it("OFF (default): the cascade does not run — B's momentum is untouched", async () => {
+  it("OFF (kill-switch =0): the cascade does not run — B's momentum is untouched", async () => {
+    process.env.CONCORD_COLLAPSE_CASCADE = "0";
     const r = await runFactionStrategyCycle({ db });
     assert.equal(r.ok, true);
     assert.equal(r.cascade, undefined);

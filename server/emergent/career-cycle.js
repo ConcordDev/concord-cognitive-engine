@@ -20,7 +20,7 @@ export const CAREER_CYCLE_FREQUENCY = 40; // ~10 min
 const MAX_PER_PASS = 200;
 const payPeriodS = () => Number(process.env.CONCORD_CAREER_PAY_PERIOD_S) || 3600; // 1h default
 
-function careerEnabled() { return process.env.CONCORD_LIVING_CAREER === "1"; }
+function careerEnabled() { return process.env.CONCORD_LIVING_CAREER !== "0"; }
 
 // Deterministic baseline attribute for the delegate sim: rises with tier, with a
 // stable per-worker jitter (so the same worker sims consistently).
