@@ -44,6 +44,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createInputBuffer, cancelState } from '@/lib/concordia/combat-input-buffer';
+import { sfx } from '@/lib/concordia/juice';
 import {
   type KeyAction,
   loadActiveProfile,
@@ -324,6 +325,20 @@ export default function CombatInputController({
           detail: { entityId: playerId, animation: predAnim, predicted: true },
         }));
       }
+    }
+
+    // T2.2 — swing/whiff whoosh on the SWING itself, so a missed attack is
+    // audible (previously sound only played on a landed hit). Offensive actions
+    // only; defensive dodge/parry have their own whoosh/clang voices.
+    {
+      const isAtk = resolved.startsWith('attack') || resolved.includes('blast') ||
+        resolved.includes('ram') || resolved.includes('shot');
+      const swingId = isAtk && (variant === 'hold' || resolved.includes('heavy'))
+        ? 'combat-swing-heavy'
+        : (isAtk || resolved === 'kick' || resolved === 'dismount-kick' || resolved.includes('grab'))
+          ? 'combat-swing'
+          : null;
+      if (swingId) sfx(swingId);
     }
 
     if (!worldSocket?.isConnected) {

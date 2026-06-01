@@ -138,32 +138,47 @@ export function LockOnController({
     };
   }, [lockables, playerPosition, candidates, lockRadius]);
 
-  // Project locked target to screen for the reticle
+  // T2.3 — project the locked target to screen for the reticle using the REAL
+  // camera-matrix projector (was a Math.atan2 yaw approximation that used the
+  // height axis as a ground axis and drifted badly at screen edges). Mirrors the
+  // DamageBillboard projector pattern: cache the projector, rAF + throttle, and
+  // place the reticle at the target's true projected screen position.
+  const projectorRef = useRef<((w: { x: number; y: number; z: number }) => { x: number; y: number; visible: boolean }) | null>(null);
+  const lockablesRef = useRef(lockables);
+  lockablesRef.current = lockables;
   useEffect(() => {
-    if (!cameraLookState.lockedTargetId) {
-      setReticlePos(null);
-      return;
-    }
-    const locked = lockables.find((t) => t.id === cameraLookState.lockedTargetId);
-    if (!locked) {
-      setReticlePos(null);
-      return;
-    }
-    // Approximate screen position from world-relative offset along yaw.
-    // (The 3D scene also draws an in-world reticle; this is the HUD overlay.)
-    const dx = locked.position.x - playerPosition.x;
-    const dy = locked.position.y - playerPosition.y;
-    const dist = Math.hypot(dx, dy);
-    const angle = Math.atan2(dy, dx) - cameraYaw;
-    let normalized = angle;
-    while (normalized > Math.PI) normalized -= 2 * Math.PI;
-    while (normalized < -Math.PI) normalized += 2 * Math.PI;
-    // Clamp into screen-space range
-    const screenX = window.innerWidth / 2 + (normalized / coneHalfAngle) * (window.innerWidth / 4);
-    const verticalLift = Math.max(0, 1 - dist / lockRadius) * 80; // closer = higher reticle
-    const screenY = window.innerHeight / 2 - verticalLift;
-    setReticlePos({ x: screenX, y: screenY });
-  }, [lockables, playerPosition, cameraYaw, coneHalfAngle, lockRadius]);
+    type Proj = (w: { x: number; y: number; z: number }) => { x: number; y: number; visible: boolean };
+    const win = window as unknown as { __concordiaProject?: Proj };
+    if (win.__concordiaProject) projectorRef.current = win.__concordiaProject;
+    const onProjector = (e: Event) => {
+      const p = (e as CustomEvent).detail?.project as Proj | undefined;
+      if (typeof p === 'function') projectorRef.current = p;
+    };
+    window.addEventListener('concordia:projector-ready', onProjector);
+
+    let raf = 0;
+    let lastAt = 0;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      const now = performance.now();
+      if (now - lastAt < 60) return; // throttle reticle updates to ~16Hz
+      lastAt = now;
+      const id = cameraLookState.lockedTargetId;
+      const proj = projectorRef.current;
+      if (!id || !proj) { setReticlePos((r) => (r ? null : r)); return; }
+      const t = lockablesRef.current.find((x) => x.id === id);
+      const pos = t ? t.position : cameraLookState.lockedTargetPos;
+      if (!pos) { setReticlePos((r) => (r ? null : r)); return; }
+      // World coords: x/z are the ground plane, y is height — lift to head level.
+      const s = proj({ x: pos.x, y: (pos.y ?? 0) + 1.2, z: ('z' in pos ? (pos.z as number) : 0) ?? 0 });
+      setReticlePos(s && s.visible ? { x: s.x, y: s.y } : null);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('concordia:projector-ready', onProjector);
+    };
+  }, []);
 
   if (!reticlePos || !cameraLookState.lockedTargetId) return null;
 

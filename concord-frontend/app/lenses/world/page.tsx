@@ -703,9 +703,6 @@ const FactionWarBanner = dynamic(
   () => import('@/components/world-lens/FactionWarBanner'),
   { ssr: false },
 );
-const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
-  ssr: false,
-});
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
 const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
 // Concord Link Summon shell (B2) — self-gates on CONCORD_LINK_SYSTEM + open; inert by default.
@@ -4416,9 +4413,6 @@ export default function WorldLensPage() {
             onQuit={() => { window.location.href = '/'; }}
           />
           <FactionWarBanner />
-          <AnimationManager>
-            <></>
-          </AnimationManager>
           <GameJuice>
             <></>
           </GameJuice>

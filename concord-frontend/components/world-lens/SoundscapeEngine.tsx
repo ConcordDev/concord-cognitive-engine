@@ -124,6 +124,10 @@ const SFX_MAP: Record<string, SFXDef> = {
   'dodge-whoosh':      { freq: 700,  type: 'sine',     duration: 0.14, attack: 0.001, decay: 0.12 },
   'block-clang':       { freq: 110,  type: 'square',   duration: 0.22, attack: 0.001, decay: 0.20, semitones: [0, 7] },
   'kill-blow':         { freq: 55,   type: 'sawtooth', duration: 0.55, attack: 0.001, decay: 0.50, semitones: [0, -12] },
+  // T2.2 — swing/whiff whoosh: plays on the SWING (before any hit resolves) so a
+  // missed attack is audible. Light is a quick airy whoosh; heavy is lower + longer.
+  'combat-swing':      { freq: 520,  type: 'sawtooth', duration: 0.13, attack: 0.001, decay: 0.12, semitones: [0, -7] },
+  'combat-swing-heavy':{ freq: 300,  type: 'sawtooth', duration: 0.22, attack: 0.002, decay: 0.20, semitones: [0, -9] },
   // combat layer atoms — high transient tick + body thump + bone crack used by hit-confirm
   'hit-transient':     { freq: 1800, type: 'triangle', duration: 0.04, attack: 0.001, decay: 0.035 },
   'hit-thump-deep':    { freq: 38,   type: 'sawtooth', duration: 0.22, attack: 0.001, decay: 0.20 },

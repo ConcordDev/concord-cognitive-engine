@@ -8381,14 +8381,16 @@ async function tryInitWebSockets(server) {
     // cityPresence.applyAttack() and broadcasts combat:hit to
     // everyone in the attacker's chunk so nearby players see the
     // damage numbers render. Rate-limited to 4 attacks/sec.
-    let _lastAttackAt = 0;
+    // T2.9 — per-action-class cooldown (was a single shared 250ms gate that
+    // dropped a kick chained after a light, desyncing the client's predicted
+    // swing). Independent class tracks + a global anti-spam floor.
+    const _attackCd = _newAttackCooldownState();
     socket.on("combat:attack", async (data) => {
       const userId = socket.data?.userId;
       if (!userId) return;
       if (!data || typeof data !== "object") return;
       const now = Date.now();
-      if (now - _lastAttackAt < 250) return; // ~4 attacks/sec cap
-      _lastAttackAt = now;
+      if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
       // Flow Combat: derive context modifiers up-front so applyAttack can
       // honor them (stamina cost, damage scaling, evade roll) in one place.
@@ -31217,6 +31219,8 @@ import { attemptDodge as _attemptDodge, attemptParry as _attemptParry } from "./
 import { skillKeyForSkill } from "./lib/skills/skill-key.js";
 // A1 — typed attack telegraphs (thrust/sweep/grab peril + counter).
 import { perilFor as telegraphPerilFor } from "./lib/combat/telegraph-peril.js";
+// T2.9 — per-action-class attack cooldown (replaces the single shared 250ms gate).
+import { newCooldownState as _newAttackCooldownState, checkAttackCooldown as _checkAttackCooldown } from "./lib/combat/attack-cooldown.js";
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });

@@ -284,7 +284,10 @@ export default function GameJuice({ children, enabled = true, intensity: initial
             />
           ))}
 
-        {/* Screen shake overlay */}
+        {/* Screen shake overlay. T2.11 — the shaking div used to be fully
+            transparent (shaking an invisible element reads as nothing on the 2D
+            HUD / reduced-motion path). A red-edge radial vignette scaled by
+            opacity makes the impact actually visible while the div shakes. */}
         {overlays
           .filter((o) => o.type === 'shake')
           .map((o) => (
@@ -293,6 +296,7 @@ export default function GameJuice({ children, enabled = true, intensity: initial
               className="pointer-events-none fixed inset-0 z-[9998]"
               style={{
                 animation: `shake ${300 * o.opacity}ms ease-in-out`,
+                background: `radial-gradient(ellipse at center, transparent 55%, rgba(220,40,40,${(o.opacity * 0.35).toFixed(3)}) 100%)`,
               }}
             />
           ))}

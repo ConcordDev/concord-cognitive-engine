@@ -75,6 +75,41 @@ describe('cancelState contract the wiring relies on', () => {
   });
 });
 
+describe('Chunk-1 combat polish (T2.2/T2.3/T2.6/T2.11)', () => {
+  it('T2.2 — swing/whiff SFX voices exist + fire on the swing', () => {
+    const sound = read('components/world-lens/SoundscapeEngine.tsx');
+    expect(sound).toMatch(/'combat-swing'/);
+    expect(sound).toMatch(/'combat-swing-heavy'/);
+    const ctrl = read('components/world-lens/CombatInputController.tsx');
+    expect(ctrl).toMatch(/from '@\/lib\/concordia\/juice'/);
+    expect(ctrl).toMatch(/combat-swing/);
+  });
+
+  it('T2.3 — lock-on reticle uses the real projector, not the yaw approximation', () => {
+    const lock = read('components/world-lens/LockOnController.tsx');
+    expect(lock).toMatch(/concordia:projector-ready/);
+    expect(lock).toMatch(/__concordiaProject/);
+    // the broken atan2 yaw approximation is gone
+    expect(lock).not.toMatch(/Math\.atan2\(dy, dx\) - cameraYaw/);
+    const scene = read('components/world-lens/ConcordiaScene.tsx');
+    // camera biases lookAt toward the locked target
+    expect(scene).toMatch(/lockedTargetId \? cameraLookState\.lockedTargetPos/);
+    expect(scene).toMatch(/__concordiaProject/);
+  });
+
+  it('T2.6 — dead AnimationManager is deleted + unmounted', () => {
+    expect(() => read('components/world-lens/AnimationManager.tsx')).toThrow();
+    const page = read('app/lenses/world/page.tsx');
+    expect(page).not.toMatch(/<AnimationManager>/);
+    expect(page).not.toMatch(/import\('@\/components\/world-lens\/AnimationManager'\)/);
+  });
+
+  it('T2.11 — GameJuice 2D shake renders a visible vignette (not a transparent div)', () => {
+    const gj = read('components/world-lens/GameJuice.tsx');
+    expect(gj).toMatch(/radial-gradient\(ellipse at center, transparent 55%, rgba\(220,40,40/);
+  });
+});
+
 describe('#8 — shared motion-duration tokens', () => {
   it('exposes the industry-convergent tier table', () => {
     expect(MOTION.instant).toBe(80);

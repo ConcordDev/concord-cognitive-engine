@@ -1096,6 +1096,9 @@ export default function ConcordiaScene({
         const y = (-_projectVec.y * 0.5 + 0.5) * window.innerHeight;
         return { x, y, visible };
       };
+      // Also stash on window so overlays that mount AFTER this one-shot event
+      // (dynamic imports — e.g. LockOnController) can still pick up the projector.
+      (window as unknown as { __concordiaProject?: typeof projectFn }).__concordiaProject = projectFn;
       window.dispatchEvent(
         new CustomEvent('concordia:projector-ready', {
           detail: { project: projectFn },
@@ -1204,7 +1207,22 @@ export default function ConcordiaScene({
               camera.position.x += (cx - camera.position.x) * lerp;
               camera.position.y += (cy - camera.position.y) * lerp;
               camera.position.z += (cz - camera.position.z) * lerp;
-              camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+              // T2.3 — lock-on framing: when a combat target is locked, look at
+              // the player→target midpoint (weighted toward the player) instead
+              // of straight at the player, so the locked enemy stays framed.
+              // Uses the lock position LockOnController already maintains; no
+              // lock → unchanged (look at the player).
+              const lock = cameraLookState.lockedTargetId ? cameraLookState.lockedTargetPos : null;
+              if (lock) {
+                const b = 0.4; // bias toward the target (0 = all player)
+                camera.lookAt(
+                  pose.x + (lock.x - pose.x) * b,
+                  (pose.y + 1.4) + ((lock.y ?? pose.y) + 1.0 - (pose.y + 1.4)) * b,
+                  pose.z + (lock.z - pose.z) * b,
+                );
+              } else {
+                camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+              }
             }
           }
         }

@@ -90,8 +90,8 @@ export default function NpcPerceptionBridge({ userId }: Props) {
       }
 
       // Mood / posture — broadcast to all observers. The gait + facial
-      // consumers in AvatarSystem3D / AnimationManager / facial-blend-
-      // shapes look this up when picking the next posture frame.
+      // consumers in AvatarSystem3D look this up when picking the next
+      // posture frame.
       window.dispatchEvent(new CustomEvent('concordia:npc-mood', {
         detail: {
           npcId: ev.npcId,
