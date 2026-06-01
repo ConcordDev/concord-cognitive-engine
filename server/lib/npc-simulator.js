@@ -26,6 +26,9 @@ import { detectiveTick, guardTick } from "./world-crime.js";
 import { executeScheduledTask, assignJob, seedJobsForWorld, getCurrentPhase } from "./npc-jobs.js";
 import { broadcastOpinionEvent } from "./npc-relations.js";
 import { applyDamageToPlayer, computeDamage } from "./combat/damage-calculator.js";
+import { resolveAggro, temperamentEnabled } from "./npc-temperament.js";
+import { targetRung, stepRung, isEngaged, barkFor } from "./temperament-ladder.js";
+import { bountyTier, arrestOffer, wantedLevelFor } from "./authority-heat.js";
 import { LruMap, LruSet } from "./lru-map.js";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -104,7 +107,7 @@ function updateNPCCombatAI(npc, worldId, db) {
   if (!npc || !npc.location) return;
 
   const archetype = npc.archetype || 'default';
-  const profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
+  let   profile   = AGGRO_PROFILE[archetype] || AGGRO_PROFILE.default;
 
   // Fetch NPC DB row for HP / is_wanted / criminal_rep
   let npcRow;
@@ -119,13 +122,39 @@ function updateNPCCombatAI(npc, worldId, db) {
   const hpRatio    = (npcRow.current_hp ?? 100) / Math.max(1, npcRow.max_hp ?? 100);
   const isWanted   = !!npcRow.is_wanted;
 
+  // Get player positions + nearest player once (reused by flee logic + FSM below).
+  const players = _getPlayerPositions(db, worldId);
+  let nearestPlayer = null;
+  let nearestDist   = Infinity;
+  for (const p of players) {
+    const d = _dist2d(npc.location, p);
+    if (d < nearestDist) {
+      nearestDist   = d;
+      nearestPlayer = p;
+    }
+  }
+
   // Wanted NPCs are always maximally aggressive
-  const effectiveAggro = isWanted ? 0.9 : profile.aggro;
+  let effectiveAggro = isWanted ? 0.9 : profile.aggro;
+
+  // Temperament gate (Phase 1) — modulate aggro by the NPC's emotional/social
+  // state toward the nearest player, and grant a pacifist the capacity to engage
+  // when emotion carries it into hostility. Off by default (CONCORD_TEMPERAMENT);
+  // when off, effectiveAggro + profile stay exactly the archetype values above.
+  if (temperamentEnabled() && nearestPlayer) {
+    try {
+      const r = resolveAggro(
+        db, npc, { kind: 'player', id: nearestPlayer.userId },
+        profile.aggro, isWanted, profile, { worldId }
+      );
+      effectiveAggro = r.effectiveAggro;
+      profile        = r.profile;
+    } catch { /* non-fatal: keep archetype aggro */ }
+  }
 
   // Non-aggro NPCs (farmer, merchant) — never attack, may flee (handled separately)
   if (effectiveAggro === 0.0 && !isWanted) {
     // Non-aggro flee logic: if a player is very close, path away
-    const players = _getPlayerPositions(db, worldId);
     for (const player of players) {
       const d = _dist2d(npc.location, player);
       if (d < profile.alertRadius) {
@@ -146,26 +175,44 @@ function updateNPCCombatAI(npc, worldId, db) {
       helpCalled: false,
       alertedAt: 0,
       _lastAttack: 0,
+      rung: 'neutral',
     });
   }
 
-  const cs = _npcCombatState.get(npc.id);
+  const cs        = _npcCombatState.get(npc.id);
+  const now       = Date.now();
+  const prevState = cs.state;
 
-  // Get player positions for this world
-  const players = _getPlayerPositions(db, worldId);
-
-  // Find nearest player
-  let nearestPlayer = null;
-  let nearestDist   = Infinity;
-  for (const p of players) {
-    const d = _dist2d(npc.location, p);
-    if (d < nearestDist) {
-      nearestDist   = d;
-      nearestPlayer = p;
+  // Temperament ladder (Phase 2) — graded intent rung + escalation barks. Off by
+  // default (CONCORD_TEMPERAMENT); when off, cs.rung is untouched and the attack
+  // path below behaves exactly as before. The climb forces a THREATENING (final
+  // warning) tick before HOSTILE, so an NPC always warns before it strikes.
+  if (temperamentEnabled()) {
+    const tgt = targetRung({
+      effectiveAggro,
+      nearestDist,
+      alertRadius:   profile.alertRadius,
+      pursuitRadius: profile.pursuitRadius,
+      melee:         profile.melee,
+    });
+    const prevRung = cs.rung || 'neutral';
+    const stepped  = stepRung(prevRung, tgt);
+    cs.rung = stepped.rung;
+    if (stepped.transition === 'up' && stepped.rung !== prevRung) {
+      // At THREATENING, an authority NPC offers arrest to a wanted target
+      // instead of just warning (Part 4 arrest gate). null for everyone else.
+      let arrest = null;
+      if (stepped.rung === 'threatening'
+          && (archetype === 'guard' || archetype === 'soldier')
+          && nearestPlayer) {
+        try {
+          const tier = bountyTier(wantedLevelFor(db, worldId, nearestPlayer.userId));
+          arrest = arrestOffer('threatening', tier);
+        } catch { /* law table absent */ }
+      }
+      _emitBark(npc, worldId, stepped.rung, barkFor(stepped.rung, archetype), arrest);
     }
   }
-
-  const now = Date.now();
 
   // ── State machine transitions ──────────────────────────────────────────────
 
@@ -229,8 +276,11 @@ function updateNPCCombatAI(npc, worldId, db) {
       // Target moved out of range — pursue again
       cs.state = 'pursuing';
     } else {
-      // Attack! Rate-limited to once per NPC_ATTACK_COOLDOWN_MS
-      if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS) {
+      // Attack! Rate-limited to once per NPC_ATTACK_COOLDOWN_MS.
+      // Temperament: hold fire until the NPC has climbed to HOSTILE — the
+      // THREATENING final-warning tick must pass first. Off => attack now.
+      if (now - cs._lastAttack >= NPC_ATTACK_COOLDOWN_MS
+          && (!temperamentEnabled() || isEngaged(cs.rung))) {
         cs._lastAttack = now;
         _performNPCAttack(npc, nearestPlayer, worldId, db, archetype);
       }
@@ -252,6 +302,33 @@ function updateNPCCombatAI(npc, worldId, db) {
       _moveToward(npc, cs.startPosition, db, worldId);
     }
   }
+
+  // Temperament: announce the break when the NPC first retreats (HP collapse) —
+  // the FLEEING rung of the ladder. One bark on the transition into retreating.
+  if (temperamentEnabled() && cs.state === 'retreating' && prevState !== 'retreating') {
+    _emitBark(npc, worldId, 'fleeing', barkFor('fleeing', archetype));
+  }
+}
+
+/**
+ * Emit a world:npc-bark socket event — the legibility channel for the graded
+ * escalation ladder. Externalizes the NPC's intent (the F.E.A.R. lesson): one
+ * bark per rung transition so the player can read the decision, not be
+ * tripwired. A blank text (monsters, civilian HOSTILE) still emits the rung so
+ * the audio/snarl layer can voice it. Never throws.
+ */
+function _emitBark(npc, worldId, rung, text, arrest = null) {
+  try {
+    const io = globalThis._concordREALTIME?.io;
+    io?.to(`world:${worldId}`).emit('world:npc-bark', {
+      worldId,
+      npcId:    npc.id,
+      position: npc.location,
+      rung,
+      text:     text || '',
+      arrest:   arrest || null,
+    });
+  } catch { /* non-fatal */ }
 }
 
 /**

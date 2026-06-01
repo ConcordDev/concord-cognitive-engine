@@ -65,7 +65,7 @@ If you skip this, you'll lose your DTU corpus + every grudge every NPC ever held
 ### Brain models
 
 The Ollama models are ~70GB total. RunPod pods come with the model dir empty. Either:
-1. Pre-pull on first boot (slow, billable GPU minutes wasted) — the four cognitive models (`concord-conscious:latest`, `qwen2.5:7b-instruct-q4_K_M`, `qwen2.5:3b`, `qwen2.5:0.5b`) + `llava:13b-v1.6-vicuna-q4_K_M`.
+1. Pre-pull on first boot (slow, billable GPU minutes wasted) — the four cognitive models (`concord-conscious:latest`, `qwen2.5:7b-instruct-q4_K_M`, `qwen2.5:3b`, `qwen2.5:0.5b`) + `qwen2.5vl:7b`.
 2. Mount a Network Volume to `/root/.ollama` so models persist across pod restarts.
 
 Option 2 is what you want.

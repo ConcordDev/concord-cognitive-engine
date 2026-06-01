@@ -97,8 +97,8 @@ export async function runNpcVsNpcCombatCycle(STATE) {
 
 function _mutualGrudge(db, aId, bId) {
   try {
-    const a = db.prepare(`SELECT severity FROM npc_grudges WHERE owner_npc_id = ? AND target_npc_id = ?`).get(aId, bId);
-    const b = db.prepare(`SELECT severity FROM npc_grudges WHERE owner_npc_id = ? AND target_npc_id = ?`).get(bId, aId);
+    const a = db.prepare(`SELECT severity FROM npc_grudges WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?`).get(aId, bId);
+    const b = db.prepare(`SELECT severity FROM npc_grudges WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?`).get(bId, aId);
     return Math.min(a?.severity ?? 0, b?.severity ?? 0);
   } catch { return 0; }
 }

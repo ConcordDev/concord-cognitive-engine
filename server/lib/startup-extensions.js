@@ -102,6 +102,12 @@ export async function initExtensions(app, db, STATE, io) {
   }
 
   // 8. Feed manager
+  // G2 — global kill-switch: CONCORD_FEED_MANAGER_ENABLED=0 disables all RSS/Atom
+  // ingestion in one flag (parity with CONCORD_CORPUS_INGEST=0). Per-feed `enabled`
+  // flags still apply when the manager is on.
+  if (process.env.CONCORD_FEED_MANAGER_ENABLED === "0") {
+    logger.info("[startup-extensions] feed manager disabled via CONCORD_FEED_MANAGER_ENABLED=0");
+  } else
   try {
     const feedMgr = initFeedManager({ STATE, db, io, logger });
     // Register all default feed sources

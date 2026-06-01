@@ -32,8 +32,7 @@ export async function runProcgenSettlementCycle({ db }) {
   let worlds = [];
   try {
     worlds = db.prepare(`
-      SELECT DISTINCT world_id FROM city_presence
-       WHERE last_seen_at >= unixepoch() - 600
+      SELECT DISTINCT world_id FROM world_visits WHERE departed_at IS NULL
     `).all().map(r => r.world_id).filter(Boolean);
   } catch {
     // Fallback for fresh DBs without city_presence.

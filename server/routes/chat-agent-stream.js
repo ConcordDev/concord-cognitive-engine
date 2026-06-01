@@ -11,6 +11,7 @@
 // path; this is the agent-loop equivalent at /api/chat-agent/stream.
 
 import { runAgentLoop } from "../lib/chat-agent.js";
+import { startSSE } from "../lib/sse.js";
 
 export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
   app.post("/api/chat-agent/stream", auth, async (req, res) => {
@@ -19,13 +20,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions }) {
     if (!message) return res.status(400).json({ ok: false, error: "missing_message" });
     if (!userId) return res.status(401).json({ ok: false, error: "no_actor" });
 
-    res.set({
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-    res.flushHeaders?.();
+    startSSE(res);
 
     const send = (event, data) => {
       try {

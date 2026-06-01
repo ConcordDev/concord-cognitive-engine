@@ -65,9 +65,9 @@ export function mintMatchChronicle(db, {
   // off-hand counters"). 30-row window covers a full bout comfortably.
   const flowRows = db.prepare(`
     SELECT fighter_id, fighter_kind, context, style, action, hit, damage, is_crit
-    FROM combat_flow
-    WHERE fighter_id IN (?, ?) AND recorded_at > unixepoch() - 600
-    ORDER BY recorded_at DESC
+    FROM combat_flows
+    WHERE fighter_id IN (?, ?) AND ts > unixepoch() - 600
+    ORDER BY ts DESC
     LIMIT 60
   `).all(winnerId || "", loserId || "");
 

@@ -18,6 +18,7 @@
 import crypto from "node:crypto";
 import logger from "../logger.js";
 import { recordOpinionEvent } from "./npc-opinions.js";
+import { seedRumor } from "./social/gossip.js";
 
 const KIND_FALLBACK = "grudge_origin";
 
@@ -137,6 +138,27 @@ export function discoverSecret(db, userId, secretId, via = "dialogue") {
     try {
       db.prepare(`UPDATE secrets SET revealed_at = COALESCE(revealed_at, unixepoch()) WHERE id = ?`).run(secretId);
     } catch { /* ignore */ }
+    // SL2 gossip wire (playtest #T1): a newly-discovered secret seeds a rumor
+    // about its subject, originating from the NPC who held it. Deduped per
+    // secret so multiple discoverers don't each spawn a rumor. This connects the
+    // built-but-unwired gossip system to a real gameplay trigger.
+    try {
+      if (exists.holder_npc_id) {
+        const already = db.prepare(`SELECT 1 FROM rumors WHERE secret_id = ? LIMIT 1`).get(secretId);
+        if (!already) {
+          const w = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(exists.holder_npc_id);
+          if (w?.world_id) {
+            seedRumor(db, {
+              secretId,
+              subjectKind: exists.subject_kind,
+              subjectId: exists.subject_id,
+              worldId: w.world_id,
+              originNpcId: exists.holder_npc_id,
+            });
+          }
+        }
+      }
+    } catch { /* gossip optional — never block discovery */ }
   }
   return { ok: true, action: r.changes > 0 ? "discovered" : "already_known", secret: exists };
 }

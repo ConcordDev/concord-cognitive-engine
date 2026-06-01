@@ -105,7 +105,7 @@ export function resolveNpcIdByName(db, worldId, name) {
   try {
     const row = db.prepare(`
       SELECT id FROM world_npcs
-      WHERE world_id = ? AND LOWER(name) LIKE LOWER(?) LIMIT 1
+      WHERE world_id = ? AND LOWER(json_extract(state, '$.name')) LIKE LOWER(?) LIMIT 1
     `).get(worldId, `${name}%`);
     return row?.id || null;
   } catch { return null; }

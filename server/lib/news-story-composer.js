@@ -184,7 +184,7 @@ function harvestLatticeAlerts(db, sinceUnix, limit) {
   if (!exists) return [];
   return db.prepare(`
     SELECT id, drift_type, severity, signature, detected_at
-    FROM lattice_drift_alerts
+    FROM drift_alerts
     WHERE severity IN ('HIGH','CRITICAL') AND detected_at >= ?
     ORDER BY detected_at DESC
     LIMIT ?

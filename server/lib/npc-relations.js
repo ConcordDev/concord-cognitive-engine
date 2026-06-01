@@ -155,8 +155,8 @@ export function broadcastOpinionEvent(db, worldId, actorId, actorType, eventType
   const witnesses = db.prepare(`
     SELECT id, archetype, faction, is_conscious FROM world_npcs
     WHERE world_id = ? AND is_dead = 0
-      AND ABS(CAST(json_extract(location, '$.x') AS REAL) - ?) <= ?
-      AND ABS(CAST(json_extract(location, '$.z') AS REAL) - ?) <= ?
+      AND ABS(x - ?) <= ?
+      AND ABS(z - ?) <= ?
     LIMIT 30
   `).all(worldId, location?.x ?? 0, radius, location?.z ?? 0, radius);
 

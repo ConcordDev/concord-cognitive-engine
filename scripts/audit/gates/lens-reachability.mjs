@@ -30,7 +30,7 @@ const CI = process.argv.includes("--ci");
 // the time this gate landed (so CI never fails the existing tree on day one).
 // RATCHET IT DOWN as orphan lenses are wired into the registry; the number
 // going to 0 is the finishable proof-of-progress. Override with --floor=N.
-const DEFAULT_FLOOR = 50;
+const DEFAULT_FLOOR = 0;
 const floorArg = process.argv.find((a) => a.startsWith("--floor="));
 let FLOOR = floorArg ? parseInt(floorArg.split("=")[1], 10) : DEFAULT_FLOOR;
 
@@ -38,7 +38,9 @@ let FLOOR = floorArg ? parseInt(floorArg.split("=")[1], 10) : DEFAULT_FLOOR;
 //  - ux-suite: a directory page that links to where each absorbed component
 //    mounts; it has no API surface and is reachable by design as a hub.
 //  - reasoning: a parent dir whose real lens is the `reasoning/traces` sub-route.
-const INTENTIONAL = new Set(["ux-suite", "reasoning"]);
+//  - [parent]: a Next.js dynamic route segment (app/lenses/[parent]/[sub]), not
+//    a navigable standalone lens — it can't have a static registry entry.
+const INTENTIONAL = new Set(["ux-suite", "reasoning", "[parent]"]);
 
 // ── enumerate shipped lens directories ────────────────────────────────────────
 function lensDirs() {

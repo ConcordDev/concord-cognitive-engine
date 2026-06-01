@@ -320,7 +320,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
         try {
           const row = db.prepare(
             `SELECT COUNT(*) AS cnt, COALESCE(SUM(amount), 0) AS revenue
-             FROM economy_transactions
+             FROM economy_ledger
              WHERE ref_id LIKE ? AND type = 'marketplace_purchase'`
           ).get(`%${tag.listing_id}%`);
           cnt = row?.cnt || 0;
@@ -353,7 +353,7 @@ export default function createSocialEngagementRoutes({ db, requireAuth }) {
         try {
           const row = db.prepare(
             `SELECT COALESCE(SUM(amount), 0) AS total
-             FROM economy_transactions
+             FROM economy_ledger
              WHERE ref_id LIKE ? AND type = 'marketplace_purchase'`
           ).get(`%${tag.listing_id}%`);
           totalEarnings += row?.total || 0;

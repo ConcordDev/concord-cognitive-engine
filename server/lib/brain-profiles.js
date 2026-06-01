@@ -69,7 +69,7 @@ export const PROFILES = Object.freeze({
     subconscious: { model: "qwen2.5:7b-instruct-q5_K_M", maxConcurrent: 8, contextWindow: 8192, maxTokens: 1200 },
     utility: { model: "qwen2.5:3b-instruct-q5_K_M", maxConcurrent: 12, contextWindow: 16384, maxTokens: 800 },
     repair: { model: "qwen2.5:1.5b-instruct-q5_K_M", maxConcurrent: 3, contextWindow: 4096, maxTokens: 500 },
-    multimodal: { model: "llava:13b-v1.6-vicuna-q4_K_M", maxConcurrent: 2 },
+    multimodal: { model: "qwen2.5vl:7b", maxConcurrent: 2 },
   },
   "32gb": {
     label: "32GB+ GPU — RTX PRO 4500 Blackwell / A6000 / H100",
@@ -78,7 +78,7 @@ export const PROFILES = Object.freeze({
     subconscious: { model: "qwen2.5:7b-instruct-q5_K_M", maxConcurrent: 12, contextWindow: 8192, maxTokens: 1200 },
     utility: { model: "qwen2.5:3b-instruct-q5_K_M", maxConcurrent: 16, contextWindow: 16384, maxTokens: 800 },
     repair: { model: "qwen2.5:1.5b-instruct-q5_K_M", maxConcurrent: 4, contextWindow: 4096, maxTokens: 500 },
-    multimodal: { model: "llava:13b-v1.6-vicuna-q4_K_M", maxConcurrent: 4 },
+    multimodal: { model: "qwen2.5vl:7b", maxConcurrent: 4 },
   },
 });
 

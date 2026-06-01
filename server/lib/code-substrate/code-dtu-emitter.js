@@ -9,7 +9,7 @@
 //   - Module under server/{lib, emergent, domains, economy}
 //   - Macro registration
 //
-// DTU shape (kind='code_artifact'):
+// DTU shape (type='code_artifact'):
 //   {
 //     id: "code:<sha1(path:line:kind)>",
 //     kind: 'code_artifact',
@@ -253,7 +253,7 @@ export async function emitCodeDtus(db, root, opts = {}) {
 export function getCodeDtuForPath(db, p) {
   if (!db || !p) return null;
   const rows = db.prepare(
-    `SELECT * FROM dtus WHERE kind='code_artifact' AND (content LIKE ? OR title LIKE ?) LIMIT 50`,
+    `SELECT * FROM dtus WHERE type='code_artifact' AND (content LIKE ? OR title LIKE ?) LIMIT 50`,
   ).all(`%${p}%`, `%${p}%`);
   // Prefer module-kind rows for path matches (route/macro entries can also match path).
   for (const r of rows) {

@@ -119,6 +119,25 @@ jobs:
           node scripts/verify-schema-drift.mjs
           node scripts/verify-schema-drift.mjs --ci 0
 
+      - name: Schema-drift gate L0 (prepare()-everything — ghost tables + JOINs)
+        run: |
+          # The comprehensive L0 gate (Function Assurance spec): runs every
+          # migration into an in-memory DB, execs lazy CREATE TABLEs, then
+          # db.prepare()s EVERY non-interpolated query against the live schema —
+          # so SQLite's own parser surfaces every no-such-table / no-such-column
+          # site, including JOIN / multi-table / subquery queries the
+          # high-confidence gate above skips. Floor 0 — fails on ANY new drift.
+          node scripts/audit/gates/schema-drift.mjs --ci
+
+      - name: License gate (no AGPL/GPL/SSPL/CC-BY-NC/Hippocratic/undeclared dep can merge)
+        run: |
+          # Track G4 — walks the installed dep trees (server + frontend, + mobile when
+          # installed) and fails on any disallowed-license dependency vs the permissive
+          # allowlist, with a documented EXCEPTIONS map (ffmpeg-static separate-process,
+          # sharp dynamic-link, the undeclared-MIT set). Floor 0 — see docs/LICENSING.md.
+          (cd concord-frontend && npm ci --no-audit --no-fund) || true
+          node scripts/audit/gates/license-scan.mjs --ci
+
       - name: Render-parity gate (static appearance layer)
         run: |
           node scripts/verify-render-parity.mjs

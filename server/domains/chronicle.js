@@ -39,7 +39,7 @@ export default function registerChronicleMacros(register) {
     const userId = ctx?.actor?.userId;
     if (!userId) return { ok: false, reason: "no_actor" };
     try {
-      const sagas = db.prepare(`SELECT id, title, created_at FROM dtus WHERE creator_id = ? AND kind = 'chronicle' ORDER BY created_at DESC LIMIT 20`).all(userId);
+      const sagas = db.prepare(`SELECT id, title, created_at FROM dtus WHERE creator_id = ? AND type = 'chronicle' ORDER BY created_at DESC LIMIT 20`).all(userId);
       return { ok: true, sagas };
     } catch { return { ok: true, sagas: [] }; }
   }, { note: "list the player's minted sagas" });

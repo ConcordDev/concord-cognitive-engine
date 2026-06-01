@@ -1,21 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { OSM_STYLE, toLngLat, boundsFromLatLngs, esc } from '@/lib/maplibre/osm';
 
-// Fix Leaflet default marker icon paths broken by webpack
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
+// Swapped off react-leaflet (Hippocratic-2.1) → MapLibre GL (BSD-3). The public
+// API (props below) is unchanged so the ~30 consumers don't need edits.
 
 export interface MapMarker {
   lat: number;
@@ -39,61 +30,73 @@ export default function MapView({
   className = '',
   onMarkerClick,
 }: MapViewProps) {
-  const bounds = useMemo(() => {
-    if (markers.length === 0) return undefined;
-    if (markers.length === 1) return undefined;
-    return L.latLngBounds(markers.map(m => [m.lat, m.lng] as [number, number]));
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
+  const onMarkerClickRef = useRef(onMarkerClick);
+  onMarkerClickRef.current = onMarkerClick;
+
+  // Create the map once.
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: OSM_STYLE,
+      center: toLngLat(center),
+      zoom,
+      attributionControl: { compact: true },
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+    // center/zoom only seed the initial view; marker-driven recentering is below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync markers + view whenever the marker set changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const apply = () => {
+      // clear prior markers
+      markersRef.current.forEach((mk) => mk.remove());
+      markersRef.current = [];
+
+      markers.forEach((m) => {
+        const popup =
+          new maplibregl.Popup({ offset: 24 }).setHTML(
+            `<div style="font-size:13px"><strong>${esc(m.label)}</strong>${
+              m.popup ? `<p style="margin-top:4px">${esc(m.popup)}</p>` : ''
+            }</div>`,
+          );
+        const marker = new maplibregl.Marker().setLngLat(toLngLat([m.lat, m.lng])).setPopup(popup).addTo(map);
+        if (onMarkerClickRef.current) {
+          marker.getElement().style.cursor = 'pointer';
+          marker.getElement().addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            onMarkerClickRef.current?.(m);
+          });
+        }
+        markersRef.current.push(marker);
+      });
+
+      // Recenter: single marker → zoom to it; multiple → fit bounds; none → leave seed view.
+      if (markers.length === 1) {
+        map.easeTo({ center: toLngLat([markers[0].lat, markers[0].lng]), zoom: 10, duration: 300 });
+      } else if (markers.length > 1) {
+        const b = boundsFromLatLngs(markers.map((m) => [m.lat, m.lng] as [number, number]));
+        if (b) map.fitBounds(b, { padding: 40, duration: 300, maxZoom: 12 });
+      }
+    };
+
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
   }, [markers]);
-
-  const mapCenter = useMemo(() => {
-    if (markers.length === 1) return [markers[0].lat, markers[0].lng] as [number, number];
-    return center;
-  }, [markers, center]);
-
-  const mapZoom = useMemo(() => {
-    if (markers.length === 1) return 10;
-    return zoom;
-  }, [markers, zoom]);
-
-  // React 18 strict-mode mounts components twice in dev. react-leaflet
-  // 4's MapContainer re-binds Leaflet to the same DOM node on the
-  // second mount and throws "Map container is already initialized."
-  // Mount-stable random key forces a fresh container per mount cycle
-  // without remounting on every parent re-render.
-  const [mapKey] = useState(() => `lf-${Math.random().toString(36).slice(2, 10)}`);
 
   return (
     <div className={`rounded-lg overflow-hidden border border-white/10 ${className}`} style={{ minHeight: 320 }}>
-      <MapContainer
-        key={mapKey}
-        center={mapCenter}
-        zoom={mapZoom}
-        bounds={bounds}
-        boundsOptions={{ padding: [40, 40] }}
-        scrollWheelZoom
-        style={{ height: '100%', width: '100%', minHeight: 320 }}
-        className="z-0"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          // @env-config-ok: OpenStreetMap tile URL pattern — by-design hardcoded per RFC 6570 template
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {markers.map((m, i) => (
-          <Marker
-            key={`${m.lat}-${m.lng}-${i}`}
-            position={[m.lat, m.lng]}
-            eventHandlers={onMarkerClick ? { click: () => onMarkerClick(m) } : undefined}
-          >
-            <Popup>
-              <div className="text-sm">
-                <strong>{m.label}</strong>
-                {m.popup && <p className="mt-1">{m.popup}</p>}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+      <div ref={containerRef} style={{ height: '100%', width: '100%', minHeight: 320 }} className="z-0" />
     </div>
   );
 }

@@ -329,3 +329,34 @@ linear to `minDamageFloor` (never zero). `RANGED_PARRY_WINDOW_MS = 0` is an
 invariant, not a dial. Movement-power profiles (`movement-powers.js`) carry
 `{ activationCost, drainPerSec, minLevel, baseSpeedMs, cooldownS }` — also
 first-draft. Walk these in a future balance pass; pin from observed play.
+
+---
+
+## Temperament engine — Phase 1 (kill-switch + dials)
+
+`server/lib/npc-temperament.js`. The disposition gate that modulates archetype
+aggression by the NPC's dormant emotional/social state. **Off by default** — when
+`CONCORD_TEMPERAMENT` is unset/`0`, NPC hostility is exactly today's
+archetype-only behaviour (byte-identical). See `docs/TEMPERAMENT_BUILD_PLAN.md`.
+
+| Env | Default | Effect |
+|---|---|---|
+| `CONCORD_TEMPERAMENT` | off | `1`/`true` → emotional/social state modulates `effectiveAggro` in `npc-simulator.js`. |
+| `CONCORD_TEMP_W_STRESS` | `0.4` | Weight of normalised stress on the aggro modifier. |
+| `CONCORD_TEMP_W_GRUDGE` | `0.6` | Weight of grudge severity (1–10) on the modifier. |
+| `CONCORD_TEMP_W_OPINION` | `0.5` | Weight of opinion (−100..+100); hatred raises aggro, admiration lowers it. |
+| `CONCORD_TEMP_W_FACTION` | `0.5` | Weight of faction relation (npc targets); enmity raises, alliance lowers. |
+| `CONCORD_TEMP_W_EMOTION` | `0.5` | Weight of family grief (0..1) on the modifier. |
+| `CONCORD_TEMP_GRUDGE_FLOOR_SEVERITY` | `8` | Grudge severity at/above which an emotional floor is lifted. |
+| `CONCORD_TEMP_GRUDGE_FLOOR` | `0.45` | The floor a severe grudge lifts a pacifist to. |
+| `CONCORD_TEMP_RADICALIZED_FLOOR` | `0.7` | The floor a radicalized NPC is lifted to (the grieving-kin payoff). |
+| `CONCORD_TEMP_ENGAGE_THRESHOLD` | `0.4` | Effective-aggro above which an inert archetype (pursuit/melee 0) is granted the capacity to engage. |
+| `CONCORD_TEMP_W_AUTHORITY` | `0.7` | Weight of a target's two-meter crime state (wanted + heat) on a guard/soldier's modifier (Phase 3). |
+
+These are first-draft; pin from observed play in a future pass.
+
+**Authority HEAT (`server/lib/authority-heat.js`, Phase 3):** the fast suspicion
+meter (in-memory). `CONCORD_HEAT_DECAY_PER_SEC` (`2` → ~50s full cool),
+`CONCORD_HEAT_SUSPICIOUS` (`25`), `CONCORD_HEAT_SEARCH` (`55`),
+`CONCORD_HEAT_ALERT` (`80`) — the suspicion-FSM thresholds (idle/suspicious/
+search/alert). First-draft; pin from observed play.

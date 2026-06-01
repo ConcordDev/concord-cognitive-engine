@@ -60,7 +60,7 @@ sleep 3
 ollama pull qwen2.5:7b-instruct-q4_K_M     # subconscious
 ollama pull qwen2.5:3b                     # utility
 ollama pull qwen2.5:0.5b                   # repair
-ollama pull llava:13b-v1.6-vicuna-q4_K_M   # vision
+ollama pull qwen2.5vl:7b   # vision
 ollama pull nomic-embed-text               # embeddings
 # concord-conscious:latest is a custom model built from a Modelfile on top of qwen2.5
 ```

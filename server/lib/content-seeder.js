@@ -942,6 +942,26 @@ export async function seedContent({ db = null } = {}) {
     }
   }
 
+  // #S1 — dangling faction-reference audit. Every authored NPC that names a
+  // faction (faction_id | faction) should point at a faction we actually seeded;
+  // a typo or a deleted faction leaves the NPC orphaned (no faction-strategy
+  // momentum, wrong narrative-bridge context). This is a SOFT warning — orphans
+  // are seeded anyway (an NPC with a bad faction ref is still a valid NPC), but
+  // the count + samples surface in the boot log so the content gap is visible.
+  try {
+    const dangling = reportDanglingFactionRefs();
+    if (dangling.count > 0) {
+      logger.warn("content_seeder", "dangling_faction_refs", {
+        count: dangling.count,
+        samples: dangling.samples.slice(0, 10),
+        knownFactions: _authoredFactions.size,
+      });
+    }
+    results.danglingFactionRefs = dangling.count;
+  } catch (err) {
+    logger.warn("content_seeder", "dangling_faction_audit_failed", { err: err?.message });
+  }
+
   _seeded = true;
 
   logger.info(
@@ -1044,4 +1064,32 @@ export function getAllAuthoredNPCs() {
 /** Sprint C / D1 — return every authored faction. */
 export function getAllAuthoredFactions() {
   return Array.from(_authoredFactions.values());
+}
+
+/**
+ * #S1 — audit authored NPCs for faction references that don't resolve to a
+ * seeded faction. Pure read over the in-memory registries (call after seeding).
+ * Returns { count, samples:[{ npcId, name, faction }] } — a soft report, never a
+ * throw, so callers can log-and-continue. `faction` of null/absent is not dangling
+ * (a factionless NPC is legitimate); only a NON-empty ref to an unknown id counts.
+ */
+export function reportDanglingFactionRefs() {
+  const samples = [];
+  let count = 0;
+  // Resolve against both ids and names — most worlds key NPC.faction_id to
+  // faction.id, but a name-based ref in another world is still legitimately wired.
+  const known = new Set();
+  for (const f of _authoredFactions.values()) {
+    if (f?.id) known.add(f.id);
+    if (f?.name) known.add(f.name);
+  }
+  for (const npc of _authoredNPCs.values()) {
+    const ref = npc?.faction_id || npc?.faction || null;
+    if (!ref) continue;
+    if (!known.has(ref)) {
+      count++;
+      if (samples.length < 50) samples.push({ npcId: npc.id, name: npc.name, faction: ref });
+    }
+  }
+  return { count, samples };
 }

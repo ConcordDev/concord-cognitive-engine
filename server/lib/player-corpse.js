@@ -41,11 +41,11 @@ export function dropCorpseOnDeath(db, opts) {
   if (!Number.isFinite(x) || !Number.isFinite(z)) return { ok: false, reason: "bad_position" };
 
   // Fetch wallet balance. Concord Coin balances live in
-  // user_wallets.concord_coins; fall back gracefully if absent so this
+  // users.concordia_credits; fall back gracefully if absent so this
   // still works on test deployments.
   let balance = 0;
   try {
-    const w = db.prepare(`SELECT concord_coins FROM user_wallets WHERE user_id = ?`).get(userId);
+    const w = db.prepare(`SELECT concordia_credits AS concord_coins FROM users WHERE id = ?`).get(userId);
     balance = Math.max(0, Number(w?.concord_coins ?? 0));
   } catch { /* no wallets — coins lost = 0 */ }
 
@@ -82,8 +82,7 @@ export function dropCorpseOnDeath(db, opts) {
   if (coinsLost > 0) {
     try {
       db.prepare(`
-        UPDATE user_wallets SET concord_coins = MAX(0, concord_coins - ?)
-         WHERE user_id = ?
+        UPDATE users SET concordia_credits = MAX(0, concordia_credits - ?) WHERE id = ?
       `).run(coinsLost, userId);
     } catch { /* wallet write best-effort */ }
   }
@@ -153,10 +152,8 @@ export function recoverCorpse(db, opts) {
       db.prepare(`UPDATE player_corpses SET recovered_at = unixepoch() WHERE id = ?`).run(corpseId);
       if (coins > 0) {
         db.prepare(`
-          INSERT INTO user_wallets (user_id, concord_coins)
-          VALUES (?, ?)
-          ON CONFLICT(user_id) DO UPDATE SET concord_coins = concord_coins + excluded.concord_coins
-        `).run(userId, coins);
+          UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?
+        `).run(coins, userId);
       }
     });
     tx();

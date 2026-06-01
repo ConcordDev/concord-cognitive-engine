@@ -34,6 +34,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { isFallthroughMasking } from "../../lib/macro-contract.js";
 
 // Top-level await — Node ESM supports it. Importing the server triggers
 // every register() / registerLensAction() call so MACROS is fully populated
@@ -162,6 +163,17 @@ describe("Lens behavior smoke — per-macro", { concurrency: true }, () => {
       assert.strictEqual(typeof result, "object", `[${domain}.${name}] returned non-object: ${typeof result}`);
       assert.ok("ok" in result, `[${domain}.${name}] response missing 'ok' field. Got: ${JSON.stringify(result).slice(0, 200)}`);
       assert.strictEqual(typeof result.ok, "boolean", `[${domain}.${name}] response.ok is not boolean: ${typeof result.ok} (${result.ok})`);
+
+      // L2 — no fallthrough-masking. A macro that quietly returns the brain-router's
+      // "LLM unavailable" fallthrough object (e.g. {ok:false, source:'utility-brain'})
+      // is masking an unwired/throwing path as if it were a normal negative result —
+      // the #3/#27 class. A non-LLM macro must never surface that shape. (LLM-hint
+      // macros are already skipped above via LLM_HINT_RE, so this only fires on the
+      // deterministic surface where the mask is genuinely a bug.)
+      assert.ok(
+        !isFallthroughMasking(result),
+        `[${domain}.${name}] returned a brain-fallthrough mask (LLM-unavailable shape leaking as a result): ${JSON.stringify(result).slice(0, 200)}`,
+      );
     });
   }
 });

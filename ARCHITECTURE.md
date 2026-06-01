@@ -10,7 +10,7 @@ Concord runs five Ollama instances tuned for the **NVIDIA RTX PRO 4500 Blackwell
 | Subconscious | `qwen2.5:7b-instruct-q4_K_M` | ~5GB | 11435 | Autogen, dream, evolution, synthesis, birth |
 | Utility | `qwen2.5:3b` | ~2GB | 11436 | Lens interactions, entity actions, quick tasks (~65% of requests) |
 | Repair | `qwen2.5:0.5b` | ~1GB | 11437 | Error detection, auto-fix, runtime repair |
-| Vision (multimodal) | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | 11438 | Image understanding, food vision, doc layout |
+| Vision (multimodal) | `qwen2.5vl:7b` | ~9GB | 11438 | Image understanding, food vision, doc layout |
 
 All five default models are env-overridable (see `server/lib/brain-config.js`).
 

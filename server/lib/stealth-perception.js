@@ -109,7 +109,7 @@ function _getSkillLevel(db, userId, domain) {
   try {
     const row = db.prepare(`
       SELECT MAX(skill_level) AS lvl FROM dtus
-      WHERE owner_id = ? AND owner_type = 'user' AND type = 'skill'
+      WHERE owner_user_id = ? AND type = 'skill'
         AND tags_json LIKE ?
     `).get(userId, `%${domain}%`);
     return Math.max(0, Math.round(row?.lvl ?? 0));

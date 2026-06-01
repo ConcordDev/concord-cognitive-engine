@@ -134,7 +134,7 @@ export default function createPlayerInventoryRouter({ requireAuth, db }) {
 function _getPlayerSkills(db, userId) {
   try {
     const skills = db.prepare(
-      "SELECT type, skill_level FROM dtus WHERE owner_id = ? AND type = 'skill' AND owner_type = 'user'"
+      "SELECT type, skill_level FROM dtus WHERE owner_user_id = ? AND type = 'skill'"
     ).all(userId);
     const map = {};
     for (const s of skills) map[s.type] = Math.round(s.skill_level ?? 0);

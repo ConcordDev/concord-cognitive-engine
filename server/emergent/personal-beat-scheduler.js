@@ -46,7 +46,7 @@ export async function runPersonalBeatScheduler({ db, state: _state, tickCount: _
       onlineUsers = db.prepare(`
         SELECT DISTINCT user_id, world_id FROM world_visits
         WHERE departed_at IS NULL
-        ORDER BY entered_at DESC
+        ORDER BY arrived_at DESC
         LIMIT ?
       `).all(MAX_BEATS_PER_PASS);
     } catch {

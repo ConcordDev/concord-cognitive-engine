@@ -123,7 +123,7 @@ function _processSchemeBetrayals(db, worldId, opts) {
     for (const row of rows) {
       const op = db.prepare(`
         SELECT score FROM character_opinions
-        WHERE from_npc_id = ? AND to_npc_id = ?
+        WHERE npc_id = ? AND target_kind = 'npc' AND target_id = ?
       `).get(row.actor_npc_id, row.target_npc_id);
 
       if (op && op.score < -50) {

@@ -31,7 +31,7 @@ The four cognitive brains + LLaVA all run on the same GPU via Ollama. With 32GB 
 | `ollama-subconscious` | `qwen2.5:7b-instruct-q4_K_M` | ~5GB |
 | `ollama-utility` | `qwen2.5:3b` | ~2GB |
 | `ollama-repair` | `qwen2.5:0.5b` | ~0.5GB |
-| `ollama-vision` | `llava:13b-v1.6-vicuna-q4_K_M` + `nomic-embed-text` | ~9GB + ~0.3GB |
+| `ollama-vision` | `qwen2.5vl:7b` + `nomic-embed-text` | ~9GB + ~0.3GB |
 
 That's ~35GB of model weights. With `OLLAMA_KV_CACHE_TYPE=q8_0` (halves KV memory) and `OLLAMA_GPU_OVERHEAD=1GB` reserved for headroom, models swap between GPU and CPU as needed under load. The sets of models that are co-resident at any moment are decided by `OLLAMA_KEEP_ALIVE=24h` plus inference traffic.
 

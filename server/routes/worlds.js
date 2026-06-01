@@ -16,6 +16,7 @@ import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/worl
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
+import { recordCombatReject } from "../lib/desync-metrics.js";
 import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
@@ -596,7 +597,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       for (const skill of playerSkills) {
         const prestigenMeta = JSON.stringify({ prestige_from_level: skill.skill_level, world: req.params.worldId });
         db.prepare("UPDATE dtus SET skill_level = 1, total_experience = 0, practice_count = 0 WHERE id = ?").run(skill.id);
-        db.prepare("UPDATE dtus SET meta = json_patch(COALESCE(meta, '{}'), ?) WHERE id = ?")
+        db.prepare("UPDATE dtus SET metadata_json = json_patch(COALESCE(metadata_json, '{}'), ?) WHERE id = ?")
           .run(prestigenMeta, skill.id);
       }
 
@@ -1239,6 +1240,14 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const { choice } = req.body;
 
       if (!choice) return res.status(400).json({ ok: false, error: 'choice_required' });
+      // SECURITY (playtest #P1): `choice` is spliced verbatim into the NPC's LLM
+      // dialogue prompt below. It MUST be one of the known dialogue keys —
+      // otherwise a player can inject prompt text ("Ignore prior instructions…")
+      // and jailbreak the NPC. Whitelist before it reaches the prompt.
+      const VALID_CHOICES = new Set(['quest', 'trade', 'ask_work', 'ask_world', 'goodbye']);
+      if (!VALID_CHOICES.has(choice)) {
+        return res.status(400).json({ ok: false, error: 'invalid_choice' });
+      }
 
       // Fetch NPC state
       const npc = db.prepare("SELECT * FROM world_npcs WHERE id = ? AND world_id = ?").get(npcId, worldId);
@@ -2210,6 +2219,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const reachCheck = _validateCombatReach(userId, npcPosRow, skillData);
       if (!reachCheck.ok) {
         logger.warn?.('worlds', 'combat_reach_rejected', { userId, npcId, ...reachCheck });
+        recordCombatReject("reach", req.params.worldId);  // E1 — desync-rate telemetry
         return res.status(422).json({ ok: false, error: "out_of_range", distance: reachCheck.distance, allowedRange: reachCheck.allowedRange });
       }
 
@@ -2248,6 +2258,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       });
       if (!dmgCheck.ok) {
         logger.warn?.('worlds', 'combat_damage_rejected', { userId, npcId, ...dmgCheck });
+        recordCombatReject("damage", req.params.worldId);  // E1 — desync-rate telemetry
         return res.status(422).json({ ok: false, error: "damage_cap_exceeded", reason: dmgCheck.reason });
       }
 

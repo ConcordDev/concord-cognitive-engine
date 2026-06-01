@@ -42,7 +42,7 @@ file `server/dtus.js` is a further 145,612 lines.)
 
 ## What's actually shipping (architectural)
 
-- **Five-brain LLM stack.** Conscious (`concord-conscious:latest`, a custom model built on qwen2.5) + Subconscious (`qwen2.5:7b-instruct-q4_K_M`) + Utility (`qwen2.5:3b`) + Repair (`qwen2.5:0.5b`) + Vision (`llava:13b-v1.6-vicuna-q4_K_M`) running on local Ollama. Each on its own port (11434–11438). Auto-pulled at boot. Models are env-overridable. Conscious gets chat / deep reasoning; Utility handles ~65% of lens actions; Repair vets dialogue + DTU pre-marketplace; Subconscious runs dream cycles + autogen; Vision handles image understanding. `ctx.llm.chat()` falls back to subconscious; per-user bring-your-own external API keys route per-brain-slot through the BYO key router.
+- **Five-brain LLM stack.** Conscious (`concord-conscious:latest`, a custom model built on qwen2.5) + Subconscious (`qwen2.5:7b-instruct-q4_K_M`) + Utility (`qwen2.5:3b`) + Repair (`qwen2.5:0.5b`) + Vision (`qwen2.5vl:7b`) running on local Ollama. Each on its own port (11434–11438). Auto-pulled at boot. Models are env-overridable. Conscious gets chat / deep reasoning; Utility handles ~65% of lens actions; Repair vets dialogue + DTU pre-marketplace; Subconscious runs dream cycles + autogen; Vision handles image understanding. `ctx.llm.chat()` falls back to subconscious; per-user bring-your-own external API keys route per-brain-slot through the BYO key router.
 
 - **DTU substrate** with 33:1 compression. Regular → MEGA (5–20 originals) → HYPER (50–200) every 30 ticks. No hard DTU ceiling — memory pressure is governed against `MAX_OLD_SPACE_SIZE` (~1.5M DTU capacity at the 32GB-heap default). Compression pipeline runs on heartbeat — confirmed live, not architectural ambition.
 

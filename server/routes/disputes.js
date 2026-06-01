@@ -60,7 +60,7 @@ export default function createDisputeRouter({ db, requireAuth, adminOnly }) {
 
       // Look up the transaction to find the seller
       const transaction = db.prepare(
-        "SELECT * FROM ledger WHERE id = ? OR ref_id = ? LIMIT 1"
+        "SELECT * FROM economy_ledger WHERE id = ? OR ref_id = ? LIMIT 1"
       ).get(transactionId, transactionId);
 
       // Determine reported user (seller) from transaction context

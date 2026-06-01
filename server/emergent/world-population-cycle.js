@@ -256,7 +256,7 @@ function persistBackstorySafe(db, npcId, backstory) {
     // narrative_context column may not exist on minimal builds — write to
     // procedural_npcs table instead if present.
     try {
-      db.prepare(`UPDATE procedural_npcs SET backstory = ? WHERE id = ?`).run(backstory, npcId);
+      db.prepare(`UPDATE procedural_npcs SET backstory = ? WHERE npc_id = ?`).run(backstory, npcId);
     } catch { /* nowhere to persist — backstory lost, NPC still alive */ }
   }
 }

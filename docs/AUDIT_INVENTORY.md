@@ -61,7 +61,7 @@ Every number below comes from a `grep`, `ls`, or `wc` against the working tree a
 | Subconscious | `qwen2.5:7b-instruct-q4_K_M` | 11435 | Autogen, dream, evolution, synthesis, birth |
 | Utility | `qwen2.5:3b` | 11436 | Lens interactions, entity actions, quick domain tasks |
 | Repair | `qwen2.5:0.5b` | 11437 | Error detection, auto-fix, runtime repair |
-| Multimodal / Vision | `llava:13b-v1.6-vicuna-q4_K_M` | 11438 | Image understanding, food vision, document layout |
+| Multimodal / Vision | `qwen2.5vl:7b` | 11438 | Image understanding, food vision, document layout |
 
 `ctx.llm.chat()` routes to conscious, falls back to subconscious. **There is no OpenAI emergency-fallback path anymore** — when a user supplies an external API key, their individual brain slots route through the BYO key router (`server/lib/` BYO router, migration 170 `byo_brain_overrides`).
 

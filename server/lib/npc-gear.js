@@ -200,9 +200,9 @@ export function updateUserGearCeiling(db) {
     // Use max gear level from users active in the past 7 days
     // Proxy: max gear_level among player_inventory items for recently-seen users
     const row = db.prepare(`
-      SELECT MAX(CAST(json_extract(metadata, '$.gear_level') AS INTEGER)) AS top_level
+      SELECT MAX(CAST(json_extract(metadata_json, '$.gear_level') AS INTEGER)) AS top_level
       FROM dtus
-      WHERE type = 'item' AND owner_type = 'user'
+      WHERE type = 'item'
         AND updated_at > ?
     `).get(cutoff);
 

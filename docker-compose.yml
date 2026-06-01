@@ -52,7 +52,7 @@ services:
       # vision domain action. New service below; default model is the
       # 13b LLaVA at q4 to keep alongside the brains.
       - BRAIN_VISION_URL=${BRAIN_VISION_URL:-http://ollama-vision:11434}
-      - BRAIN_VISION_MODEL=${BRAIN_VISION_MODEL:-llava:13b-v1.6-vicuna-q4_K_M}
+      - BRAIN_VISION_MODEL=${BRAIN_VISION_MODEL:-qwen2.5vl:7b}
       # GPU embeddings via Ollama. nomic-embed-text is 768-dim and ~50×
       # faster than the CPU Xenova fallback on this hardware.
       - CONCORD_EMBED_BACKEND=${CONCORD_EMBED_BACKEND:-ollama}

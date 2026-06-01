@@ -131,8 +131,8 @@ export function ensureNpcAuthoredSkills(db, npc) {
     const existing = db.prepare(`
       SELECT id FROM dtus
       WHERE creator_id = ?
-        AND kind IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe', 'code_artifact')
-        AND meta_json LIKE ?
+        AND type IN ('skill', 'spell_recipe', 'fighting_style_recipe', 'recipe', 'code_artifact')
+        AND metadata_json LIKE ?
       LIMIT 1
     `).get(npc.id, `%"author_kind":"npc"%`);
     if (existing) { touched.push({ id: existing.id, action: "already_existed" }); continue; }
@@ -291,7 +291,7 @@ export function seedNamedCharacterLineage(db, npcId, targetDepth) {
   // Ensure the NPC has at least one recipe.
   ensureNpcAuthoredSkills(db, npc);
   const recipe = db.prepare(`
-    SELECT * FROM dtus WHERE creator_id = ? AND meta_json LIKE ? LIMIT 1
+    SELECT * FROM dtus WHERE creator_id = ? AND metadata_json LIKE ? LIMIT 1
   `).get(npcId, `%"author_kind":"npc"%`);
   if (!recipe) return { ok: false, reason: "no_recipe_after_seed" };
 

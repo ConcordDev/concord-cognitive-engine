@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
-import { up as migrateVerifiedHuman } from "../migrations/293_verified_human.js";
+import { up as migrateVerifiedHuman } from "../migrations/314_verified_human.js";
 import {
   verifyHuman, setBadgeVisible, isVerifiedHuman, badgeVisibleFor, filterVerifiedHuman, statusFor,
 } from "../lib/verified-human.js";

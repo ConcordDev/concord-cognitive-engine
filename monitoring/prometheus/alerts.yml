@@ -147,3 +147,16 @@ groups:
         annotations:
           summary: "Concord server recently restarted"
           description: "Uptime is {{ $value }}s — server restarted recently"
+
+      # E1 — desync-rate telemetry. A sustained spike in server-side combat rejects
+      # (out-of-reach / over-damage-cap) means either a desync storm (clients and
+      # server disagree on position/state) or a coordinated exploit attempt. Either
+      # way it's a player-experience + security signal worth paging on.
+      - alert: ConcordDesyncSpike
+        expr: sum(rate(concord_combat_reach_rejected_total[5m]) + rate(concord_combat_damage_rejected_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Combat reject rate elevated (possible desync or exploit attempt)"
+          description: "Server-side combat anti-cheat is rejecting >1 attack/s sustained for 10m. Check for client desync (position drift) or an exploit probe; inspect combat_reach_rejected / combat_damage_rejected log lines."

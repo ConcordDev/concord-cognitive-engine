@@ -75,10 +75,11 @@ export function exportUserCorpus(db, userId, opts = {}) {
   let citations = [];
   try {
     citations = db.prepare(`
-      SELECT * FROM dtu_citations
-      WHERE creator_id = ? OR parent_creator_id = ?
-      ORDER BY created_at ASC LIMIT ?
-    `).all(userId, userId, limit);
+      SELECT c.* FROM dtu_citations c
+      JOIN dtus d ON d.id = c.dtu_id
+      WHERE d.creator_id = ?
+      ORDER BY c.last_cited ASC LIMIT ?
+    `).all(userId, limit);
   } catch { /* citations table may not be present in minimal builds */ }
 
   // Economy ledger (optional, scoped to user)
@@ -87,9 +88,9 @@ export function exportUserCorpus(db, userId, opts = {}) {
     try {
       ledger = db.prepare(`
         SELECT * FROM economy_ledger
-        WHERE buyer_id = ? OR seller_id = ? OR creator_id = ?
+        WHERE from_user_id = ? OR to_user_id = ?
         ORDER BY created_at ASC LIMIT ?
-      `).all(userId, userId, userId, limit);
+      `).all(userId, userId, limit);
     } catch { /* economy_ledger optional */ }
   }
 

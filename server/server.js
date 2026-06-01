@@ -40,6 +40,8 @@ try { fs.mkdirSync(path.join(DATA_DIR, 'seed'), { recursive: true }); } catch { 
 import express from "express";
 import cors from "cors";
 import crypto from "crypto";
+import { checkMacroArgs, validateRegistry } from "./lib/macro-contract.js";
+import { startSSE } from "./lib/sse.js";
 import fs from "fs";
 import path from "path";
 import zlib from "zlib";
@@ -157,6 +159,17 @@ registerHeartbeat("world-health-monitor", {
   frequency: 960,
   scope: "global",
   handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
+});
+
+// E2 — economy-anomaly cycle. Rolls world-health detectPathologies (negative_balance /
+// dupe_citation) + the wash-trade history into concord_econ_anomaly_total and pages
+// Critical kinds via bug-triage → error-alerting. Observe-only (never mutates ledgers).
+// Kill-switch CONCORD_ECON_ANOMALY=0. freq 240 (~1h), scope global.
+import { runEconomyAnomalyCycle } from "./emergent/economy-anomaly-cycle.js";
+registerHeartbeat("economy-anomaly-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db } = {}) => runEconomyAnomalyCycle({ db }),
 });
 
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
@@ -1257,6 +1270,8 @@ import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.
 // Wired into runMacro below (rate-limit check + macro:afterExecute hook).
 import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
+// Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
+import { validateParamSchema } from "./lib/macro-param-schema.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
@@ -4938,6 +4953,21 @@ if (db) {
     console.error("[Concord] Migration failed:", e.message);
   }
 
+  // #F1 — materialise lazily-created runtime tables so a FRESH install has a
+  // deterministic schema (no `no such table` on the first JOIN against a table
+  // that's normally created only at its first call site). Every statement is
+  // IF NOT EXISTS, so migration-owned tables are untouched. Best-effort.
+  try {
+    const { ensureRuntimeTables } = await import("./lib/ensure-runtime-tables.js");
+    const rt = ensureRuntimeTables(db);
+    structuredLog("info", "runtime_tables_ensured", {
+      tablesCreated: rt.tablesCreated, indexesCreated: rt.indexesCreated,
+      scanned: rt.scanned, failed: rt.failed,
+    });
+  } catch (e) {
+    structuredLog("warn", "runtime_tables_ensure_failed", { error: e?.message });
+  }
+
   // Make db available to systems that read STATE.db directly (e.g. the
   // refusal-field persistence layer). Modules that already capture `db`
   // via closure are unaffected.
@@ -6890,6 +6920,34 @@ async function initMetrics() {
     METRICS.counters.citationFailures = new prom.Counter({
       name: "concord_citation_integrity_failures_total",
       help: "Total citation integrity check failures",
+      registers: [METRICS.registry]
+    });
+
+    // E1 — desync-rate telemetry. The combat anti-cheat rejects out-of-reach /
+    // over-cap attacks per-request; these aggregate the rejects so a desync storm
+    // or coordinated exploit attempt is visible to Prometheus (alert
+    // `ConcordDesyncSpike` in monitoring/prometheus/alerts.yml). Incremented via
+    // lib/desync-metrics.js#recordCombatReject from routes/worlds.js.
+    METRICS.counters.combatReachRejected = new prom.Counter({
+      name: "concord_combat_reach_rejected_total",
+      help: "Combat attacks rejected by the server-side reach validator (anti-cheat)",
+      labelNames: ["world"],
+      registers: [METRICS.registry]
+    });
+    METRICS.counters.combatDamageRejected = new prom.Counter({
+      name: "concord_combat_damage_rejected_total",
+      help: "Combat attacks rejected by the server-side damage-cap validator (anti-cheat)",
+      labelNames: ["world"],
+      registers: [METRICS.registry]
+    });
+
+    // E2 — economy-anomaly telemetry. The economy-anomaly-cycle heartbeat rolls up
+    // world-health.js#detectPathologies (negative_balance / dupe_citation) + the
+    // wash-trade history into this counter; Critical kinds also page via error-alerting.
+    METRICS.counters.econAnomaly = new prom.Counter({
+      name: "concord_econ_anomaly_total",
+      help: "Economy anomalies detected (negative_balance / dupe_citation / wash_trade)",
+      labelNames: ["kind"],
       registers: [METRICS.registry]
     });
 
@@ -10506,6 +10564,25 @@ globalThis.__CARTOGRAPHER__ = Object.assign(globalThis.__CARTOGRAPHER__ || {}, {
 });
 
 async function runMacro(domain, name, input, ctx) {
+  // Gate A — arg-shape guard (docs/CONTRACT_ENFORCEMENT_STRATEGY.md). The
+  // signature is (domain, name, input, ctx); the #1 recurring bug is calling it
+  // runMacro(ctx, "dtu", "cluster", …) so an object lands as `domain` and gets
+  // dispatched/JSON-walked as garbage (playtest #19/#20 broke DTU consolidation).
+  // One string check at the chokepoint retires the whole class: loud in dev,
+  // clean structured error in prod.
+  {
+    const _argCheck = checkMacroArgs(domain, name);
+    if (!_argCheck.ok) {
+      logger.error("macro-contract", "runMacro arg-shape violation", {
+        reason: _argCheck.reason, gotDomain: typeof domain, gotName: typeof name,
+      });
+      if (process.env.NODE_ENV !== "production") {
+        throw new TypeError(`[macro-contract] runMacro arg-order bug: ${_argCheck.reason} — signature is (domain, name, input, ctx)`);
+      }
+      return { ok: false, error: "macro_contract_violation", reason: _argCheck.reason };
+    }
+  }
+
   // Macro telemetry — single Map.set, ~50ns hot-path cost. Resolves the
   // dispatcher-reach mystery: macros that never fire in 30 days are
   // genuinely dead even when the static parse can't tell.
@@ -11084,9 +11161,13 @@ async function runMacro(domain, name, input, ctx) {
         (_c2founderOverrideAllowed(ctx) && (ctx?.reqMeta?.override === true || input?.override === true));
       _c2log("c2.guard", "inLatticeReality evaluated", { domain, name, ok: c2.ok, severity: c2.severity, reason: c2.reason, allowOverride });
       if (!allowOverride) {
-        const err = new Error(`c2_guard_reject:${c2.reason}`);
-        err.meta = { c2 };
-        throw err;
+        // A Chicken2 guard rejection is a NORMAL outcome (a candidate scored
+        // harmful), not an exception. Return a structured rejection so a single
+        // guard-blocked DTU skips cleanly instead of throwing out of the whole
+        // pass (playtest #16 — one "harm"-scored DTU aborted the entire
+        // gapPromote consolidation). Callers see {ok:false}; the route surfaces a
+        // clean 200-with-ok:false instead of a 500.
+        return { ok: false, error: "c2_guard_reject", reason: c2.reason, severity: c2.severity, blocked: true };
       }
     }
   }
@@ -11130,6 +11211,18 @@ async function runMacro(domain, name, input, ctx) {
     } catch (e) {
       if (e?.message?.startsWith("constitution_violation")) throw e;
       // Non-fatal: don't block macro if constitution module itself fails
+    }
+  }
+
+  // Gate D — per-macro param-schema validation. If the macro declared
+  // spec.paramSchema, validate `input` against it BEFORE the handler runs, so
+  // param-key drift (wrong key #6/#31) or a missing required field (#21) returns a
+  // clean { ok:false, error:"param_validation" } instead of a 500 / silent
+  // wrong-thing. Opt-in + additive — a macro with no paramSchema is unaffected.
+  if (m.spec?.paramSchema) {
+    const pv = validateParamSchema(m.spec.paramSchema, input ?? {});
+    if (!pv.ok) {
+      return { ok: false, error: "param_validation", domain, name, fields: pv.errors };
     }
   }
 
@@ -11740,7 +11833,7 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   const _mmBrain = BRAIN_CONFIG.multimodal;
   const OLLAMA_URL = _mmBrain.url || process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "";
   if (OLLAMA_URL) {
-    const model = String(_mmBrain.model || process.env.OLLAMA_VISION_MODEL || "llava");
+    const model = String(_mmBrain.model || process.env.OLLAMA_VISION_MODEL || "qwen2.5vl:7b");
     const payload = {
       model,
       messages: [{ role:"user", content: prompt, images: [imageB64] }]
@@ -11940,8 +12033,12 @@ register("goals", "propose", (ctx, input = {}) => {
 
   const goal = result.goal;
   ctx.state.goals.registry.set(goal.id, goal);
+  // Guard the proposal queue + stats — uninitialised on a fresh ctx threw
+  // "reading 'push' of undefined" (playtest #R1). Init lazily, never crash.
+  if (!ctx.state.queues) ctx.state.queues = {};
+  if (!ctx.state.queues.goalProposals) ctx.state.queues.goalProposals = [];
   ctx.state.queues.goalProposals.push({ id: goal.id, createdAt: goal.createdAt });
-  ctx.state.goals.stats.proposed++;
+  if (ctx.state.goals.stats) ctx.state.goals.stats.proposed++;
 
   saveStateDebounced();
   return { ok: true, goal: { id: goal.id, title: goal.title, type: goal.type, state: goal.state } };
@@ -16567,7 +16664,7 @@ async function initGhostFleet() {
     const reality = await import("./emergent/reality-explorer.js");
     GHOST_FLEET_STATUS.modules["reality-explorer"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("explore", "run", (_ctx, input = {}) => reality.exploreAdjacent(input.constraints, input.domain));
+    register("explore", "run", (_ctx, input = {}) => reality.exploreAdjacent(input.constraints || {}, input.domain));
     register("explore", "history", (_ctx, input = {}) => reality.getExplorationHistory(input.limit));
     register("explore", "save", (_ctx, input = {}) => reality.saveExploration(input.id));
 
@@ -16675,16 +16772,44 @@ async function initGhostFleet() {
   return GHOST_FLEET_STATUS;
 }
 
-// Stagger: ghost fleet at T+225s (5th autonomous task, 45s after repair loop)
-// Modules load one-at-a-time with 2s gaps between each.
-// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this so
+// #11 — ghost-fleet registration race. The fleet's modules register their bus
+// macros (quest.*, agent.*, hlr.*, …) synchronously as each module loads, but the
+// whole fleet used to be deferred to T+225s, so for ~4–5 min after boot a player
+// hitting /lenses/quests got `unknown_macro` instead of a real result. The 225s
+// stagger was only to avoid contending with boot-critical work (DB init, migrations,
+// express bind, the governor wired at T+50s) — none of which needs a 4-minute moat.
+// Default lowered to T+20s (past the boot-critical window, before a player realistically
+// navigates to a fleet lens) and the 2s inter-module gaps keep the load gentle.
+// Override with CONCORD_GHOST_FLEET_DELAY_MS. Modules still load one-at-a-time.
+// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this entirely so
 // runtime-introspect doesn't wait ~52s for staggered module loads.
+const GHOST_FLEET_DELAY_MS = Number(process.env.CONCORD_GHOST_FLEET_DELAY_MS) || 20_000;
 if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
   setTimeout(() => {
-    initGhostFleet().catch(err => {
-      structuredLog("error", "ghost_fleet_init_error", { error: err.message });
-    });
-  }, 225_000);
+    initGhostFleet()
+      .then(() => {
+        // Gate B — steady-state registry validator (docs/CONTRACT_ENFORCEMENT_
+        // STRATEGY.md). Runs AFTER ghost-fleet's async registrations land, so a
+        // bus domain that never registered (the #2 never-imported / #11 async-
+        // race classes) is logged loudly here instead of surfacing to a player
+        // as a masked "LLM unavailable".
+        try {
+          const rep = validateRegistry(MACROS);
+          if (!rep.ok) {
+            logger.error("macro-contract", "steady-state registry violations", {
+              count: rep.violations.length, violations: rep.violations.slice(0, 20),
+            });
+          } else {
+            structuredLog("info", "macro_registry_validated", { domains: rep.domains, macros: rep.macros });
+          }
+        } catch (e) {
+          logger.error("macro-contract", "registry validation failed", { error: e?.message });
+        }
+      })
+      .catch(err => {
+        structuredLog("error", "ghost_fleet_init_error", { error: err.message });
+      });
+  }, GHOST_FLEET_DELAY_MS);
 }
 
 // ── Artifact Garbage Collection Timer (weekly) ──────────────────────────
@@ -21081,8 +21206,9 @@ register("dtu", "gapPromote", async (ctx, input) => {
     return simpleHash(tags.slice(0, 30).join("|") + "|" + cluster.map(d=>d.id).slice(0,10).join("|"));
   };
 
-  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion)
-  const clustersRes = await runMacro(ctx, "dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) });
+  // Reuse cluster() macro internally by calling its implementation (avoid endpoint recursion).
+  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
+  const clustersRes = await runMacro("dtu", "cluster", { minCluster, maxClusters: clamp(Number(input.maxClusters||12), 1, 50) }, ctx);
   if (!clustersRes?.ok) return { ok:false, error:"cluster_failed", detail: clustersRes?.error || clustersRes };
   const clusters = Array.isArray(clustersRes.clusters) ? clustersRes.clusters : [];
 
@@ -24381,6 +24507,12 @@ registerRepairMacros(register);
 import registerElementMacros from "./domains/elements.js";
 registerElementMacros(register);
 
+// Minigame resolvers (fishing/karaoke/mahjong/photography + minigames.constants).
+// The domain file was exported but never imported, so the macro bus couldn't
+// reach the real resolvers in lib/minigame-resolvers.js (playtest finding #2).
+import registerMinigameMacros from "./domains/minigames.js";
+registerMinigameMacros(register);
+
 // Phase 1 (UX completeness sprint) — per-lens auto-save drafts. Four
 // macros (save / load / list_mine / delete) powering the useLensDraft
 // hook and the LoadFromSubstrate "Reopen recent" panel that every lens
@@ -25415,9 +25547,10 @@ ClusterSig: ${p.clusterSig}`,
   }
 
   
-  // Gap promotion: periodically synthesize stable clusters into MEGA DTUs
+  // Gap promotion: periodically synthesize stable clusters into MEGA DTUs.
+  // runMacro signature is (domain, name, input, ctx) — ctx is the 4th arg, not the 1st.
   try {
-    await runMacro(ctx, "dtu", "gapPromote", { minCluster: 6, maxPromotions: 1, dryRun: false });
+    await runMacro("dtu", "gapPromote", { minCluster: 6, maxPromotions: 1, dryRun: false }, ctx);
   } catch (_e) { logger.debug('server', 'silent catch', { error: _e?.message }); }
 
 return { ok:true, simulation:true, createdCandidates: created.length, created, matured };
@@ -28284,7 +28417,9 @@ register("persona", "create", (ctx, input={}) => {
 
 register("skill", "create", (ctx, input={}) => {
   const title = String(input.title||"");
-  if (!title) throw new Error("title required");
+  // Validation returns a structured error, never throws (playtest #R2 —
+  // a throw surfaces as macro_uncaught_throw / a 500 instead of {ok:false}).
+  if (!title) return { ok: false, error: "title_required" };
   const id = uid("skill");
   const skill = { id, title, trigger: input.trigger||"", procedure: input.procedure||"", checks: input.checks||"", createdAt: nowISO(), updatedAt: nowISO(), level: 1 };
   // store as DTU for portability
@@ -30505,7 +30640,7 @@ app.use("/api/creative-marketplace", createCreativeMarketplaceRouter({ db, detec
 
 // ===== CONCORD FILM STUDIOS =====
 import createFilmStudioRouter from "./routes/film-studio.js";
-app.use("/api/film-studio", createFilmStudioRouter({ db }));
+app.use("/api/film-studio", createFilmStudioRouter({ db, requireAuth }));
 
 // ===== LENS & CULTURE SYSTEM =====
 import createLensCultureRouter from "./routes/lens-culture.js";
@@ -30513,7 +30648,7 @@ app.use("/api/lens-culture", createLensCultureRouter({ db }));
 import createDTUFormatRouter from "./routes/dtu-format.js";
 app.use("/api/dtu-format", createDTUFormatRouter({ db }));
 import createAPIBillingRouter from "./routes/api-billing.js";
-app.use("/api/billing", createAPIBillingRouter({ db }));
+app.use("/api/billing", createAPIBillingRouter({ db, requireAuth }));
 import createStorageRouter from "./routes/storage.js";
 app.use("/api/storage", createStorageRouter({ db }));
 import createLensComplianceRouter from "./routes/lens-compliance.js";
@@ -37908,9 +38043,30 @@ app.post("/api/lens/run", async (req, res) => {
       const result = await runMacro(domain, action, rest, ctx);
       return res.json({ ok: true, result });
     }
-    // AI-powered catch-all: route unregistered domain actions to utility brain
-    const aiResult = await utilityCall(action, domain, rest);
-    return res.json({ ok: true, result: { ok: aiResult.ok, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
+    // AI-powered catch-all: route unregistered domain actions to the utility
+    // brain (the intentional freeform path). Two hardenings (playtest #3/#25/#27):
+    //  - bound it with a hard timeout so a dead macro can't hang the worker ~96s
+    //    on brain backoff (#27, the slow_request / quality-pipeline hang #T3);
+    //  - on brain failure (e.g. Ollama down, or a never-registered ghost-fleet
+    //    macro #11), return an HONEST `unknown_macro` non-200 instead of a 200
+    //    masking it as a transient "fetch failed" success (#3/#25). When the
+    //    brain genuinely answers, freeform still returns 200 with the output.
+    const CATCHALL_TIMEOUT_MS = Number(process.env.CONCORD_LENS_CATCHALL_TIMEOUT_MS) || 20000;
+    let aiResult, _catchallTimer;
+    try {
+      aiResult = await Promise.race([
+        utilityCall(action, domain, rest),
+        new Promise((_, rej) => { _catchallTimer = setTimeout(() => rej(new Error("catchall_timeout")), CATCHALL_TIMEOUT_MS); }),
+      ]);
+    } catch {
+      return res.status(504).json({ ok: false, error: "unknown_macro", domain, action, detail: "no registered macro; brain catch-all timed out" });
+    } finally {
+      clearTimeout(_catchallTimer);
+    }
+    if (!aiResult?.ok) {
+      return res.status(502).json({ ok: false, error: "unknown_macro", domain, action, detail: aiResult?.error || "no registered macro; brain unavailable" });
+    }
+    return res.json({ ok: true, result: { ok: true, output: aiResult.content || aiResult.error, source: "utility-brain", model: aiResult.model, action, domain } });
   } catch (e) {
     const msg = String(e?.message || e);
     const status = msg.startsWith("forbidden") ? 403 : 500;
@@ -47664,7 +47820,7 @@ async function analyzeImage(imageBuffer, prompt = "Describe this image in detail
   // Use multimodal brain config — respects BRAIN_MULTIMODAL_URL + OLLAMA_VISION_MODEL
   const brain = BRAIN_CONFIG.multimodal;
   const OLLAMA_URL = brain.url || process.env.OLLAMA_HOST || "";
-  const VISION_MODEL = brain.model || "llava";
+  const VISION_MODEL = brain.model || "qwen2.5vl:7b";
 
   try {
     const base64 = imageBuffer.toString("base64");
@@ -50401,7 +50557,7 @@ app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, re
       SELECT world_id, is_swimming, swim_depth, last_position
       FROM world_visits
       WHERE user_id = ? AND departed_at IS NULL
-      ORDER BY entered_at DESC LIMIT 1
+      ORDER BY arrived_at DESC LIMIT 1
     `).get(userId);
 
     if (!visit || !visit.is_swimming) {
@@ -50425,10 +50581,10 @@ app.get("/api/players/me/dive-state", requireAuth(), asyncHandler(async (req, re
     } catch { /* malformed */ }
     try {
       sonar = db.prepare(`
-        SELECT id, species_id AS speciesId, current_depth AS depth,
+        SELECT id, species_id AS speciesId, y AS depth,
                x, z
-        FROM creature_swim_depth
-        WHERE world_id = ? AND ABS(current_depth - ?) < 8
+        FROM world_npcs
+        WHERE world_id = ? AND ABS(y - ?) < 8 AND species_id IS NOT NULL
         LIMIT 8
       `).all(visit.world_id, visit.swim_depth).map(r => ({
         id: r.id,
@@ -55340,10 +55496,7 @@ app.get("/api/admin/logs", requireAuth(), requireRole("owner"), asyncHandler(asy
 app.get("/api/admin/logs/stream", requireAuth(), requireRole("owner"), asyncHandler(async (req, res) => {
   let logMod;
   try { logMod = await import("./logger.js"); } catch { return res.status(500).end(); }
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
+  startSSE(res);
 
   const buf = logMod.getBuffer();
   let lastIndex = buf.length;
@@ -73048,7 +73201,8 @@ register("embodied", "signals_for_player", async (ctx, input = {}) => {
     // combat-reach validator uses, so HUD readings match the
     // server-side ground truth.
     const pos = db.prepare(`
-      SELECT x, z FROM city_presence WHERE user_id = ? AND world_id = ?
+      SELECT json_extract(last_position, '$.x') AS x, json_extract(last_position, '$.z') AS z
+      FROM world_visits WHERE user_id = ? AND world_id = ? AND departed_at IS NULL
     `).get(userId, worldId);
     const sigMod = await import("./lib/embodied/signals.js");
     const signals = sigMod.signalsForWorld(db, worldId, pos ? { x: pos.x, z: pos.z } : null);
@@ -74839,9 +74993,9 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
     // Get revision counts per NPC over the last N hours.
     const cutoff = Math.floor(Date.now() / 1000) - (Number(windowHours) * 3600);
     const rows = db.prepare(`
-      SELECT npc_id, COUNT(*) AS rev_count
-      FROM skill_revisions WHERE created_at >= ?
-      GROUP BY npc_id
+      SELECT author_id AS npc_id, COUNT(*) AS rev_count
+      FROM skill_revisions WHERE created_at >= ? AND author_kind = 'npc'
+      GROUP BY author_id
     `).all(cutoff).filter((r) => r.npc_id);
     if (rows.length === 0) return { ok: true, scanned: 0, alerts: [] };
     const counts = rows.map(r => r.rev_count);
@@ -74856,9 +75010,9 @@ register("psyops", "scan_skill_divergence", (_ctx, input = {}) => {
         let mentor = null;
         try {
           const m = db.prepare(`
-            SELECT author_user_id, COUNT(*) AS n FROM skill_revisions
-            WHERE npc_id = ? AND created_at >= ?
-            GROUP BY author_user_id ORDER BY n DESC LIMIT 1
+            SELECT author_id AS author_user_id, COUNT(*) AS n FROM skill_revisions
+            WHERE author_id = ? AND created_at >= ?
+            GROUP BY author_id ORDER BY n DESC LIMIT 1
           `).get(r.npc_id, cutoff);
           mentor = m?.author_user_id || null;
         } catch { /* skill_revisions schema may differ */ }

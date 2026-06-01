@@ -247,8 +247,19 @@ export function getOrInitPlayerBars(db, userId, worldId) {
 /**
  * Deduct resource bar cost. Returns { ok, bars, reason? }
  */
+// SECURITY (playtest #L2): barType is interpolated into the UPDATE SET clause
+// below, and better-sqlite3 does NOT parameterize identifiers. barType comes from
+// a user/LLM-authored skill DTU's `data.resource_bar`, so it MUST be whitelisted
+// against the real deductible columns first — otherwise a crafted value injects
+// the SET clause (`mana = 99999, stamina = 99999` → free-resource cheat) or an
+// unknown one crashes the cast with `no such column`.
+const RESOURCE_BAR_COLUMNS = new Set(["hp", "mana", "stamina", "bio_power", "perception"]);
+
 export function consumeResourceBar(db, userId, worldId, barType, cost) {
   const bars = getOrInitPlayerBars(db, userId, worldId);
+  if (!RESOURCE_BAR_COLUMNS.has(barType)) {
+    return { ok: false, bars, reason: `invalid_resource_bar:${barType}` };
+  }
   const current = bars[barType] ?? 0;
 
   if (current < cost) {

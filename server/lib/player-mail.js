@@ -31,7 +31,7 @@ const DEFAULT_TTL_DAYS = 30;
  * @param {number}   [input.codCc]
  * @param {string}   [input.worldId]
  * @param {Function} [input.walletDebit] - optional override; default uses
- *                   the `user_wallets` table directly.
+ *                   the `users` wallet column directly.
  * @returns {{ ok, id?, error? }}
  */
 export function sendMail(db, input) {
@@ -292,14 +292,14 @@ function _parseJsonArray(s) {
   try { return JSON.parse(s) || []; } catch { return []; }
 }
 
-/** Lightweight wallet debit — uses user_wallets directly (no royalty cascade). */
+/** Lightweight wallet debit — uses users.concordia_credits directly (no royalty cascade). */
 function _walletDebit(db, userId, amount, reason) {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: true };
   try {
-    const row = db.prepare(`SELECT balance FROM user_wallets WHERE user_id = ?`).get(userId);
+    const row = db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id = ?`).get(userId);
     const balance = Number(row?.balance) || 0;
     if (balance < amount) return { ok: false, error: "insufficient_funds" };
-    db.prepare(`UPDATE user_wallets SET balance = balance - ? WHERE user_id = ?`).run(amount, userId);
+    db.prepare(`UPDATE users SET concordia_credits = concordia_credits - ? WHERE id = ?`).run(amount, userId);
     try {
       db.prepare(`
         INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
@@ -316,9 +316,8 @@ function _walletCredit(db, userId, amount, reason) {
   if (!Number.isFinite(amount) || amount <= 0) return { ok: true };
   try {
     db.prepare(`
-      INSERT INTO user_wallets (user_id, balance) VALUES (?, ?)
-      ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
-    `).run(userId, amount);
+      UPDATE users SET concordia_credits = concordia_credits + ? WHERE id = ?
+    `).run(amount, userId);
     try {
       db.prepare(`
         INSERT INTO reward_ledger (id, user_id, kind, amount_cc, ts, ref_id)
