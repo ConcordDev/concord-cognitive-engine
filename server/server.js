@@ -25037,6 +25037,9 @@ registerLedgerMacros(register);
 import registerArcMacros from "./domains/arc.js";
 registerArcMacros(register);
 
+import registerCompletionMacros from "./domains/completion.js";
+registerCompletionMacros(register);
+
 // Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
 import registerPatternsMacros from "./domains/patterns.js";
 registerPatternsMacros(register);
