@@ -1,0 +1,72 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "purpose": "Industry rollups for sere. Each industry names jobs, raw inputs, processed outputs, and seasonal cadence. Used by the world-economy heartbeat to model price + scarcity + production cycles.",
+  "dominant_industry": "primary",
+  "skill_domain_alignment": "industry",
+  "industries": [
+    {
+      "id": "primary",
+      "category": "[AUTHOR: primary|secondary|tertiary|exotic]",
+      "jobs_referenced": [
+        "[AUTHOR]"
+      ],
+      "inputs": [
+        "[AUTHOR]"
+      ],
+      "outputs": [
+        "[AUTHOR]"
+      ],
+      "seasonal_peak": "[AUTHOR]",
+      "key_kingdoms": [
+        "[AUTHOR]"
+      ],
+      "cross_world_exports_to": [
+        "[AUTHOR — list of other worldIds that import this]"
+      ],
+      "notes": "[AUTHOR]"
+    },
+    {
+      "id": "secondary",
+      "category": "[AUTHOR: primary|secondary|tertiary|exotic]",
+      "jobs_referenced": [
+        "[AUTHOR]"
+      ],
+      "inputs": [
+        "[AUTHOR]"
+      ],
+      "outputs": [
+        "[AUTHOR]"
+      ],
+      "seasonal_peak": "[AUTHOR]",
+      "key_kingdoms": [
+        "[AUTHOR]"
+      ],
+      "cross_world_exports_to": [
+        "[AUTHOR — list of other worldIds that import this]"
+      ],
+      "notes": "[AUTHOR]"
+    },
+    {
+      "id": "tertiary",
+      "category": "[AUTHOR: primary|secondary|tertiary|exotic]",
+      "jobs_referenced": [
+        "[AUTHOR]"
+      ],
+      "inputs": [
+        "[AUTHOR]"
+      ],
+      "outputs": [
+        "[AUTHOR]"
+      ],
+      "seasonal_peak": "[AUTHOR]",
+      "key_kingdoms": [
+        "[AUTHOR]"
+      ],
+      "cross_world_exports_to": [
+        "[AUTHOR — list of other worldIds that import this]"
+      ],
+      "notes": "[AUTHOR]"
+    }
+  ]
+}

@@ -197,31 +197,41 @@ function _persistAuthoredNpcToWorld(db, npc, defaultWorldId) {
   const universeType = npc.universe_type || null;
   const npcType = npc.npc_type || (npc.role ? "role" : "generic");
   const spawnLoc = JSON.stringify({ x: pos.x, y: 0, z: pos.z });
+  // Persist authored identity into world_npcs.state so npcNameFromRow() returns
+  // the real name (not the archetype fallback) — this is what the relationship
+  // name-index (seedAuthoredRelationships) + dialogue resolve against. On
+  // conflict we json_patch so a re-seed refreshes name/title without clobbering
+  // runtime state keys (intent_rung, combat_state mirror, etc.).
+  const stateSeed = {};
+  if (npc.name) stateSeed.name = String(npc.name);
+  if (npc.title) stateSeed.title = String(npc.title);
+  const stateJson = JSON.stringify(stateSeed);
 
   try {
     db.prepare(`
       INSERT INTO world_npcs (
         id, world_id, npc_type, archetype, faction, universe_type,
-        spawn_location, current_location, x, y, z,
+        spawn_location, current_location, state, x, y, z,
         is_dead, is_immortal, is_conscious, created_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, unixepoch())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, unixepoch())
       ON CONFLICT(id) DO UPDATE SET
         world_id      = excluded.world_id,
         archetype     = excluded.archetype,
         faction       = excluded.faction,
         universe_type = excluded.universe_type,
+        state         = json_patch(COALESCE(world_npcs.state, '{}'), excluded.state),
         is_immortal   = excluded.is_immortal,
         is_conscious  = excluded.is_conscious,
         x             = COALESCE(world_npcs.x, excluded.x),
         z             = COALESCE(world_npcs.z, excluded.z)
     `).run(
-      // 11 bind params, matching the 11 ? above. Column order:
+      // bind params matching the ? above. Column order:
       // id, world_id, npc_type, archetype, faction, universe_type,
-      // spawn_location, current_location, x, z, is_immortal, is_conscious
+      // spawn_location, current_location, state, x, z, is_immortal, is_conscious
       // (y, is_dead, created_at are inlined as 0/0/unixepoch()).
       npc.id, worldId, npcType, archetype, factionId, universeType,
-      spawnLoc, spawnLoc, pos.x, pos.z,
+      spawnLoc, spawnLoc, stateJson, pos.x, pos.z,
       isImmortal, isConscious,
     );
     return true;
@@ -460,10 +470,22 @@ function upsertWorldRow(db, meta) {
   const name = meta.world_name || meta.world_id;
   const universeType = meta.universe_type;
   const description = meta.description || "";
+  // Persist per-world modulators from meta (the columns existed but were never
+  // written). A `fiction` flag (e.g. "satire") rides inside rule_modulators so
+  // the frontend can read it from the world row to show the in-world frame banner
+  // and so provenance travels with the world.
+  const physics = JSON.stringify(meta.physics_modulators || {});
+  const rule = JSON.stringify({
+    ...(meta.rule_modulators || {}),
+    ...(meta.fiction ? { fiction: String(meta.fiction) } : {}),
+  });
   db.prepare(`
-    INSERT OR IGNORE INTO worlds (id, name, universe_type, description)
-    VALUES (?, ?, ?, ?)
-  `).run(id, name, universeType, description);
+    INSERT INTO worlds (id, name, universe_type, description, physics_modulators, rule_modulators)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      physics_modulators = excluded.physics_modulators,
+      rule_modulators    = excluded.rule_modulators
+  `).run(id, name, universeType, description, physics, rule);
 }
 
 function seedQuestFile(quests) {

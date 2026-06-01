@@ -1,0 +1,147 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "hours_per_day": 24,
+  "minutes_per_hour": 60,
+  "days_per_month": 30,
+  "months_per_year": 12,
+  "days_per_year": 360,
+  "moons": 1,
+  "moon_lore": "[AUTHOR] Moon lore for sere. Replace with canon.",
+  "temperature_units": "celsius",
+  "biome_note": "[AUTHOR] Biome distribution note for sere.",
+  "day_phases": [
+    {
+      "id": "dawn",
+      "start_hour": 5,
+      "end_hour": 8,
+      "label": "Dawn",
+      "kind": "first_light"
+    },
+    {
+      "id": "morning",
+      "start_hour": 9,
+      "end_hour": 12,
+      "label": "Morning",
+      "kind": "labour_watch"
+    },
+    {
+      "id": "midday",
+      "start_hour": 13,
+      "end_hour": 16,
+      "label": "Midday",
+      "kind": "high_sun"
+    },
+    {
+      "id": "evenfall",
+      "start_hour": 17,
+      "end_hour": 20,
+      "label": "Evenfall",
+      "kind": "trade_watch"
+    },
+    {
+      "id": "vigil",
+      "start_hour": 21,
+      "end_hour": 24,
+      "label": "Vigil",
+      "kind": "first_moon"
+    },
+    {
+      "id": "depths",
+      "start_hour": 1,
+      "end_hour": 4,
+      "label": "Depths",
+      "kind": "deep_night"
+    }
+  ],
+  "months": [
+    {
+      "id": "month_1",
+      "label": "[AUTHOR] Month 1",
+      "season": "season_a",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_2",
+      "label": "[AUTHOR] Month 2",
+      "season": "season_a",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_3",
+      "label": "[AUTHOR] Month 3",
+      "season": "season_a",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_4",
+      "label": "[AUTHOR] Month 4",
+      "season": "season_b",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_5",
+      "label": "[AUTHOR] Month 5",
+      "season": "season_b",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_6",
+      "label": "[AUTHOR] Month 6",
+      "season": "season_b",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_7",
+      "label": "[AUTHOR] Month 7",
+      "season": "season_c",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_8",
+      "label": "[AUTHOR] Month 8",
+      "season": "season_c",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_9",
+      "label": "[AUTHOR] Month 9",
+      "season": "season_c",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_10",
+      "label": "[AUTHOR] Month 10",
+      "season": "season_d",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_11",
+      "label": "[AUTHOR] Month 11",
+      "season": "season_d",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    },
+    {
+      "id": "month_12",
+      "label": "[AUTHOR] Month 12",
+      "season": "season_d",
+      "temperature_band": "[AUTHOR]",
+      "cultural_notes": "[AUTHOR]"
+    }
+  ],
+  "notes": [
+    "[AUTHOR] Replace placeholder strings before shipping to canon.",
+    "Scaffolded by world-kit-templates.js — genre: standard, hours/day: 24."
+  ]
+}

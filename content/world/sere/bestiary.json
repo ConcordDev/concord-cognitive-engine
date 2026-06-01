@@ -1,0 +1,71 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "purpose": "Bestiary for sere. Each entry feeds the fauna-spawner, the loot tables, and the bestiary lens. SATIRE world — fauna is sparse and worn; the only awe left is anomalous.",
+  "creatures": [
+    {
+      "id": "tithe_rat",
+      "kind": "prey",
+      "origin": "earth_import",
+      "habitats": ["old_capital", "furnace_belt", "drowned_provinces"],
+      "behavior_pattern": "flock",
+      "power_tier": "novice",
+      "drops": ["scrap", "lampfuel_residue"],
+      "lore": "Thrives wherever the Mark concentrates and the people thin. Eight centuries of extraction culled almost everything; the tithe rat it fed.",
+      "cross_world_corollary": "The commensal vermin that followed humanity onto the arks — Tunya tags the same lineage earth_import."
+    },
+    {
+      "id": "ledger_crow",
+      "kind": "prey",
+      "origin": "earth_import",
+      "habitats": ["spire_city", "old_capital", "offshore_haven"],
+      "behavior_pattern": "flock",
+      "power_tier": "novice",
+      "drops": ["black_feather", "shiny_token"],
+      "lore": "Roosts on the Clearing Spire's ledges; collects coins it cannot spend. The clerks consider it lucky. The clerks are wrong about most things.",
+      "cross_world_corollary": "Corvid intelligence the arks carried out; on Tunya its descendants are native-adjacent."
+    },
+    {
+      "id": "furnace_hound",
+      "kind": "predator",
+      "origin": "earth_import",
+      "habitats": ["furnace_belt", "old_capital"],
+      "behavior_pattern": "patrol",
+      "power_tier": "standard",
+      "drops": ["hide", "sinew", "scrap"],
+      "lore": "Feral descendants of the foundry-combine's guard dogs, bred for the order book and then abandoned when the contract changed. They still patrol fences that no longer enclose anything.",
+      "cross_world_corollary": "Domestic canid gone feral — the same stock that walked off the arks elsewhere."
+    },
+    {
+      "id": "drowned_eel",
+      "kind": "predator",
+      "origin": "native",
+      "habitats": ["flooded_lowland", "drowned_provinces", "river_delta"],
+      "behavior_pattern": "ambush",
+      "power_tier": "standard",
+      "drops": ["eel_flesh", "oil_gland"],
+      "lore": "Native to the lowlands the rising water reclaimed. It learned the new shorelines faster than the people did.",
+      "cross_world_corollary": "No corollary — a true Sere native, one of the few."
+    },
+    {
+      "id": "deep_watcher",
+      "kind": "hazard",
+      "origin": "anomaly",
+      "habitats": ["offshore_haven", "drowned_provinces", "open_ocean", "high_sky"],
+      "behavior_pattern": "solitary",
+      "power_tier": "mythic_boss",
+      "drops": ["anomalous_resonance"],
+      "lore": "Documented anomalies in Sere's oceans and skies that MIGHT indicate a presence older than the realms — or older than humanity's arrival. Sonar returns that shouldn't exist; lights under the water that hold formation; a shape the Quiet Fall's founding season never explained. The world ships the EVIDENCE, not the VERDICT: candidate explanations range from natural phenomena and instrument error to a non-native intelligence the Curtain was stood up to bury. Investigate it; the world will not tell you what it is.",
+      "cross_world_corollary": "Unknown — and that is the point. Whether the Deep Watchers and the Quiet Fall are the same story is a thing the player weighs, never a thing Sere confirms.",
+      "anomaly": {
+        "queryable": true,
+        "confirmed": false,
+        "candidate_explanations": [
+          "natural phenomenon / instrument error",
+          "salvaged Verge ordnance lost at sea",
+          "a non-native intelligence predating the realms (linked to the Quiet Fall)"
+        ]
+      }
+    }
+  ]
+}

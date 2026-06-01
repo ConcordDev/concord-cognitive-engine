@@ -1,0 +1,22 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "purpose": "Per-faction / per-kingdom naming patterns for sere. The npc-spawner reads this to generate plausible names. Authored examples anchor the procedural generator.",
+  "genre": "standard",
+  "patterns": [
+    {
+      "faction_or_kingdom": "[AUTHOR — primary faction id]",
+      "first_name_pattern": "[AUTHOR: consonant clusters + vowel patterns]",
+      "last_name_pattern": "[AUTHOR]",
+      "examples": [
+        "[AUTHOR Name 1]",
+        "[AUTHOR Name 2]",
+        "[AUTHOR Name 3]"
+      ],
+      "etymology": "[AUTHOR — what these names mean in-world]"
+    }
+  ],
+  "forbidden_patterns": [
+    "[AUTHOR — names that conflict with other worlds' canon]"
+  ]
+}
