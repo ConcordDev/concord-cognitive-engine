@@ -415,6 +415,7 @@ const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBea
 const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterLayer'), { ssr: false });
 const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay'), { ssr: false });
 const WorldTintOverlay = dynamic(() => import('@/components/world/WorldTintOverlay'), { ssr: false });
+const SereFrameBanner = dynamic(() => import('@/components/world/SereFrameBanner'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -4945,6 +4946,8 @@ export default function WorldLensPage() {
           {/* Consumer for concordia:world-tint (was a dead wire) — renders the
               time-loop expiry red wash as a DOM overlay. */}
           <WorldTintOverlay />
+          {/* One-time satire/fiction framing for fiction worlds (Sere). */}
+          <SereFrameBanner worldId={activeDistrict.id} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />

@@ -236,6 +236,20 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
+  // GET /api/worlds/:worldId/frame — read-only world framing (fiction provenance).
+  // Drives the in-world satire/fiction banner. Public-safe: only name + the
+  // fiction flag stored in rule_modulators.
+  router.get("/:worldId/frame", (req, res) => {
+    try {
+      const w = db.prepare("SELECT name, rule_modulators FROM worlds WHERE id = ?").get(req.params.worldId);
+      let fiction = null;
+      try { fiction = JSON.parse(w?.rule_modulators || "{}").fiction || null; } catch { /* ignore */ }
+      res.json({ ok: true, worldId: req.params.worldId, name: w?.name || null, fiction });
+    } catch {
+      res.json({ ok: true, worldId: req.params.worldId, name: null, fiction: null });
+    }
+  });
+
   // GET /api/worlds/:worldId/quests — list quests in a world
   router.get("/:worldId/quests", requireAuth, async (req, res) => {
     const { worldId } = req.params;
