@@ -46,6 +46,7 @@ const AUTH_NAMES = new Set([
   "requireAdmin",
   "requireAdminRole",
   "requireRole",
+  "adminGate", // local alias for requireRole("owner","admin","sovereign") (e.g. routes/brains.js)
   "requireApiKey",
   "requireToken",
   "requireSession",
