@@ -16,10 +16,44 @@
 import {
   listActiveCrossWorldSchemes,
   advanceCrossWorldScheme,
+  proposeCrossWorldScheme,
 } from "../lib/cross-world-schemes.js";
 import { getKillSwitchMode } from "../lib/cross-world-economy.js";
 
 const MAX_PER_PASS = 25;
+const PROPOSE_MAX = 3;       // new schemes opened per pass
+const PROPOSE_MIN_RESONANCE = 50;
+
+// Open new cross-world schemes along authored RIVAL ties that don't yet have an
+// active scheme. proposeCrossWorldScheme self-validates (relationship exists,
+// kill-switch live, no duplicate), so this is safe + idempotent; it no-ops when
+// no rival relationships are seeded. Intrigue (blackmail), never assassination.
+function runProposePass(db) {
+  let proposed = 0;
+  let rivals = [];
+  try {
+    rivals = db.prepare(
+      `SELECT from_world_id, from_npc_id, to_world_id, to_npc_id
+       FROM cross_npc_relationships
+       WHERE kind = 'rival' AND resonance_strength >= ?
+       ORDER BY resonance_strength DESC LIMIT ?`
+    ).all(PROPOSE_MIN_RESONANCE, PROPOSE_MAX * 4);
+  } catch {
+    return 0; // table absent — nothing to propose
+  }
+  for (const rel of rivals) {
+    if (proposed >= PROPOSE_MAX) break;
+    try {
+      const r = proposeCrossWorldScheme(db, {
+        plotterWorld: rel.from_world_id, plotterId: rel.from_npc_id, plotterKind: "npc",
+        targetWorld: rel.to_world_id, targetId: rel.to_npc_id, targetKind: "npc",
+        kind: "blackmail",
+      });
+      if (r.ok) proposed++;
+    } catch { /* per-rival isolation */ }
+  }
+  return proposed;
+}
 
 export async function runCrossWorldSchemeCycle({ db }) {
   if (!db) return { ok: false, reason: "no_db" };
@@ -59,7 +93,8 @@ export async function runCrossWorldSchemeCycle({ db }) {
         errors++;
       }
     }
-    return { ok: true, processed: due.length, advanced, errors };
+    const proposed = runProposePass(db);
+    return { ok: true, processed: due.length, advanced, errors, proposed };
   } catch (err) {
     return { ok: false, reason: "cycle_threw", error: String(err?.message || err) };
   }

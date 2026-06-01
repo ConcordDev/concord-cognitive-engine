@@ -16,7 +16,7 @@ import { speciesForBiome } from "./loot-tables.js";
 import { balancePopulations } from "./food-web.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
 import { getWorldMeta } from "../cross-world-effectiveness.js";
-import { ensureHomeFor, recordImbalance } from "./creature-homes.js";
+import { ensureHomeFor, recordImbalance, unresolvedImbalances, resolveImbalance } from "./creature-homes.js";
 import {
   gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange,
   spawnDensityFor, worldBoundsFor, radialWorldsEnabled,
@@ -307,6 +307,13 @@ export function runFaunaSpawner({ state, db }) {
             severity: Math.min(5, Math.round(predLive / Math.max(1, predTarget))),
             summary: `${biome} in ${worldId}: ${predLive} predators vs ${preyLive} prey (targets ${predTarget}/${preyTarget}). The herd is in collapse.`,
           });
+        } else if (preyTarget > 0 && predTarget > 0) {
+          // Condition cleared (predators no longer in excess) → resolve any
+          // standing predator_excess imbalance for this biome so it doesn't
+          // linger as a false alert once the herd recovers.
+          for (const im of unresolvedImbalances(db, worldId)) {
+            if (im.biome === biome && im.kind === "predator_excess") resolveImbalance(db, im.id);
+          }
         }
       } catch { /* imbalance log is best-effort */ }
 

@@ -121,7 +121,10 @@ export function seedAuthoredRelationships(db, worldId, authoredNpcs = []) {
       const relType = mapAuthoredRelType(rel?.type);
       const bId = byName.get(String(rel?.target || rel?.name || "").toLowerCase());
       if (!relType || !bId || bId === aId) { skipped++; continue; }
-      addFamilyBond(db, aId, bId, relType, Number(rel?.strength) || 1.0);
+      // Spouse ties go through seedFamilyUnit (the family-unit former) so authored
+      // marriages establish a real unit, not just a bare bond.
+      if (relType === "spouse") seedFamilyUnit(db, aId, bId);
+      else addFamilyBond(db, aId, bId, relType, Number(rel?.strength) || 1.0);
       seeded++;
     }
   }

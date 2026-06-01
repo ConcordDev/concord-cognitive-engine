@@ -547,6 +547,21 @@ export async function seedContent({ db = null } = {}) {
         const { seedAuthoredRelationships } = await import("./npc-family.js");
         results.relationships = (results.relationships || 0) + (seedAuthoredRelationships(db, "concordia-hub", npcs).seeded || 0);
       } catch { /* relationships best-effort */ }
+      // Give the named hub characters a shallow skill lineage so their authored
+      // recipes have ancestry to inherit/teach. Bounded + idempotent + kill-switched
+      // (CONCORD_NAMED_LINEAGE=0 to skip); deterministic unless skill-evolution LLM is on.
+      if (process.env.CONCORD_NAMED_LINEAGE !== "0") {
+        try {
+          const { seedNamedCharacterLineage } = await import("./npc-skill-author.js");
+          const ids = db.prepare(`SELECT id FROM world_npcs WHERE world_id = ? LIMIT 12`).all("concordia-hub");
+          let lineageSeeded = 0;
+          for (const { id } of ids) {
+            const r = seedNamedCharacterLineage(db, id, 2);
+            if (r && r.seeded) lineageSeeded += r.seeded;
+          }
+          results.lineage = lineageSeeded;
+        } catch { /* lineage best-effort */ }
+      }
     }
   }
 

@@ -1372,7 +1372,8 @@ import { initializeSense, recordReading as senseRecordReading, getSenseMetrics, 
 import { initializeIdentity, getIdentityMetrics, getIdentity as identityGetNode, verifyNode as identityVerifyNode, getAllIdentities } from "./lib/foundation-identity.js";
 import { initializeEnergy, getEnergyMetrics, getEnergyMap, getGridHealth, getRecentEnergyReadings } from "./lib/foundation-energy.js";
 import { initializeSpectrum, getSpectrumMetrics, getAvailableChannels as spectrumGetChannels, getSpectrumMap } from "./lib/foundation-spectrum.js";
-import { initializeEmergency, getEmergencyMetrics, triggerEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
+import { initializeEmergency, getEmergencyMetrics, triggerEmergency, resolveEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
+import { applyShadowVault } from "./lib/artifact-store.js";
 import { initializeMarket, getMarketMetrics, getRecentEarnings as marketGetEarnings, getRelayTopology as marketGetTopology, getNodeBalance as marketGetBalance } from "./lib/foundation-market.js";
 import { initializeArchive, getArchiveMetrics, getFossils, getDecoded as archiveGetDecoded } from "./lib/foundation-archive.js";
 import { initializeSynthesis, getSynthesisMetrics, getCorrelations as synthesisGetCorrelations } from "./lib/foundation-synthesis.js";
@@ -18199,13 +18200,9 @@ async function runEntityQualityGate(artifactId, entityId, lens) {
   // Promote to marketplace_ready
   artifact.meta.status = "marketplace_ready";
 
-  // Shadow vault: 98% of entity production stays hidden
-  const createdBy = artifact.meta?.createdBy || "";
-  if (createdBy.startsWith("entity")) {
-    if (Math.random() > 0.02) {
-      artifact.meta.status = "shadow_vault";
-    }
-  }
+  // Shadow vault: 98% of entity production stays hidden. Uses the extracted
+  // resolver (applyShadowVault) so the rule lives in one place.
+  artifact.meta.status = applyShadowVault(artifact, { status: artifact.meta.status }).status;
 
   artifact.meta.qualityCheckedAt = nowISO();
   saveStateDebounced();
@@ -23654,6 +23651,13 @@ register("foundation", "emergency.alert", async (ctx, input) => {
 register("foundation", "emergency.status", (ctx, input) => {
   return { ok: true, ...getEmergencyStatus() };
 }, { description: "Get current disaster zone and emergency status." });
+
+register("foundation", "emergency.resolve", (ctx, input) => {
+  // Stand an active emergency down once the situation clears (the resolver half
+  // of emergency.alert — coordinators call this when nodes report safe).
+  if (!input?.emergencyId) return { ok: false, error: "emergencyId required" };
+  return resolveEmergency(input.emergencyId);
+}, { description: "Resolve an active emergency once the situation has cleared." });
 
 register("foundation", "market.earnings", (ctx, input) => {
   const limit = Number(input.limit) || 50;
@@ -46546,12 +46550,30 @@ app.get("/api/federation/search", perEndpointRateLimit("federation.search"), asy
     }
   }
   merged.sort((a, b) => (b.score || 0) - (a.score || 0));
+  // Federation tier escalation: when local + peer results are thin, walk the
+  // tier ladder (local → regional → national → …) via resolveQuery, which decides
+  // how far to climb from the result counts. searchFn re-runs the semantic macro
+  // per tier; the escalation metadata rides back so the client can show reach.
+  let escalation = null;
+  if (merged.length < limit) {
+    try {
+      const fedLib = await import("./lib/federation.js");
+      const ctx = makeCtx(req);
+      const searchFn = async () => {
+        const rr = await runMacro("search", "semantic", { q, limit }, ctx).catch(() => null);
+        return rr?.results || [];
+      };
+      escalation = await fedLib.resolveQuery(db, { query: q, currentTier: "local", userLocation: {}, searchFn });
+    } catch { /* escalation best-effort — local+peer results still return */ }
+  }
+
   res.json({
     ok: true,
     q,
     total: merged.length,
     results: merged.slice(0, limit),
     fanout: peers.length,
+    escalation: escalation && escalation.ok ? { resolvedAt: escalation.resolvedAt, exhausted: !!escalation.exhausted } : null,
   });
 }));
 
