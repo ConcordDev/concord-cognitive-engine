@@ -1587,6 +1587,24 @@ function CityStreamingSection() {
 
 type ViewMode = 'concordia' | 'district' | 'streams' | 'explore';
 
+// 3D-first landing: the World lens boots into the 3D scene (`explore`), not the
+// 2D Concordia hub menu — you land in the world, not in a menu of the world. But
+// if the device can't create a WebGL context (no GPU / headless / blocked), the
+// 3D scene would paint nothing, so we fall back to the 2D hub. This probe is the
+// gate for that downgrade; it runs once on mount.
+function webglAvailable(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+  try {
+    const c = document.createElement('canvas');
+    return !!(
+      (window as unknown as { WebGLRenderingContext?: unknown }).WebGLRenderingContext &&
+      (c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'))
+    );
+  } catch {
+    return false;
+  }
+}
+
 type DistrictTool =
   | 'snapbuild'
   | 'dsl'
@@ -1879,11 +1897,21 @@ export default function WorldLensPage() {
   const dialogueCtx = useDialogue(DEFAULT_SPECIAL);
 
   // ── State ─────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<ViewMode>('concordia');
+  // 3D-first: land in the 3D world by default. Downgraded to the 2D hub on mount
+  // only when WebGL is unavailable (see webglAvailable + the effect below).
+  const [viewMode, setViewMode] = useState<ViewMode>('explore');
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<0 | 1 | 2 | 3>(0);
+
+  // 3D-first landing with a graceful WebGL fallback: if the device can't paint a
+  // WebGL canvas (no GPU / headless / blocked), drop to the 2D Concordia hub so
+  // the player isn't stranded on a blank scene. Runs once on mount; with WebGL
+  // present the default 'explore' (3D) view stands.
+  useEffect(() => {
+    if (!webglAvailable()) setViewMode('concordia');
+  }, []);
 
   // 2026 parity polish — slide-overs surfacing existing simulation.
   // Mirrors the systemsPanel pattern from the chat lens.
@@ -4113,26 +4141,28 @@ export default function WorldLensPage() {
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
           <div className="flex items-center bg-black/40 border border-white/10 rounded-lg overflow-hidden">
+            {/* 3D world is the home — first + default. The 2D hub/district/streams
+                views are menus over it, reachable but secondary. */}
+            <button
+              onClick={() => setViewMode('explore')}
+              className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Globe className="w-3.5 h-3.5 inline mr-1" />
+              World (3D)
+            </button>
             <button
               onClick={() => setViewMode('concordia')}
               className={`px-3 py-1.5 text-xs ${viewMode === 'concordia' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'}`}
             >
-              <Globe className="w-3.5 h-3.5 inline mr-1" />
-              Concordia
+              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
+              Hub
             </button>
             <button
               onClick={() => setViewMode('district')}
               className={`px-3 py-1.5 text-xs ${viewMode === 'district' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'}`}
             >
-              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
-              District
-            </button>
-            <button
-              onClick={() => setViewMode('explore')}
-              className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
-            >
               <Users className="w-3.5 h-3.5 inline mr-1" />
-              Explore 3D
+              District
             </button>
             <button
               onClick={() => setViewMode('streams')}
