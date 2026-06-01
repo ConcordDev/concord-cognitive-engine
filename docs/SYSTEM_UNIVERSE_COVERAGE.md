@@ -72,3 +72,27 @@ array) + `GAPS.md`. Detectors: `npm run detectors:report`.
 
 **Sources for the software-universe context:** [G2 all categories](https://www.g2.com/categories) ·
 [G2 categorization methodology (~2,000 categories)](https://research.g2.com/methodology/categorization)
+
+---
+
+## CORRECTION (audit of the "absent" claims)
+
+The static cartographer's "53/73" is an **undercount** — it ran with `--static` (no runtime introspect),
+so its keyword matcher missed real domains/lenses. A direct artifact audit (dedicated domain + lens +
+component) of the 26 "not present" categories found **13 are actually REAL, fully-built systems:**
+
+**Were marked ABSENT, are REAL (domain + lens + component each):** wiki · meditation · healthcare ·
+accounting · defense · forestry · veterinary · urban-planning · astronomy · **quantum**
+(`quantum.js` + `quantum-compute.js` + lens) · brain-training.
+
+**Were marked OUT-OF-SCOPE, actually exist:** browser-engine (`browser-engine.js`) · ml-framework
+(`ml.js` domain + lens).
+
+**Genuinely thin** (no dedicated lens/domain): mind-map · diagram · slides · screen-share · body-comp ·
+unified-self · bibliography · dataset · os-kernel · advertising · subscription · paywall — though some
+have *related* code (the information-theory/game-theory/probability/complexity libs ARE real
+mathematics; `api-billing` covers subscription).
+
+**Corrected coverage: ~64 of 73 in-scope categories present** (not 53). The truly-missing list is ~8–10,
+not 20. Even the project's own tool underclaimed — consistent with the pattern that Concordia's code
+over-delivers against every estimate, including its own.
