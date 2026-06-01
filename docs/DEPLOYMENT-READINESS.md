@@ -184,7 +184,7 @@ npm run build            # prophet-check then next build; build blockers exit 1
 # 6. Pull models (if not already)
 cd ..
 ./scripts/pull-models.sh
-# Confirm: ollama list shows concord-conscious:latest, qwen2.5:7b-instruct-q4_K_M, qwen2.5:3b, qwen2.5:0.5b, llava:13b-v1.6-vicuna-q4_K_M, nomic-embed-text
+# Confirm: ollama list shows concord-conscious:latest, qwen2.5:7b-instruct-q4_K_M, qwen2.5:3b, qwen2.5:0.5b, qwen2.5vl:7b, nomic-embed-text
 
 # 7. Smoke test the five-brain wiring
 curl http://localhost:11434/api/tags  # conscious

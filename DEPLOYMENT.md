@@ -41,7 +41,7 @@ Concord uses a five-brain cognitive architecture (4 cognitive + 1 multimodal/vis
 | Subconscious | `qwen2.5:7b-instruct-q4_K_M` | ~5GB | ~3GB | 11435 |
 | Utility | `qwen2.5:3b` | ~2GB | ~1.2GB | 11436 |
 | Repair | `qwen2.5:0.5b` | ~0.4GB | ~0.5GB | 11437 |
-| Vision | `llava:13b-v1.6-vicuna-q4_K_M` | ~9GB | ~5GB | 11438 |
+| Vision | `qwen2.5vl:7b` | ~9GB | ~5GB | 11438 |
 | `nomic-embed-text` (embeddings) | semantic search & DTU similarity | ~275MB | ~300MB | (CPU) |
 
 All five model slots are env-overridable (`BRAIN_*_MODEL`). All five Ollama services should run with `OLLAMA_FLASH_ATTENTION=1` and `OLLAMA_KV_CACHE_TYPE=q8_0` to use Blackwell tensor cores and halve KV-cache memory.
@@ -52,7 +52,7 @@ All five model slots are env-overridable (`BRAIN_*_MODEL`). All five Ollama serv
 ollama pull qwen2.5:7b-instruct-q4_K_M
 ollama pull qwen2.5:3b
 ollama pull qwen2.5:0.5b
-ollama pull llava:13b-v1.6-vicuna-q4_K_M
+ollama pull qwen2.5vl:7b
 ollama pull nomic-embed-text
 # concord-conscious is a custom model built from a Modelfile on top of qwen2.5
 ```
@@ -235,7 +235,7 @@ Copy `.env.example` to `.env` and configure the following:
 | `BRAIN_REPAIR_URL` | `http://ollama-repair:11434` | Repair brain URL |
 | `BRAIN_REPAIR_MODEL` | `qwen2.5:0.5b` | Repair model |
 | `BRAIN_VISION_URL` | `http://ollama-vision:11434` | Vision brain (LLaVA) URL |
-| `BRAIN_VISION_MODEL` | `llava:13b-v1.6-vicuna-q4_K_M` | Vision model |
+| `BRAIN_VISION_MODEL` | `qwen2.5vl:7b` | Vision model |
 
 ### Optional Features
 
@@ -321,7 +321,7 @@ curl -sf http://localhost:5050/ready || exit 1
 
 - Verify Ollama is running: `curl http://localhost:11434/api/tags`
 - Check VRAM: `nvidia-smi` -- models may fail silently if VRAM is exhausted
-- Pull models manually (e.g. `ollama pull qwen2.5:7b-instruct-q4_K_M`, `ollama pull llava:13b-v1.6-vicuna-q4_K_M`)
+- Pull models manually (e.g. `ollama pull qwen2.5:7b-instruct-q4_K_M`, `ollama pull qwen2.5vl:7b`)
 - Check brain URLs in `.env` match your Ollama deployment
 
 ### "DTUs disappeared" after restart

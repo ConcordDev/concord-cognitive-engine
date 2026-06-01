@@ -11780,7 +11780,7 @@ register("multimodal","vision_analyze", (ctx, input={}) => {
   const _mmBrain = BRAIN_CONFIG.multimodal;
   const OLLAMA_URL = _mmBrain.url || process.env.OLLAMA_URL || process.env.OLLAMA_HOST || "";
   if (OLLAMA_URL) {
-    const model = String(_mmBrain.model || process.env.OLLAMA_VISION_MODEL || "llava");
+    const model = String(_mmBrain.model || process.env.OLLAMA_VISION_MODEL || "qwen2.5vl:7b");
     const payload = {
       model,
       messages: [{ role:"user", content: prompt, images: [imageB64] }]
@@ -47767,7 +47767,7 @@ async function analyzeImage(imageBuffer, prompt = "Describe this image in detail
   // Use multimodal brain config — respects BRAIN_MULTIMODAL_URL + OLLAMA_VISION_MODEL
   const brain = BRAIN_CONFIG.multimodal;
   const OLLAMA_URL = brain.url || process.env.OLLAMA_HOST || "";
-  const VISION_MODEL = brain.model || "llava";
+  const VISION_MODEL = brain.model || "qwen2.5vl:7b";
 
   try {
     const base64 = imageBuffer.toString("base64");

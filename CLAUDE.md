@@ -133,7 +133,7 @@ Default models tuned for the **NVIDIA RTX PRO 4500 Blackwell** (32GB GDDR7, 5th-
 | Subconscious | `qwen2.5:7b-instruct-q4_K_M` | 11435 | Autogen, dream, synthesis |
 | Utility | `qwen2.5:3b` | 11436 | Lens actions, quick tasks (65% of requests) |
 | Repair | `qwen2.5:1.5b` | 11437 | Error detection, auto-fix |
-| Vision | `llava:13b-v1.6-vicuna-q4_K_M` | 11438 | LLaVA — image understanding, food vision, doc layout |
+| Vision | `qwen2.5vl:7b` (Qwen2.5-VL, Apache-2.0) | 11438 | image understanding, food vision, doc layout. Swapped off `llava:13b-v1.6-vicuna` (Vicuna→LLaMA + GPT-4-instruction-data CC-BY-NC lineage = commercial exposure) to a cleanly-commercial Apache-2.0 model that unifies the stack on Qwen. Override with `BRAIN_VISION_MODEL`. See `docs/LICENSING.md`. |
 
 All five Ollama services run with `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0` to use the Blackwell tensor cores and halve KV cache memory. `initFiveBrains()` probes all five (4 cognitive + 1 multimodal/vision) on startup and auto-pulls models. `ctx.llm.chat()` routes to conscious; falls back to subconscious. **There is no OpenAI emergency-fallback path** — when a user supplies an external API key, their individual brain slots route per-slot through the BYO key router (migration 170 `byo_brain_overrides`); the prior OpenAI relics were removed. Vision queries route through `server/lib/vision-inference.js#callVision` which reads `BRAIN_VISION_URL` and routes via `BRAIN.multimodal` / `BRAIN_CONFIG.multimodal`.
 

@@ -113,10 +113,13 @@ export const BRAIN_CONFIG = Object.freeze({
     //   4. ollama-vision:11434 — docker-compose default.
     url: _vision_urls[0],
     urls: _vision_urls,
-    // Default LLaVA 13B v1.6 (vicuna) at q4_K_M ≈ 9GB VRAM. With
-    // OLLAMA_FLASH_ATTENTION + the RTX PRO 4500's 5th-gen tensor cores
-    // this hits ~50 tok/s on a 1024×1024 input.
-    model: process.env.BRAIN_VISION_MODEL || process.env.OLLAMA_VISION_MODEL || "llava:13b-v1.6-vicuna-q4_K_M",
+    // Default Qwen2.5-VL 7B (Apache-2.0) — unifies the stack on the Qwen family
+    // and removes the LLaVA/Vicuna→LLaMA + GPT-4-instruction-data license ambiguity
+    // (CC-BY-NC heritage) that made the old `llava:13b-v1.6-vicuna` a commercial
+    // exposure. q4-class quant ≈ 7GB VRAM; with OLLAMA_FLASH_ATTENTION + the RTX PRO
+    // 4500's 5th-gen tensor cores this stays well within the vision container budget.
+    // Override with BRAIN_VISION_MODEL to pin a different vision model per deployment.
+    model: process.env.BRAIN_VISION_MODEL || process.env.OLLAMA_VISION_MODEL || "qwen2.5vl:7b",
     role: "vision analysis, image understanding, document layout, visual reasoning",
     temperature: 0.1,
     // Vision queries can take longer than chat — bumped 60s → 120s.

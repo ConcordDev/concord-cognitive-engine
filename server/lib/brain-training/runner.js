@@ -36,7 +36,7 @@ const BASE_MODELS = {
   repair:       "qwen2.5:1.5b",
   subconscious: "qwen2.5:7b-instruct",
   conscious:    "qwen2.5:32b-instruct",
-  multimodal:   "llava:13b-v1.6-vicuna",
+  multimodal:   "qwen2.5vl:7b",
   lattice:      "qwen2.5:0.5b",
 };
 

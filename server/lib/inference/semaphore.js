@@ -11,7 +11,7 @@ const BRAIN_VRAM_GB = {
   repair:       1,   // qwen2.5:0.5b
   utility:      3,   // qwen2.5:3b
   subconscious: 7,   // qwen2.5:7b
-  multimodal:   13,  // llava:13b
+  multimodal:   7,   // qwen2.5vl:7b
   conscious:    14,  // qwen2.5:14b / fine-tune
 };
 
