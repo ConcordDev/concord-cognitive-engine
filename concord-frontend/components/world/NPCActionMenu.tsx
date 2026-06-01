@@ -146,21 +146,21 @@ export function NPCActionMenu() {
     setMenu(null);
   }, [menu]);
 
+  // Trade + Hire have no backend yet (no npc-trade / npc-hire route exists), so
+  // they dispatched events nothing consumed — the buttons silently did nothing.
+  // Give honest in-menu feedback via the existing flash affordance instead of a
+  // dead dispatch. Wire these to a real flow when the backend lands.
   const onTrade = useCallback(() => {
     if (!menu) return;
-    window.dispatchEvent(new CustomEvent('concordia:trade-with-npc', {
-      detail: { npcId: menu.npcId, npcName: menu.npcName },
-    }));
+    showFlash(`Trading with ${menu.npcName} isn't available yet.`);
     setMenu(null);
-  }, [menu]);
+  }, [menu, showFlash]);
 
   const onHire = useCallback(() => {
     if (!menu) return;
-    window.dispatchEvent(new CustomEvent('concordia:hire-npc', {
-      detail: { npcId: menu.npcId, npcName: menu.npcName },
-    }));
+    showFlash(`Hiring ${menu.npcName} isn't available yet.`);
     setMenu(null);
-  }, [menu]);
+  }, [menu, showFlash]);
 
   if (!menu) {
     return flash ? (

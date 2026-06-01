@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   X, ScrollText, MapPin, Hammer, PackageCheck, MessageSquare,
   ShieldAlert, Search as SearchIcon, Wrench, CheckCircle2, Circle,
@@ -52,6 +52,7 @@ interface Quest {
 
 interface QuestPanelProps {
   quests?: Quest[];
+  worldId?: string;
   activeQuest?: string | null;
   onAccept?: (questId: string) => void;
   onAbandon?: (questId: string) => void;
@@ -182,16 +183,79 @@ const DEMO_QUESTS: Quest[] = [
   },
 ];
 
+/* ── Backend → panel adapter (defensive: unknown columns degrade gracefully) ── */
+
+function adaptQuest(q: Record<string, unknown>): Quest {
+  const cat = String(q.category ?? '');
+  const status = String(q.status ?? 'available');
+  const rawObj = Array.isArray(q.objectives) ? q.objectives : [];
+  const rawReward = (q.reward ?? q.rewards) as unknown;
+  const objectives: QuestObjective[] = rawObj.map((o: Record<string, unknown>, i: number) => ({
+    id: String(o?.id ?? i),
+    type: (String(o?.type ?? 'custom') as ObjectiveType),
+    description: String(o?.description ?? o?.text ?? ''),
+    current: Number(o?.current ?? 0),
+    target: Number(o?.target ?? 1),
+    completed: !!(o?.completed ?? o?.done),
+  }));
+  let rewards: QuestReward[] = [];
+  if (Array.isArray(rawReward)) {
+    rewards = rawReward.map((r: Record<string, unknown>) => ({
+      type: (String(r?.type ?? 'currency') as QuestReward['type']),
+      label: String(r?.label ?? r?.name ?? ''),
+      amount: r?.amount != null ? Number(r.amount) : undefined,
+    }));
+  } else if (rawReward && typeof rawReward === 'object') {
+    const r = rawReward as Record<string, unknown>;
+    if (r.amount != null || r.label != null || r.currency != null) {
+      rewards = [{ type: 'currency', label: String(r.label ?? 'Reward'), amount: r.amount != null ? Number(r.amount) : (r.currency != null ? Number(r.currency) : undefined) }];
+    }
+  }
+  return {
+    id: String(q.id ?? ''),
+    title: String(q.title ?? q.name ?? 'Quest'),
+    description: String(q.description ?? ''),
+    category: (['main', 'side', 'daily', 'chain'].includes(cat) ? cat : 'side') as QuestCategory,
+    questGiver: String(q.questGiver ?? q.giver_npc_id ?? q.giver ?? '') || undefined,
+    objectives,
+    rewards,
+    status: (['active', 'available', 'completed'].includes(status) ? status : 'available') as Quest['status'],
+    district: String(q.district ?? q.region ?? '') || undefined,
+  };
+}
+
 /* ── Component ─────────────────────────────────────────────────── */
 
 export default function QuestPanel({
-  quests = DEMO_QUESTS,
+  quests: questsProp,
+  worldId,
   activeQuest: trackedQuestId = 'q1',
   onAccept,
   onAbandon,
   onTrack,
   onClose,
 }: QuestPanelProps) {
+  // Real quests come from /api/worlds/:worldId/quests; DEMO_QUESTS is now only a
+  // fallback for when the caller passes nothing AND the fetch yields nothing
+  // (offline / brand-new world) — not the default a player actually sees.
+  const [quests, setQuests] = useState<Quest[]>(questsProp ?? DEMO_QUESTS);
+  useEffect(() => {
+    if (questsProp) return; // caller supplied data — respect it
+    let cancelled = false;
+    (async () => {
+      try {
+        const wid = worldId || 'concordia-hub';
+        const grab = (status: string) =>
+          fetch(`/api/worlds/${encodeURIComponent(wid)}/quests?status=${status}`, { credentials: 'include' })
+            .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        const [avail, active] = await Promise.all([grab('available'), grab('active')]);
+        const rows = [...(avail?.quests ?? []), ...(active?.quests ?? [])];
+        if (!cancelled && rows.length) setQuests(rows.map(adaptQuest));
+      } catch { /* keep demo fallback */ }
+    })();
+    return () => { cancelled = true; };
+  }, [worldId, questsProp]);
+
   const [categoryFilter, setCategoryFilter] = useState<QuestCategory | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'active' | 'available' | 'completed' | 'all'>('all');
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(trackedQuestId);

@@ -414,6 +414,7 @@ const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypoi
 const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBeacons'), { ssr: false });
 const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterLayer'), { ssr: false });
 const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay'), { ssr: false });
+const WorldTintOverlay = dynamic(() => import('@/components/world/WorldTintOverlay'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -4941,6 +4942,9 @@ export default function WorldLensPage() {
           {/* Link-scan: on-demand (V) Glance-tier scanner revealing the Layer-7
               embodied-signal substrate the player stands in. */}
           <LinkScanOverlay worldId={activeDistrict.id} />
+          {/* Consumer for concordia:world-tint (was a dead wire) — renders the
+              time-loop expiry red wash as a DOM overlay. */}
+          <WorldTintOverlay />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
@@ -5337,7 +5341,7 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'quests' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
-              <QuestPanel onClose={() => setShowPanel('none')} />
+              <QuestPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'questlog' && (
