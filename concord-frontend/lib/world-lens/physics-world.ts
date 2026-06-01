@@ -949,6 +949,32 @@ class PhysicsWorld {
     }, undefined);
   }
 
+  /**
+   * Hard-teleport a character to an absolute world position (fast-travel /
+   * respawn). Sets BOTH the rigid-body translation and the next kinematic
+   * target — otherwise the controller would lerp back from the old spot on the
+   * next step — and clears vertical velocity + knockback + air/glide/swim flags
+   * so the avatar arrives at rest. Returns false if the character isn't known.
+   */
+  teleportCharacter(id: string, position: { x: number; y: number; z: number }): boolean {
+    return this._guard('teleportCharacter', () => {
+      const body = this.bodies.get(id);
+      if (!body) return false;
+      const p = { x: position.x, y: position.y, z: position.z };
+      body.setTranslation(p, true);
+      body.setNextKinematicTranslation(p);
+      const ks = this.kinematic.get(id);
+      if (ks) {
+        ks.verticalVel = 0;
+        ks.kbVx = 0; ks.kbVz = 0; ks.kbTravelled = 0; ks.kbExpiresAt = 0;
+        ks.isAirborne = false;
+        ks.gliding = false;
+        ks.swimming = false;
+      }
+      return true;
+    }, false);
+  }
+
   // ── Projectiles ────────────────────────────────────────────────────────────
   //
   // Phase F2 init 2: dynamic rigid bodies for arrows / bullets / thrown items.

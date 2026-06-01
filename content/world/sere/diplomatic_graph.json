@@ -1,0 +1,100 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "purpose": "Per-faction-pair relationship lattice for sere. Drives Layer 11 faction-strategy + cross-world relationship seeding. The 'managed_parity' edges encode the Tessera funding both sides of a war so it never resolves — the satire's central mechanic, discoverable via the Ledger lens.",
+  "edges": [
+    {
+      "from": "dovrane",
+      "to": "keshar",
+      "relationship": "war",
+      "history": "The Border Mirror. Two anchor-realms who were brothers under the Twin Pact until a manufactured incident in the contested passes sundered them. Sixty years of border hatred — lit, and kept lit.",
+      "cross_world_resonance": "The split-the-anchors pattern that crushed the Table-of-All; mirrors any engineered fraternal war."
+    },
+    {
+      "from": "the_tessera",
+      "to": "dovrane",
+      "relationship": "managed_parity",
+      "funds_both_sides_of": "dovrane:keshar",
+      "history": "The Tessera supplies the Reach (through Verge) just enough to keep fighting and never enough to win — because a decisive victory would end the procurement.",
+      "cross_world_resonance": "Parity as product — the Long Mirror, miniaturized onto one front."
+    },
+    {
+      "from": "the_tessera",
+      "to": "keshar",
+      "relationship": "managed_parity",
+      "funds_both_sides_of": "dovrane:keshar",
+      "history": "The same crates that arm Dovrane arm Keshar. Sarn's dual manifests prove it. The balance is the point: a balanced war buys twice.",
+      "cross_world_resonance": "The mirror image of the Tessera→Dovrane edge — together they are the managed-parity web."
+    },
+    {
+      "from": "verge_dynamics",
+      "to": "dovrane",
+      "relationship": "trade_pact",
+      "history": "Verge sells the Reach the spear and the shield, and bills it for the threat of Keshar.",
+      "cross_world_resonance": "Fear as a market."
+    },
+    {
+      "from": "verge_dynamics",
+      "to": "keshar",
+      "relationship": "trade_pact",
+      "history": "Verge sells Keshar the same catalogue, and bills it for the threat of Dovrane. Its annual report calls the arrangement 'a stable demand environment.'",
+      "cross_world_resonance": "Fear as a market — the other half."
+    },
+    {
+      "from": "the_mercy_fund",
+      "to": "keshar",
+      "relationship": "tension",
+      "history": "Keshar is a creditor and cannot be trapped by a loan, so the Fund waits: when the export market closes and the border war can no longer be paid for, the rescue arrives with its conditions.",
+      "cross_world_resonance": "Extraction-by-rescue, pre-positioned."
+    },
+    {
+      "from": "the_mercy_fund",
+      "to": "dovrane",
+      "relationship": "tension",
+      "history": "The Reach half-suspects the rescue is coming and dreads it more than the war.",
+      "cross_world_resonance": "Rescue as acquisition."
+    },
+    {
+      "from": "hollowford_seed",
+      "to": "keshar",
+      "relationship": "rival",
+      "history": "Keshar still saves some of its own grain; Hollowford regards that as lost revenue and an example that must not spread.",
+      "cross_world_resonance": "Dependency dressed as abundance."
+    },
+    {
+      "from": "the_open_table",
+      "to": "the_tessera",
+      "relationship": "blood_feud",
+      "history": "The coalition the machine cannot allow to cohere. Every prior Open Table was bought, hollowed, or split; this one was designed around those exact deaths.",
+      "cross_world_resonance": "The Ninth Refusal trying to be born on the world that forecloses it — its survivors become the ark program."
+    },
+    {
+      "from": "the_open_table",
+      "to": "dovrane",
+      "relationship": "ally",
+      "history": "Dovrane is one of the two anchors the Open Table needs. Healing the Twin Pact is the precondition for critical mass.",
+      "cross_world_resonance": "Brotherhood as infrastructure."
+    },
+    {
+      "from": "the_open_table",
+      "to": "keshar",
+      "relationship": "ally",
+      "history": "Keshar is the other anchor — the larger productive base. With both, the Open Table is unstoppable; that is exactly why the Pact had to break.",
+      "cross_world_resonance": "Brotherhood as infrastructure."
+    },
+    {
+      "from": "house_aldermere",
+      "to": "the_clearing_spire",
+      "relationship": "ally",
+      "history": "The ledger and the tower that clears it — the still point that lets the wars below run forever.",
+      "cross_world_resonance": "Settlement above sovereignty."
+    },
+    {
+      "from": "the_curtain",
+      "to": "verge_dynamics",
+      "relationship": "ally",
+      "history": "Founded in the same season of the Quiet Fall; the Curtain keeps off the public record what Verge would rather not invoice in daylight.",
+      "cross_world_resonance": "Managing the seeable, not the secret."
+    }
+  ]
+}

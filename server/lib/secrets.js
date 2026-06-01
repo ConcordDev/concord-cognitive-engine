@@ -221,6 +221,36 @@ export function listDiscoveredForUser(db, userId, { includeBody = false, limit =
 }
 
 /**
+ * The Curtain's "seeable" surface for a world: every secret held by an NPC in
+ * that world, with the body REDACTED until this user has declassified it (i.e.
+ * discovered it). You can see a classified file EXISTS — its holder, kind, and
+ * difficulty — but not its contents until you do the investigative work. Powers
+ * the Curtain/dossier overlay (information-as-gameplay).
+ */
+export function listWorldCatalog(db, worldId, userId, { limit = 200 } = {}) {
+  if (!db || !worldId) return [];
+  try {
+    const rows = db.prepare(`
+      SELECT s.id, s.holder_npc_id, s.subject_kind, s.subject_id, s.kind, s.discovery_difficulty, s.body,
+             (SELECT 1 FROM secret_discoveries d WHERE d.secret_id = s.id AND d.user_id = ?) AS discovered
+      FROM secrets s JOIN world_npcs w ON w.id = s.holder_npc_id
+      WHERE w.world_id = ?
+      ORDER BY s.discovery_difficulty ASC, s.holder_npc_id ASC LIMIT ?
+    `).all(userId || "", worldId, limit);
+    return rows.map((r) => ({
+      id: r.id,
+      holderNpcId: r.holder_npc_id,
+      subjectKind: r.subject_kind,
+      subjectId: r.subject_id,
+      kind: r.kind,
+      difficulty: r.discovery_difficulty,
+      discovered: !!r.discovered,
+      body: r.discovered ? r.body : null, // redacted by the Curtain until declassified
+    }));
+  } catch { return []; }
+}
+
+/**
  * Surveillance roll — long-press follow yields 1d6 evidence dice. We
  * accumulate per-NPC into a per-user counter (in_memory ok for now;
  * persistent counter would need a dedicated table). Caller passes

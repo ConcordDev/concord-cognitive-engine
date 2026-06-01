@@ -53,14 +53,18 @@ const SKIP_FILES = new Set([]);
 // or a missing other-half system — which "no fake data" forbids). Remove an
 // entry when its system is genuinely wired.
 const BASELINE_BACKLOG = new Map([
-  ["applyShadowVault", "artifact shadow-vault — resolver half; detection/trigger side not built. Tracked."],
-  ["proposeCrossWorldScheme", "cross-world cycle advances via advanceCrossWorldScheme; the proposer half is dormant. Tracked."],
-  ["resolveImbalance", "creature-home imbalance resolver — needs the imbalance-detection emitter wired first. Tracked."],
-  ["triggerCascade", "event-cascade resolver — needs an authored cascade parent-event source; wiring blind would invent cascades. Tracked."],
-  ["resolveQuery", "federation query resolver — peer-driven; no live peer wires it yet. Tracked."],
-  ["resolveEmergency", "foundation-emergency resolver — needs the emergency-creation site wired. Tracked."],
-  ["seedFamilyUnit", "spouse-bond seeder — requires AUTHORED marriage pairs (none in content); wiring would invent marriages. Tracked, awaits authored family data."],
-  ["seedNamedCharacterLineage", "deep-lineage seeder — requires authored lineage depth per named NPC; wiring blind invents ancestry. Tracked, awaits authored lineage data."],
+  // Empty — the backlog is cleared. Every system verb is wired into live gameplay.
+  // History (all now wired, removed from the backlog):
+  //  • applyShadowVault → server.js artifact quality-gate (extracted from the inline dup).
+  //  • proposeCrossWorldScheme → cross-world-scheme-cycle propose pass over RIVAL ties.
+  //  • resolveImbalance → fauna-spawner resolves predator_excess once the herd recovers.
+  //  • triggerCascade → world-events.endEvent fires the child cascade on completion.
+  //  • resolveQuery → /api/federation/search tier-escalation when local results are thin.
+  //  • resolveEmergency → foundation.emergency.resolve macro (the alert resolver half).
+  //  • seedFamilyUnit → npc-family.seedAuthoredRelationships routes authored spouse ties.
+  //  • seedNamedCharacterLineage → content-seeder seeds shallow lineage for hub NPCs.
+  //  • Temperament P2–P5 (applyDeescalation/resolveArrestResponse/applyCombatHit/
+  //    advanceCapture/attemptEscape) → lib/temperament-combat.js + capture-cycle + routes.
 ]);
 
 function walk(dir, out = []) {

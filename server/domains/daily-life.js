@@ -13,8 +13,8 @@ import { giveGift } from "../lib/gifting.js";
 import { spendSlots, canAfford, slotsUsed, currentDayIdx, dayState } from "../lib/day-clock.js";
 import { gatherAttendees, GATHERING_KINDS } from "../lib/social-gatherings.js";
 
-function enabled() { return process.env.CONCORD_SOCIAL_LIFE === "1"; }
-function socialEventsEnabled() { return process.env.CONCORD_SOCIAL_EVENTS === "1"; }
+function enabled() { return process.env.CONCORD_SOCIAL_LIFE !== "0"; }
+function socialEventsEnabled() { return process.env.CONCORD_SOCIAL_EVENTS !== "0"; }
 function gate(ctx) {
   if (!enabled()) return { ok: false, reason: "disabled" };
   if (!ctx?.db) return { ok: false, reason: "no_db" };

@@ -32,7 +32,7 @@ export const ADMIN_RESERVE_RATE = 0.15;          // admin reserve ceiling fracti
 export const IN_HOUSE_COST_FACTOR = 0.85;        // DPW: in-house crews beat contractor markup
 
 export function civicBondsEnabled() {
-  return process.env.CONCORD_CIVIC_BONDS === "1";
+  return process.env.CONCORD_CIVIC_BONDS !== "0";
 }
 
 const uid = (p) => `${p}_${crypto.randomUUID().slice(0, 12)}`;

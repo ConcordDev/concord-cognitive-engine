@@ -141,42 +141,24 @@ function routeSpecificHandler(detail: WorldClickDetail): boolean {
       }
       return false;
     case 'building':
+    case 'workbench':
       if (detail.id) {
-        window.dispatchEvent(new CustomEvent('concordia:enter-building', { detail: { buildingId: detail.id } }));
+        // Route to the REAL station router (StationInteractionRouter consumes
+        // concordia:building-interact and opens the matching overlay). Previously
+        // this fired concordia:enter-building / open-workbench, which nothing
+        // listened to — the click claimed "handled" then did nothing.
+        const worldId = (typeof window !== 'undefined' && localStorage.getItem('concordia:activeWorldId')) || 'concordia-hub';
+        window.dispatchEvent(new CustomEvent('concordia:building-interact', { detail: { worldId, buildingId: detail.id } }));
         return true;
       }
       return false;
     case 'door':
-      if (detail.id) {
-        // Doors with handlers get fired here; doors without remain locked
-        // → falls through to ambient "locked" feedback.
-        window.dispatchEvent(new CustomEvent('concordia:open-door', { detail: { doorId: detail.id } }));
-        return true;
-      }
-      return false;
     case 'loot_container':
-      if (detail.id) {
-        window.dispatchEvent(new CustomEvent('concordia:open-loot', { detail: { containerId: detail.id } }));
-        return true;
-      }
-      return false;
     case 'sign':
-      if (detail.id) {
-        window.dispatchEvent(new CustomEvent('concordia:read-sign', { detail: { signId: detail.id } }));
-        return true;
-      }
-      return false;
-    case 'workbench':
-      if (detail.id) {
-        window.dispatchEvent(new CustomEvent('concordia:open-workbench', { detail: { workbenchId: detail.id } }));
-        return true;
-      }
-      return false;
     case 'item_ground':
-      if (detail.id) {
-        window.dispatchEvent(new CustomEvent('concordia:pickup-item', { detail: { itemId: detail.id } }));
-        return true;
-      }
+      // No consumer is wired for these yet. Return false so the click falls
+      // through to ambient feedback (a toast/sparkle) — honest acknowledgement
+      // instead of the old orphaned dispatch that swallowed the click silently.
       return false;
     case 'terrain':
     case 'wall':

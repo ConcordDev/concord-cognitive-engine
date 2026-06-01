@@ -25,7 +25,7 @@
  *     plastic under the directional sun.
  *   - Facial blend-shape controller. Caller drives .setEmotion('joy')
  *     or .setViseme('A') for lip-sync; this builder constructs the
- *     hook so AnimationManager + lip-sync.ts work out of the box.
+ *     hook so the AvatarSystem3D mixer + lip-sync.ts work out of the box.
  *
  * Where this gets called:
  *   - AvatarSystem3D when an authored NPC has hero_mesh:true OR is

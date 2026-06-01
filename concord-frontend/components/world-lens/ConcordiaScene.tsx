@@ -3,18 +3,18 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, createContext } from 'react';
 import { Activity, Monitor, Settings } from 'lucide-react';
 import { cameraLookState } from '@/lib/world-lens/camera-look-state';
-import { createSimplexNoise2D } from '@/lib/world-lens/simplex-noise';
 import { getStoredSensitivity } from '@/lib/world-lens/quality-preset';
 import { decideVisible } from '@/lib/world-lens/cull';
 import { mountPerfMonitor, attachRenderer as attachPerfRenderer, tickPerfMonitor } from '@/lib/world-lens/perf-monitor';
+import { createTraumaShake, type TraumaShake } from '@/lib/concordia/screen-trauma';
 
-// Track 1 — coherent camera-shake noise (Eiserloh trauma model): replaces the
-// per-frame Math.random() jitter on the camera punch with seeded Simplex noise so
-// the shake reads smooth (not harsh), is deterministic, and survives slow-mo.
-// Module-scope so a single set of channels serves the scene.
-const _camShakeNX = createSimplexNoise2D(5051);
-const _camShakeNY = createSimplexNoise2D(6067);
-const _camShakeNR = createSimplexNoise2D(7079);
+// Track 1 — camera shake is the shared trauma engine (`lib/concordia/screen-trauma.ts`,
+// the Eiserloh GDC model): trauma accumulates per event, decays linearly, and the
+// per-frame offset is trauma² × COHERENT Simplex noise (smooth, deterministic,
+// slow-mo-safe). This is the SINGLE trauma authority — the scene constructs one with
+// world-unit amplitudes, the 2D HUD layer (GameJuice) constructs its own with px
+// amplitudes; both share the model + the `traumaForSeverity` mapping rather than each
+// re-implementing noise + decay (the prior three-systems fragmentation).
 
 // ── Device capability detection ────────────────────────────────────
 function detectInitialQuality(): QualityPreset {
@@ -243,6 +243,13 @@ export default function ConcordiaScene({
   // jitter + a brief FOV kick after the base camera transform each frame.
   const cameraPunchRef = useRef<{ until: number; start: number; shake: number; fov: number }>(
     { until: 0, start: 0, shake: 0, fov: 0 },
+  );
+  // The shared trauma engine for the 3D camera (world-unit amplitudes). The
+  // camera-punch handler feeds it trauma; the render loop applies its decaying
+  // offset. FOV stays on cameraPunchRef (a lens effect, not part of the trauma
+  // model). One engine, one decay curve — replaces the prior inline noise math.
+  const traumaShakeRef = useRef<TraumaShake>(
+    createTraumaShake({ maxTranslatePx: 0.16, maxRotateRad: 0.012, decayPerSec: 1.6, frequency: 22 }),
   );
   const composerRef = useRef<{
     render: (delta: number) => void;
@@ -1089,6 +1096,9 @@ export default function ConcordiaScene({
         const y = (-_projectVec.y * 0.5 + 0.5) * window.innerHeight;
         return { x, y, visible };
       };
+      // Also stash on window so overlays that mount AFTER this one-shot event
+      // (dynamic imports — e.g. LockOnController) can still pick up the projector.
+      (window as unknown as { __concordiaProject?: typeof projectFn }).__concordiaProject = projectFn;
       window.dispatchEvent(
         new CustomEvent('concordia:projector-ready', {
           detail: { project: projectFn },
@@ -1197,34 +1207,46 @@ export default function ConcordiaScene({
               camera.position.x += (cx - camera.position.x) * lerp;
               camera.position.y += (cy - camera.position.y) * lerp;
               camera.position.z += (cz - camera.position.z) * lerp;
-              camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+              // T2.3 — lock-on framing: when a combat target is locked, look at
+              // the player→target midpoint (weighted toward the player) instead
+              // of straight at the player, so the locked enemy stays framed.
+              // Uses the lock position LockOnController already maintains; no
+              // lock → unchanged (look at the player).
+              const lock = cameraLookState.lockedTargetId ? cameraLookState.lockedTargetPos : null;
+              if (lock) {
+                const b = 0.4; // bias toward the target (0 = all player)
+                camera.lookAt(
+                  pose.x + (lock.x - pose.x) * b,
+                  (pose.y + 1.4) + ((lock.y ?? pose.y) + 1.0 - (pose.y + 1.4)) * b,
+                  pose.z + (lock.z - pose.z) * b,
+                );
+              } else {
+                camera.lookAt(pose.x, pose.y + 1.4, pose.z);
+              }
             }
           }
         }
 
         // Sprint 1 (juice) — apply the camera-punch impulse on top of the base
-        // transform: a decaying random positional jitter + a brief FOV kick.
-        // Read after the camera transform so it layers, not fights it.
+        // transform. Shake comes from the shared trauma engine (decaying, coherent
+        // noise); the brief FOV kick rides the cameraPunchRef window. Read after the
+        // camera transform so it layers, not fights it.
         {
+          const off = traumaShakeRef.current.update(delta);
+          if (off.x || off.y || off.rot) {
+            camera.position.x += off.x;
+            camera.position.y += off.y;
+            camera.position.z += off.x * 0.6; // a touch of dolly so it reads in 3D
+            camera.rotation.z += off.rot; // subtle roll sells it
+          }
           const punch = cameraPunchRef.current;
           const nowMs = performance.now();
-          if (nowMs < punch.until) {
+          if (nowMs < punch.until && punch.fov > 0) {
             const remain = (punch.until - nowMs) / Math.max(1, punch.until - punch.start);
             const k = remain * remain; // ease-out (the trauma² falloff)
-            const amp = (punch.shake / 100) * k;
-            // Coherent Simplex noise per-axis (incl. a small roll) instead of
-            // Math.random(): smooth frame-to-frame, deterministic, slow-mo-safe.
-            const ts = nowMs * 0.02;
-            camera.position.x += _camShakeNX(ts, 0.5) * amp;
-            camera.position.y += _camShakeNY(ts, 11.5) * amp;
-            camera.position.z += _camShakeNR(ts, 23.5) * amp;
-            camera.rotation.z += _camShakeNR(ts, 37.5) * amp * 0.01; // subtle roll sells it
-
-            if (punch.fov > 0) {
-              const baseFov = 55;
-              camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
-              camera.updateProjectionMatrix();
-            }
+            const baseFov = 55;
+            camera.fov = baseFov - punch.fov * baseFov * k; // brief zoom-in
+            camera.updateProjectionMatrix();
           } else if (punch.fov > 0 && Math.abs(camera.fov - 55) > 0.01) {
             // Settle FOV back to base once the punch ends.
             camera.fov = 55;
@@ -1445,12 +1467,17 @@ export default function ConcordiaScene({
       if (!d || d.local_relevance === false) return;
       const now = performance.now();
       const dur = Math.max(120, Math.min(2000, Number(d.duration_ms) || 300));
+      const shake = Math.max(0, Math.min(12, Number(d.shake) || 4));
       cameraPunchRef.current = {
         start: now,
         until: now + dur,
-        shake: Math.max(0, Math.min(12, Number(d.shake) || 4)),
+        shake,
         fov: Math.max(0, Math.min(0.25, (Number(d.zoom) || 1.05) - 1)),
       };
+      // Feed the shared trauma engine — normalize the 0–12 shake amplitude to a
+      // 0–1 trauma add (a hit ≈ 0.33, a kill/heavy ≈ 0.8+). The engine handles
+      // decay + coherent-noise sampling each frame.
+      traumaShakeRef.current.addTrauma(shake / 12);
     };
     window.addEventListener('concordia:camera-punch', handleCameraPunch);
 

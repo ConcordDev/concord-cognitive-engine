@@ -60,7 +60,7 @@ describe("daily-life verbs", () => {
   it("macro gates on the kill-switch (off → disabled)", async () => {
     const M = new Map();
     registerDailyLifeMacros((d, n, fn) => M.set(`${d}.${n}`, fn));
-    delete process.env.CONCORD_SOCIAL_LIFE;
+    process.env.CONCORD_SOCIAL_LIFE = "0";
     const off = await M.get("daily_life.hang_out")({ db, actor: { userId: "u1" } }, { partnerId: "npc1" });
     assert.equal(off.reason, "disabled");
     process.env.CONCORD_SOCIAL_LIFE = "1";

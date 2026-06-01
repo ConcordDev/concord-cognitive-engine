@@ -39,7 +39,7 @@ export const INTENTIONALLY_EMPTY = new Set(["well", "generator"]);
 export const DEFAULT_ACTIVITY_TTL_MS = 5 * 60 * 1000; // 5 min
 
 export function worldDensityEnabled() {
-  return process.env.CONCORD_WORLD_DENSITY === "1";
+  return process.env.CONCORD_WORLD_DENSITY !== "0";
 }
 
 /**

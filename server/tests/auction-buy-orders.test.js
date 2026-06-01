@@ -19,12 +19,14 @@ import { up as upBuyOrders } from "../migrations/227_auction_buy_orders.js";
 function freshDb() {
   const db = new Database(":memory:");
   upBuyOrders(db);
+  // Concord Coin balances live in users.concordia_credits (migration 045) and the
+  // wallet primitives in auctions.js log to reward_ledger (migration 296).
   db.exec(`
-    CREATE TABLE user_wallets (
-      user_id TEXT PRIMARY KEY,
-      balance REAL NOT NULL DEFAULT 0
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY,
+      concordia_credits REAL NOT NULL DEFAULT 0
     );
-    CREATE TABLE economy_ledger (
+    CREATE TABLE reward_ledger (
       id TEXT PRIMARY KEY,
       user_id TEXT,
       kind TEXT,
@@ -38,13 +40,13 @@ function freshDb() {
 
 function fund(db, userId, amount) {
   db.prepare(`
-    INSERT INTO user_wallets (user_id, balance) VALUES (?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET balance = balance + excluded.balance
+    INSERT INTO users (id, concordia_credits) VALUES (?, ?)
+    ON CONFLICT(id) DO UPDATE SET concordia_credits = concordia_credits + excluded.concordia_credits
   `).run(userId, amount);
 }
 
 function balance(db, userId) {
-  return db.prepare(`SELECT balance FROM user_wallets WHERE user_id = ?`).get(userId)?.balance || 0;
+  return db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id = ?`).get(userId)?.balance || 0;
 }
 
 describe("Phase AC — buy orders", () => {
@@ -79,6 +81,7 @@ describe("Phase AC — buy orders", () => {
 
   it("fillBuyOrder partial flips status to 'partial', credits seller", () => {
     fund(db, "buyer", 1000);
+    fund(db, "seller", 0); // seller needs a users row for the credit UPDATE to land
     const r = placeBuyOrder(db, "buyer", {
       worldId: "tunya", itemDescriptor: "rare_herb",
       unitPriceCc: 5, quantity: 100,

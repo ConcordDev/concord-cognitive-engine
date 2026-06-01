@@ -52,13 +52,14 @@ function memDb() {
       t.earned.set(k, { player_id: userId, achievement_id: achievementId, earned_at: Math.floor(Date.now() / 1000) });
       return { changes: 1 };
     }
-    if (n.startsWith("INSERT INTO user_wallets")) {
-      const [userId, amount] = args;
+    // CC now lives in users.concordia_credits + logs to reward_ledger.
+    if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits + ?")) {
+      const [amount, userId] = args;
       t.wallets.set(userId, (t.wallets.get(userId) || 0) + amount);
       return { changes: 1 };
     }
-    if (n.startsWith("INSERT INTO economy_ledger")) {
-      t.ledger.push({ userId: args[1], kind: args[2], amount: args[3] });
+    if (n.startsWith("INSERT INTO reward_ledger")) {
+      t.ledger.push({ userId: args[1], amount: args[2], ref: args[3] });
       return { changes: 1 };
     }
     if (n.startsWith("INSERT INTO player_titles")) {

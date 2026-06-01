@@ -13,6 +13,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { spawnInvestigationNode } from "./discovery-nodes.js";
 
 export function listOpenCrimes(db, worldId, limit = 50) {
   if (!db || !worldId) return [];
@@ -47,7 +48,7 @@ export function lockInDeduction(db, userId, crimeId, opts = {}) {
 
   try {
     const crime = db.prepare(`
-      SELECT id, world_id, crime_type, criminal_id, status FROM crime_events WHERE id = ?
+      SELECT id, world_id, crime_type, criminal_id, status, location_id FROM crime_events WHERE id = ?
     `).get(crimeId);
     if (!crime) return { ok: false, error: "no_crime" };
     if (crime.status !== "open") return { ok: false, error: "case_closed" };
@@ -107,12 +108,23 @@ export function lockInDeduction(db, userId, crimeId, opts = {}) {
       `).run(crimeId);
     }
 
+    // G4 — solving the case turns the lead into a material: a rare node at the
+    // crime scene (idempotent; best-effort; CONCORD_INVESTIGATION_LOOT=0 to disable).
+    let discovery = null;
+    if (solved) {
+      try {
+        const sv = spawnInvestigationNode(db, { worldId: crime.world_id, crimeId, locationId: crime.location_id });
+        if (sv.ok) discovery = { nodeId: sv.nodeId };
+      } catch { /* discovery loot best-effort */ }
+    }
+
     return {
       ok: true,
       deductionId,
       correctCount,
       reasons,
       solved,
+      discovery,
     };
   } catch (err) {
     return { ok: false, error: err?.message };

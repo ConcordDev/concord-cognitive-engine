@@ -14,7 +14,7 @@ import crypto from "crypto";
 export const SURFACE_REACH = 4;     // carriers before it goes public
 export const SPREAD_PROB = 0.5;     // base per-edge hop probability (× bond strength)
 
-export function gossipEnabled() { return process.env.CONCORD_GOSSIP === "1"; }
+export function gossipEnabled() { return process.env.CONCORD_GOSSIP !== "0"; }
 const uid = (p) => `${p}_${crypto.randomUUID().slice(0, 12)}`;
 
 /** Build the NPC social adjacency for a world from npc_relationships (undirected). */

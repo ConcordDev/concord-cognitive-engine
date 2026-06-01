@@ -18,6 +18,40 @@
  * layer.
  */
 
+/**
+ * Shared motion-duration tokens (ms). One source of truth for animation/transition
+ * timing across every HUD, overlay, and juice surface — so "fast" means the same
+ * thing everywhere and a feel pass tunes one table, not 40 scattered magic numbers.
+ *
+ * Tiers follow the industry-convergent ranges (Material 3 easing-and-duration specs
+ * + NN/g "Animation Duration" guidance + Val Head "How fast should your UI
+ * animations be"): routine UI 160–240ms, entrance/exit 240–360ms, large moves to
+ * ~400ms. Entrances run a touch longer than exits (objects appearing need more time
+ * to read than objects leaving).
+ *
+ *   instant  80   micro-feedback (press flash, toggle)
+ *   fast    160   component state changes (hover, focus, small slide)
+ *   base    240   default UI transition (panel content, tab switch)
+ *   slow    360   large/entrance motion (modal open, full-screen panel)
+ *   enter   280   element appearing on screen
+ *   exit    200   element leaving screen (faster than its entrance)
+ */
+export const MOTION = {
+  instant: 80,
+  fast: 160,
+  base: 240,
+  slow: 360,
+  enter: 280,
+  exit: 200,
+} as const;
+
+export type MotionToken = keyof typeof MOTION;
+
+/** Resolve a motion token (or a raw ms number) to milliseconds. */
+export function durationMs(token: MotionToken | number): number {
+  return typeof token === 'number' ? token : MOTION[token];
+}
+
 export type JuiceTrigger =
   | 'menu-open'
   | 'menu-close'

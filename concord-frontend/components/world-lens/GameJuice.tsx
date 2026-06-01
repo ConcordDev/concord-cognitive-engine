@@ -5,6 +5,10 @@ import { useSoundscape } from './SoundscapeEngine';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
 import { knockbackForTrigger } from '@/lib/concordia/knockback-feel';
+// The 2D HUD shake is a SEPARATE render target from the in-scene 3D camera shake,
+// but it shares the one trauma authority's severity→magnitude curve so a kill shakes
+// harder than a hit consistently across both surfaces (see lib/concordia/screen-trauma.ts).
+import { traumaForSeverity } from '@/lib/concordia/screen-trauma';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -218,6 +222,11 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       if (trigger === 'disaster' && opts?.magnitude) {
         overlay.opacity = Math.min(1, intensityValue * (opts.magnitude / 10));
       }
+      // Shake overlays scale by the shared severity curve so a kill reads heavier
+      // than a hit — coherent with the 3D camera trauma engine.
+      if (overlayType === 'shake') {
+        overlay.opacity = Math.min(1, overlay.opacity * (0.5 + traumaForSeverity(trigger)));
+      }
 
       setOverlays((prev) => [...prev, overlay]);
 
@@ -275,7 +284,10 @@ export default function GameJuice({ children, enabled = true, intensity: initial
             />
           ))}
 
-        {/* Screen shake overlay */}
+        {/* Screen shake overlay. T2.11 — the shaking div used to be fully
+            transparent (shaking an invisible element reads as nothing on the 2D
+            HUD / reduced-motion path). A red-edge radial vignette scaled by
+            opacity makes the impact actually visible while the div shakes. */}
         {overlays
           .filter((o) => o.type === 'shake')
           .map((o) => (
@@ -284,6 +296,7 @@ export default function GameJuice({ children, enabled = true, intensity: initial
               className="pointer-events-none fixed inset-0 z-[9998]"
               style={{
                 animation: `shake ${300 * o.opacity}ms ease-in-out`,
+                background: `radial-gradient(ellipse at center, transparent 55%, rgba(220,40,40,${(o.opacity * 0.35).toFixed(3)}) 100%)`,
               }}
             />
           ))}

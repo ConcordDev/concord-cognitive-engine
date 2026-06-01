@@ -288,7 +288,7 @@ export function executeCraft(db, userId, worldId, recipeId, opts = {}) {
   // N4-EVO: register the crafted item as an evolvable asset so it can refine
   // through use. Best-effort + kill-switched (off → today). The bridge absorbs
   // its own throws; the extra guard keeps a crafting bug impossible.
-  if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1' && resultDtu?.id) {
+  if (process.env.CONCORD_EVO_ASSET_GAMEPLAY !== '0' && resultDtu?.id) {
     try {
       onPlayerCraft(db, {
         userId, recipeId, itemId: resultDtu.id,

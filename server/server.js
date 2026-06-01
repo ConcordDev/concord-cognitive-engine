@@ -812,6 +812,20 @@ registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbit
 import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
 registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
 
+// Temperament P5 — haul active NPC captures + roll escapes (behind CONCORD_TEMPERAMENT).
+import { runCaptureCycle } from "./emergent/capture-cycle.js";
+registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
+
+// Sere managed parity — the Tessera funds both sides so the war never resolves
+// (CONCORD_TESSERA_PARITY=0 to disable; only ever acts on world_id='sere').
+import { runTesseraParity } from "./emergent/tessera-parity-cycle.js";
+registerHeartbeat("tessera-parity", { frequency: 120, handler: runTesseraParity, scope: "global" });
+
+// Sere extraction-by-rescue — the Mercy Fund bails out realms in crisis and takes
+// the collateral on default (CONCORD_MERCY_FUND=0 to disable; world_id='sere' only).
+import { runMercyFundCycle } from "./emergent/mercy-fund-cycle.js";
+registerHeartbeat("mercy-fund", { frequency: 120, handler: runMercyFundCycle, scope: "global" });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
@@ -1368,7 +1382,8 @@ import { initializeSense, recordReading as senseRecordReading, getSenseMetrics, 
 import { initializeIdentity, getIdentityMetrics, getIdentity as identityGetNode, verifyNode as identityVerifyNode, getAllIdentities } from "./lib/foundation-identity.js";
 import { initializeEnergy, getEnergyMetrics, getEnergyMap, getGridHealth, getRecentEnergyReadings } from "./lib/foundation-energy.js";
 import { initializeSpectrum, getSpectrumMetrics, getAvailableChannels as spectrumGetChannels, getSpectrumMap } from "./lib/foundation-spectrum.js";
-import { initializeEmergency, getEmergencyMetrics, triggerEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
+import { initializeEmergency, getEmergencyMetrics, triggerEmergency, resolveEmergency, getEmergencyStatus, getActiveEmergencies, getRecentAlerts as emergencyGetAlerts } from "./lib/foundation-emergency.js";
+import { applyShadowVault } from "./lib/artifact-store.js";
 import { initializeMarket, getMarketMetrics, getRecentEarnings as marketGetEarnings, getRelayTopology as marketGetTopology, getNodeBalance as marketGetBalance } from "./lib/foundation-market.js";
 import { initializeArchive, getArchiveMetrics, getFossils, getDecoded as archiveGetDecoded } from "./lib/foundation-archive.js";
 import { initializeSynthesis, getSynthesisMetrics, getCorrelations as synthesisGetCorrelations } from "./lib/foundation-synthesis.js";
@@ -8381,14 +8396,16 @@ async function tryInitWebSockets(server) {
     // cityPresence.applyAttack() and broadcasts combat:hit to
     // everyone in the attacker's chunk so nearby players see the
     // damage numbers render. Rate-limited to 4 attacks/sec.
-    let _lastAttackAt = 0;
+    // T2.9 — per-action-class cooldown (was a single shared 250ms gate that
+    // dropped a kick chained after a light, desyncing the client's predicted
+    // swing). Independent class tracks + a global anti-spam floor.
+    const _attackCd = _newAttackCooldownState();
     socket.on("combat:attack", async (data) => {
       const userId = socket.data?.userId;
       if (!userId) return;
       if (!data || typeof data !== "object") return;
       const now = Date.now();
-      if (now - _lastAttackAt < 250) return; // ~4 attacks/sec cap
-      _lastAttackAt = now;
+      if (!_checkAttackCooldown(_attackCd, now, data.style || data.actionOverride).allowed) return;
 
       // Flow Combat: derive context modifiers up-front so applyAttack can
       // honor them (stamina cost, damage scaling, evade roll) in one place.
@@ -8476,7 +8493,7 @@ async function tryInitWebSockets(server) {
       // HTTP combat route: the Sovereign refuses harm both TO and FROM the
       // under-matured. Live STATE already holds refusalFields, so we read it
       // directly (no DB reload). Flag-gated + best-effort (off==today).
-      if (process.env.CONCORD_CHILD_REFUSAL === "1") {
+      if (process.env.CONCORD_CHILD_REFUSAL !== "0") {
         try {
           const { isRefusedFor, maturityOf } = await import("./lib/refusal-field.js");
           const _crWorld = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
@@ -18193,13 +18210,9 @@ async function runEntityQualityGate(artifactId, entityId, lens) {
   // Promote to marketplace_ready
   artifact.meta.status = "marketplace_ready";
 
-  // Shadow vault: 98% of entity production stays hidden
-  const createdBy = artifact.meta?.createdBy || "";
-  if (createdBy.startsWith("entity")) {
-    if (Math.random() > 0.02) {
-      artifact.meta.status = "shadow_vault";
-    }
-  }
+  // Shadow vault: 98% of entity production stays hidden. Uses the extracted
+  // resolver (applyShadowVault) so the rule lives in one place.
+  artifact.meta.status = applyShadowVault(artifact, { status: artifact.meta.status }).status;
 
   artifact.meta.qualityCheckedAt = nowISO();
   saveStateDebounced();
@@ -23649,6 +23662,13 @@ register("foundation", "emergency.status", (ctx, input) => {
   return { ok: true, ...getEmergencyStatus() };
 }, { description: "Get current disaster zone and emergency status." });
 
+register("foundation", "emergency.resolve", (ctx, input) => {
+  // Stand an active emergency down once the situation clears (the resolver half
+  // of emergency.alert — coordinators call this when nodes report safe).
+  if (!input?.emergencyId) return { ok: false, error: "emergencyId required" };
+  return resolveEmergency(input.emergencyId);
+}, { description: "Resolve an active emergency once the situation has cleared." });
+
 register("foundation", "market.earnings", (ctx, input) => {
   const limit = Number(input.limit) || 50;
   const earnings = marketGetEarnings(limit);
@@ -25004,6 +25024,21 @@ registerAppearanceMacros(register);
 // Phase H2 — player-placed POI markers.
 import registerMarkersMacros from "./domains/markers.js";
 registerMarkersMacros(register);
+
+import registerPowerClusterMacros from "./domains/power-clusters.js";
+registerPowerClusterMacros(register);
+
+import registerProgressionMacros from "./domains/progression.js";
+registerProgressionMacros(register);
+
+import registerLedgerMacros from "./domains/ledger.js";
+registerLedgerMacros(register);
+
+import registerArcMacros from "./domains/arc.js";
+registerArcMacros(register);
+
+import registerCompletionMacros from "./domains/completion.js";
+registerCompletionMacros(register);
 
 // Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
 import registerPatternsMacros from "./domains/patterns.js";
@@ -31217,6 +31252,8 @@ import { attemptDodge as _attemptDodge, attemptParry as _attemptParry } from "./
 import { skillKeyForSkill } from "./lib/skills/skill-key.js";
 // A1 — typed attack telegraphs (thrust/sweep/grab peril + counter).
 import { perilFor as telegraphPerilFor } from "./lib/combat/telegraph-peril.js";
+// T2.9 — per-action-class attack cooldown (replaces the single shared 250ms gate).
+import { newCooldownState as _newAttackCooldownState, checkAttackCooldown as _checkAttackCooldown } from "./lib/combat/attack-cooldown.js";
 
 app.get("/api/world/weather/:worldId", (req, res) => {
   res.json({ ok: true, weather: getWorldWeather(req.params.worldId) });
@@ -46532,12 +46569,30 @@ app.get("/api/federation/search", perEndpointRateLimit("federation.search"), asy
     }
   }
   merged.sort((a, b) => (b.score || 0) - (a.score || 0));
+  // Federation tier escalation: when local + peer results are thin, walk the
+  // tier ladder (local → regional → national → …) via resolveQuery, which decides
+  // how far to climb from the result counts. searchFn re-runs the semantic macro
+  // per tier; the escalation metadata rides back so the client can show reach.
+  let escalation = null;
+  if (merged.length < limit) {
+    try {
+      const fedLib = await import("./lib/federation.js");
+      const ctx = makeCtx(req);
+      const searchFn = async () => {
+        const rr = await runMacro("search", "semantic", { q, limit }, ctx).catch(() => null);
+        return rr?.results || [];
+      };
+      escalation = await fedLib.resolveQuery(db, { query: q, currentTier: "local", userLocation: {}, searchFn });
+    } catch { /* escalation best-effort — local+peer results still return */ }
+  }
+
   res.json({
     ok: true,
     q,
     total: merged.length,
     results: merged.slice(0, limit),
     fanout: peers.length,
+    escalation: escalation && escalation.ok ? { resolvedAt: escalation.resolvedAt, exhausted: !!escalation.exhausted } : null,
   });
 }));
 

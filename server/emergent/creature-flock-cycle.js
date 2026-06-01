@@ -74,13 +74,13 @@ function sampleEncountersForWorld(db, worldId) {
   return { pairs: recorded };
 }
 
-export async function runCreatureFlockCycle({ db, state, tickCount: _t } = {}) {
+export async function runCreatureFlockCycle({ db, state, io, tickCount: _t } = {}) {
   if (process.env.CONCORD_CREATURE_FLOCK === "0") {
     return { ok: false, reason: "disabled" };
   }
   if (!db) return { ok: false, reason: "no_db" };
 
-  const stats = { ok: true, worldsTouched: 0, totalMoved: 0, totalSpecies: 0, totalEncounterPairs: 0 };
+  const stats = { ok: true, worldsTouched: 0, totalMoved: 0, totalSpecies: 0, totalEncounterPairs: 0, totalKills: 0 };
 
   let worlds = [];
   try {
@@ -111,6 +111,23 @@ export async function runCreatureFlockCycle({ db, state, tickCount: _t } = {}) {
         stats.worldsTouched++;
         stats.totalMoved += r.moved ?? 0;
         stats.totalSpecies += r.species ?? 0;
+        stats.totalKills += r.kills ?? 0;
+        // Surface predation so the world reads as alive — "a deer bolting tells
+        // you a predator's near". Players in the world get a transient marker at
+        // the kill site. Best-effort; an emit failure never stops the cycle.
+        if (r.killed && r.killed.length && io) {
+          for (const k of r.killed) {
+            try {
+              io.to(`world:${worldId}`)?.emit?.("creature:predation", {
+                worldId,
+                predatorSpecies: k.predatorSpecies,
+                preySpecies: k.preySpecies,
+                x: k.x,
+                z: k.z,
+              });
+            } catch { /* emit best-effort */ }
+          }
+        }
       }
     } catch (err) {
       logger?.warn?.("creature-flock-cycle: world failed", { worldId, err: err?.message });

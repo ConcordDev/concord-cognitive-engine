@@ -207,6 +207,17 @@ export async function endEvent(eventId, userId = null) {
     }
   } catch { /* reward distribution best-effort */ }
 
+  // Event-cascade trigger: if this event is a cascade parent, completing it fires
+  // the defined child cascade. No-op (idempotent) when no cascade_definition rows
+  // reference it — so worlds without authored cascades are unaffected.
+  try {
+    const db = globalThis._concordSTATE?.db;
+    if (db) {
+      const { triggerCascade } = await import("./event-cascades.js");
+      triggerCascade(db, eventId, "success");
+    }
+  } catch { /* cascade best-effort — never blocks event completion */ }
+
   return {
     ..._serializeEvent(event),
     attendeeCount: event.attendees.size,

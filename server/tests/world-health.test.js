@@ -16,12 +16,12 @@ beforeEach(() => {
   db = new Database(":memory:");
   migHealth.up(db);
   db.exec(`
-    CREATE TABLE user_wallets (user_id TEXT PRIMARY KEY, balance REAL);
+    CREATE TABLE users (id TEXT PRIMARY KEY, concordia_credits REAL);
     CREATE TABLE royalty_lineage (child_id TEXT, parent_id TEXT);
     CREATE TABLE faction_strategy_state (faction_id TEXT PRIMARY KEY, next_move_at INTEGER);
   `);
-  db.prepare(`INSERT INTO user_wallets VALUES ('u_bad', -50)`).run();
-  db.prepare(`INSERT INTO user_wallets VALUES ('u_ok', 100)`).run();
+  db.prepare(`INSERT INTO users VALUES ('u_bad', -50)`).run();
+  db.prepare(`INSERT INTO users VALUES ('u_ok', 100)`).run();
   db.prepare(`INSERT INTO royalty_lineage VALUES ('c1','p1'),('c1','p1')`).run(); // dupe
   db.prepare(`INSERT INTO royalty_lineage VALUES ('c2','p2')`).run();             // clean
   db.prepare(`INSERT INTO faction_strategy_state VALUES ('fStuck', ?)`).run(NOW - 200_000); // overdue
@@ -54,7 +54,7 @@ describe("runWorldHealthPass", () => {
     // mechanical heal happened: the overdue scheduler is re-ticked to now.
     assert.equal(db.prepare(`SELECT next_move_at FROM faction_strategy_state WHERE faction_id='fStuck'`).get().next_move_at, NOW);
     // value is UNTOUCHED — the negative balance is escalated, never zeroed.
-    assert.equal(db.prepare(`SELECT balance FROM user_wallets WHERE user_id='u_bad'`).get().balance, -50);
+    assert.equal(db.prepare(`SELECT concordia_credits AS balance FROM users WHERE id='u_bad'`).get().balance, -50);
     assert.deepEqual(escalated.sort(), ["dupe_citation", "negative_balance"]);
 
     // every finding is logged with its disposition.

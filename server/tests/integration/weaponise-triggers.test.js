@@ -33,7 +33,7 @@ function freshDb() {
   up261(db);
   // minimal world_npcs + dtus so resolve + revelation mint work
   db.exec(`
-    CREATE TABLE world_npcs (id TEXT PRIMARY KEY, world_id TEXT, name TEXT);
+    CREATE TABLE world_npcs (id TEXT PRIMARY KEY, world_id TEXT, state TEXT DEFAULT '{}');
     CREATE TABLE dtus (id TEXT PRIMARY KEY, creator_id TEXT, type TEXT, title TEXT, data TEXT, created_at INTEGER);
   `);
   return db;
@@ -74,7 +74,7 @@ describe("T2.1 — weaponise prose parser", () => {
 describe("T2.1 — seeding", () => {
   it("seeds from narrative_context.weaponise_at and is idempotent", () => {
     const db = freshDb();
-    db.prepare(`INSERT INTO world_npcs (id, world_id, name) VALUES ('kit','w1','Kit Vance')`).run();
+    db.prepare(`INSERT INTO world_npcs (id, world_id, state) VALUES ('kit','w1','{"name":"Kit Vance"}')`).run();
     const npc = {
       id: "npc-pactmaker", world_id: "w1",
       narrative_context: { weaponise_at: "Befriend Kit; the pact's details surface.", secret: "She signed the embassy pact in blood." },
@@ -107,7 +107,7 @@ describe("T2.1 — seeding", () => {
 describe("T2.1 — firing on befriend", () => {
   it("fires once when opinion crosses the threshold, minting a revelation", () => {
     const db = freshDb();
-    db.prepare(`INSERT INTO world_npcs (id, world_id, name) VALUES ('kit','w1','Kit')`).run();
+    db.prepare(`INSERT INTO world_npcs (id, world_id, state) VALUES ('kit','w1','{"name":"Kit"}')`).run();
     seedWeaponiseTrigger(db, {
       id: "kit", world_id: "w1",
       narrative_context: { weaponise_at: "Befriend Kit; the pact surfaces.", secret: "blood pact" },

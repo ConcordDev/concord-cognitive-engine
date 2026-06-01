@@ -376,6 +376,7 @@ const ConcordiaHUD = {
   ContextPrompt: dynamic(() => import('@/components/world/concordia-hud/ContextPromptLayer').then((m) => ({ default: m.ContextPromptLayer })), { ssr: false }),
   CommandPalette: dynamic(() => import('@/components/world/concordia-hud/CommandPalette').then((m) => ({ default: m.CommandPalette })), { ssr: false }),
   ActionWheel: dynamic(() => import('@/components/world/concordia-hud/ActionWheel').then((m) => ({ default: m.ActionWheel })), { ssr: false }),
+  SkillWheel: dynamic(() => import('@/components/world/concordia-hud/SkillWheelMount'), { ssr: false }),
   PanelHost: dynamic(() => import('@/components/world/concordia-hud/PanelHost').then((m) => ({ default: m.PanelHost })), { ssr: false }),
   InteractionSink: dynamic(() => import('@/components/world/concordia-hud/WorldInteractionSink').then((m) => ({ default: m.WorldInteractionSink })), { ssr: false }),
   AmbientFeedback: dynamic(() => import('@/components/world/concordia-hud/AmbientFeedback').then((m) => ({ default: m.AmbientFeedback })), { ssr: false }),
@@ -410,6 +411,12 @@ const DriftMoodboard = dynamic(() => import('@/components/world/DriftMoodboard')
 const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ssr: false });
 const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorldPotencyHUD'), { ssr: false });
 const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypointBeacon'), { ssr: false });
+const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBeacons'), { ssr: false });
+const PowerClusterLayer = dynamic(() => import('@/components/world/PowerClusterLayer'), { ssr: false });
+const LinkScanOverlay = dynamic(() => import('@/components/world/LinkScanOverlay'), { ssr: false });
+const WorldTintOverlay = dynamic(() => import('@/components/world/WorldTintOverlay'), { ssr: false });
+const SereFrameBanner = dynamic(() => import('@/components/world/SereFrameBanner'), { ssr: false });
+const CurtainDossier = dynamic(() => import('@/components/world/CurtainDossier'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -703,9 +710,6 @@ const FactionWarBanner = dynamic(
   () => import('@/components/world-lens/FactionWarBanner'),
   { ssr: false },
 );
-const AnimationManager = dynamic(() => import('@/components/world-lens/AnimationManager'), {
-  ssr: false,
-});
 const GameJuice = dynamic(() => import('@/components/world-lens/GameJuice'), { ssr: false });
 const ActiveEffectsBar = dynamic(() => import('@/components/concordia/HUD/ActiveEffectsBar'), { ssr: false });
 // Concord Link Summon shell (B2) — self-gates on CONCORD_LINK_SYSTEM + open; inert by default.
@@ -1587,6 +1591,24 @@ function CityStreamingSection() {
 
 type ViewMode = 'concordia' | 'district' | 'streams' | 'explore';
 
+// 3D-first landing: the World lens boots into the 3D scene (`explore`), not the
+// 2D Concordia hub menu — you land in the world, not in a menu of the world. But
+// if the device can't create a WebGL context (no GPU / headless / blocked), the
+// 3D scene would paint nothing, so we fall back to the 2D hub. This probe is the
+// gate for that downgrade; it runs once on mount.
+function webglAvailable(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+  try {
+    const c = document.createElement('canvas');
+    return !!(
+      (window as unknown as { WebGLRenderingContext?: unknown }).WebGLRenderingContext &&
+      (c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'))
+    );
+  } catch {
+    return false;
+  }
+}
+
 type DistrictTool =
   | 'snapbuild'
   | 'dsl'
@@ -1879,11 +1901,21 @@ export default function WorldLensPage() {
   const dialogueCtx = useDialogue(DEFAULT_SPECIAL);
 
   // ── State ─────────────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<ViewMode>('concordia');
+  // 3D-first: land in the 3D world by default. Downgraded to the 2D hub on mount
+  // only when WebGL is unavailable (see webglAvailable + the effect below).
+  const [viewMode, setViewMode] = useState<ViewMode>('explore');
   const [activeDistrict, setActiveDistrict] = useState<District>(DEMO_DISTRICT);
   const [creationMode, setCreationMode] = useState<CreationMode | null>(null);
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState<0 | 1 | 2 | 3>(0);
+
+  // 3D-first landing with a graceful WebGL fallback: if the device can't paint a
+  // WebGL canvas (no GPU / headless / blocked), drop to the 2D Concordia hub so
+  // the player isn't stranded on a blank scene. Runs once on mount; with WebGL
+  // present the default 'explore' (3D) view stands.
+  useEffect(() => {
+    if (!webglAvailable()) setViewMode('concordia');
+  }, []);
 
   // 2026 parity polish — slide-overs surfacing existing simulation.
   // Mirrors the systemsPanel pattern from the chat lens.
@@ -4113,26 +4145,28 @@ export default function WorldLensPage() {
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
           <div className="flex items-center bg-black/40 border border-white/10 rounded-lg overflow-hidden">
+            {/* 3D world is the home — first + default. The 2D hub/district/streams
+                views are menus over it, reachable but secondary. */}
+            <button
+              onClick={() => setViewMode('explore')}
+              className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
+            >
+              <Globe className="w-3.5 h-3.5 inline mr-1" />
+              World (3D)
+            </button>
             <button
               onClick={() => setViewMode('concordia')}
               className={`px-3 py-1.5 text-xs ${viewMode === 'concordia' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'}`}
             >
-              <Globe className="w-3.5 h-3.5 inline mr-1" />
-              Concordia
+              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
+              Hub
             </button>
             <button
               onClick={() => setViewMode('district')}
               className={`px-3 py-1.5 text-xs ${viewMode === 'district' ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:text-white'}`}
             >
-              <MapIcon className="w-3.5 h-3.5 inline mr-1" />
-              District
-            </button>
-            <button
-              onClick={() => setViewMode('explore')}
-              className={`px-3 py-1.5 text-xs ${viewMode === 'explore' ? 'bg-emerald-500/20 text-emerald-300' : 'text-gray-400 hover:text-white'}`}
-            >
               <Users className="w-3.5 h-3.5 inline mr-1" />
-              Explore 3D
+              District
             </button>
             <button
               onClick={() => setViewMode('streams')}
@@ -4386,9 +4420,6 @@ export default function WorldLensPage() {
             onQuit={() => { window.location.href = '/'; }}
           />
           <FactionWarBanner />
-          <AnimationManager>
-            <></>
-          </AnimationManager>
           <GameJuice>
             <></>
           </GameJuice>
@@ -4846,7 +4877,9 @@ export default function WorldLensPage() {
           <ConcordiaHUD.ContextPrompt />
           <ConcordiaHUD.CommandPalette />
           <ConcordiaHUD.ActionWheel variant="quick_panel" />
-          <ConcordiaHUD.ActionWheel variant="skill" />
+          {/* Skill wheel wired to the player's REAL learned skills (each spoke
+              fires the canonical concordia:spell-cast — flick-to-cast). */}
+          <ConcordiaHUD.SkillWheel />
           <ConcordiaHUD.ActionWheel variant="tool" />
           <ConcordiaHUD.PanelHost />
           <ConcordiaHUD.InteractionSink />
@@ -4902,6 +4935,22 @@ export default function WorldLensPage() {
               active objective) + recovery HUD (top-left card + bottom-
               right "?" button). Reads `guidance_waypoint.active_objective`. */}
           <QuestWaypointBeacon />
+          {/* Diegetic 3D: "what's happening now" as in-world beacons you can see
+              + walk toward (augments the 2D DistrictActivityFeed). */}
+          <WorldEventBeacons worldId={activeDistrict.id} />
+          {/* SR4/Crackdown data-cluster loop: floating power-orbs you walk into,
+              upgrading traversal/combat powers by exploring the 3D world. */}
+          <PowerClusterLayer worldId={activeDistrict.id} />
+          {/* Link-scan: on-demand (V) Glance-tier scanner revealing the Layer-7
+              embodied-signal substrate the player stands in. */}
+          <LinkScanOverlay worldId={activeDistrict.id} />
+          {/* Consumer for concordia:world-tint (was a dead wire) — renders the
+              time-loop expiry red wash as a DOM overlay. */}
+          <WorldTintOverlay />
+          {/* One-time satire/fiction framing for fiction worlds (Sere). */}
+          <SereFrameBanner worldId={activeDistrict.id} />
+          {/* The Curtain dossier — secrets redacted until the player declassifies them (K). */}
+          <CurtainDossier worldId={activeDistrict.id} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
@@ -5298,7 +5347,7 @@ export default function WorldLensPage() {
           )}
           {showPanel === 'quests' && (
             <div className="absolute top-4 left-4 z-20 w-80 max-h-[70vh] overflow-auto pointer-events-auto">
-              <QuestPanel onClose={() => setShowPanel('none')} />
+              <QuestPanel worldId={activeDistrict.id} onClose={() => setShowPanel('none')} />
             </div>
           )}
           {showPanel === 'questlog' && (

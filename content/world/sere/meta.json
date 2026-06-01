@@ -1,0 +1,96 @@
+{
+  "world_id": "sere",
+  "world_name": "Corrupt Earth",
+  "theme": "late-extraction industrial",
+  "tech_level": "industrial",
+  "magic_level": "none",
+  "is_hub": false,
+  "universe_type": "sere",
+  "fiction": "satire",
+  "_frame": "SATIRE. Sere is an invented parallel world that dramatizes PATTERNS of power, money, and managed conflict. Every person, house, institution, company, nation, war, and event here is fictional and exaggerated for parody. Resemblance to the real world is at the level of theme and pattern only (the way Animal Farm is 'about' history without naming anyone). Claims are about Sere, never about real individuals or organizations. The in-world conceit is the joke: there is no villain and no mastermind — only incentives that compound.",
+  "biomes": ["old_capital", "spire_city", "furnace_belt", "breadlands", "flooded_lowland", "drowned_provinces", "contested_passes", "offshore_haven", "river_delta", "highland"],
+  "description": "An Earth-shaped world worn thin by eight centuries of extraction — the homeworld the seven Tunya arks fled. In Concordia's cosmology, Sere is the world where no Refusal ever held: every attempt to build something outside the machine was bought, hollowed, or crushed. Its continuity is the Tessera — not a cabal but a recognition-token, the shape capital takes when it survives across generations. There is no head, no roster, no meeting; each holder rationally preserves their position, and the aggregate is domination as an emergent property, not a plan. Lampfuel (the Black Tithe) is sold only for Marks; the Marks are issued from nothing by the Tally House; the wars never resolve because resolution ends the revenue. The Exodus — seven arks launched by people who could not refuse the machine from inside it and so left the planet — is the first Refusal made physical, and the reason every downstream sub-world exists. Walking Sere after the other worlds is the lore payload: you feel the shape of what is missing.",
+  "skill_affinity": {
+    "default": 0.7,
+    "magic": 0.0,
+    "fire_bloodline": 0.0,
+    "ice_bloodline": 0.0,
+    "tech": 0.6,
+    "hacking": 0.55,
+    "engineering": 0.85,
+    "smithing": 0.9,
+    "industry": 1.0,
+    "finance": 1.0,
+    "accounting": 1.0,
+    "diplomacy": 0.9,
+    "deception": 1.0,
+    "leadership": 0.8,
+    "trade": 1.0,
+    "logistics": 0.95,
+    "investigation": 0.95,
+    "surveillance": 1.0,
+    "stealth": 0.8,
+    "gun": 0.9,
+    "weapons_modern": 0.9,
+    "driving": 0.7,
+    "piloting": 0.5,
+    "farming": 0.6,
+    "ark_archaeology": 0.4,
+    "refusal": 0.05,
+    "open_cognition": 0.1,
+    "mutual_aid": 0.15
+  },
+  "material_availability": {
+    "lampfuel": 1.0,
+    "the_mark": 1.0,
+    "ballistic_ammo": 0.7,
+    "tech_parts": 0.6,
+    "magical_reagents": 0.0,
+    "open_seed": 0.05
+  },
+  "physics_modulators": {
+    "gravity": 1.0,
+    "shape": "earth"
+  },
+  "rule_modulators": {
+    "combat": true,
+    "pvp": false,
+    "economy_model": "extraction",
+    "currency": "the_mark"
+  },
+  "calendar": {
+    "hours_per_day": 24,
+    "current_era": "Late Tessera — the eighth century of continuity, the year before the Ark Exodus"
+  },
+  "concord_link": {
+    "primary_access": "ark_launch_sites",
+    "secondary_access": ["curtain_archive_leaks", "open_ledger_resonance"],
+    "veil_stability": 0.4,
+    "anchors": [
+      {
+        "id": "anchor_sere_first_launch_cradle",
+        "name": "The First Launch Cradle",
+        "access_method": "ark_launch_sites",
+        "description": "The scorched gantry-field the seven arks left from. Cold for generations. The control terminals still hold the last manifests — names of who boarded, and the longer list of who was refused a berth. It is the umbilical to Tunya: the archives the arks carried boot from the same terminals on the far side.",
+        "location": "the_unbound_provinces",
+        "controlled_by_faction": "the_open_table",
+        "stability": 0.6
+      },
+      {
+        "id": "anchor_sere_curtain_misfile",
+        "name": "The Misfiled Shelf",
+        "access_method": "curtain_archive_leaks",
+        "description": "Deep in the Curtain's stacks, one shelf is wrong on purpose. An archivist who stopped believing leaves one true thread un-buried in each archive, findable by someone patient enough. The leak that looks like an error.",
+        "location": "the_founding_compound",
+        "controlled_by_faction": "the_curtain",
+        "stability": 0.35
+      }
+    ]
+  },
+  "open_lore": {
+    "who_runs_sere": "No one. That is not evasion — it is the answer. The Tessera has no chairman; ask any holder and they say, truthfully, 'no one,' which is exactly why removing anyone changes nothing.",
+    "what_fell_in_the_quiet_fall": "Queryable, never confirmed. Something fell from the sky; within a season the Curtain, Verge, and the classification charter were all founded. Coincidence or cause is for the player to weigh.",
+    "what_are_the_deep_watchers": "Anomalies in Sere's oceans and skies that might indicate a presence older than the realms. The world ships the evidence, not the verdict.",
+    "where_did_the_arks_go": "Tunya, and the worlds after it. The Exodus is recoverable from the First Launch Cradle's manifests — and from the far side, through Tunya's ark_archive_terminals."
+  }
+}

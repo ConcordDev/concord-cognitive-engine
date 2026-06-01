@@ -22,7 +22,7 @@ import { authorityPressure } from "./authority-heat.js";
 // ── kill-switch ──────────────────────────────────────────────────────────────
 export function temperamentEnabled() {
   const v = process.env.CONCORD_TEMPERAMENT;
-  return v === "1" || v === "true";
+  return v !== "0" && v !== "false";
 }
 
 // ── dials (env-overridable — see docs/BALANCE_DIALS.md) ──────────────────────

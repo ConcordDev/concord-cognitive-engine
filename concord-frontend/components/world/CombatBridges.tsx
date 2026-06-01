@@ -4,10 +4,10 @@
  * CombatBridges — Phase 8 polish events wired to the actual asset
  * systems already in the codebase:
  *
- *   AnimationManager.tsx     listens to `concordia:combat-anim` +
- *                            `concordia:hit-reaction` CustomEvents.
- *   AvatarSystem3D.tsx       listens to the same events for avatar
- *                            animation transitions.
+ *   AvatarSystem3D.tsx       listens to `concordia:combat-anim` +
+ *                            `concordia:hit-reaction` CustomEvents and
+ *                            drives the THREE.AnimationMixer (the live
+ *                            animation path).
  *   GameJuice.tsx            exposes useGameJuice().triggerJuice()
  *                            which routes to SoundscapeEngine for SFX
  *                            and renders camera shake / pulse / cinematic
@@ -117,10 +117,10 @@ function callVFX(actorId: string, vfx: string, opts: Record<string, unknown> = {
 // ── Animation Bridge ────────────────────────────────────────────────────────
 
 /**
- * Phase 8 events → AnimationManager + AvatarSystem3D via
- * `concordia:combat-anim` and `concordia:hit-reaction` CustomEvents.
+ * Phase 8 events → AvatarSystem3D via `concordia:combat-anim` and
+ * `concordia:hit-reaction` CustomEvents (the live mixer path).
  *
- * Animation map (matches AvatarAnimation type in AnimationManager.tsx):
+ * Animation map (matches the AvatarSystem3D clip names):
  *   combo_start / combo_extend → 'attack-light' (combo ≤ 3) / 'attack-heavy' (combo ≥ 4)
  *   combo_finish               → 'attack-heavy' + 'celebrate' chain
  *   parry / parry_perfect       → 'parry'

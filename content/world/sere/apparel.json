@@ -1,0 +1,29 @@
+{
+  "world_id": "sere",
+  "schema_version": "1.0",
+  "purpose": "Costume templates per faction + occasion for sere. Drives NPC procedural appearance + player wardrobe options.",
+  "occasions": [
+    "everyday",
+    "ceremonial",
+    "work",
+    "combat",
+    "festival"
+  ],
+  "factions": [
+    {
+      "faction_id": "[AUTHOR]",
+      "signature_palette": [
+        "[AUTHOR hex or name]"
+      ],
+      "signature_silhouette": "[AUTHOR]",
+      "wardrobe_by_occasion": {
+        "everyday": "[AUTHOR]",
+        "ceremonial": "[AUTHOR]",
+        "work": "[AUTHOR]",
+        "combat": "[AUTHOR]",
+        "festival": "[AUTHOR]"
+      }
+    }
+  ],
+  "genre_notes": "[AUTHOR — standard-genre wardrobe tropes go here]"
+}

@@ -119,6 +119,39 @@ export const JOB_TYPES = {
     archetype_match: ['bandit', 'pirate', 'henchman'],
     room_type_needed: null,
   },
+  clerk: {
+    schedule: {
+      morning: 'walk_to_work',
+      day: 'process_records',
+      evening: 'file_decrees',
+      night: 'walk_home',
+    },
+    earns_from: ['administration'],
+    archetype_match: ['clerk', 'official', 'scribe', 'administrator', 'scholar'],
+    room_type_needed: 'office',
+  },
+  builder: {
+    schedule: {
+      morning: 'walk_to_site',
+      day: 'raise_structures',
+      evening: 'haul_materials',
+      night: 'walk_home',
+    },
+    earns_from: ['construction'],
+    archetype_match: ['builder', 'laborer', 'mason', 'carpenter'],
+    room_type_needed: 'construction_site',
+  },
+  healer: {
+    schedule: {
+      morning: 'open_clinic',
+      day: 'tend_patients',
+      evening: 'brew_remedies',
+      night: 'walk_home',
+    },
+    earns_from: ['healing', 'trading'],
+    archetype_match: ['healer', 'medic', 'doctor', 'priest'],
+    room_type_needed: 'clinic',
+  },
   generic: {
     schedule: {
       morning: 'gather_resource',

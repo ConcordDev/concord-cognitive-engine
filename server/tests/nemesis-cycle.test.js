@@ -51,8 +51,9 @@ function freshDb() {
       resolved_at INTEGER
     );
     CREATE TABLE character_opinions (
-      from_npc_id TEXT,
-      to_npc_id TEXT,
+      npc_id TEXT,
+      target_kind TEXT,
+      target_id TEXT,
       score INTEGER
     );
   `);
@@ -160,7 +161,7 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
     db.prepare(`INSERT INTO world_npcs (id, world_id) VALUES ('actor', 'tunya')`).run();
     db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
       .run("actor", "target", Math.floor(Date.now() / 1000));
-    db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
+    db.prepare(`INSERT INTO character_opinions (npc_id, target_kind, target_id, score) VALUES (?, 'npc', ?, ?)`)
       .run("actor", "target", -75);
     const r = runNemesisCycle({ db, worldId: "tunya" });
     assert.equal(r.ok, true);
@@ -228,7 +229,7 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
       .run("a", "b", Math.floor(Date.now() / 1000));
     db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
       .run("a", "b", Math.floor(Date.now() / 1000));
-    db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
+    db.prepare(`INSERT INTO character_opinions (npc_id, target_kind, target_id, score) VALUES (?, 'npc', ?, ?)`)
       .run("a", "b", -75);
     runNemesisCycle({ db, worldId: "tunya" });
     const rivals = listInWorld(db, "tunya", { kind: "rival" });
@@ -239,7 +240,7 @@ describe("Phase AB — runNemesisCycle rule engine", () => {
     db.prepare(`INSERT INTO world_npcs (id, world_id) VALUES ('x', 'tunya')`).run();
     db.prepare(`INSERT INTO npc_schemes (plotter_id, target_id, phase, resolved_at) VALUES (?, ?, 'exposed', ?)`)
       .run("x", "y", Math.floor(Date.now() / 1000));
-    db.prepare(`INSERT INTO character_opinions VALUES (?, ?, ?)`)
+    db.prepare(`INSERT INTO character_opinions (npc_id, target_kind, target_id, score) VALUES (?, 'npc', ?, ?)`)
       .run("x", "y", -80);
     // Second pass escalates the same row.
     runNemesisCycle({ db, worldId: "tunya" });

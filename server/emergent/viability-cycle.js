@@ -17,7 +17,7 @@ export const VIABILITY_CYCLE_FREQUENCY = 20;
 // Per-world hysteresis state: which subsystems are currently in crisis.
 const _inCrisis = new Map(); // worldId -> Set(subsystemId)
 
-function viabilityEnabled() { return process.env.CONCORD_VIABILITY === "1"; }
+function viabilityEnabled() { return process.env.CONCORD_VIABILITY !== "0"; }
 
 // Read the subsystem V-readings for a world. Best-effort: starts with the
 // ecosystem stock (the resource adapter); guarded so a missing table is a no-op.

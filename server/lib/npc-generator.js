@@ -22,6 +22,7 @@ import {
   gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange, radialWorldsEnabled,
 } from "./world-gradient.js";
 import { seedStarterGear } from "./npc-gear.js";
+import { assignPurposesForWorld, PURPOSE_ENABLED } from "./npc/purpose.js";
 
 // ── Personality dimensions ──────────────────────────────────────────────────
 
@@ -515,6 +516,12 @@ export function spawnProceduralNpcsForWorld(db, worldId, factionDistribution) {
         if (samples.length < 5) samples.push({ id: npc.id, name: npc.name, faction: factionId });
       }
     }
+  }
+  // NPC purpose — once the batch exists, build a coherent settlement (homes +
+  // the workplaces these jobs need) and give every settler a matched workplace +
+  // home + realm citizenship, or a roamer purpose. Idempotent; flag-gated.
+  if (PURPOSE_ENABLED() && spawned > 0) {
+    try { assignPurposesForWorld(db, worldId); } catch { /* best-effort */ }
   }
   return { ok: true, spawned, samples };
 }

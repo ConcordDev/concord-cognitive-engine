@@ -78,7 +78,7 @@ export function StageCard({
       const awarded = (r.data.result?.awarded as Array<{ kind: string; amount?: number }>) || [];
       const xp = awarded.find((a) => a.kind === 'xp');
       if (xp?.amount) {
-        try { window.dispatchEvent(new CustomEvent('concordia:juice', { detail: { kind: 'reward', xp: xp.amount } })); } catch { /* noop */ }
+        try { window.dispatchEvent(new CustomEvent('concordia:game-juice', { detail: { kind: 'reward', xp: xp.amount } })); } catch { /* noop */ }
       }
       onChange();
     }

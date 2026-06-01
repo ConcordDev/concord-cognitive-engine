@@ -328,4 +328,30 @@ export function speciesForBiome(universe, biome) {
   return [...base, ...flavor];
 }
 
+// Lazily-built speciesId → lifestyle index across the whole roster (every
+// universe + biome). The food-web layer needs lifestyle from a bare species id
+// (the flock cycle only carries `creature:<id>` archetypes, not the biome). A
+// species declared with the same id in two universes is assumed to share a
+// lifestyle (true for the current roster); first hit wins.
+let _lifestyleIndex = null;
+function buildLifestyleIndex() {
+  const idx = Object.create(null);
+  for (const uni of Object.values(BIOME_SPECIES)) {
+    for (const arr of Object.values(uni)) {
+      for (const s of arr) {
+        if (s?.id && !idx[s.id]) idx[s.id] = s.lifestyle || "omnivore";
+      }
+    }
+  }
+  return idx;
+}
+
+/** lifestyle ('herbivore'|'carnivore'|'omnivore') for a species id, or null. */
+export function lifestyleForSpecies(speciesId) {
+  if (!speciesId) return null;
+  if (!_lifestyleIndex) _lifestyleIndex = buildLifestyleIndex();
+  return _lifestyleIndex[speciesId] ?? null;
+}
+
+export { BIOME_SPECIES };
 export const LOOT_TABLES = LOOT;

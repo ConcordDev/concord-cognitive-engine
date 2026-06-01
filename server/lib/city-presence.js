@@ -318,7 +318,7 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       // (CONCORD_EARNED_SPEED unset) → the legacy static cap, byte-identical.
       const _onFoot = !vehicleType || vehicleType === "walk";
       let maxSpeed, maxFrameDistance;
-      if (_onFoot && process.env.CONCORD_EARNED_SPEED === "1") {
+      if (_onFoot && process.env.CONCORD_EARNED_SPEED !== "0") {
         maxSpeed = maxFootSpeedFor(agilityLevelFor(_db, userId));
         maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
       } else {
@@ -355,7 +355,7 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       // Speedster S1 — earn movement.sprint XP for distance actually run on foot.
       // Gated to genuine sprinting speed (≥3 m/s) so idle/jitter can't farm it;
       // off (CONCORD_EARNED_SPEED unset) → no XP, byte-identical.
-      if (_onFoot && distance > 0 && speedMps >= 3 && process.env.CONCORD_EARNED_SPEED === "1") {
+      if (_onFoot && distance > 0 && speedMps >= 3 && process.env.CONCORD_EARNED_SPEED !== "0") {
         try { awardSprintXp(_db, userId, distance); } catch { /* xp best-effort */ }
       }
       // S3 — remember the mover's speed for the speed-scaled interest radius.

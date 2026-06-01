@@ -18,7 +18,7 @@ import { resolveMinigame, isMinigame } from "../lib/sport-minigames.js";
 import { creditSparks } from "../lib/sparks-service.js";
 import { offerContract, counterContract, acceptContract, rejectContract, listContractsFor } from "../lib/career-contracts.js";
 
-function enabled() { return process.env.CONCORD_LIVING_CAREER === "1"; }
+function enabled() { return process.env.CONCORD_LIVING_CAREER !== "0"; }
 function gate(ctx) {
   if (!enabled()) return { ok: false, reason: "disabled" };
   if (!ctx?.db) return { ok: false, reason: "no_db" };

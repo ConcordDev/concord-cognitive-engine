@@ -13,9 +13,10 @@
 
 import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
+import { balancePopulations } from "./food-web.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
 import { getWorldMeta } from "../cross-world-effectiveness.js";
-import { ensureHomeFor, recordImbalance } from "./creature-homes.js";
+import { ensureHomeFor, recordImbalance, unresolvedImbalances, resolveImbalance } from "./creature-homes.js";
 import {
   gradientConfigFor, hubAnchorFor, dangerBandAt, bandLevelRange,
   spawnDensityFor, worldBoundsFor, radialWorldsEnabled,
@@ -115,6 +116,29 @@ function _signalModifierFor(speciesId, signals) {
   }
   return 1.0;
 }
+// Nocturnal species emerge at night (RDR2 lesson). Gated by the world's
+// illumination signal (lux): nocturnal species swell in the dark + thin out in
+// daylight; the inverse for strongly diurnal ones. Everything else is neutral.
+const NOCTURNAL_SPECIES = new Set([
+  "archive_owl", "desert_snake", "sand_scorpion", "deep_octopus", "reef_eel",
+  "drone_rat", "dock_rat", "wraith_deer", "sangmoth",
+]);
+const DIURNAL_SPECIES = new Set([
+  "hawk", "songbird", "hummingbird", "butterfly", "sandsong_finch",
+  "shimmer_finch", "plasma_pigeon", "bee",
+]);
+export function _diurnalModifier(speciesId, signals) {
+  if (!signals || signals.light == null) return 1.0;
+  const lux = Number(signals.light);
+  if (!Number.isFinite(lux)) return 1.0;
+  const isNight = lux < 5000;   // dusk/night illumination
+  const isDay = lux > 50000;    // bright daylight
+  const id = String(speciesId || "");
+  if (NOCTURNAL_SPECIES.has(id)) return isNight ? 1.4 : isDay ? 0.4 : 1.0;
+  if (DIURNAL_SPECIES.has(id)) return isDay ? 1.2 : isNight ? 0.3 : 1.0;
+  return 1.0;
+}
+
 // Bumped from 60 → 500 for 32GB-heap deployments. Per-tick cap on creature
 // spawns across all worlds; large value lets thinly-populated worlds
 // recover their target populations within a single tick.
@@ -249,20 +273,27 @@ export function runFaunaSpawner({ state, db }) {
       // predator total vs. live herbivore total against their summed
       // targets. When predators exceed 1.5× target AND herbivores fall
       // below 0.3× target, signal a "predator_excess" imbalance row.
+      // Animal Kingdom: the same aggregates feed the damped Lotka–Volterra
+      // balance (food-web.js), whose multipliers nudge each lifestyle's spawn
+      // target toward equilibrium (kill-switch CONCORD_CREATURE_ECOLOGY=0).
+      let lvBalance = null;
       try {
-        const bounds = biomesForWorld(worldId); // touch — avoid unused tag
-        void bounds;
         let preyLive = 0, preyTarget = 0, predLive = 0, predTarget = 0;
         for (const sp of species) {
           const count = db.prepare(`
             SELECT COUNT(*) AS c FROM world_npcs
             WHERE world_id = ? AND archetype = ? AND is_dead = 0
           `).get(worldId, `creature:${sp.id}`)?.c ?? 0;
-          if (sp.lifestyle === "herbivore") {
+          // Omnivores sit on the prey side of the balance (they're hunted by
+          // apex carnivores and graze like herbivores).
+          if (sp.lifestyle === "herbivore" || sp.lifestyle === "omnivore") {
             preyLive += count; preyTarget += sp.target;
           } else if (sp.lifestyle === "carnivore") {
             predLive += count; predTarget += sp.target;
           }
+        }
+        if (process.env.CONCORD_CREATURE_ECOLOGY !== "0") {
+          lvBalance = balancePopulations({ predLive, predTarget, preyLive, preyTarget });
         }
         if (
           preyTarget > 0 && predTarget > 0 &&
@@ -276,6 +307,13 @@ export function runFaunaSpawner({ state, db }) {
             severity: Math.min(5, Math.round(predLive / Math.max(1, predTarget))),
             summary: `${biome} in ${worldId}: ${predLive} predators vs ${preyLive} prey (targets ${predTarget}/${preyTarget}). The herd is in collapse.`,
           });
+        } else if (preyTarget > 0 && predTarget > 0) {
+          // Condition cleared (predators no longer in excess) → resolve any
+          // standing predator_excess imbalance for this biome so it doesn't
+          // linger as a false alert once the herd recovers.
+          for (const im of unresolvedImbalances(db, worldId)) {
+            if (im.biome === biome && im.kind === "predator_excess") resolveImbalance(db, im.id);
+          }
         }
       } catch { /* imbalance log is best-effort */ }
 
@@ -326,7 +364,16 @@ export function runFaunaSpawner({ state, db }) {
 
         const baseTarget = existing?.target_count ?? sp.target;
         const modifier = _signalModifierFor(sp.id, worldSignals);
-        const target = Math.max(0, Math.round(baseTarget * modifier * density));
+        // Animal Kingdom: fold in the damped predator–prey balance for this
+        // biome. Carnivores ride predTargetMult, prey (herbivore/omnivore) ride
+        // preyTargetMult; 1.0 when ecology is off or there's no trophic pair.
+        const lvMult = !lvBalance ? 1
+          : sp.lifestyle === "carnivore" ? lvBalance.predTargetMult
+          : lvBalance.preyTargetMult;
+        // Day/night: nocturnal species swell after dark, diurnal in daylight.
+        const diurnalMult = process.env.CONCORD_CREATURE_ECOLOGY !== "0"
+          ? _diurnalModifier(sp.id, worldSignals) : 1;
+        const target = Math.max(0, Math.round(baseTarget * modifier * density * lvMult * diurnalMult));
         const need = Math.max(0, target - liveCount);
         if (need === 0) {
           db.prepare(`

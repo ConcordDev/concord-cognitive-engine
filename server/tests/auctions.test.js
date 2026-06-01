@@ -73,22 +73,22 @@ function memDb() {
             }
             return { changes: 1 };
           }
-          if (n.startsWith("SELECT balance FROM user_wallets")) {
+          if (n.startsWith("SELECT concordia_credits AS balance FROM users")) {
             // get
             return null;
           }
-          if (n.startsWith("UPDATE user_wallets SET balance = balance - ?")) {
+          if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits - ?")) {
             const [amount, userId] = args;
             t.wallets.set(userId, (t.wallets.get(userId) || 0) - amount);
             return { changes: 1 };
           }
-          if (n.startsWith("INSERT INTO user_wallets")) {
-            const [userId, amount] = args;
+          if (n.startsWith("UPDATE users SET concordia_credits = concordia_credits + ?")) {
+            const [amount, userId] = args;
             t.wallets.set(userId, (t.wallets.get(userId) || 0) + amount);
             return { changes: 1 };
           }
-          if (n.startsWith("INSERT INTO economy_ledger")) {
-            t.ledger.push({ userId: args[1], kind: args[2], amount: args[3], ref: args[5] });
+          if (n.startsWith("INSERT INTO reward_ledger")) {
+            t.ledger.push({ userId: args[1], amount: args[2], ref: args[3] });
             return { changes: 1 };
           }
           if (n.startsWith("UPDATE dtus SET creator_id")) {
@@ -100,7 +100,7 @@ function memDb() {
           return { changes: 0 };
         },
         get: (...args) => {
-          if (n.startsWith("SELECT balance FROM user_wallets WHERE user_id = ?")) {
+          if (n.startsWith("SELECT concordia_credits AS balance FROM users WHERE id = ?")) {
             const balance = t.wallets.get(args[0]);
             return balance !== undefined ? { balance } : null;
           }

@@ -16,7 +16,7 @@ import crypto from "node:crypto";
 import { tierDtu } from "./corpus-tier.js";
 
 export function ethicsEnabled() {
-  return process.env.CONCORD_VIABILITY_ETHICS === "1";
+  return process.env.CONCORD_VIABILITY_ETHICS !== "0";
 }
 
 // Keyword → class. RESTRAINT-class rules counsel against hostile, often

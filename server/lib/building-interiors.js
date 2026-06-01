@@ -34,6 +34,12 @@ export const ROOM_TEMPLATES = {
   glyph_altar:         { capacity: 4, typical_furniture: ['altar_stone', 'glyph_braziers', 'tome_stand'], width: 6,  depth: 6,  height: 4 },
   // Phase E3 — mystery-board buildings dispatch hidden-object scene viewing.
   mystery_board:       { capacity: 1, typical_furniture: ['pinboard', 'photo_pile', 'string_and_pins'],   width: 4,  depth: 4,  height: 3 },
+  // NPC-purpose — civic / labour workplace rooms so clerks, builders, soldiers,
+  // healers get a real place to work (not just "any building" fallback).
+  office:           { capacity: 6,  typical_furniture: ['desk', 'ledgers', 'filing_cabinet', 'seal_press'], width: 7, depth: 6, height: 3 },
+  construction_site:{ capacity: 8,  typical_furniture: ['scaffold', 'tool_rack', 'cement_mixer', 'truck', 'crane'], width: 12, depth: 12, height: 0 },
+  barracks_hall:    { capacity: 12, typical_furniture: ['bunks', 'weapon_rack', 'drill_dummy', 'banner'],   width: 12, depth: 8, height: 4 },
+  clinic:           { capacity: 6,  typical_furniture: ['cot', 'herb_shelf', 'washbasin', 'instrument_tray'], width: 8, depth: 6, height: 3 },
 };
 
 // Default room layouts per building type
@@ -74,10 +80,39 @@ const BUILDING_ROOM_BLUEPRINTS = {
     { room_type: 'throne', name: 'Throne Room', floor: 1, x_offset: 0, z_offset: 0 },
     { room_type: 'armory', name: 'Royal Armory', floor: 1, x_offset: 15, z_offset: 0 },
   ],
+  // NPC-purpose — civic / labour buildings (so clerks/builders/soldiers/healers
+  // and the farmers/scholars have a coherent workplace in a seeded settlement).
+  city_hall: [
+    { room_type: 'office',  name: 'Clerk Office',  floor: 1, x_offset: 0, z_offset: 0 },
+    { room_type: 'office',  name: 'Records Hall',  floor: 1, x_offset: 8, z_offset: 0 },
+  ],
+  construction_yard: [
+    { room_type: 'construction_site', name: 'Build Site',    floor: 1, x_offset: 0,  z_offset: 0 },
+    { room_type: 'storage',           name: 'Material Yard',  floor: 1, x_offset: 13, z_offset: 0 },
+  ],
+  barracks: [
+    { room_type: 'barracks_hall', name: 'Drill Hall', floor: 1, x_offset: 0,  z_offset: 0 },
+    { room_type: 'armory',        name: 'Armory',     floor: 1, x_offset: 13, z_offset: 0 },
+  ],
+  library: [
+    { room_type: 'library', name: 'Reading Hall', floor: 1, x_offset: 0, z_offset: 0 },
+    { room_type: 'generic', name: 'Study',        floor: 2, x_offset: 0, z_offset: 0 },
+  ],
+  farm: [
+    { room_type: 'farm_plot', name: 'Fields', floor: 1, x_offset: 0,  z_offset: 0 },
+    { room_type: 'storage',   name: 'Barn',   floor: 1, x_offset: 11, z_offset: 0 },
+  ],
+  clinic: [
+    { room_type: 'clinic', name: 'Treatment Room', floor: 1, x_offset: 0, z_offset: 0 },
+  ],
   // well and generator intentionally have no rooms
   well:      [],
   generator: [],
 };
+
+// Exported so the NPC-purpose settlement builder can compute, for a needed
+// workplace room_type, which building_type provides it.
+export { BUILDING_ROOM_BLUEPRINTS };
 
 // ── Seeding ───────────────────────────────────────────────────────────────────
 

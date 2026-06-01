@@ -201,7 +201,7 @@ export default function createWorldCreatureRouter({ db, requireAuth, state }) {
 
       // N4-EVO: register each loot drop as an evolvable asset (best-effort,
       // kill-switched). The bridge absorbs its own throws.
-      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY === '1') {
+      if (process.env.CONCORD_EVO_ASSET_GAMEPLAY !== '0') {
         for (const drop of drops) {
           try {
             onLootDropped(db, {

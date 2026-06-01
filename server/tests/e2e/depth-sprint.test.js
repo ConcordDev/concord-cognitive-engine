@@ -34,10 +34,11 @@ function bootDb() {
   upRealism(db);
   upDialogue(db);
   upAmbient(db);
-  // Minimal user_wallets + ledger so the buy-order escrow works end-to-end.
+  // CC lives in users.concordia_credits (mig 045); wallet primitives log to
+  // reward_ledger (mig 296) so the buy-order escrow works end-to-end.
   db.exec(`
-    CREATE TABLE user_wallets (user_id TEXT PRIMARY KEY, balance REAL NOT NULL DEFAULT 0);
-    CREATE TABLE economy_ledger (
+    CREATE TABLE users (id TEXT PRIMARY KEY, concordia_credits REAL NOT NULL DEFAULT 0);
+    CREATE TABLE reward_ledger (
       id TEXT PRIMARY KEY, user_id TEXT, kind TEXT, amount_cc REAL, ts INTEGER, ref_id TEXT
     );
   `);
@@ -75,7 +76,7 @@ describe("Phase AA-AG — depth sprint end-to-end smoke", () => {
     assert.ok(cleanChance < dirtyChance, "hygiene reduces contraction");
 
     // ── AC — place buy order, sell into it ────────────────────────────
-    db.prepare(`INSERT INTO user_wallets VALUES (?, ?)`).run(player, 500);
+    db.prepare(`INSERT INTO users (id, concordia_credits) VALUES (?, ?)`).run(player, 500);
     const buyOrder = placeBuyOrder(db, player, {
       worldId: "tunya", itemDescriptor: "willowbark_tea",
       unitPriceCc: 10, quantity: 20,
