@@ -7,7 +7,9 @@ export default function registerEnchantmentMacros(register) {
   register("enchantment", "enchant", (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
-    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    // The unauthenticated lens-run path supplies actor.userId === "anon" and HTTP
+    // macro calls bypass the registry ACL — reject anon, don't just check falsy.
+    if (!db || !userId || userId === "anon") return { ok: false, reason: "auth_required" };
     if (!enchantmentEnabled()) return { ok: false, reason: "disabled" };
     return enchant(db, userId, input.worldId, {
       itemId: input.itemId, gemItemId: input.gemItemId, essenceItemId: input.essenceItemId, buildingId: input.buildingId,

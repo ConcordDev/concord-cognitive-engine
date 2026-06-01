@@ -34,7 +34,7 @@ describe("enchantment (G6)", () => {
     // capped at the gem's ceiling, so a petty gem can never reach a black-tier enchant.
     function potencyWith(gem) {
       const db = freshDb();
-      give(db, gem); give(db, "essence_life");
+      give(db, "sword1"); give(db, gem); give(db, "essence_life");
       const r = enchant(db, "u1", "sere", { itemId: "sword1", gemItemId: gem, essenceItemId: "essence_life", buildingId: "ench1" });
       return r.failed ? null : r.enchantment.potency;
     }
@@ -51,7 +51,7 @@ describe("enchantment (G6)", () => {
 
   it("consumes the gem + essence and persists the enchant (essence sets the affinity)", () => {
     const db = freshDb();
-    give(db, "grand_soul_gem"); give(db, "essence_life", 1);
+    give(db, "sword1"); give(db, "grand_soul_gem"); give(db, "essence_life", 1);
     const r = enchant(db, "u1", "sere", { itemId: "sword1", gemItemId: "grand_soul_gem", essenceItemId: "essence_life", buildingId: "ench1" });
     assert.equal(r.ok, true);
     assert.equal(qty(db, "grand_soul_gem"), 0, "gem consumed");
@@ -65,11 +65,33 @@ describe("enchantment (G6)", () => {
 
   it("rejects a non-soul-gem, missing mats, and the kill-switch", () => {
     const db = freshDb();
-    give(db, "iron_ingot"); give(db, "essence_life");
+    give(db, "sword1"); give(db, "iron_ingot"); give(db, "essence_life");
     assert.equal(enchant(db, "u1", "sere", { itemId: "sword1", gemItemId: "iron_ingot", essenceItemId: "essence_life" }).reason, "not_a_soul_gem");
     assert.equal(enchant(db, "u1", "sere", { itemId: "sword1", gemItemId: "petty_soul_gem", essenceItemId: "essence_life" }).reason, "no_gem");
     process.env.CONCORD_ENCHANTMENT = "0";
     assert.equal(enchant(db, "u1", "sere", { itemId: "sword1", gemItemId: "grand_soul_gem", essenceItemId: "essence_life" }).reason, "disabled");
+  });
+
+  it("rejects enchanting an item the player does not own", () => {
+    const db = freshDb();
+    // owns the mats but not the target item — must not mint an enchantment for it
+    give(db, "grand_soul_gem"); give(db, "essence_life");
+    const r = enchant(db, "u1", "sere", { itemId: "not_owned_sword", gemItemId: "grand_soul_gem", essenceItemId: "essence_life" });
+    assert.equal(r.reason, "no_item");
+    assert.equal(qty(db, "grand_soul_gem"), 1, "gem NOT consumed on rejection");
+    assert.equal(listEnchantments(db, "u1", "not_owned_sword").length, 0, "no enchantment persisted");
+  });
+
+  it("the enchant macro rejects anonymous callers", () => {
+    const db = freshDb();
+    give(db, "sword1"); give(db, "grand_soul_gem"); give(db, "essence_life");
+    const m = new Map();
+    registerEnchantmentMacros((d, n, fn) => m.set(`${d}.${n}`, fn));
+    const enchantMacro = m.get("enchantment.enchant");
+    const input = { worldId: "sere", itemId: "sword1", gemItemId: "grand_soul_gem", essenceItemId: "essence_life", buildingId: "ench1" };
+    assert.equal(enchantMacro({ db }, input).reason, "auth_required", "no actor");
+    assert.equal(enchantMacro({ db, actor: { userId: "anon" } }, input).reason, "auth_required", "anon actor");
+    assert.equal(enchantMacro({ db, actor: { userId: "u1" } }, input).ok, true, "real user can enchant");
   });
 
   it("registers the enchantment macros", () => {

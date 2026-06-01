@@ -54,6 +54,10 @@ export function enchant(db, userId, worldId, { itemId, gemItemId, essenceItemId,
   if (!enchantmentEnabled()) return { ok: false, reason: "disabled" };
   if (!db || !userId || !itemId || !gemItemId || !essenceItemId) return { ok: false, reason: "missing_inputs" };
   if (!(gemItemId in SOUL_GEM_CAP)) return { ok: false, reason: "not_a_soul_gem" };
+  // The enchant rides on EXISTING gear — the player must actually own the target
+  // item, or a caller could spend mats to mint an enchantment for an arbitrary /
+  // not-yet-owned itemId (the "existing gear / player's item" contract).
+  if (ownedQty(db, userId, itemId) < 1) return { ok: false, reason: "no_item" };
   if (ownedQty(db, userId, gemItemId) < 1) return { ok: false, reason: "no_gem" };
   if (ownedQty(db, userId, essenceItemId) < 1) return { ok: false, reason: "no_essence" };
 
