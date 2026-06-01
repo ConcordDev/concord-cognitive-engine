@@ -157,3 +157,19 @@ export function balancePopulations({ predLive = 0, predTarget = 0, preyLive = 0,
 }
 
 export const ECOLOGY_TUNING = Object.freeze({ LV_GAIN, LV_MIN, LV_MAX });
+
+// ── Scavengers ───────────────────────────────────────────────────────────────
+// Species that feed on carcasses (the RDR2 "vultures on the kill" layer): birds
+// of prey + corvids + jackals/coyotes + small urban scavengers. They path to a
+// fresh carcass and feed, which is what makes a predation visible as a SYSTEM
+// (a kill draws a crowd) rather than a one-off death.
+const SCAVENGER_SPECIES = new Set([
+  "hawk", "cliff_condor", "trail_falcon", "archive_owl", "wire_corvid",
+  "plasma_pigeon", "shimmer_finch", "dust_jackal", "meta_coyote",
+  "drone_rat", "dock_rat", "crab", "sand_scorpion", "walker_hound",
+]);
+
+/** Does this species scavenge carcasses? */
+export function isScavenger(speciesId) {
+  return SCAVENGER_SPECIES.has(String(speciesId || ""));
+}

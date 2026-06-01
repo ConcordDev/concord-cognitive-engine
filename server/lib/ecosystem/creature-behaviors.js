@@ -24,7 +24,8 @@
 import { gradientConfigFor, hubAnchorFor, radialWorldsEnabled } from "../world-gradient.js";
 import { outwardDriftForce } from "../world-migration.js";
 import { lifestyleForSpecies } from "./loot-tables.js";
-import { eats } from "./food-web.js";
+import { eats, isScavenger } from "./food-web.js";
+import crypto from "node:crypto";
 import {
   freshCreatureNeeds, decayCreatureNeeds, satisfyCreatureNeed, creatureIntent,
 } from "./creature-needs.js";
@@ -44,6 +45,9 @@ const KILL_R           = 3.5;  // a predator at/inside this range of prey makes 
 const MAX_KILLS_PASS   = 3;    // cap predation kills per world per pass (bounds DB writes)
 const ECO_STEP_HOURS   = 0.5;  // game-time hours of need decay per ~60s pass (accelerated)
 const HUNGER_HUNT_THRESHOLD = 0.5; // a predator only hunts once this hungry
+const SCAVENGE_R       = 26;   // a hungry scavenger senses + steers to a carcass
+const FEED_R           = 3.5;  // a scavenger at/inside this range feeds on it
+const MAX_FEED_PASS    = 4;    // cap carcass feeds per world per pass
 
 // Tunables exposed for tests
 export const TUNING = Object.freeze({
@@ -124,15 +128,25 @@ export function tickFlock(db, state, worldId, opts = {}) {
   // the flat predator / prey lists used for cross-species awareness + hunting.
   let predatorList = [];
   let preyList = [];
+  let corpses = []; // fresh carcasses scavengers path toward (RDR2 vultures-on-the-kill)
   if (ecology) {
     for (const c of creatures) {
       const sp = c.species_id
         || (String(c.archetype || "").startsWith("creature:") ? c.archetype.slice(9) : null);
       c._species = sp;
       c._lifestyle = sp ? lifestyleForSpecies(sp) : null;
+      c._scavenger = sp ? isScavenger(sp) : false;
       if (c._lifestyle === "carnivore") predatorList.push(c);
       else if (c._lifestyle === "herbivore" || c._lifestyle === "omnivore") preyList.push(c);
     }
+    try {
+      corpses = db.prepare(`
+        SELECT id, x, z FROM creature_corpses
+        WHERE world_id = ? AND claimed = 0 AND x IS NOT NULL AND z IS NOT NULL
+          AND expires_at > unixepoch()
+        LIMIT 40
+      `).all(worldId);
+    } catch { corpses = []; } // creature_corpses optional on minimal builds
   }
 
   // Pull recent player positions for flee. Treat any row without a sane
@@ -206,15 +220,19 @@ export function tickFlock(db, state, worldId, opts = {}) {
         }
         const intent = creatureIntent(needs, { diet }, { predatorNear });
         const hungryHunter = m._lifestyle === "carnivore" && intent === "hunt" && needs.hunger >= HUNGER_HUNT_THRESHOLD;
-        ecoCtx = { needs, predatorNear, pdx, pdz, pd, hungryHunter };
+        // A hungry scavenger with a carcass available will go pick at it (easy
+        // food) — that's what draws the crowd to a kill.
+        const wantsScavenge = m._scavenger && corpses.length > 0 && needs.hunger >= HUNGER_HUNT_THRESHOLD;
+        ecoCtx = { needs, predatorNear, pdx, pdz, pd, hungryHunter, wantsScavenge };
         m._needs = needs;
         m._hunting = hungryHunter;
+        m._scavenging = wantsScavenge;
       }
 
       // A fraction of creatures spend the pass idle so the cluster has
       // some stationary anchor (reads as "grazing" on the client). A fleeing
       // prey or a hunting predator never idles — survival/hunger overrides.
-      const urgent = !!(ecoCtx && (ecoCtx.predatorNear || ecoCtx.hungryHunter));
+      const urgent = !!(ecoCtx && (ecoCtx.predatorNear || ecoCtx.hungryHunter || ecoCtx.wantsScavenge));
       if (!urgent && Math.random() < STILL_PROB) {
         // Decay any existing velocity by half so resting creatures don't
         // re-accelerate next pass. Preserve the decayed needs.
@@ -288,7 +306,23 @@ export function tickFlock(db, state, worldId, opts = {}) {
           fleeX += (ecoCtx.pdx / ecoCtx.pd) * (1 + inv);
           fleeZ += (ecoCtx.pdz / ecoCtx.pd) * (1 + inv);
         }
-        if (ecoCtx.hungryHunter) {
+        // Scavenge takes priority over hunting — a carcass is free food. The
+        // hungry scavenger steers to the nearest one (and feeds in the pass below).
+        if (ecoCtx.wantsScavenge) {
+          let bestD2 = SCAVENGE_R * SCAVENGE_R, bx = 0, bz = 0, bd = 0, target = null;
+          for (const cp of corpses) {
+            const dx = cp.x - m.x, dz = cp.z - m.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 < bestD2) { bestD2 = d2; bx = dx; bz = dz; bd = Math.sqrt(d2) || 1; target = cp; }
+          }
+          if (target) {
+            hunting = true;
+            huntX = (bx / bd) * MAX_SPEED * 0.9;
+            huntZ = (bz / bd) * MAX_SPEED * 0.9;
+            m._scavengeTarget = target.id;
+          }
+        }
+        if (!hunting && ecoCtx.hungryHunter) {
           let bestD2 = HUNT_R * HUNT_R, bx = 0, bz = 0, bd = 0;
           for (const q of preyList) {
             if (!eats(m._species, q._species)) continue;
@@ -363,16 +397,22 @@ export function tickFlock(db, state, worldId, opts = {}) {
     }
   }
 
+  // Post-move position map (updates ∪ idle originals), shared by the predation
+  // + scavenge passes below.
+  let posById = null;
+  if (ecology) {
+    posById = new Map();
+    for (const c of creatures) posById.set(c.id, { x: c.x, z: c.z });
+    for (const u of updates) posById.set(u.id, { x: u.x, z: u.z });
+  }
+
   // ── Predation pass ──────────────────────────────────────────────────────
   // A hungry predator that ended the pass within KILL_R of prey it eats makes a
   // kill: the prey dies (the spawner refills the population next cycle) and the
   // predator's hunger is sated. Capped per pass so a flock can't be wiped and DB
-  // writes stay bounded. Uses post-move positions (updates ∪ idle originals).
+  // writes stay bounded.
   let kills = [];
-  if (ecology && predatorList.length && preyList.length) {
-    const posById = new Map();
-    for (const c of creatures) posById.set(c.id, { x: c.x, z: c.z });
-    for (const u of updates) posById.set(u.id, { x: u.x, z: u.z });
+  if (ecology && posById && predatorList.length && preyList.length) {
     const deadPrey = new Set();
     for (const pr of predatorList) {
       if (kills.length >= MAX_KILLS_PASS) break;
@@ -404,6 +444,39 @@ export function tickFlock(db, state, worldId, opts = {}) {
     }
   }
 
+  // ── Scavenge-feed pass ────────────────────────────────────────────────────
+  // A scavenger that reached the carcass it was steering toward feeds: its
+  // hunger is sated and the carcass is claimed (consumed). Capped per pass.
+  let scavenged = 0;
+  if (ecology && posById && corpses.length) {
+    const corpseById = new Map(corpses.map((c) => [c.id, c]));
+    const claimed = new Set();
+    for (const [, members] of groups) {
+      for (const m of members) {
+        if (scavenged >= MAX_FEED_PASS) break;
+        if (!m._scavenger || !m._scavengeTarget) continue;
+        const cp = corpseById.get(m._scavengeTarget);
+        if (!cp || claimed.has(cp.id)) continue;
+        const sp = posById.get(m.id);
+        if (!sp) continue;
+        const dx = sp.x - cp.x, dz = sp.z - cp.z;
+        if (dx * dx + dz * dz > FEED_R * FEED_R) continue;
+        claimed.add(cp.id);
+        scavenged++;
+        if (m._needs) {
+          motion[m.id] = { ...(motion[m.id] || {}), needs: satisfyCreatureNeed(m._needs, "hunger", 0.6) };
+        }
+      }
+    }
+    if (claimed.size > 0) {
+      try {
+        const claim = db.prepare(`UPDATE creature_corpses SET claimed = 1 WHERE id = ?`);
+        const tx = db.transaction((ids) => { for (const id of ids) claim.run(id); });
+        tx([...claimed]);
+      } catch { /* best-effort */ }
+    }
+  }
+
   // Bulk flush positions. Single transaction; UPDATE per row but inside one
   // tx is ~1ms even for hundreds of creatures on better-sqlite3.
   if (updates.length > 0) {
@@ -420,16 +493,28 @@ export function tickFlock(db, state, worldId, opts = {}) {
   }
 
   // Flush predation deaths separately (best-effort; a position-flush failure
-  // shouldn't block kills and vice-versa).
+  // shouldn't block kills and vice-versa). Each kill leaves a carcass scavengers
+  // can pick at (the vultures-on-the-kill loop) — an NPC kill, so killer_user_id
+  // is null. Short TTL since scavengers consume it.
   if (kills.length > 0) {
     try {
       const kill = db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`);
       const tx = db.transaction((rows) => { for (const r of rows) kill.run(r.preyId); });
       tx(kills);
     } catch { /* best-effort */ }
+    try {
+      const corpse = db.prepare(`
+        INSERT INTO creature_corpses (id, world_id, species_id, killer_user_id, x, y, z, claimed, expires_at)
+        VALUES (?, ?, ?, NULL, ?, 0, ?, 0, unixepoch() + 900)
+      `);
+      const tx = db.transaction((rows) => {
+        for (const r of rows) corpse.run(`cc_${crypto.randomUUID()}`, worldId, r.preySpecies, r.x, r.z);
+      });
+      tx(kills);
+    } catch { /* creature_corpses optional on minimal builds */ }
   }
 
-  return { ok: true, moved: updates.length, species: groups.size, kills: kills.length, killed: kills };
+  return { ok: true, moved: updates.length, species: groups.size, kills: kills.length, killed: kills, scavenged };
 }
 
 /**
