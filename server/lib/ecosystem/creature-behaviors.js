@@ -23,6 +23,11 @@
 
 import { gradientConfigFor, hubAnchorFor, radialWorldsEnabled } from "../world-gradient.js";
 import { outwardDriftForce } from "../world-migration.js";
+import { lifestyleForSpecies } from "./loot-tables.js";
+import { eats } from "./food-web.js";
+import {
+  freshCreatureNeeds, decayCreatureNeeds, satisfyCreatureNeed, creatureIntent,
+} from "./creature-needs.js";
 
 const SEP_R         = 4;     // separation radius (m)
 const NBR_R         = 12;    // neighbour radius for alignment + cohesion (m)
@@ -31,6 +36,14 @@ const MAX_SPEED     = 2.0;   // m/s clamp
 const STEP_S        = 60;    // approximate seconds per pass (frequency 4 × 15s)
 const BOUNDS_M      = 400;   // soft world bounds; gentle pushback past this
 const STILL_PROB    = 0.25;  // chance that a creature spends the pass idle (settles cluster centre)
+
+// ── Animal Kingdom ecology tunables ─────────────────────────────────────────
+const PREDATOR_SENSE_R = 16;   // prey sense a predator within this radius and bolt
+const HUNT_R           = 22;   // a hungry predator stalks prey within this radius
+const KILL_R           = 3.5;  // a predator at/inside this range of prey makes a kill
+const MAX_KILLS_PASS   = 3;    // cap predation kills per world per pass (bounds DB writes)
+const ECO_STEP_HOURS   = 0.5;  // game-time hours of need decay per ~60s pass (accelerated)
+const HUNGER_HUNT_THRESHOLD = 0.5; // a predator only hunts once this hungry
 
 // Tunables exposed for tests
 export const TUNING = Object.freeze({
@@ -73,22 +86,53 @@ function randSpeed() {
  * @param {string} worldId
  * @returns {{ ok: boolean, moved: number, species: number, reason?: string }}
  */
-export function tickFlock(db, state, worldId) {
+export function tickFlock(db, state, worldId, opts = {}) {
   if (!db || !worldId) return { ok: false, reason: "no_db_or_world" };
   if (!state) state = {};
+
+  // Animal Kingdom: the systemic layer (cross-species predator awareness, hunt
+  // steering, needs-driven intent, predation kills) rides on top of the pure
+  // boids. Off (CONCORD_CREATURE_ECOLOGY=0) → byte-identical to the original
+  // flock pass. Caller may force via opts.ecology for tests.
+  const ecology = opts.ecology ?? (process.env.CONCORD_CREATURE_ECOLOGY !== "0");
 
   let creatures;
   try {
     creatures = db.prepare(`
-      SELECT id, archetype, x, z, level FROM world_npcs
+      SELECT id, archetype, species_id, x, z, level FROM world_npcs
       WHERE world_id = ? AND is_dead = 0
         AND archetype LIKE 'creature:%'
     `).all(worldId);
   } catch {
-    return { ok: false, reason: "no_world_npcs" };
+    // Older schema without species_id — retry the legacy column set so the
+    // pure-boids path still runs (species is then derived from the archetype).
+    try {
+      creatures = db.prepare(`
+        SELECT id, archetype, x, z, level FROM world_npcs
+        WHERE world_id = ? AND is_dead = 0
+          AND archetype LIKE 'creature:%'
+      `).all(worldId);
+    } catch {
+      return { ok: false, reason: "no_world_npcs" };
+    }
   }
   if (!creatures || creatures.length === 0) {
     return { ok: true, moved: 0, species: 0 };
+  }
+
+  // Ecology pre-pass: tag each creature with its species + lifestyle, and split
+  // the flat predator / prey lists used for cross-species awareness + hunting.
+  let predatorList = [];
+  let preyList = [];
+  if (ecology) {
+    for (const c of creatures) {
+      const sp = c.species_id
+        || (String(c.archetype || "").startsWith("creature:") ? c.archetype.slice(9) : null);
+      c._species = sp;
+      c._lifestyle = sp ? lifestyleForSpecies(sp) : null;
+      if (c._lifestyle === "carnivore") predatorList.push(c);
+      else if (c._lifestyle === "herbivore" || c._lifestyle === "omnivore") preyList.push(c);
+    }
   }
 
   // Pull recent player positions for flee. Treat any row without a sane
@@ -142,14 +186,43 @@ export function tickFlock(db, state, worldId) {
     cz /= members.length;
 
     for (const m of members) {
+      // ── Ecology context: decay needs → intent, sense nearby predators ──
+      // Drives the idle decision (urgent creatures don't graze), the prey-flee
+      // force, and the predator hunt steering. creature-needs.js is the motive
+      // layer; this is where it finally steers behaviour.
+      let ecoCtx = null;
+      if (ecology) {
+        const diet = m._lifestyle || "omnivore";
+        const needs = decayCreatureNeeds(motion[m.id]?.needs || freshCreatureNeeds(), diet, ECO_STEP_HOURS);
+        let predatorNear = false, pdx = 0, pdz = 0, pd = 0;
+        if (m._lifestyle === "herbivore" || m._lifestyle === "omnivore") {
+          let bestD2 = PREDATOR_SENSE_R * PREDATOR_SENSE_R;
+          for (const pr of predatorList) {
+            if (!eats(pr._species, m._species)) continue;
+            const dx = m.x - pr.x, dz = m.z - pr.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 > 0 && d2 < bestD2) { bestD2 = d2; predatorNear = true; pdx = dx; pdz = dz; pd = Math.sqrt(d2); }
+          }
+        }
+        const intent = creatureIntent(needs, { diet }, { predatorNear });
+        const hungryHunter = m._lifestyle === "carnivore" && intent === "hunt" && needs.hunger >= HUNGER_HUNT_THRESHOLD;
+        ecoCtx = { needs, predatorNear, pdx, pdz, pd, hungryHunter };
+        m._needs = needs;
+        m._hunting = hungryHunter;
+      }
+
       // A fraction of creatures spend the pass idle so the cluster has
-      // some stationary anchor (reads as "grazing" on the client).
-      if (Math.random() < STILL_PROB) {
+      // some stationary anchor (reads as "grazing" on the client). A fleeing
+      // prey or a hunting predator never idles — survival/hunger overrides.
+      const urgent = !!(ecoCtx && (ecoCtx.predatorNear || ecoCtx.hungryHunter));
+      if (!urgent && Math.random() < STILL_PROB) {
         // Decay any existing velocity by half so resting creatures don't
-        // re-accelerate next pass.
+        // re-accelerate next pass. Preserve the decayed needs.
         const cur = motion[m.id];
         if (cur) {
-          motion[m.id] = { vx: cur.vx * 0.5, vz: cur.vz * 0.5, lastTickAt: Date.now() };
+          motion[m.id] = { vx: cur.vx * 0.5, vz: cur.vz * 0.5, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? cur.needs };
+        } else if (ecoCtx) {
+          motion[m.id] = { vx: 0, vz: 0, lastTickAt: Date.now(), needs: ecoCtx.needs };
         }
         continue;
       }
@@ -203,6 +276,30 @@ export function tickFlock(db, state, worldId) {
         }
       }
 
+      // Cross-species awareness. Prey bolt from a sensed predator (folded into
+      // the flee force — this is the "a deer bolting tells you a cougar's near"
+      // tell). A hungry predator gets a hunt vector toward the nearest prey it
+      // eats. Both ride the existing flee/seek machinery below.
+      let huntX = 0, huntZ = 0, hunting = false;
+      if (ecology && ecoCtx) {
+        if (ecoCtx.predatorNear && ecoCtx.pd > 0) {
+          fleeing = true;
+          const inv = (PREDATOR_SENSE_R - ecoCtx.pd) / PREDATOR_SENSE_R;
+          fleeX += (ecoCtx.pdx / ecoCtx.pd) * (1 + inv);
+          fleeZ += (ecoCtx.pdz / ecoCtx.pd) * (1 + inv);
+        }
+        if (ecoCtx.hungryHunter) {
+          let bestD2 = HUNT_R * HUNT_R, bx = 0, bz = 0, bd = 0;
+          for (const q of preyList) {
+            if (!eats(m._species, q._species)) continue;
+            const dx = q.x - m.x, dz = q.z - m.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 > 0 && d2 < bestD2) { bestD2 = d2; bx = dx; bz = dz; bd = Math.sqrt(d2); }
+          }
+          if (bd > 0) { hunting = true; huntX = (bx / bd) * MAX_SPEED * 0.95; huntZ = (bz / bd) * MAX_SPEED * 0.95; }
+        }
+      }
+
       // Combine forces. Weights tuned for "looks like a flock" not "perfectly
       // optimal flocking". Separation is the strongest base force; cohesion
       // is the gentlest pull.
@@ -230,6 +327,11 @@ export function tickFlock(db, state, worldId) {
         vz += (cz - m.z) * 0.02;
       }
 
+      // Hunt seek (predator → prey) adds before the flee overwrite, so a
+      // predator that's itself fleeing the player abandons the hunt (survival
+      // first) but otherwise commits toward its quarry.
+      if (hunting) { vx += huntX; vz += huntZ; }
+
       if (fleeing) {
         // Flee dominates — overwrite velocity rather than add. Prevents
         // creatures from "running through" the player when cohesion pulls
@@ -256,8 +358,49 @@ export function tickFlock(db, state, worldId) {
       const newX = m.x + cl.vx * STEP_S * 0.05; // 0.05 per-second factor: keeps moves under ~6m/pass
       const newZ = m.z + cl.vz * STEP_S * 0.05;
 
-      motion[m.id] = { vx: cl.vx, vz: cl.vz, lastTickAt: Date.now() };
+      motion[m.id] = { vx: cl.vx, vz: cl.vz, lastTickAt: Date.now(), needs: ecoCtx?.needs ?? motion[m.id]?.needs };
       updates.push({ id: m.id, x: newX, z: newZ });
+    }
+  }
+
+  // ── Predation pass ──────────────────────────────────────────────────────
+  // A hungry predator that ended the pass within KILL_R of prey it eats makes a
+  // kill: the prey dies (the spawner refills the population next cycle) and the
+  // predator's hunger is sated. Capped per pass so a flock can't be wiped and DB
+  // writes stay bounded. Uses post-move positions (updates ∪ idle originals).
+  let kills = [];
+  if (ecology && predatorList.length && preyList.length) {
+    const posById = new Map();
+    for (const c of creatures) posById.set(c.id, { x: c.x, z: c.z });
+    for (const u of updates) posById.set(u.id, { x: u.x, z: u.z });
+    const deadPrey = new Set();
+    for (const pr of predatorList) {
+      if (kills.length >= MAX_KILLS_PASS) break;
+      if (!pr._hunting) continue;
+      const pp = posById.get(pr.id);
+      if (!pp) continue;
+      let victim = null, bestD2 = KILL_R * KILL_R;
+      for (const q of preyList) {
+        if (deadPrey.has(q.id) || !eats(pr._species, q._species)) continue;
+        const qp = posById.get(q.id);
+        if (!qp) continue;
+        const dx = pp.x - qp.x, dz = pp.z - qp.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 < bestD2) { bestD2 = d2; victim = q; }
+      }
+      if (victim) {
+        deadPrey.add(victim.id);
+        const vp = posById.get(victim.id);
+        kills.push({
+          predatorId: pr.id, predatorSpecies: pr._species,
+          preyId: victim.id, preySpecies: victim._species,
+          x: vp.x, z: vp.z,
+        });
+        // The kill sates the predator's hunger.
+        if (pr._needs) {
+          motion[pr.id] = { ...(motion[pr.id] || {}), needs: satisfyCreatureNeed(pr._needs, "hunger", 0.7) };
+        }
+      }
     }
   }
 
@@ -276,7 +419,17 @@ export function tickFlock(db, state, worldId) {
     }
   }
 
-  return { ok: true, moved: updates.length, species: groups.size };
+  // Flush predation deaths separately (best-effort; a position-flush failure
+  // shouldn't block kills and vice-versa).
+  if (kills.length > 0) {
+    try {
+      const kill = db.prepare(`UPDATE world_npcs SET is_dead = 1 WHERE id = ?`);
+      const tx = db.transaction((rows) => { for (const r of rows) kill.run(r.preyId); });
+      tx(kills);
+    } catch { /* best-effort */ }
+  }
+
+  return { ok: true, moved: updates.length, species: groups.size, kills: kills.length, killed: kills };
 }
 
 /**

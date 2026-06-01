@@ -13,6 +13,7 @@
 
 import crypto from "node:crypto";
 import { speciesForBiome } from "./loot-tables.js";
+import { balancePopulations } from "./food-web.js";
 import { signalsForWorld } from "../embodied/environment-sensor.js";
 import { getWorldMeta } from "../cross-world-effectiveness.js";
 import { ensureHomeFor, recordImbalance } from "./creature-homes.js";
@@ -249,20 +250,27 @@ export function runFaunaSpawner({ state, db }) {
       // predator total vs. live herbivore total against their summed
       // targets. When predators exceed 1.5× target AND herbivores fall
       // below 0.3× target, signal a "predator_excess" imbalance row.
+      // Animal Kingdom: the same aggregates feed the damped Lotka–Volterra
+      // balance (food-web.js), whose multipliers nudge each lifestyle's spawn
+      // target toward equilibrium (kill-switch CONCORD_CREATURE_ECOLOGY=0).
+      let lvBalance = null;
       try {
-        const bounds = biomesForWorld(worldId); // touch — avoid unused tag
-        void bounds;
         let preyLive = 0, preyTarget = 0, predLive = 0, predTarget = 0;
         for (const sp of species) {
           const count = db.prepare(`
             SELECT COUNT(*) AS c FROM world_npcs
             WHERE world_id = ? AND archetype = ? AND is_dead = 0
           `).get(worldId, `creature:${sp.id}`)?.c ?? 0;
-          if (sp.lifestyle === "herbivore") {
+          // Omnivores sit on the prey side of the balance (they're hunted by
+          // apex carnivores and graze like herbivores).
+          if (sp.lifestyle === "herbivore" || sp.lifestyle === "omnivore") {
             preyLive += count; preyTarget += sp.target;
           } else if (sp.lifestyle === "carnivore") {
             predLive += count; predTarget += sp.target;
           }
+        }
+        if (process.env.CONCORD_CREATURE_ECOLOGY !== "0") {
+          lvBalance = balancePopulations({ predLive, predTarget, preyLive, preyTarget });
         }
         if (
           preyTarget > 0 && predTarget > 0 &&
@@ -326,7 +334,13 @@ export function runFaunaSpawner({ state, db }) {
 
         const baseTarget = existing?.target_count ?? sp.target;
         const modifier = _signalModifierFor(sp.id, worldSignals);
-        const target = Math.max(0, Math.round(baseTarget * modifier * density));
+        // Animal Kingdom: fold in the damped predator–prey balance for this
+        // biome. Carnivores ride predTargetMult, prey (herbivore/omnivore) ride
+        // preyTargetMult; 1.0 when ecology is off or there's no trophic pair.
+        const lvMult = !lvBalance ? 1
+          : sp.lifestyle === "carnivore" ? lvBalance.predTargetMult
+          : lvBalance.preyTargetMult;
+        const target = Math.max(0, Math.round(baseTarget * modifier * density * lvMult));
         const need = Math.max(0, target - liveCount);
         if (need === 0) {
           db.prepare(`
