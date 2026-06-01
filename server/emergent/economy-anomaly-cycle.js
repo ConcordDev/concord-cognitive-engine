@@ -17,6 +17,7 @@
 
 import { detectPathologies } from "../lib/world-health.js";
 import { classify, ROUTE } from "../lib/bug-triage.js";
+import { detectCollusionRings } from "../lib/collusion-detector.js";
 
 // pathology name (from detectPathologies) → bug-triage kind
 const PATHOLOGY_TO_KIND = {
@@ -47,7 +48,7 @@ async function defaultAlert(payload) {
  * @param {number} [deps.washTradeCount]            optional advisory wash-trade rollup count
  * @returns {Promise<{ ok:boolean, counted:number, paged:number, byKind:object }>}
  */
-export async function runEconomyAnomalyCycle({ db, incCounter = defaultIncCounter, alert = defaultAlert, washTradeCount } = {}) {
+export async function runEconomyAnomalyCycle({ db, incCounter = defaultIncCounter, alert = defaultAlert, washTradeCount, collusionRings } = {}) {
   if (process.env.CONCORD_ECON_ANOMALY === "0") return { ok: true, counted: 0, paged: 0, byKind: {}, disabled: true };
   if (!db) return { ok: false, reason: "no_db", counted: 0, paged: 0, byKind: {} };
 
@@ -88,6 +89,15 @@ export async function runEconomyAnomalyCycle({ db, incCounter = defaultIncCounte
     : (() => { try { return globalThis._washTradeHistory?.size || 0; } catch { return 0; } })();
   if (washN > 0) {
     try { await bump("wash_trade", { suspected: washN }); } catch { /* best-effort */ }
+  }
+
+  // F3 — multi-account collusion rings (the cycle case pairwise wash-trade
+  // misses). Advisory: counted + paged as Critical, never blocks/mutates.
+  const rings = Array.isArray(collusionRings)
+    ? collusionRings
+    : (() => { try { return detectCollusionRings(globalThis._washTradeHistory || new Map()).rings || []; } catch { return []; } })();
+  for (const ring of rings) {
+    try { await bump("collusion_ring", { accounts: ring.accounts, size: ring.size, totalTrades: ring.totalTrades }); } catch { /* best-effort */ }
   }
 
   return { ok: true, counted, paged, byKind };
