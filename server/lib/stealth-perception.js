@@ -102,16 +102,23 @@ export function getVisibilityForObserver(db, observerId, targetId, contextOpts =
 }
 
 /**
- * Pull the player's skill level for a given domain from the dtus table.
- * Mirrors the lookup the narrative-bridge module uses.
+ * Pull the player's skill level for a given domain.
+ *
+ * Fix (stealth design "step zero"): the prior query hit `dtus` with
+ * `owner_user_id = ? AND type='skill' AND tags_json LIKE '%domain%'`, but skill
+ * DTUs are written with `creator_id` (not owner_user_id) and the domain lives in
+ * `skill_type`, not `tags_json` — so the query silently returned 0 for everyone
+ * (the try/catch swallowed nothing; it was a wrong-table/wrong-column match that
+ * matched no rows), collapsing all stealth + perception to 0. The AUTHORITATIVE
+ * player skill source is `player_skill_levels` (see entity-power.js:78 +
+ * skill-tree-engine.js:81), keyed by (user_id, skill_type). Use it.
  */
 function _getSkillLevel(db, userId, domain) {
   try {
     const row = db.prepare(`
-      SELECT MAX(skill_level) AS lvl FROM dtus
-      WHERE owner_user_id = ? AND type = 'skill'
-        AND tags_json LIKE ?
-    `).get(userId, `%${domain}%`);
+      SELECT MAX(level) AS lvl FROM player_skill_levels
+      WHERE user_id = ? AND skill_type = ?
+    `).get(userId, domain);
     return Math.max(0, Math.round(row?.lvl ?? 0));
   } catch {
     return 0;
