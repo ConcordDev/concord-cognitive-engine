@@ -43,7 +43,6 @@ const ALLOWLIST = new Map([
   ["concordia:scene-request-ready", "Startup-readiness signal superseded by other readiness events."],
   ["concordia:visibility-shader", "Horror-mode shader hook (consumer is future work)."],
   ["concordia:interaction-recorded", "Intentional click telemetry (WorldInteractionSink); no functional consumer by design."],
-  ["world:fast-travel", "Fast-travel teleport consumer is not yet wired — known gap, tracked here."],
 ]);
 
 // Strip // line + /* */ block comments so example dispatches inside JSDoc (e.g.

@@ -458,6 +458,27 @@ export default function AvatarSystem3D({
     return () => window.removeEventListener('concordia:terrain-ready', onTerrainReady);
   }, []);
 
+  // Fast-travel: WorldAdventureKitPanel resolves a marker server-side and
+  // dispatches world:fast-travel with the destination { x, y, z }. Teleport the
+  // player avatar there — physics body + logical position + mesh, all in sync —
+  // so the marker's "Travel" button actually moves the player (was an orphaned
+  // event that did nothing).
+  useEffect(() => {
+    function onFastTravel(e: Event) {
+      const d = (e as CustomEvent).detail as { x?: number; y?: number; z?: number } | undefined;
+      if (!d || typeof d.x !== 'number' || typeof d.z !== 'number') return;
+      const y = typeof d.y === 'number' ? d.y : playerPositionRef.current.y;
+      physicsWorld.teleportCharacter('player', { x: d.x, y, z: d.z });
+      playerPositionRef.current.x = d.x;
+      playerPositionRef.current.y = y;
+      playerPositionRef.current.z = d.z;
+      const mesh = playerMeshRef.current as { position?: { set: (x: number, y: number, z: number) => void } } | null;
+      mesh?.position?.set(d.x, y, d.z);
+    }
+    window.addEventListener('world:fast-travel', onFastTravel);
+    return () => window.removeEventListener('world:fast-travel', onFastTravel);
+  }, []);
+
   // Suppress unused warning for onEmote
   void onEmote;
 
