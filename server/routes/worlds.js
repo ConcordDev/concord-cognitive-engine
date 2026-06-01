@@ -2826,6 +2826,15 @@ export default function createWorldsRouter({ requireAuth, db }) {
               const bldgPos = (typeof targetPos === 'object' && targetPos)
                 ? { x: targetPos.x, z: targetPos.z }
                 : null;
+              // G3 — destruction -> salvage: a collapse turns the rubble into a
+              // scrap resource node at the building (idempotent; best-effort). The
+              // node is discovered through normal gathering — no new socket event.
+              if (stress.state === 'collapsed') {
+                try {
+                  const { spawnSalvageOnCollapse } = await import("../lib/building-salvage.js");
+                  spawnSalvageOnCollapse(db, worldId, stagger.buildingId);
+                } catch { /* salvage best-effort — never blocks combat */ }
+              }
               io?.to(`world:${worldId}`).emit('world:building-state', {
                 worldId,
                 buildingId: stagger.buildingId,
