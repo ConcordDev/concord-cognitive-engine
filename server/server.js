@@ -49776,6 +49776,18 @@ app.get("/api/npc/:npcId/hooks", requireAuth(), asyncHandler(async (req, res) =>
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// Full political dossier — the single window onto an NPC's whole political life
+// (active schemes, viewer-discovered secrets, stress, opinion-of-you, faction,
+// hooks, lineage). Powers the NPCTraitInspector dossier + the Concord Link
+// political view. Read-only, viewer-scoped; never leaks undiscovered secrets.
+app.get("/api/npc/:npcId/dossier", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const { buildDossier } = await import("./lib/npc-dossier.js");
+    const userId = req.user?.id || req.user?.userId;
+    res.json(buildDossier(db, req.params.npcId, userId));
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // Phase CC4 — factory automation (claim-bounded).
 app.post("/api/factory/place", requireAuth(), asyncHandler(async (req, res) => {
   const { placeEntity } = await import("./lib/factory.js");
