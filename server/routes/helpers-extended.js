@@ -257,7 +257,7 @@ export default function registerHelpersExtendedRoutes(app, {
       // world_invites (network) else 'tool'. Cheap per-user lookup, guarded.
       const sourceFor = (uid) => {
         try {
-          const r = database.prepare(`SELECT 1 FROM world_invites WHERE invitee_id=? LIMIT 1`).get(String(uid));
+          const r = database.prepare(`SELECT 1 FROM world_invites WHERE to_user_id=? LIMIT 1`).get(String(uid));
           return r ? "network" : "tool";
         } catch { return "unknown"; }
       };
@@ -274,6 +274,19 @@ export default function registerHelpersExtendedRoutes(app, {
     try {
       const { royaltySolvencyReport, simulateCascadeSolvency } = await import("../lib/royalty-solvency.js");
       res.json({ ok: true, report: royaltySolvencyReport(), examples: [1, 3, 10, 50].map((d) => simulateCascadeSolvency({ depth: d })) });
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
+  // F5 — referral / distribution instrumentation (viral K-factor) from
+  // world_invites. Read-only, observe-only.
+  app.get("/api/distribution/referral", asyncHandler(async (_req, res) => {
+    const database = db || STATE?.db;
+    if (!database) return res.json({ ok: false, reason: "no_db" });
+    try {
+      const { referralReport } = await import("../lib/referral-metrics.js");
+      res.json(referralReport(database));
     } catch (e) {
       res.json({ ok: false, reason: String(e?.message || e) });
     }
