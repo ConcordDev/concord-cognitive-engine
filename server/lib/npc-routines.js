@@ -504,6 +504,27 @@ export async function advanceRoutine(db, npc, opts = {}) {
     } catch { /* needs layer best-effort */ }
   }
 
+  // NPC-purpose — anchor the 'workplace' / 'home' blocks to the NPC's ASSIGNED
+  // building (the forge they were given, the house they live in) so they
+  // actually commute to their real job + home instead of a nearby POI guess.
+  // Other location_kinds keep the WS4 motivated-POI choice. Flag-gated; only on
+  // a transition (the target then persists in routine_state).
+  if (process.env.CONCORD_NPC_PURPOSE !== "0" && willTransition &&
+      (block.location_kind === "workplace" || block.location_kind === "home")) {
+    try {
+      const bid = block.location_kind === "home"
+        ? db.prepare(`SELECT home_building_id AS b FROM world_npcs WHERE id = ?`).get(npc.id)?.b
+        : db.prepare(`SELECT work_building_id AS b FROM npc_jobs WHERE npc_id = ?`).get(npc.id)?.b;
+      if (bid) {
+        const bp = db.prepare(`SELECT x, z FROM world_buildings WHERE id = ?`).get(bid);
+        if (bp && Number.isFinite(bp.x) && Number.isFinite(bp.z)) {
+          block.target_x = bp.x;
+          block.target_z = bp.z;
+        }
+      }
+    } catch { /* purpose tables optional — fall back to the POI target */ }
+  }
+
   // Block transition?
   let transitioned = false;
   if (!state || state.current_block !== blockIdx) {

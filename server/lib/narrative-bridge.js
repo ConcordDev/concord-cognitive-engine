@@ -127,6 +127,35 @@ const GOD_COSMOLOGY_LINE =
   "proud, amused — will permit only one thing: never to lose either of them. Speak from your own place in " +
   "this triangle; never narrate it like a lecture.";
 
+/**
+ * NPC-purpose awareness: the NPC's assigned job + workplace, as a short,
+ * secret-safe summary so dialogue knows "I keep the tavern for the Pinewood
+ * Coalition" instead of being place-blind. Public facts only (job + building) —
+ * never secrets. db-guarded; returns null when the purpose tables are absent.
+ */
+function buildVocation(npcId, db) {
+  if (!db || !npcId) return null;
+  try {
+    const job = db.prepare(`SELECT job_type, work_building_id FROM npc_jobs WHERE npc_id = ?`).get(npcId);
+    if (!job?.job_type) return null;
+    if (job.job_type === "roamer") {
+      return { job: "roamer", workplace: null, summary: "a wandering adventurer with no fixed post" };
+    }
+    let where = null;
+    if (job.work_building_id) {
+      const b = db.prepare(`SELECT building_type, name FROM world_buildings WHERE id = ?`).get(job.work_building_id);
+      where = b?.name || b?.building_type || null;
+    }
+    return {
+      job: job.job_type,
+      workplace: where,
+      summary: where ? `works as a ${job.job_type} at the ${where}` : `works as a ${job.job_type}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function buildNPCTraits(npcId, db = null, opts = {}) {
   const npc = getAuthoredNPC(npcId);
   if (!npc) {
@@ -174,6 +203,10 @@ export function buildNPCTraits(npcId, db = null, opts = {}) {
     // to this NPC's role. Doctors/scholars/engineers reference real human
     // research in their dialogue.
     professionalKnowledge: buildProfessionalKnowledge(npc, db),
+    // NPC-purpose: the NPC's assigned job + workplace building (secret-safe,
+    // public facts) so dialogue is place-aware — "I forge blades here", "I keep
+    // the tavern". Null when the purpose substrate isn't populated.
+    vocation: buildVocation(npc.id, db),
     // Concordant Web: this NPC's view of every other major character —
     // resolved to short summaries so the oracle prompt can answer
     // "what do you think of X?" in-character without the LLM inventing
