@@ -821,6 +821,11 @@ registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
 import { runTesseraParity } from "./emergent/tessera-parity-cycle.js";
 registerHeartbeat("tessera-parity", { frequency: 120, handler: runTesseraParity, scope: "global" });
 
+// Sere extraction-by-rescue — the Mercy Fund bails out realms in crisis and takes
+// the collateral on default (CONCORD_MERCY_FUND=0 to disable; world_id='sere' only).
+import { runMercyFundCycle } from "./emergent/mercy-fund-cycle.js";
+registerHeartbeat("mercy-fund", { frequency: 120, handler: runMercyFundCycle, scope: "global" });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
