@@ -267,6 +267,18 @@ export default function registerHelpersExtendedRoutes(app, {
     }
   }));
 
+  // F4 — royalty-cascade solvency / unit-econ panel (read-only, public). Proves
+  // the constitutional split holds at any cascade depth: ancestors ≤ 30%, seller
+  // keeps ≥ 64.54%. Pure sim, no DB, no economy mutation.
+  app.get("/api/economy/royalty-solvency", asyncHandler(async (_req, res) => {
+    try {
+      const { royaltySolvencyReport, simulateCascadeSolvency } = await import("../lib/royalty-solvency.js");
+      res.json({ ok: true, report: royaltySolvencyReport(), examples: [1, 3, 10, 50].map((d) => simulateCascadeSolvency({ depth: d })) });
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
   // ─── PHYSICS ────────────────────────────────────────────────────────
 
   app.get("/api/physics/status", (req, res) => {
