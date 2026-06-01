@@ -79,8 +79,13 @@ describe('Sidebar', () => {
   });
 
   it('renders the Concord logo', () => {
-    render(<Sidebar />);
-    expect(screen.getByText('Concord')).toBeInTheDocument();
+    const { container } = render(<Sidebar />);
+    // The logo is a decorative <img> (alt="" aria-hidden) inside the
+    // "Go to dashboard" brand link; the brand wordmark renders as
+    // uppercase "CONCORD" when labels are shown.
+    const logo = container.querySelector('img[src="/logo-cosmic.svg"]');
+    expect(logo).toBeInTheDocument();
+    expect(screen.getByText('CONCORD')).toBeInTheDocument();
   });
 
   it('renders Dashboard link', () => {
@@ -247,8 +252,9 @@ describe('Sidebar', () => {
     it('reads userRole from UI store', () => {
       mockUIStore.userRole = 'user';
       render(<Sidebar />);
-      // Should render without error with non-sovereign role
-      expect(screen.getByText('Concord')).toBeInTheDocument();
+      // Should render without error with non-sovereign role — the brand
+      // wordmark still renders, proving the store-driven render path ran.
+      expect(screen.getByText('CONCORD')).toBeInTheDocument();
     });
   });
 });
