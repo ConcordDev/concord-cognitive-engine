@@ -23,6 +23,31 @@ import { LruMap, LruSet } from "./lru-map.js";
 const _worldRegistry = new LruMap();
 
 /**
+ * Resolve a world's per-domain affinity (0..1+), handling BOTH world-meta shapes:
+ *   • skill_affinity            : { <domain>: 0.95, default: 0.4 }     (authored worlds / content meta.json)
+ *   • skill_effectiveness_rules : { <domain>: { multiplier: 0.95 }, default: { multiplier: 1.0 } }
+ *                                                                       (Foundry / world-seed worlds)
+ * #14 fix: the reader previously only looked at skill_affinity, so a world that
+ * defined only skill_effectiveness_rules silently fell through to NEUTRAL and its
+ * cross-world potency was ignored. Now either shape resolves; skill_affinity wins
+ * when both are present (authored intent is canonical). Returns null if neither
+ * shape carries the domain or a default (caller applies the NEUTRAL fallback).
+ */
+export function resolveAffinity(meta, domain) {
+  const aff = meta?.skill_affinity;
+  if (aff && (aff[domain] != null || aff.default != null)) {
+    return aff[domain] ?? aff.default;
+  }
+  const rules = meta?.skill_effectiveness_rules;
+  if (rules) {
+    const rule = rules[domain] ?? rules.default;
+    const mult = (rule && typeof rule === "object") ? rule.multiplier : rule;
+    if (mult != null && Number.isFinite(Number(mult))) return Number(mult);
+  }
+  return null;
+}
+
+/**
  * Register a world's metadata. Called by the content-seeder for each
  * meta.json discovered under content/world/.
  */
@@ -62,9 +87,7 @@ export function listKnownWorlds() {
  */
 export function effectivenessMultiplier({ domain, worldId, level = 1, maxLevel = 100 }) {
   const meta = _worldRegistry.get(worldId);
-  const affinityTable = meta?.skill_affinity ?? NEUTRAL_AFFINITY;
-  const affinity = affinityTable[domain]
-    ?? affinityTable.default
+  const affinity = resolveAffinity(meta, domain)
     ?? NEUTRAL_AFFINITY[domain]
     ?? 0.7;
 
@@ -88,8 +111,7 @@ export function scaleByEffectiveness(baseValue, args) {
  */
 export function explainEffectiveness({ domain, worldId, level = 1, maxLevel = 100 }) {
   const meta = _worldRegistry.get(worldId);
-  const affinity = meta?.skill_affinity?.[domain]
-    ?? meta?.skill_affinity?.default
+  const affinity = resolveAffinity(meta, domain)
     ?? NEUTRAL_AFFINITY[domain]
     ?? 0.7;
   const lvlFraction = Math.max(0, Math.min(1, level / Math.max(1, maxLevel)));
