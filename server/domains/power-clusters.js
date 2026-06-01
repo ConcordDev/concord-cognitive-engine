@@ -19,7 +19,10 @@ export default function registerPowerClusterMacros(register) {
   register("power-clusters", "claim", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
-    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    // The unauthenticated lens-run path builds actor.userId === "anon", so a bare
+    // truthiness check lets logged-out callers claim under one shared anon user and
+    // pollute progression — require a real authenticated user.
+    if (!db || !userId || userId === "anon") return { ok: false, reason: "auth_required" };
     const { worldId, clusterId, x, z } = input || {};
     if (!worldId || !clusterId) return { ok: false, reason: "missing_inputs" };
     return claimCluster(db, worldId, userId, clusterId, { x, z });
@@ -28,7 +31,7 @@ export default function registerPowerClusterMacros(register) {
   register("power-clusters", "progress", async (ctx, input = {}) => {
     const db = ctx?.db;
     const userId = ctx?.actor?.userId;
-    if (!db || !userId) return { ok: false, reason: "auth_required" };
+    if (!db || !userId || userId === "anon") return { ok: false, reason: "auth_required" };
     return getClusterProgress(db, userId, input?.worldId || null);
   }, { note: "Per-power claimed/total summary for the player." });
 }
