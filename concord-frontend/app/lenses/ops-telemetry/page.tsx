@@ -19,6 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
 import { ManifestActionBar } from '@/components/lens/ManifestActionBar';
 import { DepthBadge } from '@/components/lens/DepthBadge';
+import { LivenessPanel } from '@/components/admin/LivenessPanel';
 import { Activity, Cpu, Brain, Globe, RefreshCcw, AlertTriangle, Layers } from 'lucide-react';
 
 interface HeartbeatStatRow {
@@ -159,6 +160,11 @@ export default function OpsTelemetryPage() {
         </header>
 
         <section className="mx-auto grid max-w-screen-2xl gap-4 px-3 py-4 sm:px-6 sm:py-5">
+          {/* F2 — substrate liveness (the moat-mass + funnel/distribution/economy headline) */}
+          <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
+            <LivenessPanel />
+          </div>
+
           {/* Worker pools */}
           <div className="grid gap-3 lg:grid-cols-2">
             <PoolCard title="Macro worker pool" icon={Cpu} stats={macroPool} />
