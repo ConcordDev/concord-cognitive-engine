@@ -16,6 +16,7 @@ import { getWorldMarket, getResourcePrice, recordTransaction } from "../lib/worl
 import { issueDirective, voteOnDirective, getActiveDirectives, getDirectiveHistory } from "../lib/world-governance.js";
 import { TASK_PROMPTS } from "../lib/prompt-registry.js";
 import { getRoomsForBuilding, addRoom, updateRoomFurniture, seedRoomsForBuilding } from "../lib/building-interiors.js";
+import { recordCombatReject } from "../lib/desync-metrics.js";
 import { worldDensityEnabled, ensureInterior, recordInteriorActivity } from "../lib/world-density.js";
 import { checkRoomAccess, attemptLockpick, forceEntry, recordTheft, getOpenCrimes, getActiveWarrants } from "../lib/world-crime.js";
 import { broadcastOpinionEvent, getWorldReputation, willNPCInteract } from "../lib/npc-relations.js";
@@ -2218,6 +2219,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       const reachCheck = _validateCombatReach(userId, npcPosRow, skillData);
       if (!reachCheck.ok) {
         logger.warn?.('worlds', 'combat_reach_rejected', { userId, npcId, ...reachCheck });
+        recordCombatReject("reach", req.params.worldId);  // E1 — desync-rate telemetry
         return res.status(422).json({ ok: false, error: "out_of_range", distance: reachCheck.distance, allowedRange: reachCheck.allowedRange });
       }
 
@@ -2256,6 +2258,7 @@ export default function createWorldsRouter({ requireAuth, db }) {
       });
       if (!dmgCheck.ok) {
         logger.warn?.('worlds', 'combat_damage_rejected', { userId, npcId, ...dmgCheck });
+        recordCombatReject("damage", req.params.worldId);  // E1 — desync-rate telemetry
         return res.status(422).json({ ok: false, error: "damage_cap_exceeded", reason: dmgCheck.reason });
       }
 

@@ -6910,6 +6910,24 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // E1 — desync-rate telemetry. The combat anti-cheat rejects out-of-reach /
+    // over-cap attacks per-request; these aggregate the rejects so a desync storm
+    // or coordinated exploit attempt is visible to Prometheus (alert
+    // `ConcordDesyncSpike` in monitoring/prometheus/alerts.yml). Incremented via
+    // lib/desync-metrics.js#recordCombatReject from routes/worlds.js.
+    METRICS.counters.combatReachRejected = new prom.Counter({
+      name: "concord_combat_reach_rejected_total",
+      help: "Combat attacks rejected by the server-side reach validator (anti-cheat)",
+      labelNames: ["world"],
+      registers: [METRICS.registry]
+    });
+    METRICS.counters.combatDamageRejected = new prom.Counter({
+      name: "concord_combat_damage_rejected_total",
+      help: "Combat attacks rejected by the server-side damage-cap validator (anti-cheat)",
+      labelNames: ["world"],
+      registers: [METRICS.registry]
+    });
+
     // Heartbeat liveness — incremented every governorTick. If the rate of
     // this counter drops to 0 the heartbeat has died and every emergent
     // system is silently frozen. The Prometheus alert rule
