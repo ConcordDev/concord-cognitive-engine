@@ -362,6 +362,47 @@ export function seedCodex(db, codex, { slug = "codex" } = {}) {
   return count;
 }
 
+// ── Grounding Packs (job b) ────────────────────────────────────────────────────
+// Author-once domain knowledge for thin-but-shallow lenses. Each entry mints a
+// kind='<domain>' DTU stamped with its owning lens_id (so the DTU→lens routing
+// reaches it immediately) — real reasoning fuel that grounds the lens instead of
+// leaving it to search a flat pool. Idempotent (INSERT OR IGNORE on a stable id).
+function discoverGroundingPacks() {
+  const out = [];
+  try {
+    const dir = join(CONTENT_ROOT, "grounding");
+    for (const f of readdirSync(dir)) {
+      if (f.endsWith(".json")) out.push(`grounding/${f}`);
+    }
+  } catch { /* no grounding dir — fine */ }
+  return out;
+}
+
+export function seedGroundingPack(db, pack) {
+  if (!db || !pack || !Array.isArray(pack.entries)) return 0;
+  let count = 0;
+  const ins = db.prepare(`
+    INSERT OR IGNORE INTO dtus (id, type, title, data, lens_id, created_at, creator_id, visibility)
+    VALUES (?, ?, ?, ?, ?, unixepoch(), 'system', 'public')
+  `);
+  for (const e of pack.entries) {
+    if (!e?.id || !e?.title) continue;
+    const data = JSON.stringify({
+      human_summary: e.summary || "",
+      tags: Array.isArray(e.tags) ? e.tags : [],
+      scope: "global",
+      grounding_pack: pack.pack || null,
+    });
+    try {
+      const r = ins.run(e.id, e.kind || "knowledge", e.title, data, e.lens || "knowledge");
+      if (r.changes > 0) count++;
+    } catch (err) {
+      try { logger.debug?.("content_seeder", "grounding_mint_failed", { id: e.id, err: err?.message }); } catch { /* ignore */ }
+    }
+  }
+  return count;
+}
+
 // ── Quest Seeding ─────────────────────────────────────────────────────────────
 
 function buildQuestSteps(objectives = []) {
@@ -960,6 +1001,17 @@ export async function seedContent({ db = null } = {}) {
     results.danglingFactionRefs = dangling.count;
   } catch (err) {
     logger.warn("content_seeder", "dangling_faction_audit_failed", { err: err?.message });
+  }
+
+  // Grounding packs (job b) — author-once domain knowledge for thin lenses.
+  if (db) {
+    for (const rel of discoverGroundingPacks()) {
+      try {
+        const pack = readJSON(rel);
+        if (pack) { const n = seedGroundingPack(db, pack); results.grounding = (results.grounding || 0) + n; }
+      } catch (err) { logger.warn("content_seeder", "grounding_pack_failed", { rel, err: err?.message }); }
+    }
+    if (results.grounding) logger.info("content_seeder", "grounding_packs_seeded", { count: results.grounding });
   }
 
   // DTU→lens routing: stamp lens_id on any DTU still 'unknown' (seeds + prior
