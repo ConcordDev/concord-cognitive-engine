@@ -65,6 +65,92 @@ let _running = false;
 let _deps = null;
 
 // ══════════════════════════════════════════════════════════════════════════════
+// G2 — INGESTION HYGIENE (denylist · robots.txt · 429 backoff · takedown)
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// The posture was already strong (excerpt-only, attributed, Fair-Use→no-resale). These
+// close the standard aggregator-hygiene gaps the news-vs-AI litigation climate expects:
+// a per-source denylist + one-call takedown, robots.txt politeness (reusing the
+// entity-web-exploration check), and honoring 429/Retry-After with backoff.
+
+/** @type {Set<string>} lower-cased source name OR feed id — skipped on fetch + purgeable */
+const _sourceDenylist = new Set(
+  (process.env.CONCORD_FEED_DENYLIST || "")
+    .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+);
+
+/** @type {Map<string, {allowed:boolean, checkedAt:number}>} robots.txt verdict per origin */
+const _robotsCache = new Map();
+const ROBOTS_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Add a source (name or feed id) to the takedown denylist — future fetches skip it. */
+export function denySource(nameOrId) {
+  if (nameOrId) _sourceDenylist.add(String(nameOrId).toLowerCase());
+}
+
+/** Is this feed source on the denylist (by name or id)? */
+export function isSourceDenied(feedSource) {
+  const n = String(feedSource?.name || "").toLowerCase();
+  const id = String(feedSource?.id || "").toLowerCase();
+  return (n && _sourceDenylist.has(n)) || (id && _sourceDenylist.has(id));
+}
+
+/**
+ * robots.txt politeness — reuses entity-web-exploration#checkRobotsTxt (24h-cached per
+ * origin). Fail-OPEN: if the robots infra is unavailable we don't break ingestion of an
+ * otherwise-public RSS feed. Disable entirely with CONCORD_FEED_ROBOTS_CHECK=0.
+ */
+async function robotsAllows(url) {
+  if (process.env.CONCORD_FEED_ROBOTS_CHECK === "0") return true;
+  let origin;
+  try { origin = new URL(url).origin; } catch { return true; }
+  const cached = _robotsCache.get(origin);
+  if (cached && Date.now() - cached.checkedAt < ROBOTS_TTL_MS) return cached.allowed;
+  let allowed = true;
+  try {
+    const { checkRobotsTxt } = await import("../emergent/entity-web-exploration.js");
+    allowed = await checkRobotsTxt(url);
+  } catch { allowed = true; /* robots infra optional — fail open for public feeds */ }
+  _robotsCache.set(origin, { allowed, checkedAt: Date.now() });
+  return allowed;
+}
+
+/**
+ * Takedown — remove every ingested feed DTU from a given source (name or feed id) and
+ * denylist it so it won't re-ingest. One call satisfies a publisher request. Feed DTUs
+ * are source-tagged (meta.via='feed-manager', meta.feedId, meta.sourceName), so the
+ * match is exact. Removes from STATE.dtus and best-effort from the dtus table.
+ * @returns {{ ok:boolean, removed:number, denied:string }}
+ */
+export function purgeBySource(nameOrId) {
+  const key = String(nameOrId || "").toLowerCase();
+  denySource(key);
+  let removed = 0;
+  const ids = [];
+  const dtus = _deps?.STATE?.dtus;
+  if (dtus && typeof dtus.forEach === "function") {
+    dtus.forEach((d, id) => {
+      if (d?.meta?.via !== "feed-manager") return;
+      const fid = String(d?.meta?.feedId || "").toLowerCase();
+      const sname = String(d?.meta?.sourceName || d?.source?.name || "").toLowerCase();
+      if (fid === key || sname === key) ids.push(id);
+    });
+    for (const id of ids) { dtus.delete(id); removed++; }
+  }
+  // Best-effort DB delete for the same ids (the pipeline persists feed DTUs).
+  try {
+    const db = _deps?.db;
+    if (db && ids.length) {
+      const stmt = db.prepare("DELETE FROM dtus WHERE id = ?");
+      const tx = db.transaction((list) => { for (const id of list) stmt.run(id); });
+      tx(ids);
+    }
+  } catch (err) { logger.warn?.("[feed-manager] purgeBySource db delete failed", { error: err?.message }); }
+  logger.info?.("[feed-manager] purgeBySource", { source: key, removed });
+  return { ok: true, removed, denied: key };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -385,6 +471,17 @@ async function fetchFeed(feedSource) {
 
   if (!feedSource.enabled) return { items: [], errors: ["disabled"] };
   if (!canCreateDTU()) return { items: [], errors: ["hourly_dtu_limit_reached"] };
+  // G2 — takedown: a denylisted source never fetches.
+  if (isSourceDenied(feedSource)) return { items: [], errors: ["denylisted"] };
+  // G2 — honor a prior 429/Retry-After backoff window before re-hitting the source.
+  if (health.backoffUntil && Date.now() < health.backoffUntil) {
+    return { items: [], errors: ["backoff"] };
+  }
+  // G2 — robots.txt politeness (reuses the entity-web-exploration check, 24h-cached).
+  if (!(await robotsAllows(feedSource.url))) {
+    health.lastError = "robots_disallow";
+    return { items: [], errors: ["robots_disallow"] };
+  }
 
   try {
     health.lastAttempt = Date.now();
@@ -392,6 +489,20 @@ async function fetchFeed(feedSource) {
       timeout: feedSource.timeout || FETCH_TIMEOUT,
       headers: feedSource.headers || {},
     });
+
+    // G2 — rate-limit politeness: on 429, set a backoff window from Retry-After
+    // (seconds or HTTP-date) and skip this cycle instead of hammering the source.
+    if (res.status === 429) {
+      const ra = res.headers?.get?.("retry-after");
+      let waitMs = 60_000;
+      if (ra) {
+        const asNum = Number(ra);
+        if (Number.isFinite(asNum)) waitMs = Math.max(1, asNum) * 1000;
+        else { const when = Date.parse(ra); if (Number.isFinite(when)) waitMs = Math.max(1000, when - Date.now()); }
+      }
+      health.backoffUntil = Date.now() + Math.min(waitMs, 6 * 60 * 60 * 1000); // cap 6h
+      return { items: [], errors: [`rate_limited_retry_after_${Math.round(waitMs / 1000)}s`] };
+    }
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} ${res.statusText}`);

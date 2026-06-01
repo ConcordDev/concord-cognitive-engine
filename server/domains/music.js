@@ -1060,8 +1060,11 @@ export default function registerMusicActions(registerLensAction) {
       } else {
         return { ok: true, result: { id: track.id, found: false, message: "no lyrics found on LRCLIB" } };
       }
+      // G2 — persist the lyrics provenance (LRCLIB was the one external API that
+      // dropped its source URL). Keeps the origin queryable for attribution + takedown.
+      track.lyricsSource = { name: "LRCLIB", url, fetchedAt: new Date().toISOString() };
       saveMusicState();
-      return { ok: true, result: { id: track.id, found: true, lineCount: track.lyrics.length, synced: track.lyricsSynced, source: "lrclib" } };
+      return { ok: true, result: { id: track.id, found: true, lineCount: track.lyrics.length, synced: track.lyricsSynced, source: "lrclib", sourceUrl: url } };
     } catch (e) {
       return { ok: false, error: `lrclib unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
