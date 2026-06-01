@@ -649,6 +649,27 @@ export async function seedContent({ db = null } = {}) {
     } catch (err) {
       logger.warn("content_seeder", "world_zones_seed_skipped", { err: err?.message });
     }
+
+    // NPC purpose — the cold-start guarantee: build a coherent settlement
+    // (homes + the workplaces its residents' jobs need) and give every settled
+    // NPC a matched workplace + home + realm citizenship (or an explorer's roam
+    // purpose). Reconcile pass per world; idempotent. Kill-switch
+    // CONCORD_NPC_PURPOSE=0. Catches authored NPCs at boot; procgen + migrated
+    // NPCs are picked up by the npc-routine-cycle reconcile (and on migration).
+    try {
+      const { assignPurposesForWorld, PURPOSE_ENABLED } = await import("./npc/purpose.js");
+      if (PURPOSE_ENABLED()) {
+        const worldIds = [...new Set([..._authoredNPCs.values()].map((n) => n.world_id).filter(Boolean))];
+        if (!worldIds.includes("concordia-hub")) worldIds.push("concordia-hub");
+        let assigned = 0;
+        for (const wid of worldIds) {
+          try { assigned += assignPurposesForWorld(db, wid).assigned || 0; } catch { /* per-world best-effort */ }
+        }
+        results.npcPurposesAssigned = assigned;
+      }
+    } catch (err) {
+      logger.warn("content_seeder", "npc_purpose_seed_skipped", { err: err?.message });
+    }
   }
 
   // Onboarding quest chain

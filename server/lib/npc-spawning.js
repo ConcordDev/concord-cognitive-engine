@@ -8,6 +8,7 @@
 import crypto from 'crypto';
 import logger from '../logger.js';
 import { addFamilyBond, getFamilyMembers } from './npc-family.js';
+import { assignPurpose, PURPOSE_ENABLED } from './npc/purpose.js';
 
 // ── Quest-Spawned NPCs ────────────────────────────────────────────────────────
 
@@ -90,6 +91,17 @@ export function recruitFromWorld(db, npcId, targetWorldId, recruiterId, recruite
   logger.info('npc-spawning', 'cross_world_recruit', {
     npcId, fromWorld, targetWorldId, recruiterId, recruiterType,
   });
+
+  // NPC purpose — "find purpose in whatever world you move to". Clear the old
+  // world's home + job binding (they belong to fromWorld) and re-assign a home +
+  // workplace (or roam) in the destination. Best-effort; flag-gated.
+  if (PURPOSE_ENABLED()) {
+    try {
+      db.prepare(`UPDATE world_npcs SET home_building_id = NULL WHERE id = ?`).run(npcId);
+      db.prepare(`DELETE FROM npc_jobs WHERE npc_id = ?`).run(npcId);
+      assignPurpose(db, npcId, targetWorldId);
+    } catch { /* best-effort — purpose tables optional on minimal builds */ }
+  }
 
   return { ok: true, npcId, fromWorld, toWorld: targetWorldId };
 }
