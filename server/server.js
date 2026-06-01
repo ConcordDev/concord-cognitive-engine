@@ -25031,6 +25031,9 @@ registerPowerClusterMacros(register);
 import registerProgressionMacros from "./domains/progression.js";
 registerProgressionMacros(register);
 
+import registerLedgerMacros from "./domains/ledger.js";
+registerLedgerMacros(register);
+
 // Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
 import registerPatternsMacros from "./domains/patterns.js";
 registerPatternsMacros(register);
