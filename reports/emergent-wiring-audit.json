@@ -78,9 +78,21 @@
       ]
     },
     {
+      "file": "career-cycle.js",
+      "handlers": [
+        "runCareerCycle"
+      ]
+    },
+    {
       "file": "chronicle-weave.js",
       "handlers": [
         "runChronicleWeave"
+      ]
+    },
+    {
+      "file": "civic-bond-cycle.js",
+      "handlers": [
+        "runCivicBondCycle"
       ]
     },
     {
@@ -177,6 +189,12 @@
       "file": "ecology-quest-cycle.js",
       "handlers": [
         "runEcologyQuestCycle"
+      ]
+    },
+    {
+      "file": "effects-decay-cycle.js",
+      "handlers": [
+        "runEffectsDecayCycle"
       ]
     },
     {
@@ -366,6 +384,12 @@
       ]
     },
     {
+      "file": "news-compose-cycle.js",
+      "handlers": [
+        "runNewsComposeCycle"
+      ]
+    },
+    {
       "file": "npc-ambition-cycle.js",
       "handlers": [
         "runNpcAmbitionCycle"
@@ -468,6 +492,12 @@
       ]
     },
     {
+      "file": "realm-control-cycle.js",
+      "handlers": [
+        "runRealmControlCycle"
+      ]
+    },
+    {
       "file": "realtime-feeds.js",
       "handlers": [
         "tickRealTimeFeeds"
@@ -558,6 +588,12 @@
       ]
     },
     {
+      "file": "viability-cycle.js",
+      "handlers": [
+        "runViabilityCycle"
+      ]
+    },
+    {
       "file": "war-skirmish-cycle.js",
       "handlers": [
         "runWarSkirmishCycle"
@@ -573,6 +609,12 @@
       "file": "world-boss-cycle.js",
       "handlers": [
         "runWorldBossCycle"
+      ]
+    },
+    {
+      "file": "world-health-monitor.js",
+      "handlers": [
+        "runWorldHealthMonitor"
       ]
     },
     {
@@ -1013,5 +1055,5 @@
     }
   ],
   "orphan": [],
-  "scannedAt": "2026-05-30T02:58:26.697Z"
+  "scannedAt": "2026-06-01T00:04:39.624Z"
 }

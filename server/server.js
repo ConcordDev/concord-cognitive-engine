@@ -4940,6 +4940,21 @@ if (db) {
     console.error("[Concord] Migration failed:", e.message);
   }
 
+  // #F1 — materialise lazily-created runtime tables so a FRESH install has a
+  // deterministic schema (no `no such table` on the first JOIN against a table
+  // that's normally created only at its first call site). Every statement is
+  // IF NOT EXISTS, so migration-owned tables are untouched. Best-effort.
+  try {
+    const { ensureRuntimeTables } = await import("./lib/ensure-runtime-tables.js");
+    const rt = ensureRuntimeTables(db);
+    structuredLog("info", "runtime_tables_ensured", {
+      tablesCreated: rt.tablesCreated, indexesCreated: rt.indexesCreated,
+      scanned: rt.scanned, failed: rt.failed,
+    });
+  } catch (e) {
+    structuredLog("warn", "runtime_tables_ensure_failed", { error: e?.message });
+  }
+
   // Make db available to systems that read STATE.db directly (e.g. the
   // refusal-field persistence layer). Modules that already capture `db`
   // via closure are unaffected.
@@ -16704,10 +16719,18 @@ async function initGhostFleet() {
   return GHOST_FLEET_STATUS;
 }
 
-// Stagger: ghost fleet at T+225s (5th autonomous task, 45s after repair loop)
-// Modules load one-at-a-time with 2s gaps between each.
-// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this so
+// #11 — ghost-fleet registration race. The fleet's modules register their bus
+// macros (quest.*, agent.*, hlr.*, …) synchronously as each module loads, but the
+// whole fleet used to be deferred to T+225s, so for ~4–5 min after boot a player
+// hitting /lenses/quests got `unknown_macro` instead of a real result. The 225s
+// stagger was only to avoid contending with boot-critical work (DB init, migrations,
+// express bind, the governor wired at T+50s) — none of which needs a 4-minute moat.
+// Default lowered to T+20s (past the boot-critical window, before a player realistically
+// navigates to a fleet lens) and the 2s inter-module gaps keep the load gentle.
+// Override with CONCORD_GHOST_FLEET_DELAY_MS. Modules still load one-at-a-time.
+// Layer 12.5 (cartographer): CONCORD_DISABLE_GHOST_FLEET=true skips this entirely so
 // runtime-introspect doesn't wait ~52s for staggered module loads.
+const GHOST_FLEET_DELAY_MS = Number(process.env.CONCORD_GHOST_FLEET_DELAY_MS) || 20_000;
 if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
   setTimeout(() => {
     initGhostFleet()
@@ -16733,7 +16756,7 @@ if (process.env.CONCORD_DISABLE_GHOST_FLEET !== "true") {
       .catch(err => {
         structuredLog("error", "ghost_fleet_init_error", { error: err.message });
       });
-  }, 225_000);
+  }, GHOST_FLEET_DELAY_MS);
 }
 
 // ── Artifact Garbage Collection Timer (weekly) ──────────────────────────

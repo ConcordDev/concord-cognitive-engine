@@ -274,7 +274,9 @@ export default function createWorldRoutes({ requireAuth, db = null, emitToUser =
 
   router.post("/workstations/start", auth, wrap((req, res) => {
     const { workstationId, districtId } = req.body;
-    const result = startWorkstationSession(_userId(req), workstationId, districtId);
+    // #R7: signature is (userId, { districtId, workstation }) — passing the two
+    // ids positionally left districtId undefined → destructure-of-undefined 500.
+    const result = startWorkstationSession(_userId(req), { workstation: workstationId, districtId });
     res.json({ ok: true, ...result });
   }));
 

@@ -76,12 +76,20 @@ export default function registerGlyphSpellMacros(register) {
     `).get(spellId);
     if (!spell) return { ok: false, reason: "spell_not_found" };
     if (spell.user_id !== userId) {
-      // Playtest finding #30: the prior license check queried dtu_citations for
-      // creator_id/parent_id/kind — none of which exist on that table. There is
-      // no spell-license grant ledger yet, so only the owner can cast. When a
-      // real consent/marketplace-purchase grant model lands, gate it here.
-      // Tracked in docs/PLAYTEST_FINDINGS_PLAN.md (#30).
-      return { ok: false, reason: "not_owner_or_licensed" };
+      // #30: a non-owner may cast if they hold a valid, unrevoked, unexpired
+      // license for the spell's DTU. The real grant ledger is `dtu_licenses`
+      // (mig 034) — marketplace purchases write rows here. (The prior code
+      // queried dtu_citations for columns that don't exist → a 500.)
+      let licensed = false;
+      try {
+        licensed = !!db.prepare(`
+          SELECT 1 FROM dtu_licenses
+          WHERE dtu_id = ? AND user_id = ? AND revoked = 0
+            AND (expires_at IS NULL OR expires_at > datetime('now'))
+          LIMIT 1
+        `).get(spell.dtu_id, userId);
+      } catch { licensed = false; }
+      if (!licensed) return { ok: false, reason: "not_owner_or_licensed" };
     }
 
     // The spell's element is stored authoritatively at mint time (dominant
