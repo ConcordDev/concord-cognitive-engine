@@ -161,6 +161,17 @@ registerHeartbeat("world-health-monitor", {
   handler: ({ db } = {}) => runWorldHealthMonitor({ db }),
 });
 
+// E2 — economy-anomaly cycle. Rolls world-health detectPathologies (negative_balance /
+// dupe_citation) + the wash-trade history into concord_econ_anomaly_total and pages
+// Critical kinds via bug-triage → error-alerting. Observe-only (never mutates ledgers).
+// Kill-switch CONCORD_ECON_ANOMALY=0. freq 240 (~1h), scope global.
+import { runEconomyAnomalyCycle } from "./emergent/economy-anomaly-cycle.js";
+registerHeartbeat("economy-anomaly-cycle", {
+  frequency: 240,
+  scope: "global",
+  handler: ({ db } = {}) => runEconomyAnomalyCycle({ db }),
+});
+
 // Living Society Phase 3 — sparks-flow payday. Pay moves along employment edges;
 // skim diverts to collectors (corruption); unpaid flow deepens grievances.
 import { runPayCycle } from "./emergent/pay-cycle.js";
@@ -6925,6 +6936,16 @@ async function initMetrics() {
       name: "concord_combat_damage_rejected_total",
       help: "Combat attacks rejected by the server-side damage-cap validator (anti-cheat)",
       labelNames: ["world"],
+      registers: [METRICS.registry]
+    });
+
+    // E2 — economy-anomaly telemetry. The economy-anomaly-cycle heartbeat rolls up
+    // world-health.js#detectPathologies (negative_balance / dupe_citation) + the
+    // wash-trade history into this counter; Critical kinds also page via error-alerting.
+    METRICS.counters.econAnomaly = new prom.Counter({
+      name: "concord_econ_anomaly_total",
+      help: "Economy anomalies detected (negative_balance / dupe_citation / wash_trade)",
+      labelNames: ["kind"],
       registers: [METRICS.registry]
     });
 
