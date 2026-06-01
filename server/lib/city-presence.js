@@ -10,6 +10,7 @@
 
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
+import { maxFootSpeedFor, agilityLevelFor, awardSprintXp } from "./movement/foot-speed.js";
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -305,8 +306,20 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       // the vehicles table at mount time and stored on the entry; we trust
       // the server-side entry, NEVER a client-supplied vehicle hint.
       const vehicleType = prev?.vehicleType || "walk";
-      const maxSpeed    = getMaxSpeedForVehicle(vehicleType);
-      const maxFrameDistance = getMaxFrameDistance(vehicleType);
+      // Speedster S1 — on-foot, the anti-cheat ceiling rises with the player's
+      // agility (movement.sprint level) instead of the static walk:16 table, so a
+      // legitimately-fast runner isn't false-flagged as a speed-hacker. Derived
+      // server-side from the stored skill (can't be forged). Off
+      // (CONCORD_EARNED_SPEED unset) → the legacy static cap, byte-identical.
+      const _onFoot = !vehicleType || vehicleType === "walk";
+      let maxSpeed, maxFrameDistance;
+      if (_onFoot && process.env.CONCORD_EARNED_SPEED === "1") {
+        maxSpeed = maxFootSpeedFor(agilityLevelFor(_db, userId));
+        maxFrameDistance = maxSpeed * FRAME_DISTANCE_RATIO;
+      } else {
+        maxSpeed = getMaxSpeedForVehicle(vehicleType);
+        maxFrameDistance = getMaxFrameDistance(vehicleType);
+      }
 
       // Hard ceiling regardless of dt — real players can't teleport
       if (distance > maxFrameDistance) {
@@ -333,6 +346,12 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
           nearby: getNearbyUsers(userId),
           chunkCrossed: false,
         };
+      }
+      // Speedster S1 — earn movement.sprint XP for distance actually run on foot.
+      // Gated to genuine sprinting speed (≥3 m/s) so idle/jitter can't farm it;
+      // off (CONCORD_EARNED_SPEED unset) → no XP, byte-identical.
+      if (_onFoot && distance > 0 && speedMps >= 3 && process.env.CONCORD_EARNED_SPEED === "1") {
+        try { awardSprintXp(_db, userId, distance); } catch { /* xp best-effort */ }
       }
     }
   }
