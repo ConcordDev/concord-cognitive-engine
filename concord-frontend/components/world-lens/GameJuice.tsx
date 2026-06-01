@@ -5,6 +5,10 @@ import { useSoundscape } from './SoundscapeEngine';
 import { useAccessibilitySettings } from '@/hooks/useAccessibilitySettings';
 import { requestHitPause } from '@/lib/concordia/hit-pause';
 import { knockbackForTrigger } from '@/lib/concordia/knockback-feel';
+// The 2D HUD shake is a SEPARATE render target from the in-scene 3D camera shake,
+// but it shares the one trauma authority's severity→magnitude curve so a kill shakes
+// harder than a hit consistently across both surfaces (see lib/concordia/screen-trauma.ts).
+import { traumaForSeverity } from '@/lib/concordia/screen-trauma';
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -217,6 +221,11 @@ export default function GameJuice({ children, enabled = true, intensity: initial
       // Scale shake magnitude for disasters
       if (trigger === 'disaster' && opts?.magnitude) {
         overlay.opacity = Math.min(1, intensityValue * (opts.magnitude / 10));
+      }
+      // Shake overlays scale by the shared severity curve so a kill reads heavier
+      // than a hit — coherent with the 3D camera trauma engine.
+      if (overlayType === 'shake') {
+        overlay.opacity = Math.min(1, overlay.opacity * (0.5 + traumaForSeverity(trigger)));
       }
 
       setOverlays((prev) => [...prev, overlay]);

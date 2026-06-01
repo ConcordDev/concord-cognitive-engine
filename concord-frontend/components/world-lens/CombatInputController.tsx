@@ -43,7 +43,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createInputBuffer } from '@/lib/concordia/combat-input-buffer';
+import { createInputBuffer, cancelState } from '@/lib/concordia/combat-input-buffer';
 import {
   type KeyAction,
   loadActiveProfile,
@@ -208,6 +208,19 @@ export default function CombatInputController({
   // held briefly and fired the instant the cooldown lifts (fighting-game feel),
   // instead of being dropped.
   const inputBufferRef = useRef(createInputBuffer());
+  // A4 / T2.10 — animation-cancel window. Track the most recent OFFENSIVE action's
+  // start + recovery duration. A defensive press (dodge/parry) commits to the
+  // swing's active frames, then cancels the recovery once it's ≥CANCEL_THRESHOLD
+  // through (DMC/GoW whiff-cancel feel). Before the window opens the dodge is
+  // buffered (fires the instant it does), never dropped — so it stays responsive
+  // without letting you instantly abort a committed swing. `recoveryMs: 0` means
+  // no live commitment, so dodges fire immediately as before.
+  const lastOffenseRef = useRef<{ at: number; recoveryMs: number }>({ at: 0, recoveryMs: 0 });
+  // A defensive press made before the cancel window opens waits here (decoupled
+  // from the 90ms offensive input buffer, since the window can open later than
+  // that — a heavy's recovery is 300ms, so the window opens at ~150ms). The tick
+  // flushes it when the window opens, or drops it after a 250ms grace.
+  const pendingDefensiveRef = useRef<{ key: 'Q' | 'F'; at: number } | null>(null);
 
   // Live valid-key set rebuilt when the profile changes
   const [validKeys, setValidKeys] = useState<Set<string>>(buildValidKeySet);
@@ -250,6 +263,20 @@ export default function CombatInputController({
     }
     return null;
   }
+
+  // A4 / T2.10 — may a defensive (dodge/parry) press fire NOW? True when there's
+  // no live offensive commitment or we're past the cancel threshold; consumes the
+  // commitment when it cancels so a single dodge spends a single window.
+  const tryDefensiveCancel = useCallback((): boolean => {
+    const off = lastOffenseRef.current;
+    if (!off.at || off.recoveryMs <= 0) return true; // nothing to cancel → free
+    const { cancellable } = cancelState(performance.now() - off.at, off.recoveryMs);
+    if (cancellable) {
+      lastOffenseRef.current = { at: 0, recoveryMs: 0 }; // the cancel spent it
+      return true;
+    }
+    return false;
+  }, []);
 
   const dispatchAction = useCallback((key: ActionEvent['key'], variant: 'tap' | 'hold' | 'double-tap') => {
     const map = CONTEXT_KEYMAP[context] ?? CONTEXT_KEYMAP.ground;
@@ -380,6 +407,16 @@ export default function CombatInputController({
         // events arrive with modifier:true.
         break;
     }
+    // A4 / T2.10 — stamp the offensive commitment so a follow-up dodge/parry
+    // resolves through the cancel window. Defensive actions don't set a
+    // commitment (you can chain defense freely); heavy swings recover slower.
+    const isOffense = resolved.startsWith('attack') || resolved.includes('blast') ||
+      resolved.includes('dive') || resolved.includes('ram') || resolved.includes('shot') ||
+      resolved.includes('grab') || resolved === 'kick' || resolved === 'dismount-kick' ||
+      resolved === 'hack-breach';
+    if (isOffense) {
+      lastOffenseRef.current = { at: performance.now(), recoveryMs: heavy ? 300 : 200 };
+    }
     onAction?.(evt);
   }, [context, modifierHeld, worldSocket, onAction, resolveHand, playerId]);
 
@@ -477,6 +514,15 @@ export default function CombatInputController({
       const variant: 'tap' | 'hold' = heldMs >= HOLD_THRESHOLD_MS ? 'hold' : 'tap';
       const r = profileResolve(k, variant);
       if (!r) return;
+      // A4 / T2.10 — dodge/parry cancel window. A defensive press lands instantly
+      // only once we're ≥CANCEL_THRESHOLD through the prior offensive action's
+      // recovery; before the window opens, buffer it (the 50ms tick flushes it the
+      // moment it does) so the escape is responsive but a committed swing can't be
+      // aborted on its very first frames.
+      if ((r.key === 'Q' || r.key === 'F') && variant === 'tap' && !tryDefensiveCancel()) {
+        pendingDefensiveRef.current = { key: r.key, at: performance.now() };
+        return;
+      }
       dispatchAction(r.key, variant);
     }
 
@@ -486,7 +532,7 @@ export default function CombatInputController({
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
     };
-  }, [inputMode, dispatchAction, validKeys]);
+  }, [inputMode, dispatchAction, validKeys, tryDefensiveCancel]);
 
   // Hold-fire timer: while a key is held past HOLD_THRESHOLD_MS, fire the
   // hold action immediately (don't wait for keyup). This is the genuine
@@ -512,6 +558,17 @@ export default function CombatInputController({
         lastFireAtRef.current.set(k, performance.now());
         dispatchAction(r.key, 'hold');
       }
+      // A4 / T2.10 — flush a pending defensive press the instant the cancel window
+      // opens; drop it after a 250ms grace if the window never came.
+      const pd = pendingDefensiveRef.current;
+      if (pd) {
+        if (tryDefensiveCancel()) {
+          pendingDefensiveRef.current = null;
+          dispatchAction(pd.key, 'tap');
+        } else if (now - pd.at > 250) {
+          pendingDefensiveRef.current = null;
+        }
+      }
       // A2 — flush a buffered press once its key's cooldown has lifted.
       const buf = inputBufferRef.current.peek(now);
       if (buf) {
@@ -525,7 +582,7 @@ export default function CombatInputController({
       }
     }, 50);
     return () => clearInterval(interval);
-  }, [inputMode, context, dispatchAction]);
+  }, [inputMode, context, dispatchAction, tryDefensiveCancel]);
 
   // Mouse: left-click = shoot / cast (when ranged or spell equipped).
   // Right-click suppression — we don't want browser context menu in combat.
