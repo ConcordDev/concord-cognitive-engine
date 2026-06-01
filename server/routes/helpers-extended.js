@@ -292,6 +292,20 @@ export default function registerHelpersExtendedRoutes(app, {
     }
   }));
 
+  // F2 (backend) — substrate liveness: one operator read composing gravity
+  // (records living here / creator) + funnel (F1) + distribution K (F5) +
+  // economy solvency (F4). The "is real data accumulating + are people retained"
+  // snapshot. Auth-gated, observe-only.
+  app.get("/api/admin/liveness", requireAuth(), asyncHandler(async (_req, res) => {
+    const database = db || STATE?.db;
+    try {
+      const { livenessReport } = await import("../lib/liveness-report.js");
+      res.json(livenessReport(database));
+    } catch (e) {
+      res.json({ ok: false, reason: String(e?.message || e) });
+    }
+  }));
+
   // ─── PHYSICS ────────────────────────────────────────────────────────
 
   app.get("/api/physics/status", (req, res) => {
