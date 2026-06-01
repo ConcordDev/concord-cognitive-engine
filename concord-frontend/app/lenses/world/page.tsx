@@ -410,6 +410,7 @@ const DriftMoodboard = dynamic(() => import('@/components/world/DriftMoodboard')
 const EmbodiedHUD = dynamic(() => import('@/components/world/EmbodiedHUD'), { ssr: false });
 const CrossWorldPotencyHUD = dynamic(() => import('@/components/world/CrossWorldPotencyHUD'), { ssr: false });
 const QuestWaypointBeacon = dynamic(() => import('@/components/world/QuestWaypointBeacon'), { ssr: false });
+const WorldEventBeacons = dynamic(() => import('@/components/world/WorldEventBeacons'), { ssr: false });
 const QuestGuidanceHUD = dynamic(() => import('@/components/world/QuestGuidanceHUD'), { ssr: false });
 const EavesdropBubble = dynamic(() => import('@/components/world/EavesdropBubble'), { ssr: false });
 const WalkerArbitrageMap = dynamic(() => import('@/components/world/WalkerArbitrageMap'), { ssr: false });
@@ -4926,6 +4927,9 @@ export default function WorldLensPage() {
               active objective) + recovery HUD (top-left card + bottom-
               right "?" button). Reads `guidance_waypoint.active_objective`. */}
           <QuestWaypointBeacon />
+          {/* Diegetic 3D: "what's happening now" as in-world beacons you can see
+              + walk toward (augments the 2D DistrictActivityFeed). */}
+          <WorldEventBeacons worldId={activeDistrict.id} />
           <QuestGuidanceHUD />
           <EavesdropBubble worldId={activeDistrict?.id || 'concordia-hub'} playerPos={playerAvatar?.position ? { x: playerAvatar.position.x, z: playerAvatar.position.z } : undefined} />
           <WalkerArbitrageMap worldId={activeDistrict?.id || 'concordia-hub'} />
