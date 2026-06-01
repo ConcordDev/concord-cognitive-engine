@@ -20,6 +20,7 @@
 
 import crypto from "node:crypto";
 import logger from "../logger.js";
+import { spawnRegionCache } from "./discovery-nodes.js";
 
 const DRIFT_TO_REGION = Object.freeze({
   memetic_drift:     "haunted_glade",
@@ -92,6 +93,13 @@ export function generateRegionFromAlert(db, { worldId, alert, signature }) {
     catch { /* ignore */ }
     return { ok: false, reason: "insert_failed" };
   }
+
+  // G5 — exploration cache: the new region hides a rare cache at its anchor,
+  // keyed to its character (haunted glade → soul essence, corrupt market → gold…).
+  // Found through normal gathering. Best-effort; CONCORD_EXPLORATION_CACHE=0 disables.
+  try {
+    spawnRegionCache(db, { worldId, regionId: id, regionKind, x: ax, z: az });
+  } catch { /* cache best-effort — never blocks region creation */ }
 
   // Realtime: emit world:region-spawned for the EmergentEventFeed.
   try {
