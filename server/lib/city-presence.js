@@ -11,6 +11,11 @@
 import { randomUUID } from "crypto";
 import logger from "../logger.js";
 import { maxFootSpeedFor, agilityLevelFor, awardSprintXp } from "./movement/foot-speed.js";
+import { speedScaledRadius } from "./movement/interest-management.js";
+
+// Speedster S3 — last observed speed per user, for the speed-scaled interest
+// radius. Set on each validated move; read by getNearbyUsers when CONCORD_SPEED_AOI.
+const _lastSpeed = new Map();
 
 // ── State ───────────────────────────────────────────────────────────────────
 
@@ -353,6 +358,8 @@ export function updateUserPosition(userId, { cityId, x, y, z, direction, action,
       if (_onFoot && distance > 0 && speedMps >= 3 && process.env.CONCORD_EARNED_SPEED === "1") {
         try { awardSprintXp(_db, userId, distance); } catch { /* xp best-effort */ }
       }
+      // S3 — remember the mover's speed for the speed-scaled interest radius.
+      if (Number.isFinite(speedMps)) _lastSpeed.set(userId, speedMps);
     }
   }
 
@@ -512,6 +519,13 @@ export function getUserVehicle(userId) {
 export function getNearbyUsers(userId, radius = 500) {
   const pos = _userPositions.get(userId);
   if (!pos) return [];
+
+  // S3 — speed-scaled interest radius: a fast mover sees/is-seen farther ahead so
+  // chunk boundary crossings smooth instead of thrashing. Only when the caller
+  // used the default radius + CONCORD_SPEED_AOI is on; explicit radii are honored.
+  if (radius === 500 && process.env.CONCORD_SPEED_AOI === "1") {
+    radius = speedScaledRadius(_lastSpeed.get(userId) || 0);
+  }
 
   const radiusSq = radius * radius;
   const chunkRadius = Math.ceil(radius / CHUNK_SIZE);
