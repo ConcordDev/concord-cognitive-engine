@@ -1270,6 +1270,8 @@ import { checkAccess as economyCheckAccess } from "./economy/rights-enforcement.
 // Wired into runMacro below (rate-limit check + macro:afterExecute hook).
 import { billMacroCall } from "./lib/macro-billing.js";
 import { checkUserQuota, incrementUserQuota } from "./lib/macro-quota.js";
+// Gate D — per-macro param-schema validation (opt-in via spec.paramSchema).
+import { validateParamSchema } from "./lib/macro-param-schema.js";
 // World Lens / MMO presence system
 import * as cityPresence from "./lib/city-presence.js";
 import * as worldMechanics from "./lib/world-mechanics.js";
@@ -11209,6 +11211,18 @@ async function runMacro(domain, name, input, ctx) {
     } catch (e) {
       if (e?.message?.startsWith("constitution_violation")) throw e;
       // Non-fatal: don't block macro if constitution module itself fails
+    }
+  }
+
+  // Gate D — per-macro param-schema validation. If the macro declared
+  // spec.paramSchema, validate `input` against it BEFORE the handler runs, so
+  // param-key drift (wrong key #6/#31) or a missing required field (#21) returns a
+  // clean { ok:false, error:"param_validation" } instead of a 500 / silent
+  // wrong-thing. Opt-in + additive — a macro with no paramSchema is unaffected.
+  if (m.spec?.paramSchema) {
+    const pv = validateParamSchema(m.spec.paramSchema, input ?? {});
+    if (!pv.ok) {
+      return { ok: false, error: "param_validation", domain, name, fields: pv.errors };
     }
   }
 
