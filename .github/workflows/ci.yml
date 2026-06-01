@@ -392,7 +392,11 @@ jobs:
         working-directory: ./concord-frontend
         # lodash-es HIGH is unfixable (no upstream patch); postcss HIGH is a Next.js bundle transitive.
         # Run at critical to enforce no critical regressions; HIGH tracked in audit/frontend-deps-audit.json.
-        run: npm audit --audit-level=critical
+        # --omit=dev: a production security audit excludes dev-only tooling — the one
+        # critical advisory here is the vitest `--ui` server file-read (GHSA-5xrq-8626-4rwp),
+        # a test runner that never ships to production. This matches the SCA gate in
+        # platinum-security.yml, which already audits the frontend with --omit=dev.
+        run: npm audit --omit=dev --audit-level=critical
 
       - name: Audit mobile dependencies
         working-directory: ./concord-mobile
