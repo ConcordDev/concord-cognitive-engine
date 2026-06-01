@@ -61,16 +61,10 @@ const BASELINE_BACKLOG = new Map([
   ["resolveEmergency", "foundation-emergency resolver — needs the emergency-creation site wired. Tracked."],
   ["seedFamilyUnit", "spouse-bond seeder — requires AUTHORED marriage pairs (none in content); wiring would invent marriages. Tracked, awaits authored family data."],
   ["seedNamedCharacterLineage", "deep-lineage seeder — requires authored lineage depth per named NPC; wiring blind invents ancestry. Tracked, awaits authored lineage data."],
-  // Temperament engine resolver halves (P2–P5). The feature defaults on now, but
-  // the LIVE combat route still uses the binary full-force path; it doesn't yet
-  // escalate through the ladder/heat/restraint/capture chain that triggers these.
-  // Wiring blind would invent combat-integration points. Tracked — awaits the
-  // combat-route opt-in to the temperament state machine.
-  ["applyDeescalation", "Temperament P2 escalation-ladder step — combat FSM doesn't yet consult the ladder before attacking. Tracked."],
-  ["resolveArrestResponse", "Temperament P3 authority-heat — arrest-response resolver; live combat doesn't yet raise heat to the arrest threshold. Tracked."],
-  ["applyCombatHit", "Temperament P4 restraint — proportional-hit resolver; live combat still uses the binary full-force path, not the restraint machine. Tracked."],
-  ["advanceCapture", "Temperament P5 capture/transport — advance step; depends on P4 producing a captured NPC first (not yet wired into live combat). Tracked."],
-  ["attemptEscape", "Temperament P5 capture/transport — escape step; same dependency as advanceCapture. Tracked."],
+  // (Temperament P2–P5 resolvers — applyDeescalation/resolveArrestResponse/
+  //  applyCombatHit/advanceCapture/attemptEscape — were baselined here as debt;
+  //  now wired live via lib/temperament-combat.js + the capture-cycle heartbeat +
+  //  the combat/deescalate/arrest routes, so they're removed from the backlog.)
 ]);
 
 function walk(dir, out = []) {

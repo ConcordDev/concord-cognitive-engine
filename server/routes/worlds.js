@@ -2456,12 +2456,47 @@ export default function createWorldsRouter({ requireAuth, db }) {
         // Phase 8 substrate optional; fall through.
       }
 
+      // ── Temperament P4 — refuse lethal force on an NPC already hors de combat ─
+      // A surrendered / arrested / downed NPC can't be executed (CONCORD_TEMPERAMENT;
+      // off → no-op, binary combat preserved). Non-lethal force still lands.
+      const _nonLethal = !!(skillData?.non_lethal ?? skillData?.nonLethal);
+      if (!_nonLethal) {
+        try {
+          const { checkSpareBeforeHit } = await import("../lib/temperament-combat.js");
+          const spare = checkSpareBeforeHit(db, npcId);
+          if (spare.spare) {
+            return res.status(200).json({
+              ok: true, spared: true, reason: spare.reason,
+              combatState: spare.combatState, npcId, damage: 0,
+            });
+          }
+        } catch { /* spare gate best-effort — never blocks combat */ }
+      }
+
       const { eventId, kill } = applyDamageToNPC(db, worldId, userId, 'player', npcId, damageResult, {
         skill_dtu_id: skillDtuId, item_dtu_id: itemDtuId,
         element: skillData.element || 'none',
         bar_used: barType === 'multi' ? 'mana' : barType,
         bar_cost: barCost,
       });
+
+      // ── Temperament P4/P5 — fold the hit into morale/restraint ──────────────
+      // On a non-killing hit, accrue morale damage through the restraint FSM; a
+      // morale break flips the NPC to surrendered and opens a capture (P5). Off /
+      // on error → null, binary combat preserved.
+      let temperament = null;
+      if (!kill) {
+        try {
+          const { resolveHitTemperament } = await import("../lib/temperament-combat.js");
+          const npcRow = db.prepare("SELECT id, archetype, state FROM world_npcs WHERE id=?").get(npcId);
+          temperament = resolveHitTemperament(db, {
+            worldId, npc: npcRow || { id: npcId }, userId,
+            damage: Number(damageResult.finalDamage) || 0,
+            nonLethal: _nonLethal,
+            io: req.app?.locals?.io,
+          });
+        } catch { /* temperament best-effort — never blocks combat */ }
+      }
 
       // N4-EVO: a landed hit accrues fitness on the skill/weapon's evolvable
       // asset — fight with something enough and it refines. Best-effort +
@@ -2811,10 +2846,41 @@ export default function createWorldsRouter({ requireAuth, db }) {
         } catch { /* non-fatal */ }
       }
 
-      res.json({ ok: true, damageResult, eventId, kill, npcId });
+      res.json({ ok: true, damageResult, eventId, kill, npcId, temperament });
     } catch (e) {
       logger.error('worlds', 'combat-attack', { error: e.message });
       res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/npcs/:npcId/deescalate — Temperament P2.
+  // A player de-escalation verb (holster/yield/comply/…) steps the NPC's intent
+  // rung down + barks. body: { verb }
+  router.post("/:worldId/npcs/:npcId/deescalate", requireAuth, async (req, res) => {
+    try {
+      const { worldId, npcId } = req.params;
+      const { verb } = req.body || {};
+      const npc = db.prepare("SELECT id, archetype, state FROM world_npcs WHERE id=?").get(npcId);
+      if (!npc) return res.status(404).json({ ok: false, error: "npc_not_found" });
+      const { applyNpcDeescalation } = await import("../lib/temperament-combat.js");
+      const r = applyNpcDeescalation(db, { worldId, npc, verb, io: req.app?.locals?.io });
+      return res.status(r.ok ? 200 : 400).json(r);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // POST /api/worlds/:worldId/arrest/respond — Temperament P3.
+  // Resolve the player's response to an authority arrest offer. body: { verb }
+  router.post("/:worldId/arrest/respond", requireAuth, async (req, res) => {
+    try {
+      const { worldId } = req.params;
+      const { verb } = req.body || {};
+      const { resolvePlayerArrest } = await import("../lib/temperament-combat.js");
+      const r = resolvePlayerArrest(db, { worldId, userId: req.user.id, verb, io: req.app?.locals?.io });
+      return res.status(r.ok ? 200 : 400).json(r);
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: e.message });
     }
   });
 

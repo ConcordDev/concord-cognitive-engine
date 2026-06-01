@@ -812,6 +812,10 @@ registerHeartbeat("npc-ambition-cycle",    { frequency: 80, handler: runNpcAmbit
 import { runMountBehaviorCycle } from "./emergent/mount-behavior-cycle.js";
 registerHeartbeat("mount-behavior-cycle", { frequency: 20, handler: runMountBehaviorCycle });
 
+// Temperament P5 — haul active NPC captures + roll escapes (behind CONCORD_TEMPERAMENT).
+import { runCaptureCycle } from "./emergent/capture-cycle.js";
+registerHeartbeat("capture-cycle", { frequency: 20, handler: runCaptureCycle });
+
 // Sprint C / Tracks D2+D4 — kingdom decrees + rebellion. Every 16 ticks
 // (~4min) sweeps expired decrees, recomputes citizen loyalty, advances
 // NPC-ruler decree picker, and evaluates rebellion risk per kingdom.
