@@ -15,6 +15,7 @@ import {
   executeCraft,
   createSkillDTU,
 } from "../lib/crafting/craft-engine.js";
+import { stationQualityFor } from "../lib/crafting/station-tiers.js";
 import {
   validateSkillQuality,
   extractBarCost,
@@ -134,13 +135,19 @@ export function createCraftingRouter({ db, requireAuth }) {
   router.post("/execute", requireAuth, (req, res) => {
     try {
       const userId = req.user.id;
-      const { recipeId, worldId, qualityMultiplier } = req.body;
+      const { recipeId, worldId, qualityMultiplier, buildingId } = req.body;
 
       if (!recipeId) return res.status(400).json({ ok: false, error: "recipeId required" });
       if (!worldId)  return res.status(400).json({ ok: false, error: "worldId required" });
 
+      // G1 — if the player is crafting at a station (the StationInteractionRouter
+      // gates 4m proximity client-side; the server validates the building + world),
+      // its craft-quality raises output potency. No buildingId / hand-craft = 0.
+      const stationQuality = stationQualityFor(db, worldId, buildingId);
+
       const result = executeCraft(db, userId, worldId, recipeId, {
         qualityMultiplier: typeof qualityMultiplier === "number" ? qualityMultiplier : undefined,
+        stationQuality,
       });
       if (!result.ok) {
         return res.status(422).json(result);
