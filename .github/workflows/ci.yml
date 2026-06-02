@@ -503,6 +503,13 @@ jobs:
           # probes with 15s AbortSignal.timeout each = ~75s of cold
           # probe time. Already supported flag at server.js:14873.
           CONCORD_DISABLE_BRAINS: 'true'
+          # Stop the governor heartbeat too: otherwise feed-polling spawns
+          # external RSS fetches (same 15s AbortSignal timeouts) that hang in
+          # CI's flaky egress and accumulate across the run, degrading the
+          # backend into ECONNRESET on the frontend's background polls — so
+          # Playwright pages never reach network-idle and the e2e job times out.
+          # Gate at server.js:33960.
+          CONCORD_DISABLE_HEARTBEAT: 'true'
           DATA_DIR: /tmp/concord-test-data
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
@@ -583,6 +590,13 @@ jobs:
           # probes with 15s AbortSignal.timeout each = ~75s of cold
           # probe time. Already supported flag at server.js:14873.
           CONCORD_DISABLE_BRAINS: 'true'
+          # Stop the governor heartbeat too: otherwise feed-polling spawns
+          # external RSS fetches (same 15s AbortSignal timeouts) that hang in
+          # CI's flaky egress and accumulate across the run, degrading the
+          # backend into ECONNRESET on the frontend's background polls — so
+          # Playwright pages never reach network-idle and the e2e job times out.
+          # Gate at server.js:33960.
+          CONCORD_DISABLE_HEARTBEAT: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           REDIS_URL: redis://localhost:6379
@@ -714,6 +728,13 @@ jobs:
           # probes with 15s AbortSignal.timeout each = ~75s of cold
           # probe time. Already supported flag at server.js:14873.
           CONCORD_DISABLE_BRAINS: 'true'
+          # Stop the governor heartbeat too: otherwise feed-polling spawns
+          # external RSS fetches (same 15s AbortSignal timeouts) that hang in
+          # CI's flaky egress and accumulate across the run, degrading the
+          # backend into ECONNRESET on the frontend's background polls — so
+          # Playwright pages never reach network-idle and the e2e job times out.
+          # Gate at server.js:33960.
+          CONCORD_DISABLE_HEARTBEAT: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
@@ -994,6 +1015,13 @@ jobs:
           # probes with 15s AbortSignal.timeout each = ~75s of cold
           # probe time. Already supported flag at server.js:14873.
           CONCORD_DISABLE_BRAINS: 'true'
+          # Stop the governor heartbeat too: otherwise feed-polling spawns
+          # external RSS fetches (same 15s AbortSignal timeouts) that hang in
+          # CI's flaky egress and accumulate across the run, degrading the
+          # backend into ECONNRESET on the frontend's background polls — so
+          # Playwright pages never reach network-idle and the e2e job times out.
+          # Gate at server.js:33960.
+          CONCORD_DISABLE_HEARTBEAT: 'true'
           JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
           ADMIN_PASSWORD: testpassword123
           CONCORD_RATE_LIMIT_BYPASS: '1'
