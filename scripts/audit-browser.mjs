@@ -32,11 +32,16 @@ const MAX = maxArg ? parseInt(maxArg.split('=')[1], 10) : lenses.length;
 const lensesToScan = lenses.slice(0, MAX);
 
 console.error(`Launching Chromium…`);
-const browser = await chromium.launch({
-  executablePath: CHROMIUM_PATH,
+const launchOpts = {
   headless: true,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-});
+};
+// Only pin a pre-baked browser if it actually exists. Otherwise let Playwright
+// resolve the chromium installed by `npx playwright install chromium` — its
+// revision tracks the installed playwright version, so a hardcoded revision path
+// (e.g. chromium-1194) goes stale on every playwright bump and fails to launch.
+if (fs.existsSync(CHROMIUM_PATH)) launchOpts.executablePath = CHROMIUM_PATH;
+const browser = await chromium.launch(launchOpts);
 
 const VIEWPORTS = [
   { name: 'mobile',  width: 375,  height: 667 },
