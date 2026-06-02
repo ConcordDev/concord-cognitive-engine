@@ -1,6 +1,21 @@
 #!/usr/bin/env node
 /**
- * Route auth gate — CI script.
+ * Route auth gate — CI script (NARROW SCOPE; read this before trusting a pass).
+ *
+ * SCOPE: this checks ONLY `router.{post,put,delete,patch}(...)` declarations in
+ * server/routes/*.js. It does NOT see:
+ *   • the server.js monolith (~634 inline mutating `app.*` routes), and
+ *   • `app.{post,...}` routes registered inside routes/*.js via
+ *     `registerXxxRoutes(app, …)`.
+ * Those are gated by the GLOBAL `productionWriteAuthMiddleware` on the shared
+ * `app`, which a per-route arg-list scan can't model (it would flag every one
+ * as a false positive). That central-gate integrity + the write-auth bypass
+ * allowlist are covered by the `authz-coverage` detector
+ * (server/lib/detectors/authz-coverage-detector.js), enforced as a blocking PR
+ * gate by .github/workflows/security-detectors-gate.yml. So a "0 findings"
+ * here means "no per-route gaps in routes/*.js router.* declarations" — NOT
+ * "every route is authenticated." The two gates are complementary; neither
+ * alone is the whole picture.
  *
  * Walks every server/routes/*.js file and asserts each
  *   router.{post,put,delete,patch}(...)
@@ -222,7 +237,8 @@ function main() {
   }
 
   if (allFindings.length === 0) {
-    process.stdout.write(`route-auth: 0 findings (${files.length} files scanned).\n`);
+    process.stdout.write(`route-auth: 0 findings across ${files.length} routes/*.js files (router.* declarations only).\n`);
+    process.stdout.write(`route-auth: NOTE — server.js inline app.* routes + the global write-auth gate are covered by the authz-coverage detector, not this script.\n`);
     return process.exit(0);
   }
 

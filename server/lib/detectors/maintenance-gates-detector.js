@@ -9,6 +9,7 @@
 // NOT in the runtime Guardian — these are per-commit scans only.
 
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { makeReport, makeError } from "./_framework.js";
@@ -39,17 +40,48 @@ export function gateFinding(gate, exitCode) {
   };
 }
 
+/** A gate whose script is missing or can't run is itself a finding — a
+ *  security/quality gate that silently can't execute is WORSE than a failing
+ *  one, because it reads as a pass. Pre-fix this returned 0 (clean) on a
+ *  missing script, so renaming a verify-*.mjs file would have quietly disarmed
+ *  the gate. */
+function unrunnableFinding(gate, why) {
+  return {
+    severity: "high",
+    kind: "runtime",
+    title: `${gate.name} gate could not run`,
+    detail: `${why} — the gate is disarmed, not passing. (${gate.script})`,
+    fixHint: "restore_or_fix_gate_script",
+    file: gate.script,
+  };
+}
+
 function runGate(gate) {
   return new Promise((resolve) => {
     let done = false;
-    const finish = (code) => { if (!done) { done = true; resolve(gateFinding(gate, code)); } };
+    const finish = (val) => { if (!done) { done = true; resolve(val); } };
+
+    // Pre-flight: a missing script is a disarmed gate, not a pass.
+    const abs = path.resolve(REPO_ROOT, gate.script);
+    if (!fs.existsSync(abs)) {
+      finish(unrunnableFinding(gate, "gate script not found"));
+      return;
+    }
     try {
       const child = spawn("node", [gate.script, ...gate.args], { cwd: REPO_ROOT, stdio: "ignore" });
-      child.on("close", (code) => finish(code ?? 1));
-      child.on("error", () => finish(0)); // gate missing / unrunnable → don't block (best-effort)
-      // Safety timeout — a hung gate must not hang Prophet.
-      setTimeout(() => { try { child.kill(); } catch { /* noop */ } finish(0); }, 120_000);
-    } catch { finish(0); }
+      child.on("close", (code) => finish(gateFinding(gate, code ?? 1)));
+      // A spawn error (node missing, EACCES, …) means the gate didn't actually
+      // run — surface it instead of swallowing it as a pass.
+      child.on("error", () => finish(unrunnableFinding(gate, "gate process failed to start")));
+      // Safety timeout — a hung gate must not hang Prophet; a timeout is also a
+      // non-pass (we don't know its verdict), so flag it rather than clear it.
+      setTimeout(() => {
+        try { child.kill(); } catch { /* noop */ }
+        finish(unrunnableFinding(gate, "gate timed out after 120s"));
+      }, 120_000);
+    } catch {
+      finish(unrunnableFinding(gate, "gate could not be spawned"));
+    }
   });
 }
 
