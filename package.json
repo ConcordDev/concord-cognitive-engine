@@ -12,7 +12,8 @@
     "audit:anim-transitions": "node scripts/audit/gates/animation-transitions.mjs",
     "audit:untuned": "node scripts/audit/gates/untuned-constants.mjs",
     "audit:reachability": "node scripts/audit/gates/lens-reachability.mjs",
-    "count-loc": "node scripts/count-loc.mjs"
+    "count-loc": "node scripts/count-loc.mjs",
+    "check-doc-claims": "node scripts/check-doc-claims.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

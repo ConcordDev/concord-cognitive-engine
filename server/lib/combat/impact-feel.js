@@ -73,6 +73,34 @@ export function impactFeel(severity, momentum = 0) {
 }
 
 /**
+ * Derive a poise severity for the PvP socket path. Unlike the NPC HTTP route —
+ * which computes a real per-bone impact momentum (T1.4a) and resolves it
+ * against a poise budget — the `combat:attack` socket path only has the
+ * resolved damage / crit / kill and whether a heavy attack was thrown. Grade
+ * those into the same severity tiers so player-vs-player gets the SAME
+ * hitstop/knockback/wince the NPC path already emits (closes the POLISH_AUDIT
+ * "PvP combat has no server-authoritative feel" seam). A kill is always
+ * knockdown; a crit, a solid heavy, or a big hit rocks; any landed hit flinches.
+ */
+export function derivePvpSeverity({ damage = 0, crit = false, kill = false, heavy = false } = {}) {
+  const d = Number(damage) || 0;
+  if (kill) return "knockdown";
+  if (d <= 0) return "none";
+  if (crit || (heavy && d >= 18) || d >= 35) return "rocked";
+  return "flinch";
+}
+
+/**
+ * Nominal momentum for the PvP path (damage-proportional, clamped to the
+ * sword↔hammer band 0–300 that `impactFeel` scales knockback against). This is
+ * an approximation — the NPC path's momentum is real physics — but it keeps the
+ * knockback magnitude sane and damage-coupled instead of flat.
+ */
+export function pvpMomentumFromDamage(damage = 0) {
+  return Math.max(0, Math.min(300, (Number(damage) || 0) * 5));
+}
+
+/**
  * Build the `combat:impact` socket payload from the server-authoritative
  * stagger result. Everything the client needs to apply the feel verbatim.
  */

@@ -79,6 +79,16 @@ jobs:
         working-directory: server
         run: node scripts/run-detectors.js --diff --ci
 
+      - name: Doc-claim freshness (non-blocking — surfaces stale counts)
+        # Re-runs every reproduction command embedded in CLAUDE.md and reports
+        # drift. Non-blocking by design: the counts legitimately grow with the
+        # code, so this SURFACES drift (refresh with `npm run check-doc-claims`)
+        # rather than blocking every count-changing PR. For a hard gate on a
+        # specific doc, run `node scripts/check-doc-claims.mjs --ci` locally.
+        continue-on-error: true
+        run: |
+          node scripts/check-doc-claims.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Diff detector findings vs prior run
         run: |
           # Parse history.jsonl tail and compute the delta. Any NEW
