@@ -203,7 +203,14 @@ jobs:
 
       - name: Server test suite
         working-directory: server
-        run: CONCORD_NO_LISTEN=true NODE_ENV=test npm test
+        # CONCORD_DISABLE_HEARTBEAT=true: the behavior smoke suite imports the live
+        # server, whose governor heartbeat (T+50s) runs pollFeeds() against external
+        # RSS endpoints (reuters/ap/bbc/...). In CI's no-egress sandbox those fetches
+        # hang, spiking event-loop lag ~12s and slowing the suite ~16x until it blows
+        # the 600s behavior timeout (only ~380/2381 macros run). Disabling the
+        # background heartbeat removes the network hang; macro tests don't depend on
+        # it (heartbeat handlers are unit-tested directly / via static source checks).
+        run: CONCORD_NO_LISTEN=true NODE_ENV=test CONCORD_DISABLE_HEARTBEAT=true npm test
 
       - name: Upload audit outputs
         if: always()
