@@ -28,7 +28,10 @@ on:
 jobs:
   structural-audits:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Bumped 30→45: the step also runs the full server test suite incl. the
+    # behavior smoke suite (~8min local / longer on CI runners). 30min could
+    # clip a slow run mid-behavior; 45 leaves margin under the heavier load.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
