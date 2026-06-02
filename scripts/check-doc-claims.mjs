@@ -111,6 +111,15 @@ function extractCountClaims(text) {
 const DEFECT_WORDS = /\b(unsolvable|unwired|dead-?wired|never emits?|never broadcasts?|no-op|silent|not yet (?:playable|wired|built)|isn't wired|aren't (?:wired|playable)|doesn't emit|drops? to `?undefined)\b/i;
 // words that mean "this used to be broken / now fixed" — suppress false flags
 const RESOLVED_HINT = /\b(fixed|resolved|retired|removed|superseded|was dead|once|previously|no longer|✅)\b/i;
+// A defect word can appear in non-defect prose. Suppress three confirmed
+// false-positive classes so the advisory stays trustworthy signal (a noisy
+// advisory is one nobody reads):
+//   (1) the line frames a FIX/refutation, not a live bug;
+//   (2) a known descriptive phrase (a "silent" *event*, a pattern *named*
+//       "wire-the-unwired") where the defect word is an adjective/identifier;
+//   (3) the defect word is the tail of a hyphenated compound (handled inline).
+const FIX_FRAMING = /\b(normaliz|maps the|adapter|fallback|composer|the right shape|claim was wrong|was wrong|is now true|self-correct|deprecated)\b/i;
+const DESCRIPTIVE_SUPPRESS = /\bsilent (?:simulation|background|sim) events?\b|\b\d+ silent\b|wire-the-unwired/i;
 
 function symbolExists(sym) {
   // sym is a code identifier or path fragment; grep the source tree.
@@ -128,8 +137,12 @@ function extractStaleDefects(text) {
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (!DEFECT_WORDS.test(line)) continue;
-    if (RESOLVED_HINT.test(line)) continue; // line already says it's fixed
+    const dm = line.match(DEFECT_WORDS);
+    if (!dm) continue;
+    if (RESOLVED_HINT.test(line)) continue;        // line already says it's fixed
+    if (FIX_FRAMING.test(line)) continue;          // line describes a fix/refutation, not a live bug
+    if (DESCRIPTIVE_SUPPRESS.test(line)) continue; // "silent <event>" / "wire-the-unwired" — adjective/name, not a defect
+    if (dm.index > 0 && line[dm.index - 1] === "-") continue; // hyphenated compound (e.g. "the-unwired")
     // pull the first plausible code symbol in backticks (a function/file name)
     const syms = [...line.matchAll(/`([A-Za-z_$][\w$]*(?:\.[A-Za-z]+)?|[\w./-]+\.(?:js|ts|tsx|mjs))`/g)].map((m) => m[1]);
     const named = syms.find((s) => /[A-Za-z]/.test(s) && s.length >= 4);
