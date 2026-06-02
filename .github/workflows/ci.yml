@@ -138,6 +138,17 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npm run build
 
+      - name: Frontend import-smoke net (every module imports without throwing)
+        id: frontend_smoke
+        working-directory: ./concord-frontend
+        env:
+          # Imports all ~2,365 coverage-included modules to catch bad imports /
+          # circular deps / renamed exports consumed at module scope — the cheap
+          # blanket net over files with no behavior test. Kept out of the coverage
+          # run (it would tank function/branch % with unexecuted enumeration).
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: npm run test:smoke
+
       - name: Run frontend unit tests with coverage (thresholds enforced)
         id: frontend_coverage
         working-directory: ./concord-frontend
@@ -148,12 +159,24 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: npm run test:coverage
 
+      - name: Frontend diff-coverage gate (changed files must be tested)
+        if: github.event_name == 'pull_request'
+        working-directory: ./concord-frontend
+        env:
+          # Every components/lib/hooks file a PR touches must clear this per-file
+          # statement % — freezes the untested backlog so coverage only climbs.
+          DIFF_COVERAGE_MIN: '60'
+        run: |
+          base="${GITHUB_BASE_REF:-main}"
+          git fetch --no-tags --depth=200 origin "$base" || true
+          node scripts/check-diff-coverage.mjs "origin/$base"
+
       - name: Verify coverage thresholds
         working-directory: ./concord-frontend
         run: |
-          echo "Coverage thresholds enforced via vitest.config.ts:"
-          echo "  statements: 35%, branches: 60%, functions: 38%, lines: 35%"
-          echo "If this step passed, all thresholds are met."
+          echo "Whole-tree floors enforced via vitest.config.ts (ratchet up as real"
+          echo "tests land; do not lower): statements 10, lines 10, branches 80,"
+          echo "functions 33. Per-PR coverage is enforced by the diff-coverage gate."
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v6
