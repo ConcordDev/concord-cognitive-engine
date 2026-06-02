@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-12T23:01:37.998Z",
+  "generatedAt": "2026-06-02T21:46:48.377Z",
   "totals": {
     "critical": 0,
     "high": 0,
@@ -506,6 +506,86 @@
       "kind": "static",
       "location": null,
       "message": "102 unit test(s) mock production modules — candidates for fixture-loader migration. Per-mock findings suppressed (each is a legitimate test isolation; migration is a test-PR concern)."
+    },
+    "54bf106d12062895": {
+      "detector": "command-injection",
+      "id": "command_injection_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Scanned 23 child_process-importing file(s) of 6913; flagged 6"
+    },
+    "3ba01513778dee1e": {
+      "detector": "command-injection",
+      "id": "cmd_injection_template_interpolation",
+      "severity": "high",
+      "kind": "static",
+      "location": "scripts/auto-wrap-trycatch.mjs:219",
+      "message": "execSync() runs a shell on a non-literal command (template_interpolation) — shell-injection sink"
+    },
+    "d137004f4f5a309d": {
+      "detector": "command-injection",
+      "id": "cmd_injection_template_interpolation",
+      "severity": "high",
+      "kind": "static",
+      "location": "scripts/auto-wrap-trycatch.mjs:224",
+      "message": "execSync() runs a shell on a non-literal command (template_interpolation) — shell-injection sink"
+    },
+    "a2393f55ad4b2c5e": {
+      "detector": "command-injection",
+      "id": "cmd_injection_variable_command",
+      "severity": "medium",
+      "kind": "static",
+      "location": "scripts/health.mjs:22",
+      "message": "execSync() runs a shell on a non-literal command (variable_command) — shell-injection sink"
+    },
+    "767f1d3b249d6ce0": {
+      "detector": "command-injection",
+      "id": "cmd_injection_variable_command",
+      "severity": "medium",
+      "kind": "static",
+      "location": "scripts/repair-surgeon.js:81",
+      "message": "execSync() runs a shell on a non-literal command (variable_command) — shell-injection sink"
+    },
+    "a20e5036d8fa802e": {
+      "detector": "command-injection",
+      "id": "cmd_injection_template_interpolation",
+      "severity": "high",
+      "kind": "static",
+      "location": "scripts/repair-surgeon.js:110",
+      "message": "execSync() runs a shell on a non-literal command (template_interpolation) — shell-injection sink"
+    },
+    "8ca67ef4f7dacaaa": {
+      "detector": "command-injection",
+      "id": "cmd_injection_template_interpolation",
+      "severity": "critical",
+      "kind": "static",
+      "location": "server/workers/cognitive-worker.js:37",
+      "message": "execSync() runs a shell on a non-literal command (template_interpolation, references external input) — shell-injection sink"
+    },
+    "4baf9918ecae7d2c": {
+      "detector": "authz-coverage",
+      "id": "authz_coverage_summary",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "Authz-gate integrity check on the server.js global write-auth middleware"
+    },
+    "d8720d58134bf34b": {
+      "detector": "authz-coverage",
+      "id": "authz_write_auth_bypass",
+      "severity": "high",
+      "kind": "static",
+      "location": "server/server.js:6478",
+      "message": "\"/api/lens\" is in WRITE_AUTH_PUBLIC_PATHS — unauthenticated writes to this prefix bypass the global gate (intentional bypasses are baselined; a NEW one needs review)"
+    },
+    "e121a6cd28c4c7a7": {
+      "detector": "authz-coverage",
+      "id": "authz_central_gate_ok",
+      "severity": "info",
+      "kind": "static",
+      "location": null,
+      "message": "server/server.js: global write-auth gate present (mount line 28848); 634 mutating route(s) behind it; 8 bypass path(s)"
     }
   }
 }
