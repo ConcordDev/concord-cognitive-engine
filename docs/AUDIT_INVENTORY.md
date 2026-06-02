@@ -1,37 +1,37 @@
 # Concord Cognitive Engine — Audit Inventory (verified by direct codebase inspection)
 
-Generated: 2026-05-14 (post-Foundry merge — PR #361 / commit `6d32663`, plus the HTTP-error-detector + BYO-key-router work)
-Branch: `claude/update-stale-docs-crvDl`; verification HEAD `9dc7e94`
+Originally generated: 2026-05-14 (post-Foundry merge — PR #361 / commit `6d32663`). **Top-level counts re-verified 2026-06-02.**
 
-Every number below comes from a `grep`, `ls`, or `wc` against the working tree at the head above, or from `npm run cartograph:static`. **Numbers in CLAUDE.md, README.md, or `audit/cartograph/*` that disagree with this file are stale — trust this file.** Regenerate with the reproduction commands in each row.
+> **⚠️ AUTHORITY REVERSED (2026-06-02).** This file's old banner said "numbers in
+> CLAUDE.md that disagree are stale — trust this file." That is now BACKWARDS:
+> this file's prose body is a 2026-05-14 snapshot and has drifted, while
+> CLAUDE.md's inventory table was re-verified 2026-06-02. **The current
+> source-of-truth for counts is `npm run check-doc-claims` (re-runs every
+> reproduction command and fails on drift) + CLAUDE.md's refreshed table + `npm
+> run count-loc` for LOC.** The top-level table below was refreshed 2026-06-02;
+> the per-system prose further down is historical (2026-05-14) and may lag —
+> always trust a live `grep`/`ls`/`wc` over any prose number here.
 
-## Top-level counts
+## Top-level counts (re-verified 2026-06-02)
 
 | Surface | Count | How to reproduce |
 |---|---|---|
-| Lens directories (frontend) | **232** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
-| Backend domain files | **249** | `ls server/domains/*.js \| wc -l` |
-| Migrations applied | **192** | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only) |
-| Latest migration | `192_foundry_phase7.js` | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
+| Lens directories (frontend) | **259** | `ls -d concord-frontend/app/lenses/*/ \| wc -l` |
+| Backend domain files | **351** | `ls server/domains/*.js \| wc -l` |
+| Migrations applied | **322** | `ls server/migrations/[0-9]*.js \| wc -l` (numbered only) |
+| Latest migration | `323_item_enchantments.js` | `ls server/migrations/ \| grep -E '^[0-9]{3}_' \| sort \| tail -1` |
 | Route files | **131** | `ls server/routes/*.js \| wc -l` |
-| Emergent modules | **178** | `ls server/emergent/*.js \| wc -l` |
-| Lib modules | **341 top-level / 561 recursive** | `ls server/lib/*.js \| wc -l` and `find server/lib -name "*.js" \| wc -l` |
-| `server/server.js` line count | **70,238** | `wc -l server/server.js` |
-| `server/dtus.js` line count | **145,612** | `wc -l server/dtus.js` |
-| HTTP routes in server.js | **1,087** | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
-| HTTP routes in routes/*.js | **1,313** | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
-| HTTP routes (combined) | **2,400** | sum of the two above (cartographer counts 3,020 including socket + macro dispatch surfaces) |
-| Unique (domain, macro) pairs (server.js) | **~797** | `grep -hE "register\(\s*['\"][a-z_]+['\"],\s*['\"][a-zA-Z_0-9]+" server/server.js \| sed -E "s/.*register\(\s*['\"]([a-z_]+)['\"],\s*['\"]([a-zA-Z_0-9]+).*/\1.\2/" \| sort -u \| wc -l` (cartographer reports 743 across 163 domains; the detector's macro-usage pass counts 818 — all three are in the ~800 band depending on dispatch-alias handling) |
-| Distinct CREATE TABLE statements across migrations | **~453** | `grep -hoE "CREATE TABLE\s+(IF NOT EXISTS\s+)?[a-z_]+" server/migrations/*.js \| sed -E 's/.*CREATE TABLE\s+(IF NOT EXISTS\s+)?([a-z_]+).*/\2/' \| sort -u \| wc -l` (cartographer's runtime table introspection reports 459) |
-| Database tables (cartographer) | **459** (22 dead) | `npm run cartograph:static` → `audit/cartograph/SYSTEMS.md` |
-| Socket events (cartographer) | **255** | `npm run cartograph:static` |
-| Unique heartbeats registered | **64** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
-| Total lines of code (all JS/TS, excl. node_modules) | **~1,364,000** | `find . \( -path ./node_modules -o -path '*/node_modules' -o -path ./.git \) -prune -o \( -name '*.js' -o -name '*.ts' -o -name '*.tsx' -o -name '*.jsx' -o -name '*.mjs' -o -name '*.cjs' \) -type f -print \| xargs cat \| wc -l` |
-| Code files (all JS/TS, excl. node_modules) | **~3,533** | same find as above, `\| wc -l` |
-| Emergent module LOC | **~94,455** | `cat server/emergent/*.js \| wc -l` |
-| Test code LOC | **~163,000** | `find server/tests tests -name '*.js' \| xargs cat \| wc -l` |
-| Test files | **457** | `find server/tests tests -name '*.test.js' -o -name '*-tests.js'` |
-| Mobile client LOC | **~42,162** | `find concord-mobile -path '*/node_modules' -prune -o -name '*.ts*' -print \| xargs cat \| wc -l` |
+| Emergent modules | **211** | `ls server/emergent/*.js \| wc -l` |
+| Lib modules | **546** top-level (`ls server/lib/*.js \| wc -l`) · **834** recursive (`find server/lib -name "*.js" \| wc -l`) | — |
+| `server/server.js` line count | **75,684** | `wc -l server/server.js` |
+| `server/dtus.js` line count | **145,612** (deprecated data seed pack — NOT code; see `npm run count-loc`) | `wc -l server/dtus.js` |
+| HTTP routes in server.js | **1,390** | `grep -hcE '^\s*app\.(get\|post\|put\|delete\|patch)\(' server/server.js` |
+| HTTP routes in routes/*.js | **1,346** | `grep -hcE '^\s*router\.(get\|post\|put\|delete\|patch)\(' server/routes/*.js \| paste -sd+ - \| bc` |
+| HTTP routes (combined) | **~2,736** | sum of the two above (cartographer counts more, incl. socket + macro dispatch surfaces) |
+| Distinct CREATE TABLE statements across migrations | **670** | `grep -hoE "CREATE TABLE\s+(IF NOT EXISTS\s+)?[a-z_]+" server/migrations/*.js \| sed -E 's/.*CREATE TABLE\s+(IF NOT EXISTS\s+)?([a-z_]+).*/\2/' \| sort -u \| wc -l` |
+| Unique heartbeats registered | **124** | `grep -rohE "registerHeartbeat\(['\"][a-z0-9-]+['\"]" server/ \| sort -u \| wc -l` |
+| Authored source LOC | **~2.05M** (2.71M incl. content) | `npm run count-loc` — the prior "~1,364,000" here was a `cat \| wc -l` over everything incl. the 145k-line `dtus.js` data pack; `count-loc` excludes generated/data and is the source of truth |
+| Test files | **1,118** | `find server/tests tests -name '*.test.js' -o -name '*-tests.js' \| wc -l` |
 
 > **Test pass total not re-verified at this HEAD.** The prior inventory recorded 12,244 passing (10,940 main + 1,304 behavior) at the migration-158 era. Migrations 159–192 and the Foundry phases added test files; re-run `cd server && npm test` to get a current figure before quoting one.
 
