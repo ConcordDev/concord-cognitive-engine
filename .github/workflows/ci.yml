@@ -190,7 +190,15 @@ jobs:
           # OS + npm wrapper ~2GB. If this OOMs again, lower the
           # coverage threshold rather than bump further — we're at
           # the runner's ceiling.
-          NODE_OPTIONS: --max-old-space-size=14336
+          #
+          # 2026-06: 14GB was the problem, not the fix. V8's 14GB heap cap +
+          # non-heap/c8/OS overhead exceeds the 16GB runner, so the kernel
+          # OOM-killed node at the tail of the c8 run (after the table printed —
+          # hence no V8 "heap out of memory", no test failure: coverage is a
+          # healthy 73.8%). Lowered to 12GB: the live working set fits in 12GB
+          # (verified — full run completes at 73.8% under a 12GB cap), and 12GB
+          # leaves ~4GB for OS + c8 + non-heap so the OS no longer kills it.
+          NODE_OPTIONS: --max-old-space-size=12288
         # Coverage thresholds anchored at "no regression below current" —
         # current baseline is ~46% statements, ~80% branches, ~34%
         # functions, ~46% lines across the unit-test scope (which excludes
