@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Concord Cognitive Engine is a cognitive operating system — a knowledge platform with **253 frontend lens directories** (post-Phase Z1), **310 backend domain files**, four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. ~1.36M lines, one developer.
+Concord Cognitive Engine is a cognitive operating system — a knowledge platform with **253 frontend lens directories** (post-Phase Z1), **310 backend domain files**, four parallel LLM brains + LLaVA vision, a self-compressing knowledge substrate (DTUs), a creator economy with perpetual royalties, a seven-layer mesh network, and a 3D civilization simulator (Concordia). Live at concord-os.org. **~2.05M lines of authored source (2.71M incl. shipped content/data), one developer** — reproduce with `npm run count-loc` (excludes node_modules/build/generated; transparently reclassifies data-modules masquerading as code — e.g. the deprecated 145k-line `server/dtus.js` seed pack at 0% code density — out of the source total). The earlier "~1.36M lines" headline was a stale *undercount*; cite the counter, not memory.
 
 **Wiring status** — reproducible via `node scripts/verify-lens-backends.mjs` (regenerated 2026-05-23 after a fix to the verifier's child-component recursion + TS-generic detection + api-client recognition):
 - 235 real lenses scanned (236 dirs minus 1 non-lens utility dir).
@@ -81,6 +81,21 @@ docker-compose up           # starts backend + frontend + 5 Ollama instances (+ 
 ./setup.sh                  # first-time: deps + data dirs + .env + migrations
 ./startup.sh                # bare metal startup helper
 ```
+
+### Repo metrics & detector gates (self-monitoring — verify, don't trust)
+```bash
+npm run count-loc                                          # authoritative LOC (source vs content; reclassifies data-modules)
+cd server && node scripts/run-detectors.js                 # full detector suite (markdown report)
+cd server && node scripts/run-detectors.js --diff --ci     # PR ratchet gate: fails on NEW high/critical vs BASELINE.json
+cd server && node scripts/run-detectors.js --consumer security --diff --ci  # blocking security subset (command-injection + authz-coverage)
+```
+**Status (2026-06-02 honesty pass — these claims are now falsifiable, not aspirational):**
+- The detector suite is a **real PR gate**, not a `continue-on-error` monitor. `.github/workflows/detectors-cartography.yml` runs the ratchet on every PR (blocks only on a NEW high/critical vs `audit/detectors/BASELINE.json`); `.github/workflows/security-detectors-gate.yml` runs the security subset as a hard gate.
+- `run-detectors.js` builds an **ephemeral migrated in-memory DB**, so the db-backed detectors (`dtu-lineage`, `concordia-substrate`) actually run in CI instead of silently returning `no_db`.
+- `audit/detectors/BASELINE.json` (1,128 fingerprints) and `BUDGET.json` (v7, `maxTotal` = the true ~1,131 floor) reflect reality; the prior v6 `maxTotal:100` was ~11× stale and only never-fired because nothing gated.
+- `maintenance-gates` no longer **fails open** — a missing/unrunnable verify-*.mjs gate is now itself a high finding, not a silent pass.
+- `check-route-auth.js` is honest about its narrow scope (`routes/*.js` `router.*` only); the server.js global write-auth gate + `app.*` routes are covered by the `authz-coverage` detector. `tests/detector-suite-health.test.js` pins that the security consumer can't silently empty and the db-detectors can't regress to `no_db`.
+- **Two new security detectors** (`server/lib/detectors/{command-injection,authz-coverage}-detector.js`) — the suite previously had ZERO injection/authz coverage, which is how PR #808's `execSync` shell-injection sink reached merge (caught by external CodeQL, not Concord's own ~30 detectors).
 
 ### Environment variables
 The server requires `JWT_SECRET` in production. Without it, the boot log prints a `[FATAL]` line and falls back to an insecure default — note the `[FATAL]` is a misleading severity tag, the server continues running with a generated random secret (sessions don't survive restart). `DB_PATH` defaults to `server/data/concord.db`. `PORT` defaults to 5050. `CONCORD_NO_LISTEN=true` prevents the server from binding a port (used in tests). Five Ollama URLs (`server/lib/brain-config.js` defaults — all internal port `11434` with distinct docker hostnames; the `(11434–11438)` table that used to appear here described docker-compose host-port mappings, not in-config defaults): `BRAIN_CONSCIOUS_URL` (`http://ollama-conscious:11434`), `BRAIN_SUBCONSCIOUS_URL` (`http://ollama-subconscious:11434`), `BRAIN_UTILITY_URL` (`http://ollama-utility:11434`), `BRAIN_REPAIR_URL` (`http://ollama-repair:11434`), `BRAIN_VISION_URL` (`http://ollama-vision:11434` — LLaVA).
