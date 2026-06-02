@@ -597,6 +597,10 @@ async function tickEducationFeeds(_STATE, realtimeEmit)     { return _tickRssDom
 // ── Main tick dispatcher ──
 
 export async function tickRealTimeFeeds(STATE, tickCount, realtimeEmit, callBrain, bridgeEvent) {
+  // Skip live external data fetches under test — in CI's no-egress sandbox these
+  // block to their AbortSignal timeout, stalling the event loop and starving the
+  // behavior smoke suite. Tests don't assert on live feed contents.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") return { ok: false, reason: "test_mode" };
   // Set the module-level bridge callback so tick functions can use it
   _bridgeEvent = typeof bridgeEvent === "function" ? bridgeEvent : null;
 

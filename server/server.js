@@ -48223,6 +48223,11 @@ function parseRSSItems(xml) {
 
 /** Feed polling: iterates registered lens feeds, fetches due items, creates DTUs */
 async function pollFeeds() {
+  // Never hit live external RSS endpoints under test: in CI's no-egress sandbox
+  // each feed fetch blocks to its 15s AbortSignal timeout, stalling the event
+  // loop and inflating every concurrent test (the behavior smoke suite then
+  // blows its budget). Tests don't assert on live feed contents.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") return;
   if (!STATE.feeds || STATE.feeds.size === 0) return;
   const now = Date.now();
 
