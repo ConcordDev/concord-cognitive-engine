@@ -470,7 +470,9 @@ export function currentBlockIdx(now = Date.now()) {
  */
 export async function advanceRoutine(db, npc, opts = {}) {
   if (!db || !npc?.id) return { ok: false, reason: "no_npc" };
-  const now = Math.floor(Date.now() / 1000);
+  // opts.now (epoch seconds) is a testability hook so idle-pacing's time-bucket
+  // seed is deterministic in tests; production passes nothing and uses wall clock.
+  const now = Number.isFinite(opts.now) ? Math.floor(opts.now) : Math.floor(Date.now() / 1000);
   const daySeed = opts.daySeed ?? currentDaySeed();
   const blockIdx = opts.blockIdx ?? currentBlockIdx();
 

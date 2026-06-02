@@ -28,10 +28,10 @@ export function buildDossier(db, npcId, viewerId = null) {
 
   // Active schemes the NPC is plotting OR is the target of (the live intrigue).
   const schemes = safe(() => db.prepare(
-    `SELECT id, plotter_kind, plotter_id, target_kind, target_id, kind, status,
+    `SELECT id, plotter_kind, plotter_id, target_kind, target_id, kind, phase AS status,
             COALESCE(success_pct, 0) AS successPct
        FROM npc_schemes
-      WHERE (plotter_id = ? OR target_id = ?) AND status = 'active'
+      WHERE (plotter_id = ? OR target_id = ?) AND phase NOT IN ('complete', 'abandoned', 'exposed')
       ORDER BY rowid DESC LIMIT 20`
   ).all(id, id).map((s) => {
     const role = s.plotter_id === id ? "plotter" : "target";
@@ -48,10 +48,10 @@ export function buildDossier(db, npcId, viewerId = null) {
   // Secrets about this NPC that the VIEWER has discovered (fact + severity only —
   // never the secret's contents to the LLM/UI per the NPC-secret invariant).
   const secretsDiscovered = viewerId ? safe(() => db.prepare(
-    `SELECT s.id, s.kind, s.severity
+    `SELECT s.id, s.kind, s.discovery_difficulty AS severity
        FROM secrets s JOIN secret_discoveries d ON d.secret_id = s.id
       WHERE s.subject_kind = 'npc' AND s.subject_id = ? AND d.user_id = ?
-      ORDER BY s.severity DESC LIMIT 20`
+      ORDER BY s.discovery_difficulty DESC LIMIT 20`
   ).all(id, String(viewerId)), []) : [];
 
   const stress = safe(() => db.prepare(

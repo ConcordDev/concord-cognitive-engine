@@ -673,13 +673,15 @@ export class NPCAgent {
         partner._persistState?.();
       }
 
-      // Log the conversation as a world event (lightweight, no DB write — SSE only)
+      // Log the conversation as a world event (mig-315 world_events schema:
+      // event_type/kind/title/description — the actor + payload ride in description).
       this._db.prepare(
-        "INSERT OR IGNORE INTO world_events (id, world_id, type, actor_id, data, created_at) VALUES (?,?,?,?,?,unixepoch())"
+        "INSERT OR IGNORE INTO world_events (id, world_id, event_type, kind, title, description, created_at) VALUES (?,?,?,?,?,?,unixepoch())"
       ).run(
-        crypto.randomUUID(), this.worldId, 'npc_conversation', this.id,
-        JSON.stringify({ speaker: myName, listener: partnerName, line: raw.slice(0, 200) })
-      ).valueOf?.(); // safe no-op if table missing
+        crypto.randomUUID(), this.worldId, 'npc_conversation', 'conversation',
+        `${myName} → ${partnerName}`,
+        JSON.stringify({ actorId: this.id, speaker: myName, listener: partnerName, line: raw.slice(0, 200) })
+      );
     } catch { /* non-fatal */ }
   }
 

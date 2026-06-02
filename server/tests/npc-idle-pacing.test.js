@@ -81,9 +81,15 @@ describe("WS0 — advanceRoutine paces an arrived NPC (no statue)", () => {
     seedSchedule(db, "priest", ST.x, ST.z);
 
     const positions = [];
+    // Inject a fixed `now` that advances one IDLE_WANDER_PERIOD (~18s) per tick so
+    // each tick lands in a DISTINCT pace bucket. The pace radius is seeded per
+    // bucket and is occasionally ~0; sampling 8 distinct buckets makes "the NPC
+    // drifts off-station at least once" deterministic (was flaky when all 8 ticks
+    // shared one wall-clock bucket and that bucket happened to seed radius ≈ 0).
+    const BASE_NOW = 1_700_000_000;
     for (let i = 0; i < 8; i++) {
       const npc = db.prepare(`SELECT * FROM world_npcs WHERE id='priest'`).get();
-      const r = await advanceRoutine(db, npc, { daySeed: DAY, blockIdx: BLK });
+      const r = await advanceRoutine(db, npc, { daySeed: DAY, blockIdx: BLK, now: BASE_NOW + i * 19 });
       assert.equal(r.ok, true, `tick ${i}: ${r.reason}`);
       positions.push(JSON.parse(db.prepare(`SELECT current_location FROM world_npcs WHERE id='priest'`).get().current_location));
     }

@@ -33,12 +33,12 @@ export function salvageEnabled() {
 export function spawnSalvageOnCollapse(db, worldId, buildingId) {
   if (!db || !buildingId || !salvageEnabled()) return { ok: false, reason: "disabled_or_missing" };
   let b;
+  // world_buildings carries no biome column — the salvage node inherits the
+  // world's default terrain ("plains"); biome isn't load-bearing for scrap.
   try {
-    b = db.prepare("SELECT world_id, building_type, material, state, x, z, biome FROM world_buildings WHERE id = ?").get(String(buildingId));
+    b = db.prepare("SELECT world_id, building_type, material, state, x, z FROM world_buildings WHERE id = ?").get(String(buildingId));
   } catch {
-    // older schema may lack biome — retry without it
-    try { b = db.prepare("SELECT world_id, building_type, material, state, x, z FROM world_buildings WHERE id = ?").get(String(buildingId)); }
-    catch { return { ok: false, reason: "no_building" }; }
+    return { ok: false, reason: "no_building" };
   }
   if (!b) return { ok: false, reason: "no_building" };
   if (worldId && b.world_id && b.world_id !== worldId) return { ok: false, reason: "wrong_world" };
@@ -54,7 +54,7 @@ export function spawnSalvageOnCollapse(db, worldId, buildingId) {
          x, y, z, depth, quantity_remaining, max_quantity, quality, difficulty, respawn_hours, seeded)
       VALUES (?, ?, 'scrap', ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, 1, ?, 0)
     `).run(
-      nodeId, wid, scrap.resourceId, scrap.resourceName, b.biome || "plains",
+      nodeId, wid, scrap.resourceId, scrap.resourceName, "plains",
       Number(b.x) || 0, Number(b.z) || 0,
       scrap.quantity, scrap.quantity, scrap.quality, RESPAWN_HOURS,
     );

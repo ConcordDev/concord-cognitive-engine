@@ -72,7 +72,9 @@ export function shouldAssist(db, { callerId, responderId, worldId, responderRow,
   if (!temperamentEnabled()) return { assist: true, reason: "temperament_off" }; // off == legacy: everyone
   if (!db || !callerId || !responderId) return { assist: false, reason: "missing_inputs" };
 
-  const r = responderRow || (() => { try { return db.prepare(`SELECT id, archetype, age FROM world_npcs WHERE id=?`).get(String(responderId)); } catch { return null; } })();
+  // world_npcs has no `age` column — age-based child detection is unavailable here
+  // (archetype-based still applies); selecting it threw and dropped archetype too.
+  const r = responderRow || (() => { try { return db.prepare(`SELECT id, archetype FROM world_npcs WHERE id=?`).get(String(responderId)); } catch { return null; } })();
 
   // Children + non-combatants never fight.
   if (isProtectedNonCombatant(r)) return { assist: false, reason: "protected_noncombatant" };

@@ -37,10 +37,10 @@ export function scoreStake(db, event, userId, worldId) {
     try {
       const rep = getFactionReputation(db, userId, fid, worldId);
       if (rep && ALLIED_TIERS.has(rep.tier)) {
-        if (0.6 > stake) { stake = 0.6; reason = "faction_ally"; thread = role === "target"
+        if (stake < 0.6) { stake = 0.6; reason = "faction_ally"; thread = role === "target"
           ? "a faction you've stood with is the target" : "the faction you've stood with is on the move"; }
       } else if (rep && ENEMY_TIERS.has(rep.tier)) {
-        if (0.5 > stake) { stake = 0.5; reason = "faction_enemy"; thread = "a faction that despises you is stirring"; }
+        if (stake < 0.5) { stake = 0.5; reason = "faction_enemy"; thread = "a faction that despises you is stirring"; }
       }
     } catch { /* rep cache optional */ }
   }
@@ -54,7 +54,7 @@ export function scoreStake(db, event, userId, worldId) {
         WHERE target_kind = 'player' AND target_id = ? AND resolved_at IS NULL
           AND npc_id IN (${placeholders}) LIMIT 1
       `).get(userId, ...event.npcIds);
-      if (g) { if (0.55 > stake) { stake = 0.55; reason = "npc_grudge"; thread = "one who holds a grudge against you is entangled in it"; } }
+      if (g) { if (stake < 0.55) { stake = 0.55; reason = "npc_grudge"; thread = "one who holds a grudge against you is entangled in it"; } }
     } catch { /* grudges table optional */ }
   }
 

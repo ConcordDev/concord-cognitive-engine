@@ -33,7 +33,7 @@ export function robustness(material) {
  * The #4 thesis in one function: robust structures degrade, brittle ones snap.
  */
 export function absorbHit(material, healthPct, stress) {
-  const h = Math.max(0, Math.min(1, Number(healthPct) ?? 1));
+  const h = Math.max(0, Math.min(1, Number(healthPct ?? 1)));
   const resp = stressResponse(material, stress);
   const robust = robustness(material);
   let dmg = 0;

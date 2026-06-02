@@ -108,7 +108,7 @@ export async function initExtensions(app, db, STATE, io) {
   if (process.env.CONCORD_FEED_MANAGER_ENABLED === "0") {
     logger.info("[startup-extensions] feed manager disabled via CONCORD_FEED_MANAGER_ENABLED=0");
   } else
-  try {
+  {try {
     const feedMgr = initFeedManager({ STATE, db, io, logger });
     // Register all default feed sources
     if (typeof feedMgr?.registerFeeds === "function") {
@@ -127,7 +127,7 @@ export async function initExtensions(app, db, STATE, io) {
     logger.info("[startup-extensions] feed manager started", { feeds: ALL_DEFAULT_FEEDS.length });
   } catch (err) {
     logger.warn("[startup-extensions] feed-manager init failed", { err: err?.message });
-  }
+  }}
 
   // 9. Anthropic skill tree import (background, non-blocking)
   try {

@@ -61,6 +61,14 @@ const FP_EXCLUDE = new Set([
   //    faction-owned); the realm-territory assignment is dormant until a
   //    faction→region link exists.
   "server/lib/kingdoms.js:faction_id:null",
+  //  - collective-face: `political_offices` (elected-leader governance) was never
+  //    built; the probe is safe()-wrapped and falls through to other face
+  //    resolution. Feature-gap, not a rename.
+  "server/lib/collective-face.js:null:political_offices",
+  //  - npc-dossier: lineage is explicitly conditional ("if the bloodline table is
+  //    present"); `npc_bloodline` is an optional dynasty feature that doesn't exist
+  //    yet — the safe() probe returns null. Feature-gap, not a rename.
+  "server/lib/npc-dossier.js:null:npc_bloodline",
 ]);
 
 // SQLite keywords / functions we must never treat as column identifiers.

@@ -25,7 +25,7 @@ describe("Phase A — heartbeat parallel dispatch", () => {
     const sleeper = async () => {
       started++;
       peak = Math.max(peak, started - finished);
-      await new Promise(r => setTimeout(r, WORK_MS));
+      await new Promise(r => { setTimeout(r, WORK_MS); });
       finished++;
     };
     for (let i = 0; i < 5; i++) {
@@ -57,7 +57,7 @@ describe("Phase A — heartbeat parallel dispatch", () => {
     let bGood = false, cGood = false;
     registerHeartbeat("thrower", { frequency: 1, handler: () => { throw new Error("boom"); } });
     registerHeartbeat("good-b", { frequency: 1, handler: () => { bGood = true; } });
-    registerHeartbeat("good-c", { frequency: 1, handler: async () => { await new Promise(r => setTimeout(r, 30)); cGood = true; } });
+    registerHeartbeat("good-c", { frequency: 1, handler: async () => { await new Promise(r => { setTimeout(r, 30); }); cGood = true; } });
     await tickAllRegistered({ state: {}, db: null, tickCount: 1 });
     assert.equal(bGood, true);
     assert.equal(cGood, true);
@@ -79,7 +79,7 @@ describe("Phase A — heartbeat parallel dispatch", () => {
   });
 
   it("getHeartbeatTimingStats reports per-module samples after a tick", async () => {
-    registerHeartbeat("timed", { frequency: 1, handler: async () => { await new Promise(r => setTimeout(r, 50)); } });
+    registerHeartbeat("timed", { frequency: 1, handler: async () => { await new Promise(r => { setTimeout(r, 50); }); } });
     await tickAllRegistered({ state: {}, db: null, tickCount: 1 });
     const stats = getHeartbeatTimingStats();
     const timed = stats.find(s => s.id === "timed");

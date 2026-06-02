@@ -22840,7 +22840,7 @@ Rules for tool use:
         const _followUpSystem = composeSystemPrompt("conscious", {
           mode,
           currentLens,
-          worldId: _worldId,
+          worldId: input?.worldId || null,
           extra: "You previously called tools and received their results. Now synthesize a final answer for the user.",
         }).system;
         try {
@@ -25039,6 +25039,9 @@ registerArcMacros(register);
 
 import registerCompletionMacros from "./domains/completion.js";
 registerCompletionMacros(register);
+
+import registerEnchantmentMacros from "./domains/enchantment.js";
+registerEnchantmentMacros(register);
 
 // Phase H4 — emergent pattern feed (drift + breakthroughs + federation).
 import registerPatternsMacros from "./domains/patterns.js";
@@ -48220,6 +48223,11 @@ function parseRSSItems(xml) {
 
 /** Feed polling: iterates registered lens feeds, fetches due items, creates DTUs */
 async function pollFeeds() {
+  // Never hit live external RSS endpoints under test: in CI's no-egress sandbox
+  // each feed fetch blocks to its 15s AbortSignal timeout, stalling the event
+  // loop and inflating every concurrent test (the behavior smoke suite then
+  // blows its budget). Tests don't assert on live feed contents.
+  if (String(process.env.NODE_ENV).toLowerCase() === "test") return;
   if (!STATE.feeds || STATE.feeds.size === 0) return;
   const now = Date.now();
 
@@ -49005,6 +49013,7 @@ app.post("/api/admin/diseases/contract", requireAuth(), asyncHandler(async (req,
   // Admin-only endpoint to trigger an infection (for testing + GM use).
   const isAdmin = ["owner", "admin", "founder", "sovereign"].includes(req.user?.role);
   if (!isAdmin) return res.status(403).json({ ok: false, error: "admin_only" });
+  // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (admin-gated patient, not the actor)
   res.json(contractDisease(db, req.body?.userId, req.body?.diseaseId, req.body || {}));
 }));
 
@@ -49698,6 +49707,7 @@ app.post("/api/garage/spawn", requireAuth(), asyncHandler(async (req, res) => {
   res.json(spawnVehicle(db, {
     ...(req.body || {}),
     ownerKind: req.body?.ownerKind || "player",
+    // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (org/faction owner; actor uses userId when ownerKind==='player')
     ownerId: req.body?.ownerKind === "player" ? userId : (req.body?.ownerId || ""),
   }));
 }));
@@ -50535,9 +50545,11 @@ app.get("/api/roguelite/recent", requireAuth(), asyncHandler(async (req, res) =>
 app.post("/api/combat/brawl/invite", requireAuth(), asyncHandler(async (req, res) => {
   const { inviteBrawl } = await import("./lib/brawl.js");
   const fromUserId = req.user?.id || req.user?.userId;
+  // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee; actor is fromUserId)
   const r = inviteBrawl(fromUserId, req.body?.toUserId);
   if (r.ok && !r.alreadyOpen) {
     try {
+      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee's socket channel)
       realtimeEmit?.(`user:${req.body?.toUserId}:brawl-invited`, {
         inviteId: r.inviteId, from: fromUserId,
       });
@@ -50863,9 +50875,11 @@ app.post("/api/parties", requireAuth(), asyncHandler(async (req, res) => {
 app.post("/api/parties/:partyId/invite", requireAuth(), asyncHandler(async (req, res) => {
   const { inviteToParty } = await import("./lib/parties.js");
   const userId = req.user?.id || req.user?.userId;
+  // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee; actor is userId)
   const r = inviteToParty(db, req.params.partyId, userId, req.body?.toUserId);
   if (r.ok) {
     try {
+      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (invitee delivery target)
       realtimeEmit?.("party:invite-received", { inviteId: r.inviteId, partyId: req.params.partyId, fromUserId: userId }, { targetUserId: req.body?.toUserId });
     } catch { /* emit best-effort */ }
   }
@@ -51031,6 +51045,7 @@ app.post("/api/mail/send", requireAuth(), asyncHandler(async (req, res) => {
   const r = sendMail(db, { ...req.body, fromUserId });
   if (r.ok) {
     try {
+      // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (mail recipient delivery target)
       realtimeEmit?.("mail:received", { id: r.id, fromUserId, subject: req.body?.subject }, { targetUserId: req.body?.toUserId });
     } catch { /* best-effort */ }
   }
@@ -51089,6 +51104,7 @@ app.post("/api/mail/:id/claim", requireAuth(), asyncHandler(async (req, res) => 
 app.post("/api/friends/request", requireAuth(), asyncHandler(async (req, res) => {
   const { sendFriendRequest } = await import("./lib/friendships.js");
   const userId = req.user?.id || req.user?.userId;
+  // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (friend-request recipient; actor is userId)
   const targetId = String(req.body?.toUserId || "").trim();
   if (!targetId) return res.status(400).json({ ok: false, error: "toUserId required" });
   const r = sendFriendRequest(db, userId, targetId);
@@ -51223,6 +51239,7 @@ app.post("/api/world-marketplace/:tenantWorldId/members", requireAuth(), asyncHa
   if (myRole !== "owner" && myRole !== "admin") {
     return res.status(403).json({ ok: false, error: "not_authorized" });
   }
+  // eslint-disable-next-line no-restricted-syntax -- safe: target-identifier (member being added; actor owner/admin-gated above)
   const r = addTenantMember(db, req.params.tenantWorldId, req.body?.userId, req.body?.role || "member");
   res.status(r.ok ? 200 : 400).json(r);
 }));

@@ -41,7 +41,7 @@ describe("fatigue (Basquin S-N + Miner's rule)", () => {
 
   it("repeated sub-ultimate stress accumulates to failure (damage ≥ 1)", () => {
     const Nf = fatigueLife("wood", 40);
-    let d = 0;
+    const d = 0;
     let r = accumulateFatigue(d, "wood", 40, Math.ceil(Nf / 2));
     assert.equal(r.failed, false); // half-life, not yet
     r = accumulateFatigue(r.damage, "wood", 40, Math.ceil(Nf));

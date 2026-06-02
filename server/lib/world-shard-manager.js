@@ -107,7 +107,7 @@ export async function ensureWorldActive(worldId) {
   try {
     await Promise.race([
       entry.readyPromise,
-      new Promise((_resolve, reject) => setTimeout(() => reject(new Error("ready_timeout")), SHARD_READY_TIMEOUT_MS)),
+      new Promise((_resolve, reject) => { setTimeout(() => reject(new Error("ready_timeout")), SHARD_READY_TIMEOUT_MS); }),
     ]);
     return { ok: true, status: "active", firstTickEtaMs: Date.now() - t0 };
   } catch (err) {

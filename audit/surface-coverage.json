@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-31T20:10:04.608Z",
+  "generatedAt": "2026-06-01T22:32:05.428Z",
   "floor": 1,
   "totals": {
     "items": 127,
@@ -585,7 +585,7 @@
       "channels": {
         "visual": 0,
         "audio": 0,
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1540",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1561",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
     },
@@ -850,7 +850,7 @@
       "score": 3,
       "channels": {
         "visual": "concord-frontend/components/fractal/FractalRenderer.tsx:202",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:197",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
         "animation": "n/a",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
@@ -990,7 +990,7 @@
       "score": 3,
       "channels": {
         "visual": "concord-frontend/components/world/DamageBillboard.tsx:8",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:197",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
         "animation": "n/a",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx (feed)"
       }
@@ -1116,8 +1116,8 @@
       "score": 4,
       "channels": {
         "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:128",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:309",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1131,7 +1131,7 @@
       "channels": {
         "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:197",
         "audio": "concord-frontend/components/world/WorldAudioBridge.tsx:18",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:309",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1242,8 +1242,8 @@
       "score": 3,
       "channels": {
         "visual": 0,
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:197",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:570",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:591",
         "legibility": "concord-frontend/components/world/EmergentEventFeed.tsx:37"
       }
     },
@@ -1270,7 +1270,7 @@
       "score": 2,
       "channels": {
         "visual": "concord-frontend/components/world/AdaptiveScoreBridge.tsx:7",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:233",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:237",
         "animation": "n/a",
         "legibility": 0
       }
@@ -1367,8 +1367,8 @@
       "shippedVerb": true,
       "score": 3,
       "channels": {
-        "visual": "concord-frontend/lib/concordia/juice.ts:71",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:197",
+        "visual": "concord-frontend/lib/concordia/juice.ts:105",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:201",
         "animation": "n/a",
         "legibility": "concord-frontend/components/guidance/ActivityFeed.tsx:57"
       }
@@ -1536,7 +1536,7 @@
       "score": 3,
       "channels": {
         "visual": "concord-frontend/components/world/AdaptiveMusicBridge.tsx:200",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:129",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:133",
         "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:91",
         "legibility": 0
       }
@@ -1718,8 +1718,8 @@
       "score": 4,
       "channels": {
         "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:128",
-        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1310",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1331",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1733,7 +1733,7 @@
       "channels": {
         "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:186",
         "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:124",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:22",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:345",
         "legibility": 0
       }
     },
@@ -1747,7 +1747,7 @@
       "channels": {
         "visual": "concord-frontend/components/chat/MessageRenderer.tsx:91",
         "audio": "concord-frontend/components/meditation/SoundscapePlayer.tsx:252",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:21",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:93",
         "legibility": 0
       }
     },
@@ -1760,8 +1760,8 @@
       "score": 4,
       "channels": {
         "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:128",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:309",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1774,8 +1774,8 @@
       "score": 4,
       "channels": {
         "visual": "concord-frontend/components/world/CombatVFXBridge.tsx:175",
-        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:128",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:309",
+        "audio": "concord-frontend/components/world-lens/SoundscapeEngine.tsx:132",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:1446",
         "legibility": "concord-frontend/components/world/DamageBillboard.tsx:55"
       }
     },
@@ -1803,7 +1803,7 @@
       "channels": {
         "visual": "concord-frontend/components/world/NpcPerceptionBridge.tsx:64",
         "audio": "concord-frontend/components/audio-rooms/RoomStage.tsx:47",
-        "animation": "concord-frontend/components/world-lens/AnimationManager.tsx:77",
+        "animation": "concord-frontend/components/world-lens/AvatarSystem3D.tsx:156",
         "legibility": "n/a"
       }
     }

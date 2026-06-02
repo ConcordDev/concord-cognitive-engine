@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-const ROOT = '/home/user/concord-cognitive-engine';
+import { fileURLToPath } from 'url';
+// Derive repo root from this scripts location so it runs anywhere (CI checks out
+// to /home/runner/work/..., not a fixed path).
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SERVER = path.join(ROOT, 'server');
 const LENSDIR = path.join(ROOT, 'concord-frontend/app/lenses');
 
@@ -180,7 +183,8 @@ for (const lens of lenses) {
 
 const by = {};
 for (const r of rows) by[r.verdict] = (by[r.verdict] || 0) + 1;
-console.log('=== macro domains registered:', macroDomains.size, ' route prefixes:', routeSet.size, '===');
-console.log('=== verdicts:', JSON.stringify(by), 'total', rows.length, '===\n');
-for (const r of rows) if (r.verdict !== 'WIRED') console.log(`${r.verdict.padEnd(16)} ${r.lens.padEnd(22)} ${r.detail}`);
+console.error('=== macro domains registered:', macroDomains.size, ' route prefixes:', routeSet.size, '===');
+console.error('=== verdicts:', JSON.stringify(by), 'total', rows.length, '===\n');
+for (const r of rows) if (r.verdict !== 'WIRED') console.error(`${r.verdict.padEnd(16)} ${r.lens.padEnd(22)} ${r.detail}`);
 fs.writeFileSync('/tmp/lens-verify.json', JSON.stringify(rows, null, 1));
+console.log(JSON.stringify({ verdicts: by, total: rows.length, macroDomains: macroDomains.size, routePrefixes: routeSet.size }));

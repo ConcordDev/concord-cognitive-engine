@@ -278,14 +278,14 @@ export function getTransmissionProbability(disease, vector, opts = {}) {
       const falloff = baseDef.distanceFalloffPerM;
       p = Math.max(0, base - distance * falloff);
       // Hygiene shifts the receiver's susceptibility (clean = halved).
-      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene) ?? 1));
+      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene ?? 1)));
       p *= (1 - hygiene * 0.5);
       break;
     }
     case "touch": {
       const distance = Math.max(0, Number(opts.distanceM) || 0);
       if (distance > 0) return 0; // touch requires zero distance
-      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene) ?? 1));
+      const hygiene = Math.max(0, Math.min(1, Number(opts.hygiene ?? 1)));
       p *= (1 - hygiene * 0.5);
       break;
     }

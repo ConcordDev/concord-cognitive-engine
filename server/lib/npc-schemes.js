@@ -390,7 +390,7 @@ export function discoverScheme(db, userId, schemeId, evidenceKind = "observed") 
       const worldRow = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(sch.plotter_id);
       if (worldRow?.world_id) {
         // Lazy require to avoid a load-time cycle (npc-schemes is imported widely).
-        // eslint-disable-next-line global-require
+         
         const wt = requireWeaponise();
         wt?.checkExposeTriggers?.(db, {
           userId, worldId: worldRow.world_id, exposedNpcId: sch.plotter_id, io: globalThis.__CONCORD_IO__ || null,

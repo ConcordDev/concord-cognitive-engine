@@ -81,7 +81,6 @@ export function AuthedWebView({ source }: Props) {
       sharedCookiesEnabled={true}
       // transparent so the RN parent backdrop shows through
       // (set both web-side body bg and this option)
-      // @ts-expect-error — pass-through prop, RN-WebView spec allows it
       androidLayerType="hardware"
     />
   );

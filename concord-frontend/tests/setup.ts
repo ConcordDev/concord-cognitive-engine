@@ -1,5 +1,13 @@
 import '@testing-library/jest-dom/vitest';
+import { configure } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
+
+// The full `vitest run --coverage` is heavy (v8 instrumentation, jsdom
+// environment ~165s); under that load the default 1000ms waitFor timeout flakes
+// on components that do an async fetch before first paint (e.g. WalletPage's
+// balance card / Buy-CC button). 5s gives ample headroom without masking real
+// failures (a genuinely-broken assertion still fails, just later).
+configure({ asyncUtilTimeout: 5000 });
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

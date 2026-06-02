@@ -11,6 +11,7 @@ import path from "node:path";
 
 import { up as upFactionStrategy } from "../migrations/117_faction_strategy.js";
 import { up as upFunding } from "../migrations/321_faction_funding.js";
+import { up as upQuestState } from "../migrations/068_quest_state_machine.js";
 import { recordFunding, clampParity, healTwinPact, activeFunding } from "../lib/tessera-parity.js";
 import registerArcMacros from "../domains/arc.js";
 
@@ -20,6 +21,9 @@ function freshDb() {
   const db = new Database(":memory:");
   upFactionStrategy(db);
   upFunding(db);
+  upQuestState(db);
+  // a player who has reached the final heal/hold branch (gates arc.heal_twin_pact)
+  db.prepare("INSERT OR IGNORE INTO player_quests (id, user_id, quest_id, world_id, status) VALUES ('pq1','u1','sere_arc_4_heal_the_pact','sere','active')").run();
   for (const [fid, mom] of [["dovrane", -0.5], ["keshar", -0.55]]) {
     db.prepare("INSERT INTO faction_strategy_state (faction_id, stance, momentum, next_move_at, updated_at) VALUES (?, 'war', ?, 0, unixepoch())").run(fid, mom);
   }
@@ -58,8 +62,25 @@ describe("Sere arc payoff — heal the Twin Pact", () => {
     const m = new Map();
     registerArcMacros((d, n, fn) => m.set(`${d}.${n}`, fn));
     assert.equal(m.get("arc.open_table_status")({ db }, {}).openTableCanCohere, false, "blocked while funded");
-    m.get("arc.heal_twin_pact")({ db }, {});
+    m.get("arc.heal_twin_pact")({ db, actor: { userId: "u1" } }, {});
     assert.equal(m.get("arc.open_table_status")({ db }, {}).openTableCanCohere, true, "coheres once cut");
+    delete process.env.CONCORD_TESSERA_PARITY;
+  });
+
+  it("heal_twin_pact rejects anonymous + un-progressed callers (auth gate)", () => {
+    process.env.CONCORD_TESSERA_PARITY = "1";
+    const db = freshDb();
+    const m = new Map();
+    registerArcMacros((d, n, fn) => m.set(`${d}.${n}`, fn));
+    // anonymous / unauthenticated → blocked (POST /api/lens/run is public)
+    assert.equal(m.get("arc.heal_twin_pact")({ db }, {}).reason, "auth_required");
+    assert.equal(m.get("arc.heal_twin_pact")({ db, actor: { userId: "anon" } }, {}).reason, "auth_required");
+    // authenticated but never reached the final arc quest → blocked
+    assert.equal(m.get("arc.heal_twin_pact")({ db, actor: { userId: "stranger" } }, {}).reason, "arc_not_reached");
+    // funding is untouched after the rejected attempts
+    assert.equal(activeFunding(db, "sere").length, 1, "still funded — no unauthorized cut");
+    // the player who reached the branch can heal
+    assert.equal(m.get("arc.heal_twin_pact")({ db, actor: { userId: "u1" } }, {}).ok, true);
     delete process.env.CONCORD_TESSERA_PARITY;
   });
 
