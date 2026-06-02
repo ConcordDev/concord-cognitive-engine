@@ -78,7 +78,6 @@ if (process.env.SMOKE_GENERATE) {
           2,
         ) + '\n',
       );
-      // eslint-disable-next-line no-console
       console.log(`[smoke] candidates=${candidates.length} jsdom-skipped=${jsdomSkipped.length} baselined-failures=${Object.keys(files).length}`);
       expect(true).toBe(true);
     }, 600_000);
@@ -107,7 +106,6 @@ if (process.env.SMOKE_GENERATE) {
     it('reports the smoke surface (informational)', () => {
       // Not a gate — just visibility into how much of the tree the net covers.
       expect(candidates.length).toBeGreaterThan(0);
-      // eslint-disable-next-line no-console
       console.log(
         `[smoke] importable=${toTest.length} allowlisted=${Object.keys(allow).length} ` +
           `jsdom-skipped(3D/worker)=${jsdomSkipped.length} of ${all.length} source files`,
