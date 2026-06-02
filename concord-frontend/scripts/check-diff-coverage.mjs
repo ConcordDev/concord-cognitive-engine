@@ -13,7 +13,7 @@
 // Usage: node scripts/check-diff-coverage.mjs [baseRef]
 //   baseRef defaults to origin/$GITHUB_BASE_REF (PRs) or origin/main.
 //   DIFF_COVERAGE_MIN (default 60) — required per-file statement %.
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -36,14 +36,24 @@ const SKIP = [
 
 const baseRef = process.argv[2] || (process.env.GITHUB_BASE_REF ? `origin/${process.env.GITHUB_BASE_REF}` : 'origin/main');
 
+function gitDiff(rangeArg) {
+  // execFileSync (no shell) so baseRef — a CLI/env-supplied value — is passed as
+  // a literal git argument and can't be interpreted as a command (CodeQL: no
+  // indirect command injection via an unsanitized command-line argument).
+  return execFileSync('git', ['diff', '--name-only', '--diff-filter=d', rangeArg], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+}
+
 function changedFiles() {
   let out = '';
   try {
-    out = execSync(`git diff --name-only --diff-filter=d ${baseRef}...HEAD`, { cwd: ROOT, encoding: 'utf8' });
+    out = gitDiff(`${baseRef}...HEAD`);
   } catch {
     // Fall back to comparing against the merge-base of the default branch.
     try {
-      out = execSync(`git diff --name-only --diff-filter=d ${baseRef}`, { cwd: ROOT, encoding: 'utf8' });
+      out = gitDiff(baseRef);
     } catch {
       console.error(`[diff-coverage] could not diff against ${baseRef}; skipping (no gate).`);
       process.exit(0);
