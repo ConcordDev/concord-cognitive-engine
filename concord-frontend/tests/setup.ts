@@ -54,6 +54,14 @@ Object.defineProperty(window, 'scrollTo', {
   value: vi.fn(),
 });
 
+// jsdom doesn't implement URL.createObjectURL / revokeObjectURL — map components
+// (leaflet/mapbox-ish) call it at module/import time, so without this they throw
+// on import. Polyfill so the import-smoke net + any map test can load them.
+if (typeof window.URL.createObjectURL !== 'function') {
+  window.URL.createObjectURL = vi.fn(() => 'blob:mock');
+  window.URL.revokeObjectURL = vi.fn();
+}
+
 // Mock localStorage — a REAL in-memory store (still vi.fn, so .mockReturnValue
 // overrides keep working). The prior bare-vi.fn() stubs never persisted, so any
 // test relying on a getItem/setItem round-trip (avatar compute mode, active
