@@ -14,6 +14,12 @@
 export function getBalance(db, userId) {
   // Use integer arithmetic (cents) to avoid floating-point drift.
   // CAST to INTEGER rounds at the DB level, then we divide by 100 for display.
+  //
+  // Balance is event-sourced (a pure function of the ledger) — there is NO
+  // stored balance to drift. The two queries below are served as index-only
+  // scans by migration 324's covering indexes (idx_ledger_balance_credits /
+  // _debits), so this stays O(matching rows) even on large histories. See that
+  // migration for why a stateful balance cache was deliberately rejected.
   const credits = db.prepare(`
     SELECT COALESCE(SUM(CAST(ROUND(net * 100) AS INTEGER)), 0) as total_cents
     FROM economy_ledger
