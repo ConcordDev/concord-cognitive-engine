@@ -1,0 +1,77 @@
+name: Security Detectors — PR Gate (blocking)
+
+# Unlike detectors-cartography.yml (a continuous-output MONITOR: push-to-main +
+# nightly, continue-on-error), THIS is a blocking PR gate scoped to the
+# security-tagged detectors only:
+#
+#   • command-injection — child_process exec/execSync (+ spawn-family w/ shell:true)
+#     on a non-literal command. Seeded from the real PR #808 execSync sink that
+#     the ~30-detector suite had NO coverage for, so an external scanner (CodeQL)
+#     was the one to catch it after merge. Now it's caught in-house, on the PR.
+#   • authz-coverage — integrity of the global write-auth gate
+#     (productionWriteAuthMiddleware): present + mounted before routes + the
+#     write-auth bypass allowlist pinned.
+#
+# It runs `run-detectors.js --consumer security --diff --ci`, which compares
+# against audit/detectors/BASELINE.json and FAILS (exit 1) only on a NEW
+# high/critical security finding — existing, reviewed findings are grandfathered.
+# A green run is real assurance; a red run is a NEW injection sink or a NEW
+# unauthenticated-write surface that needs review before merge.
+#
+# Fast + cheap: pure static file walk, no DB, no server boot, no external deps
+# beyond `npm ci`. Runs on every PR that touches code.
+
+on:
+  pull_request:
+    paths:
+      - '**.js'
+      - '**.mjs'
+      - '**.cjs'
+      - '**.ts'
+      - '**.tsx'
+      - 'server/**'
+      - 'audit/detectors/BASELINE.json'
+      - 'audit/detectors/BUDGET.json'
+      - '.github/workflows/security-detectors-gate.yml'
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  security-detectors:
+    name: Security detectors (command-injection + authz-coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server deps
+        working-directory: server
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      - name: Run security detector gate (blocking)
+        working-directory: server
+        run: node scripts/run-detectors.js --consumer security --diff --ci
+
+      - name: Explain on failure
+        if: failure()
+        run: |
+          echo "::error::A NEW high/critical security finding was introduced."
+          echo "Run locally to see it:"
+          echo "  cd server && node scripts/run-detectors.js --consumer security --diff"
+          echo ""
+          echo "If the finding is a reviewed, intentional exception, re-baseline"
+          echo "deliberately (security review required) and commit the change:"
+          echo "  cd server && node scripts/run-detectors.js --rewrite-baseline"

@@ -8672,6 +8672,38 @@ async function tryInitWebSockets(server) {
           skillKey: skillKeyForSkill({ element: data.element, weapon: data.weapon, kind: data.weapon, name: data.skillId }),
         });
 
+        // PvP combat FEEL — parity with the NPC HTTP route's T1.4b
+        // `combat:impact` (closes POLISH_AUDIT "PvP combat has no
+        // server-authoritative feel": the momentum/poise/stagger → hitstop/
+        // knockback/wince chain was emitted only on the NPC route, never here).
+        // The socket path has no per-bone momentum, so we derive a graded
+        // severity + nominal momentum from the resolved damage/crit/kill/heavy
+        // and reuse the SAME pure `buildImpactPayload` the NPC path uses, so the
+        // client `CombatImpactFeelBridge` applies identical feel. Best-effort.
+        try {
+          const _dmg = Number(result.damage) || 0;
+          const _kill = !!result.targetKilled;
+          if (_dmg > 0 || _kill) {
+            const { buildImpactPayload, derivePvpSeverity, pvpMomentumFromDamage } =
+              await import("./lib/combat/impact-feel.js");
+            const _heavy = data.heavy === true || data.style === "attack-heavy";
+            const _world = cityPresence.getPlayerWorld?.(userId) ?? "concordia-hub";
+            realtimeEmit("combat:impact", buildImpactPayload({
+              worldId: _world,
+              attackerId: userId,
+              targetId: data.targetId,
+              targetKind: "player",
+              severity: derivePvpSeverity({ damage: _dmg, crit: !!result.isCrit, kill: _kill, heavy: _heavy }),
+              momentum: pvpMomentumFromDamage(_dmg),
+              element: data.element || "physical",
+              damage: _dmg,
+              isKill: _kill,
+              targetPosition: _hitTargetPos,
+              attackerPosition: _hitAttackerPos,
+            }));
+          }
+        } catch { /* combat:impact feel emit best-effort — never blocks combat */ }
+
         // Companion assist XP: deployed companions of the attacker get
         // assist XP (and kill XP if it was a kill). Best-effort import +
         // emit so a companion module load failure never blocks combat.

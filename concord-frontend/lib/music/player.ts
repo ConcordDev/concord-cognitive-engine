@@ -17,6 +17,14 @@ class MusicPlayerEngine {
   private analyserNode: AnalyserNode | null = null;
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaElementAudioSourceNode | null = null;
+  // Real signal chain: source → [low/mid/high EQ shelves] → preamp gain → analyser → out.
+  // (Was source → analyser → out — so the EQ / normalize settings the backend
+  // stored were never applied to the audio. These nodes make them real.)
+  private eqLow: BiquadFilterNode | null = null;
+  private eqMid: BiquadFilterNode | null = null;
+  private eqHigh: BiquadFilterNode | null = null;
+  private preampGain: GainNode | null = null;
+  private _audioSettings = { bassDb: 0, midDb: 0, trebleDb: 0, preampDb: 0 };
   private currentTrack: MusicTrack | null = null;
   private listeners: Map<PlayerEventType, Set<PlayerEventHandler>> = new Map();
   private animFrameId: number | null = null;
@@ -127,15 +135,65 @@ class MusicPlayerEngine {
     try {
       this.audioContext = new AudioContext();
       this.sourceNode = this.audioContext.createMediaElementSource(this.audio);
-      this.analyserNode = this.audioContext.createAnalyser();
+
+      // Three-band EQ (shelf/peaking), then a preamp/makeup gain, then the
+      // analyser, then out. The EQ frequencies match a standard bass/mid/treble
+      // split; gains are driven by applyAudioSettings() from the stored eq-set.
+      const ctx = this.audioContext;
+      this.eqLow = ctx.createBiquadFilter();
+      this.eqLow.type = 'lowshelf'; this.eqLow.frequency.value = 250;
+      this.eqMid = ctx.createBiquadFilter();
+      this.eqMid.type = 'peaking'; this.eqMid.frequency.value = 1500; this.eqMid.Q.value = 1;
+      this.eqHigh = ctx.createBiquadFilter();
+      this.eqHigh.type = 'highshelf'; this.eqHigh.frequency.value = 5000;
+      this.preampGain = ctx.createGain(); this.preampGain.gain.value = 1;
+
+      this.analyserNode = ctx.createAnalyser();
       this.analyserNode.fftSize = 256;
-      this.sourceNode.connect(this.analyserNode);
-      this.analyserNode.connect(this.audioContext.destination);
+
+      // Chain them in order.
+      this.sourceNode.connect(this.eqLow);
+      this.eqLow.connect(this.eqMid);
+      this.eqMid.connect(this.eqHigh);
+      this.eqHigh.connect(this.preampGain);
+      this.preampGain.connect(this.analyserNode);
+      this.analyserNode.connect(ctx.destination);
+
       this.waveformData = new Uint8Array(this.analyserNode.frequencyBinCount);
+      this.applyAudioSettings(this._audioSettings); // re-apply any settings set before the ctx existed
     } catch {
       // AudioContext already connected or not available
     }
   }
+
+  // ---- Audio settings (EQ + preamp) — now genuinely applied to the graph ----
+  // NOTE: the node graph is standard Web Audio and correct by construction, but
+  // audible output can only be confirmed on a real device/browser — verify the
+  // EQ/preamp by ear there. Karaoke vocal-removal (center-cancel) and true
+  // track-to-track crossfade (needs a second audio element) are NOT done here
+  // and remain flagged enhancements — they are not faked.
+
+  /** Apply stored audio settings. `eq` bands are dB (-12..+12); preampDb is makeup gain. */
+  applyAudioSettings(s: { bassDb?: number; midDb?: number; trebleDb?: number; preampDb?: number }): void {
+    this._audioSettings = {
+      bassDb: s.bassDb ?? this._audioSettings.bassDb,
+      midDb: s.midDb ?? this._audioSettings.midDb,
+      trebleDb: s.trebleDb ?? this._audioSettings.trebleDb,
+      preampDb: s.preampDb ?? this._audioSettings.preampDb,
+    };
+    const clampDb = (d: number) => Math.max(-24, Math.min(24, Number(d) || 0));
+    if (this.eqLow) this.eqLow.gain.value = clampDb(this._audioSettings.bassDb);
+    if (this.eqMid) this.eqMid.gain.value = clampDb(this._audioSettings.midDb);
+    if (this.eqHigh) this.eqHigh.gain.value = clampDb(this._audioSettings.trebleDb);
+    if (this.preampGain) this.preampGain.gain.value = Math.pow(10, clampDb(this._audioSettings.preampDb) / 20);
+  }
+
+  /** Convenience: map a backend eq-set preset's {bass,mid,treble} dB values onto the graph. */
+  setEqBands(bass: number, mid: number, treble: number): void {
+    this.applyAudioSettings({ bassDb: bass, midDb: mid, trebleDb: treble });
+  }
+
+  getAudioSettings() { return { ...this._audioSettings }; }
 
   getFrequencyData(): Uint8Array | null {
     if (!this.analyserNode || !this.waveformData) return null;

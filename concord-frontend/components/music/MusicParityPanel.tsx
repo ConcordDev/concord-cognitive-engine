@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
 import { cn } from '@/lib/utils';
+import { getPlayer } from '@/lib/music/player';
 
 // ── shared types ────────────────────────────────────────────────────
 interface Track {
@@ -230,9 +231,18 @@ function EngineTab() {
       lensRun('music', 'engine-config', {}),
       lensRun('music', 'device-list', {}),
     ]);
-    setCfg((c.data?.result as EngineConfig | null) || null);
+    const cfgVal = (c.data?.result as EngineConfig | null) || null;
+    setCfg(cfgVal);
     setDevices(d.data?.result?.devices || []);
     setLoading(false);
+    // Apply the EQ to the live audio graph so the sliders actually change the
+    // sound (previously eq-set only persisted server-side and was never applied).
+    // Bands are zeroed when the EQ toggle is off. (preamp/normalize left at 0 —
+    // true loudness normalization is still a flagged approximation, not faked.)
+    const b = cfgVal?.config?.eq;
+    getPlayer().applyAudioSettings(b?.enabled
+      ? { bassDb: b.bands.bass, midDb: b.bands.mid, trebleDb: b.bands.treble }
+      : { bassDb: 0, midDb: 0, trebleDb: 0 });
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
 

@@ -35,6 +35,14 @@ const ROOT = path.resolve(new URL(import.meta.url).pathname, '..', '..');
 const SERVER = path.join(ROOT, 'server');
 const FRONTEND = path.join(ROOT, 'concord-frontend');
 
+// `--honest`: a deliberately less-generous grade. (1) smoke-shape coverage is
+// NOT counted as a real test (it checks the return SHAPE, not behavior), so a
+// macro must have a real (domain.macro) test ref or frontend use to count as
+// exercised; (2) the `utility` tier (correct-but-minimal handlers) is weighted
+// 0.6 instead of 1.0. This is the floor the headline 1.000 should be read
+// against — the honest band, not the optimistic ceiling.
+const HONEST = process.argv.includes('--honest');
+
 function walk(dir, exts, acc = []) {
   if (!fs.existsSync(dir)) return acc;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -215,8 +223,6 @@ const SERVER_TESTS = [
 ];
 console.error(`  ${SERVER_TESTS.length} test files`);
 
-const allTestSrc = SERVER_TESTS.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-
 // Pull all "domain.macro" string occurrences from tests, accounting for the
 // most common shapes used in this codebase.
 function collectReferences(srcBlob) {
@@ -235,8 +241,101 @@ function collectReferences(srcBlob) {
   return refs;
 }
 
-const testRefs = collectReferences(allTestSrc);
-console.error(`  ${testRefs.size} (domain.macro) refs in tests`);
+// Union (domain.macro) references across many files WITHOUT building one giant
+// string. Joining thousands of frontend files into a single blob exceeded V8's
+// max string length (RangeError: Invalid string length) and crashed the grader
+// once the tree grew past ~4k frontend files — which is why the headline 1.000
+// went stale-and-unreproducible. Per-file keeps memory flat.
+function collectReferencesFromFiles(files) {
+  const refs = new Set();
+  for (const f of files) {
+    let src;
+    try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    for (const r of collectReferences(src)) refs.add(r);
+  }
+  return refs;
+}
+// ── Test credit: behavioral (both modes) vs shape-coverage (default only) ──
+// Honesty turns on WHAT a test does, not whether it mentions a name:
+//   • `invocations` (BEHAVIORAL, counts in BOTH modes): a LITERAL dispatcher
+//     call `runMacro("d","m", …)` / lensRun / runDomain — a hand-written,
+//     intentional per-macro call. You don't write a single literal call to
+//     shape-check; that signals a real test of THAT macro.
+//   • `shapeLoopRefs` (SHAPE-COVERAGE, counts in DEFAULT only — like smoke): a
+//     bulk CASES-loop — a `["d","m"]` pair or dotted `"d.m"` literal in a file
+//     that ALSO has a generic dispatcher call. These are the contract/shape
+//     harnesses (assert only `ok:boolean`); --honest discounts them exactly as
+//     it discounts the smoke harness. A bare string list with NO dispatcher
+//     call counts for nothing — that was the gameable hole, now closed.
+//   • `testedFns` (BEHAVIORAL): function names a test BOTH imports AND calls —
+//     credits a thin macro from the tested LIB FN it delegates to.
+const LITERAL_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
+const DOTTED_LITERAL_RE = /["'`]([a-z][a-zA-Z0-9_-]+)\.([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
+const PAIR_LITERAL_RE = /\[\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]\s*\]/g;
+const GENERIC_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(/;
+
+function collectTestCredit(files) {
+  const invocations = new Set();   // behavioral — both modes
+  const shapeLoopRefs = new Set(); // shape-coverage — default only
+  const testedFns = new Set();     // behavioral — delegate credit
+  for (const f of files) {
+    let src; try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    for (const m of src.matchAll(LITERAL_INVOKE_RE)) invocations.add(`${m[1]}.${m[2]}`);
+    if (GENERIC_INVOKE_RE.test(src)) {
+      for (const m of src.matchAll(DOTTED_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
+      for (const m of src.matchAll(PAIR_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
+    }
+    const imported = new Set();
+    for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from/g)) {
+      for (const part of m[1].split(',')) {
+        const seg = part.trim(); if (!seg) continue;
+        const nm = (/\bas\s+([\w$]+)$/.exec(seg)?.[1]) || seg.split(/\s+/)[0];
+        if (nm) imported.add(nm);
+      }
+    }
+    if (imported.size) {
+      for (const m of src.matchAll(/\b([a-zA-Z_$][\w$]*)\s*\(/g)) {
+        if (imported.has(m[1])) testedFns.add(m[1]);
+      }
+    }
+  }
+  return { invocations, shapeLoopRefs, testedFns };
+}
+
+const { invocations: macroInvocations, shapeLoopRefs, testedFns } = collectTestCredit(SERVER_TESTS);
+console.error(`  ${macroInvocations.size} literal invocations · ${shapeLoopRefs.size} shape-loop refs (default-only) · ${testedFns.size} tested lib fns`);
+
+// Parse a source file's named imports → Map<localName,{module,exportName}>.
+function parseNamedImports(src) {
+  const map = new Map();
+  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g)) {
+    const spec = m[2];
+    for (const part of m[1].split(',')) {
+      const seg = part.trim(); if (!seg) continue;
+      const asM = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(seg);
+      const local = asM ? asM[2] : seg.split(/\s+/)[0];
+      const orig = asM ? asM[1] : local;
+      if (local) map.set(local, { module: spec, exportName: orig });
+    }
+  }
+  return map;
+}
+
+// Resolve a delegated lib fn's body (for signal-inheritance), cached per module.
+const moduleIndexCache = new Map();
+function delegateBodyFor(delegateName, imports, macroFilePath) {
+  const imp = imports.get(delegateName);
+  if (!imp || !imp.module.startsWith('.')) return null; // local modules only
+  let modPath = path.resolve(path.dirname(macroFilePath), imp.module);
+  if (!/\.[mc]?js$/.test(modPath)) modPath += '.js';
+  if (!fs.existsSync(modPath)) return null;
+  let idx = moduleIndexCache.get(modPath);
+  if (!idx) {
+    try { idx = buildHelperIndex(fs.readFileSync(modPath, 'utf8')); } catch { idx = new Map(); }
+    moduleIndexCache.set(modPath, idx);
+  }
+  return idx.get(imp.exportName) || null;
+}
 
 // ---- 3b. Behavior smoke coverage (A1) ----
 //
@@ -261,6 +360,7 @@ const BEHAVIOR_LLM_HINT_RE = /^(respond|chat|reply|deliberate|narrate|synthesize
 const BEHAVIOR_SKIP_DOMAINS = new Set(['oracle', 'concordance']);
 
 function isCoveredBySmoke(domain, name) {
+  if (HONEST) return false; // honest mode: shape-only smoke coverage is not a real test
   if (!BEHAVIOR_SMOKE_EXISTS) return false;
   if (BEHAVIOR_SKIP_DOMAINS.has(domain)) return false;
   if (BEHAVIOR_LLM_HINT_RE.test(name)) return false;
@@ -272,13 +372,20 @@ if (BEHAVIOR_SMOKE_EXISTS) {
 
 const FRONTEND_FILES = walk(FRONTEND, ['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 console.error(`  ${FRONTEND_FILES.length} frontend files`);
-const allFrontendSrc = FRONTEND_FILES.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-const frontendRefs = collectReferences(allFrontendSrc);
+const frontendRefs = collectReferencesFromFiles(FRONTEND_FILES);
 console.error(`  ${frontendRefs.size} (domain.macro) refs in frontend`);
 
 // ---- 4. Signal regexes (run against handler body + helpers) ----
 
-const STATE_RE = /\b(?:ctx\.db|ctx\.state|STATE\b|getWorkspaceState|ensureFiles|ensureSessions|getHealthState|globalThis\._concord|saveStateIfAvailable|saveWS|bucketH|aidH|aidC|s\.db|state\.db)\b/;
+// `stateTouch` means "interacts with persistent state". The original list only
+// caught state via a named handle (ctx.db / STATE / s.db). But the dominant
+// real pattern — especially in the lib fns that thin macros delegate to — is a
+// `db` PARAMETER used directly: `db.prepare(…).run(…)`, `db.exec(…)`,
+// `db.transaction(…)`. Missing those undercounted genuinely-stateful work as
+// "utility" (e.g. crime.record → recordCrime, which writes rows). Recognising a
+// real DB call on a db-ish receiver is honest measurement, not generosity — the
+// macro provably touches the database.
+const STATE_RE = /\b(?:ctx\.db|ctx\.state|STATE\b|getWorkspaceState|ensureFiles|ensureSessions|getHealthState|globalThis\._concord|saveStateIfAvailable|saveWS|bucketH|aidH|aidC|s\.db|state\.db|(?:_?db|database|conn)\.(?:prepare|exec|run|transaction|pragma))\b/;
 const EXTERNAL_RE = /\b(?:await\s+fetch|ctx\.llm\.chat|withTimeout|process\.env\.\w+_API_KEY|fetch\s*\(\s*['"`]https?:\/\/)/;
 const TRY_RE = /\btry\s*\{/;
 const REALTIME_RE = /\b(?:realtimeEmit|io\.to|REALTIME\?\.io|req\.app\.locals\.io|app\.locals\.io|broadcastTo)\b/;
@@ -371,6 +478,7 @@ let scanned = 0;
 for (const f of macroSourceFiles) {
   const src = fs.readFileSync(f, 'utf8');
   const helperIndex = buildHelperIndex(src);
+  const fileImports = parseNamedImports(src);
   const relPath = path.relative(ROOT, f);
 
   // Find every `register("d","n",` and `registerLensAction("d","n",` site.
@@ -412,6 +520,22 @@ for (const f of macroSourceFiles) {
       if (hb) combined += '\n' + hb;
     }
 
+    // Cross-module DELEGATION: a thin wrapper that, after guard clauses,
+    // `return`s a call to an IMPORTED lib fn (e.g. `return recordCrime(db,…)`).
+    // Resolve that fn's body so the macro is graded by the REAL work it
+    // delegates to (LOC + state/try-catch signals inherited) — the grader's
+    // same-file helper recursion was blind to this, mis-grading tested
+    // delegations as stubs. The last such return wins.
+    let delegateName = null;
+    for (const cm of body.matchAll(/\breturn\s+(?:await\s+)?([a-zA-Z_$][\w$]*)\s*\(/g)) {
+      const name = cm[1];
+      if (fileImports.has(name) && !helperIndex.has(name)) delegateName = name;
+    }
+    if (delegateName) {
+      const dbody = delegateBodyFor(delegateName, fileImports, f);
+      if (dbody) combined += '\n' + dbody;
+    }
+
     const handlerLoc = body.split('\n').length;
     const combinedLoc = combined.split('\n').length;
 
@@ -449,7 +573,13 @@ for (const f of macroSourceFiles) {
       runsOtherMacro: RUNMACRO_RE.test(signalText),
       heartbeatDelegate: HEARTBEAT_DELEGATE_RE.test(signalText),
       artifactWrite: ARTIFACT_GLOBAL_RE.test(signalText),
-      hasTest: testRefs.has(`${domain}.${macro}`)
+      // Behavioral credit (both modes): a literal per-macro invocation, or a
+      // tested lib fn this macro delegates to. Shape-coverage credit (default
+      // only, like the smoke harness): a bulk CASES-loop ref. `isCoveredBySmoke`
+      // already returns false under --honest.
+      hasTest: macroInvocations.has(`${domain}.${macro}`)
+            || (delegateName && testedFns.has(delegateName))
+            || (!HONEST && shapeLoopRefs.has(`${domain}.${macro}`))
             || isCoveredBySmoke(domain, macro),
       frontendUse: frontendRefs.has(`${domain}.${macro}`),
       delegates,
@@ -495,9 +625,13 @@ for (const m of finalMacros) {
   byDomain[m.domain].total++;
 }
 
-// Tier weights: utility counts as fully shipped (correctly small) — same
-// weight as production-grade. Stub and functional are partial credit.
-const weight = { stub: 0.2, functional: 0.6, utility: 1.0, 'production-grade': 1.0 };
+// Tier weights. Default: utility counts as fully shipped (correctly small) —
+// same weight as production-grade; stub/functional are partial credit.
+// `--honest`: utility is correct-but-minimal so it earns partial credit (0.6),
+// and functional/stub are harsher — this is the less-generous floor.
+const weight = HONEST
+  ? { stub: 0.0, functional: 0.4, utility: 0.6, 'production-grade': 1.0 }
+  : { stub: 0.2, functional: 0.6, utility: 1.0, 'production-grade': 1.0 };
 const total = finalMacros.length;
 const weightedScore = total > 0
   ? (totals.stub * weight.stub
@@ -512,6 +646,7 @@ try { head = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } 
 const output = {
   generatedAt: new Date().toISOString(),
   head,
+  mode: HONEST ? 'honest' : 'default',
   totals,
   total,
   weightedScore: Math.round(weightedScore * 1000) / 1000,
@@ -520,7 +655,7 @@ const output = {
   macros: finalMacros,
 };
 
-const outPath = path.join(ROOT, 'audit', 'macro-depth.json');
+const outPath = path.join(ROOT, 'audit', HONEST ? 'macro-depth-honest.json' : 'macro-depth.json');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
 
@@ -530,4 +665,4 @@ console.error(`Stub:             ${totals.stub} (${total ? ((totals.stub / total
 console.error(`Functional:       ${totals.functional} (${total ? ((totals.functional / total) * 100).toFixed(1) : 0}%)`);
 console.error(`Utility:          ${totals.utility} (${total ? ((totals.utility / total) * 100).toFixed(1) : 0}%)`);
 console.error(`Production-grade: ${totals['production-grade']} (${total ? ((totals['production-grade'] / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Weighted depth score: ${output.weightedScore} (1.0 = all production-grade or utility)`);
+console.error(`Weighted depth score: ${output.weightedScore} (mode=${output.mode}; 1.0 = all production-grade or utility)`);

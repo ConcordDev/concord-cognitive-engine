@@ -11,7 +11,15 @@
     "audit:surface": "node scripts/audit/surface-coverage.mjs",
     "audit:anim-transitions": "node scripts/audit/gates/animation-transitions.mjs",
     "audit:untuned": "node scripts/audit/gates/untuned-constants.mjs",
-    "audit:reachability": "node scripts/audit/gates/lens-reachability.mjs"
+    "audit:reachability": "node scripts/audit/gates/lens-reachability.mjs",
+    "count-loc": "node scripts/count-loc.mjs",
+    "check-doc-claims": "node scripts/check-doc-claims.mjs",
+    "grade-macros": "node scripts/grade-macro-depth.mjs",
+    "grade-macros:honest": "node scripts/grade-macro-depth.mjs --honest",
+    "depth:backlog": "node scripts/depth-backlog.mjs",
+    "depth:scaffold": "node scripts/depth-scaffold.mjs",
+    "depth:check": "node scripts/check-depth-tests.mjs",
+    "lens:audit": "node scripts/lens-audit.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

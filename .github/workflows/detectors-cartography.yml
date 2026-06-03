@@ -22,11 +22,12 @@ name: Detectors + Cartography — Perception Layer
 # refresh + open issues for any new findings).
 
 on:
-  # Until the SYSTEMS.json + history.jsonl baselines are seeded,
-  # run only on main pushes + the nightly cron + manual dispatches.
-  # PR runs would always fail with missing-baseline; continue-on-error
-  # on the job suppresses workflow-level failure but the per-job
-  # webhook still fires conclusion=failure on every PR.
+  # The detector suite is now a real PR ratchet gate (see the `detectors` job):
+  # it diffs against the committed BASELINE.json and FAILS only on a NEW
+  # high/critical finding, so existing debt is grandfathered and a PR can't
+  # introduce a new one. The cartograph job stays a non-blocking monitor.
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   schedule:
@@ -40,15 +41,12 @@ permissions:
 
 jobs:
   detectors:
-    name: Detector suite
+    name: Detector suite (PR ratchet gate)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # continue-on-error until the detector budget baseline is seeded.
-    # First-run output appends to audit/detectors/history.jsonl; the
-    # gate compares deltas against the prior tail entry, which won't
-    # exist on the first run. Once the tail is committed (in a
-    # follow-on commit), flip to blocking.
-    continue-on-error: true
+    # No longer continue-on-error: the baseline + budget are seeded, so the
+    # `--diff --ci` step below is a real gate that fails ONLY on a new
+    # high/critical finding vs BASELINE.json (existing debt grandfathered).
 
     env:
       NODE_OPTIONS: --max-old-space-size=4096
@@ -68,14 +66,36 @@ jobs:
         working-directory: server
         run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Run detector suite
+      - name: Run detector suite (artifacts)
         working-directory: server
         run: |
-          # The runner already writes to audit/detectors/REPORT.md +
-          # appends to history.jsonl. We capture the JSON shape too
-          # so the Repair Cortex can parse findings programmatically.
+          # The runner writes audit/detectors/REPORT.md + a JSON shape the
+          # Repair Cortex parses. (run-detectors.js builds its own ephemeral
+          # migrated DB so the db-backed detectors actually run.)
           node scripts/run-detectors.js --out ../audit/detectors/REPORT.md
           node scripts/run-detectors.js --json > ../audit/detectors/REPORT.json
+
+      - name: Detector ratchet gate (blocks on NEW high/critical)
+        working-directory: server
+        run: node scripts/run-detectors.js --diff --ci
+
+      - name: Depth-test honesty gate (blocks shape-only / unfinished behavioral tests)
+        # The depth multiplier's guard: every server/tests/depth/*-behavior.test.js
+        # must carry a REAL assertion (exact value / round-trip / rejection) and no
+        # @depth-todo scaffolds may merge. The grader credits a macro from the
+        # literal lensRun() text alone, so without this a scaffold of shape-only
+        # asserts could fraudulently inflate the honest floor. Cheap static check.
+        run: node scripts/check-depth-tests.mjs --ci
+
+      - name: Doc-claim freshness (non-blocking — surfaces stale counts)
+        # Re-runs every reproduction command embedded in CLAUDE.md and reports
+        # drift. Non-blocking by design: the counts legitimately grow with the
+        # code, so this SURFACES drift (refresh with `npm run check-doc-claims`)
+        # rather than blocking every count-changing PR. For a hard gate on a
+        # specific doc, run `node scripts/check-doc-claims.mjs --ci` locally.
+        continue-on-error: true
+        run: |
+          node scripts/check-doc-claims.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Diff detector findings vs prior run
         run: |

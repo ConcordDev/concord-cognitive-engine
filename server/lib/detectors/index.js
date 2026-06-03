@@ -49,6 +49,8 @@ import { runUxLoadingStateMissingDetector } from "./ux-loading-state-missing-det
 import { runUxFormErrorDisplayDetector } from "./ux-form-error-display-detector.js";
 import { runUxRouteEmptyRenderDetector } from "./ux-route-empty-render-detector.js";
 import { runUxModalNoEscapeDetector } from "./ux-modal-no-escape-detector.js";
+import { runCommandInjectionDetector } from "./command-injection-detector.js";
+import { runAuthzCoverageDetector } from "./authz-coverage-detector.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -443,6 +445,30 @@ registerDetector({
   dataNeeds: ["fs"],
   description: "<Modal>/<Dialog>/<Drawer>/<Sheet>/<Popover>/<Overlay> opened without onClose / onOpenChange / Esc handler — traps the user.",
   run: runUxModalNoEscapeDetector,
+});
+
+// ── Security detector pack (PR-blocking subset) ────────────────────────
+// These two carry the `consumer: "security"` tag so the PR gate can run JUST
+// them (`run-detectors.js --consumer security --diff --ci`) as a fast,
+// blocking check — distinct from the monitor-only full-suite nightly run.
+// Seeded from the real PR #808 execSync miss: the suite HAD ~30 detectors and
+// still let an external scanner (CodeQL) be the one to catch a shell-injection
+// sink. Now the class is caught in-house, on the PR, before merge.
+registerDetector({
+  id: "command-injection",
+  label: "CommandInjectionDetector",
+  consumers: ["code-quality", "repair-cortex", "security"],
+  dataNeeds: ["fs"],
+  description: "Flags child_process exec/execSync (and spawn-family with shell:true) called on a non-literal command — shell-injection sinks. Excludes db.exec SQL by binding to child_process imports only.",
+  run: runCommandInjectionDetector,
+});
+registerDetector({
+  id: "authz-coverage",
+  label: "AuthzCoverageDetector",
+  consumers: ["code-quality", "repair-cortex", "security"],
+  dataNeeds: ["fs"],
+  description: "Flags mutating HTTP routes (app/router POST/PUT/DELETE/PATCH) with no auth middleware, no handler-body auth idiom, and no `// AUTH:` marker. Scans server.js (the monolith check-route-auth.js ignored) + routes/*.",
+  run: runAuthzCoverageDetector,
 });
 
 // Shared across modules so repair-cortex / Concordia / HUD see the same

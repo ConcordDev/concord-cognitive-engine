@@ -1,5 +1,17 @@
 # Concordia Polish Audit (2026-05-29)
 
+> **✅ RESOLUTION STATUS (re-verified against code 2026-06-02).** This is a dated
+> audit; its Tier-0 findings were real on 2026-05-29 and the body below is kept
+> as the record. The headline Tier-0 defects have since been **fixed** — verified
+> in code, not prose:
+> - **Code puzzles unsolvable** → fixed (`programming-puzzle.js#_normalizeInstr` maps `{op,a,b}`→`{dst,src,to}`).
+> - **Station/HUD audio silent** → fixed (`SoundscapeEngine.tsx#resolveSfxId` + `SFX_ALIASES`).
+> - **NPC dialogue LLM-or-nothing** → fixed (`npc-dialogue-fallback.js#composeDeterministicDialogue`).
+> - **PvP combat has no server-authoritative feel** → fixed 2026-06-02 (the socket `combat:attack` path now emits `combat:impact` via `derivePvpSeverity`/`pvpMomentumFromDamage` in `impact-feel.js`).
+>
+> Re-audit any remaining item against code before treating it as live. For
+> current counts use `npm run check-doc-claims`.
+
 Goal: a code-grounded map of where Concordia falls short of AAA polish, so the
 "outpolish the games we borrow from" push has concrete targets. Every item below
 was **verified against actual code** (not CLAUDE.md prose) by five parallel audits:

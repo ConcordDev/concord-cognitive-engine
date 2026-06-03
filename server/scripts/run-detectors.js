@@ -50,12 +50,42 @@ const flags = {
   rewriteBaseline: process.argv.includes("--rewrite-baseline"),
   appendHistory: process.argv.includes("--append-history"),
   ci: process.argv.includes("--ci"),
+  noDb: process.argv.includes("--no-db"),
   id: arg("--id"),
   consumer: arg("--consumer"),
   severity: arg("--severity", "info"),
   kinds: arg("--kinds"),
   out: arg("--out"),
 };
+
+/**
+ * Build a fresh in-memory DB with the full migration set applied so the
+ * db-backed detectors (dtu-lineage, concordia-substrate, …) actually RUN
+ * instead of returning `ok:false, reason:"no_db"` and contributing nothing to
+ * the gate. An empty-but-correct schema means they find 0 referential-integrity
+ * violations (honest) AND it exercises their queries against the real schema —
+ * so a detector whose SQL drifted from a migration fails loudly here rather
+ * than silently no-op'ing in CI. Returns null (detectors fall back to no-db)
+ * if better-sqlite3 or the migrations can't load, so this never blocks a run.
+ */
+async function buildEphemeralDb() {
+  if (flags.noDb) return null;
+  try {
+    const { default: Database } = await import("better-sqlite3");
+    const { runMigrations } = await import("../migrate.js");
+    const db = new Database(":memory:");
+    db.pragma("foreign_keys = ON");
+    // Silence the migrator's per-file logging so it can't corrupt --json stdout.
+    const origLog = console.log, origWarn = console.warn;
+    console.log = () => {}; console.warn = () => {};
+    try { await runMigrations(db); }
+    finally { console.log = origLog; console.warn = origWarn; }
+    return db;
+  } catch (err) {
+    console.error(`[run-detectors] ephemeral DB unavailable (${err?.message || err}); db-detectors will report no_db`);
+    return null;
+  }
+}
 
 function severityIcon(s) {
   return ({
@@ -120,22 +150,28 @@ async function main() {
     return;
   }
 
+  const db = await buildEphemeralDb();
   let report;
-  if (flags.id) {
-    const single = await runDetector(flags.id, { root: REPO_ROOT });
-    report = {
-      generatedAt: new Date().toISOString(),
-      consumer: flags.consumer || "all",
-      detectorCount: 1,
-      totals: { ...single.summary },
-      durationMs: single.durationMs,
-      reports: [single],
-    };
-  } else {
-    report = await runAllDetectors({
-      root: REPO_ROOT,
-      consumer: flags.consumer,
-    });
+  try {
+    if (flags.id) {
+      const single = await runDetector(flags.id, { root: REPO_ROOT, db });
+      report = {
+        generatedAt: new Date().toISOString(),
+        consumer: flags.consumer || "all",
+        detectorCount: 1,
+        totals: { ...single.summary },
+        durationMs: single.durationMs,
+        reports: [single],
+      };
+    } else {
+      report = await runAllDetectors({
+        root: REPO_ROOT,
+        consumer: flags.consumer,
+        db,
+      });
+    }
+  } finally {
+    try { db?.close(); } catch { /* noop */ }
   }
 
   // ── Phase 1 modes: --rewrite-baseline / --diff / --ci / --append-history
