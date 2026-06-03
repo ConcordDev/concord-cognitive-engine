@@ -96,9 +96,10 @@ describe("welding — CRUD lifecycle (write persists + reads back)", () => {
     assert.ok(JSON.stringify(status.result).includes("Ana"), "the cert holder is reflected in status");
   });
 
-  it("ops-summary: aggregates the shop's current state", async () => {
+  it("ops-summary: returns the shop KPI contract, reflecting created jobs", async () => {
     const r = await lensRun("welding", "ops-summary", { params: {} }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(typeof r.result, "object");
+    assert.deepEqual(Object.keys(r.result).sort(), ["activeJobs", "certAtRisk", "collected", "completedJobs", "outstanding", "overdueInvoices", "pipelineValue"].sort());
+    assert.ok(r.result.activeJobs >= 1, "the jobs scheduled earlier in this ctx are counted active");
   });
 });

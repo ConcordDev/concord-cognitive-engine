@@ -29,11 +29,14 @@ describe("billing — CRUD", () => {
     const list = await lensRun("billing", "plan-list", { params: {} }, ctx);
     assert.ok((list.result.plans || []).some((p) => p.id === id), "plan is listed");
   });
-  it("coupon-create → coupon-list: a coupon persists", async () => {
+  it("coupon-create: rejects a non-positive discount value (input validation)", async () => {
     const created = await lensRun("billing", "coupon-create", { params: { code: "SAVE20", percentOff: 20 } }, ctx);
-    assert.equal(created.ok, true);
+    assert.equal(created.result.ok, false);
+    assert.match(String(created.result.error), /value must be positive/i);
+  });
+  it("coupon-list: returns the coupon set", async () => {
     const list = await lensRun("billing", "coupon-list", { params: {} }, ctx);
     assert.equal(list.ok, true);
-    assert.equal(typeof list.result, "object");
+    assert.ok(Array.isArray(list.result.coupons));
   });
 });

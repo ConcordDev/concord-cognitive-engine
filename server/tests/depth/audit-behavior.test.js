@@ -28,9 +28,11 @@ describe("audit — CRUD", () => {
     assert.equal(typeof list.result.total, "number");
     assert.ok(Array.isArray(list.result.evidence));
   });
-  it("controlList: returns the control set", async () => {
+  it("controlList: returns controls + a compliance-rate summary", async () => {
     const r = await lensRun("audit", "controlList", { params: {} }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(typeof r.result, "object");
+    assert.ok(Array.isArray(r.result.controls));
+    assert.equal(typeof r.result.summary.complianceRate, "number");
+    assert.equal(r.result.summary.total, r.result.controls.length);
   });
 });

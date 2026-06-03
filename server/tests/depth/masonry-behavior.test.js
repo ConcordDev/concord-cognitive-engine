@@ -43,11 +43,12 @@ describe("masonry — CRUD lifecycle", () => {
     assert.ok((list.result.takeoffs || []).some((t) => t.id === id), "takeoff is listed");
   });
 
-  it("pricebook-save → pricebook-list: a price item persists", async () => {
+  it("pricebook-save → pricebook-list: a price item reads back by id", async () => {
     const saved = await lensRun("masonry", "pricebook-save", { params: { name: "Brick (std)", unitCost: 0.75 } }, ctx);
     assert.equal(saved.ok, true);
+    assert.equal(saved.result.name, "Brick (std)");
+    const id = saved.result.id;
     const list = await lensRun("masonry", "pricebook-list", { params: {} }, ctx);
-    assert.equal(list.ok, true);
-    assert.equal(typeof list.result, "object");
+    assert.ok((list.result.items || []).some((i) => i.id === id), "price item is listed");
   });
 });

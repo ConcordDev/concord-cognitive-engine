@@ -31,11 +31,12 @@ describe("manufacturing — calc actions (exact values)", () => {
 
 describe("manufacturing — CRUD", () => {
   let ctx; before(async () => { ctx = await depthCtx("mfg-crud"); });
-  it("andon-raise → andon-board: a raised andon shows on the board", async () => {
+  it("andon-raise → andon-board: a raised andon shows open on the board", async () => {
     const raised = await lensRun("manufacturing", "andon-raise", { params: { station: "Line 1", reason: "jam" } }, ctx);
     assert.equal(raised.ok, true);
+    assert.equal(raised.result.alert.status, "open");
+    const id = raised.result.alert.id;
     const board = await lensRun("manufacturing", "andon-board", { params: {} }, ctx);
-    assert.equal(board.ok, true);
-    assert.equal(typeof board.result, "object");
+    assert.ok((board.result.alerts || []).some((a) => a.id === id), "the raised alert is on the board");
   });
 });

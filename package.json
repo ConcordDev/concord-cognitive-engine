@@ -15,7 +15,10 @@
     "count-loc": "node scripts/count-loc.mjs",
     "check-doc-claims": "node scripts/check-doc-claims.mjs",
     "grade-macros": "node scripts/grade-macro-depth.mjs",
-    "grade-macros:honest": "node scripts/grade-macro-depth.mjs --honest"
+    "grade-macros:honest": "node scripts/grade-macro-depth.mjs --honest",
+    "depth:backlog": "node scripts/depth-backlog.mjs",
+    "depth:scaffold": "node scripts/depth-scaffold.mjs",
+    "depth:check": "node scripts/check-depth-tests.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

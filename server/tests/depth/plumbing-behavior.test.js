@@ -62,15 +62,16 @@ describe("plumbing — CRUD lifecycle (write persists + reads back)", () => {
     assert.ok(!(list.result.techs || []).some((t) => t.name === "Carol"), "other user's roster is isolated");
   });
 
-  it("dispatchBoard: returns the dispatch view object", async () => {
+  it("dispatchBoard: returns lanes + an unassigned queue", async () => {
     const r = await lensRun("plumbing", "dispatchBoard", { params: {} }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(typeof r.result, "object");
+    assert.ok(Array.isArray(r.result.lanes) && Array.isArray(r.result.unassigned));
+    assert.equal(typeof r.result.totalAssignments, "number");
   });
 
-  it("opsSummary: aggregates current shop state", async () => {
+  it("opsSummary: returns the full shop KPI contract", async () => {
     const r = await lensRun("plumbing", "opsSummary", { params: {} }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(typeof r.result, "object");
+    assert.deepEqual(Object.keys(r.result).sort(), ["activePlans", "collected", "jobsToday", "lowStockParts", "openJobs", "outstandingAR", "recurringRevenue", "unassigned"].sort());
   });
 });

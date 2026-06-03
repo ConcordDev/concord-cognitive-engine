@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-06-03T10:43:24.728Z",
-  "head": "318d31a2335c91866dbf23b08e821895e4e24c8f",
+  "generatedAt": "2026-06-03T15:56:42.217Z",
+  "head": "2bf5bfd0ff409746a66d61b07e1544633e1be670",
   "mode": "honest",
   "totals": {
     "stub": 681,
-    "functional": 4305,
+    "functional": 4306,
     "utility": 2134,
-    "production-grade": 1578
+    "production-grade": 1577
   },
   "total": 8698,
   "weightedScore": 0.527,
@@ -376,9 +376,9 @@
     },
     "carpentry": {
       "stub": 0,
-      "functional": 19,
+      "functional": 20,
       "utility": 4,
-      "production-grade": 7,
+      "production-grade": 6,
       "total": 30
     },
     "chat": {
@@ -24490,7 +24490,7 @@
       "domain": "carpentry",
       "macro": "photoLogList",
       "file": "server/domains/carpentry.js",
-      "tier": "production-grade",
+      "tier": "functional",
       "handlerLoc": 17,
       "combinedLoc": 92,
       "stateTouch": true,
@@ -24500,7 +24500,7 @@
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
       "artifactWrite": false,
-      "hasTest": true,
+      "hasTest": false,
       "frontendUse": false,
       "delegates": false
     },

@@ -79,6 +79,14 @@ jobs:
         working-directory: server
         run: node scripts/run-detectors.js --diff --ci
 
+      - name: Depth-test honesty gate (blocks shape-only / unfinished behavioral tests)
+        # The depth multiplier's guard: every server/tests/depth/*-behavior.test.js
+        # must carry a REAL assertion (exact value / round-trip / rejection) and no
+        # @depth-todo scaffolds may merge. The grader credits a macro from the
+        # literal lensRun() text alone, so without this a scaffold of shape-only
+        # asserts could fraudulently inflate the honest floor. Cheap static check.
+        run: node scripts/check-depth-tests.mjs --ci
+
       - name: Doc-claim freshness (non-blocking — surfaces stale counts)
         # Re-runs every reproduction command embedded in CLAUDE.md and reports
         # drift. Non-blocking by design: the counts legitimately grow with the

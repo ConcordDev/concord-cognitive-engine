@@ -65,19 +65,18 @@ describe("carpentry — CRUD lifecycle (write persists + reads back)", () => {
     assert.equal(list.result.count, (list.result.members || []).length);
   });
 
-  it("scheduleAdd → scheduleList: a schedule entry persists", async () => {
+  it("scheduleAdd → scheduleList: a schedule entry reads back by id", async () => {
     const added = await lensRun("carpentry", "scheduleAdd", { params: { title: "Deck build", date: "2026-07-10" } }, ctx);
     assert.equal(added.ok, true);
+    assert.equal(added.result.entry.title, "Deck build");
+    const id = added.result.entry.id;
     const list = await lensRun("carpentry", "scheduleList", { params: {} }, ctx);
-    assert.equal(list.ok, true);
-    assert.equal(typeof list.result, "object");
+    assert.ok((list.result.entries || []).some((e) => e.id === id), "schedule entry is listed");
   });
 
-  it("photoLogAdd → photoLogList: a photo log entry persists", async () => {
+  it("photoLogAdd: rejects a photo with no jobId (required-field validation)", async () => {
     const added = await lensRun("carpentry", "photoLogAdd", { params: { caption: "framing done", url: "x.jpg" } }, ctx);
-    assert.equal(added.ok, true);
-    const list = await lensRun("carpentry", "photoLogList", { params: {} }, ctx);
-    assert.equal(list.ok, true);
-    assert.equal(typeof list.result, "object");
+    assert.equal(added.result.ok, false);
+    assert.match(String(added.result.error), /jobId required/i);
   });
 });

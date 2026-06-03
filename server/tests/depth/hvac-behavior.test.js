@@ -50,9 +50,10 @@ describe("hvac — CRUD lifecycle", () => {
     assert.ok(!(list.result.technicians || []).some((t) => t.name === "Max"), "rosters isolated per user");
   });
 
-  it("dispatch-board: returns the dispatch view", async () => {
+  it("dispatch-board: returns lanes + a stats block", async () => {
     const r = await lensRun("hvac", "dispatch-board", { params: {} }, ctx);
     assert.equal(r.ok, true);
-    assert.equal(typeof r.result, "object");
+    assert.ok(Array.isArray(r.result.lanes) && Array.isArray(r.result.unassigned));
+    assert.equal(typeof r.result.stats.technicians, "number");
   });
 });

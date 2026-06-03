@@ -28,11 +28,15 @@ describe("observe — CRUD", () => {
     assert.equal(list.ok, true);
     assert.ok(list.result.metrics.some((m) => (m.metric || m.name || m) === "cpu"), "ingested metric appears");
   });
-  it("monitorSave → monitorList: a saved monitor persists", async () => {
+  it("monitorSave: rejects a monitor with no metric (required-field validation)", async () => {
     const saved = await lensRun("observe", "monitorSave", { params: { name: "high-cpu", query: "cpu>90" } }, ctx);
-    assert.equal(saved.ok, true);
+    assert.equal(saved.result.ok, false);
+    assert.match(String(saved.result.error), /metric required/i);
+  });
+  it("monitorList: returns the monitor set with a total count", async () => {
     const list = await lensRun("observe", "monitorList", { params: {} }, ctx);
     assert.equal(list.ok, true);
-    assert.equal(typeof list.result, "object");
+    assert.ok(Array.isArray(list.result.monitors));
+    assert.equal(list.result.total, list.result.monitors.length);
   });
 });
