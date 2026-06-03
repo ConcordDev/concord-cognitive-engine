@@ -1027,7 +1027,7 @@ export default function FitnessLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3')}>Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('calculate-progression')} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
+          <button onClick={() => handleAction('progressionCalc')} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
             <TrendingUp className="w-3.5 h-3.5" /> Calculate Progression
           </button>
           <button onClick={() => handleAction('generate-program')} className={cn(ds.btnSmall, 'bg-red-500/20 text-red-500 border border-red-500/30')}>
@@ -2194,7 +2194,7 @@ export default function FitnessLensPage() {
                     </button>
                   )}
                   {editingItem && (
-                    <button onClick={() => handleAction('calculate-progression', editingItem.id)} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
+                    <button onClick={() => handleAction('progressionCalc', editingItem.id)} className={cn(ds.btnSmall, 'bg-red-400/20 text-red-400 border border-red-400/30')}>
                       <TrendingUp className="w-3.5 h-3.5" /> Calc Progression
                     </button>
                   )}
