@@ -324,3 +324,21 @@ one a button that silently fails (best case the AI catch-all answers; worst case
   (`lens:audit` depth · `lens:orphans` · `lens:unsurfaced` · `lens:broken-calls`) now
   cover the four mechanical facade/gap classes; Layer 2 is reserved for the
   dropped-result residue only it can see.
+
+## Worked case study — batch 8: re-verify your culls (`environment/AirQualityPanel`), 2026-06-03
+A discipline note, not a new lens. When the orphan sweep (batch 5) flagged the 9
+candidates, I culled `environment/AirQualityPanel` as a presumed duplicate (the
+environment lens already has air-quality surfaces). That was wrong: a second look showed
+its macro, `environment.live_air_quality` (EPA AirNow real-time AQI, registered at
+`server/domains/key-required-live.js:93`), is **surfaced by no mounted component** — the
+existing `AirQualityActionStack` uses a different macro. So AirQualityPanel was a genuine
+zero-overlap reference-panel win, identical in kind to `ParksPanel`/`FredSeriesPanel`, and
+it's now mounted (3 such panels surfaced this session). The other re-checked culls held:
+`daily/DailyJournal` shares `entry-create`/`entry-delete` with the mounted `JournalStudio`
+(composer overlap → redundant surface), and `podcast/ItunesPodcastPanel`
+(`live_itunes_search`) is a functional twin of the mounted `ItunesSearch`
+(`itunes-search`) — both correctly skipped.
+- **Lesson:** the duplicate-check that culls orphan candidates is itself fallible — a
+  "presumed duplicate" must be confirmed by checking the *mounted sibling actually calls
+  the same macro / surfaces the same feature*, not just that the lens "has something about
+  air quality." Re-verify culls the same way you verify fixes.
