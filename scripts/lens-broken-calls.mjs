@@ -120,5 +120,21 @@ if (JSON_OUT) {
   console.log('\n⚠ Verify each before fixing: grep the action tree-wide + read the call site for a');
   console.log('  fallback (a few may be REST-route shims). Fix = register a real macro or repoint.');
   console.log('  See docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).');
-  if (broken.length > 0) process.exitCode = 0; // report-only; flip to 1 to gate CI
 }
+
+// Ratchet gate: `--ci [ceiling]` fails the build if the GENUINE broken-wire count
+// exceeds the ceiling (default GENUINE_CEILING) — so a new broken button can't merge,
+// while the existing backlog is grandfathered. Drive the ceiling DOWN as wires get
+// fixed (it can only tighten). The AI-catch-all convention is excluded by design.
+const GENUINE_CEILING = 53; // measured floor at introduction (2026-06-03, post batch-16)
+if (process.argv.includes('--ci')) {
+  const i = process.argv.indexOf('--ci');
+  const ceiling = Number(process.argv[i + 1]) >= 0 ? Number(process.argv[i + 1]) : GENUINE_CEILING;
+  if (genuine.length > ceiling) {
+    console.error(`\n::error::Broken-wire gate: ${genuine.length} genuine broken frontend→macro wires > ceiling ${ceiling}. A new lens button calls an unregistered macro — register it, repoint it, or (if intentional AI-catch-all) name it *analyze/*generate. New genuine wires above:`);
+    for (const b of genuine) console.error(`  ${b.macro}  (${b.firstSeen})`);
+    process.exit(1);
+  }
+  console.log(`\n✓ Broken-wire gate: ${genuine.length} genuine ≤ ceiling ${ceiling}.`);
+}
+

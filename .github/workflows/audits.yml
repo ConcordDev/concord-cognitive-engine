@@ -132,6 +132,20 @@ jobs:
           # own helpers via tsx so the gate tracks the real nav surface.
           node scripts/audit/gates/lens-reachability.mjs --ci
 
+      - name: Lens broken-wire gate (no NEW button → unregistered macro)
+        run: |
+          # The highest-severity lens facade: a frontend button that POSTs
+          # /api/lens/run for a (domain, action) that has no registered macro, so it
+          # 404s / falls to the AI catch-all (e.g. research.generate before it was
+          # built). Cross-references every literal frontend (domain, action) call
+          # against the registered macro set. Ratchet ceiling 53 (the GENUINE count
+          # at landing, post the 38-button repoint sweep); the intentional
+          # `*.analyze`/`*generate*` AI-catch-all convention is excluded. Drive the
+          # ceiling DOWN as the genuine backlog gets real macros. See
+          # docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).
+          node scripts/lens-broken-calls.mjs
+          node scripts/lens-broken-calls.mjs --ci 53
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column

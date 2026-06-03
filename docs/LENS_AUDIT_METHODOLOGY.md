@@ -453,3 +453,17 @@ Consolidation after the broken-wire sweep — two findings worth pinning:
   (`retail.{process_refund,send_tracking,initiate_return}` need rate/amount/address), or a
   model. That is real feature backlog, not an audit fix — and `lens:broken-calls` now tracks
   it (genuine count = the number to drive to zero as those features get built).
+
+## Making it self-enforcing — the CI ratchet (batch 17)
+A one-time audit decays; a gate doesn't. The broken-wire detector is now wired into
+`.github/workflows/audits.yml` as a ratchet (`node scripts/lens-broken-calls.mjs --ci 53`):
+the build fails if the **genuine** broken-wire count exceeds 53 (the floor measured after
+the 38-button repoint sweep). So a new lens button that calls an unregistered macro can't
+merge — it must register the macro, repoint it, or (if it's an intentional AI-analyze
+button) be named `*analyze`/`*generate` so the `.analyze`/`*generate*` exclusion covers it.
+The ceiling only tightens: each time a genuine wire gets a real macro, drop the `--ci`
+number to lock the gain in. The other three detectors (`lens:orphans`, `lens:unsurfaced`,
+`lens:audit`) stay report-only — orphans/unsurfaced macros are often legitimately
+intentional, so they inform triage rather than gate. This mirrors the repo's existing
+ratchet gates (verify-lens-backends WIRED ≥ 234, move-render, event-consumers): the
+audit's findings become a floor the codebase can't regress below.
