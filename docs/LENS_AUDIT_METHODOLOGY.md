@@ -145,3 +145,45 @@ the code over the *audit report*, not just over CLAUDE.md).
   whenever a lens's macros live in `server.js` and delegate to a lib (forecast,
   and likely the other domain-file-less facade-risk entries: `lattice`). Confirm the
   backend's *real* location before treating a facade-risk flag as a defect.
+
+## Worked case study — batch 3: `legal` (latent value surfaced) + `government` (over-claims cleared), 2026-06-03
+Both lenses had `behaviorallyTested=0` (the wiring-facade risk profile). Again both
+Layer-2 reports over-claimed — re-checking every claim against code is non-optional.
+
+- **`legal` (vs Clio / DocuSign) — latent value SURFACED (the showcase half).** The
+  backend is genuine Clio-parity (matters, IOLTA 3-way trust reconciliation,
+  time/timer→invoice, FRCP-aware deadline calc, e-sign envelopes, doc templates —
+  `server/domains/legal.js`). But two fully-built, fully-backend-wired panels were
+  **orphaned** — never imported, never mounted:
+  - `components/legal/IntakeFormsPanel.tsx` (client intake → `intake-forms-list`,
+    `intake-submit`, `intake-convert` which spins a submission into a real
+    contact+matter) and `components/legal/ReportsPanel.tsx` (firm realization +
+    per-matter budget → `realization-rollup`, `budget-report`, `budget-set`). All
+    target macros exist and are real.
+  - **Fixed:** mounted both as new tabs in `app/lenses/legal/page.tsx` (`ModeTab`
+    union + `MODE_TABS` + render branches + imports). Two working Clio-parity
+    features (client intake, realization/budget reporting) went from unreachable to
+    live with no backend change. This is "surface the parity-candidate," not a bug fix.
+  - **Over-claims cleared:** the report said both panels were "imported at line 12/15"
+    — false, they were not imported at all (that's *why* they were dead). It also
+    flagged a missing Payment-Portal UI as P1 — real backlog, but the
+    `payment-record`/`payment-portal-summary` macros have no component at all, so
+    that's a build, not a surgical mount; left as backlog.
+- **`government` (vs Gov.uk / GovTrack / USAspending) — NOT the facade the report
+  claimed.** The report's TIER-0 "fabricated data shipped as real" finding was
+  **wrong**: the `seedData` arrays in `page.tsx` are injected by `useLensData` only
+  when `process.env.NODE_ENV === 'development'` (`lib/hooks/use-lens-data.ts:88`, with
+  an explicit comment: *"in production, empty means genuinely empty… seeding would
+  mask real auth/connection failures"*). That's a dev affordance, not a prod facade.
+  The report also claimed `ElectionsPanel` "exists but is never mounted" — false, it's
+  imported (`page.tsx:18`) and rendered (`page.tsx:3648`). The genuinely-real features
+  (representatives via Congress.gov, bills, USAspending budget, NWS civic alerts) are
+  live API-wired. The legitimate-but-non-surgical observation: the main-dashboard
+  tabs persist via the *generic* artifact store rather than the specialized
+  `permits-*` / `service-requests-*` workflow macros — a deeper rewire, logged as
+  backlog, not forced.
+- **Meta-lesson (compounding from batch 2):** the Layer-2 *report* is itself an
+  untrusted source — treat its `file:line` claims exactly like CLAUDE.md's: verify
+  before acting. Across batches 2-3, ~7 of the reports' "defects" were already-correct
+  code; the real wins were 1 watchlist wiring fix + 2 orphaned-panel mounts, all
+  confirmed by reading the lines.

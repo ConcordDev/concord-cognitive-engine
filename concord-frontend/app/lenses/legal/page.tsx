@@ -17,6 +17,8 @@ import { PipingProvider } from '@/components/panel-polish';
 import CaseTracker from '@/components/legal/CaseTracker';
 import LegalQA from '@/components/legal/LegalQA';
 import { LegalCaseSearch } from '@/components/legal/LegalCaseSearch';
+import { IntakeFormsPanel } from '@/components/legal/IntakeFormsPanel';
+import { ReportsPanel } from '@/components/legal/ReportsPanel';
 import LensAgentFab from '@/components/lens/LensAgentFab';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
 import { useState, useMemo, useCallback, useRef } from 'react';
@@ -73,6 +75,8 @@ import {
   CircleDot,
   Layers,
   ChevronDown,
+  ClipboardList,
+  PieChart,
 } from 'lucide-react';
 import { ErrorState } from '@/components/common/EmptyState';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -99,7 +103,9 @@ type ModeTab =
   | 'Analyzer'
   | 'CaseTracker'
   | 'LegalQA'
-  | 'CaseSearch';
+  | 'CaseSearch'
+  | 'Intake'
+  | 'Reports';
 type ArtifactType =
   | 'Case'
   | 'Document'
@@ -317,6 +323,8 @@ const MODE_TABS: {
   { id: 'CaseTracker', icon: Briefcase, defaultType: 'Case', label: 'Case Tracker' },
   { id: 'LegalQA', icon: BarChart3, defaultType: 'Document', label: 'Legal Q&A' },
   { id: 'CaseSearch', icon: Scale, defaultType: 'Case', label: 'Case Law Search' },
+  { id: 'Intake', icon: ClipboardList, defaultType: 'Contact', label: 'Client Intake' },
+  { id: 'Reports', icon: PieChart, defaultType: 'Case', label: 'Reports' },
 ];
 
 const STATUSES_BY_TYPE: Record<ArtifactType, string[]> = {
@@ -3003,6 +3011,8 @@ export default function LegalLensPage() {
     if (activeTab === 'CaseTracker') return <div className="p-4"><CaseTracker /></div>;
     if (activeTab === 'LegalQA') return <div className="p-4"><LegalQA /></div>;
     if (activeTab === 'CaseSearch') return <div className="p-4"><LegalCaseSearch /></div>;
+    if (activeTab === 'Intake') return <div className="p-4"><IntakeFormsPanel /></div>;
+    if (activeTab === 'Reports') return <div className="p-4"><ReportsPanel /></div>;
 
     return (
       <section className={ds.panel}>
