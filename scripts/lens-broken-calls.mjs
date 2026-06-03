@@ -87,22 +87,36 @@ for (const f of walk(FE, /\.(tsx?|jsx?)$/)) {
   }
 }
 
+// `<domain>.analyze` and bare `*generate*` actions with no registered handler are a
+// DELIBERATE convention: the lens.run dispatch routes unregistered actions to the
+// utility brain (the "AI analyze / generate this artifact" button). 27 lenses share
+// the `.analyze` button. Tag these as likely-intentional so the count reflects
+// genuine broken wires, not the convention.
+const isAiCatchall = (act) => act === 'analyze' || /(^|[-_])generate([-_]|$)/i.test(act) || act === 'generate';
+
 const broken = [];
 for (const [k, files] of calls) {
   const dom = k.split('.')[0];
   if (!domains.has(dom)) continue;           // not a macro domain — skip (REST-only)
-  if (!reg.has(k)) broken.push({ macro: k, callers: files.size, firstSeen: [...files][0] });
+  if (!reg.has(k)) broken.push({ macro: k, callers: files.size, firstSeen: [...files][0], aiCatchall: isAiCatchall(k.split('.').slice(1).join('.')) });
 }
 broken.sort((a, b) => a.macro.localeCompare(b.macro));
+const genuine = broken.filter(b => !b.aiCatchall);
+const catchall = broken.filter(b => b.aiCatchall);
 
 if (JSON_OUT) {
-  process.stdout.write(JSON.stringify({ generatedAt: new Date().toISOString(), registered: reg.size, domains: domains.size, broken }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ generatedAt: new Date().toISOString(), registered: reg.size, domains: domains.size, genuineCount: genuine.length, aiCatchallCount: catchall.length, broken }, null, 2) + '\n');
 } else {
   console.log(`Broken frontend→macro wires — ${broken.length} call(s) to UNREGISTERED macros`);
+  console.log(`  ${genuine.length} genuine (likely real bug) · ${catchall.length} likely-intentional AI-catch-all (.analyze / *generate*)`);
   console.log(`(${reg.size} registered macros across ${domains.size} domains)\n`);
   console.log(`${'macro (domain.action)'.padEnd(40)} caller`);
   console.log('─'.repeat(78));
-  for (const b of broken) console.log(`${b.macro.padEnd(40)} ${b.firstSeen}`);
+  for (const b of genuine) console.log(`${b.macro.padEnd(40)} ${b.firstSeen}`);
+  if (catchall.length) {
+    console.log(`\n  …plus ${catchall.length} likely-intentional AI-catch-all (not listed; the lens.run dispatch routes`);
+    console.log(`  these unregistered .analyze/*generate* actions to the utility brain by design).`);
+  }
   console.log('\n⚠ Verify each before fixing: grep the action tree-wide + read the call site for a');
   console.log('  fallback (a few may be REST-route shims). Fix = register a real macro or repoint.');
   console.log('  See docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).');

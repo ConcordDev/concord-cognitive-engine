@@ -408,3 +408,27 @@ widespread facade.
   102 broken wires now have NO registered macro under any name normalisation — they're the
   intentional `*.analyze`/`*.generate` AI-catch-all convention or genuinely-unbuilt features
   (need a model/new macro), i.e. real backlog, not a quick repoint.
+
+## Worked case study — batch 14: triage the residue (crypto/fitness clean, `.analyze` is intentional), 2026-06-03
+Consolidation after the broken-wire sweep — two findings worth pinning:
+- **The dropped-result/field-mismatch class is RARE.** Of six lenses contract-verified
+  with the precise prompt (research, message, food, retail, crypto, fitness), only
+  `research` had field mismatches (4, fixed). `crypto` came back clean across 12 panels
+  (dashboard-summary's 7-field destructure vs the backend's 11-key return, holdings,
+  staking, allocation-breakdown, import-csv — all match), `message` clean across 18,
+  `fitness`/`food`/`retail` clean on fields. So field mismatches are an occasional bug,
+  not a systemic one — don't over-invest in hunting them; the snake/camel **wire** break
+  was the systemic one.
+- **`<domain>.analyze` is a deliberate convention, not 27 bugs.** 27 lenses dispatch
+  `handleAction('analyze', item.id)` with no `analyze` macro registered; the `lens.run`
+  dispatch routes unregistered actions to the utility brain by design (the "AI-analyze
+  this artifact" button). Same for bare `*generate*`. Taught `lens:broken-calls` to split
+  its count: **63 genuine (likely real bug) vs 38 likely-intentional AI-catch-all** — so the
+  number gates on real wiring breaks, not the convention.
+- **Where the 28 fixes + the residue leave it:** the clean-repoint seam (a real macro
+  exists under a snake/camel/reordered/obviously-semantic name) is fully mined — 28 buttons
+  fixed. The ~63 "genuine" remaining have NO macro under any normalisation: they need a new
+  macro, structured params the artifact-only button can't supply (e.g.
+  `fitness.generate-program` wants `goal`/`daysPerWeek`/LLM), or a model (`art/code.generate`)
+  — real backlog, tracked, not faked. Run `lens:broken-calls` on every lens-touching PR;
+  the genuine count is the number to keep at zero.
