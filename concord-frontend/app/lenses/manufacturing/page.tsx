@@ -2434,13 +2434,13 @@ export default function ManufacturingLensPage() {
       {/* Domain Actions */}
       {mode !== 'dashboard' && (
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => handleAction('scheduleOptimizer')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('scheduleOptimize')} className={ds.btnSecondary}>
             <TrendingUp className="w-4 h-4" /> Schedule Optimizer
           </button>
           <button onClick={() => handleAction('bomCost')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> BOM Cost Calc
           </button>
-          <button onClick={() => handleAction('oeeCalculator')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('oeeCalculate')} className={ds.btnSecondary}>
             <Gauge className="w-4 h-4" /> OEE Calculator
           </button>
           <button onClick={() => handleAction('safetyRate')} className={ds.btnSecondary}>

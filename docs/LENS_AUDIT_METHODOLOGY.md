@@ -440,6 +440,16 @@ Consolidation after the broken-wire sweep — two findings worth pinning:
   `nonprofit.donor-retention-report`→`donorRetention`, `realestate.{cap_rate_calc→capRate,
   cash_flow_analysis→cashFlow}`. Each target confirmed artifact-based (works with the
   `{id}` dispatch) and free of display-branch comparisons. 101 → 94 broken (genuine
-  63 → 56). **35 buttons fixed total** across the snake/camel/reorder/suffix/semantic
-  classes. The remaining 56 genuine are now genuinely different (government `permit_fee_estimate`
-  ≠ `permits-pay-fee`), need params/models, or are unbuilt — the clean-repoint seam is mined out.
+  63 → 56).
+- **Batch 16 (synonym repoints — the last clean ones):** 3 more where the name differs by
+  a synonym the token matcher can't see: `manufacturing.{oeeCalculator→oeeCalculate,
+  scheduleOptimizer→scheduleOptimize}` (-er/-or vs -e) and `accounting.pnl-report→profitLoss`
+  (pnl ≡ profit-loss). All artifact-based, verified. 94 → 91 broken (genuine 56 → 53).
+- **The clean-repoint seam is now fully mined: 38 buttons fixed** across the
+  snake/camel/reorder/suffix/synonym classes (batches 11-16). The remaining **53 genuine**
+  broken wires have NO macro under any name — they need a new backend macro (`code.execute`,
+  `neuro.train`, `temporal.simulate`, the ~17 `government.*` actions, `manufacturing.defectAnalysis`,
+  `nonprofit.impactReport`), structured params an artifact-only button can't supply
+  (`retail.{process_refund,send_tracking,initiate_return}` need rate/amount/address), or a
+  model. That is real feature backlog, not an audit fix — and `lens:broken-calls` now tracks
+  it (genuine count = the number to drive to zero as those features get built).

@@ -897,7 +897,7 @@ export default function AccountingLensPage() {
             <button className={ds.btnPrimary} onClick={handleProfitLoss} disabled={profitLossLoading}>
               {profitLossLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />} Generate P&amp;L
             </button>
-            <button className={ds.btnSecondary} onClick={() => { if (filtered[0]) handleAction('pnl-report', filtered[0].id); }}>
+            <button className={ds.btnSecondary} onClick={() => { if (filtered[0]) handleAction('profitLoss', filtered[0].id); }}>
               <Download className="w-4 h-4" /> Export
             </button>
           </div>
