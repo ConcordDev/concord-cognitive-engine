@@ -28,7 +28,7 @@ import {
 import { useRunArtifact } from '@/lib/hooks/use-lens-artifacts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useLensData } from '@/lib/hooks/use-lens-data';
-import { api, apiHelpers } from '@/lib/api/client';
+import { api, apiHelpers, lensRun } from '@/lib/api/client';
 import { ErrorState } from '@/components/common/EmptyState';
 import { cn } from '@/lib/utils';
 import { useRealtimeLens } from '@/hooks/useRealtimeLens';
@@ -155,7 +155,11 @@ export default function CryptoLensPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.post('/api/lens/run', {
+        // lensRun unwraps the { ok, result } envelope — raw api.post leaves
+        // watchlist-list double-wrapped (result.result.watchlist), so a direct
+        // res.data.result.watchlist read is always undefined and the server list
+        // never loads (cross-device sync silently no-ops).
+        const res = await lensRun({
           domain: 'crypto', action: 'watchlist-list', input: {},
         });
         if (cancelled) return;

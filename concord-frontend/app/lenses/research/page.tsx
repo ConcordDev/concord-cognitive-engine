@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api/client';
+import { api, lensRun } from '@/lib/api/client';
 import {
   Search,
   Filter,
@@ -188,7 +188,9 @@ export default function ResearchLensPage() {
     setGenerateError(null);
     setGenerateResult(null);
     try {
-      const res = await api.post('/api/lens/run', {
+      // lensRun unwraps the { ok, result } envelope so data.result is the macro's
+      // payload directly (raw api.post leaves it double-wrapped → blank/JSON render).
+      const res = await lensRun({
         domain: 'research',
         action: 'generate',
         input: { hypothesis: hypothesis.trim(), type: 'analysis' },
