@@ -27,7 +27,13 @@ The earlier "0 broken / 0 SCAFFOLD" claim in this file relied on a verifier that
 | utility | 4,572 | 54.2% | correctly-small handlers (≤40 LOC) that are exercised, no external I/O. Catalog enums, pure formatters, tested delegations. Weight 1.0. |
 | production-grade | 3,870 | 45.8% | qualifies via at least one of four paths: (A) ≥40 LOC + state + exercised + robustness; (B) externalIO + tryCatch + exercised; (C) ≥40 LOC pure-compute + tryCatch + exercised; (D) tested delegation. |
 
-Weighted depth score: **1.000** (1.0 = all production-grade or utility; stub=0.2, functional=0.6, utility=1.0, production=1.0). Path from 0.554 baseline:
+**Read both numbers (re-run 2026-06-02 on the current 8,698-macro tree — the grader was crashing on the grown frontend until the `RangeError: Invalid string length` join was fixed, so the old "1.000" had gone stale-and-unreproducible):**
+- **Default (generous): 1.000.** Smoke-shape coverage is credited as `hasTest` and the `utility` tier (correct-but-minimal handlers) is weighted 1.0. Current default distribution: stub 1 / functional 3 / utility 4,837 / production-grade 3,857.
+- **Honest floor: `--honest` → 0.539.** This is the deliberately less-generous cut: smoke-shape coverage does NOT count as a real test (it checks the return *shape*, not behavior), and `utility` is weighted 0.6. Distribution: **stub 837 (9.6%) · functional 3,893 (44.8%) · utility 2,097 (24.1%) · production-grade 1,871 (21.5%)**. Reproduce: `node scripts/grade-macro-depth.mjs --honest` (writes `audit/macro-depth-honest.json`).
+
+The gap between the two IS the honest story: the auto-derived smoke harness runs every macro and asserts its envelope shape (catches crashes/shape regressions — not nothing), but only ~21.5% of macros stand on a real *behavioral* test or frontend use, ~45% run-and-shape-check but aren't behaviorally verified, and ~10% are trivial + unreferenced. Cite the band **0.54–1.0**, not the ceiling alone. The "all production-grade or utility" framing below describes the generous rubric.
+
+Weighted depth score (generous rubric): **1.000** (stub=0.2, functional=0.6, utility=1.0, production=1.0). Path from 0.554 baseline:
 
 | Stage | Weighted | Delta |
 |---|---:|---:|

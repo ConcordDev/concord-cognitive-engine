@@ -35,6 +35,14 @@ const ROOT = path.resolve(new URL(import.meta.url).pathname, '..', '..');
 const SERVER = path.join(ROOT, 'server');
 const FRONTEND = path.join(ROOT, 'concord-frontend');
 
+// `--honest`: a deliberately less-generous grade. (1) smoke-shape coverage is
+// NOT counted as a real test (it checks the return SHAPE, not behavior), so a
+// macro must have a real (domain.macro) test ref or frontend use to count as
+// exercised; (2) the `utility` tier (correct-but-minimal handlers) is weighted
+// 0.6 instead of 1.0. This is the floor the headline 1.000 should be read
+// against — the honest band, not the optimistic ceiling.
+const HONEST = process.argv.includes('--honest');
+
 function walk(dir, exts, acc = []) {
   if (!fs.existsSync(dir)) return acc;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -215,8 +223,6 @@ const SERVER_TESTS = [
 ];
 console.error(`  ${SERVER_TESTS.length} test files`);
 
-const allTestSrc = SERVER_TESTS.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-
 // Pull all "domain.macro" string occurrences from tests, accounting for the
 // most common shapes used in this codebase.
 function collectReferences(srcBlob) {
@@ -235,7 +241,21 @@ function collectReferences(srcBlob) {
   return refs;
 }
 
-const testRefs = collectReferences(allTestSrc);
+// Union (domain.macro) references across many files WITHOUT building one giant
+// string. Joining thousands of frontend files into a single blob exceeded V8's
+// max string length (RangeError: Invalid string length) and crashed the grader
+// once the tree grew past ~4k frontend files — which is why the headline 1.000
+// went stale-and-unreproducible. Per-file keeps memory flat.
+function collectReferencesFromFiles(files) {
+  const refs = new Set();
+  for (const f of files) {
+    let src;
+    try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    for (const r of collectReferences(src)) refs.add(r);
+  }
+  return refs;
+}
+const testRefs = collectReferencesFromFiles(SERVER_TESTS);
 console.error(`  ${testRefs.size} (domain.macro) refs in tests`);
 
 // ---- 3b. Behavior smoke coverage (A1) ----
@@ -261,6 +281,7 @@ const BEHAVIOR_LLM_HINT_RE = /^(respond|chat|reply|deliberate|narrate|synthesize
 const BEHAVIOR_SKIP_DOMAINS = new Set(['oracle', 'concordance']);
 
 function isCoveredBySmoke(domain, name) {
+  if (HONEST) return false; // honest mode: shape-only smoke coverage is not a real test
   if (!BEHAVIOR_SMOKE_EXISTS) return false;
   if (BEHAVIOR_SKIP_DOMAINS.has(domain)) return false;
   if (BEHAVIOR_LLM_HINT_RE.test(name)) return false;
@@ -272,8 +293,7 @@ if (BEHAVIOR_SMOKE_EXISTS) {
 
 const FRONTEND_FILES = walk(FRONTEND, ['.ts', '.tsx', '.js', '.jsx', '.mjs']);
 console.error(`  ${FRONTEND_FILES.length} frontend files`);
-const allFrontendSrc = FRONTEND_FILES.map(f => fs.readFileSync(f, 'utf8')).join('\n');
-const frontendRefs = collectReferences(allFrontendSrc);
+const frontendRefs = collectReferencesFromFiles(FRONTEND_FILES);
 console.error(`  ${frontendRefs.size} (domain.macro) refs in frontend`);
 
 // ---- 4. Signal regexes (run against handler body + helpers) ----
@@ -495,9 +515,13 @@ for (const m of finalMacros) {
   byDomain[m.domain].total++;
 }
 
-// Tier weights: utility counts as fully shipped (correctly small) — same
-// weight as production-grade. Stub and functional are partial credit.
-const weight = { stub: 0.2, functional: 0.6, utility: 1.0, 'production-grade': 1.0 };
+// Tier weights. Default: utility counts as fully shipped (correctly small) —
+// same weight as production-grade; stub/functional are partial credit.
+// `--honest`: utility is correct-but-minimal so it earns partial credit (0.6),
+// and functional/stub are harsher — this is the less-generous floor.
+const weight = HONEST
+  ? { stub: 0.0, functional: 0.4, utility: 0.6, 'production-grade': 1.0 }
+  : { stub: 0.2, functional: 0.6, utility: 1.0, 'production-grade': 1.0 };
 const total = finalMacros.length;
 const weightedScore = total > 0
   ? (totals.stub * weight.stub
@@ -512,6 +536,7 @@ try { head = execSync('git rev-parse HEAD', { cwd: ROOT }).toString().trim(); } 
 const output = {
   generatedAt: new Date().toISOString(),
   head,
+  mode: HONEST ? 'honest' : 'default',
   totals,
   total,
   weightedScore: Math.round(weightedScore * 1000) / 1000,
@@ -520,7 +545,7 @@ const output = {
   macros: finalMacros,
 };
 
-const outPath = path.join(ROOT, 'audit', 'macro-depth.json');
+const outPath = path.join(ROOT, 'audit', HONEST ? 'macro-depth-honest.json' : 'macro-depth.json');
 fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, JSON.stringify(output, null, 2));
 
@@ -530,4 +555,4 @@ console.error(`Stub:             ${totals.stub} (${total ? ((totals.stub / total
 console.error(`Functional:       ${totals.functional} (${total ? ((totals.functional / total) * 100).toFixed(1) : 0}%)`);
 console.error(`Utility:          ${totals.utility} (${total ? ((totals.utility / total) * 100).toFixed(1) : 0}%)`);
 console.error(`Production-grade: ${totals['production-grade']} (${total ? ((totals['production-grade'] / total) * 100).toFixed(1) : 0}%)`);
-console.error(`Weighted depth score: ${output.weightedScore} (1.0 = all production-grade or utility)`);
+console.error(`Weighted depth score: ${output.weightedScore} (mode=${output.mode}; 1.0 = all production-grade or utility)`);
