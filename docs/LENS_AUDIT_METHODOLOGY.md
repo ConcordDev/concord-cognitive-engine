@@ -71,6 +71,21 @@ clusters by prefix — a cluster of ≥3 (e.g. message `labels-*` ×5, whiteboar
   then judge. Most clusters are **backlog** (need a new UI build), not surgical facades.
 - Drill in with `npm run lens:unsurfaced --lens <name>`.
 
+### Layer 1.5 — broken-wire detector (deterministic, all-lenses) — `npm run lens:broken-calls`
+`scripts/lens-broken-calls.mjs` catches the **highest-severity** facade: a frontend
+call to a macro that DOES NOT EXIST — a button the user clicks that 404s because
+`runMacro(domain, action)` finds no handler (the `research.generate` bug: the lens
+"Analyze" button POSTed it but no macro was registered). It cross-references every
+literal `(domain, action)` the frontend calls against every `register(LensAction)?`
+the server defines, and reports the calls whose domain is real but whose `domain.action`
+is unregistered.
+- Literal-only (computed action names are skipped), so it **under**-reports — a clean,
+  low-false-positive signal. A few hits may be REST-route shims or dynamically-registered
+  macros; verify each (grep the action tree-wide, read the call site) before fixing.
+- Fix = register a real macro (deterministic + opt-in-LLM body, per the
+  `literature-review`/`research.generate` convention) OR repoint the call to the right
+  macro. The first run found 13 broken wires across the lenses (see batch 7).
+
 ### Layer 2 — LLM feature-parity deep-dive (expensive, per-lens, on demand)
 For a chosen lens (prioritized by Layer 1), run an Explore agent with this template:
 
@@ -277,3 +292,35 @@ the wrong field, or calls a macro that was never registered). All verified again
   read of the return object against the UI's `result.<field>` accesses catches it. This
   is the residue Layer 2 exists for — but confirm every claim against the lines, because
   the report mislabels ~½ of them.
+
+## Worked case study — batch 7: the broken-wire sweep (`lens:broken-calls`), 2026-06-03
+The `research.generate` 404 (batch 6) generalised: if one lens called a macro that was
+never registered, others probably did too. So instead of deep-diving lens by lens, the
+new `lens:broken-calls` detector cross-referenced all frontend literal `(domain,action)`
+calls against the registered macro set in one pass. **It found 13 broken wires** — every
+one a button that silently fails (best case the AI catch-all answers; worst case a 404):
+
+| Broken call | Caller | Class / disposition |
+|---|---|---|
+| `linguistics.analyze` | linguistics lens | **FIXED** — registered a real morphosyntactic analyzer (tokens, readability, lexical diversity, affix-inferred word classes; deterministic; reads params or artifact.data). Test added. |
+| `art.generate` | art lens | needs an **image model** — no honest deterministic fallback; flag, don't fake. |
+| `code.generate`, `code.forge-generate`, `code.execute` | code lens | code-gen / sandbox-exec — need LLM / a real runner; backlog. |
+| `creative.generate` | maker lens | generative; needs a model; backlog. |
+| `healthcare.generate` | healthcare lens | care-plan-from-symptoms — distinct from the working `generateSummary`; **medical content, deliberately NOT fabricated** (flag). |
+| `meta.classify`, `ingest.batch-ingest` | capture / ingest | classify/ingest pipelines; verify intended handler then wire; backlog. |
+| `dtu.listByKind`, `music.browse` | studio SessionBrowserRail | genuinely unregistered (verified tree-wide); the component intends real list/browse macros — repoint candidates once the correct names are confirmed. |
+| `crypto.wallet` | RivalShapePreview | preview shim; low priority. |
+| `auth.me` | self lens | genuine unregistered lens call (`runDomain('auth','me')`) but **guarded** with `.catch(() => null)`, so it degrades to "no user" instead of crashing — low severity, but still a dead macro. |
+
+- **Fixed this batch:** `linguistics.analyze` (real macro + 4-case behavioral test). The
+  rest are recorded here with an honest disposition — the generative ones (`*.generate`)
+  need a model and have no faithful deterministic fallback, and `healthcare.generate`
+  is medical content I will not fabricate; those are backlog, not quick fixes. The point
+  of the detector is that these 13 broken buttons are now *known and tracked* instead of
+  silently 404ing in production.
+- **Lesson:** the broken-wire class is the cheapest-to-find and highest-severity facade,
+  and it's fully deterministic — one cross-reference beats N expensive deep-dives. Run
+  `lens:broken-calls` on every PR that touches a lens. The four Layer-1.5 detectors
+  (`lens:audit` depth · `lens:orphans` · `lens:unsurfaced` · `lens:broken-calls`) now
+  cover the four mechanical facade/gap classes; Layer 2 is reserved for the
+  dropped-result residue only it can see.

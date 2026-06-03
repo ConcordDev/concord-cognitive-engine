@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+// scripts/lens-broken-calls.mjs
+//
+// Layer-1.5 of the lens-audit methodology (see docs/LENS_AUDIT_METHODOLOGY.md):
+// the deterministic detector for the BROKEN-WIRE facade class — a frontend call to
+// a macro that DOES NOT EXIST. This is the purest, highest-severity facade: a button
+// the user clicks that 404s because `runMacro(domain, action, …)` finds no handler
+// (e.g. research.generate — the lens "Analyze" button POSTed it but no macro was
+// registered, so it silently failed). Unlike the depth scorecard (which sees deep
+// backend + deep frontend and says "parity-candidate"), this catches the wire that
+// connects them being severed.
+//
+// It cross-references two literal sets, both extracted from code:
+//   • REGISTERED  — every `register(LensAction)?("<dom>","<act>", …)` across server/
+//   • CALLED      — every frontend `lensRun('<dom>','<act>'…)` / `runDomain(…)` /
+//                   `{ domain:'<dom>', action|name:'<act>' }` literal pair
+// A CALLED pair whose <dom> is a real macro domain but whose <dom>.<act> is not
+// REGISTERED is a broken wire.
+//
+// HONEST CAVEATS:
+//   • Literal-only. Calls with a computed action (`action: someVar`) can't be checked
+//     and are skipped — so this UNDER-reports (a clean, low-false-positive signal).
+//   • A handful of hits may be REST-route shims (the frontend posts to /api/lens/run
+//     but a route elsewhere serves it) or dynamically-registered macros the literal
+//     grep misses. VERIFY each: grep the action tree-wide and read the call site for a
+//     fallback before declaring it broken. In practice the false-positive rate is low.
+//   • Fix = register a real macro (preferred, with a deterministic + opt-in-LLM body
+//     per the literature-review convention) OR repoint the call to the right macro/route.
+//
+//   node scripts/lens-broken-calls.mjs           # table
+//   node scripts/lens-broken-calls.mjs --json
+
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const SERVER = path.join(ROOT, 'server');
+const FE = path.join(ROOT, 'concord-frontend');
+const JSON_OUT = process.argv.includes('--json');
+const rd = (f) => { try { return readFileSync(f, 'utf8'); } catch { return ''; } };
+
+function walk(d, ext, acc = []) {
+  if (!existsSync(d)) return acc;
+  let es; try { es = readdirSync(d, { withFileTypes: true }); } catch { return acc; }
+  for (const e of es) {
+    if (['node_modules', '.git', 'tests', '.next'].includes(e.name)) continue;
+    const p = path.join(d, e.name);
+    try { if (e.isDirectory()) walk(p, ext, acc); else if (ext.test(e.name) && existsSync(p)) acc.push(p); } catch { /* skip */ }
+  }
+  return acc;
+}
+
+// REGISTERED macros: dom.act (honor per-file `const reg = registerLensAction` aliases).
+const reg = new Set();
+for (const f of walk(SERVER, /\.js$/)) {
+  const s = rd(f);
+  const aliases = new Set(['register', 'registerLensAction']);
+  for (const m of s.matchAll(/\bconst\s+(\w+)\s*=\s*(?:registerLensAction|register)\b/g)) aliases.add(m[1]);
+  const re = new RegExp('\\b(?:' + [...aliases].join('|') + ')\\(\\s*["\'`]([a-zA-Z0-9_.-]+)["\'`]\\s*,\\s*["\'`]([a-zA-Z0-9_.-]+)["\'`]', 'g');
+  let m; while ((m = re.exec(s))) reg.add(m[1] + '.' + m[2]);
+}
+const domains = new Set([...reg].map(x => x.split('.')[0]));
+
+// CALLED literal pairs in the frontend.
+const calls = new Map(); // dom.act -> Set(files)
+const add = (d, a, f) => { const k = d + '.' + a; if (!calls.has(k)) calls.set(k, new Set()); calls.get(k).add(path.relative(FE, f)); };
+for (const f of walk(FE, /\.(tsx?|jsx?)$/)) {
+  const s = rd(f);
+  for (const m of s.matchAll(/\b(?:lensRun|runDomain)\(\s*["'`]([a-z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) add(m[1], m[2], f);
+  for (const m of s.matchAll(/domain:\s*["'`]([a-z0-9_-]+)["'`]\s*,\s*(?:action|name):\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) add(m[1], m[2], f);
+}
+
+const broken = [];
+for (const [k, files] of calls) {
+  const dom = k.split('.')[0];
+  if (!domains.has(dom)) continue;           // not a macro domain — skip (REST-only)
+  if (!reg.has(k)) broken.push({ macro: k, callers: files.size, firstSeen: [...files][0] });
+}
+broken.sort((a, b) => a.macro.localeCompare(b.macro));
+
+if (JSON_OUT) {
+  process.stdout.write(JSON.stringify({ generatedAt: new Date().toISOString(), registered: reg.size, domains: domains.size, broken }, null, 2) + '\n');
+} else {
+  console.log(`Broken frontend→macro wires — ${broken.length} call(s) to UNREGISTERED macros`);
+  console.log(`(${reg.size} registered macros across ${domains.size} domains)\n`);
+  console.log(`${'macro (domain.action)'.padEnd(40)} caller`);
+  console.log('─'.repeat(78));
+  for (const b of broken) console.log(`${b.macro.padEnd(40)} ${b.firstSeen}`);
+  console.log('\n⚠ Verify each before fixing: grep the action tree-wide + read the call site for a');
+  console.log('  fallback (a few may be REST-route shims). Fix = register a real macro or repoint.');
+  console.log('  See docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).');
+  if (broken.length > 0) process.exitCode = 0; // report-only; flip to 1 to gate CI
+}
