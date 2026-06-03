@@ -1119,10 +1119,14 @@ export default function registerMusicActions(registerLensAction) {
     const track = findTrack(s, userId, params.trackId);
     if (!track) return { ok: false, error: "track not found" };
     const list = muListB(s.downloads, userId);
-    if (list.some((d) => d.trackId === track.id)) return { ok: true, result: { trackId: track.id, alreadyDownloaded: true } };
-    list.push({ trackId: track.id, title: track.title, artist: track.artist, durationSec: track.durationSec, sizeKb: Math.round(track.durationSec * 16), downloadedAt: muNow() });
+    if (list.some((d) => d.trackId === track.id)) return { ok: true, result: { trackId: track.id, alreadyQueued: true } };
+    // Honest: this is an OFFLINE QUEUE of metadata, not stored audio bytes — there
+    // is no audio byte source wired here. `estimatedSizeKb` is a duration-derived
+    // ESTIMATE (≈16 KB/s), explicitly not a real file size; `bytesStored:false`.
+    // (Was reported as `sizeKb`, which implied audio had actually been downloaded.)
+    list.push({ trackId: track.id, title: track.title, artist: track.artist, durationSec: track.durationSec, estimatedSizeKb: Math.round(track.durationSec * 16), bytesStored: false, downloadedAt: muNow() });
     saveMusicState();
-    return { ok: true, result: { trackId: track.id, downloaded: true, count: list.length } };
+    return { ok: true, result: { trackId: track.id, queuedForOffline: true, bytesStored: false, count: list.length } };
   });
 
   registerLensAction("music", "download-list", (ctx, _a, _params = {}) => {
