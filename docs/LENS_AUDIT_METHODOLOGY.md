@@ -499,3 +499,26 @@ static layer** — only surfaced by booting both dev servers and hitting the API
   the deep-dive said the fields matched (true at the macro return). Only running the app
   exposed that the transport double-wrapped the payload. **When you can, run it** — the
   cheapest detector for a transport/serialization facade is one real request.
+
+### Layer 3 — runtime exercise (when a stack is available)
+With both dev servers up (`server/ npm start` on :5050 + `concord-frontend/ npm run dev`
+on :3000, which proxies `/api/*` → :5050), POST real requests to `/api/lens/run` and read
+the actual response. Setup notes learned this session:
+- Auth: `POST /api/auth/register` (a browser `User-Agent` + `Origin` header are required —
+  there's a bot gate); use the returned `token` as `Authorization: Bearer`.
+- Boot takes ~60s for the full ghost-fleet; `/health` answers earlier. `CONCORD_DISABLE_FEEDS=1`
+  and `--max-old-space-size` reduce memory pressure on a small box.
+- **Sandbox caveat (don't mistake infra for bugs):** a broad all-macro sweep is unreliable
+  on a constrained box — it trips the request **rate-limiter (HTTP 429)** and can **OOM the
+  process** (the log just stops, no crash line). Those `429`/`fetch failed` results are
+  infrastructure, NOT macro defects. Sweep in small chunks, health-gate between them, pace
+  ~700ms/call, and flag only `result.error === 'handler_error'` (a caught internal throw),
+  non-200, or timeout — never raw `ok:false` (that's normal input validation).
+- **What the runtime exercise actually found (2026-06-03):** the systemic **double-nest**
+  facade (batch 19) — the one real systemic runtime defect — plus confirmation that the
+  compute layer is healthy: a curated 24-macro check (accounting/manufacturing/realestate/
+  insurance/research/linguistics/bio/physics/chem/ml/…) ran **24/24 clean, 0 handler_error**.
+  The 38 repointed buttons were verified to hit real macros live (`oee`, `capRate`,
+  `retentionRate`, …), and the `.analyze` AI-catch-all degrades gracefully (HTTP 200,
+  honest "fetch failed" in <1s with no Ollama, no hang). Runtime is Layer 3: it certifies
+  what the static layers can only triage.
