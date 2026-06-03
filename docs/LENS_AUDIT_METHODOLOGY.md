@@ -344,3 +344,26 @@ it's now mounted (3 such panels surfaced this session). The other re-checked cul
   "presumed duplicate" must be confirmed by checking the *mounted sibling actually calls
   the same macro / surfaces the same feature*, not just that the lens "has something about
   air quality." Re-verify culls the same way you verify fixes.
+
+## Worked case study — batch 10: `message` (vs Gmail/Slack) — a CLEAN parity-candidate (the showcase result), 2026-06-03
+Not every deep-dive finds a defect, and a clean one is a real deliverable: it *confirms*
+the lens competes (the methodology's whole "surface the parity-candidate" purpose — per
+the music lesson, always deep-dive before claiming parity). The `message` deep-dive
+checked **18 frontend↔backend field contracts** (saved, search, reactions, channels,
+inbox-summary, messages, scheduled, snoozed, mentions, threads, huddles, files, directory,
+bookmarks, pins, typing/live-state, notif-prefs) and found **every one matching**, plus
+**0 broken wires** (all ~50 called macros registered) and **0 orphans** (all 13 components
+mounted). Spot-verified two of its claims against code (`channels-list` BE `result:{channels}`
+@`message.js:309` ↔ FE `result?.channels` @`ChannelList.tsx:41`; inbox-summary field set) —
+the clean result holds. `message` is a fully-wired Slack/Gmail parity-candidate; its only
+gap is the `labels-*` cluster (5 macros, backend-built / no UI — the `lens:unsurfaced` hit),
+which is honest backlog.
+- **Methodology insight (the most useful thing this batch produced):** this Layer-2 run
+  did NOT over-claim — a sharp contrast to the open-ended deep-dives in batches 2-6, which
+  mislabeled ~half their "defects." The difference is the *prompt*: I asked a **precise,
+  falsifiable** question — "for each display, quote the backend `return {result:{…}}` AND
+  the FE `result.<field>` read, and show whether the keys match" — instead of the
+  open-ended "find the facades." Precise field-contract verification is the form of Layer-2
+  that the LLM does *reliably*; open-ended facade-hunting is the form it hallucinates.
+  Prefer the contract-verification prompt, and still spot-check the negatives (a clean
+  report can hide a false negative as easily as a noisy one hides a false positive).
