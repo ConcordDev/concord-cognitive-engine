@@ -678,13 +678,13 @@ export default function PaperLensPage() {
       {selectedItemId && (
         <div className={cn(ds.panel, 'flex flex-wrap items-center gap-2')}>
           <span className={ds.textMuted}>Actions:</span>
-          <button onClick={() => handleDomainAction('validate_claims')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('validate')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <FlaskConical className="w-3.5 h-3.5" /> Validate Claims
           </button>
-          <button onClick={() => handleDomainAction('check_consistency')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('detect-contradictions')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <ShieldCheck className="w-3.5 h-3.5" /> Check Consistency
           </button>
-          <button onClick={() => handleDomainAction('generate_abstract')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
+          <button onClick={() => handleDomainAction('abstractSummarize')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
             <Sparkles className="w-3.5 h-3.5" /> Generate Abstract
           </button>
           <button onClick={() => handleDomainAction('export_pdf')} className={cn(ds.btnSecondary, ds.btnSmall)} disabled={runArtifact.isPending}>
