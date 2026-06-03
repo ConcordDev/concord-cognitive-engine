@@ -1558,7 +1558,7 @@ export default function EducationLensPage() {
           <button onClick={() => handleAction('attendanceReport')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <CalendarCheck className="w-3.5 h-3.5" /> Attendance Report
           </button>
-          <button onClick={() => handleAction('schedule_conflict_check')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('scheduleConflict')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Shuffle className="w-3.5 h-3.5" /> Schedule Conflict Check
           </button>
           {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse self-center">Running...</span>}

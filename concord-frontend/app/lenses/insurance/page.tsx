@@ -1142,7 +1142,7 @@ export default function InsuranceLensPage() {
           <button onClick={() => handleAction('renewalAlert')} className={ds.btnSecondary}>
             <RefreshCw className="w-4 h-4" /> Renewal Alert
           </button>
-          <button onClick={() => handleAction('coverageGapCheck')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('coverageGap')} className={ds.btnSecondary}>
             <AlertCircle className="w-4 h-4" /> Coverage Gap Check
           </button>
           <button onClick={() => handleAction('lossRatioReport')} className={ds.btnSecondary}>

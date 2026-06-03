@@ -2437,13 +2437,13 @@ export default function ManufacturingLensPage() {
           <button onClick={() => handleAction('scheduleOptimizer')} className={ds.btnSecondary}>
             <TrendingUp className="w-4 h-4" /> Schedule Optimizer
           </button>
-          <button onClick={() => handleAction('bomCostCalc')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('bomCost')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> BOM Cost Calc
           </button>
           <button onClick={() => handleAction('oeeCalculator')} className={ds.btnSecondary}>
             <Gauge className="w-4 h-4" /> OEE Calculator
           </button>
-          <button onClick={() => handleAction('safetyRateReport')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('safetyRate')} className={ds.btnSecondary}>
             <Shield className="w-4 h-4" /> Safety Rate Report
           </button>
           <button onClick={() => handleAction('defectAnalysis')} className={ds.btnSecondary}>

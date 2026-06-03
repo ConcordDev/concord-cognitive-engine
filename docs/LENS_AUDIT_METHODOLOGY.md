@@ -432,3 +432,14 @@ Consolidation after the broken-wire sweep — two findings worth pinning:
   `fitness.generate-program` wants `goal`/`daysPerWeek`/LLM), or a model (`art/code.generate`)
   — real backlog, tracked, not faked. Run `lens:broken-calls` on every lens-touching PR;
   the genuine count is the number to keep at zero.
+- **Batch 15 (redundant-suffix repoints):** a keyword-overlap pass over the 63 genuine
+  found 7 more where the button calls `<macro>+<redundant suffix>` — the real
+  artifact-analysis macro exists, the frontend just appends a word:
+  `education.schedule_conflict_check`→`scheduleConflict`, `insurance.coverageGapCheck`→
+  `coverageGap`, `manufacturing.{bomCostCalc→bomCost, safetyRateReport→safetyRate}`,
+  `nonprofit.donor-retention-report`→`donorRetention`, `realestate.{cap_rate_calc→capRate,
+  cash_flow_analysis→cashFlow}`. Each target confirmed artifact-based (works with the
+  `{id}` dispatch) and free of display-branch comparisons. 101 → 94 broken (genuine
+  63 → 56). **35 buttons fixed total** across the snake/camel/reorder/suffix/semantic
+  classes. The remaining 56 genuine are now genuinely different (government `permit_fee_estimate`
+  ≠ `permits-pay-fee`), need params/models, or are unbuilt — the clean-repoint seam is mined out.

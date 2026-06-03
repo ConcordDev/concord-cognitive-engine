@@ -359,13 +359,13 @@ const TRANSACTION_PIPELINE: string[] = [
 
 const DOMAIN_ACTIONS = [
   {
-    id: 'cap_rate_calc',
+    id: 'capRate',
     label: 'Cap Rate Calc',
     icon: Percent,
     description: 'Calculate capitalization rate',
   },
   {
-    id: 'cash_flow_analysis',
+    id: 'cashFlow',
     label: 'Cash Flow Analysis',
     icon: PiggyBank,
     description: 'Analyze monthly/annual cash flow',
@@ -2484,7 +2484,7 @@ export default function RealEstateLensPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAction('cap_rate_calc', item.id);
+                            handleAction('capRate', item.id);
                           }}
                           className={cn(ds.btnSmall, ds.btnGhost)}
                         >
@@ -2493,7 +2493,7 @@ export default function RealEstateLensPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleAction('cash_flow_analysis', item.id);
+                            handleAction('cashFlow', item.id);
                           }}
                           className={cn(ds.btnSmall, ds.btnGhost)}
                         >

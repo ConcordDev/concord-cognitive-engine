@@ -134,7 +134,7 @@ const SEED: Record<ArtifactType, Array<{ title: string; data: Record<string, unk
 // Domain Actions
 // ---------------------------------------------------------------------------
 const DOMAIN_ACTIONS = [
-  { id: 'donor-retention-report', label: 'Donor Retention Report', icon: RefreshCw, description: 'Analyze donor retention and churn patterns' },
+  { id: 'donorRetention', label: 'Donor Retention Report', icon: RefreshCw, description: 'Analyze donor retention and churn patterns' },
   { id: 'grant-deadline-check', label: 'Grant Deadline Check', icon: CalendarClock, description: 'Review upcoming grant deadlines and reporting dates' },
   { id: 'campaign-analysis', label: 'Campaign Analysis', icon: PieChart, description: 'Analyze campaign performance and ROI' },
   { id: 'volunteerMatch', label: 'Volunteer Match', icon: UserCheck, description: 'Match volunteers to open opportunities' },
@@ -1753,7 +1753,7 @@ export default function NonprofitLensPage() {
                   <div className="flex flex-wrap gap-2 mt-2">
                     {mode === 'donors' && (
                       <>
-                        <button onClick={() => handleAction('donor-retention-report', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
+                        <button onClick={() => handleAction('donorRetention', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
                           <RefreshCw className="w-3 h-3" /> Retention Report
                         </button>
                         <button onClick={() => handleAction('send-acknowledgment', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
