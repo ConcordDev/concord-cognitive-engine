@@ -307,7 +307,8 @@ one a button that silently fails (best case the AI catch-all answers; worst case
 | `code.generate`, `code.forge-generate`, `code.execute` | code lens | code-gen / sandbox-exec — need LLM / a real runner; backlog. |
 | `creative.generate` | maker lens | generative; needs a model; backlog. |
 | `healthcare.generate` | healthcare lens | care-plan-from-symptoms — distinct from the working `generateSummary`; **medical content, deliberately NOT fabricated** (flag). |
-| `meta.classify`, `ingest.batch-ingest` | capture / ingest | classify/ingest pipelines; verify intended handler then wire; backlog. |
+| `meta.classify` | QuickCapture | auto-detect-domain for captured text; the `meta` domain is observability (services/metrics), has no classifier, and the call is `.catch`-guarded (falls back to a default domain). Backlog — needs a real text→lens classifier, and `meta` is the wrong home for it. |
+| `ingest.batch-ingest` | ingest lens | the file picker sends only `{fileCount, filenames}`, never the file *contents* — so a backend macro can't honestly ingest anything (an ack-only macro would be oversell). Real fix is frontend: read each file + call the existing `ingest.parseDocument`/`pushRecord` macros. Backlog (frontend gap, not a missing macro). |
 | `dtu.listByKind` | studio SessionBrowserRail | **FIXED** — added a thin `register("dtu","listByKind")` over the same `userVisibleDTUs` set as `dtu.list`, filtered by `machine.kind` (surfaces the browser's DTU/Forge tabs). |
 | `music.browse` | studio SessionBrowserRail | no clean target — `music` has `list-published-stems` (stems) but no loops source; the call is `.catch`-guarded → graceful empty. Backlog (needs a loops/stems browse macro). |
 | `crypto.wallet` | RivalShapePreview | preview shim; low priority. |
