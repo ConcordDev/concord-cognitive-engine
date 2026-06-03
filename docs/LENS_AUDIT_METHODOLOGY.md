@@ -42,6 +42,23 @@ yet the frontend never *applies* the backend output (the EQ-stored-but-unwired
 pattern). The macro `eq-set` is substantive; the gap is in the wiring. That needs
 Layer 2 (or a dedicated wiring detector). The scorecard triages; it does not certify.
 
+### Layer 1.5 — orphaned-panel detector (deterministic, all-lenses) — `npm run lens:orphans`
+`scripts/lens-orphans.mjs` catches ONE concrete slice of the wiring-facade class the
+scorecard admits it misses: the **orphaned-but-wired panel** — a `components/<lens>/*`
+file that is fully backend-wired (calls a real macro/route) but is **never imported or
+referenced anywhere in the frontend**, so the user can't reach it. Both backend and
+frontend exist; the gap is that the panel was never mounted. It flags each as a
+candidate surgical win (import + mount = an unreachable feature goes live).
+- **It is a candidate, not a fix.** ⚠ An orphan is often a **superseded duplicate** of
+  a richer mounted sibling (debate/`DebateTree` → mounted `KialoArgumentMap`;
+  daily/`DailyJournal` → mounted `JournalStudio`). Always check for a sibling covering
+  the same feature, and that the macro it calls actually exists, before wiring it in.
+- Token-grep matching (not just import-path regex) so it catches dynamic `import()` +
+  JSX usage — without that the naive scan over-reports ~3×.
+- This is strictly more reliable than the Layer-2 LLM for *this* question: in practice
+  the deep-dive repeatedly claimed panels "never mounted" that were dynamically
+  imported, and missed genuine orphans. Run `lens:orphans` first; deep-dive second.
+
 ### Layer 2 — LLM feature-parity deep-dive (expensive, per-lens, on demand)
 For a chosen lens (prioritized by Layer 1), run an Explore agent with this template:
 
@@ -187,3 +204,35 @@ Layer-2 reports over-claimed — re-checking every claim against code is non-opt
   before acting. Across batches 2-3, ~7 of the reports' "defects" were already-correct
   code; the real wins were 1 watchlist wiring fix + 2 orphaned-panel mounts, all
   confirmed by reading the lines.
+
+## Worked case study — batch 4-5: `trades` + `whiteboard` (honest backlog) + the orphan sweep, 2026-06-03
+- **`trades` (vs ServiceTitan/Jobber) and `whiteboard` (vs Miro/FigJam): real core +
+  honest backlog, NO surgical facade.** Both Layer-2 reports again over-claimed and
+  self-corrected: `trades`' "unwired" macros were mostly wired (dynamic
+  `quotes-${act}` dispatch); `whiteboard`'s "templates are browse-only" was false (the
+  Apply button exists, `WhiteboardWorkbench.tsx:169-186`), and its connector/frame/
+  realtime/cursor gaps are **explicitly labelled "2026 parity backlog" in
+  `server/domains/whiteboard.js:944`** — engineered backlog, not oversell. The
+  methodology distinguishes the two: a code-documented backlog is honest; only an
+  unlabelled UI-that-doesn't-deliver is the fixable facade. Neither lens got a forced
+  change. (The whiteboard realtime emit-with-no-listener IS a genuine gap, but it
+  falls inside that documented backlog and a blind state-reconciler is riskier than the
+  honest gap — flagged, not faked.)
+- **The deterministic pivot — `npm run lens:orphans` (Layer 1.5).** Rather than keep
+  paying for over-claiming LLM deep-dives, batch 5 used a mechanical scan for the
+  orphaned-but-wired panel class. It surfaced 9 candidates; the duplicate-check culled
+  most (debate/`DebateTree`←`KialoArgumentMap`, daily/`DailyJournal`←`JournalStudio`,
+  podcast/`ItunesPodcastPanel`←`ItunesSearch`, society/`WorldBankExplorer`←
+  `SocietyActionPanel`, environment/`AirQualityPanel`← existing AQ surfaces). **Two
+  were genuine, verified wins and were mounted:**
+  - `travel/ParksPanel` → `travel.live_nps_parks` (`server/domains/key-required-live.js:130`,
+    NPS-key-gated, honest `missing_api_key` envelope). Mounted in `app/lenses/travel/page.tsx`
+    beside the Zippopotam reference panel.
+  - `finance/FredSeriesPanel` → `finance.live_fred_series` (`key-required-live.js:62`,
+    FRED-key-gated, honest envelope). Mounted beside `WorldBankPanel` in the finance page.
+  Both were fully-built REAL_FREE reference panels that had simply never been imported —
+  unreachable features made live with an import + one mount line each, zero backend change.
+- **Lesson:** for the orphaned-panel facade class, the deterministic detector beats the
+  LLM — it doesn't hallucinate mounts, and the only judgement it needs (is this a
+  superseded duplicate?) is a fast sibling-grep. Layer 1.5 is now the first move on any
+  lens before a Layer-2 deep-dive.

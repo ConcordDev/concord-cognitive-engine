@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { MarketsPulse } from '@/components/finance/MarketsPulse';
 import { WorldBankPanel } from '@/components/global/WorldBankPanel';
+import { FredSeriesPanel } from '@/components/finance/FredSeriesPanel';
 import { FinanceActionPanel } from '@/components/finance/FinanceActionPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import NetWorthTracker from '@/components/finance/NetWorthTracker';
@@ -1834,6 +1835,8 @@ export default function FinanceLensPage() {
       <RivalShapePreview lensId="finance" defaultOpen={true} />
       {/* Phase 4 (sixth wave) — REAL World Bank country indicators. */}
       <WorldBankPanel domain="finance" />
+      {/* REAL FRED economic time series (FRED_API_KEY-gated; honest empty/no-key states). */}
+      <FredSeriesPanel />
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded bg-emerald-900/40 border border-emerald-700/30 flex items-center justify-center">
