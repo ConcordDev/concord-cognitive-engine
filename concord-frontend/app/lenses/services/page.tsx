@@ -918,7 +918,7 @@ export default function ServicesLensPage() {
           <button onClick={() => handleAction('clientRetentionReport')} className={ds.btnSecondary}>
             <UserPlus className="w-4 h-4" /> Client Retention Report
           </button>
-          <button onClick={() => handleAction('inventoryCheck')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('supplyCheck')} className={ds.btnSecondary}>
             <Package className="w-4 h-4" /> Inventory Check
           </button>
           {runAction.isPending && <span className="text-xs text-neon-blue animate-pulse">Running...</span>}

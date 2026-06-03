@@ -2391,7 +2391,7 @@ export default function TradesLensPage() {
 
       {/* Domain Actions */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => handleAction('generateEstimate')} className={ds.btnSecondary}>
+        <button onClick={() => handleAction('calculateEstimate')} className={ds.btnSecondary}>
           <FileText className="w-4 h-4" /> Generate Estimate
         </button>
         <button onClick={() => handleAction('checkPermits')} className={ds.btnSecondary}>

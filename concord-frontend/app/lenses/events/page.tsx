@@ -1032,7 +1032,7 @@ export default function EventsLensPage() {
         </h3>
         <div className="flex flex-wrap gap-2">
           {[
-            { label: 'Budget Analysis', action: 'budget_analysis', icon: PieChart },
+            { label: 'Budget Analysis', action: 'budgetReconcile', icon: PieChart },
             { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
             { label: 'Run-of-Show Generate', action: 'ros_generate', icon: ListChecks },
             { label: 'Registration Report', action: 'registration_report', icon: FileText },
@@ -1562,7 +1562,7 @@ export default function EventsLensPage() {
           <h3 className={cn(ds.heading3, 'mb-3')}>Actions</h3>
           <div className="flex flex-wrap gap-2">
             {[
-              { label: 'Budget Analysis', action: 'budget_analysis', icon: PieChart },
+              { label: 'Budget Analysis', action: 'budgetReconcile', icon: PieChart },
               { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
               { label: 'Generate Run-of-Show', action: 'ros_generate', icon: ListChecks },
               { label: 'Registration Report', action: 'registration_report', icon: FileText },
@@ -2219,7 +2219,7 @@ export default function EventsLensPage() {
               {/* Action */}
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-lattice-border">
                 <button
-                  onClick={() => handleAction('budget_analysis', item.id)}
+                  onClick={() => handleAction('budgetReconcile', item.id)}
                   className={cn(ds.btnSecondary, ds.btnSmall)}
                   disabled={runAction.isPending}
                 >

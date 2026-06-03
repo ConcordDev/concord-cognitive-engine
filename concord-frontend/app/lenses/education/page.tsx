@@ -1549,7 +1549,7 @@ export default function EducationLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3 text-sm')}>Domain Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('calculate_grades')} className={cn(ds.btnSecondary, ds.btnSmall)}>
+          <button onClick={() => handleAction('gradeCalculation')} className={cn(ds.btnSecondary, ds.btnSmall)}>
             <Calculator className="w-3.5 h-3.5" /> Calculate Grades
           </button>
           <button onClick={() => handleAction('generateReportCard')} className={cn(ds.btnSecondary, ds.btnSmall)}>
