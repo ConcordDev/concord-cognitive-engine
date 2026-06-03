@@ -138,13 +138,13 @@ jobs:
           # /api/lens/run for a (domain, action) that has no registered macro, so it
           # 404s / falls to the AI catch-all (e.g. research.generate before it was
           # built). Cross-references every literal frontend (domain, action) call
-          # against the registered macro set. Ratchet ceiling 53 (the GENUINE count
-          # at landing, post the 38-button repoint sweep); the intentional
+          # against the registered macro set. Ratchet ceiling 51 (GENUINE count; was 53 at
+          # the 38-repoint sweep, −2 at batch 21); the intentional
           # `*.analyze`/`*generate*` AI-catch-all convention is excluded. Drive the
           # ceiling DOWN as the genuine backlog gets real macros. See
           # docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).
           node scripts/lens-broken-calls.mjs
-          node scripts/lens-broken-calls.mjs --ci 53
+          node scripts/lens-broken-calls.mjs --ci 51
 
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
