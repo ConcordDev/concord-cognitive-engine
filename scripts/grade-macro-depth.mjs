@@ -255,8 +255,87 @@ function collectReferencesFromFiles(files) {
   }
   return refs;
 }
-const testRefs = collectReferencesFromFiles(SERVER_TESTS);
-console.error(`  ${testRefs.size} (domain.macro) refs in tests`);
+// ── Test credit: behavioral (both modes) vs shape-coverage (default only) ──
+// Honesty turns on WHAT a test does, not whether it mentions a name:
+//   • `invocations` (BEHAVIORAL, counts in BOTH modes): a LITERAL dispatcher
+//     call `runMacro("d","m", …)` / lensRun / runDomain — a hand-written,
+//     intentional per-macro call. You don't write a single literal call to
+//     shape-check; that signals a real test of THAT macro.
+//   • `shapeLoopRefs` (SHAPE-COVERAGE, counts in DEFAULT only — like smoke): a
+//     bulk CASES-loop — a `["d","m"]` pair or dotted `"d.m"` literal in a file
+//     that ALSO has a generic dispatcher call. These are the contract/shape
+//     harnesses (assert only `ok:boolean`); --honest discounts them exactly as
+//     it discounts the smoke harness. A bare string list with NO dispatcher
+//     call counts for nothing — that was the gameable hole, now closed.
+//   • `testedFns` (BEHAVIORAL): function names a test BOTH imports AND calls —
+//     credits a thin macro from the tested LIB FN it delegates to.
+const LITERAL_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
+const DOTTED_LITERAL_RE = /["'`]([a-z][a-zA-Z0-9_-]+)\.([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]/g;
+const PAIR_LITERAL_RE = /\[\s*["'`]([a-z][a-zA-Z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z_][a-zA-Z0-9_.\-]*)["'`]\s*\]/g;
+const GENERIC_INVOKE_RE = /\b(?:runMacro|lensRun|runDomain)\s*\(/;
+
+function collectTestCredit(files) {
+  const invocations = new Set();   // behavioral — both modes
+  const shapeLoopRefs = new Set(); // shape-coverage — default only
+  const testedFns = new Set();     // behavioral — delegate credit
+  for (const f of files) {
+    let src; try { src = fs.readFileSync(f, 'utf8'); } catch { continue; }
+    for (const m of src.matchAll(LITERAL_INVOKE_RE)) invocations.add(`${m[1]}.${m[2]}`);
+    if (GENERIC_INVOKE_RE.test(src)) {
+      for (const m of src.matchAll(DOTTED_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
+      for (const m of src.matchAll(PAIR_LITERAL_RE)) shapeLoopRefs.add(`${m[1]}.${m[2]}`);
+    }
+    const imported = new Set();
+    for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from/g)) {
+      for (const part of m[1].split(',')) {
+        const seg = part.trim(); if (!seg) continue;
+        const nm = (/\bas\s+([\w$]+)$/.exec(seg)?.[1]) || seg.split(/\s+/)[0];
+        if (nm) imported.add(nm);
+      }
+    }
+    if (imported.size) {
+      for (const m of src.matchAll(/\b([a-zA-Z_$][\w$]*)\s*\(/g)) {
+        if (imported.has(m[1])) testedFns.add(m[1]);
+      }
+    }
+  }
+  return { invocations, shapeLoopRefs, testedFns };
+}
+
+const { invocations: macroInvocations, shapeLoopRefs, testedFns } = collectTestCredit(SERVER_TESTS);
+console.error(`  ${macroInvocations.size} literal invocations · ${shapeLoopRefs.size} shape-loop refs (default-only) · ${testedFns.size} tested lib fns`);
+
+// Parse a source file's named imports → Map<localName,{module,exportName}>.
+function parseNamedImports(src) {
+  const map = new Map();
+  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g)) {
+    const spec = m[2];
+    for (const part of m[1].split(',')) {
+      const seg = part.trim(); if (!seg) continue;
+      const asM = /^([\w$]+)\s+as\s+([\w$]+)$/.exec(seg);
+      const local = asM ? asM[2] : seg.split(/\s+/)[0];
+      const orig = asM ? asM[1] : local;
+      if (local) map.set(local, { module: spec, exportName: orig });
+    }
+  }
+  return map;
+}
+
+// Resolve a delegated lib fn's body (for signal-inheritance), cached per module.
+const moduleIndexCache = new Map();
+function delegateBodyFor(delegateName, imports, macroFilePath) {
+  const imp = imports.get(delegateName);
+  if (!imp || !imp.module.startsWith('.')) return null; // local modules only
+  let modPath = path.resolve(path.dirname(macroFilePath), imp.module);
+  if (!/\.[mc]?js$/.test(modPath)) modPath += '.js';
+  if (!fs.existsSync(modPath)) return null;
+  let idx = moduleIndexCache.get(modPath);
+  if (!idx) {
+    try { idx = buildHelperIndex(fs.readFileSync(modPath, 'utf8')); } catch { idx = new Map(); }
+    moduleIndexCache.set(modPath, idx);
+  }
+  return idx.get(imp.exportName) || null;
+}
 
 // ---- 3b. Behavior smoke coverage (A1) ----
 //
@@ -391,6 +470,7 @@ let scanned = 0;
 for (const f of macroSourceFiles) {
   const src = fs.readFileSync(f, 'utf8');
   const helperIndex = buildHelperIndex(src);
+  const fileImports = parseNamedImports(src);
   const relPath = path.relative(ROOT, f);
 
   // Find every `register("d","n",` and `registerLensAction("d","n",` site.
@@ -432,6 +512,22 @@ for (const f of macroSourceFiles) {
       if (hb) combined += '\n' + hb;
     }
 
+    // Cross-module DELEGATION: a thin wrapper that, after guard clauses,
+    // `return`s a call to an IMPORTED lib fn (e.g. `return recordCrime(db,…)`).
+    // Resolve that fn's body so the macro is graded by the REAL work it
+    // delegates to (LOC + state/try-catch signals inherited) — the grader's
+    // same-file helper recursion was blind to this, mis-grading tested
+    // delegations as stubs. The last such return wins.
+    let delegateName = null;
+    for (const cm of body.matchAll(/\breturn\s+(?:await\s+)?([a-zA-Z_$][\w$]*)\s*\(/g)) {
+      const name = cm[1];
+      if (fileImports.has(name) && !helperIndex.has(name)) delegateName = name;
+    }
+    if (delegateName) {
+      const dbody = delegateBodyFor(delegateName, fileImports, f);
+      if (dbody) combined += '\n' + dbody;
+    }
+
     const handlerLoc = body.split('\n').length;
     const combinedLoc = combined.split('\n').length;
 
@@ -469,7 +565,13 @@ for (const f of macroSourceFiles) {
       runsOtherMacro: RUNMACRO_RE.test(signalText),
       heartbeatDelegate: HEARTBEAT_DELEGATE_RE.test(signalText),
       artifactWrite: ARTIFACT_GLOBAL_RE.test(signalText),
-      hasTest: testRefs.has(`${domain}.${macro}`)
+      // Behavioral credit (both modes): a literal per-macro invocation, or a
+      // tested lib fn this macro delegates to. Shape-coverage credit (default
+      // only, like the smoke harness): a bulk CASES-loop ref. `isCoveredBySmoke`
+      // already returns false under --honest.
+      hasTest: macroInvocations.has(`${domain}.${macro}`)
+            || (delegateName && testedFns.has(delegateName))
+            || (!HONEST && shapeLoopRefs.has(`${domain}.${macro}`))
             || isCoveredBySmoke(domain, macro),
       frontendUse: frontendRefs.has(`${domain}.${macro}`),
       delegates,
