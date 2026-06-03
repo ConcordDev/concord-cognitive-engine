@@ -397,3 +397,14 @@ widespread facade.
   verdicts but the *recurring shape* — once `food` and `retail` showed the same snake/camel
   break, the right move was to teach the deterministic detector the pattern and sweep all
   259 lenses at once, not deep-dive them one by one. Detectors scale; deep-dives don't.
+- **Batch 12 follow-on (reordered-name twins):** the snake↔camel twin check only catches
+  pure case differences. A second pass matched each broken action's **token set** (split on
+  case + `_`/`-`, sorted) against the domain's registered macros — catching reordered names
+  the first pass missed: `aviation.wb_calculate`→`calculate-wb`,
+  `creative.generate_shot_list`→`shotListGenerate`, `fitness.{attendance-report→attendanceReport,
+  body-comp-report→bodyCompReport}`, `manufacturing.scheduleMaintenance→maintenance-schedule`,
+  `nonprofit.volunteer-match→volunteerMatch`. 6 more repointed (108 → 102), all verified the
+  same way. **27 buttons fixed total** across the snake/camel/reorder class. The remaining
+  102 broken wires now have NO registered macro under any name normalisation — they're the
+  intentional `*.analyze`/`*.generate` AI-catch-all convention or genuinely-unbuilt features
+  (need a model/new macro), i.e. real backlog, not a quick repoint.

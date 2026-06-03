@@ -137,7 +137,7 @@ const DOMAIN_ACTIONS = [
   { id: 'donor-retention-report', label: 'Donor Retention Report', icon: RefreshCw, description: 'Analyze donor retention and churn patterns' },
   { id: 'grant-deadline-check', label: 'Grant Deadline Check', icon: CalendarClock, description: 'Review upcoming grant deadlines and reporting dates' },
   { id: 'campaign-analysis', label: 'Campaign Analysis', icon: PieChart, description: 'Analyze campaign performance and ROI' },
-  { id: 'volunteer-match', label: 'Volunteer Match', icon: UserCheck, description: 'Match volunteers to open opportunities' },
+  { id: 'volunteerMatch', label: 'Volunteer Match', icon: UserCheck, description: 'Match volunteers to open opportunities' },
   { id: 'impact-report', label: 'Impact Report', icon: FileBarChart, description: 'Generate comprehensive impact report' },
 ];
 
@@ -1780,7 +1780,7 @@ export default function NonprofitLensPage() {
                       </button>
                     )}
                     {mode === 'volunteers' && (
-                      <button onClick={() => handleAction('volunteer-match', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
+                      <button onClick={() => handleAction('volunteerMatch', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
                         <UserCheck className="w-3 h-3" /> Match Opportunity
                       </button>
                     )}

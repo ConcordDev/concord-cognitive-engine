@@ -733,7 +733,7 @@ export default function AviationLensPage() {
       <div className={ds.panel}>
         <h3 className={cn(ds.heading3, 'mb-3')}>Quick Actions</h3>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => handleAction('wb_calculate')} className={ds.btnSecondary}>
+          <button onClick={() => handleAction('calculate-wb')} className={ds.btnSecondary}>
             <Calculator className="w-4 h-4" /> W&B Calculate
           </button>
           <button onClick={() => handleAction('currencyCheck')} className={ds.btnSecondary}>
@@ -1907,7 +1907,7 @@ export default function AviationLensPage() {
             )}
             {activeMode === 'wb' && (
               <>
-                <button onClick={() => handleAction('wb_calculate')} className={cn(ds.btnGhost, ds.btnSmall)}><Calculator className="w-3 h-3" /> W&B Calculate</button>
+                <button onClick={() => handleAction('calculate-wb')} className={cn(ds.btnGhost, ds.btnSmall)}><Calculator className="w-3 h-3" /> W&B Calculate</button>
               </>
             )}
             {activeMode === 'weather' && (
@@ -2063,7 +2063,7 @@ export default function AviationLensPage() {
                     </button>
                   )}
                   {editingId && activeMode === 'wb' && (
-                    <button onClick={() => handleAction('wb_calculate', editingId)} className={ds.btnSecondary}>
+                    <button onClick={() => handleAction('calculate-wb', editingId)} className={ds.btnSecondary}>
                       <Calculator className="w-4 h-4" /> Calculate
                     </button>
                   )}

@@ -1033,10 +1033,10 @@ export default function FitnessLensPage() {
           <button onClick={() => handleAction('generate-program')} className={cn(ds.btnSmall, 'bg-red-500/20 text-red-500 border border-red-500/30')}>
             <Brain className="w-3.5 h-3.5" /> Generate Program
           </button>
-          <button onClick={() => handleAction('body-comp-report')} className={cn(ds.btnSmall, 'bg-red-300/20 text-red-300 border border-red-300/30')}>
+          <button onClick={() => handleAction('bodyCompReport')} className={cn(ds.btnSmall, 'bg-red-300/20 text-red-300 border border-red-300/30')}>
             <FileText className="w-3.5 h-3.5" /> Body Comp Report
           </button>
-          <button onClick={() => handleAction('attendance-report')} className={cn(ds.btnSmall, 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30')}>
+          <button onClick={() => handleAction('attendanceReport')} className={cn(ds.btnSmall, 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/30')}>
             <ClipboardList className="w-3.5 h-3.5" /> Attendance Report
           </button>
         </div>

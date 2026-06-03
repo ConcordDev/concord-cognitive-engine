@@ -1984,7 +1984,7 @@ export default function ManufacturingLensPage() {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleAction('scheduleMaintenance', item.id)}
+                    onClick={() => handleAction('maintenance-schedule', item.id)}
                     className={cn(ds.btnSecondary, ds.btnSmall)}
                   >
                     <Wrench className="w-3.5 h-3.5" /> Schedule PM
