@@ -377,13 +377,13 @@ const DOMAIN_ACTIONS = [
     description: 'Generate comparative market analysis',
   },
   {
-    id: 'closing_timeline',
+    id: 'closingTimeline',
     label: 'Closing Timeline',
     icon: Clock,
     description: 'Generate closing timeline',
   },
   {
-    id: 'vacancy_report',
+    id: 'vacancyReport',
     label: 'Vacancy Report',
     icon: Building2,
     description: 'Generate vacancy & occupancy report',
@@ -1947,7 +1947,7 @@ export default function RealEstateLensPage() {
                               Edit Details
                             </button>
                             <button
-                              onClick={() => handleAction('closing_timeline', item.id)}
+                              onClick={() => handleAction('closingTimeline', item.id)}
                               className={cn(ds.btnSmall, ds.btnGhost)}
                             >
                               <Clock className="w-3 h-3" /> Generate Timeline
@@ -2188,7 +2188,7 @@ export default function RealEstateLensPage() {
                   ))}
                 </select>
                 <button
-                  onClick={() => handleAction('vacancy_report')}
+                  onClick={() => handleAction('vacancyReport')}
                   className={cn(ds.btnSmall, ds.btnGhost)}
                 >
                   <FileText className="w-3 h-3" /> Vacancy Report

@@ -67,8 +67,24 @@ const calls = new Map(); // dom.act -> Set(files)
 const add = (d, a, f) => { const k = d + '.' + a; if (!calls.has(k)) calls.set(k, new Set()); calls.get(k).add(path.relative(FE, f)); };
 for (const f of walk(FE, /\.(tsx?|jsx?)$/)) {
   const s = rd(f);
+  // (1) Explicit domain+action literals: lensRun('dom','act') / {domain:'dom', action:'act'}.
   for (const m of s.matchAll(/\b(?:lensRun|runDomain)\(\s*["'`]([a-z0-9_-]+)["'`]\s*,\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) add(m[1], m[2], f);
   for (const m of s.matchAll(/domain:\s*["'`]([a-z0-9_-]+)["'`]\s*,\s*(?:action|name):\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) add(m[1], m[2], f);
+  // (2) Hook-bound-domain pattern: the domain is bound in `useRunArtifact('dom')`
+  //     (or useLensData/useRunArtifact<T>('dom')) and actions are dispatched via a
+  //     wrapper — `handleAction('act')` / `runAction('act')` / `action: 'act'`. The
+  //     call site has NO domain literal, so pattern (1) misses it. Only fire when the
+  //     file binds EXACTLY ONE domain this way (otherwise the action↔domain pairing is
+  //     ambiguous). This is what surfaced the retail/food snake_case→camelCase breaks.
+  const bound = new Set();
+  for (const m of s.matchAll(/\buse(?:RunArtifact|LensData)(?:<[^>]*>)?\(\s*["'`]([a-z0-9_-]+)["'`]/g)) bound.add(m[1]);
+  if (bound.size === 1) {
+    const dom = [...bound][0];
+    if (!domains.has(dom)) continue;
+    const acts = new Set();
+    for (const m of s.matchAll(/\b[A-Za-z]*[Aa]ction\(\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) acts.add(m[1]); // handleAction('x'), runAction('x'), doAction('x')
+    for (const a of acts) add(dom, a, f);
+  }
 }
 
 const broken = [];

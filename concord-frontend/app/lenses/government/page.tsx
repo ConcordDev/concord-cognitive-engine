@@ -2489,7 +2489,7 @@ export default function GovernmentLensPage() {
                 <>
                   <button
                     className={cn(ds.btnDanger)}
-                    onClick={() => handleAction('resource_staging', detailItem.id)}
+                    onClick={() => handleAction('resourceStaging', detailItem.id)}
                   >
                     <Truck className="w-4 h-4" /> Stage Resources
                   </button>
@@ -2511,7 +2511,7 @@ export default function GovernmentLensPage() {
                 <>
                   <button
                     className={ds.btnSecondary}
-                    onClick={() => handleAction('retention_check', detailItem.id)}
+                    onClick={() => handleAction('retentionCheck', detailItem.id)}
                   >
                     <Clock className="w-4 h-4" /> Retention Check
                   </button>

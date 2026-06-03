@@ -974,7 +974,7 @@ export default function RetailLensPage() {
                     <span className={ds.badge(p.stockoutRisk === 'critical' ? 'red-400' : 'orange-400')}>
                       {p.stockoutRisk}
                     </span>
-                    <button className={cn(ds.btnSecondary, ds.btnSmall)} onClick={() => handleAction('reorder_check', p.id)}>
+                    <button className={cn(ds.btnSecondary, ds.btnSmall)} onClick={() => handleAction('reorderCheck', p.id)}>
                       <Truck className="w-3.5 h-3.5" /> Reorder
                     </button>
                   </div>
@@ -1477,12 +1477,12 @@ export default function RetailLensPage() {
           <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); openEdit(item); }}><Edit3 className="w-3.5 h-3.5" /> Edit</button>
           <button className={cn(ds.btnDanger, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}><Trash2 className="w-3.5 h-3.5" /> Delete</button>
           {currentType === 'Product' && (
-            <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); handleAction('reorder_check', item.id); }}>
+            <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); handleAction('reorderCheck', item.id); }}>
               <RefreshCw className="w-3.5 h-3.5" /> Reorder Check
             </button>
           )}
           {currentType === 'Customer' && (
-            <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); handleAction('ltv_calculator', item.id); }}>
+            <button className={cn(ds.btnGhost, ds.btnSmall)} onClick={(e) => { e.stopPropagation(); handleAction('customerLTV', item.id); }}>
               <TrendingUp className="w-3.5 h-3.5" /> LTV
             </button>
           )}
@@ -1526,7 +1526,7 @@ export default function RetailLensPage() {
                       <p className="text-sm font-medium text-white">{p.title}</p>
                       <p className={ds.textMuted}>Stock: {d.stock} / Reorder at: {d.reorderPoint}{d.supplier ? ` | Supplier: ${d.supplier}` : ''}</p>
                     </div>
-                    <button className={ds.btnSecondary} onClick={() => handleAction('reorder_check', p.id)}>
+                    <button className={ds.btnSecondary} onClick={() => handleAction('reorderCheck', p.id)}>
                       <Truck className="w-4 h-4" /> Reorder
                     </button>
                   </div>

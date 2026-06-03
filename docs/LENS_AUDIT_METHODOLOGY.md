@@ -367,3 +367,33 @@ which is honest backlog.
   that the LLM does *reliably*; open-ended facade-hunting is the form it hallucinates.
   Prefer the contract-verification prompt, and still spot-check the negatives (a clean
   report can hide a false negative as easily as a noisy one hides a false positive).
+
+## Worked case study — batch 11: the systemic snake_case→camelCase break (21 buttons, 7 lenses), 2026-06-03
+The `food`/`retail` contract-verification deep-dives both surfaced the SAME shape: the
+frontend dispatches actions in **snake_case** (`scale_recipe`, `reorder_check`) but the
+backend registers them **camelCase** (`scaleRecipe`, `reorderCheck`). The `/api/lens/run`
+dispatch does an exact `LENS_ACTIONS.get("domain.action")` string match (`server.js`), so
+the call misses the real handler and **falls through to the utility-brain AI catch-all** —
+the button "works" but returns generic AI text instead of the real computation. A silent,
+widespread facade.
+- **Why the detector missed it (and the fix):** these lenses bind the domain in a hook
+  (`useRunArtifact('retail')`) and dispatch via a wrapper (`handleAction('reorder_check')`),
+  so there is no `domain:'x', action:'y'` literal adjacency for `lens:broken-calls` to
+  match. Enhanced the detector with a **hook-bound-domain mode**: when a file binds exactly
+  one domain via `useRunArtifact`/`useLensData`, pair the file's bare `…Action('literal')`
+  dispatch tokens with that domain. The broken-wire count went **13 → 127** — the enhanced
+  detector exposed the whole population the original missed.
+- **Separating fixable bugs from intentional AI-use:** of the 127, **19 had a registered
+  camelCase twin** (computed by normalising each snake call and checking the registry) —
+  those are unambiguous bugs with a known fix. The other 108 are mostly the deliberate
+  `*.analyze` / `*.generate` AI-catch-all convention (no twin) and were left alone.
+- **Fixed (21 buttons across 7 lenses):** `retail` (`reorder_check`→`reorderCheck`,
+  `ltv_calculator`→`customerLTV`) + the 19 twin-backed repoints in `aviation` (5),
+  `food` (7), `education` (2), `realestate` (2), `creative` (1), `government` (2). Each is
+  a frontend token swap, verified safe (the tokens appear only in dispatch context — no
+  `actionResult.action === 'snake'` display branch keys on them — and the target macro is
+  a registered artifact-analysis handler). 127 → 108 broken wires.
+- **Lesson:** the most valuable thing the LLM deep-dives produced was not their per-lens
+  verdicts but the *recurring shape* — once `food` and `retail` showed the same snake/camel
+  break, the right move was to teach the deterministic detector the pattern and sweep all
+  259 lenses at once, not deep-dive them one by one. Detectors scale; deep-dives don't.

@@ -581,7 +581,7 @@ export default function CreativeLensPage() {
             { action: 'generate_shot_list', label: 'Generate Shot List', icon: Clapperboard },
             { action: 'asset_report', label: 'Asset Report', icon: BarChart3 },
             { action: 'budget_analysis', label: 'Budget Analysis', icon: DollarSign },
-            { action: 'distribution_checklist', label: 'Distribution Checklist', icon: ListChecks },
+            { action: 'distributionChecklist', label: 'Distribution Checklist', icon: ListChecks },
             { action: 'project_summary', label: 'Project Summary', icon: ClipboardList },
           ].map(a => (
             <button
@@ -1402,7 +1402,7 @@ export default function CreativeLensPage() {
                     <button onClick={() => handleAction('revision_summary', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ClipboardList className="w-3 h-3" /> Revision Summary</button>
                   )}
                   {currentMode === 'distribution' && (
-                    <button onClick={() => handleAction('distribution_checklist', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ListChecks className="w-3 h-3" /> Checklist Report</button>
+                    <button onClick={() => handleAction('distributionChecklist', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ListChecks className="w-3 h-3" /> Checklist Report</button>
                   )}
                 </div>
               </div>
