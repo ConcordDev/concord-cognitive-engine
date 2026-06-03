@@ -1411,6 +1411,57 @@ ${corpus}`;
     return { ok: true, result: { review } };
   });
 
+  // Hypothesis analysis — scaffolds a rigorous research framing from a free-text
+  // hypothesis for the lens "Analyze" surface (app/lenses/research/page.tsx
+  // handleRunAnalysis, which POSTs research.generate and renders result.content).
+  // Deterministic by default; optional LLM enrichment with a deterministic fallback,
+  // matching the literature-review convention above. (Was called by the frontend but
+  // never registered — the Analyze button 404'd until this landed.)
+  registerLensAction("research", "generate", async (ctx, _a, params = {}) => {
+    const hypothesis = String(params.hypothesis || "").trim();
+    if (!hypothesis) return { ok: false, error: "hypothesis required" };
+    const kind = String(params.type || "analysis").trim().slice(0, 40);
+    const title = hypothesis.length > 80 ? hypothesis.slice(0, 77) + "…" : hypothesis;
+
+    // Deterministic keyword extraction (stopword-filtered frequency) → candidate constructs.
+    const STOP = new Set("the a an of to in is are be on for and or with that this it as by from at we our their they will would can could does do how why what which than then so such into over under more most less between among also can may".split(" "));
+    const freq = new Map();
+    for (const w of (hypothesis.toLowerCase().match(/[a-z][a-z-]{2,}/g) || [])) {
+      if (STOP.has(w)) continue;
+      freq.set(w, (freq.get(w) || 0) + 1);
+    }
+    const constructs = [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([w]) => w);
+    const c = constructs.length ? constructs.join(", ") : "the stated variables";
+    const deterministic = () => [
+      `# Research analysis`,
+      ``,
+      `**Hypothesis.** ${hypothesis}`,
+      ``,
+      `**Key constructs.** ${c}.`,
+      ``,
+      `**Testable framing.** Identify the independent and dependent variables among (${c}), state the null hypothesis explicitly, and pick a design — controlled experiment, quasi-experiment, or observational study — that can establish the direction of the relationship.`,
+      ``,
+      `**Operationalization.** Define a concrete, measurable proxy for each construct, and a sampling frame that keeps the comparison fair (matched groups or randomization where possible).`,
+      ``,
+      `**Threats to validity.** Watch for confounds, selection bias, and reverse causation; pre-register the analysis and report effect sizes with confidence intervals, not just p-values.`,
+      ``,
+      `**Next steps.** Run a power analysis to size the study, draft the protocol, and search prior work on ${constructs[0] || "this question"} (use the Literature tab).`,
+      ``,
+      `_Deterministic scaffold — open an LLM-enabled session for a richer synthesis._`,
+    ].join("\n");
+
+    const llm = ctx?.llm;
+    if (llm && typeof llm.chat === "function" && process.env.CONCORD_RESEARCH_GENERATE_LLM !== "0") {
+      try {
+        const prompt = `You are a research-methods advisor. Give a concise, rigorous analysis of this ${kind}:\n\n"${hypothesis}"\n\nCover: key constructs, a testable framing (variables + null hypothesis), a suitable study design, operationalization, threats to validity, and concrete next steps. Use markdown headings. Be specific; do not invent citations.`;
+        const out = await llm.chat(prompt, { maxTokens: 900, temperature: 0.4 });
+        const content = (typeof out === "string" ? out : (out?.content || out?.text || "")).trim();
+        if (content) return { ok: true, result: { title, content, mode: "llm" } };
+      } catch (_e) { /* fall through to deterministic */ }
+    }
+    return { ok: true, result: { title, content: deterministic(), mode: "heuristic" } };
+  });
+
   registerLensAction("research", "literature-reviews-list", (ctx, _a, _params = {}) => {
     const s = getResearchStateExt(); if (!s) return { ok: false, error: "STATE unavailable" };
     const list = s.reviews.get(rfAid(ctx)) || [];

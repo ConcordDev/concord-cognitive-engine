@@ -20,7 +20,8 @@
     "depth:scaffold": "node scripts/depth-scaffold.mjs",
     "depth:check": "node scripts/check-depth-tests.mjs",
     "lens:audit": "node scripts/lens-audit.mjs",
-    "lens:orphans": "node scripts/lens-orphans.mjs"
+    "lens:orphans": "node scripts/lens-orphans.mjs",
+    "lens:unsurfaced": "node scripts/lens-unsurfaced.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",

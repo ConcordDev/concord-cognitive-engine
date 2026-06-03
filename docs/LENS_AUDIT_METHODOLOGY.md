@@ -59,6 +59,18 @@ candidate surgical win (import + mount = an unreachable feature goes live).
   the deep-dive repeatedly claimed panels "never mounted" that were dynamically
   imported, and missed genuine orphans. Run `lens:orphans` first; deep-dive second.
 
+### Layer 1.5 — unsurfaced-macro detector (deterministic, all-lenses) — `npm run lens:unsurfaced`
+`scripts/lens-unsurfaced.mjs` catches the **backend-built / no-UI** gap class: a
+registered `(domain, action)` macro whose action token appears **nowhere** in the
+frontend. Where `lens:orphans` finds a built *panel* that was never mounted, this finds
+a built *macro* that was never given a panel at all. It groups hits into feature
+clusters by prefix — a cluster of ≥3 (e.g. message `labels-*` ×5, whiteboard
+`shared-*` ×3) is the strong signal: a whole feature lives on the backend with no UI.
+- **Triage, not a defect list.** Many macros are legitimately frontend-invisible
+  (LLM/agent tools, heartbeat-only, internal helpers, REST-routed). Read the cluster,
+  then judge. Most clusters are **backlog** (need a new UI build), not surgical facades.
+- Drill in with `npm run lens:unsurfaced --lens <name>`.
+
 ### Layer 2 — LLM feature-parity deep-dive (expensive, per-lens, on demand)
 For a chosen lens (prioritized by Layer 1), run an Explore agent with this template:
 
@@ -236,3 +248,32 @@ Layer-2 reports over-claimed — re-checking every claim against code is non-opt
   LLM — it doesn't hallucinate mounts, and the only judgement it needs (is this a
   superseded duplicate?) is a fast sibling-grep. Layer 1.5 is now the first move on any
   lens before a Layer-2 deep-dive.
+
+## Worked case study — batch 6: `research` (vs Zotero/Notion) — a real dropped-result facade, 2026-06-03
+The first Layer-2 deep-dive that found genuine, surgical, *non-orphan* defects — the
+music pattern in its purest form (backend computes the right answer; the frontend reads
+the wrong field, or calls a macro that was never registered). All verified against code
+(the report again flip-flopped on ~6 non-defects first):
+- **`research.generate` was called but never registered.** The lens "Analyze" button +
+  Enter key (`app/lenses/research/page.tsx` `handleRunAnalysis`) POST
+  `/api/lens/run {domain:'research', action:'generate'}`, but no
+  `registerLensAction("research","generate", …)` existed → the button 404'd silently.
+  **Fixed:** added a real `research.generate` macro (`server/domains/research.js`) — a
+  deterministic hypothesis-analysis scaffold (construct extraction → testable framing →
+  operationalization → validity threats → next steps) with opt-in LLM enrichment and a
+  deterministic fallback, matching the `literature-review` convention. Returns
+  `{title, content}` exactly as the UI expects. Behavioral test at
+  `server/tests/depth/research-generate-behavior.test.js` (4 cases).
+- **Four result-field mismatches — backend returns X, UI reads Y (always blank).** All
+  display-only, fixed in the frontend to read the real fields (zero backend/test risk):
+  `citationNetwork` UI read `totalCitations` (never returned) → now `networkDensity`
+  ("Density"); `methodologyScore` read `score`/`quality` → now `percentage`%/`grade`;
+  `reproducibilityCheck` read `reproducibilityScore` → now `reproducibilityPercentage`%,
+  and the issues list read `issues` → `criticalIssues`. Each verified field-by-field
+  against the macro's exact `return { result: {…} }` object.
+- **Lesson:** the dropped-result facade (backend right, UI reads the wrong key) is
+  invisible to all three deterministic detectors — the macro IS surfaced (its name is in
+  the frontend), the panel IS mounted, the backend IS deep. Only a field-by-field
+  read of the return object against the UI's `result.<field>` accesses catches it. This
+  is the residue Layer 2 exists for — but confirm every claim against the lines, because
+  the report mislabels ~½ of them.
