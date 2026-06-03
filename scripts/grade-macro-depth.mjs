@@ -377,7 +377,15 @@ console.error(`  ${frontendRefs.size} (domain.macro) refs in frontend`);
 
 // ---- 4. Signal regexes (run against handler body + helpers) ----
 
-const STATE_RE = /\b(?:ctx\.db|ctx\.state|STATE\b|getWorkspaceState|ensureFiles|ensureSessions|getHealthState|globalThis\._concord|saveStateIfAvailable|saveWS|bucketH|aidH|aidC|s\.db|state\.db)\b/;
+// `stateTouch` means "interacts with persistent state". The original list only
+// caught state via a named handle (ctx.db / STATE / s.db). But the dominant
+// real pattern — especially in the lib fns that thin macros delegate to — is a
+// `db` PARAMETER used directly: `db.prepare(…).run(…)`, `db.exec(…)`,
+// `db.transaction(…)`. Missing those undercounted genuinely-stateful work as
+// "utility" (e.g. crime.record → recordCrime, which writes rows). Recognising a
+// real DB call on a db-ish receiver is honest measurement, not generosity — the
+// macro provably touches the database.
+const STATE_RE = /\b(?:ctx\.db|ctx\.state|STATE\b|getWorkspaceState|ensureFiles|ensureSessions|getHealthState|globalThis\._concord|saveStateIfAvailable|saveWS|bucketH|aidH|aidC|s\.db|state\.db|(?:_?db|database|conn)\.(?:prepare|exec|run|transaction|pragma))\b/;
 const EXTERNAL_RE = /\b(?:await\s+fetch|ctx\.llm\.chat|withTimeout|process\.env\.\w+_API_KEY|fetch\s*\(\s*['"`]https?:\/\/)/;
 const TRY_RE = /\btry\s*\{/;
 const REALTIME_RE = /\b(?:realtimeEmit|io\.to|REALTIME\?\.io|req\.app\.locals\.io|app\.locals\.io|broadcastTo)\b/;
