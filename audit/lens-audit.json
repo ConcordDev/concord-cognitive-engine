@@ -1,0 +1,4437 @@
+{
+  "generatedAt": "2026-06-03T19:19:40.290Z",
+  "lensCount": 443,
+  "mappedRivals": 53,
+  "lenses": [
+    {
+      "lens": "accounting",
+      "rival": "QuickBooks",
+      "macros": 116,
+      "substantive": 116,
+      "stub": 0,
+      "behaviorallyTested": 34,
+      "frontendFiles": 28,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "projects",
+      "rival": "Jira / Asana",
+      "macros": 99,
+      "substantive": 95,
+      "stub": 4,
+      "behaviorallyTested": 85,
+      "frontendFiles": 14,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "game-design",
+      "rival": "Unity / StudioBinder",
+      "macros": 98,
+      "substantive": 93,
+      "stub": 5,
+      "behaviorallyTested": 86,
+      "frontendFiles": 14,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "film-studios",
+      "rival": "Final Draft / StudioBinder",
+      "macros": 97,
+      "substantive": 92,
+      "stub": 5,
+      "behaviorallyTested": 85,
+      "frontendFiles": 14,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "code",
+      "rival": "VS Code",
+      "macros": 81,
+      "substantive": 81,
+      "stub": 0,
+      "behaviorallyTested": 21,
+      "frontendFiles": 24,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "retail",
+      "rival": "Shopify",
+      "macros": 81,
+      "substantive": 81,
+      "stub": 0,
+      "behaviorallyTested": 33,
+      "frontendFiles": 22,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "music",
+      "rival": "Spotify",
+      "macros": 82,
+      "substantive": 80,
+      "stub": 2,
+      "behaviorallyTested": 57,
+      "frontendFiles": 17,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "healthcare",
+      "rival": "Epic (EHR)",
+      "macros": 82,
+      "substantive": 79,
+      "stub": 3,
+      "behaviorallyTested": 22,
+      "frontendFiles": 30,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "studio",
+      "rival": "Adobe Creative Cloud",
+      "macros": 78,
+      "substantive": 78,
+      "stub": 0,
+      "behaviorallyTested": 35,
+      "frontendFiles": 40,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "finance",
+      "rival": "Bloomberg / Mint",
+      "macros": 79,
+      "substantive": 75,
+      "stub": 4,
+      "behaviorallyTested": 27,
+      "frontendFiles": 29,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "insurance",
+      "rival": "Guidewire / Lemonade",
+      "macros": 74,
+      "substantive": 72,
+      "stub": 2,
+      "behaviorallyTested": 47,
+      "frontendFiles": 12,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "message",
+      "rival": "Gmail / Slack",
+      "macros": 70,
+      "substantive": 70,
+      "stub": 0,
+      "behaviorallyTested": 24,
+      "frontendFiles": 19,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "art",
+      "rival": "Procreate / Behance",
+      "macros": 70,
+      "substantive": 69,
+      "stub": 1,
+      "behaviorallyTested": 37,
+      "frontendFiles": 12,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "agriculture",
+      "rival": "FarmLogs / Granular",
+      "macros": 68,
+      "substantive": 68,
+      "stub": 0,
+      "behaviorallyTested": 22,
+      "frontendFiles": 24,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "creative",
+      "rival": "Adobe Creative Suite",
+      "macros": 71,
+      "substantive": 67,
+      "stub": 4,
+      "behaviorallyTested": 31,
+      "frontendFiles": 6,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "education",
+      "rival": "Canvas / Coursera",
+      "macros": 67,
+      "substantive": 67,
+      "stub": 0,
+      "behaviorallyTested": 24,
+      "frontendFiles": 25,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "fitness",
+      "rival": "Strava / MyFitnessPal",
+      "macros": 68,
+      "substantive": 67,
+      "stub": 1,
+      "behaviorallyTested": 46,
+      "frontendFiles": 18,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "food",
+      "rival": "Yummly / Paprika",
+      "macros": 68,
+      "substantive": 67,
+      "stub": 1,
+      "behaviorallyTested": 29,
+      "frontendFiles": 21,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "marketplace",
+      "rival": "Bandcamp / Etsy",
+      "macros": 72,
+      "substantive": 67,
+      "stub": 5,
+      "behaviorallyTested": 29,
+      "frontendFiles": 21,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "crypto",
+      "rival": "Coinbase / Phantom",
+      "macros": 63,
+      "substantive": 63,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 16,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "research",
+      "rival": "Zotero / Notion",
+      "macros": 66,
+      "substantive": 62,
+      "stub": 4,
+      "behaviorallyTested": 21,
+      "frontendFiles": 14,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "pets",
+      "rival": "Rover / pet-care apps",
+      "macros": 61,
+      "substantive": 61,
+      "stub": 0,
+      "behaviorallyTested": 45,
+      "frontendFiles": 13,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "trades",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 61,
+      "substantive": 61,
+      "stub": 0,
+      "behaviorallyTested": 10,
+      "frontendFiles": 20,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "legal",
+      "rival": "Clio / DocuSign",
+      "macros": 63,
+      "substantive": 60,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 22,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "marketing",
+      "rival": "HubSpot",
+      "macros": 64,
+      "substantive": 60,
+      "stub": 4,
+      "behaviorallyTested": 57,
+      "frontendFiles": 16,
+      "band": "parity-candidate"
+    },
+    {
+      "lens": "government",
+      "rival": "Gov.uk / civic services",
+      "macros": 62,
+      "substantive": 59,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 25,
+      "band": "deep"
+    },
+    {
+      "lens": "logistics",
+      "rival": "ShipStation / Flexport",
+      "macros": 59,
+      "substantive": 58,
+      "stub": 1,
+      "behaviorallyTested": 21,
+      "frontendFiles": 17,
+      "band": "deep"
+    },
+    {
+      "lens": "whiteboard",
+      "rival": "Miro / FigJam",
+      "macros": 62,
+      "substantive": 58,
+      "stub": 4,
+      "behaviorallyTested": 6,
+      "frontendFiles": 8,
+      "band": "deep"
+    },
+    {
+      "lens": "chat",
+      "rival": "ChatGPT / Slack",
+      "macros": 58,
+      "substantive": 57,
+      "stub": 1,
+      "behaviorallyTested": 14,
+      "frontendFiles": 41,
+      "band": "deep"
+    },
+    {
+      "lens": "automotive",
+      "rival": "Mitchell1 / CarMD",
+      "macros": 54,
+      "substantive": 54,
+      "stub": 0,
+      "behaviorallyTested": 21,
+      "frontendFiles": 7,
+      "band": "deep"
+    },
+    {
+      "lens": "aviation",
+      "rival": "ForeFlight",
+      "macros": 55,
+      "substantive": 54,
+      "stub": 1,
+      "behaviorallyTested": 16,
+      "frontendFiles": 20,
+      "band": "deep"
+    },
+    {
+      "lens": "photography",
+      "rival": "Lightroom",
+      "macros": 59,
+      "substantive": 54,
+      "stub": 5,
+      "behaviorallyTested": 44,
+      "frontendFiles": 9,
+      "band": "deep"
+    },
+    {
+      "lens": "world",
+      "rival": null,
+      "macros": 54,
+      "substantive": 54,
+      "stub": 0,
+      "behaviorallyTested": 35,
+      "frontendFiles": 163,
+      "band": "deep"
+    },
+    {
+      "lens": "realestate",
+      "rival": "Zillow / MLS",
+      "macros": 55,
+      "substantive": 53,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 24,
+      "band": "deep"
+    },
+    {
+      "lens": "hr",
+      "rival": "Workday / BambooHR",
+      "macros": 56,
+      "substantive": 52,
+      "stub": 4,
+      "behaviorallyTested": 46,
+      "frontendFiles": 15,
+      "band": "deep"
+    },
+    {
+      "lens": "atlas",
+      "rival": "Obsidian / Roam",
+      "macros": 52,
+      "substantive": 51,
+      "stub": 1,
+      "behaviorallyTested": 13,
+      "frontendFiles": 24,
+      "band": "deep"
+    },
+    {
+      "lens": "calendar",
+      "rival": "Google Calendar",
+      "macros": 55,
+      "substantive": 51,
+      "stub": 4,
+      "behaviorallyTested": 18,
+      "frontendFiles": 9,
+      "band": "deep"
+    },
+    {
+      "lens": "creative-writing",
+      "rival": "Scrivener",
+      "macros": 55,
+      "substantive": 51,
+      "stub": 4,
+      "behaviorallyTested": 44,
+      "frontendFiles": 14,
+      "band": "deep"
+    },
+    {
+      "lens": "pharmacy",
+      "rival": "pharmacy management (PioneerRx)",
+      "macros": 54,
+      "substantive": 51,
+      "stub": 3,
+      "behaviorallyTested": 40,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "animation",
+      "rival": "Blender / After Effects",
+      "macros": 53,
+      "substantive": 50,
+      "stub": 3,
+      "behaviorallyTested": 37,
+      "frontendFiles": 5,
+      "band": "deep"
+    },
+    {
+      "lens": "productivity",
+      "rival": null,
+      "macros": 50,
+      "substantive": 50,
+      "stub": 0,
+      "behaviorallyTested": 41,
+      "frontendFiles": 15,
+      "band": "deep"
+    },
+    {
+      "lens": "travel",
+      "rival": null,
+      "macros": 50,
+      "substantive": 50,
+      "stub": 0,
+      "behaviorallyTested": 38,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "app-maker",
+      "rival": null,
+      "macros": 50,
+      "substantive": 49,
+      "stub": 1,
+      "behaviorallyTested": 38,
+      "frontendFiles": 3,
+      "band": "deep"
+    },
+    {
+      "lens": "parenting",
+      "rival": null,
+      "macros": 49,
+      "substantive": 49,
+      "stub": 0,
+      "behaviorallyTested": 34,
+      "frontendFiles": 14,
+      "band": "deep"
+    },
+    {
+      "lens": "household",
+      "rival": null,
+      "macros": 48,
+      "substantive": 48,
+      "stub": 0,
+      "behaviorallyTested": 26,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "reflection",
+      "rival": null,
+      "macros": 48,
+      "substantive": 48,
+      "stub": 0,
+      "behaviorallyTested": 21,
+      "frontendFiles": 9,
+      "band": "deep"
+    },
+    {
+      "lens": "mental-health",
+      "rival": null,
+      "macros": 50,
+      "substantive": 46,
+      "stub": 4,
+      "behaviorallyTested": 38,
+      "frontendFiles": 15,
+      "band": "deep"
+    },
+    {
+      "lens": "fashion",
+      "rival": null,
+      "macros": 50,
+      "substantive": 45,
+      "stub": 5,
+      "behaviorallyTested": 41,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "podcast",
+      "rival": null,
+      "macros": 48,
+      "substantive": 44,
+      "stub": 4,
+      "behaviorallyTested": 27,
+      "frontendFiles": 11,
+      "band": "deep"
+    },
+    {
+      "lens": "agents",
+      "rival": null,
+      "macros": 44,
+      "substantive": 43,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 4,
+      "band": "deep"
+    },
+    {
+      "lens": "voice",
+      "rival": null,
+      "macros": 44,
+      "substantive": 43,
+      "stub": 1,
+      "behaviorallyTested": 33,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "astronomy",
+      "rival": null,
+      "macros": 46,
+      "substantive": 42,
+      "stub": 4,
+      "behaviorallyTested": 24,
+      "frontendFiles": 11,
+      "band": "deep"
+    },
+    {
+      "lens": "creator",
+      "rival": null,
+      "macros": 43,
+      "substantive": 42,
+      "stub": 1,
+      "behaviorallyTested": 39,
+      "frontendFiles": 15,
+      "band": "deep"
+    },
+    {
+      "lens": "docs",
+      "rival": null,
+      "macros": 42,
+      "substantive": 42,
+      "stub": 0,
+      "behaviorallyTested": 39,
+      "frontendFiles": 13,
+      "band": "deep"
+    },
+    {
+      "lens": "nonprofit",
+      "rival": null,
+      "macros": 45,
+      "substantive": 42,
+      "stub": 3,
+      "behaviorallyTested": 36,
+      "frontendFiles": 5,
+      "band": "deep"
+    },
+    {
+      "lens": "events",
+      "rival": null,
+      "macros": 44,
+      "substantive": 41,
+      "stub": 3,
+      "behaviorallyTested": 12,
+      "frontendFiles": 4,
+      "band": "deep"
+    },
+    {
+      "lens": "news",
+      "rival": null,
+      "macros": 42,
+      "substantive": 41,
+      "stub": 1,
+      "behaviorallyTested": 31,
+      "frontendFiles": 18,
+      "band": "deep"
+    },
+    {
+      "lens": "paper",
+      "rival": null,
+      "macros": 43,
+      "substantive": 41,
+      "stub": 2,
+      "behaviorallyTested": 19,
+      "frontendFiles": 7,
+      "band": "deep"
+    },
+    {
+      "lens": "sports",
+      "rival": null,
+      "macros": 45,
+      "substantive": 41,
+      "stub": 4,
+      "behaviorallyTested": 20,
+      "frontendFiles": 11,
+      "band": "deep"
+    },
+    {
+      "lens": "consulting",
+      "rival": null,
+      "macros": 44,
+      "substantive": 40,
+      "stub": 4,
+      "behaviorallyTested": 39,
+      "frontendFiles": 12,
+      "band": "deep"
+    },
+    {
+      "lens": "worldmodel",
+      "rival": null,
+      "macros": 42,
+      "substantive": 40,
+      "stub": 2,
+      "behaviorallyTested": 2,
+      "frontendFiles": 3,
+      "band": "deep"
+    },
+    {
+      "lens": "feed",
+      "rival": null,
+      "macros": 44,
+      "substantive": 39,
+      "stub": 5,
+      "behaviorallyTested": 15,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "forum",
+      "rival": null,
+      "macros": 44,
+      "substantive": 39,
+      "stub": 5,
+      "behaviorallyTested": 33,
+      "frontendFiles": 15,
+      "band": "moderate"
+    },
+    {
+      "lens": "hypothesis",
+      "rival": null,
+      "macros": 39,
+      "substantive": 39,
+      "stub": 0,
+      "behaviorallyTested": 16,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "game",
+      "rival": null,
+      "macros": 40,
+      "substantive": 38,
+      "stub": 2,
+      "behaviorallyTested": 29,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "home-improvement",
+      "rival": null,
+      "macros": 43,
+      "substantive": 38,
+      "stub": 5,
+      "behaviorallyTested": 0,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "law",
+      "rival": null,
+      "macros": 39,
+      "substantive": 38,
+      "stub": 1,
+      "behaviorallyTested": 29,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "board",
+      "rival": null,
+      "macros": 36,
+      "substantive": 36,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "history",
+      "rival": null,
+      "macros": 40,
+      "substantive": 36,
+      "stub": 4,
+      "behaviorallyTested": 9,
+      "frontendFiles": 12,
+      "band": "moderate"
+    },
+    {
+      "lens": "ingest",
+      "rival": null,
+      "macros": 36,
+      "substantive": 36,
+      "stub": 0,
+      "behaviorallyTested": 21,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "cooking",
+      "rival": null,
+      "macros": 38,
+      "substantive": 35,
+      "stub": 3,
+      "behaviorallyTested": 2,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "security",
+      "rival": null,
+      "macros": 37,
+      "substantive": 35,
+      "stub": 2,
+      "behaviorallyTested": 27,
+      "frontendFiles": 6,
+      "band": "moderate"
+    },
+    {
+      "lens": "council",
+      "rival": null,
+      "macros": 39,
+      "substantive": 34,
+      "stub": 5,
+      "behaviorallyTested": 12,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "electrical",
+      "rival": null,
+      "macros": 34,
+      "substantive": 34,
+      "stub": 0,
+      "behaviorallyTested": 14,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "environment",
+      "rival": null,
+      "macros": 40,
+      "substantive": 34,
+      "stub": 6,
+      "behaviorallyTested": 10,
+      "frontendFiles": 21,
+      "band": "moderate"
+    },
+    {
+      "lens": "experience",
+      "rival": null,
+      "macros": 42,
+      "substantive": 34,
+      "stub": 8,
+      "behaviorallyTested": 6,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "srs",
+      "rival": null,
+      "macros": 35,
+      "substantive": 34,
+      "stub": 1,
+      "behaviorallyTested": 22,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "thread",
+      "rival": null,
+      "macros": 36,
+      "substantive": 34,
+      "stub": 2,
+      "behaviorallyTested": 26,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "construction",
+      "rival": null,
+      "macros": 35,
+      "substantive": 33,
+      "stub": 2,
+      "behaviorallyTested": 31,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "database",
+      "rival": null,
+      "macros": 37,
+      "substantive": 33,
+      "stub": 4,
+      "behaviorallyTested": 20,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "gallery",
+      "rival": null,
+      "macros": 34,
+      "substantive": 33,
+      "stub": 1,
+      "behaviorallyTested": 14,
+      "frontendFiles": 11,
+      "band": "moderate"
+    },
+    {
+      "lens": "wellness",
+      "rival": null,
+      "macros": 35,
+      "substantive": 33,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "artistry",
+      "rival": null,
+      "macros": 32,
+      "substantive": 32,
+      "stub": 0,
+      "behaviorallyTested": 25,
+      "frontendFiles": 14,
+      "band": "moderate"
+    },
+    {
+      "lens": "graph",
+      "rival": null,
+      "macros": 33,
+      "substantive": 32,
+      "stub": 1,
+      "behaviorallyTested": 20,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "hvac",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 32,
+      "substantive": 32,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "kingdoms",
+      "rival": null,
+      "macros": 36,
+      "substantive": 32,
+      "stub": 4,
+      "behaviorallyTested": 6,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "poetry",
+      "rival": null,
+      "macros": 36,
+      "substantive": 32,
+      "stub": 4,
+      "behaviorallyTested": 27,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "science",
+      "rival": null,
+      "macros": 35,
+      "substantive": 32,
+      "stub": 3,
+      "behaviorallyTested": 10,
+      "frontendFiles": 11,
+      "band": "moderate"
+    },
+    {
+      "lens": "veterinary",
+      "rival": null,
+      "macros": 32,
+      "substantive": 32,
+      "stub": 0,
+      "behaviorallyTested": 31,
+      "frontendFiles": 14,
+      "band": "moderate"
+    },
+    {
+      "lens": "answers",
+      "rival": null,
+      "macros": 31,
+      "substantive": 31,
+      "stub": 0,
+      "behaviorallyTested": 25,
+      "frontendFiles": 15,
+      "band": "moderate"
+    },
+    {
+      "lens": "energy",
+      "rival": null,
+      "macros": 34,
+      "substantive": 31,
+      "stub": 3,
+      "behaviorallyTested": 26,
+      "frontendFiles": 13,
+      "band": "moderate"
+    },
+    {
+      "lens": "carpentry",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 30,
+      "substantive": 30,
+      "stub": 0,
+      "behaviorallyTested": 10,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "ml",
+      "rival": null,
+      "macros": 31,
+      "substantive": 30,
+      "stub": 1,
+      "behaviorallyTested": 20,
+      "frontendFiles": 11,
+      "band": "moderate"
+    },
+    {
+      "lens": "repos",
+      "rival": "GitHub",
+      "macros": 30,
+      "substantive": 30,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "services",
+      "rival": null,
+      "macros": 31,
+      "substantive": 30,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "market",
+      "rival": null,
+      "macros": 29,
+      "substantive": 29,
+      "stub": 0,
+      "behaviorallyTested": 20,
+      "frontendFiles": 13,
+      "band": "moderate"
+    },
+    {
+      "lens": "plumbing",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 29,
+      "substantive": 29,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "attention",
+      "rival": null,
+      "macros": 28,
+      "substantive": 28,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "bio",
+      "rival": "Benchling",
+      "macros": 29,
+      "substantive": 28,
+      "stub": 1,
+      "behaviorallyTested": 4,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "collab",
+      "rival": null,
+      "macros": 35,
+      "substantive": 28,
+      "stub": 7,
+      "behaviorallyTested": 4,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "daily",
+      "rival": null,
+      "macros": 34,
+      "substantive": 28,
+      "stub": 6,
+      "behaviorallyTested": 14,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "forestry",
+      "rival": null,
+      "macros": 32,
+      "substantive": 28,
+      "stub": 4,
+      "behaviorallyTested": 17,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "manufacturing",
+      "rival": "Tulip / Plex / SAP",
+      "macros": 30,
+      "substantive": 28,
+      "stub": 2,
+      "behaviorallyTested": 5,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "observe",
+      "rival": "Datadog / Grafana",
+      "macros": 28,
+      "substantive": 28,
+      "stub": 0,
+      "behaviorallyTested": 5,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "reasoning",
+      "rival": null,
+      "macros": 30,
+      "substantive": 28,
+      "stub": 2,
+      "behaviorallyTested": 13,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "welding",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 28,
+      "substantive": 28,
+      "stub": 0,
+      "behaviorallyTested": 13,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "analytics",
+      "rival": null,
+      "macros": 30,
+      "substantive": 27,
+      "stub": 3,
+      "behaviorallyTested": 21,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "classroom",
+      "rival": null,
+      "macros": 27,
+      "substantive": 27,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "defense",
+      "rival": null,
+      "macros": 31,
+      "substantive": 27,
+      "stub": 4,
+      "behaviorallyTested": 18,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "geology",
+      "rival": null,
+      "macros": 31,
+      "substantive": 27,
+      "stub": 4,
+      "behaviorallyTested": 21,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "import",
+      "rival": null,
+      "macros": 27,
+      "substantive": 27,
+      "stub": 0,
+      "behaviorallyTested": 21,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "inheritance",
+      "rival": "estate-planning (Trust & Will)",
+      "macros": 27,
+      "substantive": 27,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 2,
+      "band": "moderate"
+    },
+    {
+      "lens": "masonry",
+      "rival": "ServiceTitan / Jobber",
+      "macros": 29,
+      "substantive": 27,
+      "stub": 2,
+      "behaviorallyTested": 7,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "metacognition",
+      "rival": null,
+      "macros": 27,
+      "substantive": 27,
+      "stub": 0,
+      "behaviorallyTested": 17,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "metalearning",
+      "rival": "Anki / spaced-repetition",
+      "macros": 28,
+      "substantive": 27,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "billing",
+      "rival": "Stripe Billing / Chargebee",
+      "macros": 28,
+      "substantive": 26,
+      "stub": 2,
+      "behaviorallyTested": 8,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "federation",
+      "rival": null,
+      "macros": 30,
+      "substantive": 26,
+      "stub": 4,
+      "behaviorallyTested": 10,
+      "frontendFiles": 12,
+      "band": "moderate"
+    },
+    {
+      "lens": "landscaping",
+      "rival": null,
+      "macros": 29,
+      "substantive": 26,
+      "stub": 3,
+      "behaviorallyTested": 8,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "philosophy",
+      "rival": null,
+      "macros": 30,
+      "substantive": 26,
+      "stub": 4,
+      "behaviorallyTested": 23,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "audit",
+      "rival": "Vanta / Drata (GRC)",
+      "macros": 26,
+      "substantive": 25,
+      "stub": 1,
+      "behaviorallyTested": 4,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "eco",
+      "rival": null,
+      "macros": 27,
+      "substantive": 25,
+      "stub": 2,
+      "behaviorallyTested": 7,
+      "frontendFiles": 13,
+      "band": "moderate"
+    },
+    {
+      "lens": "integrations",
+      "rival": null,
+      "macros": 27,
+      "substantive": 25,
+      "stub": 2,
+      "behaviorallyTested": 12,
+      "frontendFiles": 6,
+      "band": "moderate"
+    },
+    {
+      "lens": "law-enforcement",
+      "rival": "Mark43 / case management",
+      "macros": 29,
+      "substantive": 25,
+      "stub": 4,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "sentinel",
+      "rival": null,
+      "macros": 25,
+      "substantive": 25,
+      "stub": 0,
+      "behaviorallyTested": 24,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "social",
+      "rival": null,
+      "macros": 26,
+      "substantive": 25,
+      "stub": 1,
+      "behaviorallyTested": 6,
+      "frontendFiles": 38,
+      "band": "moderate"
+    },
+    {
+      "lens": "chem",
+      "rival": null,
+      "macros": 28,
+      "substantive": 24,
+      "stub": 4,
+      "behaviorallyTested": 3,
+      "frontendFiles": 6,
+      "band": "moderate"
+    },
+    {
+      "lens": "diy",
+      "rival": null,
+      "macros": 24,
+      "substantive": 24,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "export",
+      "rival": null,
+      "macros": 28,
+      "substantive": 24,
+      "stub": 4,
+      "behaviorallyTested": 20,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "lab",
+      "rival": null,
+      "macros": 24,
+      "substantive": 24,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "mining",
+      "rival": null,
+      "macros": 28,
+      "substantive": 24,
+      "stub": 4,
+      "behaviorallyTested": 12,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "questmarket",
+      "rival": null,
+      "macros": 24,
+      "substantive": 24,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 11,
+      "band": "moderate"
+    },
+    {
+      "lens": "system",
+      "rival": null,
+      "macros": 24,
+      "substantive": 24,
+      "stub": 0,
+      "behaviorallyTested": 16,
+      "frontendFiles": 11,
+      "band": "moderate"
+    },
+    {
+      "lens": "wallet",
+      "rival": null,
+      "macros": 24,
+      "substantive": 24,
+      "stub": 0,
+      "behaviorallyTested": 11,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "admin",
+      "rival": null,
+      "macros": 23,
+      "substantive": 23,
+      "stub": 0,
+      "behaviorallyTested": 15,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "foundry",
+      "rival": null,
+      "macros": 38,
+      "substantive": 23,
+      "stub": 15,
+      "behaviorallyTested": 0,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "grounding",
+      "rival": null,
+      "macros": 23,
+      "substantive": 23,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "meditation",
+      "rival": null,
+      "macros": 24,
+      "substantive": 23,
+      "stub": 1,
+      "behaviorallyTested": 17,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "understanding",
+      "rival": null,
+      "macros": 28,
+      "substantive": 23,
+      "stub": 5,
+      "behaviorallyTested": 3,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "cri",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "expert_mode",
+      "rival": null,
+      "macros": 25,
+      "substantive": 22,
+      "stub": 3,
+      "behaviorallyTested": 7,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "markets",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "mesh",
+      "rival": null,
+      "macros": 29,
+      "substantive": 22,
+      "stub": 7,
+      "behaviorallyTested": 19,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "ops",
+      "rival": null,
+      "macros": 23,
+      "substantive": 22,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "platform",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "suffering",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "telecommunications",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "transfer",
+      "rival": null,
+      "macros": 22,
+      "substantive": 22,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "alliance",
+      "rival": null,
+      "macros": 21,
+      "substantive": 21,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "commonsense",
+      "rival": null,
+      "macros": 21,
+      "substantive": 21,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "crafting",
+      "rival": null,
+      "macros": 21,
+      "substantive": 21,
+      "stub": 0,
+      "behaviorallyTested": 17,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "debug",
+      "rival": null,
+      "macros": 21,
+      "substantive": 21,
+      "stub": 0,
+      "behaviorallyTested": 17,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "goals",
+      "rival": null,
+      "macros": 22,
+      "substantive": 21,
+      "stub": 1,
+      "behaviorallyTested": 15,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "ocean",
+      "rival": null,
+      "macros": 25,
+      "substantive": 21,
+      "stub": 4,
+      "behaviorallyTested": 16,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "timeline",
+      "rival": null,
+      "macros": 21,
+      "substantive": 21,
+      "stub": 0,
+      "behaviorallyTested": 10,
+      "frontendFiles": 12,
+      "band": "moderate"
+    },
+    {
+      "lens": "custom",
+      "rival": null,
+      "macros": 23,
+      "substantive": 20,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "debate",
+      "rival": null,
+      "macros": 21,
+      "substantive": 20,
+      "stub": 1,
+      "behaviorallyTested": 15,
+      "frontendFiles": 6,
+      "band": "moderate"
+    },
+    {
+      "lens": "entity",
+      "rival": null,
+      "macros": 20,
+      "substantive": 20,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "linguistics",
+      "rival": null,
+      "macros": 24,
+      "substantive": 20,
+      "stub": 4,
+      "behaviorallyTested": 8,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "mentorship",
+      "rival": null,
+      "macros": 24,
+      "substantive": 20,
+      "stub": 4,
+      "behaviorallyTested": 19,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "physics",
+      "rival": null,
+      "macros": 20,
+      "substantive": 20,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "world-creator",
+      "rival": null,
+      "macros": 22,
+      "substantive": 20,
+      "stub": 2,
+      "behaviorallyTested": 4,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "byo_keys",
+      "rival": null,
+      "macros": 22,
+      "substantive": 19,
+      "stub": 3,
+      "behaviorallyTested": 9,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "disputes",
+      "rival": null,
+      "macros": 22,
+      "substantive": 19,
+      "stub": 3,
+      "behaviorallyTested": 5,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "forge",
+      "rival": null,
+      "macros": 22,
+      "substantive": 19,
+      "stub": 3,
+      "behaviorallyTested": 16,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "materials",
+      "rival": null,
+      "macros": 20,
+      "substantive": 19,
+      "stub": 1,
+      "behaviorallyTested": 5,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "black-market",
+      "rival": null,
+      "macros": 19,
+      "substantive": 18,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "bridge",
+      "rival": null,
+      "macros": 22,
+      "substantive": 18,
+      "stub": 4,
+      "behaviorallyTested": 8,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "command-center",
+      "rival": null,
+      "macros": 24,
+      "substantive": 18,
+      "stub": 6,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "culture",
+      "rival": null,
+      "macros": 21,
+      "substantive": 18,
+      "stub": 3,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "desert",
+      "rival": null,
+      "macros": 22,
+      "substantive": 18,
+      "stub": 4,
+      "behaviorallyTested": 6,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "engineering",
+      "rival": null,
+      "macros": 22,
+      "substantive": 18,
+      "stub": 4,
+      "behaviorallyTested": 3,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "mounts",
+      "rival": null,
+      "macros": 25,
+      "substantive": 18,
+      "stub": 7,
+      "behaviorallyTested": 11,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "schema",
+      "rival": null,
+      "macros": 18,
+      "substantive": 18,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "sim",
+      "rival": null,
+      "macros": 21,
+      "substantive": 18,
+      "stub": 3,
+      "behaviorallyTested": 11,
+      "frontendFiles": 6,
+      "band": "moderate"
+    },
+    {
+      "lens": "anon",
+      "rival": null,
+      "macros": 18,
+      "substantive": 17,
+      "stub": 1,
+      "behaviorallyTested": 11,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "dtus",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 12,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "emergency-services",
+      "rival": null,
+      "macros": 21,
+      "substantive": 17,
+      "stub": 4,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "fork",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "inference",
+      "rival": null,
+      "macros": 19,
+      "substantive": 17,
+      "stub": 2,
+      "behaviorallyTested": 7,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "meta",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 7,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "organ",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "psyops",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 7,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "queue",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "sandbox",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 14,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "sponsorship",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 12,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "supplychain",
+      "rival": null,
+      "macros": 21,
+      "substantive": 17,
+      "stub": 4,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "temporal",
+      "rival": null,
+      "macros": 17,
+      "substantive": 17,
+      "stub": 0,
+      "behaviorallyTested": 7,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "crisis",
+      "rival": null,
+      "macros": 16,
+      "substantive": 16,
+      "stub": 0,
+      "behaviorallyTested": 9,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "invariant",
+      "rival": null,
+      "macros": 16,
+      "substantive": 16,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "robotics",
+      "rival": null,
+      "macros": 20,
+      "substantive": 16,
+      "stub": 4,
+      "behaviorallyTested": 16,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "space",
+      "rival": null,
+      "macros": 20,
+      "substantive": 16,
+      "stub": 4,
+      "behaviorallyTested": 4,
+      "frontendFiles": 14,
+      "band": "moderate"
+    },
+    {
+      "lens": "staking",
+      "rival": null,
+      "macros": 16,
+      "substantive": 16,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "dx-platform",
+      "rival": null,
+      "macros": 15,
+      "substantive": 15,
+      "stub": 0,
+      "behaviorallyTested": 12,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "fractal",
+      "rival": null,
+      "macros": 15,
+      "substantive": 15,
+      "stub": 0,
+      "behaviorallyTested": 11,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "global",
+      "rival": null,
+      "macros": 15,
+      "substantive": 15,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "privacy",
+      "rival": null,
+      "macros": 19,
+      "substantive": 15,
+      "stub": 4,
+      "behaviorallyTested": 5,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "sub_worlds",
+      "rival": null,
+      "macros": 15,
+      "substantive": 15,
+      "stub": 0,
+      "behaviorallyTested": 15,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "sync",
+      "rival": null,
+      "macros": 16,
+      "substantive": 15,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "urban-planning",
+      "rival": null,
+      "macros": 20,
+      "substantive": 15,
+      "stub": 5,
+      "behaviorallyTested": 6,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "civic_bonds",
+      "rival": null,
+      "macros": 14,
+      "substantive": 14,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "deity",
+      "rival": null,
+      "macros": 14,
+      "substantive": 14,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "dtu",
+      "rival": null,
+      "macros": 15,
+      "substantive": 14,
+      "stub": 1,
+      "behaviorallyTested": 5,
+      "frontendFiles": 16,
+      "band": "moderate"
+    },
+    {
+      "lens": "legacy",
+      "rival": null,
+      "macros": 14,
+      "substantive": 14,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "resonance",
+      "rival": null,
+      "macros": 14,
+      "substantive": 14,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "vote",
+      "rival": null,
+      "macros": 14,
+      "substantive": 14,
+      "stub": 0,
+      "behaviorallyTested": 5,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "ar",
+      "rival": null,
+      "macros": 13,
+      "substantive": 13,
+      "stub": 0,
+      "behaviorallyTested": 10,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "entity_economy",
+      "rival": null,
+      "macros": 13,
+      "substantive": 13,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "neuro",
+      "rival": null,
+      "macros": 14,
+      "substantive": 13,
+      "stub": 1,
+      "behaviorallyTested": 3,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "quantum",
+      "rival": null,
+      "macros": 14,
+      "substantive": 13,
+      "stub": 1,
+      "behaviorallyTested": 3,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "self",
+      "rival": null,
+      "macros": 13,
+      "substantive": 13,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 10,
+      "band": "moderate"
+    },
+    {
+      "lens": "sessions",
+      "rival": null,
+      "macros": 13,
+      "substantive": 13,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "tools",
+      "rival": null,
+      "macros": 13,
+      "substantive": 13,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "intel",
+      "rival": null,
+      "macros": 14,
+      "substantive": 12,
+      "stub": 2,
+      "behaviorallyTested": 12,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "society",
+      "rival": null,
+      "macros": 15,
+      "substantive": 12,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "tick",
+      "rival": null,
+      "macros": 12,
+      "substantive": 12,
+      "stub": 0,
+      "behaviorallyTested": 9,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "tournaments",
+      "rival": null,
+      "macros": 12,
+      "substantive": 12,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 7,
+      "band": "moderate"
+    },
+    {
+      "lens": "affect",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 10,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "autonomy",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "code-quality",
+      "rival": null,
+      "macros": 12,
+      "substantive": 11,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "conflict",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "dreams",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 11,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "expedition-journal",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 11,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "math",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "saved",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 5,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "teaching",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "ux-suite",
+      "rival": null,
+      "macros": 11,
+      "substantive": 11,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 4,
+      "band": "moderate"
+    },
+    {
+      "lens": "all",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 5,
+      "band": "moderate"
+    },
+    {
+      "lens": "bounties",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "cognitive-replay",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "dx",
+      "rival": null,
+      "macros": 11,
+      "substantive": 10,
+      "stub": 1,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "lens",
+      "rival": null,
+      "macros": 13,
+      "substantive": 10,
+      "stub": 3,
+      "behaviorallyTested": 8,
+      "frontendFiles": 48,
+      "band": "moderate"
+    },
+    {
+      "lens": "lock",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 3,
+      "band": "moderate"
+    },
+    {
+      "lens": "offline",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 6,
+      "frontendFiles": 9,
+      "band": "moderate"
+    },
+    {
+      "lens": "quest",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "root",
+      "rival": null,
+      "macros": 10,
+      "substantive": 10,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 8,
+      "band": "moderate"
+    },
+    {
+      "lens": "sports_careers",
+      "rival": null,
+      "macros": 13,
+      "substantive": 10,
+      "stub": 3,
+      "behaviorallyTested": 10,
+      "frontendFiles": 0,
+      "band": "moderate"
+    },
+    {
+      "lens": "apps",
+      "rival": null,
+      "macros": 9,
+      "substantive": 9,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "crime",
+      "rival": null,
+      "macros": 14,
+      "substantive": 9,
+      "stub": 5,
+      "behaviorallyTested": 8,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "goddess",
+      "rival": null,
+      "macros": 10,
+      "substantive": 9,
+      "stub": 1,
+      "behaviorallyTested": 8,
+      "frontendFiles": 6,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "hlm",
+      "rival": null,
+      "macros": 9,
+      "substantive": 9,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "religion",
+      "rival": null,
+      "macros": 15,
+      "substantive": 9,
+      "stub": 6,
+      "behaviorallyTested": 9,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "schemes",
+      "rival": null,
+      "macros": 9,
+      "substantive": 9,
+      "stub": 0,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "shield",
+      "rival": null,
+      "macros": 11,
+      "substantive": 9,
+      "stub": 2,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "spaces",
+      "rival": null,
+      "macros": 9,
+      "substantive": 9,
+      "stub": 0,
+      "behaviorallyTested": 8,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "cognition",
+      "rival": null,
+      "macros": 9,
+      "substantive": 8,
+      "stub": 1,
+      "behaviorallyTested": 4,
+      "frontendFiles": 8,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "dream",
+      "rival": null,
+      "macros": 8,
+      "substantive": 8,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "event_timeline",
+      "rival": null,
+      "macros": 10,
+      "substantive": 8,
+      "stub": 2,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "physical",
+      "rival": null,
+      "macros": 8,
+      "substantive": 8,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "politics",
+      "rival": null,
+      "macros": 13,
+      "substantive": 8,
+      "stub": 5,
+      "behaviorallyTested": 8,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "romance",
+      "rival": null,
+      "macros": 16,
+      "substantive": 8,
+      "stub": 8,
+      "behaviorallyTested": 8,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "semantic",
+      "rival": null,
+      "macros": 8,
+      "substantive": 8,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "breakthrough",
+      "rival": null,
+      "macros": 7,
+      "substantive": 7,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "cortex",
+      "rival": null,
+      "macros": 9,
+      "substantive": 7,
+      "stub": 2,
+      "behaviorallyTested": 7,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "forecast",
+      "rival": null,
+      "macros": 11,
+      "substantive": 7,
+      "stub": 4,
+      "behaviorallyTested": 2,
+      "frontendFiles": 8,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "forgetting",
+      "rival": null,
+      "macros": 7,
+      "substantive": 7,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ghost-hunt",
+      "rival": null,
+      "macros": 7,
+      "substantive": 7,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "agent",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "appearance",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "attention_alloc",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "autotag",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "careers",
+      "rival": null,
+      "macros": 8,
+      "substantive": 6,
+      "stub": 2,
+      "behaviorallyTested": 4,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "detectors",
+      "rival": null,
+      "macros": 10,
+      "substantive": 6,
+      "stub": 4,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "glyph_spells",
+      "rival": null,
+      "macros": 7,
+      "substantive": 6,
+      "stub": 1,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "persona",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "promotion",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "real_estate",
+      "rival": null,
+      "macros": 10,
+      "substantive": 6,
+      "stub": 4,
+      "behaviorallyTested": 6,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "vehicle_tuning",
+      "rival": null,
+      "macros": 12,
+      "substantive": 6,
+      "stub": 6,
+      "behaviorallyTested": 6,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "verify",
+      "rival": null,
+      "macros": 6,
+      "substantive": 6,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "war",
+      "rival": null,
+      "macros": 8,
+      "substantive": 6,
+      "stub": 2,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "city",
+      "rival": null,
+      "macros": 16,
+      "substantive": 5,
+      "stub": 11,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dynasty",
+      "rival": null,
+      "macros": 9,
+      "substantive": 5,
+      "stub": 4,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "hlr",
+      "rival": null,
+      "macros": 5,
+      "substantive": 5,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "jobs",
+      "rival": null,
+      "macros": 9,
+      "substantive": 5,
+      "stub": 4,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "personas",
+      "rival": null,
+      "macros": 5,
+      "substantive": 5,
+      "stub": 0,
+      "behaviorallyTested": 5,
+      "frontendFiles": 6,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "realm_council",
+      "rival": null,
+      "macros": 8,
+      "substantive": 5,
+      "stub": 3,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "stamina",
+      "rival": null,
+      "macros": 7,
+      "substantive": 5,
+      "stub": 2,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "survival",
+      "rival": null,
+      "macros": 11,
+      "substantive": 5,
+      "stub": 6,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "vehicles",
+      "rival": null,
+      "macros": 7,
+      "substantive": 5,
+      "stub": 2,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "voice_chat",
+      "rival": null,
+      "macros": 7,
+      "substantive": 5,
+      "stub": 2,
+      "behaviorallyTested": 5,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "craft_chains",
+      "rival": null,
+      "macros": 7,
+      "substantive": 4,
+      "stub": 3,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "daily_life",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "db",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "drafts",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dtu_surface",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "explanation",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "land_claims",
+      "rival": null,
+      "macros": 6,
+      "substantive": 4,
+      "stub": 2,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "messaging",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "plugin",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "redis",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "reels",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 2,
+      "band": "thin"
+    },
+    {
+      "lens": "refusal",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "repair",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 4,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "repair_network",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "spawn",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "walker",
+      "rival": null,
+      "macros": 4,
+      "substantive": 4,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "agent_marathon",
+      "rival": null,
+      "macros": 6,
+      "substantive": 3,
+      "stub": 3,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "automation",
+      "rival": null,
+      "macros": 5,
+      "substantive": 3,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "bounty",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "discovery",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dtu_portability",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dtu_sync",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dungeon",
+      "rival": null,
+      "macros": 5,
+      "substantive": 3,
+      "stub": 2,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ethics",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "explore",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "forward_sim",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "foundation",
+      "rival": null,
+      "macros": 18,
+      "substantive": 3,
+      "stub": 15,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "genesis",
+      "rival": null,
+      "macros": 9,
+      "substantive": 3,
+      "stub": 6,
+      "behaviorallyTested": 0,
+      "frontendFiles": 7,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "governance",
+      "rival": null,
+      "macros": 7,
+      "substantive": 3,
+      "stub": 4,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "governor",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "hooks",
+      "rival": null,
+      "macros": 5,
+      "substantive": 3,
+      "stub": 2,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "identity",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "knowledge_trade",
+      "rival": null,
+      "macros": 5,
+      "substantive": 3,
+      "stub": 2,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "lattice",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 5,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "layer",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "lore",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "markers",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "npc",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "npc_legacy",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "npc_persona",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "power-clusters",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "realm_access",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "reflex",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "scope",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 2,
+      "band": "thin"
+    },
+    {
+      "lens": "secrets",
+      "rival": null,
+      "macros": 6,
+      "substantive": 3,
+      "stub": 3,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "size",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill_tree",
+      "rival": null,
+      "macros": 4,
+      "substantive": 3,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "terrain",
+      "rival": null,
+      "macros": 5,
+      "substantive": 3,
+      "stub": 2,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "therapy",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "universe",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "visual",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 3,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "vscode",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "wrapper",
+      "rival": null,
+      "macros": 3,
+      "substantive": 3,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "auth",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 2,
+      "band": "thin"
+    },
+    {
+      "lens": "beats",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "cache",
+      "rival": null,
+      "macros": 5,
+      "substantive": 2,
+      "stub": 3,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "chicken3",
+      "rival": null,
+      "macros": 4,
+      "substantive": 2,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "chronicle",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "combat_polish",
+      "rival": null,
+      "macros": 7,
+      "substantive": 2,
+      "stub": 5,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "embodied",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "faction_strategy",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "factions",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "fidelity",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "forge_marketplace",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "hiddenQuests",
+      "rival": null,
+      "macros": 6,
+      "substantive": 2,
+      "stub": 4,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "immersive_sim",
+      "rival": null,
+      "macros": 7,
+      "substantive": 2,
+      "stub": 5,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ledger",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "llm",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "marriage",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "mobile",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 5,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "mount",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "multimodal",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "nemesis",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "obsidian",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "oxygen",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "perf",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "physique",
+      "rival": null,
+      "macros": 4,
+      "substantive": 2,
+      "stub": 2,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "playerCorpse",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "playerSigns",
+      "rival": null,
+      "macros": 5,
+      "substantive": 2,
+      "stub": 3,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "pwa",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 3,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "quality",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "scars",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "settings",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 2,
+      "frontendFiles": 10,
+      "band": "facade-risk"
+    },
+    {
+      "lens": "skill_affinity",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill_evolution",
+      "rival": null,
+      "macros": 4,
+      "substantive": 2,
+      "stub": 2,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill-awakening",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill-fusion",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "source",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "spectator",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "status",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "style",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "sub_world",
+      "rival": null,
+      "macros": 2,
+      "substantive": 2,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "underwater",
+      "rival": null,
+      "macros": 5,
+      "substantive": 2,
+      "stub": 3,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "voice-tts",
+      "rival": null,
+      "macros": 4,
+      "substantive": 2,
+      "stub": 2,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "webhook",
+      "rival": null,
+      "macros": 5,
+      "substantive": 2,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "zones",
+      "rival": null,
+      "macros": 3,
+      "substantive": 2,
+      "stub": 1,
+      "behaviorallyTested": 2,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "arc",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ascension",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ask",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "backpressure",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "basketball",
+      "rival": null,
+      "macros": 3,
+      "substantive": 1,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "bloodline",
+      "rival": null,
+      "macros": 4,
+      "substantive": 1,
+      "stub": 3,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "chat_agent",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "commune",
+      "rival": null,
+      "macros": 6,
+      "substantive": 1,
+      "stub": 5,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "compile",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "completion",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "compression_art",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "context",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "crawl",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "creatures",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "cross_world_effectiveness",
+      "rival": null,
+      "macros": 3,
+      "substantive": 1,
+      "stub": 2,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "dimensional",
+      "rival": null,
+      "macros": 3,
+      "substantive": 1,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "ecology",
+      "rival": null,
+      "macros": 4,
+      "substantive": 1,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "enchantment",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "evolution",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "experiment",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "fishing",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "guidance_waypoint",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "harness",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "heartbeat",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "interface",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "karaoke",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "kingdom",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "log",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "mahjong",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "narrative",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "notion",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "observability",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "observer",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "occupation",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "org",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "patterns",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "procgen",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "progression",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "racing",
+      "rival": null,
+      "macros": 3,
+      "substantive": 1,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "reincarnation",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "search",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "shard",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "skill_forge",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "slides",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "sonic_glyph",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "spreadsheet",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "swarm",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 1,
+      "band": "thin"
+    },
+    {
+      "lens": "synth",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "talents",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "video_gen",
+      "rival": null,
+      "macros": 4,
+      "substantive": 1,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "weather",
+      "rival": null,
+      "macros": 1,
+      "substantive": 1,
+      "stub": 0,
+      "behaviorallyTested": 1,
+      "frontendFiles": 2,
+      "band": "thin"
+    },
+    {
+      "lens": "weekly",
+      "rival": null,
+      "macros": 2,
+      "substantive": 1,
+      "stub": 1,
+      "behaviorallyTested": 1,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "betting",
+      "rival": null,
+      "macros": 5,
+      "substantive": 0,
+      "stub": 5,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "buildings",
+      "rival": null,
+      "macros": 1,
+      "substantive": 0,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "elements",
+      "rival": null,
+      "macros": 4,
+      "substantive": 0,
+      "stub": 4,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "guns",
+      "rival": null,
+      "macros": 5,
+      "substantive": 0,
+      "stub": 5,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "integration",
+      "rival": null,
+      "macros": 1,
+      "substantive": 0,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "intent",
+      "rival": null,
+      "macros": 1,
+      "substantive": 0,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "macro_dag",
+      "rival": null,
+      "macros": 3,
+      "substantive": 0,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "mcp",
+      "rival": null,
+      "macros": 6,
+      "substantive": 0,
+      "stub": 6,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "minigames",
+      "rival": null,
+      "macros": 1,
+      "substantive": 0,
+      "stub": 1,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "movement",
+      "rival": null,
+      "macros": 4,
+      "substantive": 0,
+      "stub": 4,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "npc_autobiography",
+      "rival": null,
+      "macros": 2,
+      "substantive": 0,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "output_hooks",
+      "rival": null,
+      "macros": 2,
+      "substantive": 0,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "run_draft",
+      "rival": null,
+      "macros": 3,
+      "substantive": 0,
+      "stub": 3,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "tunyan",
+      "rival": null,
+      "macros": 6,
+      "substantive": 0,
+      "stub": 6,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    },
+    {
+      "lens": "wind",
+      "rival": null,
+      "macros": 2,
+      "substantive": 0,
+      "stub": 2,
+      "behaviorallyTested": 0,
+      "frontendFiles": 0,
+      "band": "thin"
+    }
+  ]
+}
