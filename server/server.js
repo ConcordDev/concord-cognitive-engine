@@ -21163,6 +21163,27 @@ register("dtu", "list", (ctx, input) => {
   return { ok: true, dtus: items, limit, offset, total };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+// List a viewer's visible DTUs filtered to specific machine.kind value(s). Thin
+// filter over the same userVisibleDTUs set as dtu.list (shadow/internal excluded).
+// Surfaces the studio session browser's DTU/Forge tabs (SessionBrowserRail), which
+// called dtu.listByKind before it existed (the call .catch'd to an empty list).
+register("dtu", "listByKind", (ctx, input = {}) => {
+  try {
+    const kinds = Array.isArray(input.kind) ? input.kind.map(String)
+      : input.kind ? [String(input.kind)] : [];
+    if (kinds.length === 0) return { ok: false, error: "kind required" };
+    const kindSet = new Set(kinds);
+    const limit = clamp(Number(input.limit || 50), 1, 500);
+    const offset = clamp(Number(input.offset || 0), 0, 1e9);
+    const userId = ctx?.actor?.id || ctx?.actor?.odId || null;
+    let items = userVisibleDTUs(userId)
+      .filter(d => !isShadowDTU(d) && d.tier !== "shadow")
+      .filter(d => kindSet.has(d.machine?.kind));
+    const total = items.length;
+    items = items.slice(offset, offset + limit);
+    return { ok: true, dtus: items, total, limit, offset };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
 register("dtu", "listShadow", (ctx, input) => {
   // Shadow DTUs are internal - only admins can view them
   const role = ctx?.actor?.role || "guest";

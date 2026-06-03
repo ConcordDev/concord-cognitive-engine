@@ -308,7 +308,8 @@ one a button that silently fails (best case the AI catch-all answers; worst case
 | `creative.generate` | maker lens | generative; needs a model; backlog. |
 | `healthcare.generate` | healthcare lens | care-plan-from-symptoms — distinct from the working `generateSummary`; **medical content, deliberately NOT fabricated** (flag). |
 | `meta.classify`, `ingest.batch-ingest` | capture / ingest | classify/ingest pipelines; verify intended handler then wire; backlog. |
-| `dtu.listByKind`, `music.browse` | studio SessionBrowserRail | genuinely unregistered (verified tree-wide); the component intends real list/browse macros — repoint candidates once the correct names are confirmed. |
+| `dtu.listByKind` | studio SessionBrowserRail | **FIXED** — added a thin `register("dtu","listByKind")` over the same `userVisibleDTUs` set as `dtu.list`, filtered by `machine.kind` (surfaces the browser's DTU/Forge tabs). |
+| `music.browse` | studio SessionBrowserRail | no clean target — `music` has `list-published-stems` (stems) but no loops source; the call is `.catch`-guarded → graceful empty. Backlog (needs a loops/stems browse macro). |
 | `crypto.wallet` | RivalShapePreview | preview shim; low priority. |
 | `auth.me` | self lens | genuine unregistered lens call (`runDomain('auth','me')`) but **guarded** with `.catch(() => null)`, so it degrades to "no user" instead of crashing — low severity, but still a dead macro. |
 
