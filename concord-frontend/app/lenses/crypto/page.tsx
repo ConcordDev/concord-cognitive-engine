@@ -145,11 +145,52 @@ export default function CryptoLensPage() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showReceive, setShowReceive] = useState(false);
   const [receiveAddress, setReceiveAddress] = useState<string>('');
-  useEffect(() => { setWatchlist(loadWatchlist()); }, []);
+  useEffect(() => {
+    // Seed instantly from the local cache, then reconcile against the
+    // server-side watchlist — the backend `crypto.watchlist-*` macros are
+    // the source of truth, so the list follows the user across sessions and
+    // devices (localStorage alone is per-browser).
+    const cached = loadWatchlist();
+    setWatchlist(cached);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.post('/api/lens/run', {
+          domain: 'crypto', action: 'watchlist-list', input: {},
+        });
+        if (cancelled) return;
+        const ids: string[] = (res?.data?.result?.watchlist || [])
+          .map((w: { symbol?: string }) => w?.symbol)
+          .filter((s: unknown): s is string => typeof s === 'string');
+        if (ids.length > 0) {
+          setWatchlist(ids);
+          saveWatchlist(ids);
+        } else if (cached.length > 0) {
+          // First sync for this account: migrate the local watchlist up so
+          // the server becomes authoritative (otherwise the backend macros
+          // stay dead and the list never syncs).
+          for (const id of cached) {
+            api.post('/api/lens/run', {
+              domain: 'crypto', action: 'watchlist-add', input: { symbol: id },
+            }).catch(() => { /* offline — retry on next toggle/load */ });
+          }
+        }
+      } catch { /* offline — keep the local cache */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const toggleWatch = useCallback((id: string) => {
     setWatchlist(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      const wasWatching = prev.includes(id);
+      const next = wasWatching ? prev.filter(x => x !== id) : [...prev, id];
       saveWatchlist(next);
+      // Persist to the server watchlist (source of truth); the local cache
+      // above keeps the toggle instant + offline-tolerant.
+      api.post('/api/lens/run', {
+        domain: 'crypto',
+        action: wasWatching ? 'watchlist-remove' : 'watchlist-add',
+        input: { symbol: id },
+      }).catch(() => { /* offline — reconciles on next load */ });
       return next;
     });
   }, []);

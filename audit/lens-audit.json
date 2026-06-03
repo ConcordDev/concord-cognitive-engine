@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-03T19:19:40.290Z",
+  "generatedAt": "2026-06-03T19:37:24.093Z",
   "lensCount": 443,
-  "mappedRivals": 53,
+  "mappedRivals": 54,
   "lenses": [
     {
       "lens": "accounting",
@@ -2535,7 +2535,7 @@
     },
     {
       "lens": "forecast",
-      "rival": null,
+      "rival": "Apple Weather / NWS / Windy",
       "macros": 11,
       "substantive": 7,
       "stub": 4,

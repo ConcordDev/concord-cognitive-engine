@@ -97,3 +97,51 @@ audit — add `"<lens>": "<rival>"`.
 - **Lesson:** the scorecard rated `music` `parity-candidate` (deep both sides) — the
   facade was in the *wiring*, which only Layer 2 caught. Always deep-dive a
   parity-candidate before claiming it competes.
+
+## Worked case study — batch 2: `crypto` (parity-candidate) + `forecast` (false-positive), 2026-06-03
+Two lenses deep-dived in one batch — one real wiring facade fixed, one scorecard
+false-positive cleared. **Both Layer-2 reports themselves over-claimed; every claim
+was re-checked against code before acting** (the honesty rule cuts both ways — trust
+the code over the *audit report*, not just over CLAUDE.md).
+
+- **`crypto` (vs Coinbase / Phantom) — REAL facade found + fixed.** The watchlist was
+  persisted only to `localStorage` (`TokenSearch.tsx#loadWatchlist/saveWatchlist`,
+  `STORAGE_KEY='concord:crypto:watchlist:v1'`) while real user-scoped backend macros
+  `crypto.watchlist-{list,add,remove}` (`server/domains/crypto.js:1292-1322`) sat
+  **dead — never called by any frontend.** Net effect: the watchlist didn't sync
+  across sessions/devices and the backend feature was unreachable. The music pattern
+  exactly: backend exists, frontend never wires to it.
+  - **Fixed:** `app/lenses/crypto/page.tsx` now seeds from the local cache then
+    reconciles against `crypto.watchlist-list` (server = source of truth), and
+    `toggleWatch` fires `watchlist-add`/`watchlist-remove`; a first-sync migrates any
+    existing local watchlist up to the account. localStorage stays as an offline
+    cache. The dead macros are now live and the list syncs.
+  - **Over-claims from the deep-dive that code DISPROVED (cleared, not fixed):**
+    "Holdings tab never mounts" — false, `activeTab === 'holdings'` renders at
+    `page.tsx:884` (also `transactions`:888, `wallets`:995). "Swap has no
+    simulation warning" — false, `page.tsx:1235` states "No external router is
+    contacted; this view is informational + ledger-only" and the toast says "Swap
+    simulated". "Send flow is broken / never persists" — false, `handleSend`
+    (`page.tsx:485`) writes a ledger transaction, consistent with the lens's stated
+    ledger-only model.
+  - **Flagged, not fixed (genuine backlog, not surgical facades):** `crypto`'s
+    DCA/recurring-buys, `tax-report`, NFT CRUD, `ai-portfolio-insight`, and the
+    staking add/unstake UI have real backend macros but **no frontend surface** —
+    each is a new-tab feature build (~80-180 LOC), tracked as backlog, not oversell.
+- **`forecast` (weather) — FALSE POSITIVE, cleared.** Scorecard banded it
+  `facade-risk` because no `server/domains/forecast.js` exists and it scored 7/11
+  substantive. In fact all 11 `forecast.*` macros are registered **inline in
+  `server/server.js:74848-74959`** and delegate to a real 512-LOC
+  `server/lib/world-forecast.js` (deterministic embodied-signal composition, diurnal
+  cosine, honest confidence decay, real `world_forecasts`/`forecast_alert_subs`
+  persistence; the 7th tab is a live Open-Meteo fetch, clearly labeled). No
+  fabricated data, no dead wiring. Correctly-thin + honest.
+  - **Why the scorecard missed it:** `grade-macro-depth` attributes the inline
+    `server.js` handlers to the `forecast` domain but doesn't recurse the delegated
+    `world-forecast.js` lib, so the thin wrapper bodies under-score. This is the
+    documented "scorecard triages, doesn't certify" gap — recorded here rather than
+    chased in the grader. Added `forecast` to `scripts/lens-rivals.json`.
+- **Meta-lesson:** the facade-risk band's "UI but thin backend" rule false-positives
+  whenever a lens's macros live in `server.js` and delegate to a lib (forecast,
+  and likely the other domain-file-less facade-risk entries: `lattice`). Confirm the
+  backend's *real* location before treating a facade-risk flag as a defect.
