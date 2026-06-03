@@ -467,3 +467,35 @@ number to lock the gain in. The other three detectors (`lens:orphans`, `lens:uns
 intentional, so they inform triage rather than gate. This mirrors the repo's existing
 ratchet gates (verify-lens-backends WIRED ≥ 234, move-render, event-consumers): the
 audit's findings become a floor the codebase can't regress below.
+
+## Worked case study — batch 18-19: RUN THE APP — the double-nest facade, 2026-06-03
+The single highest-value finding of the whole audit, and it was **invisible to every
+static layer** — only surfaced by booting both dev servers and hitting the API.
+- **The bug:** a `registerLensAction` macro returns `{ ok, result:{payload} }`, and the
+  `POST /api/lens/run` handler wraps it AGAIN → the HTTP response is
+  `{ ok, result:{ ok, result:{payload} } }`. `lensRun()` unwraps that envelope; a raw
+  `api.post('/api/lens/run')` does NOT. So every raw caller reading `data.result.<field>`
+  silently got the inner wrapper, not the payload. Effects confirmed live: **chem /
+  physics / bio / markets calc workbenches rendered blank** (`setResult(data.result)`
+  stored the wrapper), and three of my OWN earlier "fixes" (research.generate,
+  linguistics.analyze, crypto.watchlist-list) rendered a JSON blob / never loaded.
+- **How it was found:** `curl`-ing the live `/api/lens/run` showed `result.result.<field>`
+  for `linguistics.analyze`, `chem.molecular-weight`, etc. A static scan then found **74**
+  raw-`api.post` → `registerLensAction` sites — but most are fire-and-forget or use
+  defensive `?? data.X` fallbacks, so the crude count over-states it; only the read-and-
+  display sites were user-visibly broken.
+- **The root fix (batch 19):** unwrap exactly one `{ ok, result }` layer in the
+  `/api/lens/run` handler itself (`_unwrapLensEnvelope`, `server/server.js`), so the
+  response is single-nested for ALL callers at once. Verified backward-compatible by
+  construction AND live: `register` macros returning bare `{ ok, dtu }` (no `result` key)
+  pass through unchanged (defensive `data.result.dtu.id` readers still resolve); `lensRun`
+  tolerates single-nest; `{ ok:false, error }` shapes still surface; the only 3 frontend
+  `.result.result` readers are defensive/field-named; mobile + the server tests use the
+  macro path, not this handler. One ~4-line change fixed the blank calculators and the
+  dropped results across the whole lens surface.
+- **Lesson (the capstone):** static analysis + LLM deep-dives found wires and contracts;
+  the *runtime envelope shape* was a facade NONE of them could see — `lens:broken-calls`
+  said these macros were registered (true), `lens:audit` said the lenses were deep (true),
+  the deep-dive said the fields matched (true at the macro return). Only running the app
+  exposed that the transport double-wrapped the payload. **When you can, run it** — the
+  cheapest detector for a transport/serialization facade is one real request.

@@ -38155,6 +38155,20 @@ app.get("/api/lens/stats", (req, res) => {
 
 // Domain-level action runner (no artifact ID required) — used by frontend runDomain()
 // Must be defined before wildcard :domain routes so Express doesn't match "run" as :domain
+// The HTTP /api/lens/run response is always { ok, result }. A handler that itself
+// returns an { ok, result } envelope (the registerLensAction convention — and many
+// register() macros) would otherwise DOUBLE-nest, so a raw `api.post` caller reading
+// `data.result.<field>` gets the inner wrapper, not the payload (blank calc
+// workbenches, dropped results — the systemic bug found by running the app, 2026-06-03).
+// Unwrap exactly ONE envelope layer here so the response is single-nested:
+//   - lensRun() tolerates single OR double, so its callers are unaffected;
+//   - defensive `data.result.X ?? data.X` readers resolve on the single-nest;
+//   - an { ok:false, error } shape (no `result` key) passes through so errors surface;
+//   - a bare payload (no `ok`+`result`) passes through unchanged.
+function _unwrapLensEnvelope(r) {
+  if (r && typeof r === "object" && "ok" in r && "result" in r) return r.result;
+  return r;
+}
 app.post("/api/lens/run", async (req, res) => {
   try {
     const body = req.body || {};
@@ -38174,14 +38188,14 @@ app.post("/api/lens/run", async (req, res) => {
     const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
     if (lensHandler) {
       const virtualArtifact = { id: null, domain, type: "domain_action", data: rest, meta: {} };
-      const result = await lensHandler(ctx, virtualArtifact, rest);
+      const result = _unwrapLensEnvelope(await lensHandler(ctx, virtualArtifact, rest));
       return res.json({ ok: true, result });
     }
     // Fall back to MACROS (canonical macro registry: register(domain, name, ...)).
     // Many domains (detectors, dtu, lens, scope, agents, etc.) only register
     // here — the legacy LENS_ACTIONS path can't see them.
     if (MACROS.get(domain)?.get(action)) {
-      const result = await runMacro(domain, action, rest, ctx);
+      const result = _unwrapLensEnvelope(await runMacro(domain, action, rest, ctx));
       return res.json({ ok: true, result });
     }
     // AI-powered catch-all: route unregistered domain actions to the utility
