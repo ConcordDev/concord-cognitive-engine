@@ -82,3 +82,17 @@ test("retail.initiate_return honors a supplied reason", async () => {
   const res = r.result ?? r;
   assert.equal(res.return.reason, "wrong_size");
 });
+
+test("retail.generate_label builds a deterministic structured shipping label", async () => {
+  const r = await lensRun("retail", "generate_label", {
+    data: { orderNumber: "8008", items: 3, shippingMethod: "express", shippingAddress: "1 Main St", timeline: [] },
+  });
+  const res = r.result ?? r;
+  assert.equal(res.label.service, "express");
+  // weight = 0.5 + 3*0.3 = 1.4kg; express cost = 9.0 + 2.4*1.4 = 12.36
+  assert.equal(res.label.weightKg, 1.4);
+  assert.equal(res.label.cost, 12.36);
+  assert.match(res.label.trackingNumber, /^CONCORD\d+$/);
+  assert.ok(res.label.barcode.includes(res.label.trackingNumber), "barcode embeds the tracking number");
+  assert.ok(res.label.labelId);
+});

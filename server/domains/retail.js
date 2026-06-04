@@ -105,6 +105,44 @@ export default function registerRetailActions(registerLensAction) {
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
+  // generate_label — deterministic shipping-label generation for an order artifact.
+  // Was an AI-catch-all (the brain returned prose, useless for an actual label). A
+  // shipping label is a STRUCTURED record: carrier, service, tracking, dimensions,
+  // weight, cost, and a scannable label id — all derivable deterministically.
+  registerLensAction("retail", "generate_label", (ctx, artifact, params = {}) => {
+  try {
+    const d = artifact?.data || {};
+    const carrier = String(params.carrier || d.carrier || "Standard Post");
+    const service = String(params.service || d.shippingMethod || "ground");
+    // Reuse an existing tracking number; otherwise mint one deterministically.
+    let trackingNumber = String(params.trackingNumber || d.trackingNumber || "").trim();
+    if (!trackingNumber) trackingNumber = `CONCORD${Date.now().toString().slice(-10)}`;
+    const items = Math.max(1, Number(d.items) || (Array.isArray(d.lines) ? d.lines.length : 1));
+    // Weight estimate: 0.5kg base + 0.3kg/item (deterministic, overrideable).
+    const weightKg = params.weightKg != null ? Math.max(0.1, Number(params.weightKg)) : Math.round((0.5 + items * 0.3) * 100) / 100;
+    // Service-tier cost model (flat base + per-kg), deterministic.
+    const RATES = { ground: [4.5, 1.2], express: [9.0, 2.4], overnight: [18.0, 3.6] };
+    const tier = service.toLowerCase().includes("over") ? "overnight" : service.toLowerCase().includes("exp") ? "express" : "ground";
+    const [base, perKg] = RATES[tier];
+    const cost = Math.round((base + perKg * weightKg) * 100) / 100;
+    const label = {
+      labelId: nextRetailId("lbl"),
+      orderNumber: d.orderNumber || artifact.title || artifact.id,
+      carrier, service: tier, trackingNumber,
+      shipTo: d.shippingAddress || d.customer || "customer",
+      weightKg, items,
+      cost, currency: "USD",
+      // deterministic "barcode" payload for the scannable label
+      barcode: `${carrier.replace(/\s+/g, "").slice(0, 4).toUpperCase()}-${trackingNumber}`,
+      generatedAt: nowIsoRet(),
+    };
+    artifact.data.trackingNumber = trackingNumber;
+    artifact.data.shippingLabel = label;
+    pushOrderEvent(artifact, "label_generated", `${carrier} ${tier} label ${label.labelId} — $${cost.toFixed(2)}, tracking ${trackingNumber}`);
+    return { ok: true, result: { label } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
   registerLensAction("retail", "send_tracking", (ctx, artifact, params = {}) => {
   try {
     let trackingNumber = String(params.trackingNumber || artifact.data?.trackingNumber || "").trim();
