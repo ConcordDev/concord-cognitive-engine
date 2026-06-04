@@ -623,6 +623,27 @@ data model and dispatch path — most of the residue had a deterministic closure
 an assumption about the UI. Only a true client-only side-effect (`ar.render`) or a genuine
 missing runtime (`code.execute`) is truly blocked.
 
+**Batch H — AI-catch-all `*generate*` → real deterministic macros (2026-06-04).** The 37
+`*.analyze`/`*generate*` actions route to the (in this env, unavailable) utility brain. Most
+`.analyze` are genuinely freeform reasoning over an arbitrary artifact and are correctly left
+on the brain — a shallow deterministic "analyze" would be *worse* than the honest catch-all,
+and the trade domains already surface their specific compute macros (`welding.jointStrength`,
+…) separately. But the ones with a **structured, computable output** were converted:
+- **`retail.generate_label` →** a shipping label is a structured record, so it's deterministic:
+  carrier + service tier, reused/minted tracking number, weight estimate (0.5kg + 0.3/item), a
+  tiered ground/express/overnight cost model, and a scannable barcode. The brain's *prose* was
+  useless for an actual label. Stamps the label + a timeline event onto the order artifact.
+- **`fitness.generate-program` / `workout-plan-generate` →** was LLM-**only** (`"llm
+  unavailable"` — the lens was dead without a model). Rebuilt **deterministic-first**: a real
+  templated generator (rep schemes per goal, a day-split rotation by weekly frequency, an
+  exercise library per focus×equipment) composes a periodised plan; the LLM is now an opt-in
+  enhancement (`CONCORD_FITNESS_PLAN_LLM=true`) with the deterministic plan as the guaranteed
+  fallback. AI-catch-all count 37→35; both with behavioral tests + live validation.
+- **The conversion test:** does the action have a *structured, fully-derivable* output (a label,
+  a templated plan, a calc)? Convert it — and the brain version was probably returning unusable
+  prose anyway. Is it open-ended reasoning over arbitrary content? Leave it on the brain; that's
+  what the catch-all is for. Deterministic-first never means faking a model's judgement.
+
 ### Layer 1.5 — unloaded-domain detector (deterministic, all-domains) — `npm run lens:unloaded`
 `scripts/lens-unloaded-domains.mjs` catches the **most severe** facade: not one button, a
 WHOLE domain. A `server/domains/<X>.js` that registers `registerLensAction("<X>", …)` macros
