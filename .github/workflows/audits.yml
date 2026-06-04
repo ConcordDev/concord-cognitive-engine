@@ -144,7 +144,7 @@ jobs:
           # ceiling DOWN as the genuine backlog gets real macros. See
           # docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).
           node scripts/lens-broken-calls.mjs
-          node scripts/lens-broken-calls.mjs --ci 11
+          node scripts/lens-broken-calls.mjs --ci 10
 
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |

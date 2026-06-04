@@ -1069,4 +1069,42 @@ export default function registerTemporalActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // simulate — deterministic scenario projection over the resolved series. Linear
+  // least-squares trend + a recency-volatility band → expected / optimistic /
+  // pessimistic paths. Reuses resolveSeries (same dataset handling as forecast).
+  registerLensAction("temporal", "simulate", (ctx, artifact, params) => {
+    try {
+      const resolved = resolveSeries(ctx, artifact, params);
+      if (resolved.error) return { ok: false, error: resolved.error };
+      const values = resolved.values;
+      if (values.length < 4) return { ok: false, error: "Need at least 4 data points." };
+      const n = values.length;
+      const horizon = Math.max(1, Math.min(100, params.horizon || Math.floor(n * 0.3)));
+      const xs = values.map((_, i) => i);
+      const meanX = (n - 1) / 2, meanY = values.reduce((s, v) => s + v, 0) / n;
+      let num = 0, den = 0;
+      for (let i = 0; i < n; i++) { num += (xs[i] - meanX) * (values[i] - meanY); den += (xs[i] - meanX) ** 2; }
+      const slope = den ? num / den : 0;
+      const intercept = meanY - slope * meanX;
+      const diffs = values.slice(1).map((v, i) => v - values[i]);
+      const dMean = diffs.reduce((s, d) => s + d, 0) / Math.max(diffs.length, 1);
+      const dStd = Math.sqrt(diffs.reduce((s, d) => s + (d - dMean) ** 2, 0) / Math.max(diffs.length, 1));
+      const round = (v) => Math.round(v * 1000) / 1000;
+      const project = (band) => Array.from({ length: horizon }, (_, h) => round(intercept + slope * (n + h) + band * dStd * Math.sqrt(h + 1)));
+      const expected = project(0), optimistic = project(1.28), pessimistic = project(-1.28); // ~80% band
+      return {
+        ok: true,
+        result: {
+          method: "linear_trend_projection",
+          horizon,
+          lastValue: round(values[n - 1]),
+          trendPerStep: round(slope),
+          volatility: round(dStd),
+          scenarios: { expected, optimistic, pessimistic },
+          finalExpected: expected[expected.length - 1],
+        },
+      };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
 }
