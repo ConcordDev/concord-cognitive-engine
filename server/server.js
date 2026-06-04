@@ -50101,7 +50101,20 @@ app.post("/api/reasoning/run", requireAuth(), asyncHandler(async (req, res) => {
 
 app.get("/api/reasoning/traces", asyncHandler(async (req, res) => {
   const m = await import("./emergent/hlr-engine.js");
-  res.json({ ok: true, traces: m.listTraces(Number(req.query.limit) || 50), modes: Object.values(m.REASONING_MODES) });
+  const limit = Number(req.query.limit) || 50;
+  // Wave 7 / B6 — also surface the durable agent deliberation journal (mig 327): the
+  // "what I was thinking" the awareness loop writes on each tier-3 wake (with the
+  // attended quale + prediction-error surprise + the awareness-index correlate).
+  let agentTraces = [];
+  try {
+    const where = req.query.agentId ? `WHERE agent_id = ?` : ``;
+    const args = req.query.agentId ? [String(req.query.agentId), limit] : [limit];
+    agentTraces = (STATE?.db?.prepare(
+      `SELECT id, agent_id, world_id, attended, quale, surprise, awareness_index, reason, note, created_at
+       FROM agent_reasoning_traces ${where} ORDER BY created_at DESC LIMIT ?`
+    ).all(...args)) || [];
+  } catch { /* agent_reasoning_traces optional */ }
+  res.json({ ok: true, traces: m.listTraces(limit), agentTraces, modes: Object.values(m.REASONING_MODES) });
 }));
 
 app.get("/api/reasoning/trace/:traceId", asyncHandler(async (req, res) => {
