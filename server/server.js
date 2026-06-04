@@ -49204,6 +49204,47 @@ app.get("/api/admin/heartbeat-stats", requireRole("owner", "admin", "sovereign",
   }
 });
 
+// Wave 7 / Track D3 — the SDK-facing agent + affect read surface (the licensable
+// middleware: "deploy a living being / read its felt state"). Deploy is privileged +
+// respects the C3 kill-switch; reads are auth-gated.
+app.post("/api/agent/deploy", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
+  try {
+    const { agentEnabled } = await import("./lib/agent-guardrails.js");
+    if (!agentEnabled()) return res.status(403).json({ ok: false, error: "agents_disabled", hint: "set CONCORD_AGENT_ENABLED=1" });
+    const { createAgentSelf } = await import("./lib/agent-self.js");
+    const r = createAgentSelf(STATE?.db, req.body || {});
+    res.status(r.ok ? 200 : 400).json(r);
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/agent/:agentId", requireAuth, async (req, res) => {
+  try {
+    const { getAgentSelf } = await import("./lib/agent-self.js");
+    const { getAutobiography } = await import("./lib/agent-autobiography.js");
+    const self = getAgentSelf(STATE?.db, req.params.agentId);
+    if (!self) return res.status(404).json({ ok: false, error: "no_agent" });
+    // never leak the values anchor's raw governance fields beyond what's public-safe
+    const { core_values_json, drive_profile_json, ...rest } = self;
+    res.json({ ok: true, agent: rest, values: self.core_values, drives: self.drive_profile, autobiography: getAutobiography(STATE?.db, req.params.agentId) });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
+app.get("/api/agent/:agentId/awareness", requireAuth, async (req, res) => {
+  try {
+    const { getAgentSelf } = await import("./lib/agent-self.js");
+    const { computeAwarenessIndex, activationsFromTick } = await import("./lib/agent-awareness-index.js");
+    const self = getAgentSelf(STATE?.db, req.params.agentId);
+    if (!self) return res.status(404).json({ ok: false, error: "no_agent" });
+    // a coarse live read from the agent's last-known activity (best-effort)
+    const idx = computeAwarenessIndex(activationsFromTick({
+      drives: self.drive_profile, goalActive: self.status === "active", selfModelUpdated: true,
+      memoryActivity: self.last_evolved_at ? 0.4 : 0, behaviorActivity: 0.4,
+    }));
+    // honest framing: this is a CORRELATE (access), not a consciousness claim.
+    res.json({ ok: true, awarenessIndex: idx.index, integration: idx.integration, differentiation: idx.differentiation, note: "access correlate (PCI-proxy), not a phenomenal-consciousness claim" });
+  } catch (e) { res.status(500).json({ ok: false, error: String(e?.message || e) }); }
+});
+
 // Wave 7 / Track D2 — the cost-story telemetry. "N actors ran K LLM calls / T tokens /
 // $C over the window" — the artifact that proves a thousand instinct NPCs cost like ten.
 app.get("/api/admin/inference-costs", requireRole("owner", "admin", "sovereign", "founder"), async (req, res) => {
