@@ -49,6 +49,7 @@ const APPRAISAL = Object.freeze({
   acquire:     { valence: +0.4, arousal: 0.30, drive: "SEEKING" },
   loss:        { valence: -0.9, arousal: 0.60, drive: "PANIC" },
   grief:       { valence: -1.0, arousal: 0.50, drive: "PANIC" },
+  death:       { valence: -1.0, arousal: 0.60, drive: "PANIC" }, // the appraisal where feeling ends
   idle:        { valence: 0.0,  arousal: 0.05, drive: null },
 });
 
@@ -65,7 +66,7 @@ export function classifyFragment(fragment) {
   if (/combat_dealt|kill|slay|dealt/.test(t)) return f.kill ? "kill_prey" : "victory";
   if (/pain/.test(t)) return "pain";
   if (/predator|threat/.test(t)) return "predator";
-  if (/eat|food|cook|meal/.test(t)) return "eat";
+  if (/\beat|food|cook|meal|eating/.test(t)) return "eat";
   if (/drink|water/.test(t)) return "drink";
   if (/rest|sleep/.test(t)) return "rest";
   if (/death|died|grief|funeral|tomb/.test(t)) return "grief";
@@ -73,7 +74,7 @@ export function classifyFragment(fragment) {
   if (/visit|explore|travel|discover/.test(t)) return "explore";
   if (/acquire|gain|loot|inventory|craft|gather|dtu_created|created/.test(t)) return "acquire";
   if (/snub|ignored|rejected/.test(t)) return "social_snub";
-  if (/friend|bond|warm|greet/.test(t)) return "social_warm";
+  if (/\bfriend|bond|warm|greet/.test(t)) return "social_warm";
   if (/win|victory|triumph/.test(t)) return "victory";
   if (/defeat|lose/.test(t)) return "defeat";
   return "idle";
