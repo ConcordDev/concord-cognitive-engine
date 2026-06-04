@@ -644,6 +644,47 @@ and the trade domains already surface their specific compute macros (`welding.jo
   prose anyway. Is it open-ended reasoning over arbitrary content? Leave it on the brain; that's
   what the catch-all is for. Deterministic-first never means faking a model's judgement.
 
+**The last two "blocked" wires were never blocked — audit before you label (2026-06-04).** The
+final 2 genuine wires (`ar.render`, `code.execute`) were tagged "capability-blocked: needs
+WebXR / a code VM." A from-scratch audit overturned both:
+- **`code.execute`** was a name+param mismatch, not a missing VM. A real, tested `node:vm`
+  sandbox already lived at **`code.exec`** (`server/domains/code.js:487` — isolated, 4s timeout,
+  7 tests). The notebook called `execute` with a `source` param; the handler is `exec` reading
+  `code`. One-line repoint + a `source` alias. **Lesson: "needs a VM" was an assumption; the VM
+  was one grep away.**
+- **`ar.render`** reused an existing real WebXR stack. `ar.webxrPreview` already computed the
+  immersive-ar session plan + draw list; `SceneStudio.tsx` already ran the full `immersive-ar`
+  path (`isSessionSupported` → `requestSession` → `renderer.xr.setSession` → `setAnimationLoop`);
+  `ConcordiaScene` already set `renderer.xr.enabled`. The fix: extract `buildRenderPlan()` (shared
+  with `webxrPreview`), register `ar.render` to return the descriptor from the scene artifact,
+  and wire the render button to drive the existing Three.js viewport — with a **graceful inline-3D
+  fallback** when `immersive-ar` is unsupported (most desktops), so it's a real render on every
+  device. **Genuine broken-wire backlog: 51 → 0.**
+- **WebXR is gated by a secure context + the `xr-spatial-tracking` Permissions-Policy** (Chromium
+  rejects `navigator.xr` with SecurityError where disallowed). It defaults to `self`; we declared
+  it explicitly on the API + document responses, and added an immutable `Cache-Control` for
+  `/models|/meshes|/draco|/basis` to complement the SW SWR + the in-memory GLTF LRU cache.
+- **Meta-lesson:** "capability-blocked" is a hypothesis to falsify per item against the actual
+  data model + dispatch path. In a ~2M-line tree the capability usually already exists; audit
+  (grep the whole file, read the sibling component) before declaring a gap.
+
+**Batch G — whiteboard realtime (2026-06-04).** Closed the headline "broadcast-scene emitted with
+no consumer" gap and the connector/frame/embed render backlog by **reusing existing realtime
+infra** (event-bus `onEvent`, `useWhiteboardCollab`, room-scoped `io.to(...).emit`):
+- **E1:** `useWhiteboardCollab` now re-fetches the full scene on a remote `whiteboard:scene-update`
+  (join-shared returns `board.scene`) with a self-echo time-guard; `MiroSection` mounts the hook,
+  applies the remote scene to the canvas (`syncShapes`/`syncSignal`), and broadcasts local edits.
+- **E2:** `WhiteboardCanvas` renders the connector (line+arrowhead between element centers), frame
+  (labeled dashed region, z-ranked behind), and embed (URL card) element kinds — the scene model
+  already carried them (templates use frame elements). **E3/E4:** peer-cursor overlay (world-coord)
+  + per-element vote badges from the realtime tally.
+- **E5 was already implemented** — the CollabPanel macros (`frame-*`/`connector-*`/`embed-*`/
+  `presentation-build`/`export-raster-plan`/`presence-list`/`reaction-send`) exist bucket-backed at
+  `whiteboard.js:~1068-1554` (the explore agent's "they don't exist" was wrong; verify against the
+  *whole* file). My duplicate block was removed as shadowed dead code. **E6** (op-level CRDT
+  consumer for `whiteboard:ops`) is deliberately deferred: E1's full-scene resync is the correctness
+  baseline; op-granular sync is a bandwidth optimization that also needs an ops *producer*.
+
 ### Layer 1.5 — unloaded-domain detector (deterministic, all-domains) — `npm run lens:unloaded`
 `scripts/lens-unloaded-domains.mjs` catches the **most severe** facade: not one button, a
 WHOLE domain. A `server/domains/<X>.js` that registers `registerLensAction("<X>", …)` macros
