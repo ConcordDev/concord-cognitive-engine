@@ -126,7 +126,7 @@ if (JSON_OUT) {
 // exceeds the ceiling (default GENUINE_CEILING) — so a new broken button can't merge,
 // while the existing backlog is grandfathered. Drive the ceiling DOWN as wires get
 // fixed (it can only tighten). The AI-catch-all convention is excluded by design.
-const GENUINE_CEILING = 38; // ratchets down; -4 at Batch B-ext (creative+events)
+const GENUINE_CEILING = 32; // ratchets down; -6 at Batch B nonprofit cluster
 if (process.argv.includes('--ci')) {
   const i = process.argv.indexOf('--ci');
   const ceiling = Number(process.argv[i + 1]) >= 0 ? Number(process.argv[i + 1]) : GENUINE_CEILING;

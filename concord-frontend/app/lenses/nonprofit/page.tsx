@@ -136,7 +136,7 @@ const SEED: Record<ArtifactType, Array<{ title: string; data: Record<string, unk
 const DOMAIN_ACTIONS = [
   { id: 'donorRetention', label: 'Donor Retention Report', icon: RefreshCw, description: 'Analyze donor retention and churn patterns' },
   { id: 'grant-deadline-check', label: 'Grant Deadline Check', icon: CalendarClock, description: 'Review upcoming grant deadlines and reporting dates' },
-  { id: 'campaign-analysis', label: 'Campaign Analysis', icon: PieChart, description: 'Analyze campaign performance and ROI' },
+  { id: 'campaignProgress', label: 'Campaign Analysis', icon: PieChart, description: 'Analyze campaign performance and ROI' },
   { id: 'volunteerMatch', label: 'Volunteer Match', icon: UserCheck, description: 'Match volunteers to open opportunities' },
   { id: 'impact-report', label: 'Impact Report', icon: FileBarChart, description: 'Generate comprehensive impact report' },
 ];
@@ -1697,6 +1697,15 @@ export default function NonprofitLensPage() {
                 </div>
               </div>
             )}
+            {/* Generic fallback for results that aren't one of the metric shapes above
+                (giving-history, grant-deadline-check, impact-report, send-acknowledgment,
+                grantReporting, campaignProgress) — render a readable payload. */}
+            {actionResult.retentionRate === undefined && actionResult.deliverableProgress === undefined && actionResult.matchScore === undefined && !(actionResult.percentComplete !== undefined && actionResult.goal !== undefined) && (
+              <>
+                {!!actionResult.summary && <p className="text-sm text-gray-200">{String(actionResult.summary)}</p>}
+                <pre className="text-xs text-gray-300 font-mono bg-lattice-surface rounded p-2 overflow-auto max-h-56 whitespace-pre-wrap">{JSON.stringify(actionResult, null, 2)}</pre>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1769,13 +1778,13 @@ export default function NonprofitLensPage() {
                         <button onClick={() => handleAction('grant-deadline-check', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
                           <CalendarClock className="w-3 h-3" /> Check Deadlines
                         </button>
-                        <button onClick={() => handleAction('export-grant-report', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
+                        <button onClick={() => handleAction('grantReporting', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
                           <Download className="w-3 h-3" /> Export Report
                         </button>
                       </>
                     )}
                     {mode === 'campaigns' && (
-                      <button onClick={() => handleAction('campaign-analysis', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
+                      <button onClick={() => handleAction('campaignProgress', detailItem.id)} className={cn(ds.btnSmall, ds.btnSecondary)}>
                         <PieChart className="w-3 h-3" /> Analyze Campaign
                       </button>
                     )}

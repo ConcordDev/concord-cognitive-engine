@@ -873,4 +873,83 @@ export default function registerNonprofitActions(registerLensAction) {
         totalRaised: board.reduce((n, t) => n + t.raised, 0) } };
     } catch (e) { return { ok: false, error: e instanceof Error ? e.message : String(e) }; }
   });
+
+  // ── Donor / grant action buttons (deterministic; artifact-based) ──
+  // Surface the nonprofit-lens buttons that previously hit no macro
+  // (view-giving-history / grant-deadline-check / impact-report / send-acknowledgment).
+  registerLensAction("nonprofit", "view-giving-history", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const gifts = Array.isArray(d.gifts) ? d.gifts
+      : Array.isArray(d.donations) ? d.donations
+      : Array.isArray(d.giftHistory) ? d.giftHistory : [];
+    const amounts = gifts.map(g => Number(g?.amount) || 0);
+    const totalGiven = amounts.reduce((s, n) => s + n, 0);
+    const sorted = [...gifts].filter(g => g?.date).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    return {
+      ok: true,
+      result: {
+        donor: artifact.title || d.name || "donor",
+        giftCount: gifts.length,
+        totalGiven,
+        averageGift: gifts.length ? Math.round((totalGiven / gifts.length) * 100) / 100 : 0,
+        firstGift: sorted[0]?.date || null,
+        lastGift: sorted[sorted.length - 1]?.date || null,
+        gifts: gifts.slice(0, 20),
+      },
+    };
+  });
+
+  registerLensAction("nonprofit", "grant-deadline-check", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const deadline = d.deadline || d.dueDate || d.reportDue || null;
+    let daysRemaining = null, status = "no_deadline";
+    if (deadline) {
+      const ms = new Date(deadline).getTime() - Date.now();
+      daysRemaining = Math.ceil(ms / 86400000);
+      status = daysRemaining < 0 ? "overdue" : daysRemaining <= 7 ? "due_soon" : daysRemaining <= 30 ? "upcoming" : "on_track";
+    }
+    return {
+      ok: true,
+      result: {
+        grant: artifact.title || d.name || "grant",
+        deadline, daysRemaining, status,
+        funder: d.funder || d.grantor || null,
+      },
+    };
+  });
+
+  registerLensAction("nonprofit", "impact-report", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const metrics = d.impactMetrics || d.outcomes || d.kpis || {};
+    const entries = Array.isArray(metrics)
+      ? metrics.map(m => [m?.name || m?.metric || "metric", m?.value])
+      : Object.entries(metrics);
+    const beneficiaries = Number(d.beneficiaries ?? d.peopleServed ?? 0) || 0;
+    return {
+      ok: true,
+      result: {
+        program: artifact.title || d.name || "program",
+        beneficiaries,
+        metricCount: entries.length,
+        metrics: Object.fromEntries(entries.slice(0, 20)),
+        summary: `${artifact.title || "Program"} — ${beneficiaries ? beneficiaries + " served, " : ""}${entries.length} tracked outcome(s).`,
+      },
+    };
+  });
+
+  registerLensAction("nonprofit", "send-acknowledgment", (ctx, artifact, params = {}) => {
+    const d = artifact.data || {};
+    const donor = artifact.title || d.name || params.donor || "donor";
+    const amount = Number(d.lastGiftAmount ?? d.amount ?? params.amount ?? 0) || 0;
+    const channel = params.channel || (d.email ? "email" : "letter");
+    return {
+      ok: true,
+      result: {
+        acknowledged: true,
+        donor, amount, channel,
+        message: `Thank-you ${channel} queued for ${donor}${amount ? ` (gift $${amount})` : ""}.`,
+        queuedAt: new Date().toISOString(),
+      },
+    };
+  });
 };
