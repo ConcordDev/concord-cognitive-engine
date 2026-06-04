@@ -3,6 +3,7 @@
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { FunnelsPanel } from '@/components/analytics/FunnelsPanel';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -932,6 +933,7 @@ export default function AnalyticsPage() {
     </div>
 
       <PipingProvider>
+        <FunnelsPanel className="mt-6 max-w-7xl mx-auto" />
         <section className="mt-6 max-w-7xl mx-auto px-4">
           <AnalyticsActionPanel />
         </section>

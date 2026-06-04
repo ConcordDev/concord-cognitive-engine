@@ -226,6 +226,11 @@ import goddessLens from './goddess.js';
 import cognitionLens from './cognition.js';
 import sandboxLens from './sandbox.js';
 import rootLens from './root.js';
+import codeQualityDomain from './code-quality.js';
+import genesisDomain from './genesis.js';
+import sponsorshipDomain from './sponsorship.js';
+import stakingDomain from './staking.js';
+import systemDomain from './system.js';
 
 export default [
   healthcare,
@@ -445,4 +450,9 @@ export default [
   cognitionLens,
   sandboxLens,
   rootLens,
+  codeQualityDomain,
+  genesisDomain,
+  sponsorshipDomain,
+  stakingDomain,
+  systemDomain,
 ];

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { LensShell } from '@/components/lens/LensShell';
+import { SavedSearchesPanel } from '@/components/genesis/SavedSearchesPanel';
 import { RecentMineCard } from '@/components/lens/RecentMineCard';
 import { AutoActionStrip } from '@/components/lens/AutoActionStrip';
 import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
@@ -379,6 +380,7 @@ export default function GenesisLens() {
         )}
 
         {/* Relationship graph */}
+        <SavedSearchesPanel className="mt-6" />
         <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
           <RelationshipGraph onSelect={setSelectedId} />
         </section>
