@@ -722,7 +722,9 @@ function subscribeViaSocket(
   (async () => {
     try {
       // Lazy-load socket.io-client so consumers without realtime needs don't
-      // pull the dependency.
+      // pull the dependency. Optional peer dep — suppress the missing-module type
+      // error; the surrounding try/catch handles the not-installed case at runtime.
+      // @ts-ignore - optional peer dependency, resolved at runtime if present
       const mod: { io: (url: string, opts: Record<string, unknown>) => typeof sock } = await import("socket.io-client");
       if (cancelled) return;
       sock = mod.io((client as unknown as { baseUrl: string }).baseUrl, {
