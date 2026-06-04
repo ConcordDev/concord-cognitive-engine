@@ -126,7 +126,7 @@ if (JSON_OUT) {
 // exceeds the ceiling (default GENUINE_CEILING) — so a new broken button can't merge,
 // while the existing backlog is grandfathered. Drive the ceiling DOWN as wires get
 // fixed (it can only tighten). The AI-catch-all convention is excluded by design.
-const GENUINE_CEILING = 14; // ratchets down; -2 at affect.detect-patterns + meta.classify
+const GENUINE_CEILING = 13; // ratchets down; -1 at auth.me→whoami
 if (process.argv.includes('--ci')) {
   const i = process.argv.indexOf('--ci');
   const ceiling = Number(process.argv[i + 1]) >= 0 ? Number(process.argv[i + 1]) : GENUINE_CEILING;
