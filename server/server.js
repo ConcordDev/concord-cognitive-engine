@@ -25060,6 +25060,16 @@ registerHeartbeat("agent-marathon-cycle", {
   handler: () => runAgentMarathonCycle({ db: STATE?.db || globalThis._concordDB }),
 });
 
+// Wave 7 / C3 — periodic drift-watch: sweep active agents, measure how far their evolved
+// character has drifted from the values anchor, flag (never correct) past threshold for
+// human review. scope:'global' (cross-world agent governance), slow cadence (~25 min).
+import { runAgentDriftWatchCycle } from "./emergent/agent-drift-watch-cycle.js";
+registerHeartbeat("agent-drift-watch", {
+  frequency: 100,
+  scope: "global",
+  handler: () => runAgentDriftWatchCycle({ db: STATE?.db || globalThis._concordDB, io: STATE?.io || globalThis.__concordIO }),
+});
+
 import { mountMcpServer } from "./lib/mcp-server-host.js";
 // Mount deferred to after LENS_ACTIONS declaration — see ~line 36545 (Sprint 18.5 TDZ fix).
 
