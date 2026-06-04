@@ -551,19 +551,52 @@ research→audit→build/repoint→**validate-live**→ratchet→commit. Progres
   run backend alone, foreground `nohup … & disown` (background-tool launches get reaped),
   pace ≤700ms.
 
-**Final state: 51 → 9 genuine** (41 real wires closed + 1 detector false-positive removed).
-Closed: a batch of verified repoints; **government (16 — incl. 12 new deterministic
-civic-dashboard macros)**; manufacturing, creative/events, nonprofit, affect/meta clusters;
-plus `paper.export_pdf` (text export + client download), `security.accessAudit` (STATE
-posture audit), `temporal.simulate` (trend-projection). ~30 new deterministic macros, 9
-behavioral test files, every one validated live against the running backend. The detector
-regex was tightened (`Action(` capital-A) to drop the `world.authored` false positive
-(`recordAssetInteraction` over-match). The remaining **9 are capability-blocked**, not
-deterministic-buildable: retail ×3 (param-collecting modals — Batch D UI), `code.execute`
-(sandbox VM — Batch C), `neuro.train` (ML model), `music.browse` (no loops data source),
-`ingest.batch-ingest` (real file-upload UI), `ar.render` (3D scene-activation side-effect),
-`crypto.wallet` (preview shim) — UI/VM/model/data work, a different character from the
-macro-over-artifact pattern that closed the 41.
+**State after the macro-over-artifact sweep: 51 → 9 genuine** (41 real wires closed + 1
+detector false-positive removed). Closed: a batch of verified repoints; **government (16 —
+incl. 12 new deterministic civic-dashboard macros)**; manufacturing, creative/events,
+nonprofit, affect/meta clusters; plus `paper.export_pdf` (text export + client download),
+`security.accessAudit` (STATE posture audit), `temporal.simulate` (trend-projection). ~30 new
+deterministic macros, 9 behavioral test files, every one validated live against the running
+backend. The detector regex was tightened (`Action(` capital-A) to drop the `world.authored`
+false positive (`recordAssetInteraction` over-match).
+
+**Continuation — the "capability-blocked" 9 re-examined → 9 → 2 (2026-06-04 cont.).** The
+"capability-blocked" label was treated as a hypothesis to falsify, not a verdict. Re-reading
+each call site against the data model showed **7 of the 9 had an honest deterministic
+closure** that didn't need the assumed UI/VM/model:
+- **Batch D — retail ×3 (`process_refund`/`send_tracking`/`initiate_return`):** these run from
+  the inline **order-card** buttons via the artifact-runner, so the order artifact IS the
+  handler's 2nd arg — no param-modal required. Built three real `registerLensAction` macros
+  that mutate the order artifact with **Shopify-style deterministic defaults** (full-remaining
+  refund pre-fill, auto-generated `CONCORD…` tracking, RMA issuance) + optional param
+  overrides, push a real timeline event, and best-effort mirror into the dashboard
+  refunds/returns buckets. 7 behavioral tests (`retail-fulfillment-behavior`).
+- **`music.browse`:** the studio SessionBrowserRail's loops/stems tabs. Its sibling `dtu`/
+  `forge` tabs already read the DTU substrate via `dtu.listByKind`; loops/stems have the same
+  source (stems = `adaptive_music`-tagged DTUs from `music.publish-as-stem`; loops =
+  loop-typed/tagged DTUs). Built a real `register("music","browse")` MACROS-path macro that
+  queries them from the db — **honest empty when none exist, never fabricated**.
+- **`ingest.batch-ingest`:** the old call sent only `{fileCount, filenames}` (no bytes) → brain
+  catch-all. The honest closure read the actual file content client-side (`FileReader`) and a
+  real macro creates a **DTU per text file** via `dtu.create` (the proven `/api/dtus` path);
+  binaries carry no extractable text here, so they're returned as `skipped` with a reason —
+  **not faked as ingested**. A legacy filenames-only payload now errors `no_file_content`
+  rather than pretending. 2 behavioral tests.
+- **`neuro.train`:** the lens carries hyperparameters, not samples. Built a macro with **two
+  honest modes** — REAL seeded logistic-regression gradient descent (true decreasing BCE loss)
+  when `data.dataset=[{features,label}]` is attached, and otherwise a deterministic
+  learning-curve **projection explicitly flagged `{simulated:true, basis:'hyperparameter_
+  projection'}`** with a note that it is NOT a trained model. The flag is what makes the
+  projection honest rather than theater. 2 behavioral tests.
+
+**Final state: 51 → 2 genuine.** The remaining **2 are genuinely capability-blocked** and
+stay flagged, not faked: `ar.render` (a client-side 3D/WebXR scene-activation **side-effect** —
+there is no server payload to compute, so there's no macro to register) and `code.execute`
+(needs a real sandboxed code VM; the programming-puzzle VM is opcode-only, not a general JS
+runner). **Lesson:** "capability-blocked" is a claim to re-test per item against the actual
+data model and dispatch path — most of the residue had a deterministic closure hiding behind
+an assumption about the UI. Only a true client-only side-effect (`ar.render`) or a genuine
+missing runtime (`code.execute`) is truly blocked.
 
 ### Layer 1.5 — unloaded-domain detector (deterministic, all-domains) — `npm run lens:unloaded`
 `scripts/lens-unloaded-domains.mjs` catches the **most severe** facade: not one button, a

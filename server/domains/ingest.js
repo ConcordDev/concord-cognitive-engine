@@ -801,4 +801,60 @@ export default function registerIngestActions(registerLensAction) {
     const inProgress = (statusCounts.processing || 0) + (statusCounts["in-progress"] || 0) + (statusCounts.running || 0);
     return { ok: true, result: { totalItems: items.length, completed, pending, inProgress, failed, completionRate: Math.round((completed / items.length) * 100), statusBreakdown: statusCounts, recentErrors: errors.slice(0, 10), estimatedRemaining: pending + inProgress } };
   });
+
+  // ── Batch file ingestion ────────────────────────────────────────────
+  // Honest closure for the studio batch-upload button: the frontend reads each
+  // dropped text file's content (FileReader) and passes { files:[{name,content,mime}] }.
+  // Text files (.txt/.md/.json/.csv) are genuinely ingested as DTUs via dtu.create
+  // (the same path POST /api/dtus uses); binaries (images) carry no extractable text
+  // client-side, so they're reported as `skipped` with a reason — NOT faked as ingested.
+  const TEXT_INGEST_EXT = new Set(["txt", "md", "markdown", "json", "csv", "tsv", "log", "yaml", "yml", "xml", "html"]);
+  registerLensAction("ingest", "batch-ingest", async (ctx, artifact, params = {}) => {
+    try {
+      const p = { ...(artifact?.data || {}), ...params };
+      const files = Array.isArray(p.files) ? p.files : [];
+      // Back-compat: an old caller may send only { fileCount, filenames } (no content).
+      // Be honest — we cannot ingest bytes we were never given.
+      if (files.length === 0) {
+        const names = Array.isArray(p.filenames) ? p.filenames : [];
+        if (names.length > 0) {
+          return { ok: false, error: "no_file_content", detail: "filenames received without content; send files:[{name,content,mime}] to ingest", filenames: names };
+        }
+        return { ok: false, error: "Provide files:[{name,content,mime}] to batch-ingest" };
+      }
+      const ingested = [], skipped = [];
+      for (const f of files.slice(0, 200)) {
+        const name = String(f?.name || "untitled");
+        const ext = (name.match(/\.([^.]+)$/)?.[1] || "").toLowerCase();
+        const content = typeof f?.content === "string" ? f.content : "";
+        if (!TEXT_INGEST_EXT.has(ext) || !content.trim()) {
+          skipped.push({ name, reason: !content.trim() ? "no_text_content" : `unsupported_type:${ext || "binary"}` });
+          continue;
+        }
+        try {
+          const out = await ctx.macro.run("dtu", "create", {
+            title: name.replace(/\.[^.]+$/, ""),
+            content: content.slice(0, 100000),
+            domain: p.domain || "ingest",
+            tags: ["ingested", "batch-ingest"],
+          });
+          const dtuId = out?.result?.id || out?.id || out?.dtu?.id || null;
+          ingested.push({ name, dtuId });
+        } catch (e) {
+          skipped.push({ name, reason: `ingest_error:${String(e?.message || e).slice(0, 80)}` });
+        }
+      }
+      return { ok: true, result: {
+        jobId: `batch_${Date.now().toString(36)}`,
+        requested: files.length,
+        ingested: ingested.length,
+        skipped: skipped.length,
+        ingestedFiles: ingested,
+        skippedFiles: skipped,
+        ingestedBy: uid(ctx),
+      } };
+    } catch (e) {
+      return { ok: false, error: "handler_error", message: String(e?.message || e) };
+    }
+  });
 }

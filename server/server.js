@@ -21184,6 +21184,56 @@ register("dtu", "listByKind", (ctx, input = {}) => {
     return { ok: true, dtus: items, total, limit, offset };
   } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+// music.browse — community loop/stem library for the studio SessionBrowserRail.
+// Deterministic: surfaces real loop/stem DTUs that exist in the substrate (db-backed),
+// no external source, no fabrication. Empty when none have been published yet. The
+// `dtu`/`forge` browser tabs use dtu.listByKind directly; this backs the loops/stems tabs.
+register("music", "browse", (ctx, input = {}) => {
+  try {
+    const kind = String(input.kind || "loops");
+    const limit = clamp(Number(input.limit || 50), 1, 200);
+    const db = ctx?.db;
+    if (!db) return { ok: true, result: { items: [], count: 0, kind } };
+    // Stems are published as `adaptive_music`-tagged DTUs (music.publish-as-stem).
+    // Loops are loop-typed/tagged DTUs (DAW exports, community loop packs).
+    const like = kind === "stems" ? "%adaptive_music%" : "%loop%";
+    const rows = db.prepare(`
+      SELECT id, owner_user_id, title, body_json, tags_json, created_at
+      FROM dtus
+      WHERE tags_json LIKE ? AND visibility != 'private'
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(like, limit);
+    const items = [];
+    for (const row of rows) {
+      let tags = [], body = {};
+      try { tags = JSON.parse(row.tags_json || "[]"); } catch { tags = []; }
+      try { body = JSON.parse(row.body_json || "{}"); } catch { body = {}; }
+      if (!Array.isArray(tags)) tags = [];
+      if (kind === "stems") {
+        if (body?.type !== "adaptive_stem") continue;
+      } else {
+        // loops tab: accept loop-typed bodies or loop-tagged DTUs
+        const isLoop = body?.type === "loop" || body?.type === "music_loop"
+          || tags.some((t) => typeof t === "string" && /(^|:)loop/i.test(t));
+        if (!isLoop) continue;
+      }
+      items.push({
+        id: row.id,
+        title: row.title || "(untitled)",
+        kind,
+        ownerUserId: row.owner_user_id,
+        bpm: typeof body?.bpm === "number" ? body.bpm : null,
+        key: typeof body?.key === "string" ? body.key : null,
+        durationBeats: typeof body?.durationBeats === "number" ? body.durationBeats : null,
+        color: typeof body?.color === "string" ? body.color : undefined,
+        createdAt: row.created_at,
+      });
+    }
+    return { ok: true, result: { items, count: items.length, kind } };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
 register("dtu", "listShadow", (ctx, input) => {
   // Shadow DTUs are internal - only admins can view them
   const role = ctx?.actor?.role || "guest";

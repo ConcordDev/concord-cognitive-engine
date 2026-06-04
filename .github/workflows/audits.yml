@@ -138,13 +138,17 @@ jobs:
           # /api/lens/run for a (domain, action) that has no registered macro, so it
           # 404s / falls to the AI catch-all (e.g. research.generate before it was
           # built). Cross-references every literal frontend (domain, action) call
-          # against the registered macro set. Ratchet ceiling 51 (GENUINE count; was 53 at
-          # the 38-repoint sweep, −2 at batch 21); the intentional
-          # `*.analyze`/`*generate*` AI-catch-all convention is excluded. Drive the
-          # ceiling DOWN as the genuine backlog gets real macros. See
+          # against the registered macro set. Ratchet ceiling 2 (GENUINE count; was 53 at
+          # the 38-repoint sweep, 8 after the unloaded-domain pass, 5 after Batch D wired
+          # retail.{process_refund,send_tracking,initiate_return}, 2 after music.browse +
+          # ingest.batch-ingest + neuro.train got real deterministic macros); the
+          # intentional `*.analyze`/`*generate*` AI-catch-all convention is excluded. The
+          # remaining 2 are genuinely capability-blocked: ar.render (a client-side 3D/WebXR
+          # render side-effect — no macro to register) and code.execute (needs a sandboxed
+          # code VM). Drive the ceiling DOWN as each gets a real macro. See
           # docs/LENS_AUDIT_METHODOLOGY.md (Layer 1.5, broken-wire detector).
           node scripts/lens-broken-calls.mjs
-          node scripts/lens-broken-calls.mjs --ci 8
+          node scripts/lens-broken-calls.mjs --ci 2
 
       - name: Unloaded-domain gate (no whole-domain backend is dead)
         run: |

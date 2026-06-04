@@ -61,6 +61,90 @@ export default function registerRetailActions(registerLensAction) {
 });
 
   /**
+   * Order-fulfillment actions — operate on an ORDER artifact (artifact.data shaped like
+   * { orderNumber, customer, customerEmail, total, trackingNumber, timeline[], refundAmount, returnReason }).
+   * These run from the inline order-card buttons (process_refund / send_tracking / initiate_return).
+   * Deterministic Shopify-style defaults (full refund pre-filled, auto-generated tracking) so the
+   * button works with zero params; optional params override (amount / reason / trackingNumber).
+   */
+  function pushOrderEvent(artifact, status, note) {
+    if (!Array.isArray(artifact.data.timeline)) artifact.data.timeline = [];
+    const event = { status, note, timestamp: nowIsoRet() };
+    artifact.data.timeline.push(event);
+    return event;
+  }
+
+  registerLensAction("retail", "process_refund", (ctx, artifact, params = {}) => {
+  try {
+    const total = Math.max(0, Number(artifact.data?.total) || 0);
+    const alreadyRefunded = Math.max(0, Number(artifact.data?.refundAmount) || 0);
+    const remaining = Math.max(0, Math.round((total - alreadyRefunded) * 100) / 100);
+    if (remaining <= 0) return { ok: false, error: "order is already fully refunded" };
+    // Default: full remaining refund (Shopify pre-fills the full amount). Optional override.
+    const requested = params.amount != null ? Math.max(0, Number(params.amount) || 0) : remaining;
+    const amount = Math.min(requested, remaining);
+    if (amount <= 0) return { ok: false, error: "refund amount must be greater than 0" };
+    const reason = String(params.reason || "customer_request");
+    const restock = params.restock !== false;
+    const refund = {
+      id: nextRetailId("ref"),
+      orderNumber: artifact.data?.orderNumber || artifact.title || artifact.id,
+      amount, reason, restock,
+      processedAt: nowIsoRet(),
+    };
+    artifact.data.refundAmount = Math.round((alreadyRefunded + amount) * 100) / 100;
+    const fullyRefunded = artifact.data.refundAmount + 0.01 >= total;
+    artifact.data.refundStatus = fullyRefunded ? "refunded" : "partially_refunded";
+    pushOrderEvent(artifact, "refunded", `Refunded $${amount.toFixed(2)} — ${reason}${restock ? " (restocked)" : ""}`);
+    // Best-effort mirror into the dashboard Refunds tab so it reflects card activity.
+    try {
+      const s = getRetailState();
+      if (s) { ensureRetailBucket(s, "refunds", retailActor(ctx)).push(refund); saveRetailState(); }
+    } catch { /* dashboard mirror is non-critical */ }
+    return { ok: true, result: { refund, refundedTotal: artifact.data.refundAmount, remaining: Math.round((total - artifact.data.refundAmount) * 100) / 100, status: artifact.data.refundStatus } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "send_tracking", (ctx, artifact, params = {}) => {
+  try {
+    let trackingNumber = String(params.trackingNumber || artifact.data?.trackingNumber || "").trim();
+    if (!trackingNumber) {
+      trackingNumber = `CONCORD${Date.now().toString().slice(-10)}`;
+      artifact.data.trackingNumber = trackingNumber;
+    }
+    const carrier = String(params.carrier || artifact.data?.carrier || "Standard");
+    const sentTo = String(params.email || artifact.data?.customerEmail || artifact.data?.customer || "customer");
+    artifact.data.trackingSentAt = nowIsoRet();
+    pushOrderEvent(artifact, "tracking_sent", `Tracking ${trackingNumber} (${carrier}) sent to ${sentTo}`);
+    return { ok: true, result: { trackingNumber, carrier, sentTo, sentAt: artifact.data.trackingSentAt } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  registerLensAction("retail", "initiate_return", (ctx, artifact, params = {}) => {
+  try {
+    const reason = String(params.reason || artifact.data?.returnReason || "customer_request");
+    const restock = params.restock !== false;
+    const returnRecord = {
+      id: nextRetailId("ret"),
+      orderNumber: artifact.data?.orderNumber || artifact.title || artifact.id,
+      reason, restock,
+      status: "pending",
+      rmaNumber: `RMA-${Date.now().toString(36).toUpperCase().slice(-6)}`,
+      initiatedAt: nowIsoRet(),
+    };
+    artifact.data.returnReason = reason;
+    artifact.data.returnStatus = "pending";
+    artifact.data.rmaNumber = returnRecord.rmaNumber;
+    pushOrderEvent(artifact, "return_initiated", `Return ${returnRecord.rmaNumber} opened — ${reason}`);
+    try {
+      const s = getRetailState();
+      if (s) { ensureRetailBucket(s, "returns", retailActor(ctx)).push(returnRecord); saveRetailState(); }
+    } catch { /* dashboard mirror is non-critical */ }
+    return { ok: true, result: { return: returnRecord } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+
+  /**
    * pipelineValue
    * Calculate weighted pipeline value from deals/opportunities.
    * artifact.data.deals: [{ name, value, probability, stage, expectedCloseDate }]
