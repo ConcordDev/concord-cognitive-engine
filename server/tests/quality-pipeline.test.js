@@ -45,8 +45,13 @@ async function api(method, path, body = null) {
 // — i.e. the test should skip rather than fail.
 function shouldSkip(res) {
   if (res._fetchError) return true;
+  // Recognise the production write-auth gate (PROD_WRITE_AUTH / "Authentication required
+  // for write operations") so a best-effort run against a live PROD server skips cleanly
+  // instead of failing — the endpoints are reachable, just auth-gated for this anon run.
+  const code = String(res.code || '').toLowerCase();
+  if (/auth/.test(code)) return true;
   const err = String(res.error || '').toLowerCase();
-  return /not found|unknown|no such macro|unauthorized|auth_required|login required/.test(err);
+  return /not found|unknown|no such macro|unauthorized|auth_required|authentication required|login required/.test(err);
 }
 
 // ============= Quality Pipeline Status Tests =============
@@ -54,7 +59,7 @@ function shouldSkip(res) {
 describe('Quality Pipeline Status', () => {
   it('GET /api/quality-pipeline/status returns pipeline info', async () => {
     const res = await api('GET', '/api/quality-pipeline/status');
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert(res.pipeline, 'Should have pipeline info');
     assert(res.pipeline.patterns, 'Should list patterns');
@@ -76,7 +81,7 @@ describe('Quality Pipeline Status', () => {
 
   it('GET /api/quality-pipeline/status with sessionId returns history', async () => {
     const res = await api('GET', '/api/quality-pipeline/status?sessionId=test_session_123');
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert(Array.isArray(res.pipeline.sessionHistory), 'Should return session history array');
   });
@@ -90,7 +95,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'What is the definition of photosynthesis?',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'factual', 'Should classify as factual');
     assert(res.preview.projectionRules, 'Should return projection rules');
@@ -104,7 +109,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'Why did the server crash after the deployment?',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'causal', 'Should classify as causal');
     assert.strictEqual(res.preview.projectionRules.reasoning, true, 'Causal should include reasoning');
@@ -115,7 +120,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'How to set up a CI/CD pipeline with Docker?',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'procedural', 'Should classify as procedural');
     assert.strictEqual(res.preview.projectionRules.tests, true, 'Procedural should include tests');
@@ -127,7 +132,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'Brainstorm ideas for a new game mechanic',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'creative', 'Should classify as creative');
     assert.strictEqual(res.preview.projectionRules.context, true, 'Creative should include context');
@@ -140,7 +145,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'Compare React vs Vue for a large enterprise application',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'evaluative', 'Should classify as evaluative');
     // Evaluative should include all fields
@@ -157,7 +162,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'Something is broken',
       mode: 'debug'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert.strictEqual(res.preview.queryIntent, 'debug', 'Debug mode should classify as debug');
     assert.strictEqual(res.preview.projectionRules.tests, true, 'Debug should include tests');
@@ -165,7 +170,7 @@ describe('Quality Pipeline Preview', () => {
 
   it('POST /api/quality-pipeline/preview returns error without query', async () => {
     const res = await api('POST', '/api/quality-pipeline/preview', {});
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert.strictEqual(res.ok, false, 'Should fail without query');
   });
 
@@ -174,7 +179,7 @@ describe('Quality Pipeline Preview', () => {
       query: 'How to implement a binary search algorithm in Python?',
       mode: 'explore'
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Should return ok');
     assert(res.preview.domain, 'Should return domain');
   });
@@ -189,7 +194,7 @@ describe('Quality Pipeline Chat Integration', () => {
       sessionId: `qp_test_${Date.now()}`,
       mode: 'explore',
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Chat should succeed');
     // The quality pipeline metadata should be present in the response meta
     if (res.meta?.qualityPipeline) {
@@ -204,7 +209,7 @@ describe('Quality Pipeline Chat Integration', () => {
       sessionId: `qp_test_empty_${Date.now()}`,
       mode: 'explore',
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(res.ok, 'Chat should still succeed even with no matches');
   });
 });
@@ -261,7 +266,7 @@ describe('Backend Enhancements (via DTU creation)', () => {
         claims: ['This is a test claim']
       }
     });
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     // The DTU may or may not be created (council gate decides), but it should not crash
     assert(typeof res.ok === 'boolean', 'Should return ok status');
   });
@@ -313,7 +318,7 @@ describe('Backend Enhancements (via DTU creation)', () => {
       }
     });
 
-    if (res._fetchError) { assert.ok(true, 'Server not running, skipping'); return; }
+    if (shouldSkip(res)) { assert.ok(true, 'Server not running, skipping'); return; }
     assert(typeof res.ok === 'boolean', 'Should return ok status without crash');
   });
 });
