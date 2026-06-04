@@ -83,6 +83,7 @@ const TRACKED_EVENTS: { name: SocketEvent; channel: EmergentChannel; label: stri
   { name: 'quest:rewards_granted'     as SocketEvent, channel: 'self',      label: 'Quest rewards' },
   { name: 'event:reward'              as SocketEvent, channel: 'self',      label: 'Event reward' },
   { name: 'scheme:intervened'         as SocketEvent, channel: 'npc',       label: 'Scheme intervened' },
+  { name: 'scheme:deception'          as SocketEvent, channel: 'npc',       label: 'Saw through a con' },
   { name: 'weaponise:fired'           as SocketEvent, channel: 'npc',       label: 'Secret weaponised' },
   { name: 'skill:tier-witnessed'      as SocketEvent, channel: 'self',      label: 'Mastery tier witnessed' },
   { name: 'stealth:detected'          as SocketEvent, channel: 'crisis',    label: 'Spotted while sneaking' },
