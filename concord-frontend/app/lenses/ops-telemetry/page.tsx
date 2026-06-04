@@ -87,20 +87,24 @@ export default function OpsTelemetryPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  // Wave 7 / D2 — the cost-story telemetry ("a thousand NPCs for the cost of ten").
+  const [costs, setCosts] = useState<{ calls: number; tokensIn: number; tokensOut: number; costLabel: string; byBrain: Record<string, { calls: number }> } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true); setErr(null);
     try {
-      const [hb, wp, be, ws] = await Promise.all([
+      const [hb, wp, be, ws, ic] = await Promise.all([
         fetch('/api/admin/heartbeat-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/worker-stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/brain-endpoints', { credentials: 'include' }).then(r => r.json()).catch(() => null),
         fetch('/api/admin/world-shards', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+        fetch('/api/admin/inference-costs?hours=24', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       ]);
       if (hb?.ok) setHbStats(hb.modules || []);
       if (wp?.ok) { setMacroPool(wp.macroPool || null); setHbPool(wp.heartbeatPool || null); }
       if (be?.ok) setBrains(be.brains || []);
       if (ws?.ok) { setShards(ws.shards || []); setSharded(!!ws.sharded); }
+      if (ic?.ok) setCosts({ calls: ic.calls, tokensIn: ic.tokensIn, tokensOut: ic.tokensOut, costLabel: ic.costLabel, byBrain: ic.byBrain || {} });
       setLastRefresh(new Date());
     } catch (e) {
       setErr(String((e as Error)?.message || e));
@@ -163,6 +167,28 @@ export default function OpsTelemetryPage() {
           {/* F2 — substrate liveness (the moat-mass + funnel/distribution/economy headline) */}
           <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-3">
             <LivenessPanel />
+          </div>
+
+          {/* Wave 7 / D2 — the cost-story telemetry: LLM calls track SALIENT exchanges,
+              not population. "A thousand instinct NPCs for the cost of ten." */}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.03] p-3">
+            <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider text-emerald-300">
+              <Brain className="h-4 w-4" /> Inference cost (24h)
+              <span className="text-[10px] font-normal text-slate-400">LLM wakes only on salience</span>
+            </h2>
+            {costs ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Metric label="LLM calls" value={costs.calls.toLocaleString()} />
+                <Metric label="Tokens in" value={costs.tokensIn.toLocaleString()} />
+                <Metric label="Tokens out" value={costs.tokensOut.toLocaleString()} />
+                <Metric label="Est. cost" value={costs.costLabel} />
+                {Object.entries(costs.byBrain).map(([brain, b]) => (
+                  <Metric key={brain} label={brain} value={`${b.calls} calls`} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-500">No inference recorded in the window — the village is living on instinct.</p>
+            )}
           </div>
 
           {/* Worker pools */}
@@ -300,6 +326,15 @@ export default function OpsTelemetryPage() {
         </section>
       </main>
     </LensShell>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-2.5 py-1.5">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+      <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-100">{value}</div>
+    </div>
   );
 }
 
