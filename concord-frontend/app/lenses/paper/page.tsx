@@ -442,6 +442,16 @@ export default function PaperLensPage() {
         setSynthesisResult(`Action failed: ${(result as Record<string, unknown>).error || 'Unknown error'}`);
       } else if (action === 'generate_abstract' || action === 'synthesize') {
         setSynthesisResult(typeof result.result === 'string' ? result.result : JSON.stringify(result.result, null, 2));
+      } else if (action === 'export_pdf') {
+        const exp = result.result as { filename?: string; content?: string } | undefined;
+        if (exp?.content) {
+          const blob = new Blob([exp.content], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = exp.filename || 'paper.txt'; a.click();
+          URL.revokeObjectURL(url);
+          setSynthesisResult(`Exported ${exp.filename || 'paper.txt'} (${exp.content.length} chars).`);
+        }
       }
     } catch (e) { console.error(`Paper action ${action} failed:`, e); }
   }, [selectedItemId, runArtifact]);

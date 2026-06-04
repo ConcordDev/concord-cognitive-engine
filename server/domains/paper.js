@@ -813,6 +813,38 @@ export default function registerPaperActions(registerLensAction) {
       return { ok: false, error: `crossref unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
   });
+
+  // export_pdf — format a paper artifact as a downloadable text document. Returns
+  // { filename, content, format }; the lens triggers a client-side download (no real
+  // PDF binary — an honest text/markdown export, not a faked .pdf). Artifact-based.
+  registerLensAction("paper", "export_pdf", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const title = artifact.title || d.title || "Untitled paper";
+    const authors = Array.isArray(d.authors) ? d.authors.join(", ") : (d.authors || "Unknown");
+    const lines = [
+      title,
+      "=".repeat(Math.min(title.length, 72)),
+      "",
+      `Authors: ${authors}`,
+      d.year ? `Year: ${d.year}` : null,
+      d.journal || d.venue ? `Venue: ${d.journal || d.venue}` : null,
+      d.doi ? `DOI: ${d.doi}` : null,
+      d.url ? `URL: ${d.url}` : null,
+      "",
+      "Abstract",
+      "--------",
+      d.abstract || d.summary || "(no abstract)",
+      "",
+      Array.isArray(d.tags) && d.tags.length ? `Tags: ${d.tags.join(", ")}` : null,
+      "",
+      `Exported ${new Date().toISOString().slice(0, 10)} from Concord paper lens.`,
+    ].filter((l) => l !== null);
+    const safe = title.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40).toLowerCase() || "paper";
+    return {
+      ok: true,
+      result: { filename: `${safe}.txt`, format: "text", content: lines.join("\n"), byteLength: lines.join("\n").length },
+    };
+  });
 }
 
 // Note: prior versions held a SAMPLE_PAPERS array of 8 hand-curated ML
