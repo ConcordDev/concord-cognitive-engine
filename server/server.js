@@ -49955,6 +49955,27 @@ app.get("/api/creatures/world/:worldId", asyncHandler(async (req, res) => {
   }
 }));
 
+// Wave 7 / E6 — the world's emotional weather: aggregate recent creature affect traces
+// (creature_affect_trace, mig 326) into a drive histogram + recent felt moments, so the
+// creatures lens can show what the fauna have been FEELING, not just how many there are.
+app.get("/api/creatures/world/:worldId/affect", asyncHandler(async (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT creature_id, species_id, v, a, dominant_drive, intensity, reason, occurred_at
+      FROM creature_affect_trace WHERE world_id = ?
+      ORDER BY occurred_at DESC LIMIT 60
+    `).all(req.params.worldId);
+    const histogram = {};
+    for (const r of rows) {
+      const d = r.dominant_drive || "—";
+      histogram[d] = (histogram[d] || 0) + 1;
+    }
+    res.json({ ok: true, recent: rows.slice(0, 12), histogram, total: rows.length });
+  } catch (e) {
+    res.json({ ok: true, recent: [], histogram: {}, total: 0, error: e?.message });
+  }
+}));
+
 app.get("/api/creatures/:creatureId/lineage", asyncHandler(async (req, res) => {
   const { getLineage } = await import("./lib/creature-crossbreeding.js");
   res.json({ ok: true, lineage: getLineage(db, req.params.creatureId) });

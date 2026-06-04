@@ -27,6 +27,8 @@ export default function CreaturesLensPage() {
   const [breedResult, setBreedResult] = useState<{ ok: boolean; reason?: string; hybrid?: { id?: string; species_id?: string } } | null>(null);
   const [lineageId, setLineageId] = useState('');
   const [lineage, setLineage] = useState<LineageEntry[]>([]);
+  // Wave 7 / E6 — the world's emotional weather (recent creature felt-moments).
+  const [affect, setAffect] = useState<{ histogram: Record<string, number>; recent: Array<{ species_id?: string; dominant_drive?: string; reason?: string; v?: number }>; total: number } | null>(null);
 
   useEffect(() => {
     const w = typeof window !== 'undefined' ? localStorage.getItem('concordia:activeWorldId') : null;
@@ -35,8 +37,12 @@ export default function CreaturesLensPage() {
 
   const refresh = useCallback(async () => {
     try {
-      const j = await fetch(`/api/creatures/world/${worldId}`, { credentials: 'include' }).then(r => r.json());
+      const [j, em] = await Promise.all([
+        fetch(`/api/creatures/world/${worldId}`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`/api/creatures/world/${worldId}/affect`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      ]);
       if (j?.ok) setPops(j.populations || []);
+      if (em?.ok) setAffect({ histogram: em.histogram || {}, recent: em.recent || [], total: em.total || 0 });
     } catch { /* swallow */ }
   }, [worldId]);
 
@@ -79,6 +85,28 @@ export default function CreaturesLensPage() {
         </h1>
         <p className="text-sm text-zinc-400">{worldId} populations · crossbreeding pen · lineage browser</p>
       </header>
+
+      {/* Wave 7 / E6 — the world's emotional weather: what the fauna have been feeling. */}
+      {affect && affect.total > 0 && (
+        <section className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/[0.04] p-3">
+          <h2 className="mb-2 text-sm font-semibold text-fuchsia-300">Emotional weather <span className="text-[10px] font-normal text-zinc-500">{affect.total} recent felt moments</span></h2>
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {Object.entries(affect.histogram).sort((a, b) => b[1] - a[1]).map(([drive, n]) => (
+              <span key={drive} className="rounded-full border border-fuchsia-500/30 bg-fuchsia-500/10 px-2 py-0.5 text-[10px] text-fuchsia-200">
+                {drive.toLowerCase()} · {n}
+              </span>
+            ))}
+          </div>
+          <ul className="space-y-0.5">
+            {affect.recent.slice(0, 6).map((r, i) => (
+              <li key={i} className="text-[11px] text-zinc-400">
+                <span className="text-zinc-200">{r.species_id || 'creature'}</span> felt{' '}
+                <span className={(r.v ?? 0) < 0 ? 'text-rose-300' : 'text-emerald-300'}>{r.reason || r.dominant_drive?.toLowerCase() || 'something'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-violet-300">Populations</h2>
