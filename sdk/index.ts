@@ -278,6 +278,19 @@ export class ConcordClient {
     return this.request<T>("POST", path, body);
   }
 
+  /**
+   * Generic domain accessor — reach ANY of the ~495 registered macro domains, not just
+   * the hand-written sub-clients. `client.domain("music").run("ai-playlist", {...})` maps
+   * to `POST /api/lens/music/ai-playlist`. This is the "every domain is reachable"
+   * guarantee (the auto-generated-wrapper equivalent) without shipping 495 stub classes.
+   */
+  domain(name: string) {
+    return {
+      run: <T = LensActionResult>(action: string, input: Record<string, unknown> = {}): Promise<T> =>
+        this.lens.run(name, action, input) as unknown as Promise<T>,
+    };
+  }
+
   /** PUT shorthand. */
   async put<T = unknown>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", path, body);
