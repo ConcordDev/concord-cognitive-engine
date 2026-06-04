@@ -39,6 +39,9 @@ test("A6 wire — felt-per in dream + forgetting", async (t) => {
     const dream = composeDeterministic(gathered, "me");
     assert.ok(dream.machine.feltPer, "the surviving felt-per rides on machine.feltPer");
     assert.match(dream.human, /ache|cut deeper/i, "the painful peak reads as a diary line");
+    // A7 / E3: the quale label is attached + surfaced ("it felt like dread/grief/…")
+    assert.ok(gathered.summary.peak.quale, "the peak carries a quale label");
+    assert.match(dream.human, /felt like \w+/i, "the dream names the felt quale");
   });
 
   await t.test("retentionScore: a felt-peak DTU outlives a dull one (duration neglect)", () => {

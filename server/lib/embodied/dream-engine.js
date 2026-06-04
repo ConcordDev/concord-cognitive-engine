@@ -29,6 +29,7 @@
 import crypto from "node:crypto";
 import logger from "../../logger.js";
 import { appraiseExperience, peakEnd, classifyFragment } from "../felt-per.js";
+import { qualeOf } from "../qualia-space.js";
 
 export const WINDOW_HOURS = Number(process.env.CONCORD_DREAM_WINDOW_HOURS) || 12;
 export const MIN_FRAGMENTS = Number(process.env.CONCORD_DREAM_MIN_FRAGMENTS) || 5;
@@ -170,8 +171,12 @@ export function gatherFragments(db, userId, opts = {}) {
     f.feltPer = appraiseExperience({ kind: classifyFragment(f), magnitude, kill: f.kill }, opts.state || {});
   }
   const { peak, end } = peakEnd(fragments);
-  summary.peak = peak ? { kind: peak.kind, feltPer: peak.feltPer } : null;
-  summary.end = end ? { kind: end.kind, feltPer: end.feltPer } : null;
+  // Wave 7 / A7 (E3) — attach the QUALE LABEL (the "what it was like" content) to the
+  // peak/end, via the quality-space. Env-gated CONCORD_QUALIA_SPACE; total/graceful.
+  const peakQuale = peak ? (qualeOf(peak.feltPer)?.label || null) : null;
+  const endQuale = end ? (qualeOf(end.feltPer)?.label || null) : null;
+  summary.peak = peak ? { kind: peak.kind, feltPer: peak.feltPer, quale: peakQuale } : null;
+  summary.end = end ? { kind: end.kind, feltPer: end.feltPer, quale: endQuale } : null;
 
   // Signature: hash over fragment fingerprints — same window → same signature.
   const fingerprint = fragments
@@ -226,9 +231,12 @@ export function composeDeterministic({ fragments, summary }, userId) {
   // Wave 7 / A6 — the diary lives at the felt PEAK + the END, not the dull middle
   // (duration neglect). Surface the strongest-felt moment in the dream's own voice.
   const peakFelt = summary.peak?.feltPer;
+  const peakQuale = summary.peak?.quale;
   if (peakFelt && peakFelt.intensity > 0.2) {
-    if (peakFelt.valence < -0.3) lines.push(`But one moment cut deeper than the rest — it still aches.`);
-    else if (peakFelt.valence > 0.3) lines.push(`And one moment shone — you'll carry that one.`);
+    // A7: name the felt quale when the quality-space gave one ("…felt like grief").
+    const named = peakQuale ? ` — it felt like ${peakQuale}` : "";
+    if (peakFelt.valence < -0.3) lines.push(`But one moment cut deeper than the rest${named}; it still aches.`);
+    else if (peakFelt.valence > 0.3) lines.push(`And one moment shone${named} — you'll carry that one.`);
   }
   if (lines.length === 0) {
     lines.push(`A quiet day. The world held still long enough for you to notice it.`);

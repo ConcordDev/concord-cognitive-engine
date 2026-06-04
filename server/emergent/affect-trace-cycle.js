@@ -14,6 +14,7 @@
 import crypto from "node:crypto";
 import { driftFromFeltPeak } from "../lib/ecosystem/temperament.js";
 import { DRIVE_KINDS } from "../lib/ecosystem/drives.js";
+import { qualeOf } from "../lib/qualia-space.js";
 
 const AROUSAL_TRACE = 0.6;   // arousal at/above this is worth remembering
 const CREATURE_PLASTICITY = 0.4; // creatures keep moderate lifelong plasticity
@@ -130,12 +131,14 @@ function mintAffectMemory(db, worldId, c, drive) {
     const dtuId = `dtu_affmem_${crypto.randomBytes(6).toString("hex")}`;
     const v = Number(c.m._affect.v) || 0;
     const place = (Number.isFinite(c.m.x) && Number.isFinite(c.m.z)) ? ` at (${Math.round(c.m.x)}, ${Math.round(c.m.z)})` : "";
-    const tone = v < -0.3 ? "a place of fear" : v > 0.3 ? "a place of plenty" : "a place that mattered";
-    const human = `The ${c.m._species || "creature"} remembers${place} as ${tone}.`;
+    // A7 (E3): name the felt quale via the quality-space ("…as dread"); falls back to tone.
+    const quale = qualeOf({ valence: v, arousal: Number(c.m._affect.a) || 0, dominantDrive: drive })?.label || null;
+    const tone = quale || (v < -0.3 ? "a place of fear" : v > 0.3 ? "a place of plenty" : "a place that mattered");
+    const human = `The ${c.m._species || "creature"} remembers${place} as ${quale ? `a place of ${tone}` : tone}.`;
     const data = {
       human,
-      core: { kind: "affect_memory", species: c.m._species, valence: v, drive },
-      machine: { tags: ["affect_memory", "creature"], composer: "affect_trace" },
+      core: { kind: "affect_memory", species: c.m._species, valence: v, drive, quale },
+      machine: { tags: ["affect_memory", "creature"], composer: "affect_trace", quale },
     };
     db.prepare(`
       INSERT INTO dtus (id, creator_id, world_id, kind, title, data, created_at)

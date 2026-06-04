@@ -21,6 +21,7 @@ import { getAgentSelf, updateAgentSelf, measureValueDrift } from "./agent-self.j
 import { driftFromFeltPeak } from "./ecosystem/temperament.js";
 import { getRecentDreams } from "./embodied/dream-engine.js";
 import { DRIVE_KINDS } from "./ecosystem/drives.js";
+import { qualeOf } from "./qualia-space.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, Number(x) || 0));
 
@@ -108,7 +109,7 @@ export function getAutobiography(db, agentId) {
     name: self.given_name,
     values: self.core_values || [],
     character: { dominantDrives: dominant, lastEvolvedAt: self.last_evolved_at },
-    recentPeaks: peaks.map((p) => ({ drive: p.dominantDrive, valence: p.valence, intensity: p.intensity })),
+    recentPeaks: peaks.map((p) => ({ drive: p.dominantDrive, valence: p.valence, intensity: p.intensity, quale: qualeOf(p)?.label || null })),
   };
 }
 
