@@ -15,6 +15,7 @@
 
 import crypto from "crypto";
 import logger from '../logger.js';
+import { feltPeakBonus } from '../lib/felt-per.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -104,6 +105,10 @@ export function retentionScore(dtu, STATE) {
   const hypothesisBonus = dtu.tags?.includes("hypothesis_confirmed") ? 0.5 : 0;
   const sovereignBonus = (dtu.source === "sovereign" || dtu.source === "user") ? 0.3 : 0;
 
+  // Wave 7 / A6 — emotional retention: a felt PEAK (a trauma, a triumph) outlives a
+  // dull memory (duration neglect). Reads the felt-per stamped at the experience site.
+  const emotionalBonus = feltPeakBonus(dtu.machine?.feltPer || dtu.feltPer);
+
   return (
     0.20 * ageDecay +
     0.25 * lineageScore +
@@ -111,7 +116,8 @@ export function retentionScore(dtu, STATE) {
     0.10 * authority +
     0.15 * tierWeight +
     0.05 * hypothesisBonus +
-    0.05 * sovereignBonus
+    0.05 * sovereignBonus +
+    0.10 * emotionalBonus
   );
 }
 

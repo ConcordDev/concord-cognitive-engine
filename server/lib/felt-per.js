@@ -60,18 +60,18 @@ const APPRAISAL = Object.freeze({
 export function classifyFragment(fragment) {
   const f = fragment || {};
   if (f.kind && APPRAISAL[f.kind]) return f.kind;
-  const t = String(f.type || f.source || f.event || "").toLowerCase();
-  if (/attack|hit|wound|damage_taken|hurt/.test(t)) return "attacked";
+  const t = String(f.kind || f.type || f.source || f.event || "").toLowerCase();
+  if (/combat_taken|attack|hit|wound|damage_taken|hurt|taken/.test(t)) return "attacked";
+  if (/combat_dealt|kill|slay|dealt/.test(t)) return f.kill ? "kill_prey" : "victory";
   if (/pain/.test(t)) return "pain";
   if (/predator|threat/.test(t)) return "predator";
-  if (/kill|slay/.test(t)) return "kill_prey";
   if (/eat|food|cook|meal/.test(t)) return "eat";
   if (/drink|water/.test(t)) return "drink";
   if (/rest|sleep/.test(t)) return "rest";
   if (/death|died|grief|funeral|tomb/.test(t)) return "grief";
   if (/loss|lost|stolen|destroyed/.test(t)) return "loss";
   if (/visit|explore|travel|discover/.test(t)) return "explore";
-  if (/acquire|gain|loot|inventory|craft/.test(t)) return "acquire";
+  if (/acquire|gain|loot|inventory|craft|gather|dtu_created|created/.test(t)) return "acquire";
   if (/snub|ignored|rejected/.test(t)) return "social_snub";
   if (/friend|bond|warm|greet/.test(t)) return "social_warm";
   if (/win|victory|triumph/.test(t)) return "victory";
