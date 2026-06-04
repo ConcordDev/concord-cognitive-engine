@@ -30,7 +30,7 @@
 //   node scripts/lens-unsurfaced.mjs --json
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,7 +46,9 @@ const rd = (f) => { try { return readFileSync(f, 'utf8'); } catch { return ''; }
 // token referenced anywhere in the frontend?
 function surfaced(token) {
   try {
-    execSync(`grep -rqE "['\\"]${token}['\\"]" app components lib 2>/dev/null`, { cwd: FE });
+    // execFileSync (no shell) — `token` is a literal arg, not interpolated into a shell
+    // command, so there is no shell-injection sink.
+    execFileSync('grep', ['-rqE', `['"]${token}['"]`, 'app', 'components', 'lib'], { cwd: FE, stdio: 'ignore' });
     return true;
   } catch { return false; }
 }

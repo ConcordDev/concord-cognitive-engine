@@ -33,7 +33,7 @@
 //   node scripts/lens-orphans.mjs --min 100  # raise the LOC floor (default 60)
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -63,7 +63,9 @@ function walk(d, acc = []) {
 // referenced anywhere (other than its own file)? token grep across app/components/lib.
 function referencedElsewhere(base, selfPath) {
   try {
-    const r = execSync(`grep -rlE "\\b${base}\\b" app components lib 2>/dev/null`, { cwd: FE, encoding: 'utf8' })
+    // execFileSync (no shell) — `base` is passed as a literal arg, not interpolated into
+    // a shell command, so there is no shell-injection sink (and grep needs no shell here).
+    const r = execFileSync('grep', ['-rlE', `\\b${base}\\b`, 'app', 'components', 'lib'], { cwd: FE, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
       .trim().split('\n').filter(Boolean);
     return r.some(f => path.resolve(FE, f) !== path.resolve(selfPath));
   } catch { return false; }
