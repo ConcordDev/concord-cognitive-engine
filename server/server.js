@@ -7082,6 +7082,40 @@ async function initMetrics() {
       registers: [METRICS.registry]
     });
 
+    // LLM priority-queue saturation (Phase D GPU scale-out). The queue gates
+    // total inflight brain calls (LLM_CONCURRENCY) and sheds LOW/NORMAL when
+    // pending exceeds CONCORD_LLM_QUEUE_DEPTH. These were previously exposed
+    // ONLY as JSON (GET /api/admin/... via _llmQueue.getMetrics()), so there
+    // was no way to alert when the GPU is saturated and requests are queuing
+    // or being shed. Scrape-time collect() reads the live queue — _llmQueue is
+    // module-scoped (defined later) but these only fire at scrape, post-boot.
+    // Alert: ConcordLLMQueueSaturated / ConcordLLMQueueShedding in alerts.yml.
+    METRICS.gauges.llmQueueDepth = new prom.Gauge({
+      name: "concord_llm_queue_depth",
+      help: "Pending items in the LLM priority queue (sum across priorities)",
+      registers: [METRICS.registry],
+      collect() { try { const m = _llmQueue?.getMetrics?.(); if (m) this.set(Number(m.totalQueued) || 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.llmQueueInflight = new prom.Gauge({
+      name: "concord_llm_queue_inflight",
+      help: "In-flight LLM requests (concurrency in use)",
+      registers: [METRICS.registry],
+      collect() { try { const m = _llmQueue?.getMetrics?.(); if (m) this.set(Number(m.inflight) || 0); } catch { /* scrape best-effort */ } },
+    });
+    METRICS.gauges.llmQueueRejectedTotal = new prom.Gauge({
+      name: "concord_llm_queue_rejected_total",
+      help: "Cumulative LLM requests rejected (queue full / shed). Alert on increase().",
+      registers: [METRICS.registry],
+      collect() {
+        try {
+          const m = _llmQueue?.getMetrics?.();
+          if (!m?.byPriority) return;
+          let total = 0; for (const k of Object.keys(m.byPriority)) total += Number(m.byPriority[k]?.rejected) || 0;
+          this.set(total);
+        } catch { /* scrape best-effort */ }
+      },
+    });
+
     // Expose the counters/histograms via globalThis so cross-module
     // observers (heartbeat-registry.js, world-shard-manager.js) can
     // record without circular imports. The registry's own observation

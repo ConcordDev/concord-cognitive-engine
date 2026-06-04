@@ -29,28 +29,48 @@ if ! command -v taskset &>/dev/null; then
 fi
 
 # ── Core allocation ───────────────────────────────────────────────────────────
-# Layout (scales with core count):
-#   Ollama:   first 50% — GPU dispatch threads saturate these
-#   Backend:  next 39%  — Node event loop + cognitive worker threads
-#   Frontend: last 11%  — lightweight Next.js (min 1 core)
+# Layout (scales with core count), tunable via env percentages:
+#   Ollama:   first OLLAMA_CORE_PCT%   — GPU dispatch threads
+#   Backend:  the middle remainder     — Node event loop + ALL its worker threads
+#   Frontend: last FRONTEND_CORE_PCT%  — lightweight Next.js (min 1 core)
 #
-# RTX Pro 4500 example (28 vCPU):
-#   Ollama:   0-13  (14 cores)
-#   Backend:  14-24 (11 cores)
-#   Frontend: 25-27  (3 cores)
+# IMPORTANT — worker-thread inheritance: the heartbeat pool (workers/heartbeat-pool.js)
+# AND every per-world shard (workers/world-shard.js, spawned on travel when
+# CONCORD_SHARD_WORLDS=true) are node:worker_threads of the concord-backend
+# process, so they inherit the backend's CPU affinity automatically. Pinning the
+# backend therefore isolates the whole sim (main loop + heartbeat pool + N shards)
+# from Ollama's dispatch cores — no per-thread taskset needed. Because the sim now
+# runs IN those threads, give the backend the largest share: with sharding active
+# the backend wants enough cores for main + up-to-8 heartbeat workers + N shards.
+#
+# Defaults: Ollama 35% (GPU does inference; Ollama CPU is just dispatch — it does
+# NOT need half the cores), backend the remainder, frontend ~10%. Override the
+# split for your hardware:
+#   OLLAMA_CORE_PCT=25 FRONTEND_CORE_PCT=10 bash scripts/pin-processes.sh
+# On a single-Ollama RunPod box, a smaller Ollama share + a bigger backend share
+# is the right call for the sharded workload.
+#
+# RTX Pro 4500 example (28 vCPU, defaults 35/–/10):
+#   Ollama:   0-9   (10 cores)
+#   Backend:  10-24 (15 cores — main loop + heartbeat pool + world shards)
+#   Frontend: 25-27 (3 cores)
 
-HALF=$((TOTAL / 2))
-FRONTEND_COUNT=$((TOTAL / 9))
+OLLAMA_PCT="${OLLAMA_CORE_PCT:-35}"
+FRONTEND_PCT="${FRONTEND_CORE_PCT:-10}"
+
+OLLAMA_COUNT=$(( TOTAL * OLLAMA_PCT / 100 ))
+[ "$OLLAMA_COUNT" -lt 1 ] && OLLAMA_COUNT=1
+FRONTEND_COUNT=$(( TOTAL * FRONTEND_PCT / 100 ))
 [ "$FRONTEND_COUNT" -lt 1 ] && FRONTEND_COUNT=1
 FRONTEND_START=$((TOTAL - FRONTEND_COUNT))
 BACKEND_END=$((FRONTEND_START - 1))
 
-OLLAMA_CORES="0-$((HALF - 1))"
-BACKEND_CORES="${HALF}-${BACKEND_END}"
+OLLAMA_CORES="0-$((OLLAMA_COUNT - 1))"
+BACKEND_CORES="${OLLAMA_COUNT}-${BACKEND_END}"
 FRONTEND_CORES="${FRONTEND_START}-$((TOTAL - 1))"
 
 # Edge case guards
-[ "$HALF" -ge "$BACKEND_END" ] && BACKEND_CORES="$HALF"
+[ "$OLLAMA_COUNT" -ge "$BACKEND_END" ] && BACKEND_CORES="$OLLAMA_COUNT"
 [ "$FRONTEND_START" -gt "$((TOTAL - 1))" ] && FRONTEND_CORES="$((TOTAL - 1))"
 
 log "Core allocation:"
