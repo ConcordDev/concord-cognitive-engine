@@ -82,7 +82,11 @@ for (const f of walk(FE, /\.(tsx?|jsx?)$/)) {
     const dom = [...bound][0];
     if (!domains.has(dom)) continue;
     const acts = new Set();
-    for (const m of s.matchAll(/\b[A-Za-z]*[Aa]ction\(\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) acts.add(m[1]); // handleAction('x'), runAction('x'), doAction('x')
+    // Match action DISPATCHERS — words ending in `Action(` (capital A): handleAction,
+    // runAction, doAction, handleDomainAction, handleAnalysisAction. The capital A is
+    // load-bearing: it excludes `recordAssetInteraction(` (lowercase a in "inter-action"),
+    // which previously produced a false `world.authored` broken wire.
+    for (const m of s.matchAll(/\b[A-Za-z]*Action\(\s*["'`]([a-zA-Z0-9_-]+)["'`]/g)) acts.add(m[1]);
     for (const a of acts) add(dom, a, f);
   }
 }
@@ -126,7 +130,7 @@ if (JSON_OUT) {
 // exceeds the ceiling (default GENUINE_CEILING) — so a new broken button can't merge,
 // while the existing backlog is grandfathered. Drive the ceiling DOWN as wires get
 // fixed (it can only tighten). The AI-catch-all convention is excluded by design.
-const GENUINE_CEILING = 10; // ratchets down; -1 at temporal.simulate
+const GENUINE_CEILING = 9; // ratchets down; -1 removing the world.authored detector false-positive
 if (process.argv.includes('--ci')) {
   const i = process.argv.indexOf('--ci');
   const ceiling = Number(process.argv[i + 1]) >= 0 ? Number(process.argv[i + 1]) : GENUINE_CEILING;
