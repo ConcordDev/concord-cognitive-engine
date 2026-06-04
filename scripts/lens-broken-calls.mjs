@@ -130,7 +130,7 @@ if (JSON_OUT) {
 // exceeds the ceiling (default GENUINE_CEILING) — so a new broken button can't merge,
 // while the existing backlog is grandfathered. Drive the ceiling DOWN as wires get
 // fixed (it can only tighten). The AI-catch-all convention is excluded by design.
-const GENUINE_CEILING = 9; // ratchets down; -1 removing the world.authored detector false-positive
+const GENUINE_CEILING = 8; // ratchets down; -1 crypto.wallet→wallet-list (preview repoint)
 if (process.argv.includes('--ci')) {
   const i = process.argv.indexOf('--ci');
   const ceiling = Number(process.argv[i + 1]) >= 0 ? Number(process.argv[i + 1]) : GENUINE_CEILING;
