@@ -42,6 +42,7 @@ import {
 import AccountingWorkbench from '@/components/accounting/AccountingWorkbench';
 import { QBSection } from '@/components/accounting/QBSection';
 import { AccountingActionPanel } from '@/components/accounting/AccountingActionPanel';
+import { CategoryRulesPanel } from '@/components/accounting/CategoryRulesPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { StripeInvoicePanel } from '@/components/accounting/StripeInvoicePanel';
 
@@ -3081,6 +3082,9 @@ export default function AccountingLensPage() {
     <PipingProvider>
       <section className="mt-6 max-w-7xl mx-auto px-4">
         <AccountingActionPanel />
+      </section>
+      <section className="mt-6 max-w-7xl mx-auto px-4">
+        <CategoryRulesPanel />
       </section>
     </PipingProvider>
           <RecentMineCard domain="accounting" limit={10} hideWhenEmpty className="mt-4" />
