@@ -84,7 +84,7 @@ export function GiftCardsPanel() {
             {cards.map(c => (
               <li key={c.id} className="px-3 py-2 hover:bg-white/[0.03] flex items-center gap-3">
                 <div className="font-mono text-sm text-white">{c.code}</div>
-                <button onClick={() => navigator.clipboard?.writeText(c.code)} className="text-gray-400 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
+                <button onClick={() => navigator.clipboard?.writeText(c.code)} aria-label="Copy gift card code" className="text-gray-400 hover:text-cyan-300"><Copy className="w-3 h-3" /></button>
                 <div className="flex-1 text-[11px] text-gray-400">{c.recipientName || c.recipientEmail || '—'}</div>
                 <div className="text-right">
                   <div className="font-mono text-sm tabular-nums text-pink-300">${c.balance.toFixed(2)}</div>

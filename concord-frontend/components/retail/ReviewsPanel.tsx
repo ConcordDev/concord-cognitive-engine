@@ -167,7 +167,7 @@ export function ReviewsPanel() {
                   <button onClick={() => moderate(r.id, r.status === 'published' ? 'hidden' : 'published')} disabled={busy} className="p-1 text-gray-400 hover:text-amber-300">
                     {r.status === 'published' ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
-                  <button onClick={() => remove(r.id)} disabled={busy} className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  <button onClick={() => remove(r.id)} disabled={busy} aria-label="Delete review" className="p-1 text-gray-400 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                 </div>
                 {r.body && <p className="text-[11px] text-gray-400 mt-0.5">{r.body}</p>}
                 <p className="text-[10px] text-gray-400">{r.productName} · {new Date(r.createdAt).toLocaleDateString()}</p>

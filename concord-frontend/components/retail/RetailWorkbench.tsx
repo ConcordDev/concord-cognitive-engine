@@ -310,7 +310,7 @@ function CatalogTab() {
               <p className="text-sm text-gray-100">{p.name} <code className="text-[10px] text-gray-400 ml-2">{p.sku}</code></p>
               <p className="text-[11px] text-gray-400">${p.price} · {p.stock} in stock · {p.category || 'uncategorized'}</p>
             </div>
-            <button type="button" onClick={() => remove(p.sku)}
+            <button type="button" onClick={() => remove(p.sku)} aria-label="Delete product"
               className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))
