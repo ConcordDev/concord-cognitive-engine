@@ -1213,4 +1213,32 @@ export default function registerWorldActions(registerLensAction) {
     out.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return { ok: true, result: { photos: out.slice(0, 60), count: out.length } };
   });
+
+  // Wave 7 / E5 — spawn an instinct NPC into a world (the macro the SDK NpcClient.spawn
+  // calls). Inserts a world_npcs row seeded with an individual temperament (A3b), so the
+  // affect/instinct substrate has something to run on. Idempotent-ish (random id).
+  registerLensAction("world", "spawn-npc", async (ctx, artifact, params) => {
+    const db = ctx?.db;
+    if (!db) return { ok: false, error: "no_db" };
+    const p = { ...(artifact?.data || {}), ...(params || {}) };
+    const worldId = p.worldId || p.world_id || "concordia-hub";
+    const species = p.species || p.archetype || "humanoid";
+    const name = p.name || null;
+    try {
+      const crypto = await import("node:crypto");
+      const { birthTemperament } = await import("../lib/ecosystem/temperament.js");
+      const npcId = `npc_${crypto.randomBytes(6).toString("hex")}`;
+      const temperament = birthTemperament({ speciesId: species, seed: `${worldId}|${species}|${npcId}` });
+      // permissive insert: only columns guaranteed to exist; temperament_json from mig 326.
+      const cols = ["id", "world_id", "archetype"];
+      const vals = [npcId, worldId, species.startsWith("creature:") ? species : species];
+      try { db.prepare(`SELECT temperament_json FROM world_npcs LIMIT 0`).get(); cols.push("temperament_json"); vals.push(JSON.stringify(temperament)); } catch { /* col optional */ }
+      const hasName = (() => { try { db.prepare(`SELECT name FROM world_npcs LIMIT 0`).get(); return true; } catch { return false; } })();
+      if (hasName && name) { cols.push("name"); vals.push(name); }
+      db.prepare(`INSERT INTO world_npcs (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`).run(...vals);
+      return { ok: true, result: { npcId, worldId, species, name, temperament } };
+    } catch (err) {
+      return { ok: false, error: err?.message || "spawn_failed" };
+    }
+  });
 }
