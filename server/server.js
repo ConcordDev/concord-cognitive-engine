@@ -113,6 +113,17 @@ registerHeartbeat("creature-flock-cycle", {
   handler: runCreatureFlockCycle,
 });
 
+// Wave 7 / A6 — flush salience-crossing creature affect (written in-memory by the
+// tickFlock overlay) into creature_affect_trace + mint affect_memory DTUs for the
+// strongest. scope:'world'; kill-switch CONCORD_AFFECT_TRACE=0. Slower than the flock
+// pass — memory is the residue, not the motion.
+import { runAffectTraceCycle } from "./emergent/affect-trace-cycle.js";
+registerHeartbeat("affect-trace-cycle", {
+  frequency: 8,
+  handler: runAffectTraceCycle,
+  scope: "world",
+});
+
 // WS3: outward-migration engine (NPC re-anchor half). As NPCs out-level the
 // ring they stand in, they step toward their home band's inner edge so the
 // strong drain to the frontier and the hub refills with weak spawns. Per-world
