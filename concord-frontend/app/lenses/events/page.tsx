@@ -1036,7 +1036,7 @@ export default function EventsLensPage() {
             { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
             { label: 'Run-of-Show Generate', action: 'ros_generate', icon: ListChecks },
             { label: 'Registration Report', action: 'registration_report', icon: FileText },
-            { label: 'Event Summary', action: 'event_summary', icon: ClipboardList },
+            { label: 'Event Summary', action: 'advanceSheet', icon: ClipboardList },
           ].map((a) => (
             <button
               key={a.action}
@@ -1566,7 +1566,7 @@ export default function EventsLensPage() {
               { label: 'Vendor Check', action: 'vendor_check', icon: CheckCircle2 },
               { label: 'Generate Run-of-Show', action: 'ros_generate', icon: ListChecks },
               { label: 'Registration Report', action: 'registration_report', icon: FileText },
-              { label: 'Event Summary', action: 'event_summary', icon: ClipboardList },
+              { label: 'Event Summary', action: 'advanceSheet', icon: ClipboardList },
             ].map((a) => (
               <button
                 key={a.action}
@@ -1988,7 +1988,7 @@ export default function EventsLensPage() {
                   <Sparkles className="w-4 h-4" /> AI Generate Segments
                 </button>
                 <button
-                  onClick={() => handleAction('event_summary', item.id)}
+                  onClick={() => handleAction('advanceSheet', item.id)}
                   className={cn(ds.btnSecondary, ds.btnSmall)}
                   disabled={runAction.isPending}
                 >

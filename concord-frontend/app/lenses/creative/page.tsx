@@ -579,7 +579,7 @@ export default function CreativeLensPage() {
         <div className="flex flex-wrap gap-2">
           {[
             { action: 'shotListGenerate', label: 'Generate Shot List', icon: Clapperboard },
-            { action: 'asset_report', label: 'Asset Report', icon: BarChart3 },
+            { action: 'assetOrganize', label: 'Asset Report', icon: BarChart3 },
             { action: 'budgetTrack', label: 'Budget Analysis', icon: DollarSign },
             { action: 'distributionChecklist', label: 'Distribution Checklist', icon: ListChecks },
             { action: 'project_summary', label: 'Project Summary', icon: ClipboardList },
@@ -1393,7 +1393,7 @@ export default function CreativeLensPage() {
                     </>
                   )}
                   {currentMode === 'assets' && (
-                    <button onClick={() => handleAction('asset_report', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><BarChart3 className="w-3 h-3" /> Asset Report</button>
+                    <button onClick={() => handleAction('assetOrganize', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><BarChart3 className="w-3 h-3" /> Asset Report</button>
                   )}
                   {currentMode === 'proofs' && (
                     <button onClick={() => handleAction('project_summary', detailItem.id)} className={cn(ds.btnSecondary, ds.btnSmall, 'text-xs')} disabled={runAction.isPending}><ClipboardList className="w-3 h-3" /> Generate Summary</button>

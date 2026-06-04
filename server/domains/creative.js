@@ -1082,4 +1082,50 @@ export default function registerCreativeActions(registerLensAction) {
     saveCrState();
     return { ok: true, result: { comment } };
   });
+
+  // ── Project + revision summaries (deterministic; artifact-based) ──
+  // Surface the creative-lens "Project Summary" / "Revision Summary" buttons that
+  // previously hit no macro. Defensive over whatever the project artifact carries.
+  registerLensAction("creative", "project_summary", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const arrays = {};
+    for (const [k, v] of Object.entries(d)) if (Array.isArray(v)) arrays[k] = v.length;
+    const status = d.status || d.stage || (d.deliverables ? "in_production" : "planning");
+    return {
+      ok: true,
+      result: {
+        title: artifact.title || d.title || "Untitled project",
+        status,
+        type: d.type || artifact.type || "project",
+        counts: arrays,
+        totalItems: Object.values(arrays).reduce((s2, n) => s2 + n, 0),
+        budget: d.budget != null ? d.budget : null,
+        lastUpdated: d.updatedAt || d.createdAt || null,
+        summary: `${artifact.title || "Project"} — ${status}, ${Object.entries(arrays).map(([k, n]) => `${n} ${k}`).join(", ") || "no items yet"}.`,
+      },
+    };
+  });
+
+  registerLensAction("creative", "revision_summary", (ctx, artifact, _params = {}) => {
+    const d = artifact.data || {};
+    const versions = Array.isArray(d.versions) ? d.versions
+      : Array.isArray(d.revisions) ? d.revisions
+      : Array.isArray(d.deliverables) ? d.deliverables : [];
+    const latest = versions[versions.length - 1] || null;
+    const statusCounts = {};
+    for (const v of versions) { const st = String(v?.status || v?.decision || "draft"); statusCounts[st] = (statusCounts[st] || 0) + 1; }
+    return {
+      ok: true,
+      result: {
+        title: artifact.title || "Untitled",
+        revisionCount: versions.length,
+        latestStatus: latest?.status || latest?.decision || (versions.length ? "draft" : "none"),
+        latestVersion: latest?.version || latest?.name || (versions.length || null),
+        statusCounts,
+        summary: versions.length
+          ? `${versions.length} revision(s); latest is ${latest?.status || latest?.decision || "a draft"}.`
+          : "No revisions recorded yet.",
+      },
+    };
+  });
 };
