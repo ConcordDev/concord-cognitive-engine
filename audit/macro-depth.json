@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-06-03T15:56:30.830Z",
-  "head": "2bf5bfd0ff409746a66d61b07e1544633e1be670",
+  "generatedAt": "2026-06-04T22:35:00.002Z",
+  "head": "119862d325fda235c7ac883bc0fd35fb29fb831c",
   "mode": "default",
   "totals": {
     "stub": 0,
-    "functional": 15,
-    "utility": 4803,
-    "production-grade": 3880
+    "functional": 16,
+    "utility": 4833,
+    "production-grade": 3887
   },
-  "total": 8698,
+  "total": 8736,
   "weightedScore": 0.999,
   "tierWeights": {
     "stub": 0.2,
@@ -35,8 +35,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 2,
-      "production-grade": 9,
-      "total": 11
+      "production-grade": 8,
+      "total": 10
     },
     "agent": {
       "stub": 0,
@@ -133,8 +133,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 4,
-      "production-grade": 9,
-      "total": 13
+      "production-grade": 10,
+      "total": 14
     },
     "arc": {
       "stub": 0,
@@ -594,9 +594,9 @@
     "creative": {
       "stub": 0,
       "functional": 0,
-      "utility": 60,
+      "utility": 62,
       "production-grade": 11,
-      "total": 71
+      "total": 73
     },
     "creative-writing": {
       "stub": 0,
@@ -798,8 +798,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 3,
-      "production-grade": 12,
-      "total": 15
+      "production-grade": 13,
+      "total": 16
     },
     "dtu_portability": {
       "stub": 0,
@@ -1091,9 +1091,9 @@
     "fitness": {
       "stub": 0,
       "functional": 0,
-      "utility": 43,
-      "production-grade": 25,
-      "total": 68
+      "utility": 45,
+      "production-grade": 24,
+      "total": 69
     },
     "food": {
       "stub": 0,
@@ -1259,9 +1259,9 @@
     "government": {
       "stub": 0,
       "functional": 0,
-      "utility": 43,
+      "utility": 55,
       "production-grade": 19,
-      "total": 62
+      "total": 74
     },
     "governor": {
       "stub": 0,
@@ -1421,8 +1421,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 20,
-      "production-grade": 16,
-      "total": 36
+      "production-grade": 17,
+      "total": 37
     },
     "inheritance": {
       "stub": 0,
@@ -1595,9 +1595,9 @@
     "linguistics": {
       "stub": 0,
       "functional": 0,
-      "utility": 4,
+      "utility": 5,
       "production-grade": 20,
-      "total": 24
+      "total": 25
     },
     "llm": {
       "stub": 0,
@@ -1651,9 +1651,9 @@
     "manufacturing": {
       "stub": 0,
       "functional": 0,
-      "utility": 24,
+      "utility": 28,
       "production-grade": 6,
-      "total": 30
+      "total": 34
     },
     "markers": {
       "stub": 0,
@@ -1770,9 +1770,9 @@
     "meta": {
       "stub": 0,
       "functional": 0,
-      "utility": 0,
+      "utility": 1,
       "production-grade": 17,
-      "total": 17
+      "total": 18
     },
     "metacognition": {
       "stub": 0,
@@ -1848,8 +1848,8 @@
       "stub": 0,
       "functional": 2,
       "utility": 57,
-      "production-grade": 23,
-      "total": 82
+      "production-grade": 24,
+      "total": 83
     },
     "narrative": {
       "stub": 0,
@@ -1869,8 +1869,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 3,
-      "production-grade": 11,
-      "total": 14
+      "production-grade": 12,
+      "total": 15
     },
     "news": {
       "stub": 0,
@@ -1882,9 +1882,9 @@
     "nonprofit": {
       "stub": 0,
       "functional": 0,
-      "utility": 8,
+      "utility": 12,
       "production-grade": 37,
-      "total": 45
+      "total": 49
     },
     "notion": {
       "stub": 0,
@@ -2008,9 +2008,9 @@
     "paper": {
       "stub": 0,
       "functional": 1,
-      "utility": 10,
+      "utility": 11,
       "production-grade": 32,
-      "total": 43
+      "total": 44
     },
     "parenting": {
       "stub": 0,
@@ -2366,8 +2366,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 46,
-      "production-grade": 20,
-      "total": 66
+      "production-grade": 21,
+      "total": 67
     },
     "resonance": {
       "stub": 0,
@@ -2379,9 +2379,9 @@
     "retail": {
       "stub": 0,
       "functional": 0,
-      "utility": 43,
-      "production-grade": 38,
-      "total": 81
+      "utility": 45,
+      "production-grade": 40,
+      "total": 85
     },
     "robotics": {
       "stub": 0,
@@ -2476,10 +2476,10 @@
     },
     "security": {
       "stub": 0,
-      "functional": 0,
+      "functional": 1,
       "utility": 23,
       "production-grade": 14,
-      "total": 37
+      "total": 38
     },
     "self": {
       "stub": 0,
@@ -2821,8 +2821,8 @@
       "stub": 0,
       "functional": 0,
       "utility": 7,
-      "production-grade": 10,
-      "total": 17
+      "production-grade": 11,
+      "total": 18
     },
     "terrain": {
       "stub": 0,
@@ -3086,9 +3086,9 @@
     "world": {
       "stub": 0,
       "functional": 0,
-      "utility": 29,
+      "utility": 30,
       "production-grade": 25,
-      "total": 54
+      "total": 55
     },
     "world-creator": {
       "stub": 0,
@@ -5223,7 +5223,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5259,7 +5259,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5331,7 +5331,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5367,7 +5367,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5457,7 +5457,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5475,7 +5475,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5565,7 +5565,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5583,7 +5583,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5601,7 +5601,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -5746,24 +5746,6 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": true,
-      "delegates": false
-    },
-    {
-      "domain": "affect",
-      "macro": "sentimentAnalysis",
-      "file": "server/domains/affect.js",
-      "tier": "production-grade",
-      "handlerLoc": 1021,
-      "combinedLoc": 1021,
-      "stateTouch": true,
-      "externalIO": false,
-      "tryCatch": true,
-      "realtimeEmit": false,
-      "runsOtherMacro": false,
-      "heartbeatDelegate": false,
-      "artifactWrite": false,
-      "hasTest": true,
-      "frontendUse": false,
       "delegates": false
     },
     {
@@ -9003,7 +8985,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -9021,7 +9003,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -9039,7 +9021,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -12266,6 +12248,24 @@
     },
     {
       "domain": "ar",
+      "macro": "render",
+      "file": "server/domains/ar.js",
+      "tier": "production-grade",
+      "handlerLoc": 46,
+      "combinedLoc": 116,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "ar",
       "macro": "sceneDelete",
       "file": "server/domains/ar.js",
       "tier": "utility",
@@ -12377,8 +12377,8 @@
       "macro": "webxrPreview",
       "file": "server/domains/ar.js",
       "tier": "production-grade",
-      "handlerLoc": 62,
-      "combinedLoc": 80,
+      "handlerLoc": 21,
+      "combinedLoc": 76,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -12639,7 +12639,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -12657,7 +12657,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -17193,7 +17193,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -17256,7 +17256,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 20,
-      "combinedLoc": 753,
+      "combinedLoc": 776,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -18498,7 +18498,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 15,
-      "combinedLoc": 749,
+      "combinedLoc": 772,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -23061,7 +23061,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -25049,8 +25049,8 @@
       "macro": "code-run",
       "file": "server/domains/chat.js",
       "tier": "production-grade",
-      "handlerLoc": 70,
-      "combinedLoc": 110,
+      "handlerLoc": 81,
+      "combinedLoc": 121,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -25733,8 +25733,8 @@
       "macro": "threadSummarize",
       "file": "server/domains/chat.js",
       "tier": "production-grade",
-      "handlerLoc": 1453,
-      "combinedLoc": 1456,
+      "handlerLoc": 1464,
+      "combinedLoc": 1467,
       "stateTouch": true,
       "externalIO": true,
       "tryCatch": true,
@@ -27821,8 +27821,8 @@
       "macro": "exec",
       "file": "server/domains/code.js",
       "tier": "production-grade",
-      "handlerLoc": 19,
-      "combinedLoc": 93,
+      "handlerLoc": 25,
+      "combinedLoc": 105,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -27831,7 +27831,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -35972,6 +35972,24 @@
     },
     {
       "domain": "creative",
+      "macro": "project_summary",
+      "file": "server/domains/creative.js",
+      "tier": "utility",
+      "handlerLoc": 19,
+      "combinedLoc": 19,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "creative",
       "macro": "prooflink-create",
       "file": "server/domains/creative.js",
       "tier": "production-grade",
@@ -36256,6 +36274,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "creative",
+      "macro": "revision_summary",
+      "file": "server/domains/creative.js",
+      "tier": "utility",
+      "handlerLoc": 22,
+      "combinedLoc": 22,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -39099,7 +39135,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -39117,7 +39153,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -39135,7 +39171,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -42393,7 +42429,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -46281,7 +46317,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -46317,7 +46353,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -46335,7 +46371,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -46822,6 +46858,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "dtu",
+      "macro": "listByKind",
+      "file": "server/server.js",
+      "tier": "production-grade",
+      "handlerLoc": 17,
+      "combinedLoc": 82,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -62612,6 +62666,24 @@
     },
     {
       "domain": "fitness",
+      "macro": "generate-program",
+      "file": "server/domains/fitness.js",
+      "tier": "utility",
+      "handlerLoc": 1,
+      "combinedLoc": 2,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "fitness",
       "macro": "goal-create",
       "file": "server/domains/fitness.js",
       "tier": "production-grade",
@@ -62967,7 +63039,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -62985,7 +63057,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -63003,7 +63075,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -63226,12 +63298,12 @@
       "domain": "fitness",
       "macro": "workout-plan-generate",
       "file": "server/domains/fitness.js",
-      "tier": "production-grade",
-      "handlerLoc": 49,
-      "combinedLoc": 58,
+      "tier": "utility",
+      "handlerLoc": 1,
+      "combinedLoc": 2,
       "stateTouch": false,
-      "externalIO": true,
-      "tryCatch": true,
+      "externalIO": false,
+      "tryCatch": false,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
@@ -64173,7 +64245,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -64209,7 +64281,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -71481,7 +71553,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -71499,7 +71571,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -71517,7 +71589,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -73484,6 +73556,24 @@
     },
     {
       "domain": "government",
+      "macro": "budget_report",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 9,
+      "combinedLoc": 27,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
       "macro": "budget-breakdown",
       "file": "server/domains/government.js",
       "tier": "production-grade",
@@ -73492,6 +73582,42 @@
       "stateTouch": false,
       "externalIO": true,
       "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "citizen_impact_report",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 7,
+      "combinedLoc": 25,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "compliance_check",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 8,
+      "combinedLoc": 17,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
@@ -73562,6 +73688,24 @@
       "handlerLoc": 6,
       "combinedLoc": 18,
       "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "docket_report",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 7,
+      "combinedLoc": 16,
+      "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
       "realtimeEmit": false,
@@ -73654,6 +73798,60 @@
       "stateTouch": false,
       "externalIO": true,
       "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "export_record",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 6,
+      "combinedLoc": 6,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "fee_collection_status",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 7,
+      "combinedLoc": 25,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "fine_calculation",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 10,
+      "combinedLoc": 28,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
@@ -73880,6 +74078,24 @@
     },
     {
       "domain": "government",
+      "macro": "milestone_update",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 8,
+      "combinedLoc": 26,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
       "macro": "notifications-emit",
       "file": "server/domains/government.js",
       "tier": "utility",
@@ -74042,6 +74258,42 @@
     },
     {
       "domain": "government",
+      "macro": "permit_fee_estimate",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 10,
+      "combinedLoc": 19,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "permit_inspection_schedule",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 10,
+      "combinedLoc": 10,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
       "macro": "permits-apply",
       "file": "server/domains/government.js",
       "tier": "production-grade",
@@ -74186,6 +74438,24 @@
     },
     {
       "domain": "government",
+      "macro": "redaction_review",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 9,
+      "combinedLoc": 9,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
       "macro": "representatives-find",
       "file": "server/domains/government.js",
       "tier": "production-grade",
@@ -74284,6 +74554,24 @@
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "government",
+      "macro": "schedule_hearing",
+      "file": "server/domains/government.js",
+      "tier": "utility",
+      "handlerLoc": 7,
+      "combinedLoc": 16,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
@@ -83294,6 +83582,24 @@
     },
     {
       "domain": "ingest",
+      "macro": "batch-ingest",
+      "file": "server/domains/ingest.js",
+      "tier": "production-grade",
+      "handlerLoc": 48,
+      "combinedLoc": 48,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "ingest",
       "macro": "batchStatus",
       "file": "server/domains/ingest.js",
       "tier": "utility",
@@ -85035,7 +85341,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -85089,7 +85395,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -91343,8 +91649,8 @@
       "macro": "sign",
       "file": "server/server.js",
       "tier": "utility",
-      "handlerLoc": 24,
-      "combinedLoc": 24,
+      "handlerLoc": 27,
+      "combinedLoc": 27,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": false,
@@ -91739,8 +92045,8 @@
       "macro": "run",
       "file": "server/server.js",
       "tier": "production-grade",
-      "handlerLoc": 34,
-      "combinedLoc": 128,
+      "handlerLoc": 38,
+      "combinedLoc": 138,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -91804,6 +92110,24 @@
       "artifactWrite": true,
       "hasTest": true,
       "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "linguistics",
+      "macro": "analyze",
+      "file": "server/domains/linguistics.js",
+      "tier": "utility",
+      "handlerLoc": 31,
+      "combinedLoc": 31,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -92261,8 +92585,8 @@
       "macro": "local",
       "file": "server/server.js",
       "tier": "production-grade",
-      "handlerLoc": 10729,
-      "combinedLoc": 10788,
+      "handlerLoc": 10757,
+      "combinedLoc": 10816,
       "stateTouch": true,
       "externalIO": true,
       "tryCatch": true,
@@ -93680,6 +94004,24 @@
     },
     {
       "domain": "manufacturing",
+      "macro": "advanceStep",
+      "file": "server/domains/manufacturing.js",
+      "tier": "utility",
+      "handlerLoc": 20,
+      "combinedLoc": 20,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "manufacturing",
       "macro": "andon-board",
       "file": "server/domains/manufacturing.js",
       "tier": "utility",
@@ -93739,6 +94081,42 @@
       "tier": "utility",
       "handlerLoc": 10,
       "combinedLoc": 10,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "manufacturing",
+      "macro": "defectAnalysis",
+      "file": "server/domains/manufacturing.js",
+      "tier": "utility",
+      "handlerLoc": 21,
+      "combinedLoc": 21,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "manufacturing",
+      "macro": "generateTraveler",
+      "file": "server/domains/manufacturing.js",
+      "tier": "utility",
+      "handlerLoc": 21,
+      "combinedLoc": 21,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
@@ -93832,6 +94210,24 @@
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "manufacturing",
+      "macro": "logDowntime",
+      "file": "server/domains/manufacturing.js",
+      "tier": "utility",
+      "handlerLoc": 18,
+      "combinedLoc": 18,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
@@ -101685,7 +102081,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -101703,7 +102099,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -101721,7 +102117,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -101739,7 +102135,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -101757,7 +102153,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -102568,6 +102964,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "meta",
+      "macro": "classify",
+      "file": "server/domains/meta.js",
+      "tier": "utility",
+      "handlerLoc": 35,
+      "combinedLoc": 35,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -105686,6 +106100,24 @@
     },
     {
       "domain": "music",
+      "macro": "browse",
+      "file": "server/server.js",
+      "tier": "production-grade",
+      "handlerLoc": 45,
+      "combinedLoc": 46,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "music",
       "macro": "chordProgress",
       "file": "server/domains/music.js",
       "tier": "utility",
@@ -105815,8 +106247,8 @@
       "macro": "download-add",
       "file": "server/domains/music.js",
       "tier": "utility",
-      "handlerLoc": 11,
-      "combinedLoc": 26,
+      "handlerLoc": 15,
+      "combinedLoc": 30,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -106383,7 +106815,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -106437,7 +106869,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -106463,8 +106895,8 @@
       "macro": "publish-as-stem",
       "file": "server/domains/music.js",
       "tier": "production-grade",
-      "handlerLoc": 105,
-      "combinedLoc": 140,
+      "handlerLoc": 107,
+      "combinedLoc": 142,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -107257,6 +107689,24 @@
       "tier": "production-grade",
       "handlerLoc": 98,
       "combinedLoc": 104,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "neuro",
+      "macro": "train",
+      "file": "server/domains/neuro.js",
+      "tier": "production-grade",
+      "handlerLoc": 71,
+      "combinedLoc": 71,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -108476,11 +108926,47 @@
     },
     {
       "domain": "nonprofit",
+      "macro": "grant-deadline-check",
+      "file": "server/domains/nonprofit.js",
+      "tier": "utility",
+      "handlerLoc": 18,
+      "combinedLoc": 18,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "nonprofit",
       "macro": "grantReporting",
       "file": "server/domains/nonprofit.js",
       "tier": "utility",
       "handlerLoc": 17,
       "combinedLoc": 17,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "nonprofit",
+      "macro": "impact-report",
+      "file": "server/domains/nonprofit.js",
+      "tier": "utility",
+      "handlerLoc": 18,
+      "combinedLoc": 18,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
@@ -108728,6 +109214,24 @@
     },
     {
       "domain": "nonprofit",
+      "macro": "send-acknowledgment",
+      "file": "server/domains/nonprofit.js",
+      "tier": "utility",
+      "handlerLoc": 15,
+      "combinedLoc": 15,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "nonprofit",
       "macro": "shift-log-hours",
       "file": "server/domains/nonprofit.js",
       "tier": "production-grade",
@@ -108778,6 +109282,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "nonprofit",
+      "macro": "view-giving-history",
+      "file": "server/domains/nonprofit.js",
+      "tier": "utility",
+      "handlerLoc": 21,
+      "combinedLoc": 21,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -109614,7 +110136,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 28,
-      "combinedLoc": 767,
+      "combinedLoc": 790,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -111308,6 +111830,24 @@
       "handlerLoc": 19,
       "combinedLoc": 23,
       "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "paper",
+      "macro": "export_pdf",
+      "file": "server/domains/paper.js",
+      "tier": "utility",
+      "handlerLoc": 28,
+      "combinedLoc": 28,
+      "stateTouch": false,
       "externalIO": false,
       "tryCatch": false,
       "realtimeEmit": false,
@@ -126966,7 +127506,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 9,
-      "combinedLoc": 741,
+      "combinedLoc": 764,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -126984,7 +127524,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 6,
-      "combinedLoc": 738,
+      "combinedLoc": 761,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -127002,7 +127542,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 6,
-      "combinedLoc": 738,
+      "combinedLoc": 761,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -127992,7 +128532,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 61,
-      "combinedLoc": 793,
+      "combinedLoc": 816,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -129464,6 +130004,24 @@
     },
     {
       "domain": "research",
+      "macro": "generate",
+      "file": "server/domains/research.js",
+      "tier": "production-grade",
+      "handlerLoc": 44,
+      "combinedLoc": 51,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "research",
       "macro": "get",
       "file": "server/server.js",
       "tier": "utility",
@@ -130530,7 +131088,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 24,
-      "combinedLoc": 798,
+      "combinedLoc": 821,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -131228,6 +131786,24 @@
     },
     {
       "domain": "retail",
+      "macro": "generate_label",
+      "file": "server/domains/retail.js",
+      "tier": "utility",
+      "handlerLoc": 33,
+      "combinedLoc": 34,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "retail",
       "macro": "gift-cards-balance",
       "file": "server/domains/retail.js",
       "tier": "utility",
@@ -131300,6 +131876,24 @@
     },
     {
       "domain": "retail",
+      "macro": "initiate_return",
+      "file": "server/domains/retail.js",
+      "tier": "production-grade",
+      "handlerLoc": 23,
+      "combinedLoc": 55,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "retail",
       "macro": "low-stock",
       "file": "server/domains/retail.js",
       "tier": "utility",
@@ -131342,6 +131936,24 @@
       "handlerLoc": 67,
       "combinedLoc": 67,
       "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "retail",
+      "macro": "process_refund",
+      "file": "server/domains/retail.js",
+      "tier": "production-grade",
+      "handlerLoc": 30,
+      "combinedLoc": 57,
+      "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
       "realtimeEmit": false,
@@ -131548,6 +132160,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "retail",
+      "macro": "send_tracking",
+      "file": "server/domains/retail.js",
+      "tier": "utility",
+      "handlerLoc": 14,
+      "combinedLoc": 21,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -131907,7 +132537,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -131925,7 +132555,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -131943,7 +132573,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": false,
+      "frontendUse": true,
       "delegates": false
     },
     {
@@ -133428,7 +134058,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 19,
-      "combinedLoc": 792,
+      "combinedLoc": 815,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -134734,6 +135364,24 @@
       "artifactWrite": false,
       "hasTest": true,
       "frontendUse": true,
+      "delegates": false
+    },
+    {
+      "domain": "security",
+      "macro": "accessAudit",
+      "file": "server/domains/security.js",
+      "tier": "functional",
+      "handlerLoc": 36,
+      "combinedLoc": 61,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -137082,7 +137730,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 11,
-      "combinedLoc": 743,
+      "combinedLoc": 766,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -146082,7 +146730,7 @@
       "file": "server/domains/temporal.js",
       "tier": "production-grade",
       "handlerLoc": 114,
-      "combinedLoc": 129,
+      "combinedLoc": 130,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -146100,7 +146748,7 @@
       "file": "server/domains/temporal.js",
       "tier": "production-grade",
       "handlerLoc": 89,
-      "combinedLoc": 104,
+      "combinedLoc": 105,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -146226,7 +146874,7 @@
       "file": "server/domains/temporal.js",
       "tier": "production-grade",
       "handlerLoc": 150,
-      "combinedLoc": 218,
+      "combinedLoc": 219,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -146330,6 +146978,24 @@
     },
     {
       "domain": "temporal",
+      "macro": "simulate",
+      "file": "server/domains/temporal.js",
+      "tier": "production-grade",
+      "handlerLoc": 34,
+      "combinedLoc": 51,
+      "stateTouch": false,
+      "externalIO": false,
+      "tryCatch": true,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "temporal",
       "macro": "subjective",
       "file": "server/server.js",
       "tier": "utility",
@@ -146352,7 +147018,7 @@
       "file": "server/domains/temporal.js",
       "tier": "production-grade",
       "handlerLoc": 126,
-      "combinedLoc": 141,
+      "combinedLoc": 142,
       "stateTouch": false,
       "externalIO": false,
       "tryCatch": true,
@@ -147990,7 +148656,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 35,
-      "combinedLoc": 803,
+      "combinedLoc": 826,
       "stateTouch": true,
       "externalIO": true,
       "tryCatch": true,
@@ -153138,7 +153804,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 16,
-      "combinedLoc": 748,
+      "combinedLoc": 771,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -153921,7 +154587,7 @@
       "heartbeatDelegate": false,
       "artifactWrite": false,
       "hasTest": true,
-      "frontendUse": true,
+      "frontendUse": false,
       "delegates": false
     },
     {
@@ -154326,7 +154992,7 @@
       "file": "server/server.js",
       "tier": "production-grade",
       "handlerLoc": 20,
-      "combinedLoc": 793,
+      "combinedLoc": 816,
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": true,
@@ -158236,6 +158902,24 @@
       "stateTouch": true,
       "externalIO": false,
       "tryCatch": false,
+      "realtimeEmit": false,
+      "runsOtherMacro": false,
+      "heartbeatDelegate": false,
+      "artifactWrite": false,
+      "hasTest": true,
+      "frontendUse": false,
+      "delegates": false
+    },
+    {
+      "domain": "world",
+      "macro": "spawn-npc",
+      "file": "server/domains/world.js",
+      "tier": "utility",
+      "handlerLoc": 24,
+      "combinedLoc": 24,
+      "stateTouch": true,
+      "externalIO": false,
+      "tryCatch": true,
       "realtimeEmit": false,
       "runsOtherMacro": false,
       "heartbeatDelegate": false,
