@@ -10,6 +10,7 @@ import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { CoinGeckoTicker } from '@/components/crypto/CoinGeckoTicker';
 import { CryptoActionPanel } from '@/components/crypto/CryptoActionPanel';
+import { AddressBookPanel } from '@/components/crypto/AddressBookPanel';
 import { PipingProvider } from '@/components/panel-polish';
 import { SwapRoutePanel } from '@/components/crypto-explorer/SwapRoutePanel';
 import { RivalShapePreview } from '@/components/lens/RivalShapePreview';
@@ -1696,6 +1697,7 @@ export default function CryptoLensPage() {
       {/* CoinGecko + Uniswap + Etherscan-shape workbench: portfolio / tokens / swap / gas + actions */}
       <PipingProvider>
         <section className="mt-6">
+      <AddressBookPanel className="mt-6 mx-4" />
       <section className="mt-6"><LensFeedButton domain="crypto" /></section>
           <CryptoActionPanel />
         </section>
