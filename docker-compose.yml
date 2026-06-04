@@ -71,6 +71,14 @@ services:
       - CONCORD_HEARTBEAT_MS=${CONCORD_HEARTBEAT_MS:-5000}
       - CONCORD_AGENT_TICK_CONCURRENT=${CONCORD_AGENT_TICK_CONCURRENT:-32}
       - CONCORD_GHOST_THREADS_CONCURRENT=${CONCORD_GHOST_THREADS_CONCURRENT:-16}
+      # World sharding (Phase I) — per-world worker thread spawned on travel,
+      # so the parent governor offloads all scope:'world' sim off the main
+      # event loop. Default ON; set CONCORD_SHARD_WORLDS=false to keep all
+      # heartbeats in-process. Shard health is on the ops-telemetry lens +
+      # /api/admin/world-shards; ConcordWorldShard* alerts page on stuck/can't-spawn.
+      - CONCORD_SHARD_WORLDS=${CONCORD_SHARD_WORLDS:-true}
+      - CONCORD_SHARD_IDLE_TEARDOWN_MS=${CONCORD_SHARD_IDLE_TEARDOWN_MS:-600000}
+      - CONCORD_SHARD_READY_TIMEOUT_MS=${CONCORD_SHARD_READY_TIMEOUT_MS:-8000}
       # SQLite tuning
       - CONCORD_SQLITE_MMAP_MB=${CONCORD_SQLITE_MMAP_MB:-4096}
       - CONCORD_SQLITE_CACHE_MB=${CONCORD_SQLITE_CACHE_MB:-1024}
