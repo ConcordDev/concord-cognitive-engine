@@ -7,10 +7,12 @@
 // status='running' AND next_tick_at <= now, tick each up to 5 turns.
 // Bounded at MAX_PER_PASS to keep tick cost predictable.
 
-import { findDueMarathons, tickMarathon } from "../lib/agent-marathon.js";
+import { findDueMarathons, tickMarathon, startMarathon } from "../lib/agent-marathon.js";
 import { loadOrCreate } from "../lib/affect-bridge.js";
+import { formGoalForAgent } from "../lib/agent-goals.js";
 
 const MAX_PER_PASS = 3;
+const MAX_REGOAL_PER_PASS = 2;
 
 // Wave 7 / E2 — per-session prior affect cache so the salience gate can detect spikes
 // across ticks (a sudden FEAR jump = a reason to wake the brain).
@@ -49,6 +51,37 @@ function buildSalienceGate(db, sessionId) {
   }
 }
 
+// Wave 7 / B4 — AUTONOMOUS GOAL FORMATION. An active agent with NO running marathon has
+// finished (or abandoned) its goal; rather than going inert, it introspects its drives +
+// felt-peaks + values and forms a NEW goal, then continues. The agent self-directs, it
+// isn't only executed. Bounded + kill-switch CONCORD_AGENT_AUTOGOAL=0. Read→form→start.
+function reGoalIdleAgents(db) {
+  if (process.env.CONCORD_AGENT_AUTOGOAL === "0") return 0;
+  let formed = 0;
+  let idle = [];
+  try {
+    idle = db.prepare(`
+      SELECT ai.agent_id, ai.user_id FROM agent_identities ai
+      WHERE ai.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM agent_marathon_sessions s
+          WHERE s.user_id = ai.user_id AND s.status IN ('running', 'pending', 'paused')
+        )
+      LIMIT ?
+    `).all(MAX_REGOAL_PER_PASS);
+  } catch { return 0; } // agent_identities / sessions tables optional
+  for (const a of idle) {
+    try {
+      const proposal = formGoalForAgent(db, a.agent_id);
+      if (proposal?.ok && proposal.goal) {
+        startMarathon(db, a.user_id, { goal: proposal.goal });
+        formed++;
+      }
+    } catch { /* per-agent skip */ }
+  }
+  return formed;
+}
+
 export async function runAgentMarathonCycle({ db } = {}) {
   if (!db) return { ok: false, reason: "no_db" };
   const runMacro = globalThis.__concordRunMacro;
@@ -76,7 +109,9 @@ export async function runAgentMarathonCycle({ db } = {}) {
         errors++;
       }
     }
-    return { ok: true, processed: due.length, advanced, onInstinct, errors };
+    // B4 — agents that finished their goal form a new one and keep living.
+    const reGoaled = reGoalIdleAgents(db);
+    return { ok: true, processed: due.length, advanced, onInstinct, errors, reGoaled };
   } catch (err) {
     return { ok: false, reason: "cycle_threw", error: String(err?.message || err) };
   }
