@@ -8,6 +8,29 @@ import { registerCitation } from "./royalty-cascade.js";
 import { awardMeritCredit } from "./lens-economy-wiring.js";
 import { canEmergentCiteUser } from "../lib/consent.js";
 import { batchLookup } from "./_batch-lookup.js";
+import { peakEnd, feltPeakBonus } from "../lib/felt-per.js";
+
+// Wave 7 / A6 — roll the strongest felt-peak of the children up into the consolidated
+// parent's metadata, so CHARACTER compresses around what was felt strongly (a MEGA of
+// a hard week still carries the ache). Best-effort + total: children without a felt
+// signature contribute nothing. Returns { feltPer, feltPeakScore } | {}.
+export function rollUpFeltPeaks(children) {
+  try {
+    const frags = [];
+    for (const c of children) {
+      let fp = null;
+      try {
+        const content = typeof c.content === "string" ? JSON.parse(c.content) : (c.content || {});
+        fp = content?.machine?.feltPer || content?.feltPer || c?.metadata?.feltPer || null;
+      } catch { /* skip unparseable child */ }
+      if (fp && Number.isFinite(Number(fp.intensity))) frags.push({ feltPer: fp });
+    }
+    if (frags.length === 0) return {};
+    const { peak } = peakEnd(frags);
+    const feltPer = peak?.feltPer || null;
+    return feltPer ? { feltPer, feltPeakScore: feltPeakBonus(feltPer) } : {};
+  } catch { return {}; }
+}
 
 function uid(prefix = "dtu") {
   return `${prefix}_` + randomUUID().replace(/-/g, "").slice(0, 16);
@@ -338,7 +361,7 @@ export function compressToDMega(db, {
   const doCompress = db.transaction(() => {
     // Phase 2 perf fix: single batched IN-list lookup replaces N round-trips.
     const childMap = batchLookup(db, "dtus", "id", childDtuIds, {
-      columns: ["id", "title", "content_type", "creti_score", "tier"],
+      columns: ["id", "title", "content_type", "creti_score", "tier", "content"],
     });
     const children = [];
     for (const childId of childDtuIds) {
@@ -349,6 +372,10 @@ export function compressToDMega(db, {
 
     // Aggregate CRETI score — Mega is at least the average of children
     const avgCreti = Math.round(children.reduce((s, c) => s + (c.creti_score || 0), 0) / children.length);
+
+    // A6 — preserve the felt character through compression.
+    const felt = rollUpFeltPeaks(children);
+    const megaMetadata = felt.feltPer ? { ...metadata, feltPer: felt.feltPer, feltPeakScore: felt.feltPeakScore } : metadata;
 
     // Create the Mega DTU
     const aggregateContent = JSON.stringify({
@@ -362,7 +389,7 @@ export function compressToDMega(db, {
         created_at, updated_at)
       VALUES (?, ?, ?, ?, 'mega_dtu', ?, 'mega', '[]', ?, ?, ?, 'published', 1, ?, ?)
     `).run(megaId, creatorId, title, aggregateContent, lensId || "unknown",
-      price, Math.min(avgCreti + 5, 100), JSON.stringify(metadata), now, now);
+      price, Math.min(avgCreti + 5, 100), JSON.stringify(megaMetadata), now, now);
 
     // Link children
     for (let i = 0; i < childDtuIds.length; i++) {
