@@ -564,3 +564,19 @@ deterministic-buildable: retail ×3 (param-collecting modals — Batch D UI), `c
 `ingest.batch-ingest` (real file-upload UI), `ar.render` (3D scene-activation side-effect),
 `crypto.wallet` (preview shim) — UI/VM/model/data work, a different character from the
 macro-over-artifact pattern that closed the 41.
+
+### Layer 1.5 — unloaded-domain detector (deterministic, all-domains) — `npm run lens:unloaded`
+`scripts/lens-unloaded-domains.mjs` catches the **most severe** facade: not one button, a
+WHOLE domain. A `server/domains/<X>.js` that registers `registerLensAction("<X>", …)` macros
+but is never wired into the runtime loader (`server/domains/index.js`'s export array, walked
+by `server.js`'s `domainModules.forEach(mod => mod(registerLensAction))`, or an explicit
+server.js import) — so every macro returns `unknown_macro` and the lens's entire backend is
+dead. **The source-based verifiers (verify-lens-backends, lens-broken-calls) can't see it** —
+the `registerLensAction` calls exist in source, they just never run. Only a live request, or
+this loader cross-check, exposes it (same class as the double-nest transport bug).
+- **Found 2026-06-04 (this session):** `genesis`, `staking`, `sponsorship`, `system`,
+  `code-quality` — **64 macros across 5 whole domains** — were all unloaded. Discovered while
+  building the genesis saved-searches panel (its macro returned `unknown_macro` live).
+  Fixed by adding the 5 imports + array entries to `server/domains/index.js`
+  (superLensDomains 217 → 222). Now a **CI ratchet at floor 0** in `audits.yml`, so a new
+  domain file can't be left unwired.

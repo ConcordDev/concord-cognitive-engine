@@ -146,6 +146,15 @@ jobs:
           node scripts/lens-broken-calls.mjs
           node scripts/lens-broken-calls.mjs --ci 8
 
+      - name: Unloaded-domain gate (no whole-domain backend is dead)
+        run: |
+          # The most severe lens facade: a server/domains/<X>.js that registers macros
+          # but is never wired into the runtime loader (server/domains/index.js), so EVERY
+          # macro 404s and the lens backend is dead. Source-based verifiers miss it (the
+          # registrations exist) — found 2026-06-04: genesis/staking/sponsorship/system/
+          # code-quality (64 macros) were all dead this way. Floor 0 — no unloaded domain.
+          node scripts/lens-unloaded-domains.mjs --ci
+
       - name: Schema/query drift gate (ratchet — prevents NEW drift)
         run: |
           # Runs all migrations into an in-memory DB (PRAGMA = authoritative column

@@ -22,7 +22,8 @@
     "lens:audit": "node scripts/lens-audit.mjs",
     "lens:orphans": "node scripts/lens-orphans.mjs",
     "lens:unsurfaced": "node scripts/lens-unsurfaced.mjs",
-    "lens:broken-calls": "node scripts/lens-broken-calls.mjs"
+    "lens:broken-calls": "node scripts/lens-broken-calls.mjs",
+    "lens:unloaded": "node scripts/lens-unloaded-domains.mjs"
   },
   "dependencies": {
     "@axe-core/playwright": "^4.11.3",
