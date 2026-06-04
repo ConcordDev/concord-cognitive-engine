@@ -26,6 +26,56 @@ import { insertSyntheticSecret } from "./secrets.js";
 import { blocksHostileAction, successBonusFor, coerce as coerceHook, getHooksHeldBy } from "./hooks.js";
 import { maybeEmitPersonalStake } from "./personal-stake.js";
 import { ethicsEnabled, npcSchemeRestraint, ETHICS_REFUSE_THRESHOLD } from "./viability/value-rule-index.js";
+import { buildLens, deceptionLands, driftLensFromDeception } from "./empathy-lens.js";
+
+// Wave 7 / B7-ext (Context 14) — deception schemes resolve against the TARGET's lens,
+// not a blind dice roll: a con lands iff the target's lens lacks the relevant tell-
+// sensitivity, and a CAUGHT con trains the target (the asymmetric arms race). Behind
+// CONCORD_DECEPTION_LENS (default on); falls back to the rng roll when off / on error.
+const DECEPTION_KINDS = new Set(["seduce", "blackmail"]);
+const TELL_KIND_FOR = { seduce: "seduction", blackmail: "blackmail" };
+
+function _deceptionLensEnabled() { return process.env.CONCORD_DECEPTION_LENS !== "0"; }
+
+// Build an NPC's reconstruction lens from its temperament (mig 326) + current affect
+// (affect_state) + its earned deception sensitivities (mig 328). Total/guarded.
+function _buildNpcLens(db, npcId, worldId) {
+  let temperament = null, affect = null;
+  const sensitivities = {};
+  try {
+    const row = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(npcId);
+    if (row?.temperament_json) temperament = JSON.parse(row.temperament_json);
+  } catch { /* column optional */ }
+  try {
+    const a = db.prepare(`SELECT v, a FROM affect_state WHERE entity_id = ? AND world_id = ?`).get(`npc:${worldId}:${npcId}`, worldId || "concordia-hub");
+    if (a) affect = { v: a.v, a: a.a };
+  } catch { /* affect_state optional */ }
+  try {
+    for (const s of db.prepare(`SELECT tell_kind, sensitivity FROM npc_deception_lens WHERE npc_id = ?`).all(npcId)) {
+      sensitivities[s.tell_kind] = s.sensitivity;
+    }
+  } catch { /* lens table optional (mig 328 pending) */ }
+  return buildLens({ temperament: temperament || {}, affect: affect || {}, sensitivities });
+}
+
+// A deterministic "tell" for a scheme — the subtle cue that betrays the lie. Strength
+// from sha1(schemeId) so the same scheme has a stable tell; kind from the scheme kind.
+function _schemeTell(sch) {
+  const h = crypto.createHash("sha1").update(String(sch.id)).digest();
+  const strength = 0.2 + (h[0] / 255) * 0.6; // 0.2..0.8
+  return { kind: TELL_KIND_FOR[sch.kind] || "deception", strength };
+}
+
+// Persist a drifted sensitivity back to npc_deception_lens (only on a CAUGHT con).
+function _persistLensDrift(db, npcId, worldId, tellKind, sensitivity) {
+  try {
+    db.prepare(`
+      INSERT INTO npc_deception_lens (npc_id, tell_kind, sensitivity, world_id, updated_at)
+      VALUES (?, ?, ?, ?, unixepoch())
+      ON CONFLICT(npc_id, tell_kind) DO UPDATE SET sensitivity = excluded.sensitivity, updated_at = unixepoch()
+    `).run(npcId, tellKind, Math.max(0, Math.min(1, sensitivity)), worldId || null);
+  } catch { /* table optional */ }
+}
 
 const SCHEME_TICK_MIN = 30 * 60;          // 30 min real-time per scheme tick (matches heartbeat freq 30 ≈ 7.5min, dedupe mid-cycle)
 const SCHEME_TICK_VAR = 60 * 60;          // up to +1h jitter
@@ -212,9 +262,35 @@ export function advanceScheme(db, schemeId, opts = {}) {
     }
 
     case "moving": {
-      // Resolve. Roll success.
+      // Resolve. Wave 7 / B7-ext: a DECEPTION scheme (seduce/blackmail) against an NPC
+      // target resolves through the target's empathy LENS — it lands iff the target's
+      // lens lacks the relevant tell-sensitivity. A CAUGHT con exposes the plot AND
+      // trains the target (drifts its sensitivity up — the asymmetric arms race). Other
+      // schemes (and non-NPC targets, and the kill-switch) keep the blind success roll.
       const rng = opts?.rng ?? Math.random;
-      const succeeded = rng() * 100 < sch.success_pct;
+      let succeeded;
+      let caughtTell = null;
+      if (_deceptionLensEnabled() && DECEPTION_KINDS.has(sch.kind) && sch.target_kind === "npc" && sch.target_id) {
+        try {
+          const worldId = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(sch.target_id)?.world_id;
+          const targetLens = _buildNpcLens(db, sch.target_id, worldId);
+          const tell = _schemeTell(sch);
+          // the plotter DISPLAYS warmth/neutrality but HIDES a hostile intent.
+          const signals = {
+            expressed: { v: sch.kind === "seduce" ? 0.6 : 0.1, a: 0.4, dominantDrive: sch.kind === "seduce" ? "CARE" : "SEEKING" },
+            hidden: { v: -0.5, a: 0.6, dominantDrive: "RAGE" },
+            tell,
+          };
+          const res = deceptionLands(signals, targetLens);
+          succeeded = res.lands;
+          if (res.sawTell) caughtTell = tell;
+        } catch {
+          succeeded = rng() * 100 < sch.success_pct; // graceful fallback to the roll
+        }
+      } else {
+        succeeded = rng() * 100 < sch.success_pct;
+      }
+
       if (succeeded) {
         try { applyResolution(db, sch, opts); }
         catch (err) { try { logger.warn?.("scheme_resolution_failed", { schemeId, error: err?.message }); } catch { /* noop */ } }
@@ -224,6 +300,17 @@ export function advanceScheme(db, schemeId, opts = {}) {
         nextPhase = "exposed";
         if (sch.plotter_kind === "npc") {
           try { bumpStress(db, sch.plotter_id, "scheme_exposed"); } catch { /* noop */ }
+        }
+        // The mark LEARNS — but only from a CAUGHT con (Context 14). Drift its lens.
+        if (caughtTell) {
+          try {
+            const worldId = db.prepare(`SELECT world_id FROM world_npcs WHERE id = ?`).get(sch.target_id)?.world_id;
+            const drifted = driftLensFromDeception(_buildNpcLens(db, sch.target_id, worldId), caughtTell.kind, 1);
+            _persistLensDrift(db, sch.target_id, worldId, caughtTell.kind, drifted.sensitivities?.[caughtTell.kind] || 0);
+            result.sawThrough = true;
+            const emitFn = globalThis._concordRealtimeEmit;
+            if (typeof emitFn === "function") emitFn("scheme:deception", { schemeId, targetId: sch.target_id, kind: sch.kind, sawThrough: true });
+          } catch { /* lens drift best-effort */ }
         }
       }
       break;
