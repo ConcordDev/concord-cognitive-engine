@@ -2423,7 +2423,7 @@ export default function GovernmentLensPage() {
                 <>
                   <button
                     className={ds.btnSecondary}
-                    onClick={() => handleAction('permit_timeline_calc', detailItem.id)}
+                    onClick={() => handleAction('permitTimeline', detailItem.id)}
                   >
                     <Timer className="w-4 h-4" /> Timeline Calc
                   </button>
@@ -2467,7 +2467,7 @@ export default function GovernmentLensPage() {
                 <>
                   <button
                     className={cn(ds.btnDanger)}
-                    onClick={() => handleAction('violation_escalate', detailItem.id)}
+                    onClick={() => handleAction('violationEscalation', detailItem.id)}
                   >
                     <Zap className="w-4 h-4" /> Escalate
                   </button>
@@ -2495,13 +2495,13 @@ export default function GovernmentLensPage() {
                   </button>
                   <button
                     className={ds.btnSecondary}
-                    onClick={() => handleAction('readiness_assessment', detailItem.id)}
+                    onClick={() => handleAction('resourceStaging', detailItem.id)}
                   >
                     <Gauge className="w-4 h-4" /> Readiness Check
                   </button>
                   <button
                     className={ds.btnSecondary}
-                    onClick={() => handleAction('activate_plan', detailItem.id)}
+                    onClick={() => handleAction('resourceStaging', detailItem.id)}
                   >
                     <Siren className="w-4 h-4" /> Activate
                   </button>
