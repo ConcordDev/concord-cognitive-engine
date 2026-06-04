@@ -113,6 +113,21 @@ export default function ARLensPage() {
   const rendererRef = useRef<unknown>(null);
   const animFrameRef = useRef<number>(0);
 
+  // ar.render descriptor (drawList + WebXR session plan) + immersive-ar capability.
+  interface RenderDrawItem { id?: string; kind?: string; model?: string | null; transform?: { position?: { x: number; y: number; z: number }; rotation?: { x: number; y: number; z: number }; scale?: number }; opacity?: number; color?: string }
+  interface RenderPlan { sessionMode?: string; requiredFeatures?: string[]; optionalFeatures?: string[]; referenceSpace?: string; drawList?: RenderDrawItem[]; objectCount?: number; assets?: string[]; inlineFallback?: boolean; title?: string }
+  const [renderPlan, setRenderPlan] = useState<RenderPlan | null>(null);
+  const [arSupported, setArSupported] = useState(false);
+  const renderPlanRef = useRef<RenderPlan | null>(null);
+  renderPlanRef.current = renderPlan;
+
+  // Feature-detect immersive-ar once (WebXR needs a secure context; defaults to `self`).
+  useEffect(() => {
+    const xr = (navigator as Navigator & { xr?: { isSessionSupported?: (m: string) => Promise<boolean> } }).xr;
+    if (!xr?.isSessionSupported) return;
+    xr.isSessionSupported('immersive-ar').then((ok) => setArSupported(!!ok)).catch(() => setArSupported(false));
+  }, []);
+
   useEffect(() => {
     if (!arEnabled || !viewportRef.current) {
       return;
@@ -158,17 +173,35 @@ export default function ARLensPage() {
       fillLight.position.set(-3, 2, -2);
       scene.add(fillLight);
 
-      // Torus knot
-      const geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
-      const material = new THREE.MeshStandardMaterial({
-        color: 0xa855f7, // neon-purple
-        emissive: 0x4a1a8a,
-        emissiveIntensity: 0.3,
-        metalness: 0.6,
-        roughness: 0.25,
-      });
-      const torusKnot = new THREE.Mesh(geometry, material);
-      scene.add(torusKnot);
+      // Renderables: when ar.render produced a drawList, render those real objects;
+      // otherwise show the idle demo knot. Track disposables either way.
+      const disposables: { dispose: () => void }[] = [];
+      const spin: { obj: { rotation: { x: number; y: number } }; sx: number; sy: number }[] = [];
+      const plan = renderPlanRef.current;
+      const drawList = Array.isArray(plan?.drawList) ? plan!.drawList! : [];
+      if (drawList.length > 0) {
+        for (const d of drawList) {
+          const isSphere = typeof d.model === 'string' && /sphere/i.test(d.model);
+          const geo = isSphere ? new THREE.SphereGeometry(0.5, 32, 24) : new THREE.BoxGeometry(0.9, 0.9, 0.9);
+          let color = 0xa855f7;
+          try { color = new THREE.Color(d.color || '#a855f7').getHex(); } catch { /* default */ }
+          const mat = new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.3, transparent: (d.opacity ?? 1) < 1, opacity: d.opacity ?? 1 });
+          const mesh = new THREE.Mesh(geo, mat);
+          const p = d.transform?.position; if (p) mesh.position.set(p.x || 0, p.y || 0, p.z || 0);
+          const rot = d.transform?.rotation; if (rot) mesh.rotation.set((rot.x || 0) * Math.PI / 180, (rot.y || 0) * Math.PI / 180, (rot.z || 0) * Math.PI / 180);
+          const s = d.transform?.scale; if (s) mesh.scale.setScalar(s);
+          scene.add(mesh);
+          disposables.push(geo, mat);
+          spin.push({ obj: mesh, sx: 0.1, sy: 0.2 });
+        }
+      } else {
+        const geometry = new THREE.TorusKnotGeometry(1, 0.35, 128, 32);
+        const material = new THREE.MeshStandardMaterial({ color: 0xa855f7, emissive: 0x4a1a8a, emissiveIntensity: 0.3, metalness: 0.6, roughness: 0.25 });
+        const torusKnot = new THREE.Mesh(geometry, material);
+        scene.add(torusKnot);
+        disposables.push(geometry, material);
+        spin.push({ obj: torusKnot, sx: 0.3, sy: 0.5 });
+      }
 
       // Grid helper for ground reference
       const gridHelper = new THREE.GridHelper(10, 20, 0x2a2a3a, 0x1a1a24);
@@ -204,8 +237,7 @@ export default function ARLensPage() {
 
         const elapsed = clock.getElapsedTime();
 
-        torusKnot.rotation.x = elapsed * 0.3;
-        torusKnot.rotation.y = elapsed * 0.5;
+        for (const s of spin) { s.obj.rotation.x = elapsed * s.sx; s.obj.rotation.y = elapsed * s.sy; }
 
         wireSphere.rotation.y = elapsed * 0.1;
         wireSphere.rotation.x = elapsed * 0.05;
@@ -238,8 +270,7 @@ export default function ARLensPage() {
         cancelAnimationFrame(animFrameRef.current);
         container.removeEventListener('pointermove', onPointerMove);
         resizeObserver.disconnect();
-        geometry.dispose();
-        material.dispose();
+        for (const d of disposables) d.dispose();
         sphereGeo.dispose();
         wireframeMat.dispose();
         renderer.dispose();
@@ -256,7 +287,7 @@ export default function ARLensPage() {
       const cleanup = (container as unknown as Record<string, unknown>).__threeCleanup as (() => void) | undefined;
       if (cleanup) cleanup();
     };
-  }, [arEnabled]);
+  }, [arEnabled, renderPlan]);
 
   const activeArtifactType = MODE_TABS.find(t => t.id === activeTab)?.artifactType || 'Scene';
   const { items, isLoading, isError, error, refetch, create, update, remove } = useLensData<ARArtifact>('ar', activeArtifactType, { seed: [] });
@@ -272,8 +303,49 @@ export default function ARLensPage() {
   const handleAction = useCallback(async (action: string, artifactId?: string) => {
     const targetId = artifactId || filtered[0]?.id;
     if (!targetId) return;
-    try { await runAction.mutateAsync({ id: targetId, action }); } catch (err) { console.error('Action failed:', err); }
+    try {
+      const res = await runAction.mutateAsync({ id: targetId, action });
+      // The render button drives the live viewport with the computed descriptor.
+      if (action === 'render') {
+        const plan = ((res as { result?: RenderPlan })?.result ?? res) as RenderPlan;
+        if (plan && Array.isArray(plan.drawList)) { setRenderPlan(plan); setArEnabled(true); }
+      }
+    } catch (err) { console.error('Action failed:', err); }
   }, [filtered, runAction]);
+
+  // Launch an immersive-ar WebXR session from the current render plan (reuses the
+  // existing SceneStudio pattern: requestSession → renderer.xr.setSession → setAnimationLoop).
+  const enterAR = useCallback(async () => {
+    const plan = renderPlan;
+    const xr = (navigator as Navigator & { xr?: { requestSession?: (m: string, o?: Record<string, unknown>) => Promise<unknown> } }).xr;
+    if (!plan || !xr?.requestSession) return;
+    try {
+      const THREE = await import('three');
+      const session = await xr.requestSession('immersive-ar', {
+        requiredFeatures: plan.requiredFeatures || ['local-floor'],
+        optionalFeatures: plan.optionalFeatures || ['dom-overlay'],
+      }) as unknown;
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl2', { xrCompatible: true }) as WebGLRenderingContext;
+      const renderer = new THREE.WebGLRenderer({ canvas, context: gl });
+      renderer.xr.enabled = true;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await renderer.xr.setSession(session as any);
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera();
+      for (const d of plan.drawList || []) {
+        const geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+        let color = 0xa855f7; try { color = new THREE.Color(d.color || '#a855f7').getHex(); } catch { /* default */ }
+        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color }));
+        const p = d.transform?.position; if (p) mesh.position.set(p.x || 0, p.y || 0, (p.z || 0) - 1);
+        scene.add(mesh);
+      }
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x444466, 1));
+      renderer.setAnimationLoop(() => renderer.render(scene, camera));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (session as any).addEventListener?.('end', () => renderer.setAnimationLoop(null));
+    } catch (err) { console.error('Enter AR failed:', err); }
+  }, [renderPlan]);
 
   const resetForm = () => {
     setFormName(''); setFormDescription(''); setFormStatus('active'); setFormNotes('');
@@ -350,10 +422,22 @@ export default function ARLensPage() {
             )}
           </div>
           {arEnabled && (
-            <div className="flex items-center gap-2 mt-2 px-1">
+            <div className="flex items-center gap-2 mt-2 px-1 flex-wrap">
               <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
               <span className="text-xs text-neon-cyan">3D Viewport Active</span>
-              <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>
+              {renderPlan && (
+                <span className="text-xs text-gray-400">· {renderPlan.objectCount ?? renderPlan.drawList?.length ?? 0} object(s) · {(renderPlan.requiredFeatures || []).join(', ')}</span>
+              )}
+              {renderPlan && (
+                arSupported ? (
+                  <button onClick={() => void enterAR()} className={cn(ds.btnPrimary, ds.btnSmall, 'ml-auto')}>
+                    <Glasses className="w-3.5 h-3.5" /> Enter AR
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-500 ml-auto" title="immersive-ar requires an AR-capable device (ARCore/ARKit) over HTTPS">Inline preview · immersive-ar unavailable on this device</span>
+                )
+              )}
+              {!renderPlan && <span className="text-xs text-gray-400 ml-auto">Move pointer to orbit</span>}
             </div>
           )}
         </div>
