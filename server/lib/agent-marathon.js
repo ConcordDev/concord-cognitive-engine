@@ -125,6 +125,18 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     } catch { /* gate optional → fall through and deliberate */ }
   }
 
+  // Wave 7 / Track B6 — this IS a tier-3 wake (we got past the gate, so the agent is
+  // deliberating). Run the awareness loop ONCE: attend → read self-model + interoception
+  // → predict-error → write a durable reasoning trace + the awareness-index sample.
+  // Env-gated CONCORD_AWARENESS_LOOP; never throws; purely additive to the deliberation.
+  if (opts.salienceGate && process.env.CONCORD_AWARENESS_LOOP === "1") {
+    try {
+      const { runAwarenessLoop } = await import("./awareness-loop.js");
+      const g = opts.salienceGate;
+      runAwarenessLoop({ force: true, db, agentId: g.agentId || session.user_id, self: g.self, world: g.world, others: g.others, prior: g.prior, system: g.system, prediction: g.prediction, actual: g.actual });
+    } catch { /* awareness loop is best-effort — never blocks the marathon */ }
+  }
+
   // Mark running.
   db.prepare(`UPDATE agent_marathon_sessions SET status = 'running', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
 
