@@ -485,7 +485,10 @@ export default function registerCodeActions(registerLensAction) {
    * runner pipeline.
    */
   registerLensAction("code", "exec", (_ctx, _artifact, params = {}) => {
-    const code = String(params.code || "");
+    // Accept `source` as an alias for `code` (the productivity notebook + some callers
+    // use `source`). node:vm here is the accepted boundary for a personal JS notebook —
+    // no I/O globals + a 4s timeout — not a hardened multi-tenant sandbox.
+    const code = String(params.code ?? params.source ?? "");
     const language = String(params.language || "javascript").toLowerCase();
     if (!code.trim()) return { ok: true, result: { stdout: "", stderr: "", exitCode: 0, supported: true } };
 

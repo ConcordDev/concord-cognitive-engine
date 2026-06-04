@@ -63,9 +63,10 @@ export default function ProductivityLensPage() {
   const [notebookResult, setNotebookResult] = useState<unknown>(null);
   const runCell = useMutation({
     mutationFn: async () => {
-      // code-engine exposes a `code.execute` macro for sandboxed execution
-      const r = await apiHelpers.lens.runDomain('code', 'execute', {
-        language: 'javascript', source: notebookCode,
+      // The code domain exposes a real `code.exec` macro — a node:vm sandbox with no
+      // I/O globals + a 4s timeout (server/domains/code.js). It reads `params.code`.
+      const r = await apiHelpers.lens.runDomain('code', 'exec', {
+        language: 'javascript', code: notebookCode,
       });
       return r.data?.result ?? r.data;
     },
