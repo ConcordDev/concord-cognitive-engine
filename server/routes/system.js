@@ -101,15 +101,18 @@ export default function registerSystemRoutes(app, {
 
   // ---- Health & Readiness ----
   app.get("/health", (req, res) => {
+    // LIVENESS probe: "is the process alive and responding?" — nothing more. It must
+    // NOT 503 on a DB blip or memory use, or the orchestrator restart-loops a healthy
+    // server (esp. with the 32GB-heap deploy where the old 1700MB gate fired constantly).
+    // Dependency health lives in /ready (readiness); deep checks in the sub-endpoints.
+    // The DB/memory fields below are diagnostic-only (do not affect the 200).
     const checks = { server: true };
-    let healthy = true;
     if (db) {
       try {
         const row = db.prepare("SELECT 1 AS ok").get();
         checks.database = Boolean(row?.ok);
       } catch {
-        checks.database = false;
-        healthy = false;
+        checks.database = false; // diagnostic only — does NOT fail liveness
       }
     } else {
       checks.database = "no_db";
@@ -118,10 +121,11 @@ export default function registerSystemRoutes(app, {
     const heapUsedMB = Math.round(memUsage.heapUsed / 1048576);
     const heapTotalMB = Math.round(memUsage.heapTotal / 1048576);
     checks.memoryMB = { used: heapUsedMB, total: heapTotalMB };
-    if (heapUsedMB > 1700) {
-      checks.memoryPressure = true;
-      healthy = false;
-    }
+    // Soft, informational pressure flag relative to the configured heap (default 32GB) —
+    // surfaced for ops visibility; real memory response is the memory-pressure watchdog +
+    // Prometheus alerts, NOT a liveness 503.
+    const heapLimitMB = Number(process.env.MAX_OLD_SPACE_SIZE) || 32768;
+    if (heapUsedMB > heapLimitMB * 0.9) checks.memoryPressure = true;
     const dbStatus = typeof getDbStatus === 'function' ? getDbStatus() : {};
     checks.postgres = { connected: !!dbStatus.pgPool, status: dbStatus.pgPool ? 'connected' : 'in-memory-fallback' };
     checks.redis = { connected: !!dbStatus.redisClient, status: dbStatus.redisClient ? 'connected' : 'in-memory-fallback' };
@@ -149,8 +153,9 @@ export default function registerSystemRoutes(app, {
       checks.brains = brains;
     }
 
-    res.status(healthy ? 200 : 503).json({
-      status: healthy ? "healthy" : "degraded",
+    // Always 200 — liveness is "the process responded". Diagnostics ride in `checks`.
+    res.status(200).json({
+      status: "healthy",
       version: VERSION,
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
