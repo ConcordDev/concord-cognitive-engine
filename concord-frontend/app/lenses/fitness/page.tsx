@@ -10,6 +10,7 @@ import { CrossLensRecentsPanel } from '@/components/lens/CrossLensRecentsPanel';
 import { FirstRunTour } from '@/components/lens/FirstRunTour';
 import { DepthBadge } from '@/components/lens/DepthBadge';
 import { FitnessFeed } from '@/components/fitness/FitnessFeed';
+import { RoutesPanel } from '@/components/fitness/RoutesPanel';
 import { FitnessStravaSection } from '@/components/fitness/FitnessStravaSection';
 import WorkoutLogger from '@/components/fitness/WorkoutLogger';
 import HeartRateZones from '@/components/fitness/HeartRateZones';
@@ -2235,6 +2236,7 @@ export default function FitnessLensPage() {
         <WorkoutFinishPanel />
       </section>
 
+      <RoutesPanel className="mt-6" />
       <section className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
         <FitnessFeed />
       </section>
