@@ -1358,6 +1358,124 @@ export default function registerGovernmentActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // ── Civic dashboard action macros (deterministic; artifact-based) ──────────
+  // Real compute over the dashboard artifact's data (the government lens persists
+  // permits/cases/projects/budgets/documents in the artifact store). These surface
+  // the dashboard buttons that previously hit no macro. Generic <pre>JSON</pre>
+  // result panel renders them. No STATE / no network.
+  const _num = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const _arr = (v) => Array.isArray(v) ? v : [];
+
+  registerLensAction("government", "budget_report", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const lines = _arr(d.lineItems || d.expenses || d.allocations);
+    const totalBudget = _num(d.budget ?? d.totalBudget ?? lines.reduce((s, l) => s + _num(l?.budgeted ?? l?.amount), 0));
+    const spent = lines.reduce((s, l) => s + _num(l?.spent ?? l?.actual ?? 0), 0);
+    const byCategory = {};
+    for (const l of lines) { const c = String(l?.category || l?.name || "general"); byCategory[c] = (byCategory[c] || 0) + _num(l?.spent ?? l?.amount); }
+    return { ok: true, result: { entity: artifact.title || "budget", totalBudget, spent, remaining: Math.round((totalBudget - spent) * 100) / 100, utilizationPct: totalBudget > 0 ? Math.round((spent / totalBudget) * 1000) / 10 : 0, lineCount: lines.length, byCategory } };
+  });
+
+  registerLensAction("government", "citizen_impact_report", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const affected = _num(d.affectedPopulation ?? d.population ?? d.citizensImpacted);
+    const areas = _arr(d.impactAreas || d.areas || d.neighborhoods).map((a) => a?.name || a);
+    const severity = d.severity || (affected > 10000 ? "high" : affected > 1000 ? "moderate" : "low");
+    return { ok: true, result: { subject: artifact.title || "initiative", affectedPopulation: affected, impactAreas: areas, areaCount: areas.length, severity, summary: `${artifact.title || "This action"} affects ~${affected.toLocaleString()} resident(s) across ${areas.length} area(s) [${severity}].` } };
+  });
+
+  registerLensAction("government", "compliance_check", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const reqs = _arr(d.requirements || d.checklist || d.codes);
+    const met = reqs.filter((r) => r?.met === true || r?.status === "met" || r?.compliant === true);
+    const violations = reqs.filter((r) => !(r?.met === true || r?.status === "met" || r?.compliant === true)).map((r) => r?.name || r?.code || "requirement");
+    const score = reqs.length ? Math.round((met.length / reqs.length) * 100) : 100;
+    return { ok: true, result: { subject: artifact.title || "item", requirementCount: reqs.length, metCount: met.length, violations, compliancePct: score, compliant: violations.length === 0, verdict: score === 100 ? "compliant" : score >= 80 ? "minor_issues" : "non_compliant" } };
+  });
+
+  registerLensAction("government", "docket_report", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const hearings = _arr(d.hearings || d.events).sort((a, b) => String(a?.date || "").localeCompare(String(b?.date || "")));
+    const now = Date.now();
+    const upcoming = hearings.filter((h) => new Date(h?.date || 0).getTime() >= now);
+    return { ok: true, result: { caseId: d.caseId || artifact.title || "case", status: d.status || (hearings.length ? "active" : "filed"), hearingCount: hearings.length, nextHearing: upcoming[0]?.date || null, parties: _arr(d.parties).map((p) => p?.name || p), hearings: hearings.slice(0, 20) } };
+  });
+
+  registerLensAction("government", "export_record", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const recordId = `REC-${String(artifact.id || artifact.title || "rec").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toUpperCase()}`;
+    const fields = Object.entries(d).filter(([, v]) => typeof v !== "object").map(([k, v]) => `${k}: ${v}`);
+    return { ok: true, result: { recordId, recordType: artifact.type || "record", title: artifact.title || "Untitled", format: "text", fieldCount: fields.length, content: [`OFFICIAL RECORD  ${recordId}`, `Title: ${artifact.title || "Untitled"}`, ...fields].join("\n"), exportedAt: new Date().toISOString() } };
+  });
+
+  registerLensAction("government", "fee_collection_status", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const fees = _arr(d.fees || d.charges);
+    const totalDue = fees.reduce((s, f) => s + _num(f?.amount ?? f?.due), 0);
+    const collected = fees.reduce((s, f) => s + _num(f?.paid ?? (f?.status === "paid" ? (f?.amount ?? f?.due) : 0)), 0);
+    return { ok: true, result: { account: artifact.title || "account", feeCount: fees.length, totalDue, collected, outstanding: Math.round((totalDue - collected) * 100) / 100, collectionRatePct: totalDue > 0 ? Math.round((collected / totalDue) * 1000) / 10 : 100, status: collected >= totalDue ? "paid_in_full" : collected > 0 ? "partial" : "unpaid" } };
+  });
+
+  registerLensAction("government", "fine_calculation", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const base = _num(d.baseFine ?? d.fineAmount ?? 100, 100);
+    const daysPast = _num(d.daysPastDue ?? d.daysLate ?? 0);
+    const lateRate = _num(d.lateFeeRate ?? 0.02, 0.02);
+    const violations = _num(d.violationCount ?? _arr(d.violations).length ?? 1, 1);
+    const lateFee = Math.round(base * lateRate * daysPast * 100) / 100;
+    const total = Math.round((base * violations + lateFee) * 100) / 100;
+    return { ok: true, result: { subject: artifact.title || "violation", baseFine: base, violationCount: violations, daysPastDue: daysPast, lateFee, total, breakdown: `${violations}×$${base} base + $${lateFee} late (${daysPast}d) = $${total}` } };
+  });
+
+  registerLensAction("government", "milestone_update", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const milestones = _arr(d.milestones || d.phases);
+    const cur = _num(d.currentMilestone ?? d.completedMilestones ?? 0);
+    const next = Math.min(milestones.length, cur + 1);
+    const done = milestones.length > 0 && next >= milestones.length;
+    return { ok: true, result: { project: artifact.title || "project", currentMilestone: next, totalMilestones: milestones.length, currentName: milestones[next - 1]?.name || milestones[next - 1] || (milestones.length ? `Milestone ${next}` : null), status: done ? "complete" : milestones.length ? "in_progress" : "no_milestones", percentComplete: milestones.length ? Math.round((next / milestones.length) * 100) : 0 } };
+  });
+
+  registerLensAction("government", "permit_fee_estimate", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const valuation = _num(d.valuation ?? d.projectValue ?? 0);
+    const type = String(d.permitType || d.type || "general");
+    const baseFee = { building: 250, electrical: 120, plumbing: 110, mechanical: 130, demolition: 200 }[type] || 100;
+    const valuationFee = Math.round(valuation * 0.005 * 100) / 100; // 0.5% of valuation
+    const planReview = Math.round(baseFee * 0.65 * 100) / 100;
+    const total = Math.round((baseFee + valuationFee + planReview) * 100) / 100;
+    return { ok: true, result: { permitType: type, valuation, baseFee, valuationFee, planReviewFee: planReview, totalEstimate: total, breakdown: `base $${baseFee} + valuation $${valuationFee} + plan review $${planReview} = $${total}` } };
+  });
+
+  registerLensAction("government", "permit_inspection_schedule", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const stage = String(d.stage || d.lastInspection || "none");
+    const sequence = ["footing", "foundation", "framing", "rough_in", "insulation", "final"];
+    const idx = sequence.indexOf(stage);
+    const nextStage = sequence[idx + 1] || sequence[0];
+    const offsetDays = 3; // next available inspection slot
+    const date = new Date(Date.now() + offsetDays * 86400000).toISOString().slice(0, 10);
+    return { ok: true, result: { permit: artifact.title || "permit", currentStage: stage, nextInspection: nextStage, scheduledDate: date, inspectionId: `INSP-${Date.now().toString(36).toUpperCase()}`, remainingStages: sequence.slice(idx + 1) } };
+  });
+
+  registerLensAction("government", "redaction_review", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const SENSITIVE = /ssn|social.?security|dob|birth|address|phone|email|account|medical|salary|password/i;
+    const text = String(d.content || d.body || "");
+    const fields = Object.keys(d).filter((k) => SENSITIVE.test(k));
+    const inlineMatches = (text.match(/\b\d{3}-\d{2}-\d{4}\b|\b\d{16}\b|[\w.+-]+@[\w-]+\.\w+/g) || []).length;
+    const flags = fields.length + inlineMatches;
+    return { ok: true, result: { document: artifact.title || "document", sensitiveFields: fields, inlinePiiMatches: inlineMatches, redactionCount: flags, status: flags === 0 ? "clean" : "needs_redaction", recommendation: flags === 0 ? "Cleared for public release." : `Redact ${flags} item(s) before release.` } };
+  });
+
+  registerLensAction("government", "schedule_hearing", (ctx, artifact, _p = {}) => {
+    const d = artifact.data || {};
+    const caseType = String(d.caseType || d.type || "general");
+    const leadDays = { criminal: 21, civil: 30, traffic: 14, zoning: 45, appeal: 60 }[caseType] || 28;
+    const date = new Date(Date.now() + leadDays * 86400000).toISOString().slice(0, 10);
+    return { ok: true, result: { caseType, hearingId: `HRG-${Date.now().toString(36).toUpperCase()}`, proposedDate: date, leadTimeDays: leadDays, location: d.courtroom || d.location || "Courtroom TBD", parties: _arr(d.parties).map((p) => p?.name || p) } };
+  });
 };
 
 async function fetchJsonGov(url, headers = {}) {
