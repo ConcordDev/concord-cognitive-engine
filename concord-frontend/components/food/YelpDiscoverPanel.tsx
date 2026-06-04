@@ -27,7 +27,7 @@ interface Business {
   checkinCount: number;
   openNow: boolean | null;
 }
-interface Review { id: string; userId: string; rating: number; text: string }
+interface Review { id: string; userId: string; rating: number; text: string; voteCounts?: { useful: number; funny: number; cool: number } }
 interface Photo { id: string; caption: string }
 interface Tip { id: string; text: string; userId: string }
 
@@ -106,6 +106,17 @@ export function YelpDiscoverPanel() {
     if (!selected) return;
     await lensRun('food', 'review-create', { bizId: selected.id, rating: reviewDraft.rating, text: reviewDraft.text.trim() });
     setReviewDraft({ rating: 5, text: '' });
+    await openDetail(selected);
+    await search();
+  };
+  const voteReview = async (reviewId: string, kind: 'useful' | 'funny' | 'cool') => {
+    if (!selected) return;
+    await lensRun('food', 'review-vote', { bizId: selected.id, id: reviewId, kind });
+    await openDetail(selected);
+  };
+  const deleteReview = async (reviewId: string) => {
+    if (!selected) return;
+    await lensRun('food', 'review-delete', { bizId: selected.id, id: reviewId });
     await openDetail(selected);
     await search();
   };
@@ -208,12 +219,22 @@ export function YelpDiscoverPanel() {
           ) : (
             <ul className="space-y-2">
               {reviews.map((rv) => (
-                <li key={rv.id} className="border-b border-zinc-800 pb-2 last:border-0">
+                <li key={rv.id} className="border-b border-zinc-800 pb-2 last:border-0 group">
                   <div className="flex items-center gap-2">
                     <Stars rating={rv.rating} />
                     <span className="text-[10px] text-zinc-400 font-mono">{rv.userId.slice(0, 10)}</span>
+                    <button type="button" onClick={() => void deleteReview(rv.id)} aria-label="Delete my review"
+                      className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] text-rose-300 hover:text-rose-200">Delete</button>
                   </div>
                   {rv.text && <p className="text-xs text-zinc-300 mt-0.5">{rv.text}</p>}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {(['useful', 'funny', 'cool'] as const).map((k) => (
+                      <button key={k} type="button" onClick={() => void voteReview(rv.id, k)}
+                        className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-300 hover:bg-zinc-800 capitalize">
+                        {k} {rv.voteCounts?.[k] ? rv.voteCounts[k] : ''}
+                      </button>
+                    ))}
+                  </div>
                 </li>
               ))}
             </ul>
