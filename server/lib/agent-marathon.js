@@ -109,6 +109,22 @@ export async function tickMarathon({ db, sessionId, runMacro, lensActions, opts 
     return { ok: true, status: "failed", reason: "max_turns_exceeded" };
   }
 
+  // Wave 7 / Track B4 — "feeling decides when to think". If the caller supplies the
+  // agent's live self-state (opts.salienceGate), only spend an expensive deliberation
+  // turn on a tier-3 wake (a real dilemma / affect spike / human contact); otherwise the
+  // agent stays on cheap instinct/routine this tick. Opt-in + reversible
+  // (CONCORD_AFFECT_SALIENCE=0) — absent gate → always deliberate (prior behaviour).
+  if (opts.salienceGate && process.env.CONCORD_AFFECT_SALIENCE !== "0") {
+    try {
+      const { decideDeliberation } = await import("./agent-brain-loop.js");
+      const g = opts.salienceGate;
+      const d = decideDeliberation(g.self, g.world, g.others, g.prior, g.opts);
+      if (!d.deliberate) {
+        return { ok: true, deliberated: false, reason: `instinct:${d.reason}`, tier: d.tier };
+      }
+    } catch { /* gate optional → fall through and deliberate */ }
+  }
+
   // Mark running.
   db.prepare(`UPDATE agent_marathon_sessions SET status = 'running', updated_at = unixepoch() WHERE id = ?`).run(sessionId);
 

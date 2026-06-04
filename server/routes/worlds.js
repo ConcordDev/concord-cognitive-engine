@@ -4,6 +4,14 @@
 import express from "express";
 import crypto from "crypto";
 import logger from "../logger.js";
+import { npcDialogueSalience } from "../lib/npc-dialogue-salience.js";
+import { makeEscalationBudget } from "../lib/affect-salience.js";
+import { recordInferenceSpan } from "../lib/inference-metering.js";
+// Wave 7 B4/D1 — per-world budget so a crowd of NPCs can't stampede the LLM even
+// when many exchanges are salient at once. Module-scoped → persists across requests.
+const _npcDialogueBudget = makeEscalationBudget({
+  perWorldPerMin: Number(process.env.CONCORD_NPC_DIALOGUE_LLM_PER_MIN) || 120,
+});
 import { moodFromStress } from "../lib/npc-mood.js";
 import { getSkillCeiling as getWorldSkillCeiling } from "../lib/world-flavor.js";
 import { npcNameFromRow } from "../lib/npc-name.js";
@@ -1224,8 +1232,34 @@ export default function createWorldsRouter({ requireAuth, db }) {
         isHostileRep ? 'Player is hated/feared — mood must be hostile. Do not offer trade or quests.' : '',
       ].filter(Boolean).join('\n');
 
-      // 7. Call LLM
-      const raw = await handle.generate(promptLines);
+      // 7. Call LLM — Wave 7 B4/D1: ONLY when the exchange is salient. A calm, routine
+      // greeting uses the deterministic fallback (already composed above) for ZERO LLM
+      // cost — "feeling decides when to think" applied to the town. Reversible:
+      // CONCORD_AFFECT_SALIENCE=0 → always-LLM (the prior behaviour).
+      let raw = null;
+      let _useLLM = true;
+      let _dialogueSalience = null;
+      if (process.env.CONCORD_AFFECT_SALIENCE !== "0") {
+        _dialogueSalience = npcDialogueSalience({
+          mood: interactResult.mood, opinion: interactResult.opinion, isHostileRep,
+          asymmetry: asymForFallback, questCount: quests.length,
+          griefLevel: npc.grief_level, isConscious: npc.is_conscious,
+        });
+        _useLLM = _dialogueSalience.salient && _npcDialogueBudget.tryConsume(worldId);
+      }
+      if (_useLLM && handle) {
+        const _spanStart = Date.now();
+        raw = await handle.generate(promptLines);
+        // D2: record the inference span (the previously-unwritten cost ledger). Token
+        // counts are a ~chars/4 estimate; metering must never break the dialogue path.
+        try {
+          recordInferenceSpan(db, {
+            spanType: "npc_dialogue", brainUsed: "subconscious", lensId: "world",
+            callerId: `npc:${npcId}`, latencyMs: Date.now() - _spanStart,
+            tokensIn: Math.ceil(promptLines.length / 4), tokensOut: Math.ceil((raw?.length || 0) / 4),
+          });
+        } catch { /* metering best-effort */ }
+      }
 
       // 8. Parse JSON from LLM response. T1.1: default to the grounded
       // deterministic compose (not the flat npc-relations 1-liner) so an
