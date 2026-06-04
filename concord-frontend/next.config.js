@@ -41,6 +41,23 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
           },
+          {
+            // Explicitly allow same-origin WebXR (immersive-ar/vr) on the document —
+            // navigator.xr is gated by the xr-spatial-tracking policy (Chromium rejects
+            // with SecurityError where disallowed). Only this feature is listed so
+            // camera/microphone/geolocation keep their default `self` allowlist (other
+            // lenses use mic for karaoke, geolocation for routes, etc.).
+            key: 'Permissions-Policy',
+            value: 'xr-spatial-tracking=(self)',
+          },
+        ],
+      },
+      {
+        // 3D assets (GLB/GLTF/KTX2/Draco) are content-addressed + immutable — cache hard.
+        // Complements the service-worker SWR + the in-memory GLTF LRU cache.
+        source: '/:dir(models|meshes|draco|basis)/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
       {

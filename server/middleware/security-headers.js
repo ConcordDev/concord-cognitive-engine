@@ -45,9 +45,15 @@ export default function securityHeaders(req, res, next) {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
 
   // ---- Permissions-Policy ----------------------------------------------------
+  // Explicitly allow same-origin WebXR (immersive-ar/vr): per the WebXR spec, the
+  // `xr-spatial-tracking` policy gates navigator.xr — Chromium rejects
+  // isSessionSupported/requestSession with a SecurityError where it's disallowed.
+  // It defaults to `self`, but being explicit future-proofs the AR/VR lenses against a
+  // tightened policy. camera/mic/geolocation stay restricted (immersive-ar passthrough
+  // is handled by the XR compositor, not getUserMedia, so camera=() doesn't block it).
   res.setHeader(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "camera=(), microphone=(), geolocation=(), xr-spatial-tracking=(self)"
   );
 
   next();
