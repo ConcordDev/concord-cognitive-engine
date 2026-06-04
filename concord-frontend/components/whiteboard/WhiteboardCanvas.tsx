@@ -19,7 +19,7 @@ export type Tool = 'select' | 'rect' | 'sticky' | 'pen';
 
 export interface Shape {
   id: string;
-  kind: 'rect' | 'sticky' | 'stroke';
+  kind: 'rect' | 'sticky' | 'stroke' | 'connector' | 'frame' | 'embed';
   x: number;
   y: number;
   w?: number;
@@ -27,12 +27,34 @@ export interface Shape {
   text?: string;
   color?: string;
   points?: Array<{ x: number; y: number }>;
+  // connector: endpoints by element id; frame/embed: label + embed url
+  fromId?: string;
+  toId?: string;
+  label?: string;
+  url?: string;
+  votes?: number;
 }
 
 export interface WhiteboardCanvasProps {
   initialShapes?: Shape[];
   onChange?: (shapes: Shape[]) => void;
+  /** Remote scene to apply when `syncSignal` changes (realtime collab resync). */
+  syncShapes?: Shape[];
+  /** Bump this (e.g. a remote update timestamp) to replace the canvas with `syncShapes`. */
+  syncSignal?: number;
+  /** Live peer cursors (world coords) to overlay (multi-cursor presence). */
+  peerCursors?: Array<{ userId: string; x: number; y: number }>;
+  /** Per-element vote tallies to render as badges (id → count). */
+  voteCounts?: Record<string, number>;
+  /** Called with world-coords on pointer move (for broadcasting your cursor to peers). */
+  onCursorMove?: (x: number, y: number) => void;
   className?: string;
+}
+
+const CURSOR_COLORS = ['#f472b6', '#34d399', '#60a5fa', '#fbbf24', '#a78bfa', '#fb7185'];
+function cursorColor(id: string) {
+  let h = 0; for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return CURSOR_COLORS[h % CURSOR_COLORS.length];
 }
 
 const STICKY_COLORS = ['#fef08a', '#fbcfe8', '#bae6fd', '#bbf7d0', '#fed7aa'];
@@ -41,17 +63,30 @@ function uid() {
   return `s_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function WhiteboardCanvas({ initialShapes = [], onChange, className }: WhiteboardCanvasProps) {
+export function WhiteboardCanvas({ initialShapes = [], onChange, syncShapes, syncSignal, peerCursors, voteCounts, onCursorMove, className }: WhiteboardCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [shapes, setShapes] = useState<Shape[]>(initialShapes);
   const [tool, setTool] = useState<Tool>('select');
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drawingRef = useRef<Shape | null>(null);
+  const syncShapesRef = useRef(syncShapes);
+  syncShapesRef.current = syncShapes;
+  const peerCursorsRef = useRef(peerCursors);
+  peerCursorsRef.current = peerCursors;
+  const voteCountsRef = useRef(voteCounts);
+  voteCountsRef.current = voteCounts;
 
   useEffect(() => {
     onChange?.(shapes);
   }, [shapes, onChange]);
+
+  // Realtime resync: when a remote scene-update bumps syncSignal, replace the canvas
+  // with the re-fetched remote scene. (Last-write-wins full-scene baseline — Batch G E1.)
+  useEffect(() => {
+    if (syncSignal && Array.isArray(syncShapesRef.current)) setShapes(syncShapesRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncSignal]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -85,7 +120,11 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, className }: Wh
       ctx.translate(pan.x, pan.y);
       ctx.scale(zoom, zoom);
       const all = drawingRef.current ? [...shapes, drawingRef.current] : shapes;
-      for (const s of all) {
+      const centerOf = (el: Shape) => ({ x: el.x + (el.w || (el.kind === 'sticky' ? 120 : 40)) / 2, y: el.y + (el.h || (el.kind === 'sticky' ? 80 : 30)) / 2 });
+      // Draw order: frames behind, then connectors, then nodes (rect/sticky/stroke/embed).
+      const zRank = (k: Shape['kind']) => (k === 'frame' ? 0 : k === 'connector' ? 1 : 2);
+      const ordered = [...all].sort((a, b) => zRank(a.kind) - zRank(b.kind));
+      for (const s of ordered) {
         if (s.kind === 'rect') {
           ctx.strokeStyle = s.color || '#7dd3fc';
           ctx.lineWidth = 2 / zoom;
@@ -108,7 +147,91 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, className }: Wh
           ctx.moveTo(s.points[0].x, s.points[0].y);
           for (let i = 1; i < s.points.length; i += 1) ctx.lineTo(s.points[i].x, s.points[i].y);
           ctx.stroke();
+        } else if (s.kind === 'frame') {
+          // Labeled dashed bounding region drawn behind its children.
+          const w = s.w || 240, h = s.h || 180;
+          ctx.save();
+          ctx.strokeStyle = s.color || '#64748b';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.setLineDash([6 / zoom, 4 / zoom]);
+          ctx.strokeRect(s.x, s.y, w, h);
+          ctx.setLineDash([]);
+          ctx.fillStyle = s.color || '#94a3b8';
+          ctx.font = `${12 / zoom}px system-ui, sans-serif`;
+          ctx.fillText(s.label || s.text || 'Frame', s.x + 4, s.y - 6 / zoom);
+          ctx.restore();
+        } else if (s.kind === 'connector') {
+          // Line between two elements' centers, with an arrowhead at the target.
+          const from = all.find((e) => e.id === s.fromId);
+          const to = all.find((e) => e.id === s.toId);
+          if (!from || !to) continue;
+          const a = centerOf(from), b = centerOf(to);
+          ctx.strokeStyle = s.color || '#a78bfa';
+          ctx.lineWidth = 2 / zoom;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+          const ang = Math.atan2(b.y - a.y, b.x - a.x);
+          const ah = 9 / zoom;
+          ctx.beginPath();
+          ctx.moveTo(b.x, b.y);
+          ctx.lineTo(b.x - ah * Math.cos(ang - Math.PI / 7), b.y - ah * Math.sin(ang - Math.PI / 7));
+          ctx.lineTo(b.x - ah * Math.cos(ang + Math.PI / 7), b.y - ah * Math.sin(ang + Math.PI / 7));
+          ctx.closePath();
+          ctx.fillStyle = s.color || '#a78bfa';
+          ctx.fill();
+          if (s.label) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = `${11 / zoom}px system-ui, sans-serif`;
+            ctx.fillText(s.label, (a.x + b.x) / 2 + 4, (a.y + b.y) / 2 - 4);
+          }
+        } else if (s.kind === 'embed') {
+          // Placeholder card for an embedded URL/resource.
+          const w = s.w || 200, h = s.h || 120;
+          ctx.fillStyle = 'rgba(30,41,59,0.85)';
+          ctx.fillRect(s.x, s.y, w, h);
+          ctx.strokeStyle = s.color || '#38bdf8';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.strokeRect(s.x, s.y, w, h);
+          ctx.fillStyle = '#7dd3fc';
+          ctx.font = `${12 / zoom}px system-ui, sans-serif`;
+          ctx.fillText('🔗 ' + (s.label || 'Embed'), s.x + 8, s.y + 20 / zoom);
+          if (s.url) {
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = `${10 / zoom}px system-ui, sans-serif`;
+            wrapText(ctx, s.url, s.x + 8, s.y + 38 / zoom, w - 16, 14 / zoom);
+          }
         }
+        // Vote badge on any element that carries one (local or realtime tally).
+        const voteN = (voteCountsRef.current?.[s.id] ?? s.votes) || 0;
+        if (voteN > 0 && (s.kind === 'rect' || s.kind === 'sticky' || s.kind === 'embed' || s.kind === 'frame')) {
+          const bx = s.x + (s.w || 120) - 10 / zoom, by = s.y + 10 / zoom;
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(bx, by, 9 / zoom, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#1a1a1a';
+          ctx.font = `bold ${10 / zoom}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(String(voteN), bx, by + 3 / zoom);
+          ctx.textAlign = 'start';
+        }
+      }
+      // Multi-cursor presence overlay (peer cursors are in world coords).
+      const cursors = peerCursorsRef.current || [];
+      for (const cur of cursors) {
+        const col = cursorColor(cur.userId);
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(cur.x, cur.y);
+        ctx.lineTo(cur.x, cur.y + 16 / zoom);
+        ctx.lineTo(cur.x + 5 / zoom, cur.y + 11 / zoom);
+        ctx.lineTo(cur.x + 11 / zoom, cur.y + 11 / zoom);
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = `${9 / zoom}px system-ui, sans-serif`;
+        ctx.fillText(cur.userId.slice(0, 6), cur.x + 12 / zoom, cur.y + 8 / zoom);
       }
       ctx.restore();
     }
@@ -148,6 +271,7 @@ export function WhiteboardCanvas({ initialShapes = [], onChange, className }: Wh
   }
 
   function onMouseMove(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (onCursorMove) { const wp = worldFromMouse(e); onCursorMove(wp.x, wp.y); }
     if (!drawingRef.current) return;
     const p = worldFromMouse(e);
     if (drawingRef.current.kind === 'rect') {

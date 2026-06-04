@@ -14,6 +14,7 @@ import { FolderPlus, Trash2, Loader2, Save, Sparkles, MessageSquare, Download, C
 import { lensRun } from '@/lib/api/client';
 import { WhiteboardCanvas, Shape } from './WhiteboardCanvas';
 import { WhiteboardCollabPanel } from './WhiteboardCollabPanel';
+import { useWhiteboardCollab } from '@/hooks/useWhiteboardCollab';
 import { cn } from '@/lib/utils';
 
 interface BoardMeta { id: string; title: string; createdAt: string; updatedAt: string; elementCount: number }
@@ -49,6 +50,30 @@ export function MiroSection() {
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [showAI, setShowAI] = useState(true);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Realtime collaboration (Batch G E1/E3/E4): join the board's room, mirror remote
+  // scene-updates onto the canvas, broadcast local edits + cursor, surface peers + votes.
+  const collab = useWhiteboardCollab({ boardId: activeId });
+  const [syncSignal, setSyncSignal] = useState(0);
+  const [syncShapes, setSyncShapes] = useState<Shape[]>([]);
+  const appliedUpdateRef = useRef(0);
+
+  useEffect(() => {
+    if (collab.remoteSceneUpdateCount > appliedUpdateRef.current && collab.remoteScene) {
+      appliedUpdateRef.current = collab.remoteSceneUpdateCount;
+      const els = (collab.remoteScene as { elements?: Shape[] })?.elements;
+      if (Array.isArray(els)) {
+        setSyncShapes(els);
+        setSyncSignal((s) => s + 1); // tells the canvas to replace its scene
+        setActiveShapes(els);        // keep MiroSection's copy in sync (no dirty → no save echo)
+      }
+    }
+  }, [collab.remoteSceneUpdateCount, collab.remoteScene]);
+
+  const peerCursorList = useMemo(
+    () => Object.values(collab.peerCursors).map((c) => ({ userId: c.userId, x: c.x, y: c.y })),
+    [collab.peerCursors],
+  );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { refreshBoards(); }, []);
@@ -140,6 +165,8 @@ export function MiroSection() {
   function onCanvasChange(shapes: Shape[]) {
     setActiveShapes(shapes);
     setDirty(true);
+    // Push to peers (no-ops server-side for a private/un-shared board).
+    collab.broadcastScene({ elements: shapes, appState: {} });
   }
 
   // ── AI actions ─────────────────────────────────────────────────
@@ -279,7 +306,17 @@ export function MiroSection() {
             </header>
             <div className="flex-1 overflow-hidden">
               {/* key=activeId forces a remount when switching boards so initialShapes seeds correctly */}
-              <WhiteboardCanvas key={activeId} initialShapes={activeShapes} onChange={onCanvasChange} className="h-full" />
+              <WhiteboardCanvas
+                key={activeId}
+                initialShapes={activeShapes}
+                onChange={onCanvasChange}
+                syncShapes={syncShapes}
+                syncSignal={syncSignal}
+                peerCursors={peerCursorList}
+                voteCounts={collab.voteCounts}
+                onCursorMove={collab.broadcastCursor}
+                className="h-full"
+              />
             </div>
           </>
         ) : (
