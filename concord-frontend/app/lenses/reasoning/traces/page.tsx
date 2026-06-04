@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LensShell } from '@/components/lens/LensShell';
-import { Brain, Filter } from 'lucide-react';
+import { Brain, Filter, Activity, Sparkles } from 'lucide-react';
 
 interface Trace {
   id: string;
@@ -16,8 +16,24 @@ interface Trace {
   created_at?: number;
 }
 
+// Wave 7 / B6 — the durable agent deliberation journal (what the agent was thinking
+// on each tier-3 salience wake), with the access-correlate awareness index.
+interface AgentTrace {
+  id: string;
+  agent_id?: string;
+  world_id?: string;
+  attended?: string;
+  quale?: string;
+  surprise?: number;
+  awareness_index?: number;
+  reason?: string;
+  note?: string;
+  created_at?: number;
+}
+
 export default function ReasoningTracesPage() {
   const [traces, setTraces] = useState<Trace[]>([]);
+  const [agentTraces, setAgentTraces] = useState<AgentTrace[]>([]);
   const [modes, setModes] = useState<string[]>([]);
   const [filterMode, setFilterMode] = useState<string>('all');
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -26,7 +42,7 @@ export default function ReasoningTracesPage() {
   const refresh = useCallback(async () => {
     try {
       const j = await fetch('/api/reasoning/traces?limit=100', { credentials: 'include' }).then(r => r.json());
-      if (j?.ok) { setTraces(j.traces || []); setModes(j.modes || []); }
+      if (j?.ok) { setTraces(j.traces || []); setModes(j.modes || []); setAgentTraces(j.agentTraces || []); }
     } catch { /* swallow */ }
   }, []);
 
@@ -95,7 +111,72 @@ export default function ReasoningTracesPage() {
           )}
         </div>
       </div>
+
+      {/* Wave 7 / B6 — the autonomous agent's deliberation journal + the B8 awareness
+          curve. The number is an ACCESS correlate (PCI-proxy), NOT a consciousness claim. */}
+      <section className="space-y-2 pt-2">
+        <header className="flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-sky-200">
+            <Sparkles size={18} /> Agent deliberation journal
+          </h2>
+          <span className="rounded border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] text-sky-300">
+            awareness = access correlate, not a consciousness claim
+          </span>
+        </header>
+
+        {agentTraces.length === 0 ? (
+          <p className="text-xs text-zinc-500">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
+        ) : (
+          <>
+            <AwarenessCurve traces={agentTraces} />
+            <div className="space-y-1">
+              {agentTraces.map((a) => (
+                <div key={a.id} className="rounded border border-sky-500/20 bg-zinc-900/40 p-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sky-200">{a.reason || 'wake'}</span>
+                    <span className="flex items-center gap-1 text-[10px] text-emerald-300/80">
+                      <Activity size={11} /> Φ≈{(a.awareness_index ?? 0).toFixed(3)}
+                    </span>
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-zinc-400">
+                    <span>attended: <span className="text-zinc-200">{a.attended || '—'}</span></span>
+                    {a.quale && <span>felt: <span className="text-fuchsia-300">{a.quale}</span></span>}
+                    {a.surprise != null && <span>surprise: <span className="text-amber-300">{a.surprise.toFixed(2)}</span></span>}
+                  </div>
+                  {a.note && <div className="mt-1 font-mono text-[10px] text-sky-100/80">{a.note}</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
     </div>
     </LensShell>
+  );
+}
+
+// A compact SVG sparkline of the awareness index over time — "watch it rise as it
+// wakes, dip as it sleeps". Rows arrive newest-first, so we reverse for time order.
+function AwarenessCurve({ traces }: { traces: AgentTrace[] }) {
+  const series = traces
+    .map((t) => Math.max(0, Math.min(1, t.awareness_index ?? 0)))
+    .reverse();
+  if (series.length < 2) return null;
+  const W = 520, H = 60, pad = 4;
+  const stepX = (W - pad * 2) / (series.length - 1);
+  const points = series
+    .map((v, i) => `${(pad + i * stepX).toFixed(1)},${(H - pad - v * (H - pad * 2)).toFixed(1)}`)
+    .join(' ');
+  const last = series[series.length - 1];
+  return (
+    <div className="rounded border border-emerald-500/20 bg-zinc-950/50 p-2">
+      <div className="mb-1 flex items-center justify-between text-[10px] text-emerald-300/80">
+        <span>awareness index over the last {series.length} wakes</span>
+        <span>now Φ≈{last.toFixed(3)}</span>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-14 w-full" preserveAspectRatio="none" aria-label="awareness index curve">
+        <polyline points={points} fill="none" stroke="rgb(52 211 153)" strokeWidth="1.5" strokeLinejoin="round" />
+      </svg>
+    </div>
   );
 }
