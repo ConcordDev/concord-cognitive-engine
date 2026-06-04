@@ -18,7 +18,7 @@ test("neuro.train really trains on an attached separable dataset (loss decreases
   }
   const r = await lensRun("neuro", "train", { data: { dataset, epochs: 50, optimizer: "adam" } });
   const res = r.result ?? r;
-  assert.equal(res.mode, "trained");
+  assert.deepStrictEqual(res.mode, "trained");
   assert.equal(res.simulated, false);
   assert.equal(res.history.length, 50);
   assert.ok(res.history[49].loss < res.history[0].loss, "loss strictly decreased over training");

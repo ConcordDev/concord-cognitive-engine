@@ -54,6 +54,6 @@ test("ar.render degrades gracefully on an empty artifact (no throw, valid plan)"
   const r = await lensRun("ar", "render", { data: {} });
   const res = r.result ?? r;
   assert.equal(res.sessionMode, "immersive-ar");
-  assert.equal(res.objectCount, 1, "synthesizes a default renderable");
+  assert.deepStrictEqual(res.objectCount, 1, "synthesizes a default renderable");
   assert.ok(Array.isArray(res.requiredFeatures));
 });

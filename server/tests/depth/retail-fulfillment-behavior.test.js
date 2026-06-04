@@ -16,7 +16,7 @@ test("retail.process_refund defaults to a full refund of the order total", async
   });
   assert.equal(r.ok ?? true, true);
   const res = r.result ?? r;
-  assert.equal(res.refund.amount, 149.99, "full remaining amount refunded by default");
+  assert.deepStrictEqual(res.refund.amount, 149.99, "full remaining amount refunded by default");
   assert.equal(res.refundedTotal, 149.99);
   assert.equal(res.remaining, 0);
   assert.equal(res.status, "refunded");
@@ -30,7 +30,7 @@ test("retail.process_refund honors a partial amount + clamps to remaining", asyn
     params: { amount: 40, reason: "damaged_item" },
   }, ctx);
   const res1 = r1.result ?? r1;
-  assert.equal(res1.refund.amount, 40);
+  assert.deepStrictEqual(res1.refund.amount, 40);
   assert.equal(res1.status, "partially_refunded");
   assert.equal(res1.remaining, 60);
   assert.equal(res1.refund.reason, "damaged_item");
@@ -61,7 +61,7 @@ test("retail.send_tracking reuses an existing tracking number", async () => {
     data: { orderNumber: "5005", trackingNumber: "1Z999AA10123456784", timeline: [] },
   });
   const res = r.result ?? r;
-  assert.equal(res.trackingNumber, "1Z999AA10123456784");
+  assert.deepStrictEqual(res.trackingNumber, "1Z999AA10123456784");
 });
 
 test("retail.initiate_return opens an RMA with a default reason", async () => {
@@ -80,7 +80,7 @@ test("retail.initiate_return honors a supplied reason", async () => {
     params: { reason: "wrong_size" },
   });
   const res = r.result ?? r;
-  assert.equal(res.return.reason, "wrong_size");
+  assert.deepStrictEqual(res.return.reason, "wrong_size");
 });
 
 test("retail.generate_label builds a deterministic structured shipping label", async () => {

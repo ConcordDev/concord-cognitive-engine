@@ -35,5 +35,5 @@ test("ingest.batch-ingest errors honestly on a filenames-only legacy payload", a
   });
   const res = r.result ?? r;
   const err = r.ok === false ? r.error : res?.error;
-  assert.equal(err, "no_file_content", "does not pretend to ingest content it never received");
+  assert.deepStrictEqual(err, "no_file_content", "does not pretend to ingest content it never received");
 });

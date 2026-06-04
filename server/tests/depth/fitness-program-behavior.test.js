@@ -15,7 +15,7 @@ test("fitness.workout-plan-generate builds a deterministic plan with the right d
     params: { goal: "hypertrophy", daysPerWeek: 4, weeks: 8, equipment: "full_gym", experience: "intermediate" },
   });
   const res = r.result ?? r;
-  assert.equal(res.plan.composedBy, "deterministic");
+  assert.deepStrictEqual(res.plan.composedBy, "deterministic");
   assert.equal(res.plan.template.length, 4, "4 training days for a 4-day split");
   // hypertrophy rep scheme: 4 sets, 8-12 reps
   const ex = res.plan.template[0].exercises[0];
@@ -31,11 +31,11 @@ test("fitness.generate-program (lens button alias) yields the same deterministic
     data: { goal: "strength", daysPerWeek: 3, equipment: "bodyweight_only", experience: "beginner" },
   });
   const res = r.result ?? r;
-  assert.equal(res.plan.template.length, 3);
+  assert.deepStrictEqual(res.plan.template.length, 3);
   // strength: 5 sets, 3-5 reps; beginner → 3 exercises/day
   assert.equal(res.plan.template[0].exercises[0].sets, 5);
   assert.equal(res.plan.template[0].exercises.length, 3);
   // bodyweight equipment pulls bodyweight exercises
   const names = res.plan.template.flatMap((d) => d.exercises.map((e) => e.name)).join(' ');
-  assert.ok(/Push-Up|Pull-Up|Squat|Lunge/.test(names), "uses bodyweight movements");
+  assert.match(names, /Push-Up|Pull-Up|Squat|Lunge/, "uses bodyweight movements");
 });

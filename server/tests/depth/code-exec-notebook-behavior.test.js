@@ -13,7 +13,7 @@ test("code.exec runs real JS and captures stdout", async () => {
   const r = await lensRun("code", "exec", { params: { language: "javascript", code: "console.log(2 + 2)" } });
   const res = r.result ?? r;
   assert.equal(res.supported, true);
-  assert.equal(res.stdout.trim(), "4");
+  assert.deepStrictEqual(res.stdout.trim(), "4");
   assert.equal(res.exitCode, 0);
 });
 
