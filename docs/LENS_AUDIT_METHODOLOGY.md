@@ -527,7 +527,7 @@ the actual response. Setup notes learned this session:
 Following the approved plan (`/root/.claude/plans/1-51-genuine-broken-steady-kay.md`),
 the genuine broken-wire backlog is being closed batch-by-batch, each
 research→audit→build/repoint→**validate-live**→ratchet→commit. Progress so far
-(genuine count 51 → 32, CI ratchet lowered in lockstep):
+(genuine count 51 → 9, CI ratchet lowered in lockstep):
 - **Batch A (5 repoints):** `events.budget_analysis→budgetReconcile`,
   `creative.budget_analysis→budgetTrack`, `education.calculate_grades→gradeCalculation`,
   `services.inventoryCheck→supplyCheck`, `trades.generateEstimate→calculateEstimate`.
@@ -549,5 +549,18 @@ research→audit→build/repoint→**validate-live**→ratchet→commit. Progres
   unsupplied `params.X`; (2) typed-display lenses need the target's fields to match a branch
   OR a generic fallback added; (3) the sandbox can't hold both servers — free the frontend,
   run backend alone, foreground `nohup … & disown` (background-tool launches get reaped),
-  pace ≤700ms. Remaining genuine (32): government ×16 (substrate build), retail ×3 (params
-  UI), model-dependent ×~5, and scattered singles needing per-lens display fallbacks.
+  pace ≤700ms.
+
+**Final state: 51 → 9 genuine** (41 real wires closed + 1 detector false-positive removed).
+Closed: a batch of verified repoints; **government (16 — incl. 12 new deterministic
+civic-dashboard macros)**; manufacturing, creative/events, nonprofit, affect/meta clusters;
+plus `paper.export_pdf` (text export + client download), `security.accessAudit` (STATE
+posture audit), `temporal.simulate` (trend-projection). ~30 new deterministic macros, 9
+behavioral test files, every one validated live against the running backend. The detector
+regex was tightened (`Action(` capital-A) to drop the `world.authored` false positive
+(`recordAssetInteraction` over-match). The remaining **9 are capability-blocked**, not
+deterministic-buildable: retail ×3 (param-collecting modals — Batch D UI), `code.execute`
+(sandbox VM — Batch C), `neuro.train` (ML model), `music.browse` (no loops data source),
+`ingest.batch-ingest` (real file-upload UI), `ar.render` (3D scene-activation side-effect),
+`crypto.wallet` (preview shim) — UI/VM/model/data work, a different character from the
+macro-over-artifact pattern that closed the 41.
