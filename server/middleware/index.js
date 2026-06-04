@@ -9,7 +9,6 @@
  */
 
 import crypto from "crypto";
-import logger from '../logger.js';
 import securityHeaders from './security-headers.js';
 
 /**
@@ -72,9 +71,12 @@ export default function configureMiddleware(app, deps) {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          scriptSrc: NODE_ENV === "production"
-            ? ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`, "'unsafe-inline'"]
-            : ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`, "'unsafe-inline'", "'unsafe-eval'"],
+          // M3: drop 'unsafe-inline' (and dev 'unsafe-eval') from scriptSrc so the
+          // per-request nonce is actually ENFORCED (with 'unsafe-inline' present, CSP3
+          // browsers ignore the nonce). This CSP applies to express/API responses (JSON,
+          // and the express-served Swagger page which carries the nonce on its inline
+          // init script) — NOT the Next.js HTML document, so the app is unaffected.
+          scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
           styleSrc: ["'self'", "'unsafe-inline'"], // Required for styled-components/emotion
           imgSrc: ["'self'", "data:", "blob:", "https:"],
           connectSrc: ["'self'", "wss:", "ws:", ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim()) : [])],
@@ -191,29 +193,12 @@ export default function configureMiddleware(app, deps) {
       }
       // ALLOWED_ORIGINS not configured
       if (NODE_ENV === "production") {
-        // Production fallback: allow same-host origins (different ports/protocols).
-        // This handles the common case where ALLOWED_ORIGINS isn't set but the frontend
-        // is on the same host. Also infers the host from common env vars or the request.
-        try {
-          const originUrl = new URL(origin);
-          const serverHost = process.env.SERVER_HOST || process.env.HOSTNAME || process.env.DOMAIN || "";
-          if (serverHost && originUrl.hostname === serverHost) {
-            console.warn("[CORS] WARNING: Allowing same-host origin without ALLOWED_ORIGINS:", origin, "— Set ALLOWED_ORIGINS for production.");
-            return callback(null, true);
-          }
-          // Fallback: if NEXT_PUBLIC_API_URL is set, extract its hostname
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "";
-          if (apiUrl) {
-            try {
-              const apiHost = new URL(apiUrl).hostname;
-              if (originUrl.hostname === apiHost) {
-                console.warn("[CORS] WARNING: Allowing origin matching API_URL:", origin);
-                return callback(null, true);
-              }
-            } catch { /* invalid API_URL, continue */ }
-          }
-        } catch (_e) { logger.debug('index', 'invalid origin URL, fall through to reject', { error: _e?.message }); }
-        console.error("[CORS] REJECTED: No ALLOWED_ORIGINS configured in production. Origin:", origin, "— Set ALLOWED_ORIGINS=https://your-frontend-domain");
+        // M2: fail CLOSED. Previously this inferred a same-host allow from
+        // SERVER_HOST/HOSTNAME/NEXT_PUBLIC_API_URL — with credentials:true that silently
+        // relaxes CORS on a misconfigured deploy. With no explicit ALLOWED_ORIGINS we now
+        // reject every cross-origin request. ALLOWED_ORIGINS is a required prod env
+        // (validateEnvironment warns at boot).
+        console.error("[CORS] REJECTED: ALLOWED_ORIGINS is not configured in production. Origin:", origin, "— Set ALLOWED_ORIGINS=https://your-frontend-domain");
         const err = new Error("CORS not configured");
         err.code = "CORS_NOT_CONFIGURED";
         return callback(err, false);

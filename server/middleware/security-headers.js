@@ -25,10 +25,10 @@
  */
 export default function securityHeaders(req, res, next) {
   // ---- Content-Security-Policy ------------------------------------------------
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws:; object-src 'none'; frame-ancestors 'none'"
-  );
+  // M3: CSP is owned solely by the Helmet config in middleware/index.js (which adds the
+  // per-request nonce). Setting it here too was dead (Helmet runs after and overwrites)
+  // and a second, conflicting source of truth — removed. This middleware keeps the other
+  // hardening headers below.
 
   // ---- Strict-Transport-Security ---------------------------------------------
   res.setHeader(

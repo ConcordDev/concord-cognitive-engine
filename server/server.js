@@ -4935,6 +4935,13 @@ if (db) {
     structuredLog("info", "schema_migration_complete", { currentVersion: migrationResult.currentVersion, appliedCount: migrationResult.appliedCount });
   } catch (e) {
     console.error("[Concord] Migration failed:", e.message);
+    // M6: in production, a failed migration is fatal — serving on a partially-migrated
+    // schema risks data corruption / wrong-shape writes. Exit so the orchestrator
+    // restarts and surfaces the failure instead of silently running on stale schema.
+    if (NODE_ENV === "production") {
+      structuredLog("fatal", "migration_failed_boot", { error: e.message });
+      process.exit(1);
+    }
   }
 
   // #F1 — materialise lazily-created runtime tables so a FRESH install has a
@@ -7930,15 +7937,10 @@ async function tryInitWebSockets(server) {
       origin: _wsAllowedOrigins !== null
         ? _wsAllowedOrigins
         : (origin, callback) => {
-            // same-host fallback when ALLOWED_ORIGINS is not configured in production
+            // M2: fail CLOSED when ALLOWED_ORIGINS is unset in production — no same-host
+            // inference (it silently relaxes WS CORS with credentials:true). Allow only
+            // no-Origin (non-browser / same-origin) clients; reject cross-origin.
             if (!origin) return callback(null, true);
-            try {
-              const serverHost = process.env.SERVER_HOST || process.env.HOSTNAME || process.env.DOMAIN || "";
-              const originHost = new URL(origin).hostname;
-              if (serverHost && originHost === serverHost) return callback(null, true);
-              const apiUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "";
-              if (apiUrl && new URL(apiUrl).hostname === originHost) return callback(null, true);
-            } catch { /* invalid origin */ }
             return callback(new Error("Origin not allowed"));
           },
       methods: ["GET", "POST"],
@@ -25405,7 +25407,10 @@ register("legal", "sign", (ctx, input = {}) => {
     issuedAt: new Date().toISOString(),
     machineHash: crypto.createHash("sha256").update(JSON.stringify(machine)).digest("hex"),
   };
-  const secret = process.env.JWT_SECRET || "concord-default-signing";
+  // Use the canonical resolved secret — never a hardcoded literal (a predictable
+  // fallback makes these DTU signatures forgeable). EFFECTIVE_JWT_SECRET is the same
+  // value JWT signing uses, and boot fails fast if it's unset in production.
+  const secret = EFFECTIVE_JWT_SECRET;
   const token = crypto
     .createHmac("sha256", secret)
     .update(JSON.stringify(payload))
@@ -35234,13 +35239,17 @@ const OPENAPI_SPEC = {
 // OpenAPI spec remains inline since it references OPENAPI_SPEC defined above
 app.get("/api/openapi.json", (req, res) => res.json(OPENAPI_SPEC));
 app.get("/api/docs", (req, res) => {
+  // Carry the CSP nonce on the inline init script so it runs under the nonce-enforced
+  // policy (M3: scriptSrc no longer allows 'unsafe-inline'). The external unpkg scripts
+  // require allowlisting unpkg.com in scriptSrc/styleSrc to render — out of scope here.
+  const nonce = res.locals?.cspNonce || "";
   res.send(`<!DOCTYPE html>
 <html><head><title>Concord API Docs</title>
 <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
 </head><body>
 <div id="swagger-ui"></div>
 <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-<script>SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui" });</script>
+<script nonce="${nonce}">SwaggerUIBundle({ url: "/api/openapi.json", dom_id: "#swagger-ui" });</script>
 </body></html>`);
 });
 
