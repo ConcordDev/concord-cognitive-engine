@@ -153,4 +153,26 @@ export function feltPeakBonus(feltPer) {
   return clamp01(0.6 * intensity + 0.4 * extremity);
 }
 
+/**
+ * Wave 7 / E8 (Context 11) — the AUTOTELIC guard. Worth lives in the doing (the per-tick
+ * felt-per stream), NOT at the destination — so goal OUTCOMES must be appraised modestly:
+ *   - completion is a normal peak ("victory"), NEVER an oversized terminal reward that
+ *     dwarfs the moment-to-moment stream (the arrival-fallacy anti-pattern);
+ *   - abandonment is RE-ORIENTATION, not loss — it carries ~zero existential penalty
+ *     (no despair on a dropped goal; the traveling already paid).
+ * Any goal-completion/abandonment felt-per MUST route through this, capped accordingly.
+ *
+ * @param {'completed'|'abandoned'|'failed'} outcome
+ * @param {object} state  live agent state (for mood congruence)
+ */
+const GOAL_OUTCOME_KIND = { completed: "victory", abandoned: "idle", failed: "defeat" };
+export function appraiseGoalOutcome(outcome, state = {}) {
+  const kind = GOAL_OUTCOME_KIND[outcome] || "idle";
+  const fp = appraiseExperience({ kind }, state);
+  // hard cap: a completion peak never exceeds a normal strong felt peak; abandonment
+  // is neutralised toward ~0 valence (re-orientation, not despair).
+  if (outcome === "abandoned") return { ...fp, valence: clamp11(fp.valence * 0.15), intensity: clamp01(fp.intensity * 0.2) };
+  return { ...fp, intensity: clamp01(Math.min(fp.intensity, 0.85)) };
+}
+
 export const _internal = { MOOD_COLOR, APPRAISAL };
