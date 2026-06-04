@@ -12,8 +12,11 @@
 // Kill-switch CONCORD_AFFECT_TRACE=0.
 
 import crypto from "node:crypto";
+import { driftFromFeltPeak } from "../lib/ecosystem/temperament.js";
+import { DRIVE_KINDS } from "../lib/ecosystem/drives.js";
 
 const AROUSAL_TRACE = 0.6;   // arousal at/above this is worth remembering
+const CREATURE_PLASTICITY = 0.4; // creatures keep moderate lifelong plasticity
 const DRIVE_TRACE = 0.7;     // a dominant drive this strong is worth remembering
 const MAX_PER_WORLD = 8;     // peak-end cap per world per pass (no flood)
 const MINT_TOP_K = 2;        // how many of the strongest get an affect_memory DTU
@@ -74,6 +77,10 @@ export function runAffectTraceCycle({ db, state } = {}) {
           dtuId = mintAffectMemory(db, worldId, c, drive);
           if (dtuId) minted++;
         }
+        // Wave 7 / A6 plasticity — a strong felt peak drifts the creature's
+        // temperament (a frightened deer becomes warier over its life). The same
+        // peaks that become memory also edit personality. Bounded + guarded.
+        if (drive) driftCreatureTemperament(db, c.creatureId, drive, c.sal);
         try {
           insert.run(
             `aff_${crypto.randomBytes(6).toString("hex")}`,
@@ -91,6 +98,25 @@ export function runAffectTraceCycle({ db, state } = {}) {
     return { ok: true, reason: `error:${err?.message || "unknown"}`, flushed, minted };
   }
   return { ok: true, flushed, minted };
+}
+
+// A6 plasticity write-back: drift a creature's persisted temperament toward the
+// drive it just felt strongly. Column-optional (mig 326); never throws.
+function driftCreatureTemperament(db, creatureId, dominantDrive, intensity) {
+  try {
+    const row = db.prepare(`SELECT temperament_json FROM world_npcs WHERE id = ?`).get(creatureId);
+    if (!row) return;
+    let temperament = null;
+    try { temperament = row.temperament_json ? JSON.parse(row.temperament_json) : null; } catch { temperament = null; }
+    // seed a flat baseline if the creature has none yet
+    if (!temperament || typeof temperament !== "object") {
+      temperament = {}; for (const k of DRIVE_KINDS) temperament[k] = 0.3;
+    }
+    const drifted = driftFromFeltPeak(temperament, { dominantDrive, intensity: Math.min(1, intensity) }, CREATURE_PLASTICITY);
+    if (DRIVE_KINDS.every((k) => Number.isFinite(drifted[k]))) {
+      db.prepare(`UPDATE world_npcs SET temperament_json = ? WHERE id = ?`).run(JSON.stringify(drifted), creatureId);
+    }
+  } catch { /* column/table optional — never blocks the flush */ }
 }
 
 function reasonFor(m) {
