@@ -1261,6 +1261,7 @@ import { asyncHandler } from "./lib/async-handler.js";
 import { serverError, configureHttpErrorLogger } from "./lib/http-errors.js";
 import { init as initGRC, formatAndValidate as grcFormatAndValidate, getGRCSystemPrompt } from "./grc/index.js";
 import configureMiddleware from "./middleware/index.js";
+import { readReplicaGate } from "./lib/read-replica-allowlist.js";
 import { createLLMQueue, PRIORITY } from "./lib/llm-queue.js";
 import { BRAIN_CONFIG, SYSTEM_TO_BRAIN, BRAIN_PRIORITY, getBrainForSystem } from "./lib/brain-config.js";
 import { preloadBrains, getBrainPriority, resolveBrain } from "./lib/brain-router.js";
@@ -2501,6 +2502,14 @@ function releaseMutex() {
 const PORT = Number(process.env.PORT || 5050);
 const VERSION = "5.1.0-production";
 const NODE_ENV = process.env.NODE_ENV || "development";
+// Read-only replica role (horizontal read scale-out). When set, this process:
+// opens the SQLite DB read-only, SKIPS every boot-time write (schema creation,
+// migrations, DTU-store init, content seeders), does NOT run the governor
+// heartbeat or world shards, and serves ONLY a curated read-safe GET allowlist
+// (enforced in middleware). The writer process (flag unset) owns all writes +
+// schema; replicas share the same DB file via WAL (unlimited concurrent readers).
+// Default OFF → an ordinary writer process is byte-identical to before.
+const READ_REPLICA = process.env.CONCORD_READ_REPLICA === "1" || process.env.CONCORD_READ_REPLICA === "true";
 const AUTH_MODE_VALUES = new Set(["public", "apikey", "jwt", "hybrid"]);
 const LEGACY_AUTH_ENABLED = String(process.env.AUTH_ENABLED || "true").toLowerCase() === "true";
 const AUTH_MODE_RAW = String(process.env.AUTH_MODE || "").toLowerCase().trim();
@@ -4824,10 +4833,6 @@ function initDatabase() {
   try {
     // Ensure the DB parent directory exists (handles both /data/concord.db and /data/db/concord.db)
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    db = new Database(DB_PATH);
-    db.pragma("journal_mode = WAL");        // Concurrent readers + writer
-    db.pragma("synchronous = NORMAL");      // Safe with WAL, 3-5× faster than FULL
-    db.pragma("foreign_keys = ON");
     // Tuning bumped for 32GB-host deployments. mmap=4GB lets SQLite
     // memory-map large tables (DTU substrate) directly so reads bypass
     // the page cache entirely; cache=-1024MB (1GB negative = KB count
@@ -4836,15 +4841,40 @@ function initDatabase() {
     const mmapMb = Number(process.env.CONCORD_SQLITE_MMAP_MB) || 4096;
     const cacheMb = Number(process.env.CONCORD_SQLITE_CACHE_MB) || 1024;
     const walPages = Number(process.env.CONCORD_SQLITE_WAL_AUTOCHECKPOINT_PAGES) || 10000;
-    db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
-    db.pragma(`cache_size = -${cacheMb * 1024}`);
-    db.pragma("temp_store = MEMORY");       // Temp tables in RAM
-    db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
-    db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
-    db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+    if (READ_REPLICA) {
+      // Read-only replica: the writer owns schema + WAL journal mode. Open
+      // Open WRITABLE (not readonly). The monolith has many scattered boot-time
+      // `CREATE TABLE IF NOT EXISTS` / initXSchema calls at subsystem
+      // registration (economy reserves, etc.) that a readonly handle rejects
+      // even though they are no-ops on the already-migrated shared DB. We skip
+      // the heavy writes (migrations/seeders/heartbeat/shards — gated below) and
+      // then lock the connection `query_only=1` right before listen (see the
+      // listen site), so the SERVING phase can never write. Combined with the
+      // default-deny read-replica request gate, the replica is read-only in
+      // practice while still booting cleanly. fileMustExist: a replica must
+      // never create a fresh DB — the writer owns provisioning.
+      db = new Database(DB_PATH, { fileMustExist: true });
+      db.pragma("journal_mode = WAL");        // already-WAL → no-op read of current mode
+      db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
+      db.pragma(`cache_size = -${cacheMb * 1024}`);
+      db.pragma("busy_timeout = 5000");
+      structuredLog?.("info", "db_readonly_replica", { dbPath: DB_PATH, mode: "writable-until-listen" });
+    } else {
+      db = new Database(DB_PATH);
+      db.pragma("journal_mode = WAL");        // Concurrent readers + writer
+      db.pragma("synchronous = NORMAL");      // Safe with WAL, 3-5× faster than FULL
+      db.pragma("foreign_keys = ON");
+      db.pragma(`mmap_size = ${mmapMb * 1024 * 1024}`);
+      db.pragma(`cache_size = -${cacheMb * 1024}`);
+      db.pragma("temp_store = MEMORY");       // Temp tables in RAM
+      db.pragma("busy_timeout = 5000");       // Wait up to 5s before SQLITE_BUSY error
+      db.pragma(`wal_autocheckpoint = ${walPages}`); // Checkpoint cadence
+      db.pragma("page_size = 8192");          // Larger pages amortize I/O on big rows (DTU body_json)
+    }
 
-    // Create tables
-    db.exec(`
+    // Create tables (writer only — a read-only replica inherits the schema the
+    // writer created; this whole exec is one statement, so the guard skips it).
+    if (!READ_REPLICA) {db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
@@ -4915,7 +4945,7 @@ function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
       CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id);
       CREATE INDEX IF NOT EXISTS idx_archived_consolidated ON archived_dtus(consolidated_into);
-    `);
+    `);}
 
     structuredLog("info", "db_initialized", { backend: "sqlite" });
     return true;
@@ -4932,7 +4962,10 @@ if (!DB_AVAILABLE) {
 }
 
 // ---- "Everything Real": Run schema migrations after DB init ----
-if (db) {
+// Read-only replicas skip migrations entirely — the writer owns schema. A
+// readonly handle would throw on the first DDL; the replica assumes the writer
+// has already migrated the shared DB file.
+if (db && !READ_REPLICA) {
   try {
     const migrationResult = await runSchemaMigrations(db);
     structuredLog("info", "schema_migration_complete", { currentVersion: migrationResult.currentVersion, appliedCount: migrationResult.appliedCount });
@@ -5005,7 +5038,9 @@ if (db) {
 // ---- DTU Write-Through Store (persistent-first) ----
 // Initialize the dtu_store table for row-level DTU persistence.
 // This supplements the full-state snapshot with per-DTU durability.
-const _DTU_STORE_READY = db ? initDTUStore(db) : false;
+// Read-only replica skips the dtu_store table creation (a write) — the writer
+// owns it. Replica reads of DTUs go through STATE/SELECT paths, not initDTUStore.
+const _DTU_STORE_READY = (db && !READ_REPLICA) ? initDTUStore(db) : false;
 if (_DTU_STORE_READY) {
   structuredLog("info", "dtu_store_initialized", { backend: "sqlite" });
 }
@@ -28971,6 +29006,12 @@ configureMiddleware(app, {
   NODE_ENV,
 });
 
+// Read-only replica gate (default-deny). No-op on the writer (flag off); on a
+// replica it rejects anything outside the vetted pure-read GET allowlist so a
+// write-on-read handler can never fire against the readonly DB handle. Runs
+// after auth (context available) and before any route mount.
+app.use(readReplicaGate(READ_REPLICA));
+
 // HTTP metrics collection middleware
 app.use(httpMetricsMiddleware);
 installGlobalMetrics();
@@ -30493,14 +30534,16 @@ setTimeout(() => startHeartbeat(), 45_000);
 // embodied-dream-cycle, repair-cycle, environment-sensor, etc.)
 // silently never fire. Started at T+50s so registrations from the
 // late-loading ghost-fleet modules land first.
-setTimeout(() => {
+// Read-only replicas never run the governor heartbeat — the writer owns all
+// emergent simulation + writes. A replica only serves reads.
+if (!READ_REPLICA) {setTimeout(() => {
   try {
     const result = _startGovernorHeartbeat();
     structuredLog("info", "governor_heartbeat_boot", result || { ok: false });
   } catch (e) {
     structuredLog("warn", "governor_heartbeat_boot_failed", { error: String(e?.message || e) });
   }
-}, 50_000);
+}, 50_000);}
 
 // ---- Operations Endpoints (extracted to routes/operations.js) ----
 registerOperationRoutes(app, {
@@ -31000,7 +31043,9 @@ if (db) {
     } catch (e) { console.warn("[quest-engine]", e.message); }
     // Seed authored world content (factions, NPCs, lore, quest chains) into
     // in-memory systems. Must run after world seed so history engine is ready.
-    try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); }
+    // Read-only replicas never seed — the writer owns content. seedContent
+    // INSERTs authored factions/NPCs/lore and would throw on a readonly handle.
+    if (!READ_REPLICA) { try { await seedContent({ db }); } catch (e) { console.warn("[content-seeder]", e.message); } }
     // Living Society WS0 — the world breathes immediately. The heartbeat
     // dispatcher only starts at boot+50s (then npc-routine-cycle every ~75s),
     // so a bare boot leaves NPCs frozen for the first 1–2 minutes (the first
@@ -55303,7 +55348,7 @@ try {
 // Activated by CONCORD_SHARD_WORLDS=true. Spawns one child_process.fork per
 // active world; per-world heartbeat modules (`scope: 'world'`) run inside
 // the shard. Global modules (`scope: 'global'`) keep running on the parent.
-if (shardingEnabled()) {
+if (shardingEnabled() && !READ_REPLICA) {
   initWorldShards({
     dbPath: DB_PATH,
     realtimeEmit: (...args) => {
@@ -61813,6 +61858,15 @@ const SHOULD_LISTEN = _FORCE_LISTEN || (
   (String(process.env.CONCORD_NO_LISTEN || "").toLowerCase() !== "true") &&
   (String(process.env.NODE_ENV || "").toLowerCase() !== "test")
 );
+
+// Read replica: lock the connection read-only for the serving phase. All the
+// boot-time no-op schema inits have run by now; from here the replica must only
+// read. query_only makes any stray write throw (defense-in-depth with the
+// default-deny request gate), without the readonly-handle boot crashes.
+if (READ_REPLICA && db) {
+  try { db.pragma("query_only = 1"); structuredLog("info", "db_replica_query_only_locked", {}); }
+  catch (e) { structuredLog("warn", "db_replica_query_only_failed", { error: String(e?.message || e) }); }
+}
 
 const server = SHOULD_LISTEN ? app.listen(PORT, () => {
   structuredLog("info", "server_listening", { url: `http://localhost:${PORT}`, statusUrl: `http://localhost:${PORT}/api/status` });

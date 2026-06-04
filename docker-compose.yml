@@ -145,6 +145,66 @@ services:
           memory: 4G
           cpus: '2.0'
 
+  # Read-only replica (horizontal read scale-out) — OPT-IN.
+  # Start with:  docker compose --profile read-replica up -d backend-read
+  # Scale with:  docker compose --profile read-replica up -d --scale backend-read=3
+  # Then uncomment the read-route block in nginx/conf.d/default.conf (mind the
+  # STATE-backed caveat there). Opens the shared SQLite file read-only (WAL =
+  # unlimited concurrent reader processes), runs NO heartbeat / shards / brains,
+  # and serves ONLY the vetted pure-read GET allowlist (server-side default-deny
+  # gate). JWT_SECRET MUST match the writer so tokens validate across processes.
+  backend-read:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    profiles: ["read-replica"]
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - NODE_ENV=production
+      - PORT=5050
+      - DATA_DIR=/data
+      - DB_PATH=/data/db/concord.db
+      - CONCORD_READ_REPLICA=1          # the role flag: readonly DB + skip all writes/sim
+      - CONCORD_SHARD_WORLDS=false       # replicas never run world shards
+      - CONCORD_DISABLE_BRAINS=true      # replicas serve reads only; no LLM init
+      - NODE_OPTIONS=--max-old-space-size=8192
+      - UV_THREADPOOL_SIZE=8
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://concord-os.org}
+      - FRONTEND_URL=${FRONTEND_URL:-https://concord-os.org}
+      - REDIS_URL=redis://redis:6379    # shared Socket.IO fan-out + state-sync
+      - JWT_SECRET=${JWT_SECRET}         # MUST equal the writer's for token validation
+      - SESSION_SECRET=${SESSION_SECRET:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - AUTH_MODE=${AUTH_MODE:-hybrid}
+      - SOVEREIGN_USERNAME=${SOVEREIGN_USERNAME:-Concord_Founder_Dutch}
+      - CONCORD_SQLITE_MMAP_MB=${CONCORD_SQLITE_MMAP_MB:-4096}
+      - CONCORD_SQLITE_CACHE_MB=${CONCORD_SQLITE_CACHE_MB:-1024}
+    depends_on:
+      backend:
+        condition: service_healthy      # writer owns schema/migrations — boot it first
+      redis:
+        condition: service_healthy
+    volumes:
+      - concord-data:/data              # shared DB file (WAL: multi-reader safe)
+    networks:
+      - concord-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5050/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
   # Frontend Next.js App
   frontend:
     build:
