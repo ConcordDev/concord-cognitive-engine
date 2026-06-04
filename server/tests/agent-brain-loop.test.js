@@ -46,7 +46,7 @@ test("Track B4 — salience brain-loop gate (feeling decides when to think)", as
   });
 
   await t.test("budget exhaustion suppresses the LLM wake (no stampede)", () => {
-    let clock = 0;
+    const clock = 0;
     const budget = makeEscalationBudget({ perWorldPerMin: 1, now: () => clock });
     const dilemma = { needs: { hunger: 0.95 }, worldId: "w" };
     const ctx = { hasRouteAround: false, hasFallbackGoal: false, budget };

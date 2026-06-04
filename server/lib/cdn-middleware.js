@@ -221,10 +221,15 @@ export function cdnCorsHeaders() {
   // a localhost default in prod becomes an unintended CORS allow-list entry
   // and a quiet wrong-domain bug. Dev uses localhost only when NODE_ENV !== "production".
   const isProd = process.env.NODE_ENV === "production";
+  // Accept the canonical frontend-URL env vars the rest of the app uses
+  // (FRONTEND_URL / NEXT_PUBLIC_FRONTEND_URL), not just CONCORD_FRONTEND_URL —
+  // requiring only the latter caused a spurious "cdn-middleware mount failed" in prod.
   const frontendUrl = process.env.CONCORD_FRONTEND_URL
+    || process.env.FRONTEND_URL
+    || process.env.NEXT_PUBLIC_FRONTEND_URL
     || (isProd ? null : "http://localhost:3000");
   if (isProd && !frontendUrl) {
-    throw new Error("CONCORD_FRONTEND_URL must be set in production (cdn-middleware.cdnCorsHeaders)");
+    throw new Error("CONCORD_FRONTEND_URL / FRONTEND_URL must be set in production (cdn-middleware.cdnCorsHeaders)");
   }
   const allowedOrigins = new Set([
     frontendUrl,

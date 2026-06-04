@@ -10141,7 +10141,9 @@ async function tryLoadSeedDTUs() {
           if (!fs.existsSync(packPath)) { errors++; continue; }
           const content = fs.readFileSync(packPath, "utf-8");
           const hash = crypto.createHash("sha256").update(content).digest("hex");
-          if (hash !== pack.sha256) {
+          // Guard a missing/non-string sha256 (a manifest without integrity hashes)
+          // — `pack.sha256.slice` on null was the "Cannot read properties of null" crash.
+          if (typeof pack.sha256 === "string" && hash !== pack.sha256) {
             console.warn(`[Seed-Pack] Hash mismatch: ${pack.file} (expected ${pack.sha256.slice(0,12)}, got ${hash.slice(0,12)})`);
             errors++;
             continue;
