@@ -71,6 +71,31 @@ clusters by prefix — a cluster of ≥3 (e.g. message `labels-*` ×5, whiteboar
   then judge. Most clusters are **backlog** (need a new UI build), not surgical facades.
 - Drill in with `npm run lens:unsurfaced --lens <name>`.
 
+**Batch F — surfaced clusters (2026-06-04).** Worked the highest-coherence clusters,
+**reading each macro's transport before building** (the triage rule above is load-bearing —
+two clusters turned out to be intentionally-unsurfaced and were correctly skipped):
+- **message `labels-*` →** completed the Gmail-labels feature. `LabelManagerPanel` only
+  managed the catalog (list/create); new `ThreadLabelBar` in the thread header surfaces the
+  per-message workflow (`labels-apply`/`labels-remove`/`labels-for-message`) as removable
+  chips + an add-label picker.
+- **art `brush-*` →** `ArtCanvas` read `brush-presets` but couldn't save/delete custom
+  brushes; added a "+ Save" control (`brush-preset-save`) + hover-delete (`brush-preset-delete`).
+- **food `review-*` →** `YelpDiscoverPanel` created reviews but the votes
+  (`review-vote` useful/funny/cool) + self-delete (`review-delete`) had no UI; added both.
+  `review-list` stays — `biz-detail` already returns the reviews (alternate path).
+- **insurance `pact-*` →** the whole P2P mutual-aid pact feature (10 macros) had ZERO UI.
+  New `MutualAidPactsPanel` + a "Pacts" mode tab surfaces 8 user-facing macros (write / list /
+  respond-handshake / pay-premium / renew / auto-renew / revoke / payout-history).
+  `pact-record-payout` (a **system / death-event** trigger keyed to the insured, not a button)
+  and `pact-premium-schedule` (a redundant detail read) stay intentionally unsurfaced.
+- **music `playlist-*` →** added per-track up/down reorder (`playlist-reorder`) + per-playlist
+  delete (`playlist-delete`) to `MusicLibraryPanel`.
+- **Correctly SKIPPED (intentionally unsurfaced):** **world `voice-*` (6)** — these are the
+  lens-action mirror of a real-time WebRTC proximity-voice mesh whose actual client
+  (`VoiceMesh.tsx` / `ProximityVoiceChat.ts`) signals over **sockets**, not request/response
+  lens-run; surfacing them would duplicate the real transport. **The transport-read is the
+  triage:** a macro that has a better-suited real-time/REST/system path is *not* a missing UI.
+
 ### Layer 1.5 — broken-wire detector (deterministic, all-lenses) — `npm run lens:broken-calls`
 `scripts/lens-broken-calls.mjs` catches the **highest-severity** facade: a frontend
 call to a macro that DOES NOT EXIST — a button the user clicks that 404s because
