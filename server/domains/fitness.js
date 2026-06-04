@@ -321,14 +321,93 @@ export default function registerFitnessActions(registerLensAction) {
   /**
    * workout-plan-generate — Conscious-brain generated multi-week plan.
    */
-  registerLensAction("fitness", "workout-plan-generate", async (ctx, _artifact, params = {}) => {
-    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+  // Deterministic workout-program generator (templated exercise library × split logic).
+  // The default path needs NO model — it composes a real periodised plan from goal /
+  // equipment / experience / frequency. The LLM is an opt-in enhancement
+  // (CONCORD_FITNESS_PLAN_LLM=true) layered on top, with this as the guaranteed fallback.
+  const FIT_REP_SCHEME = {
+    strength:   { sets: 5, reps: "3-5",  restSec: 180, rpe: "RPE 8" },
+    hypertrophy:{ sets: 4, reps: "8-12", restSec: 90,  rpe: "RPE 9" },
+    endurance:  { sets: 3, reps: "15-20",restSec: 45,  rpe: "RPE 7" },
+    fat_loss:   { sets: 3, reps: "12-15",restSec: 45,  rpe: "RPE 8, short rest" },
+    general:    { sets: 3, reps: "8-12", restSec: 75,  rpe: "RPE 7-8" },
+  };
+  const FIT_EXERCISES = {
+    "Upper push": { full_gym: ["Barbell Bench Press", "Overhead Press", "Incline Dumbbell Press", "Cable Triceps Pushdown"], home_dumbbells: ["Dumbbell Bench Press", "Dumbbell Shoulder Press", "Dumbbell Floor Press", "Overhead Triceps Extension"], bodyweight_only: ["Push-Up", "Pike Push-Up", "Dip", "Diamond Push-Up"] },
+    "Upper pull": { full_gym: ["Pull-Up", "Barbell Row", "Lat Pulldown", "Face Pull"], home_dumbbells: ["Dumbbell Row", "Renegade Row", "Reverse Fly", "Dumbbell Curl"], bodyweight_only: ["Pull-Up", "Inverted Row", "Towel Row", "Chin-Up"] },
+    "Lower": { full_gym: ["Back Squat", "Romanian Deadlift", "Leg Press", "Standing Calf Raise"], home_dumbbells: ["Goblet Squat", "Dumbbell RDL", "Walking Lunge", "Calf Raise"], bodyweight_only: ["Bulgarian Split Squat", "Glute Bridge", "Reverse Lunge", "Calf Raise"] },
+    "Full body": { full_gym: ["Deadlift", "Front Squat", "Push Press", "Pull-Up"], home_dumbbells: ["Dumbbell Thruster", "Goblet Squat", "Dumbbell Row", "Dumbbell Swing"], bodyweight_only: ["Burpee", "Squat", "Push-Up", "Inverted Row"] },
+    "Conditioning": { full_gym: ["Rowing Intervals", "Assault Bike", "Sled Push", "Farmer Carry"], home_dumbbells: ["Dumbbell Complex", "Jump Rope", "Renegade Row", "Mountain Climber"], bodyweight_only: ["Jump Rope", "Burpee Intervals", "Mountain Climber", "High Knees"] },
+  };
+  // Day-split focus rotation by weekly frequency.
+  const FIT_SPLITS = {
+    1: ["Full body"],
+    2: ["Full body", "Full body"],
+    3: ["Upper push", "Lower", "Upper pull"],
+    4: ["Upper push", "Lower", "Upper pull", "Conditioning"],
+    5: ["Upper push", "Lower", "Upper pull", "Full body", "Conditioning"],
+    6: ["Upper push", "Upper pull", "Lower", "Upper push", "Upper pull", "Lower"],
+    7: ["Upper push", "Upper pull", "Lower", "Conditioning", "Upper push", "Lower", "Conditioning"],
+  };
+  const FIT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const FIT_PROGRESSION = {
+    strength: "Add 2.5–5 lb to main lifts each week; deload every 4th week (−40% volume).",
+    hypertrophy: "Add 1 rep per set weekly until the top of the range, then add load and reset reps.",
+    endurance: "Add one set or reduce rest by 5s each week; build total work capacity.",
+    fat_loss: "Hold strength loads; cut rest 5–10s weekly and add one conditioning finisher.",
+    general: "Progress load or reps slightly each week; prioritise consistent form.",
+  };
+  const FIT_NUTRITION = {
+    strength: "Slight surplus (~+150 kcal), 1.6–2.2 g protein/kg, fuel pre-lift.",
+    hypertrophy: "Moderate surplus (~+250 kcal), 1.8–2.2 g protein/kg, carbs around training.",
+    endurance: "Maintenance kcal, 1.4–1.8 g protein/kg, higher carbs for long sessions.",
+    fat_loss: "Deficit (~−400 kcal), 1.8–2.4 g protein/kg to preserve muscle, high fibre.",
+    general: "Maintenance kcal, 1.6 g protein/kg, mostly whole foods.",
+  };
+  function buildDeterministicPlan(goal, daysPerWeek, weeks, equipment, experience) {
+    const scheme = FIT_REP_SCHEME[goal] || FIT_REP_SCHEME.general;
+    const focuses = FIT_SPLITS[daysPerWeek] || FIT_SPLITS[4];
+    // Experience scales exercise count (beginner fewer) + duration.
+    const exCount = experience === "beginner" ? 3 : experience === "advanced" ? 5 : 4;
+    const template = focuses.map((focus, i) => {
+      const pool = (FIT_EXERCISES[focus] && FIT_EXERCISES[focus][equipment]) || FIT_EXERCISES["Full body"].full_gym;
+      const exercises = pool.slice(0, exCount).map((name) => ({
+        name, sets: scheme.sets, reps: scheme.reps, restSec: scheme.restSec, notes: scheme.rpe,
+      }));
+      return { day: FIT_DAYS[i % 7], focus, duration: 30 + exCount * 8, exercises };
+    });
+    return {
+      goal, weeks, daysPerWeek,
+      equipment, experience,
+      template,
+      progression: FIT_PROGRESSION[goal] || FIT_PROGRESSION.general,
+      nutrition: FIT_NUTRITION[goal] || FIT_NUTRITION.general,
+      composedBy: "deterministic",
+    };
+  }
+  async function runWorkoutPlanGenerate(ctx, params = {}) {
     const goal = ["strength", "hypertrophy", "endurance", "fat_loss", "general"].includes(params.goal) ? params.goal : "general";
     const daysPerWeek = Math.max(1, Math.min(7, Number(params.daysPerWeek) || 4));
     const weeks = Math.max(1, Math.min(24, Number(params.weeks) || 8));
     const equipment = ["full_gym", "home_dumbbells", "bodyweight_only"].includes(params.equipment) ? params.equipment : "full_gym";
     const experience = ["beginner", "intermediate", "advanced"].includes(params.experience) ? params.experience : "intermediate";
 
+    const deterministic = buildDeterministicPlan(goal, daysPerWeek, weeks, equipment, experience);
+    // Opt-in LLM enhancement; deterministic plan is always the guaranteed fallback.
+    if (process.env.CONCORD_FITNESS_PLAN_LLM === "true" && ctx?.llm?.chat) {
+      try {
+        const llmPlan = await llmWorkoutPlan(ctx, { goal, daysPerWeek, weeks, equipment, experience });
+        if (llmPlan?.plan) return { ok: true, result: { plan: { ...llmPlan.plan, composedBy: "llm" } } };
+      } catch { /* fall through to deterministic */ }
+    }
+    return { ok: true, result: { plan: deterministic } };
+  }
+  registerLensAction("fitness", "workout-plan-generate", (ctx, _artifact, params = {}) => runWorkoutPlanGenerate(ctx, params));
+  // Alias for the fitness lens's "Generate program" button (was an AI-catch-all).
+  registerLensAction("fitness", "generate-program", (ctx, artifact, params = {}) => runWorkoutPlanGenerate(ctx, { ...(artifact?.data || {}), ...params }));
+
+  async function llmWorkoutPlan(ctx, params) {
+    const { goal, daysPerWeek, weeks, equipment, experience } = params;
     const sys = `You are a certified strength coach. Output ONLY JSON, no prose, no fences.
 {
   "plan": {
@@ -364,12 +443,12 @@ Generate the plan.`;
       });
       const raw = String(llmRes?.text || llmRes?.content || "").trim();
       const parsed = extractJsonFit(raw);
-      if (!parsed?.plan) return { ok: false, error: "parse failed", raw: raw.slice(0, 200) };
-      return { ok: true, result: { plan: parsed.plan } };
-    } catch (e) {
-      return { ok: false, error: e?.message || "generation failed" };
+      if (!parsed?.plan) return null;
+      return { plan: parsed.plan };
+    } catch {
+      return null;
     }
-  });
+  }
 
   // ─── Strava + Garmin Connect 2026 parity ────────────────────────────
   // Activities, segments, routes, training-load (CTL/ATL/TSB),
