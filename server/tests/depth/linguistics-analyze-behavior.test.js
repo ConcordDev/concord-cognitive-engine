@@ -33,7 +33,7 @@ describe("linguistics.analyze — morphosyntactic analysis", () => {
 
   it("rejects empty input instead of fabricating an analysis", async () => {
     const r = await lensRun("linguistics", "analyze", { params: { text: "   " } });
-    assert.equal(r.ok, false);
-    assert.match(String(r.error), /text required/);
+    assert.equal(r.result.ok, false);
+    assert.match(String(r.result.error), /text required/);
   });
 });

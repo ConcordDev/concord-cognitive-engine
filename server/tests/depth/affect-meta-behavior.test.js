@@ -50,6 +50,6 @@ describe("meta.classify", () => {
   });
   it("rejects empty text", async () => {
     const r = await lensRun("meta", "classify", { params: { text: "  " } });
-    assert.equal(r.ok, false);
+    assert.equal(r.result.ok, false);
   });
 });

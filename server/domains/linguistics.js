@@ -40,7 +40,8 @@ export default function registerLinguisticsActions(registerLensAction) {
     const suffixClass = (w) => /ly$/.test(w) ? "adverb" : /(ness|tion|ment|ity)$/.test(w) ? "noun"
       : /(ful|ous|ive|al)$/.test(w) ? "adjective" : /(ing|ed|ise|ize)$/.test(w) ? "verb-form" : null;
     const classes = {};
-    for (const w of words) { const c = suffixClass(w.toLowerCase()); if (c) classes[c] = (classes[c] || 0) + 1; }
+    // Strip punctuation before suffix classification so "happily." still reads as -ly.
+    for (const w of words) { const c = suffixClass(w.toLowerCase().replace(/[^a-z]/g, "")); if (c) classes[c] = (classes[c] || 0) + 1; }
     const morph = Object.entries(classes).sort((a, b) => b[1] - a[1])
       .map(([c, n]) => `${c} ×${n}`).join(", ") || "no strongly-marked affixes detected";
     const content = [

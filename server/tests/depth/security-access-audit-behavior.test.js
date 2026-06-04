@@ -21,6 +21,6 @@ describe("security.accessAudit", () => {
     assert.equal(r.result.openCritical, 1);
     assert.equal(r.result.postureScore, 80);          // 100 − 20 per open critical
     assert.equal(r.result.rating, "moderate");
-    assert.ok(r.result.recommendations.some((x) => /critical/i.test(x)));
+    assert.ok(r.result.recommendations.some((x) => x.toLowerCase().includes("critical")));
   });
 });

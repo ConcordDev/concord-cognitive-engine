@@ -31,8 +31,8 @@ describe("research.generate — hypothesis analysis", () => {
 
   it("rejects an empty hypothesis instead of inventing one", async () => {
     const r = await lensRun("research", "generate", { params: { hypothesis: "   " } });
-    assert.equal(r.ok, false);
-    assert.match(String(r.error), /hypothesis required/);
+    assert.equal(r.result.ok, false);
+    assert.match(String(r.result.error), /hypothesis required/);
   });
 
   it("is deterministic for the same input (heuristic mode, no LLM)", async () => {

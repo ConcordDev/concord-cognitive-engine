@@ -19,6 +19,6 @@ describe("temporal.simulate", () => {
   });
   it("rejects too-short series", async () => {
     const r = await lensRun("temporal", "simulate", { params: { values: [1, 2] } });
-    assert.equal(r.ok, false);
+    assert.equal(r.result.ok, false);
   });
 });
