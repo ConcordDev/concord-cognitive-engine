@@ -50148,6 +50148,34 @@ app.get("/api/npc/:npcId/asymmetry", requireAuth(), asyncHandler(async (req, res
   } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
 }));
 
+// Wave 7 / E6 — NPC emotional-state inspector: the felt life behind the face. Reads the
+// NPC's temperament (dominant drive) + affect_state (valence/arousal) + a qualeOf LABEL
+// (A7, live on the NPC surface) so the trait inspector can show "how this person feels".
+app.get("/api/npc/:npcId/affect", requireAuth(), asyncHandler(async (req, res) => {
+  try {
+    const npcId = req.params.npcId;
+    const npc = db.prepare(`SELECT world_id, temperament_json FROM world_npcs WHERE id = ?`).get(npcId);
+    if (!npc) return res.status(404).json({ ok: false, error: "npc_not_found" });
+    let dominantDrive = null;
+    try {
+      const t = npc.temperament_json ? JSON.parse(npc.temperament_json) : null;
+      if (t) { const { dominantDrive: dd } = await import("./lib/ecosystem/drives.js"); dominantDrive = dd(t).name; }
+    } catch { /* temperament optional */ }
+    let v = 0, a = 0, hasAffect = false;
+    try {
+      const { loadOrCreate } = await import("./lib/affect-bridge.js");
+      const st = loadOrCreate(db, `npc:${npc.world_id}:${npcId}`, npc.world_id);
+      if (st?.E) { v = st.E.v ?? 0; a = st.E.a ?? 0; hasAffect = true; }
+    } catch { /* affect optional */ }
+    let quale = null;
+    try {
+      const { qualeOf } = await import("./lib/qualia-space.js");
+      quale = qualeOf({ valence: v, arousal: a, dominantDrive }).label;
+    } catch { /* qualia optional */ }
+    res.json({ ok: true, affect: { valence: v, arousal: a, hasAffect }, dominantDrive, quale });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message }); }
+}));
+
 // D5 — CK3 hooks inspector: leverage held between this NPC and the player.
 app.get("/api/npc/:npcId/hooks", requireAuth(), asyncHandler(async (req, res) => {
   try {
