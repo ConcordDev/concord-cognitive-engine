@@ -33,6 +33,8 @@ import { listActiveUprisingsWithLocation } from "../lib/uprising.js";
 import { deformationsForWorld, CELL_SIZE as TERRAIN_CELL_SIZE } from "../lib/terrain-deformation.js";
 import { waterGridForWorld } from "../lib/terrain-water.js";
 import { serverError } from "../lib/http-errors.js";
+import { shardingEnabled } from "../lib/world-shard-protocol.js";
+import { ensureWorldActive, markWorldUserCount, recordWorldActivity } from "../lib/world-shard-manager.js";
 
 // Combat anti-cheat constants. Server-side validation prevents a modified
 // client from claiming impossible reach or damage. The values are tuned
@@ -221,15 +223,50 @@ export default function createWorldsRouter({ requireAuth, db }) {
     }
   });
 
-  // POST /api/worlds/travel — move authenticated player to a new world
+  // POST /api/worlds/travel — move authenticated player to a new world.
+  //
+  // Phase I shard activation lives HERE, on the live router path. (A second,
+  // shard-aware copy of this endpoint used to exist as an inline app.post in
+  // server.js, but it was mounted AFTER this router so Express never reached
+  // it — sharding was dead-wired. With CONCORD_SHARD_WORLDS=true the parent
+  // governor delegates ALL scope:'world' heartbeats to per-world shards, so
+  // if travel doesn't activate the destination's shard the world isn't
+  // simulated at all. This activation is therefore load-bearing.)
   router.post("/travel", requireAuth, async (req, res) => {
     try {
       const { worldId: destinationWorldId } = req.body;
       if (!destinationWorldId) return res.status(400).json({ error: "worldId required" });
       const userId = req.user.id;
+
+      // Phase M — soft cap: reject travel into a world already at capacity.
+      const SOFT_CAP = Number(process.env.CONCORD_WORLD_USER_SOFT_CAP) || 200;
+      try {
+        const liveCount = cityPresence.getWorldUserCount?.(destinationWorldId) ?? 0;
+        if (liveCount >= SOFT_CAP) {
+          return res.status(503).json({ ok: false, error: "world_at_capacity", currentUsers: liveCount, softCap: SOFT_CAP, retryAfterMs: 5000 });
+        }
+      } catch { /* presence module optional in minimal builds */ }
+
       const result = await travelToWorld(userId, destinationWorldId, db, req.app.locals.io ?? null);
       applyWorldRulesToPlayer(userId, result.world, db);
-      res.json({ ok: true, ...result });
+
+      // Activate the destination world's shard so its scope:'world' heartbeats
+      // run. Best-effort: a spawn failure must NOT strand the player — the
+      // manager retries with backoff and stuck/can't-spawn shards page via the
+      // ConcordWorldShard* alerts. When sharding is off this is a no-op.
+      let shardStatus = { ok: true, status: "in-process" };
+      if (shardingEnabled()) {
+        try {
+          shardStatus = await ensureWorldActive(destinationWorldId);
+          if (shardStatus?.ok) markWorldUserCount(destinationWorldId, 1);
+          else logger.warn("worlds", "shard_activate_failed", { worldId: destinationWorldId, shardStatus });
+        } catch (shardErr) {
+          shardStatus = { ok: false, status: "spawn_error", error: shardErr?.message };
+          logger.warn("worlds", "shard_activate_threw", { worldId: destinationWorldId, error: shardErr?.message });
+        }
+      }
+
+      res.json({ ok: true, ...result, shardStatus, sharded: shardingEnabled() });
     } catch (e) {
       const status = e.status ?? 500;
       res.status(status).json({ error: e.message });
@@ -1992,6 +2029,10 @@ export default function createWorldsRouter({ requireAuth, db }) {
       if (x == null || z == null) return res.status(400).json({ ok: false, error: 'x and z required' });
       const pos = { x: parseFloat(x), y: y != null ? parseFloat(y) : undefined, z: parseFloat(z) };
       const swimState = updateSwimState(db, worldId, req.user.id, pos);
+      // Keep the world's shard warm while the player is actively in-world, so
+      // the 10-min idle-teardown doesn't reap a shard under continuous play
+      // (travel only refreshes activity on entry; movement is the live signal).
+      if (shardingEnabled()) { try { recordWorldActivity(worldId); } catch { /* best-effort */ } }
       res.json({ ok: true, ...swimState, position: pos });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });

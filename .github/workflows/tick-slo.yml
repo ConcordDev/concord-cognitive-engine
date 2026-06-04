@@ -1,0 +1,85 @@
+name: Tick SLO (heartbeat no-clog gate)
+
+# Protects the heartbeat capacity contract. Boots the server with world
+# sharding ON, drives a short combined HTTP + world-sim load, and fails the PR
+# if the governor tick clogs. The hard gates are BINARY signals that only fire
+# on a real regression (a tick overran its interval, a module blew its timeout,
+# or a world shard crash-looped) — not HTTP latency percentiles, which flake on
+# a shared CI VM (see platinum-performance.yml k6-smoke notes). HTTP latency is
+# reported for context but never fails the gate.
+#
+# Runs on PRs touching the server (where a clog would be introduced) and on
+# demand. Because the gates are binary, per-PR is safe — no flake.
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - 'scripts/loadtest/ci-tick-slo.mjs'
+      - '.github/workflows/tick-slo.yml'
+  workflow_dispatch:
+
+jobs:
+  tick-slo:
+    name: Tick SLO — heartbeat no-clog
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install server deps
+        working-directory: ./server
+        run: npm ci --prefer-offline
+
+      - name: Start server (sharding ON)
+        working-directory: ./server
+        env:
+          NODE_ENV: ci
+          JWT_SECRET: test-secret-for-ci-only-do-not-use-in-production
+          ADMIN_PASSWORD: testpassword123
+          PORT: 5050
+          # Skip the 5-brain Ollama probes (no Ollama in CI) — without this the
+          # boot blocks ~75s on sequential cold probes. Heartbeat modules that
+          # use a brain fall back to their deterministic path.
+          CONCORD_DISABLE_BRAINS: 'true'
+          # Exercise the real per-world shard path — the guard also catches
+          # shard crash-loops when the authored worlds seed.
+          CONCORD_SHARD_WORLDS: 'true'
+          # CI-only: the guard registers many users + thousands of requests from
+          # one IP, and posts world moves. Bypass the per-IP limiter + CSRF so we
+          # measure the SERVER, not the limiter. NEVER set these in production.
+          CONCORD_RATE_LIMIT_BYPASS: '1'
+          CONCORD_DISABLE_CSRF: 'true'
+        run: |
+          node server.js > server.log 2>&1 &
+          for i in {1..180}; do
+            if curl -sf http://localhost:5050/health > /dev/null 2>&1; then
+              echo "Server ready after ${i}s"; break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:5050/health > /dev/null 2>&1 || {
+            echo "::error::server did not become ready within 180s"; tail -60 server.log; exit 1;
+          }
+
+      - name: Run tick-SLO guard
+        env:
+          BASE: http://localhost:5050
+          DURATION_S: '45'
+          USERS: '12'
+          WORLDS: tunya,crime,cyber,fantasy
+          # The governor starts ~50s after boot; allow generous slack on a
+          # cold shared VM before declaring the loop frozen.
+          GOVERNOR_WAIT_S: '150'
+        run: node scripts/loadtest/ci-tick-slo.mjs
+
+      - name: Dump server log on failure
+        if: failure()
+        working-directory: ./server
+        run: tail -80 server.log || true

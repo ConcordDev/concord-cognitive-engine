@@ -74,11 +74,14 @@ module.exports = {
         CONCORD_HEARTBEAT_TIMING_HISTORY: '60',
         CONCORD_HEARTBEAT_POOL_SIZE: '4',
         CONCORD_HEARTBEAT_WORKER_TIMEOUT_MS: '25000',
-        // World sharding OFF by default — enable only after the operator
-        // has telemetry confirming the per-world isolation is clean for
-        // their workload (ops-telemetry lens shows shard status + restart
-        // counts under "World shards" widget).
-        CONCORD_SHARD_WORLDS: 'false',
+        // World sharding ON — per-world worker thread spawns on travel
+        // (routes/worlds.js#POST /travel) so the parent governor offloads all
+        // scope:'world' sim off the main event loop. The activation was
+        // previously dead-wired (an inline travel route in server.js shadowed
+        // by the worlds router); now wired on the live router path. Watch the
+        // ops-telemetry lens "World shards" widget + ConcordWorldShard* alerts;
+        // set 'false' to fall back to fully in-process heartbeats.
+        CONCORD_SHARD_WORLDS: 'true',
         CONCORD_SHARD_BACKOFF_MS: '2000',
         CONCORD_SHARD_MAX_RESTARTS_PER_MIN: '5',
         // ALLOWED_ORIGINS and COOKIE_DOMAIN loaded from .env file

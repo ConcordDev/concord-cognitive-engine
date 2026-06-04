@@ -49,6 +49,33 @@ groups:
           summary: "All Concord brains are offline"
           description: "No brain is enabled — AI features unavailable"
 
+      # Phase D GPU scale-out — LLM priority-queue saturation. When the GPU is
+      # the bottleneck, requests back up in the JS queue (concord_llm_queue_depth)
+      # before the per-brain concurrency caps shed them. Sustained depth means
+      # the GPU can't keep up with offered load: scale Ollama endpoints
+      # (BRAIN_*_URLS) or raise OLLAMA_NUM_PARALLEL (and keep LLM_CONCURRENCY >=
+      # the sum across endpoints, or the JS queue throttles while the GPU idles).
+      - alert: ConcordLLMQueueSaturated
+        expr: concord_llm_queue_depth > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Concord LLM queue depth sustained high ({{ $value }})"
+          description: "concord_llm_queue_depth > 200 for 5m — generative load exceeds GPU throughput. Add Ollama endpoints (BRAIN_*_URLS) / raise OLLAMA_NUM_PARALLEL; ensure LLM_CONCURRENCY >= sum of per-endpoint OLLAMA_NUM_PARALLEL."
+
+      # Requests are being dropped (queue full or LOW/NORMAL shed). Any sustained
+      # rejection is user-visible (a chat/lens call failed outright), not just
+      # slow — worth paging on separately from mere depth.
+      - alert: ConcordLLMQueueShedding
+        expr: increase(concord_llm_queue_rejected_total[5m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Concord is shedding LLM requests"
+          description: "concord_llm_queue_rejected_total increased over 5m, sustained 10m — the LLM queue is full and rejecting requests (CONCORD_LLM_QUEUE_DEPTH). Generative features are failing for some users. Scale GPU/Ollama endpoints or raise the queue depth."
+
       - alert: ConcordSlowBrain
         expr: concord_brain_avg_latency_ms > 30000
         for: 5m
