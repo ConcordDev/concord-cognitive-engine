@@ -124,6 +124,20 @@ registerHeartbeat("affect-trace-cycle", {
   scope: "world",
 });
 
+// Wave 7 / Track C2-C3 — the agent guardrail enforcement points. An autonomous agent
+// is a PLAYER, never an operator: it may only reach the domain allowlist, its context
+// is never internal, and a global per-actor token bucket bounds machine-speed flooding
+// (the audit found no such cap at the runMacro gate). Non-agents are untouched.
+import {
+  isAgentActor as _isAgentActor,
+  isAgentDomainAllowed as _isAgentDomainAllowed,
+  assertAgentContextSafe as _assertAgentContextSafe,
+} from "./lib/agent-guardrails.js";
+import { makeActorActionCap as _makeActorActionCap } from "./lib/agent-guardrails.js";
+const _agentActionCap = _makeActorActionCap({
+  perActorPerMin: Number(process.env.CONCORD_AGENT_ACTION_CAP) || 60,
+});
+
 // WS3: outward-migration engine (NPC re-anchor half). As NPCs out-level the
 // ring they stand in, they step toward their home band's inner edge so the
 // strong drain to the frontier and the hub refills with weak spawns. Per-world
@@ -10739,6 +10753,26 @@ async function runMacro(domain, name, input, ctx) {
   // role checks, not by this default.
   const actor = ctx?.actor || { userId: "system", role: "system", scopes: ["read", "write"], internal: true };
   // ACL check is deferred until after publicReadDomains is evaluated (see below).
+
+  // Wave 7 / Track C2-C3 — agent capability fence. Fires ONLY for agent actors
+  // (role:'agent' / is_agent); ordinary players + internal ticks are untouched.
+  if (_isAgentActor(actor)) {
+    // structural bar: an agent context must never be internal/privileged
+    const safe = _assertAgentContextSafe({ actor, internal: ctx?.internal === true });
+    if (!safe.safe) {
+      logger.error("agent-guardrail", "blocked unsafe agent context", { reason: safe.reason, domain, name });
+      return { ok: false, error: "agent_context_unsafe", reason: safe.reason };
+    }
+    // capability whitelist: code/repair/admin/config are simply absent
+    if (!_isAgentDomainAllowed(domain)) {
+      return { ok: false, error: "agent_domain_forbidden", reason: `agent may not reach '${domain}'` };
+    }
+    // commons cap: bound machine-speed flooding per actor
+    const actorId = actor.userId || actor.agentId || "_agent";
+    if (!_agentActionCap.tryConsume(actorId)) {
+      return { ok: false, error: "agent_rate_limited", retryAfterMs: 1000 };
+    }
+  }
 
   // Rate limit check for expensive macros (Phase 5.2)
   if (!checkMacroRateLimit(domain, name)) {
