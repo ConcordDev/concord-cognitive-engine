@@ -160,7 +160,7 @@ function NotesTab({ onOpen }: { onOpen: (id: string) => void }) {
                   </div>
                 )}
               </button>
-              <button type="button" onClick={() => remove(n.id)}
+              <button type="button" onClick={() => remove(n.id)} aria-label="Delete note"
                 className="p-1 text-gray-600 hover:text-rose-300 opacity-0 group-hover:opacity-100"><Trash2 className="w-3 h-3" /></button>
             </div>
           </div>

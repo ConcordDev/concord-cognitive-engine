@@ -1284,7 +1284,7 @@ export default function CryptoLensPage() {
             >
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold text-cyan-300">Receive</h2>
-                <button onClick={() => setShowReceive(false)} className="p-1 text-gray-400 hover:text-white">
+                <button onClick={() => setShowReceive(false)} aria-label="Close receive panel" className="p-1 text-gray-400 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
               </div>
