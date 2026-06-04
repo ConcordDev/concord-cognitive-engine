@@ -6475,7 +6475,7 @@ function requireRole(...roles) {
 
 // Production write-auth: enforce authentication on all mutating requests in production
 // unless AUTH_MODE=public, where anonymous writes are intentionally allowed.
-const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/chat", "/api/lens"];
+const WRITE_AUTH_PUBLIC_PATHS = ["/api/auth/login", "/api/auth/register", "/api/auth/csrf-token", "/health", "/ready", "/metrics", "/api/chat"];
 function productionWriteAuthMiddleware(req, res, next) {
   // Authenticated users can write to any endpoint
   if (req.user?.id) return next();
@@ -6490,6 +6490,21 @@ function productionWriteAuthMiddleware(req, res, next) {
     return res.status(401).json({ ok: false, error: "Authentication required for write operations in production", code: "PROD_WRITE_AUTH" });
   }
   return next();
+}
+
+// H1 — lens-action authz gate. /api/lens/run + the lens.run macro dispatch
+// registerLensAction macros by calling the handler DIRECTLY, bypassing the runMacro
+// ACL — and that ACL is itself a no-op for anonymous HTTP (the "anon" actor's userId
+// is truthy so _isAuthenticatedUser passes, and _isHumanRequest skips canRunMacro).
+// So for a secured production deploy this is the only reliable gate on lens-action
+// execution. Mirrors productionWriteAuthMiddleware: enforced in production unless
+// AUTH_MODE=public (local-first). Independent of that gate's header-presence fallback,
+// since a garbage Authorization header still yields actor.userId === "anon" here.
+function _lensActionForbiddenForAnon(ctx) {
+  if (NODE_ENV !== "production") return false;
+  if (AUTH_MODE === "public") return false;
+  const uid = ctx?.actor?.userId;
+  return !uid || uid === "anon";
 }
 
 // ---- Validation Schemas (Zod) ----
@@ -10820,7 +10835,10 @@ async function runMacro(domain, name, input, ctx) {
     // history domain already has other publicReadDomains entries elsewhere;
     // we only need the live_wiki_otd here.
     // atlas domain too; merged via Set spread below if it exists.
-    lens: new Set(["list", "get", "export", "run", "create", "update", "delete", "bulkCreate", "spatial_at"]),
+    // Read-only only — writes (create/update/delete/bulkCreate) and the `run`
+    // action-dispatch vector are NOT public (H1). `run` is gated in its handler +
+    // macro by _lensActionForbiddenForAnon.
+    lens: new Set(["list", "get", "export", "spatial_at"]),
     system: new Set(["status", "getStatus", "health", "analogize"]),
     settings: new Set(["get", "status"]),
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
@@ -11188,7 +11206,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/concord-link", "/api/black-market", "/api/creature", "/api/emergent-skills",
   ];
   // Safe POST paths: chat and brain endpoints that must bypass Chicken2 for unauthenticated users
-  const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/lens", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
+  const _safePostPaths = ["/api/chat", "/api/brain/conscious", "/api/repair", "/api/creative/registry", "/api/forge", "/api/ask", "/api/dtus", "/api/social", "/api/economy", "/api/marketplace", "/api/collab", "/api/goals", "/api/media",
     // Messaging webhooks (have own signature verification)
     "/api/messaging/whatsapp/webhook", "/api/messaging/telegram/webhook",
     "/api/messaging/discord/interactions", "/api/messaging/signal/webhook",
@@ -37059,6 +37077,10 @@ register("lens", "delete", async (ctx, input={}) => {
 register("lens", "run", async (ctx, input={}) => {
   const { id, action, params={} } = input;
   if (!id || !action) return { ok: false, error: "id and action required" };
+  // H1: same anon gate as the /api/lens/run handler — the lens-action dispatch below
+  // bypasses the runMacro ACL, so block anonymous callers in secured production.
+  // Internal/system callers have a real (non-"anon") actor.userId and pass through.
+  if (_lensActionForbiddenForAnon(ctx)) return { ok: false, error: "forbidden: authentication required" };
   const artifact = STATE.lensArtifacts.get(id);
   if (!artifact) return { ok: false, error: "not found" };
   // Domain-specific action handlers can be registered via lens.registerAction
@@ -38234,6 +38256,12 @@ app.post("/api/lens/run", async (req, res) => {
         })();
     if (!domain || !action) return res.status(400).json({ ok: false, error: "domain and action required" });
     const ctx = makeCtx(req);
+    // H1: gate the whole dispatch (lens-action AND macro paths) for anonymous callers
+    // in secured production — the runMacro ACL doesn't protect this surface (see
+    // _lensActionForbiddenForAnon). Reads use the GET /api/lens/:domain[/:id] routes.
+    if (_lensActionForbiddenForAnon(ctx)) {
+      return res.status(401).json({ ok: false, error: "authentication required", code: "LENS_AUTH" });
+    }
     // Prefer LENS_ACTIONS (legacy lens-action style: registerLensAction(...)).
     const lensHandler = LENS_ACTIONS.get(`${domain}.${action}`);
     if (lensHandler) {
