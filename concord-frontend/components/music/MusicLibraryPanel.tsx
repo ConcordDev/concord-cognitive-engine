@@ -188,21 +188,21 @@ export function MusicLibraryPanel({ onChange }: { onChange: () => void }) {
           <ul className="space-y-1">
             {tracks.map((t) => (
               <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
-                <button type="button" onClick={() => play(t.id)} className="text-emerald-400 hover:text-emerald-300 shrink-0">
+                <button type="button" onClick={() => play(t.id)} aria-label={`Play ${t.title}`} className="text-emerald-400 hover:text-emerald-300 shrink-0">
                   <Play className="w-4 h-4" />
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs text-zinc-200 truncate">{t.title}</p>
                   <p className="text-[10px] text-zinc-400 truncate">{t.artist}{t.album ? ` · ${t.album}` : ''} · {dur(t.durationSec)}{t.playCount > 0 ? ` · ${t.playCount} plays` : ''}</p>
                 </div>
-                <button type="button" onClick={() => like(t.id)}
+                <button type="button" onClick={() => like(t.id)} aria-label={t.liked ? `Unlike ${t.title}` : `Like ${t.title}`}
                   className={cn('shrink-0', t.liked ? 'text-emerald-400' : 'text-zinc-600 hover:text-zinc-400')}>
                   <Heart className={cn('w-3.5 h-3.5', t.liked && 'fill-current')} />
                 </button>
-                <button type="button" onClick={() => queue(t.id)} className="text-zinc-600 hover:text-zinc-300 shrink-0">
+                <button type="button" onClick={() => queue(t.id)} aria-label={`Queue ${t.title}`} className="text-zinc-600 hover:text-zinc-300 shrink-0">
                   <ListPlus className="w-3.5 h-3.5" />
                 </button>
-                <button type="button" onClick={() => del(t.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button type="button" onClick={() => del(t.id)} aria-label={`Delete ${t.title}`} className="text-zinc-600 hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>

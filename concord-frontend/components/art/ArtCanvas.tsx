@@ -548,24 +548,24 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-zinc-300">Layers</h3>
-            <button type="button" onClick={addLayer} className="text-zinc-400 hover:text-violet-300"><Plus className="w-4 h-4" /></button>
+            <button type="button" onClick={addLayer} aria-label="Add layer" className="text-zinc-400 hover:text-violet-300"><Plus className="w-4 h-4" /></button>
           </div>
           <ul className="space-y-1.5">
             {[...artwork.layers].reverse().map((l) => (
               <li key={l.id}
                 className={cn('rounded-lg border p-2', activeLayer === l.id ? 'border-violet-600 bg-violet-950/30' : 'border-zinc-800 bg-zinc-900/70')}>
                 <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} className="text-zinc-400 hover:text-zinc-200">
+                  <button type="button" onClick={() => updateLayer(l.id, { visible: !l.visible })} aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} className="text-zinc-400 hover:text-zinc-200">
                     {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   </button>
                   <button type="button" onClick={() => { setActiveLayer(l.id); setSelectedIds(new Set()); }}
                     className="flex-1 text-left text-xs text-zinc-200 truncate">{l.name}</button>
-                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} className="text-zinc-400 hover:text-zinc-300">
+                  <button type="button" onClick={() => updateLayer(l.id, { locked: !l.locked })} aria-label={l.locked ? `Unlock layer ${l.name}` : `Lock layer ${l.name}`} className="text-zinc-400 hover:text-zinc-300">
                     {l.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
                   </button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
-                  <button type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'up')} aria-label={`Move layer ${l.name} up`} className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => reorderLayer(l.id, 'down')} aria-label={`Move layer ${l.name} down`} className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => deleteLayer(l.id)} aria-label={`Delete layer ${l.name}`} className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 {activeLayer === l.id && (
                   <div className="mt-1.5 space-y-1.5">
