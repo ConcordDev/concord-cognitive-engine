@@ -45,6 +45,26 @@ test("Track B6 — awareness loop", async (t) => {
     assert.ok(row.note && row.note.length > 0);
   });
 
+  await t.test("B6 gap 4 — fires the previously-dead self-model hooks into the qualia engine", () => {
+    // stub the global qualia engine the existential hooks write to
+    const channelUpdates = {};
+    globalThis.qualiaEngine = { batchUpdate: (_id, updates) => Object.assign(channelUpdates, updates) };
+    try {
+      runAwarenessLoop({
+        force: true, agentId: "agent_h",
+        self: { affect: { v: -0.5, a: 0.8 }, drives: { FEAR: 0.7 } },
+        prior: { affect: { v: 0.1, a: 0.2 }, drives: { FEAR: 0.2 } },
+        experience: { kind: "predator" },
+        prediction: { confidence: 0.9 }, actual: { realised: false }, // confident + wrong
+      });
+      // the reflection + metacognition channels actually moved (no longer zero-call-site)
+      assert.ok("reflection_os.alignment_with_core_principles" in channelUpdates, "reflection_os updated");
+      assert.ok("meta_growth_os.gap_severity" in channelUpdates || "truth_os.uncertainty_score" in channelUpdates, "metacognition updated");
+    } finally {
+      delete globalThis.qualiaEngine;
+    }
+  });
+
   await t.test("never throws on garbage input", () => {
     assert.doesNotThrow(() => runAwarenessLoop({ force: true, self: null }));
     const r = runAwarenessLoop({ force: true, self: null });

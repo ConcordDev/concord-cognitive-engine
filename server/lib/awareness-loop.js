@@ -25,6 +25,7 @@ import { detectConstraint, shouldEscalate } from "./affect-salience.js";
 import { appraiseExperience } from "./felt-per.js";
 import { qualeOf } from "./qualia-space.js";
 import { computeAwarenessIndex, activationsFromTick } from "./agent-awareness-index.js";
+import * as existentialHooks from "../existential/hooks.js";
 
 const clamp01 = (x) => Math.max(0, Math.min(1, Number(x) || 0));
 
@@ -149,6 +150,29 @@ export function runAwarenessLoop(input = {}) {
 
     // 3-5. REASON (deterministic note; lazy HLR/drift could replace it)
     const note = deterministicReason(constraint, esc, surprise);
+
+    // Wave 7 / B6 gap 4 — wire the previously-dead self-model hooks. The awareness
+    // loop is the right caller: it has just attended, predicted, and learned, so it
+    // can update reflection_os / meta_growth_os / truth_os. These were zero-call-site
+    // ghosts; this makes the higher-order self-model actually move. Best-effort.
+    const _entityId = input.agentId || self.agentId || null;
+    if (_entityId) {
+      try {
+        // reflection: how coherent + novel + in-need-of-reframing this wake felt
+        existentialHooks.hookReflection?.(_entityId, {
+          alignment: awareness.integration,
+          novelty: clamp01(input.novelty ?? (surprise ? surprise.surprise : 0)),
+          reframingNeed: surprise ? surprise.surprise : 0,
+        });
+        // metacognition: a confident-and-wrong prediction is poor calibration
+        existentialHooks.hookMetacognition?.(_entityId, {
+          calibrationAccuracy: surprise ? clamp01(1 - surprise.surprise) : 0.6,
+          blindSpotSeverity: surprise && surprise.confident_and_wrong ? surprise.surprise : 0,
+        });
+        // autogen: a tier-3 wake produces novel self-content (drives the novelty channel)
+        existentialHooks.hookAutogen?.(_entityId, { novelty: clamp01(input.novelty ?? (surprise ? surprise.surprise : 0)) });
+      } catch { /* qualia engine optional — never blocks the loop */ }
+    }
 
     const trace = {
       agentId: input.agentId || self.agentId || null,
