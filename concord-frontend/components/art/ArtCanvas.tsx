@@ -141,6 +141,22 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
     return () => { active = false; };
   }, [artworkId]);
 
+  // Brush-preset CRUD (surfaces art.brush-preset-save / brush-preset-delete).
+  const reloadBrushes = useCallback(async () => {
+    const b = await lensRun('art', 'brush-presets', {});
+    setBrushes(b.data?.result?.brushes || []);
+  }, []);
+  const saveBrush = useCallback(async () => {
+    const name = window.prompt('Name this brush preset')?.trim();
+    if (!name) return;
+    await lensRun('art', 'brush-preset-save', { name, tool, size, opacity });
+    await reloadBrushes();
+  }, [tool, size, opacity, reloadBrushes]);
+  const deleteBrush = useCallback(async (id: string) => {
+    setBrushes((prev) => prev.filter((b) => b.id !== id));
+    try { await lensRun('art', 'brush-preset-delete', { id }); } catch { void reloadBrushes(); }
+  }, [reloadBrushes]);
+
   const render = useCallback(() => {
     const cv = canvasRef.current;
     if (!cv || !artwork) return;
@@ -475,12 +491,22 @@ export function ArtCanvas({ artworkId, onExit }: { artworkId: string; onExit: ()
       {/* Tool palette */}
       <div className="flex flex-wrap gap-1.5">
         {brushes.filter((b) => BRUSH_TOOLS.includes(b.tool)).map((b) => (
-          <button key={b.id} type="button"
-            onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
-            className={cn(toolBtn, tool === b.tool && size === b.size ? on : off)}>
-            <Brush className="w-3 h-3" />{b.name}
-          </button>
+          <span key={b.id} className="relative group inline-flex">
+            <button type="button"
+              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setSelectedIds(new Set()); }}
+              className={cn(toolBtn, tool === b.tool && size === b.size ? on : off)}>
+              <Brush className="w-3 h-3" />{b.name}
+            </button>
+            {b.custom && (
+              <button type="button" onClick={() => void deleteBrush(b.id)} aria-label={`Delete brush ${b.name}`}
+                className="absolute -top-1 -right-1 hidden group-hover:flex items-center justify-center w-3.5 h-3.5 rounded-full bg-rose-600 text-white text-[8px] leading-none">×</button>
+            )}
+          </span>
         ))}
+        <button type="button" onClick={() => void saveBrush()} title="Save current tool/size/opacity as a brush preset"
+          className={cn(toolBtn, off)}>
+          <Brush className="w-3 h-3" />+ Save
+        </button>
         {TOOLS.map((t) => {
           const Icon = t.icon;
           return (
